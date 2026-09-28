@@ -136,6 +136,7 @@ import com.mycorrhizal.crm.feature.settings.NextcloudSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.PaperlessSettingsScreen
 import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ServersScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
 import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
@@ -349,6 +350,8 @@ fun MycorrhizalApp(
                     onSignInWithSso = onStartOidc,
                     onRegisterClick = { authScreen = AuthScreen.REGISTER },
                     onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
+                    // ADR 0028 Decision 2: off until the embedded host (#1262).
+                    localModeEnabled = BuildConfig.LOCAL_MODE_ENABLED,
                     oidcError = oidcErrorState,
                     onOidcErrorShown = onOidcErrorShown,
                 )
@@ -1261,7 +1264,18 @@ private fun AppNavGraph(
                 onManageUsers = { navController.navigate("admin/users") },
                 // Issue #424: the operational-event timeline.
                 onSystemEvents = { navController.navigate("admin/system-events") },
+                // ADR 0028 Decision 1: server-profile management.
+                onServers = { navController.navigate("servers") },
                 onLocaleChanged = onLocaleChanged,
+            )
+        }
+        // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
+        // screen. The "Use on this device only" entry stays behind the
+        // BuildConfig.LOCAL_MODE_ENABLED flag until the embedded host lands.
+        composable("servers") {
+            ServersScreen(
+                onBack = { navController.popBackStack() },
+                localModeEnabled = BuildConfig.LOCAL_MODE_ENABLED,
             )
         }
         // Issue #348: admin user management, reached from Settings (gated on

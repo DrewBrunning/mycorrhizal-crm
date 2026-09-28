@@ -317,12 +317,25 @@ object DataModule {
         // compiled fine through kspDebugKotlin but failed Dagger's full
         // graph validation at hiltJavaCompileDebug with a DependencyCycle.
         sessionTeardown: javax.inject.Provider<SessionTeardown>,
+        // ADR 0028 Decision 1: the profile list / active ID and the outbox
+        // drain. The repository has no dependency on SessionManager, so no
+        // Provider indirection is needed here.
+        pendingInteractionRepository: com.mycorrhizal.crm.domain.repository.PendingInteractionRepository,
+        // A `Provider` breaks the cycle: the real drainer goes through
+        // ApiClient → OkHttpClient → BaseUrlProvider, which is bound to the
+        // SessionManager this provider is building. It is only resolved when a
+        // switch actually tries to drain, by which point the manager exists.
+        outboxDrainer: javax.inject.Provider<com.mycorrhizal.crm.data.session.OutboxDrainer>,
+        profileSecretStorage: com.mycorrhizal.crm.data.session.ProfileSecretStorage,
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(
             tokenStorage,
             prefsStorage,
             localDataCleaner,
             sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() },
+            pendingInteractions = pendingInteractionRepository,
+            outboxDrainer = com.mycorrhizal.crm.data.session.OutboxDrainer { outboxDrainer.get().drain() },
+            profileSecretStorage = profileSecretStorage,
         )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // Issue #678: a 401 on any API call must clear the session so the app
@@ -583,4 +596,13 @@ abstract class DataBindsModule {
     abstract fun bindDeviceGrantRepository(
         impl: com.mycorrhizal.crm.data.auth.DeviceGrantManager,
     ): com.mycorrhizal.crm.domain.repository.DeviceGrantRepository
+
+    // ADR 0028 Decision 1: the real outbox drain reuses the interaction-sync
+    // mapping, so a profile switch can flush pending_interactions before it
+    // discards the cache (or report the count the user must confirm).
+    @Binds
+    @Singleton
+    abstract fun bindOutboxDrainer(
+        impl: com.mycorrhizal.crm.data.repository.PendingInteractionFlusher,
+    ): com.mycorrhizal.crm.data.session.OutboxDrainer
 }

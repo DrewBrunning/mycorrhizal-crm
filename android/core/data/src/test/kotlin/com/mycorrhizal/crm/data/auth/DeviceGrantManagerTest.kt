@@ -9,7 +9,6 @@ import com.mycorrhizal.crm.model.network.DeviceGrantCreateResponse
 import com.mycorrhizal.crm.network.ApiClient
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -26,23 +25,40 @@ class DeviceGrantManagerTest {
         val storage: DeviceGrantTokenStorage = mockk(),
         val settings: LocalAuthSettingsRepository = mockk(),
         val sessionManager: SessionManager = mockk(),
+        val profileId: String? = "profile-1",
     ) {
         val manager = DeviceGrantManager(api, storage, settings, sessionManager)
+
+        init {
+            // ADR 0028 Decision 1: per-profile grants target the active profile.
+            coEvery { sessionManager.activeProfileId() } returns profileId
+        }
     }
 
     @Test
-    fun `enroll stores the grant and marks the device enrolled`() = runTest {
+    fun `enroll stores the grant under the active profile and marks it enrolled`() = runTest {
         val h = Harness()
         coEvery { h.api.createDeviceGrant("Pixel") } returns
             Result.success(DeviceGrantCreateResponse(id = 7, label = "Pixel", token = "grant-token"))
-        coEvery { h.storage.save("grant-token", 7L) } returns Unit
+        coEvery { h.storage.save("profile-1", "grant-token", 7L) } returns Unit
         coEvery { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED) } returns Unit
 
         val result = h.manager.enroll("Pixel")
 
         assertTrue(result.isSuccess)
-        coVerify { h.storage.save("grant-token", 7L) }
+        coVerify { h.storage.save("profile-1", "grant-token", 7L) }
         coVerify { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED) }
+    }
+
+    @Test
+    fun `enroll fails without an active profile and stores nothing`() = runTest {
+        val h = Harness(profileId = null)
+
+        val result = h.manager.enroll("Pixel")
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { h.storage.save(any(), any(), any()) }
+        coVerify(exactly = 0) { h.api.createDeviceGrant(any()) }
     }
 
     @Test
@@ -53,14 +69,14 @@ class DeviceGrantManagerTest {
         val result = h.manager.enroll("Pixel")
 
         assertTrue(result.isFailure)
-        coVerify(exactly = 0) { h.storage.save(any(), any()) }
+        coVerify(exactly = 0) { h.storage.save(any(), any(), any()) }
         coVerify(exactly = 0) { h.settings.setBiometricEnrollmentStatus(any()) }
     }
 
     @Test
     fun `refresh succeeds when a grant is stored and the exchange succeeds`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadToken() } returns "grant-token"
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
         coEvery { h.api.exchangeDeviceSession("grant-token") } returns Result.success("fresh-jwt")
         coEvery { h.sessionManager.setToken("fresh-jwt") } returns Unit
 
@@ -73,7 +89,7 @@ class DeviceGrantManagerTest {
     @Test
     fun `refresh is a no-op when no grant is stored`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadToken() } returns null
+        coEvery { h.storage.loadToken("profile-1") } returns null
 
         val refreshed = h.manager.refreshSessionFromStoredGrant()
 
@@ -84,7 +100,7 @@ class DeviceGrantManagerTest {
     @Test
     fun `refresh falls back to clearing when the exchange fails`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadToken() } returns "grant-token"
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
         coEvery { h.api.exchangeDeviceSession(any()) } returns Result.failure(Exception("revoked"))
 
         val refreshed = h.manager.refreshSessionFromStoredGrant()
@@ -95,25 +111,25 @@ class DeviceGrantManagerTest {
     @Test
     fun `remove enrollment revokes by stored grant id and clears local state`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadGrantId() } returns 7L
+        coEvery { h.storage.loadGrantId("profile-1") } returns 7L
         coEvery { h.api.revokeDeviceGrant(7L) } returns Result.success(Unit)
-        coEvery { h.storage.clear() } returns Unit
+        coEvery { h.storage.clear("profile-1") } returns Unit
         coEvery { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT) } returns Unit
 
         val result = h.manager.removeEnrollment()
 
         assertTrue(result.isSuccess)
         coVerify { h.api.revokeDeviceGrant(7L) }
-        coVerify { h.storage.clear() }
+        coVerify { h.storage.clear("profile-1") }
         coVerify { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT) }
     }
 
     @Test
     fun `remove enrollment falls back to revoke-all when the grant id is missing`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadGrantId() } returns null
+        coEvery { h.storage.loadGrantId("profile-1") } returns null
         coEvery { h.api.revokeAllDeviceGrants() } returns Result.success(com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse(1))
-        coEvery { h.storage.clear() } returns Unit
+        coEvery { h.storage.clear("profile-1") } returns Unit
         coEvery { h.settings.setBiometricEnrollmentStatus(any()) } returns Unit
 
         val result = h.manager.removeEnrollment()
@@ -136,17 +152,17 @@ class DeviceGrantManagerTest {
     @Test
     fun `isEnrolled reflects a stored grant`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadToken() } returns "grant-token"
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
         assertTrue(h.manager.isEnrolled())
 
-        coEvery { h.storage.loadToken() } returns null
+        coEvery { h.storage.loadToken("profile-1") } returns null
         assertFalse(h.manager.isEnrolled())
     }
 
     @Test
     fun `storedGrantToken and enrollmentStatus delegate to their stores`() = runTest {
         val h = Harness()
-        coEvery { h.storage.loadToken() } returns "grant-token"
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
         assertEquals("grant-token", h.manager.storedGrantToken())
 
         val statusFlow = MutableStateFlow(BiometricEnrollmentStatus.ENROLLED)
@@ -164,5 +180,4 @@ class DeviceGrantManagerTest {
 
         assertTrue(result.isFailure)
     }
-
 }

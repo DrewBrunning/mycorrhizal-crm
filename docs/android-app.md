@@ -46,6 +46,33 @@ Your contacts and history live on your server, so a reinstall re-downloads them 
 Only the app's on-device settings and offline mirror are local; the app is safe to uninstall if you
 can sign in again.
 
+## Server profiles
+
+The app keeps a list of **server profiles**, exactly one active at a time
+([ADR 0028](adrs/0028-local-only-android-mode-and-server-profiles.md)
+Decision 1). A profile is a named server: a **label** you choose and its URL.
+Each profile's sign-in credential is stored separately, so switching between
+servers — a home instance and a work instance, or re-pointing after a domain
+move — does not sign you out of the other.
+
+Manage them under **Settings → Servers**:
+
+- **Add server** — a label and a URL, then sign in for that server. A new
+  profile has no saved session, so the app lands on the sign-in screen for it.
+- **Switch** — tap a profile. This is a full switch: the offline mirror is a
+  per-profile cache and is wiped, so one server's cached data never appears
+  under another. If the call/SMS outbox holds interactions that have not synced
+  yet, the app names the count and asks before discarding them.
+- **Rename** — change a profile's label.
+- **Remove** — revoke the profile's saved sign-in and forget it on this device.
+
+An upgrade preserves your existing server and sign-in: the first launch after
+updating migrates them into a single Remote profile, with no re-login.
+
+A **local, on-device profile** (no server at all) is designed (ADR 0028
+Decision 2) but not yet offered: the "Use on this device only" entry stays
+behind a build flag until the embedded server and account-bundle backup ship.
+
 ## TLS
 
 The app trusts only system certificate authorities — there is no "import a self-signed certificate"

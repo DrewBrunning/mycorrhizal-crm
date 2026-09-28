@@ -1715,4 +1715,23 @@
     <string name="occasions_validation_title_required">Inserisci un titolo per questo evento.</string>
     <string name="occasions_validation_start_required">Scegli una data e un\'ora di inizio.</string>
     <string name="occasions_validation_end_before_start">L\'ora di fine non può essere precedente a quella di inizio.</string>
+    <string name="settings_servers_title">Server</string>
+    <string name="settings_servers_add">Aggiungi server</string>
+    <string name="settings_servers_empty">Nessun server configurato.</string>
+    <string name="settings_servers_label">Etichetta</string>
+    <string name="settings_servers_url">URL del server</string>
+    <string name="settings_servers_active">Attivo</string>
+    <string name="settings_servers_rename">Rinomina</string>
+    <string name="settings_servers_rename_title">Rinomina server</string>
+    <string name="settings_servers_rename_named">Rinomina %1$s</string>
+    <string name="settings_servers_remove">Rimuovi</string>
+    <string name="settings_servers_remove_title">Rimuovi server</string>
+    <string name="settings_servers_remove_body">Rimuovere %1$s da questo dispositivo? La sessione salvata andrà persa.</string>
+    <string name="settings_servers_remove_named">Rimuovi %1$s</string>
+    <string name="settings_servers_local_kind">Su questo dispositivo</string>
+    <string name="settings_servers_switch_title">Attività non inviata</string>
+    <string name="settings_servers_switch_body">%1$d interazione/i acquisita/e non è ancora stata inviata. Passando a %2$s verranno eliminate.</string>
+    <string name="settings_servers_switch_confirm">Elimina e cambia</string>
+    <string name="servers_add_invalid_url">Inserisci un URL del server valido, ad esempio https://crm.example.com.</string>
+    <string name="login_use_local_only">Usa solo su questo dispositivo</string>
 </resources>

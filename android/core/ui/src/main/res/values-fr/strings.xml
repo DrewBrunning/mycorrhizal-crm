@@ -1715,4 +1715,23 @@
     <string name="occasions_validation_title_required">Saisissez un titre pour cet événement.</string>
     <string name="occasions_validation_start_required">Choisissez une date et une heure de début.</string>
     <string name="occasions_validation_end_before_start">L\'heure de fin ne peut pas précéder l\'heure de début.</string>
+    <string name="settings_servers_title">Serveurs</string>
+    <string name="settings_servers_add">Ajouter un serveur</string>
+    <string name="settings_servers_empty">Aucun serveur configuré pour le moment.</string>
+    <string name="settings_servers_label">Libellé</string>
+    <string name="settings_servers_url">URL du serveur</string>
+    <string name="settings_servers_active">Actif</string>
+    <string name="settings_servers_rename">Renommer</string>
+    <string name="settings_servers_rename_title">Renommer le serveur</string>
+    <string name="settings_servers_rename_named">Renommer %1$s</string>
+    <string name="settings_servers_remove">Supprimer</string>
+    <string name="settings_servers_remove_title">Supprimer le serveur</string>
+    <string name="settings_servers_remove_body">Supprimer %1$s de cet appareil ? La session enregistrée sera perdue.</string>
+    <string name="settings_servers_remove_named">Supprimer %1$s</string>
+    <string name="settings_servers_local_kind">Sur cet appareil</string>
+    <string name="settings_servers_switch_title">Activité non envoyée</string>
+    <string name="settings_servers_switch_body">%1$d interaction(s) capturée(s) n\'ont pas encore été envoyées. Passer à %2$s les supprimera.</string>
+    <string name="settings_servers_switch_confirm">Supprimer et changer</string>
+    <string name="servers_add_invalid_url">Saisissez une URL de serveur valide, par exemple https://crm.example.com.</string>
+    <string name="login_use_local_only">Utiliser uniquement sur cet appareil</string>
 </resources>

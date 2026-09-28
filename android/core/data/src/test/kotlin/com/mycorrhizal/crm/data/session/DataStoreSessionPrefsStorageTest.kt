@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.data.session
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -61,5 +63,55 @@ class DataStoreSessionPrefsStorageTest {
         storage.clear()
 
         assertNull(storage.loadServerUrl())
+    }
+
+    // --- ADR 0028 Decision 1: the profile list + active id -------------------
+
+    @Test
+    fun `loadProfiles is empty before anything is saved`() = runTest {
+        assertEquals(ProfilesSnapshot(), storage.loadProfiles())
+    }
+
+    @Test
+    fun `saveProfiles then loadProfiles round-trips`() = runTest {
+        val snapshot = ProfilesSnapshot(
+            profiles = listOf(
+                ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One"),
+                ServerProfile("p2", ServerProfileKind.Local, "On this device"),
+            ),
+            activeProfileId = "p2",
+        )
+
+        storage.saveProfiles(snapshot)
+
+        assertEquals(snapshot, storage.loadProfiles())
+    }
+
+    @Test
+    fun `saving an empty profile list clears them`() = runTest {
+        storage.saveProfiles(
+            ProfilesSnapshot(
+                profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")),
+                activeProfileId = "p1",
+            ),
+        )
+
+        storage.saveProfiles(ProfilesSnapshot())
+
+        assertEquals(ProfilesSnapshot(), storage.loadProfiles())
+    }
+
+    @Test
+    fun `clear removes the profiles too`() = runTest {
+        storage.saveProfiles(
+            ProfilesSnapshot(
+                profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")),
+                activeProfileId = "p1",
+            ),
+        )
+
+        storage.clear()
+
+        assertEquals(ProfilesSnapshot(), storage.loadProfiles())
     }
 }

@@ -34,6 +34,14 @@ object E2eConfig {
     const val SEED_EMAIL = "e2euser@example.com"
     const val SEED_PASSWORD = "E2eTestPassword123!"
 
+    /**
+     * ADR 0028 Decision 1: a second account, used by the server-profile switch
+     * test to prove one profile's contacts never leak into another's UI.
+     */
+    const val SECOND_USERNAME = "e2esecond"
+    const val SECOND_EMAIL = "e2esecond@example.com"
+    const val SECOND_PASSWORD = "E2eSecondPassword123!"
+
     /** Namespace every contact this suite creates is prefixed with — swept up
      *  at the start of every run so a crashed run's leftovers can't bleed into
      *  the next one (the web suite's E2E_CONTACT_PREFIX equivalent). */

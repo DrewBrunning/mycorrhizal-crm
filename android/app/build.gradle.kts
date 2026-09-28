@@ -46,6 +46,11 @@ android {
         // the real app against the docker-compose.test.yml backend on an
         // emulator/device via `./gradlew :app:connectedObtainiumDebugAndroidTest`.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // ADR 0028 Decision 1/2: the "Use on this device only" (Local profile)
+        // entry stays off until the embedded backend host (issue #1262) lands
+        // AND bundle export/backup (issue #1264) exists — a local profile holds
+        // the only copy of its data. Flip to true only when both have shipped.
+        buildConfigField("boolean", "LOCAL_MODE_ENABLED", "false")
     }
 
     // Issue #1133: three distribution flavors, one per release channel. The
