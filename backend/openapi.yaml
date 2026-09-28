@@ -11337,6 +11337,24 @@ components:
             is compatible. Present only when a breaking API change (MAINT-02,
             issue #491) has deliberately stranded older clients.
           example: "0.6.0"
+        deployment:
+          type: string
+          enum: [server, embedded]
+          description: >
+            The deployment shape (ADR 0028, issue #1258). "server" is the full
+            multi-user network surface; "embedded" is the single-user mode the
+            Android app starts in-process (no auth/OIDC/2FA/DAV/webhooks/push
+            routes). Always present.
+          example: "server"
+        capabilities:
+          type: array
+          items: { type: string }
+          description: >
+            The surface tokens this deployment exposes. Always present (an
+            array, never null); an embedded deployment omits the surfaces it
+            does not register, so a client gates on token presence rather than
+            branching on "deployment". See config.Capabilities for the tokens.
+          example: ["contacts", "dashboard", "registration", "login", "oidc"]
 
     # --- Auth & users ---
     UserRegistrationInput:

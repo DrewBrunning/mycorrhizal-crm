@@ -696,7 +696,7 @@ design is ADR-0010 / CON-04, issue #479).
   needs no special handling in the backup-confidentiality boundary (§10).
 - **Verification**: `backend/models/job_run_test.go`, `backend/services/job_run_health_test.go`,
   `backend/services/job_run_purge_service_test.go`,
-  `backend/main_test.go` (`TestRunJob_RecordsOutcome`).
+  `backend/embedded/jobs_test.go` (`TestRunJob_RecordsOutcome`).
 
 ## 17. Import run history (`import_runs`) — user-scoped operational bookkeeping
 

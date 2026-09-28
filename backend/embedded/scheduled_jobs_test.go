@@ -1,4 +1,4 @@
-package main
+package embedded
 
 import (
 	"go/ast"
@@ -30,7 +30,7 @@ func jobNameConstantsFromSource(t *testing.T) map[string]string {
 
 	_, thisFile, _, ok := runtime.Caller(0)
 	require.True(t, ok, "runtime.Caller must resolve this test file's path")
-	path := filepath.Join(filepath.Dir(thisFile), "models", "job_execution.go")
+	path := filepath.Join(filepath.Dir(thisFile), "..", "models", "job_execution.go")
 
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)

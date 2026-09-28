@@ -102,7 +102,8 @@ browser → API → database → filesystem → integrations → Android local D
 
 | Hop | Enforced by |
 |---|---|
-| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:35`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:400-419`, `backend/config/config.go:823-849`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`); client IP for rate limiting comes only from a validated trusted-proxy hop (loopback trusted by default, a catch-all refused at boot) and buckets are keyed on the network prefix, not the literal address (`asvs-l2.md` V14.5.4, issue #954) |
+| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:35`); CORS strict origin allowlist, `"*"` refused in release (`backend/embedded/server.go:391-403`, `backend/config/config.go:1068-1077`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`); client IP for rate limiting comes only from a validated trusted-proxy hop (loopback trusted by default, a catch-all refused at boot) and buckets are keyed on the network prefix, not the literal address (`asvs-l2.md` V14.5.4, issue #954) |
+| Android app process → embedded backend | The embedded deployment (ADR 0028, issue #1258) serves **only** a caller-supplied Unix-domain socket in app-private storage — never TCP loopback, which any app on the device can reach. The JWT signing secret and the at-rest master key come from the host-built `Config`; the env-var path and the HKDF-from-JWT derivation are disabled, and boot refuses without an explicit master key. Every unauthenticated network surface (registration, login, password reset, OIDC, 2FA, API tokens, contact shares, webhooks, CardDAV/CalDAV serving, device grants, push) is not registered at all, so it 404s rather than 403s. Pinned by `backend/embedded/server_test.go` (`TestEmbedded_SingleUserRoutesJobsHealth`) and `backend/routes/embedded_mode_test.go` (`TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces`); the reduced capability list is the same gate the client reads from `GET /health`. |
 | API → database | Every query AND-scoped by `user_id`/`VCardUID` (`asvs-l2.md` V4, API1); parameterized SQL only (V5.3.4) |
 | API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
 | API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |
@@ -278,7 +279,7 @@ owns the disk), not left unprotected relative to some higher bar.
 ### 2. JWT key management (ASVS V6.4.1)
 
 **Keep — env var + boot-time validation + revocation, not a vault.** `JWT_SECRET_KEY` is validated at
-boot for length (≥ 32 bytes), placeholder rejection, and minimum entropy (`backend/config/config.go:476-543`).
+boot for length (≥ 32 bytes), placeholder rejection, and minimum entropy (`backend/config/config.go:913-950`).
 There is no key-vault/KMS (`asvs-l2.md` V1.6.2 — not-applicable, self-hosted single process). Rotation
 works via `TokenVersion`: bumping it invalidates every existing session immediately
 (`backend/middleware/auth.go:141-154`); rotating the key itself is a restart with a new env var, at the

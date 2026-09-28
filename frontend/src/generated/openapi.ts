@@ -1152,11 +1152,13 @@ export type HealthCheckDetail = {
 export type HealthResponse = {
   api_contract_version?: string;
   build_date?: string;
+  capabilities?: string[];
   commit?: string;
   database?: {
     response_time_ms?: number;
     status?: 'healthy' | 'unhealthy';
   };
+  deployment?: 'server' | 'embedded';
   min_client_version?: string;
   status?: 'healthy' | 'degraded' | 'unhealthy';
   timestamp?: string;
