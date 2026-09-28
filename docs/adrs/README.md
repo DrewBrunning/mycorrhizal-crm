@@ -36,3 +36,4 @@ ticket backlog moved to GitHub Issues.
 | [0028](0028-local-only-android-mode-and-server-profiles.md) | Local-only Android mode and server profiles | accepted |
 | [0029](0029-deep-links.md) | Deep links — a custom `mycorrhizal://` scheme with a closed, navigation-only route set | accepted |
 | [0030](0030-feeds-atom-emission.md) | Feeds — private Atom emission; consumption deferred; no ActivityPub | accepted |
+| [0033](0033-geopulse-location-correlation.md) | GeoPulse location-history correlation — on-demand lookup, no schema change to Activity | proposed |
