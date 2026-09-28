@@ -5,6 +5,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -49,10 +50,21 @@ type Config struct {
 	// user on the deployment is scheduled against this one clock, never a
 	// per-user zone (docs/adrs/0015-temporal-semantics.md "local wall time"
 	// category). See GetReminderLocation.
-	ReminderTime                 string   `cfgreg:"env=REMINDER_TIME;type=string;range=HH:MM 24h wall time;default=06:00;required=false;restart=true;desc=Daily reminder wall-clock time"`
-	ReminderTimezone             string   `cfgreg:"env=REMINDER_TIMEZONE;type=string;range=IANA timezone name;default=UTC;required=false;restart=true;desc=Reminder clock's IANA timezone"`
-	FrontendURL                  string   `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs"`
-	Port                         string   `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
+	ReminderTime     string `cfgreg:"env=REMINDER_TIME;type=string;range=HH:MM 24h wall time;default=06:00;required=false;restart=true;desc=Daily reminder wall-clock time"`
+	ReminderTimezone string `cfgreg:"env=REMINDER_TIMEZONE;type=string;range=IANA timezone name;default=UTC;required=false;restart=true;desc=Reminder clock's IANA timezone"`
+	FrontendURL      string `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs"`
+	Port             string `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
+	// Deployment selects the deployment shape (ADR 0028, issue #1258).
+	// DeploymentServer (the default) is the full, multi-user network surface.
+	// DeploymentEmbedded is the single-user, caller-supplied-listener mode a
+	// host process (the Android app) starts in-process: registration, login,
+	// password reset, OIDC, 2FA, API tokens, contact shares, webhooks,
+	// CardDAV/CalDAV serving, device grants and push routes are not
+	// registered, and the JWT/at-rest secrets come from Config fields the host
+	// set. It is deliberately NOT read from the environment: an operator who
+	// set DEPLOYMENT=embedded on a network server would lose every way to log
+	// in to it, so it is only ever set programmatically via config.New.
+	Deployment                   string   `cfgreg:"derived=true;desc=deployment shape (server or embedded); set programmatically by the embedding host, never from the environment"`
 	TrustedProxies               []string `cfgreg:"env=TRUSTED_PROXIES;type=stringlist;range=IP or CIDR, no 0.0.0.0/0 or ::/0;default=(loopback 127.0.0.1/32, ::1/128);required=false;restart=true;desc=Reverse-proxy addresses trusted for X-Forwarded-For"`
 	UseResend                    bool     `cfgreg:"derived=true;desc=true when RESEND_API_KEY and RESEND_FROM_EMAIL are both set"`
 	ResendAPIKey                 string   `cfgreg:"env=RESEND_API_KEY;type=string;default=;required=false;restart=true;desc=Resend email API key"`
@@ -250,9 +262,222 @@ const (
 	DefaultStorageSampleRetentionDays = 180
 )
 
+// Deployment shapes (ADR 0028, issue #1258). DeploymentServer is the default
+// full multi-user surface; DeploymentEmbedded is the single-user,
+// caller-supplied-listener mode a host process starts in-process.
+const (
+	DeploymentServer   = "server"
+	DeploymentEmbedded = "embedded"
+)
+
+// Capability tokens reported on GET /health.capabilities. A surface that the
+// embedded deployment disables is simply absent from the list; the client
+// gates on presence, never on the deployment word itself (ADR 0028
+// Decision 2). Keep the tokens in serverCapabilityTokens in sync with the
+// route gates: routesRegisterCapability is the single map from token to the
+// condition under which the routes behind it are registered.
+const (
+	CapabilityContacts      = "contacts"
+	CapabilityDashboard     = "dashboard"
+	CapabilityNotes         = "notes"
+	CapabilityActivities    = "activities"
+	CapabilityReminders     = "reminders"
+	CapabilityLifeEvents    = "life_events"
+	CapabilityGraph         = "graph"
+	CapabilitySearch        = "search"
+	CapabilityImport        = "import"
+	CapabilityExport        = "export"
+	CapabilityCalendar      = "calendar"
+	CapabilityNotifications = "notifications"
+	CapabilityRegistration  = "registration"
+	CapabilityLogin         = "login"
+	CapabilityPasswordReset = "password_reset"
+	CapabilityOIDC          = "oidc"
+	CapabilityTwoFactor     = "two_factor"
+	CapabilityEmail         = "email"
+	CapabilityAPITokens     = "api_tokens"
+	CapabilityContactShares = "contact_shares"
+	CapabilityWebhooks      = "webhooks"
+	CapabilityCardDAV       = "carddav"
+	CapabilityCalDAV        = "caldav"
+	CapabilityDeviceGrants  = "device_grants"
+	CapabilityPush          = "push"
+)
+
+// serverCapabilityTokens is the ordered set of capability tokens a
+// DeploymentServer exposes. Order is stable (registration order in the route
+// table) so a client diffing capabilities sees only real changes.
+var serverCapabilityTokens = []string{
+	CapabilityContacts,
+	CapabilityDashboard,
+	CapabilityNotes,
+	CapabilityActivities,
+	CapabilityReminders,
+	CapabilityLifeEvents,
+	CapabilityGraph,
+	CapabilitySearch,
+	CapabilityImport,
+	CapabilityExport,
+	CapabilityCalendar,
+	CapabilityNotifications,
+	CapabilityRegistration,
+	CapabilityLogin,
+	CapabilityPasswordReset,
+	CapabilityOIDC,
+	CapabilityTwoFactor,
+	CapabilityEmail,
+	CapabilityAPITokens,
+	CapabilityContactShares,
+	CapabilityWebhooks,
+	CapabilityCardDAV,
+	CapabilityCalDAV,
+	CapabilityDeviceGrants,
+	CapabilityPush,
+}
+
+// embeddedDisabledCapabilities is the set of tokens absent in DeploymentEmbedded
+// — exactly the surfaces ADR 0028 Decision 2 disables. It is the one place the
+// disabled set is written down; Capabilities() and the route gates both read
+// IsEmbedded(), so a surface cannot be registered while its token is absent.
+var embeddedDisabledCapabilities = map[string]bool{
+	CapabilityRegistration:  true,
+	CapabilityLogin:         true,
+	CapabilityPasswordReset: true,
+	CapabilityOIDC:          true,
+	CapabilityTwoFactor:     true,
+	CapabilityEmail:         true,
+	CapabilityAPITokens:     true,
+	CapabilityContactShares: true,
+	CapabilityWebhooks:      true,
+	CapabilityCardDAV:       true,
+	CapabilityCalDAV:        true,
+	CapabilityDeviceGrants:  true,
+	CapabilityPush:          true,
+}
+
+// IsEmbedded reports whether this Config selects the embedded deployment mode
+// (ADR 0028, issue #1258). The zero value ("") is treated as server mode so a
+// hand-built test Config behaves like today's server.
+func (c *Config) IsEmbedded() bool {
+	return c.Deployment == DeploymentEmbedded
+}
+
+// Capabilities returns the capability tokens this deployment exposes, in a
+// stable order. In embedded mode every token in embeddedDisabledCapabilities
+// is omitted; server mode lists them all. The slice is never nil (an empty
+// deployment would still serialize as `[]`, not `null`, which is the
+// collection-field contract the frontend relies on).
+func (c *Config) Capabilities() []string {
+	caps := make([]string, 0, len(serverCapabilityTokens))
+	for _, token := range serverCapabilityTokens {
+		if c.IsEmbedded() && embeddedDisabledCapabilities[token] {
+			continue
+		}
+		caps = append(caps, token)
+	}
+	return caps
+}
+
+// baseConfig returns a Config with every field at its documented default and
+// no environment read. LoadConfig layers environment lookups on top of it,
+// and New layers caller overrides on top of it — one default set for both
+// paths, so a programmatic Config and an env-loaded one can never disagree
+// about what an unset field means.
+func baseConfig() *Config {
+	return &Config{
+		DBPath:                        "mycorrhizal.db",
+		ReminderTime:                  "06:00",
+		ReminderTimezone:              "UTC",
+		FrontendURL:                   "*",
+		Port:                          "8080",
+		Deployment:                    DeploymentServer,
+		JWTExpiryHours:                96,
+		ReadTimeout:                   15,
+		WriteTimeout:                  15,
+		IdleTimeout:                   60,
+		SMTPPort:                      587,
+		CalDAVSyncIntervalHours:       6,
+		DeleteRetentionDays:           30,
+		AuditRetentionDays:            90,
+		ContactShareRetentionDays:     30,
+		SystemEventRetentionDays:      30,
+		WebhookDeliveryRetentionDays:  30,
+		JobRunRetentionDays:           30,
+		IdempotencyKeyRetentionHours:  24,
+		SessionIdleTimeoutHours:       12,
+		APIRateLimitInterval:          600 * time.Millisecond,
+		APIRateLimitBurst:             1000,
+		AuthSprayEnabled:              true,
+		AuthSprayWindowSeconds:        60,
+		AuthSprayFailureThreshold:     60,
+		AuthSprayIdentifierThreshold:  15,
+		AuthSprayThrottleSeconds:      300,
+		ImmichSyncIntervalHours:       6,
+		DBIntegrityCheckEnabled:       true,
+		DBIntegrityCheckIntervalHours: 24,
+		DBRestoreDrillEnabled:         true,
+		DBRestoreDrillIntervalHours:   DefaultDBRestoreDrillIntervalHours,
+		AlertingEnabled:               true,
+		AlertEvalIntervalMinutes:      15,
+		AlertDiskUsagePercent:         90,
+		AlertSyncFailureThreshold:     3,
+		AlertNotifyFailureThreshold:   3,
+		AlertJobStaleMultiplier:       3,
+		AlertIncidentQuietHours:       6,
+		AlertBackupEnabled:            true,
+		AlertDBIntegrityEnabled:       true,
+		AlertJobStoppedEnabled:        true,
+		AlertAuthSprayEnabled:         true,
+		StorageWarnPercent:            DefaultStorageWarnPercent,
+		StorageCriticalPercent:        DefaultStorageCriticalPercent,
+		StorageSampleRetentionDays:    DefaultStorageSampleRetentionDays,
+		LogLevel:                      "info",
+		GinMode:                       "debug",
+		OIDC: OIDCConfig{
+			Scopes: []string{"openid", "email", "profile"},
+		},
+	}
+}
+
+// New builds a validated Config from programmatic defaults plus the caller's
+// overrides, without reading any environment variable (issue #1257). It runs
+// the same rules as ValidateOrPanic but returns an error instead of panicking,
+// so a host process (the Android app's embedded backend, ADR 0028) can build a
+// Config at runtime. overrides may be nil.
+func New(overrides func(*Config)) (*Config, error) {
+	cfg := baseConfig()
+	if overrides != nil {
+		overrides(cfg)
+	}
+	cfg.derive()
+	if err := cfg.ValidateError(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// derive recomputes the fields that are functions of other fields (UseResend,
+// UseSMTP, the OIDC block, the GIN_MODE-forces-pretty-logs rule). Shared by
+// LoadConfig and New so both paths derive identically. It must run after the
+// source fields are set and before Validate.
+func (c *Config) derive() {
+	c.UseResend = c.ResendAPIKey != "" && c.ResendFromEmail != ""
+	c.UseSMTP = c.SMTPHost != "" && c.SMTPFromEmail != ""
+	c.OIDC.Enabled = c.OIDC.ProviderURL != "" && c.OIDC.ClientID != "" && c.OIDC.ClientSecret != ""
+	c.OIDC.RedirectURL = c.FrontendURL + "/api/v1/auth/oidc/callback"
+	c.OIDC.PostLogoutRedirectURL = c.FrontendURL + "/login"
+	if c.GinMode != "release" {
+		c.LogPretty = true
+	}
+}
+
 // LoadConfig reads environment variables (with sensible defaults) into a
 // new Config.
 func LoadConfig() *Config {
+	// MAINT-01 (issue #490): a set-but-deprecated variable still works; emit
+	// its replacement WARN here (the env path) as well as in ValidateOrPanic,
+	// since a library caller using Start/ValidateError never runs the latter.
+	checkDeprecatedEnvVars(os.LookupEnv, func(msg string) { log.Println(msg) })
 
 	defaultJWTExpiry := 96
 	jwtExpiryHours, err := strconv.Atoi(getEnv("JWT_EXPIRY_HOURS", strconv.Itoa(defaultJWTExpiry)))
@@ -280,92 +505,95 @@ func LoadConfig() *Config {
 		return v
 	}
 
-	cfg := &Config{
-		DBPath:                        getEnv("SQLITE_DB_PATH", "mycorrhizal.db"),
-		ReminderTime:                  getEnv("REMINDER_TIME", "06:00"),
-		ReminderTimezone:              getEnv("REMINDER_TIMEZONE", "UTC"),
-		FrontendURL:                   getEnv("FRONTEND_URL", "*"),
-		Port:                          getEnv("PORT", "8080"),
-		ResendAPIKey:                  getEnv("RESEND_API_KEY", ""),
-		ResendFromEmail:               getEnv("RESEND_FROM_EMAIL", ""),
-		SMTPHost:                      getEnv("SMTP_HOST", ""),
-		SMTPPort:                      getIntEnv("SMTP_PORT", 587),
-		SMTPUsername:                  getEnv("SMTP_USERNAME", ""),
-		SMTPPassword:                  getEnv("SMTP_PASSWORD", ""),
-		SMTPFromEmail:                 getEnv("SMTP_FROM_EMAIL", ""),
-		SMTPUseTLS:                    getBoolEnv("SMTP_USE_TLS", false),
-		JWTSecretKey:                  getEnv("JWT_SECRET_KEY", ""),
-		JWTExpiryHours:                jwtExpiryHours,
-		TrustedProxies:                getProxies(getEnv("TRUSTED_PROXIES", "")),
-		ReadTimeout:                   readTimeout,
-		WriteTimeout:                  writeTimeout,
-		IdleTimeout:                   idleTimeout,
-		ProfilePhotoDir:               getEnv("PROFILE_PHOTO_DIR", ""),
-		AttachmentsDir:                getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments")),
-		CardDAVEnabled:                getBoolEnv("CARDDAV_ENABLED", false),
-		CalDAVEnabled:                 getBoolEnv("CALDAV_ENABLED", false),
-		CalDAVTwoWayEnabled:           getBoolEnv("CALDAV_TWO_WAY_ENABLED", false),
-		CookieSecure:                  getBoolEnv("COOKIE_SECURE", false),
-		CookieDomain:                  getEnv("COOKIE_DOMAIN", ""),
-		RegistrationDisabled:          getBoolEnv("DISABLE_REGISTRATION", false),
-		WebhookBlockPrivateURLs:       getBoolEnv("WEBHOOK_BLOCK_PRIVATE_URLS", false),
-		CalDAVSyncIntervalHours:       checkedInt("CALDAV_SYNC_INTERVAL_HOURS", 6),
-		CalDAVBlockPrivateURLs:        getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
-		DeleteRetentionDays:           getIntEnv("DELETED_RETENTION_DAYS", 30),
-		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
-		ContactShareRetentionDays:     getIntEnv("CONTACT_SHARE_RETENTION_DAYS", 30),
-		SystemEventRetentionDays:      getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", 30),
-		WebhookDeliveryRetentionDays:  getIntEnv("WEBHOOK_DELIVERY_RETENTION_DAYS", 30),
-		JobRunRetentionDays:           getIntEnv("JOB_RUN_RETENTION_DAYS", 30),
-		IdempotencyKeyRetentionHours:  getIntEnv("IDEMPOTENCY_KEY_RETENTION_HOURS", 24),
-		SessionIdleTimeoutHours:       getIntEnv("SESSION_IDLE_TIMEOUT_HOURS", 12),
-		PerUserContactLimit:           checkedInt("PER_USER_CONTACT_LIMIT", 0),
-		PerUserNoteLimit:              checkedInt("PER_USER_NOTE_LIMIT", 0),
-		PerUserRelationshipEdgeLimit:  checkedInt("PER_USER_RELATIONSHIP_EDGE_LIMIT", 0),
-		PerUserAttachmentQuotaMB:      checkedInt("PER_USER_ATTACHMENT_QUOTA_MB", 0),
-		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
-		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
-		AuthSprayEnabled:              getBoolEnv("AUTH_SPRAY_ENABLED", true),
-		AuthSprayWindowSeconds:        getIntEnv("AUTH_SPRAY_WINDOW_SECONDS", 60),
-		AuthSprayFailureThreshold:     getIntEnv("AUTH_SPRAY_FAILURE_THRESHOLD", 60),
-		AuthSprayIdentifierThreshold:  getIntEnv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", 15),
-		AuthSprayThrottleSeconds:      getIntEnv("AUTH_SPRAY_THROTTLE_SECONDS", 300),
-		ImmichSyncIntervalHours:       checkedInt("IMMICH_SYNC_INTERVAL_HOURS", 6),
-		ImmichBlockPrivateURLs:        getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
-		PaperlessBlockPrivateURLs:     getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
-		SeafileBlockPrivateURLs:       getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", false),
-		WebDAVBlockPrivateURLs:        getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", false),
-		MonicaBlockPrivateURLs:        getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", false),
-		FCMServiceAccountFile:         getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
-		DBIntegrityCheckEnabled:       getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", true),
-		DBIntegrityCheckIntervalHours: checkedInt("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
-		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
-		DBRestoreDrillIntervalHours:   checkedInt("DB_RESTORE_DRILL_INTERVAL_HOURS", DefaultDBRestoreDrillIntervalHours),
-		AlertingEnabled:               getBoolEnv("ALERTING_ENABLED", true),
-		AlertEvalIntervalMinutes:      checkedInt("ALERT_EVAL_INTERVAL_MINUTES", 15),
-		AlertDiskUsagePercent:         checkedInt("ALERT_DISK_USAGE_PERCENT", 90),
-		AlertSyncFailureThreshold:     checkedInt("ALERT_SYNC_FAILURE_THRESHOLD", 3),
-		AlertNotifyFailureThreshold:   checkedInt("ALERT_NOTIFY_FAILURE_THRESHOLD", 3),
-		AlertBackupMaxAgeHours:        checkedInt("ALERT_BACKUP_MAX_AGE_HOURS", 0),
-		AlertJobStaleMultiplier:       checkedInt("ALERT_JOB_STALE_MULTIPLIER", 3),
-		AlertIncidentQuietHours:       checkedInt("ALERT_INCIDENT_QUIET_HOURS", 6),
-		AlertBackupEnabled:            getBoolEnv("ALERT_BACKUP_ENABLED", true),
-		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
-		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
-		AlertAuthSprayEnabled:         getBoolEnv("ALERT_AUTH_SPRAY_ENABLED", true),
-		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
-		UpdateCheckEnabled:            getBoolEnv("UPDATE_CHECK_ENABLED", false),
-		StorageWarnPercent:            checkedInt("STORAGE_WARN_PERCENT", DefaultStorageWarnPercent),
-		StorageCriticalPercent:        checkedInt("STORAGE_CRITICAL_PERCENT", DefaultStorageCriticalPercent),
-		StorageSampleRetentionDays:    checkedInt("STORAGE_SAMPLE_RETENTION_DAYS", DefaultStorageSampleRetentionDays),
-		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
-		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
-		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
-		MinClientVersion:              getEnv("MIN_CLIENT_VERSION", ""),
-		DemoMode:                      getBoolEnv("DEMO_MODE", false),
-		LogLevel:                      getEnv("LOG_LEVEL", "info"),
-		GinMode:                       getEnv("GIN_MODE", "debug"),
-	}
+	// Start from the same defaults a programmatic Config gets (config.New),
+	// then layer the environment on top. Keeping one default set is what
+	// stops the env path and the programmatic path from drifting.
+	cfg := baseConfig()
+
+	cfg.DBPath = getEnv("SQLITE_DB_PATH", cfg.DBPath)
+	cfg.ReminderTime = getEnv("REMINDER_TIME", cfg.ReminderTime)
+	cfg.ReminderTimezone = getEnv("REMINDER_TIMEZONE", cfg.ReminderTimezone)
+	cfg.FrontendURL = getEnv("FRONTEND_URL", cfg.FrontendURL)
+	cfg.Port = getEnv("PORT", cfg.Port)
+	cfg.ResendAPIKey = getEnv("RESEND_API_KEY", cfg.ResendAPIKey)
+	cfg.ResendFromEmail = getEnv("RESEND_FROM_EMAIL", cfg.ResendFromEmail)
+	cfg.SMTPHost = getEnv("SMTP_HOST", cfg.SMTPHost)
+	cfg.SMTPPort = getIntEnv("SMTP_PORT", cfg.SMTPPort)
+	cfg.SMTPUsername = getEnv("SMTP_USERNAME", cfg.SMTPUsername)
+	cfg.SMTPPassword = getEnv("SMTP_PASSWORD", cfg.SMTPPassword)
+	cfg.SMTPFromEmail = getEnv("SMTP_FROM_EMAIL", cfg.SMTPFromEmail)
+	cfg.SMTPUseTLS = getBoolEnv("SMTP_USE_TLS", cfg.SMTPUseTLS)
+	cfg.JWTSecretKey = getEnv("JWT_SECRET_KEY", cfg.JWTSecretKey)
+	cfg.JWTExpiryHours = jwtExpiryHours
+	cfg.TrustedProxies = getProxies(getEnv("TRUSTED_PROXIES", ""))
+	cfg.ReadTimeout = readTimeout
+	cfg.WriteTimeout = writeTimeout
+	cfg.IdleTimeout = idleTimeout
+	cfg.ProfilePhotoDir = getEnv("PROFILE_PHOTO_DIR", cfg.ProfilePhotoDir)
+	cfg.AttachmentsDir = getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments"))
+	cfg.CardDAVEnabled = getBoolEnv("CARDDAV_ENABLED", cfg.CardDAVEnabled)
+	cfg.CalDAVEnabled = getBoolEnv("CALDAV_ENABLED", cfg.CalDAVEnabled)
+	cfg.CalDAVTwoWayEnabled = getBoolEnv("CALDAV_TWO_WAY_ENABLED", cfg.CalDAVTwoWayEnabled)
+	cfg.CookieSecure = getBoolEnv("COOKIE_SECURE", cfg.CookieSecure)
+	cfg.CookieDomain = getEnv("COOKIE_DOMAIN", cfg.CookieDomain)
+	cfg.RegistrationDisabled = getBoolEnv("DISABLE_REGISTRATION", cfg.RegistrationDisabled)
+	cfg.WebhookBlockPrivateURLs = getBoolEnv("WEBHOOK_BLOCK_PRIVATE_URLS", cfg.WebhookBlockPrivateURLs)
+	cfg.CalDAVSyncIntervalHours = checkedInt("CALDAV_SYNC_INTERVAL_HOURS", cfg.CalDAVSyncIntervalHours)
+	cfg.CalDAVBlockPrivateURLs = getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", cfg.CalDAVBlockPrivateURLs)
+	cfg.DeleteRetentionDays = getIntEnv("DELETED_RETENTION_DAYS", cfg.DeleteRetentionDays)
+	cfg.AuditRetentionDays = getIntEnv("AUDIT_RETENTION_DAYS", cfg.AuditRetentionDays)
+	cfg.ContactShareRetentionDays = getIntEnv("CONTACT_SHARE_RETENTION_DAYS", cfg.ContactShareRetentionDays)
+	cfg.SystemEventRetentionDays = getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", cfg.SystemEventRetentionDays)
+	cfg.WebhookDeliveryRetentionDays = getIntEnv("WEBHOOK_DELIVERY_RETENTION_DAYS", cfg.WebhookDeliveryRetentionDays)
+	cfg.JobRunRetentionDays = getIntEnv("JOB_RUN_RETENTION_DAYS", cfg.JobRunRetentionDays)
+	cfg.IdempotencyKeyRetentionHours = getIntEnv("IDEMPOTENCY_KEY_RETENTION_HOURS", cfg.IdempotencyKeyRetentionHours)
+	cfg.SessionIdleTimeoutHours = getIntEnv("SESSION_IDLE_TIMEOUT_HOURS", cfg.SessionIdleTimeoutHours)
+	cfg.PerUserContactLimit = checkedInt("PER_USER_CONTACT_LIMIT", cfg.PerUserContactLimit)
+	cfg.PerUserNoteLimit = checkedInt("PER_USER_NOTE_LIMIT", cfg.PerUserNoteLimit)
+	cfg.PerUserRelationshipEdgeLimit = checkedInt("PER_USER_RELATIONSHIP_EDGE_LIMIT", cfg.PerUserRelationshipEdgeLimit)
+	cfg.PerUserAttachmentQuotaMB = checkedInt("PER_USER_ATTACHMENT_QUOTA_MB", cfg.PerUserAttachmentQuotaMB)
+	cfg.APIRateLimitInterval = time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", int(cfg.APIRateLimitInterval/time.Millisecond))) * time.Millisecond
+	cfg.APIRateLimitBurst = getIntEnv("API_RATE_LIMIT_BURST", cfg.APIRateLimitBurst)
+	cfg.AuthSprayEnabled = getBoolEnv("AUTH_SPRAY_ENABLED", cfg.AuthSprayEnabled)
+	cfg.AuthSprayWindowSeconds = getIntEnv("AUTH_SPRAY_WINDOW_SECONDS", cfg.AuthSprayWindowSeconds)
+	cfg.AuthSprayFailureThreshold = getIntEnv("AUTH_SPRAY_FAILURE_THRESHOLD", cfg.AuthSprayFailureThreshold)
+	cfg.AuthSprayIdentifierThreshold = getIntEnv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", cfg.AuthSprayIdentifierThreshold)
+	cfg.AuthSprayThrottleSeconds = getIntEnv("AUTH_SPRAY_THROTTLE_SECONDS", cfg.AuthSprayThrottleSeconds)
+	cfg.ImmichSyncIntervalHours = checkedInt("IMMICH_SYNC_INTERVAL_HOURS", cfg.ImmichSyncIntervalHours)
+	cfg.ImmichBlockPrivateURLs = getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", cfg.ImmichBlockPrivateURLs)
+	cfg.PaperlessBlockPrivateURLs = getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", cfg.PaperlessBlockPrivateURLs)
+	cfg.SeafileBlockPrivateURLs = getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", cfg.SeafileBlockPrivateURLs)
+	cfg.WebDAVBlockPrivateURLs = getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", cfg.WebDAVBlockPrivateURLs)
+	cfg.MonicaBlockPrivateURLs = getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", cfg.MonicaBlockPrivateURLs)
+	cfg.FCMServiceAccountFile = getEnv("FCM_SERVICE_ACCOUNT_FILE", cfg.FCMServiceAccountFile)
+	cfg.DBIntegrityCheckEnabled = getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", cfg.DBIntegrityCheckEnabled)
+	cfg.DBIntegrityCheckIntervalHours = checkedInt("DB_INTEGRITY_CHECK_INTERVAL_HOURS", cfg.DBIntegrityCheckIntervalHours)
+	cfg.DBRestoreDrillEnabled = getBoolEnv("DB_RESTORE_DRILL_ENABLED", cfg.DBRestoreDrillEnabled)
+	cfg.DBRestoreDrillIntervalHours = checkedInt("DB_RESTORE_DRILL_INTERVAL_HOURS", cfg.DBRestoreDrillIntervalHours)
+	cfg.AlertingEnabled = getBoolEnv("ALERTING_ENABLED", cfg.AlertingEnabled)
+	cfg.AlertEvalIntervalMinutes = checkedInt("ALERT_EVAL_INTERVAL_MINUTES", cfg.AlertEvalIntervalMinutes)
+	cfg.AlertDiskUsagePercent = checkedInt("ALERT_DISK_USAGE_PERCENT", cfg.AlertDiskUsagePercent)
+	cfg.AlertSyncFailureThreshold = checkedInt("ALERT_SYNC_FAILURE_THRESHOLD", cfg.AlertSyncFailureThreshold)
+	cfg.AlertNotifyFailureThreshold = checkedInt("ALERT_NOTIFY_FAILURE_THRESHOLD", cfg.AlertNotifyFailureThreshold)
+	cfg.AlertBackupMaxAgeHours = checkedInt("ALERT_BACKUP_MAX_AGE_HOURS", cfg.AlertBackupMaxAgeHours)
+	cfg.AlertJobStaleMultiplier = checkedInt("ALERT_JOB_STALE_MULTIPLIER", cfg.AlertJobStaleMultiplier)
+	cfg.AlertIncidentQuietHours = checkedInt("ALERT_INCIDENT_QUIET_HOURS", cfg.AlertIncidentQuietHours)
+	cfg.AlertBackupEnabled = getBoolEnv("ALERT_BACKUP_ENABLED", cfg.AlertBackupEnabled)
+	cfg.AlertDBIntegrityEnabled = getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", cfg.AlertDBIntegrityEnabled)
+	cfg.AlertJobStoppedEnabled = getBoolEnv("ALERT_JOB_STOPPED_ENABLED", cfg.AlertJobStoppedEnabled)
+	cfg.AlertAuthSprayEnabled = getBoolEnv("ALERT_AUTH_SPRAY_ENABLED", cfg.AlertAuthSprayEnabled)
+	cfg.HIBPCheckEnabled = getBoolEnv("HIBP_CHECK_ENABLED", cfg.HIBPCheckEnabled)
+	cfg.UpdateCheckEnabled = getBoolEnv("UPDATE_CHECK_ENABLED", cfg.UpdateCheckEnabled)
+	cfg.StorageWarnPercent = checkedInt("STORAGE_WARN_PERCENT", cfg.StorageWarnPercent)
+	cfg.StorageCriticalPercent = checkedInt("STORAGE_CRITICAL_PERCENT", cfg.StorageCriticalPercent)
+	cfg.StorageSampleRetentionDays = checkedInt("STORAGE_SAMPLE_RETENTION_DAYS", cfg.StorageSampleRetentionDays)
+	cfg.DataEncryptionKey = getEnv("DATA_ENCRYPTION_KEY", cfg.DataEncryptionKey)
+	cfg.DataEncryptionKeyFile = getEnv("DATA_ENCRYPTION_KEY_FILE", cfg.DataEncryptionKeyFile)
+	cfg.MetricsToken = getEnv("METRICS_TOKEN", cfg.MetricsToken)
+	cfg.MinClientVersion = getEnv("MIN_CLIENT_VERSION", cfg.MinClientVersion)
+	cfg.DemoMode = getBoolEnv("DEMO_MODE", cfg.DemoMode)
+	cfg.LogLevel = getEnv("LOG_LEVEL", cfg.LogLevel)
+	cfg.GinMode = getEnv("GIN_MODE", cfg.GinMode)
 
 	// Assigned outside the aligned literal above so a longer key name does not
 	// reflow every line in it. Opt-in RTO budget for the restore drill (#506).
@@ -378,11 +606,9 @@ func LoadConfig() *Config {
 	// LogPretty (issue #936): preserves the exact behavior main.go used to
 	// compute directly from os.Getenv — an explicit LOG_PRETTY is honored,
 	// but a non-release GIN_MODE always forces pretty output regardless of
-	// what LOG_PRETTY says, so local/dev logs stay readable by default.
+	// what LOG_PRETTY says, so local/dev logs stay readable by default. The
+	// force-on-non-release half lives in derive(), shared with New.
 	cfg.LogPretty = getBoolEnv("LOG_PRETTY", false)
-	if cfg.GinMode != "release" {
-		cfg.LogPretty = true
-	}
 
 	// CALDAV_SYNC_INTERVAL_HOURS, IMMICH_SYNC_INTERVAL_HOURS,
 	// DB_INTEGRITY_CHECK_INTERVAL_HOURS, DB_RESTORE_DRILL_INTERVAL_HOURS,
@@ -417,25 +643,17 @@ func LoadConfig() *Config {
 	// (issue #937); STORAGE_WARN_PERCENT/STORAGE_CRITICAL_PERCENT/
 	// STORAGE_SAMPLE_RETENTION_DAYS are now range-checked in Validate().
 
-	// An email channel is enabled only when it is fully configured
-	cfg.UseResend = cfg.ResendAPIKey != "" && cfg.ResendFromEmail != ""
-	cfg.UseSMTP = cfg.SMTPHost != "" && cfg.SMTPFromEmail != ""
+	// OIDC lives on its own env vars; its Enabled/RedirectURL/PostLogoutRedirectURL
+	// fields are derived (see derive). UseResend/UseSMTP are derived there too.
+	cfg.OIDC.ProviderURL = getEnv("OIDC_PROVIDER_URL", "")
+	cfg.OIDC.ClientID = getEnv("OIDC_CLIENT_ID", "")
+	cfg.OIDC.ClientSecret = getEnv("OIDC_CLIENT_SECRET", "")
+	cfg.OIDC.AllowAutoProvision = getBoolEnv("OIDC_AUTO_PROVISION", false)
+	cfg.OIDC.TrustEmail = getBoolEnv("OIDC_TRUST_EMAIL", false)
+	cfg.OIDC.Scopes = getScopesEnv(getEnv("OIDC_SCOPES", ""))
+	cfg.OIDC.BlockPrivateURLs = getBoolEnv("OIDC_BLOCK_PRIVATE_URLS", false)
 
-	oidcProviderURL := getEnv("OIDC_PROVIDER_URL", "")
-	oidcClientID := getEnv("OIDC_CLIENT_ID", "")
-	oidcClientSecret := getEnv("OIDC_CLIENT_SECRET", "")
-	cfg.OIDC = OIDCConfig{
-		Enabled:               oidcProviderURL != "" && oidcClientID != "" && oidcClientSecret != "",
-		ProviderURL:           oidcProviderURL,
-		ClientID:              oidcClientID,
-		ClientSecret:          oidcClientSecret,
-		RedirectURL:           cfg.FrontendURL + "/api/v1/auth/oidc/callback",
-		AllowAutoProvision:    getBoolEnv("OIDC_AUTO_PROVISION", false),
-		TrustEmail:            getBoolEnv("OIDC_TRUST_EMAIL", false),
-		Scopes:                getScopesEnv(getEnv("OIDC_SCOPES", "")),
-		PostLogoutRedirectURL: cfg.FrontendURL + "/login",
-		BlockPrivateURLs:      getBoolEnv("OIDC_BLOCK_PRIVATE_URLS", false),
-	}
+	cfg.derive()
 
 	return cfg
 }
@@ -770,6 +988,16 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "DATA_ENCRYPTION_KEY",
 			Message: "Set only one of DATA_ENCRYPTION_KEY or DATA_ENCRYPTION_KEY_FILE, not both.",
+		})
+	}
+
+	// Embedded mode has no HKDF-from-JWT fallback (ADR 0028 Decision 2): the
+	// host must supply the at-rest master key, or the local store would
+	// silently run unencrypted with no dedicated key.
+	if c.IsEmbedded() && c.DataEncryptionKey == "" && c.DataEncryptionKeyFile == "" {
+		errors = append(errors, ValidationError{
+			Field:   "DataEncryptionKey",
+			Message: "Embedded deployment requires DataEncryptionKey (or DataEncryptionKeyFile): embedded mode has no JWT-derived fallback master key.",
 		})
 	}
 
@@ -1203,7 +1431,42 @@ func (c *Config) Validate() []ValidationError {
 		})
 	}
 
+	// Deployment shape (ADR 0028, issue #1258). An unrecognised value would
+	// silently behave like server mode (the zero value) while the caller
+	// believed they had an embedded one — or vice versa — so refuse it.
+	switch c.Deployment {
+	case DeploymentServer, DeploymentEmbedded:
+	case "":
+		// The zero value is accepted and treated as server mode by IsEmbedded,
+		// so a hand-built test Config that never sets Deployment behaves like
+		// today's server.
+	default:
+		errors = append(errors, ValidationError{
+			Field:   "Deployment",
+			Message: fmt.Sprintf("Invalid deployment '%s'. Must be %q or %q.", c.Deployment, DeploymentServer, DeploymentEmbedded),
+		})
+	}
+
 	return errors
+}
+
+// ValidateError runs Validate and folds any failures into a single error whose
+// message is the same operator-facing block ValidateOrPanic prints. It is the
+// non-panicking entry point a library caller (embedded.Start, config.New) uses
+// so a bad Config is a returned error, not a process abort.
+func (c *Config) ValidateError() error {
+	errs := c.Validate()
+	if len(errs) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	b.WriteString("Configuration validation failed:\n")
+	for _, err := range errs {
+		b.WriteString("  • " + err.Error() + "\n")
+	}
+	b.WriteString("Please fix the configuration errors above and restart the server.\n")
+	b.WriteString("Refer to backend/.env.example for configuration examples.")
+	return errors.New(b.String())
 }
 
 // EmailEnabled reports whether at least one email delivery channel is configured.

@@ -52,7 +52,7 @@ On the backend side, the relevant facts:
   all configuration is environment variables (`backend/config/config.go`, with `JWT_SECRET_KEY` and
   an absolute `PROFILE_PHOTO_DIR` required), a pre-migration snapshot is written before every migration
   (`backend/database/premigration_backup.go`), and `registerScheduledJobs`
-  (`backend/scheduled_jobs.go`) starts ~17 gocron jobs, several of which (restore drill, alert
+  (`backend/embedded/scheduled_jobs.go`, moved out of `backend/main.go` by issue #1257) starts ~17 gocron jobs, several of which (restore drill, alert
   evaluation, webhook retries) are meaningless on a phone.
 - **There is no per-user, re-importable export.** `GET /export` CSV is full-fidelity but is not an
   import format; backups (`VACUUM INTO`) are whole-database and multi-user; restore is a file swap.

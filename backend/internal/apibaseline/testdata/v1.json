@@ -13430,6 +13430,11 @@
           "required": false
         },
         {
+          "name": "capabilities",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "commit",
           "type": "string",
           "required": false
@@ -13438,6 +13443,15 @@
           "name": "database",
           "type": "object",
           "required": false
+        },
+        {
+          "name": "deployment",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "server",
+            "embedded"
+          ]
         },
         {
           "name": "min_client_version",

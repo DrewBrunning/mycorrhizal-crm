@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/buildinfo"
+	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
@@ -68,6 +69,14 @@ type HealthResponse struct {
 	// and must always be present so a client can distinguish "v1" from a
 	// server that predates the field entirely.
 	APIContractVersion string `json:"api_contract_version"`
+	// Deployment is the deployment shape: "server" or "embedded" (ADR 0028,
+	// issue #1258). Always present.
+	Deployment string `json:"deployment"`
+	// Capabilities lists the surface tokens this deployment exposes (config.
+	// Capabilities). Always present and never null: an embedded deployment
+	// omits the surfaces it does not register, so a client gates on token
+	// presence rather than branching on the deployment word.
+	Capabilities []string `json:"capabilities"`
 }
 
 // DatabaseHealth represents the database health status
@@ -216,6 +225,12 @@ func HealthCheck(c *gin.Context) {
 	}
 
 	build := buildinfo.Get()
+	deployment := cfg.Deployment
+	if deployment == "" {
+		// A hand-built test Config that never set Deployment is server mode
+		// (config.IsEmbedded treats the zero value the same way).
+		deployment = config.DeploymentServer
+	}
 	c.JSON(httpStatus, HealthResponse{
 		Status:             deep.Status,
 		Timestamp:          time.Now().UTC().Format(time.RFC3339),
@@ -225,6 +240,8 @@ func HealthCheck(c *gin.Context) {
 		BuildDate:          build.BuildDate,
 		MinClientVersion:   cfg.MinClientVersion,
 		APIContractVersion: apiContractVersion,
+		Deployment:         deployment,
+		Capabilities:       cfg.Capabilities(),
 	})
 }
 

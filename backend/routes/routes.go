@@ -34,52 +34,58 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// OIDC routes (config always public; login/callback only when OIDC is enabled)
-		v1.GET("/auth/oidc/config", controllers.OIDCConfigHandler(cfg))
-		if cfg.OIDC.Enabled && oidcProvider != nil {
-			v1.GET("/auth/oidc/login", middleware.AuthRateLimitMiddleware(), controllers.OIDCLoginHandler(oidcProvider, cfg))
-			v1.GET("/auth/oidc/callback", middleware.AuthRateLimitMiddleware(), controllers.OIDCCallbackHandler(oidcProvider, cfg))
-			// Issue #965: the Android native flow redeems the callback's
-			// single-use, PKCE-bound code here for a session JWT. Public and
-			// rate-limited like /login; EnforceMinClientVersion applies because
-			// it mints a session (issue #692).
-			v1.POST("/auth/oidc/native/exchange", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.OIDCNativeExchangeInput{}), controllers.OIDCNativeExchangeHandler(cfg))
-		}
+		// ADR 0028 (issue #1258): the embedded deployment registers no
+		// authentication, identity, or outbound-integration surface at all —
+		// those routes 404 rather than 403, so a client cannot even probe for
+		// them. Everything inside this guard is gated by the same condition
+		// (cfg.IsEmbedded) that omits its capability token from GET /health.
+		if !cfg.IsEmbedded() {
+			// OIDC routes (config always public; login/callback only when OIDC is enabled)
+			v1.GET("/auth/oidc/config", controllers.OIDCConfigHandler(cfg))
+			if cfg.OIDC.Enabled && oidcProvider != nil {
+				v1.GET("/auth/oidc/login", middleware.AuthRateLimitMiddleware(), controllers.OIDCLoginHandler(oidcProvider, cfg))
+				v1.GET("/auth/oidc/callback", middleware.AuthRateLimitMiddleware(), controllers.OIDCCallbackHandler(oidcProvider, cfg))
+				// Issue #965: the Android native flow redeems the callback's
+				// single-use, PKCE-bound code here for a session JWT. Public and
+				// rate-limited like /login; EnforceMinClientVersion applies because
+				// it mints a session (issue #692).
+				v1.POST("/auth/oidc/native/exchange", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.OIDCNativeExchangeInput{}), controllers.OIDCNativeExchangeHandler(cfg))
+			}
 
-		// Public routes (no authentication required, strict rate limiting).
-		// Issue #692: every route that mints a session (register, login, the
-		// 2FA step, the device-grant exchange) enforces the configured
-		// MIN_CLIENT_VERSION floor BEFORE any user authentication work — a
-		// client below the floor is refused outright (client_version.go). The
-		// floor is empty by default, which makes this middleware inert.
-		v1.POST("/register", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), controllers.RegisterUser(cfg))
-		v1.POST("/login", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
-			controllers.LoginUser(c, cfg)
-		})
-		// N8: step 2 of interactive login — exchange a pending 2FA challenge
-		// (2fa_pending cookie set by /login) + a TOTP/recovery code for the
-		// real session cookie.
-		v1.POST("/login/2fa", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
-			controllers.Complete2FALogin(c, cfg)
-		})
-		// Issue #722: fully biometric login — a device that holds an
-		// unrevoked device grant (and whose owner just passed the local
-		// biometric gate) exchanges it for a fresh session JWT. Rate-limited
-		// exactly like /login: possession of a grant is as powerful as a
-		// password and must be defended the same way.
-		v1.POST("/auth/device/session", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.DeviceGrantSessionInput{}), func(c *gin.Context) {
-			controllers.ExchangeDeviceGrant(c, cfg)
-		})
+			// Issue #692: every route that mints a session (register, login, the
+			// 2FA step, the device-grant exchange) enforces the configured
+			// MIN_CLIENT_VERSION floor BEFORE any user authentication work — a
+			// client below the floor is refused outright (client_version.go). The
+			// floor is empty by default, which makes this middleware inert.
+			v1.POST("/register", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), controllers.RegisterUser(cfg))
+			v1.POST("/login", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
+				controllers.LoginUser(c, cfg)
+			})
+			// N8: step 2 of interactive login — exchange a pending 2FA challenge
+			// (2fa_pending cookie set by /login) + a TOTP/recovery code for the
+			// real session cookie.
+			v1.POST("/login/2fa", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
+				controllers.Complete2FALogin(c, cfg)
+			})
+			// Issue #722: fully biometric login — a device that holds an
+			// unrevoked device grant (and whose owner just passed the local
+			// biometric gate) exchanges it for a fresh session JWT. Rate-limited
+			// exactly like /login: possession of a grant is as powerful as a
+			// password and must be defended the same way.
+			v1.POST("/auth/device/session", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.DeviceGrantSessionInput{}), func(c *gin.Context) {
+				controllers.ExchangeDeviceGrant(c, cfg)
+			})
+			v1.POST("/password-reset/request", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetRequestInput{}), func(c *gin.Context) {
+				controllers.RequestPasswordReset(c, cfg)
+			})
+			v1.POST("/password-reset/confirm", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetConfirmInput{}), func(c *gin.Context) {
+				controllers.ConfirmPasswordReset(c, cfg)
+			})
+		}
 		v1.POST("/logout", func(c *gin.Context) {
 			controllers.LogoutUser(c, cfg, oidcProvider)
 		})
 		v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
-		v1.POST("/password-reset/request", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetRequestInput{}), func(c *gin.Context) {
-			controllers.RequestPasswordReset(c, cfg)
-		})
-		v1.POST("/password-reset/confirm", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetConfirmInput{}), func(c *gin.Context) {
-			controllers.ConfirmPasswordReset(c, cfg)
-		})
 
 		// Protected routes (authentication required, general rate limiting)
 		protected := v1.Group("/")
@@ -114,11 +120,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// N8 2FA management (issue #158). Status is read-only; setup
 			// mints a pending secret, confirm flips it on + mints recovery
 			// codes, disable/regenerate gate on a live TOTP code.
-			protected.GET("/users/2fa/status", controllers.GetTwoFactorStatus)
-			protected.POST("/users/2fa/setup", controllers.SetupTwoFactor)
-			protected.POST("/users/2fa/confirm", controllers.ConfirmTwoFactor)
-			protected.POST("/users/2fa/disable", controllers.DisableTwoFactor)
-			protected.POST("/users/2fa/recovery-codes/regenerate", controllers.RegenerateRecoveryCodes)
+			if !cfg.IsEmbedded() {
+				protected.GET("/users/2fa/status", controllers.GetTwoFactorStatus)
+				protected.POST("/users/2fa/setup", controllers.SetupTwoFactor)
+				protected.POST("/users/2fa/confirm", controllers.ConfirmTwoFactor)
+				protected.POST("/users/2fa/disable", controllers.DisableTwoFactor)
+				protected.POST("/users/2fa/recovery-codes/regenerate", controllers.RegenerateRecoveryCodes)
+			}
 			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than
 			// admin-only ListUsers (id+username only).
@@ -264,20 +272,23 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/import/mycorrhizal/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMycorrhizalImport)
 			protected.POST("/import/mycorrhizal/cancel", controllers.CancelMycorrhizalImport)
 
-			// P1 contact sharing
-			// — one-time filtered copy between two users on the same
-			// instance. Accept is preview-only (parses the stored payload
-			// through the same import pipeline above); Confirm delegates to
-			// ConfirmVCF (the exact method /contacts/import/vcf/confirm
-			// uses) and only then flips the share to accepted.
-			protected.POST("/contact-shares", middleware.ValidateJSONMiddleware(&models.ContactShareInput{}), controllers.CreateContactShare)
-			protected.GET("/contact-shares/incoming", controllers.ListIncomingContactShares)
-			protected.GET("/contact-shares/outgoing", controllers.ListOutgoingContactShares)
-			protected.POST("/contact-shares/:id/accept", controllers.AcceptContactShare)
-			protected.POST("/contact-shares/:id/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), func(c *gin.Context) {
-				controllers.ConfirmContactShare(c, cfg)
-			})
-			protected.POST("/contact-shares/:id/decline", controllers.DeclineContactShare)
+			// P1 contact sharing — embedded mode has a single user, so there
+			// is no one to share with; the whole surface is absent (ADR 0028).
+			if !cfg.IsEmbedded() {
+				// one-time filtered copy between two users on the same
+				// instance. Accept is preview-only (parses the stored payload
+				// through the same import pipeline above); Confirm delegates to
+				// ConfirmVCF (the exact method /contacts/import/vcf/confirm
+				// uses) and only then flips the share to accepted.
+				protected.POST("/contact-shares", middleware.ValidateJSONMiddleware(&models.ContactShareInput{}), controllers.CreateContactShare)
+				protected.GET("/contact-shares/incoming", controllers.ListIncomingContactShares)
+				protected.GET("/contact-shares/outgoing", controllers.ListOutgoingContactShares)
+				protected.POST("/contact-shares/:id/accept", controllers.AcceptContactShare)
+				protected.POST("/contact-shares/:id/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), func(c *gin.Context) {
+					controllers.ConfirmContactShare(c, cfg)
+				})
+				protected.POST("/contact-shares/:id/decline", controllers.DeclineContactShare)
+			}
 
 			// RelationshipEdge routes (graph-model relationship API; replaces the
 			// legacy /contacts/:id/relationships stack, removed)
@@ -501,12 +512,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// contacts, notes, and interactions
 			protected.GET("/search", controllers.SearchAll)
 
-			// API token routes
-			protected.GET("/api-tokens", controllers.ListApiTokens)
-			protected.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), controllers.CreateApiToken)
-			protected.POST("/api-tokens/revoke-all", controllers.RevokeAllApiTokens)
-			protected.DELETE("/api-tokens/:id", controllers.RevokeApiToken)
-			protected.POST("/api-tokens/:id/rotate", controllers.RotateApiToken)
+			// API token routes (absent in embedded mode — ADR 0028).
+			if !cfg.IsEmbedded() {
+				protected.GET("/api-tokens", controllers.ListApiTokens)
+				protected.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), controllers.CreateApiToken)
+				protected.POST("/api-tokens/revoke-all", controllers.RevokeAllApiTokens)
+				protected.DELETE("/api-tokens/:id", controllers.RevokeApiToken)
+				protected.POST("/api-tokens/:id/rotate", controllers.RotateApiToken)
+			}
 
 			// Issue #866: active-session inventory. List this account's live
 			// sessions, revoke one by id (revoking the current one == logout
@@ -517,22 +530,24 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/sessions/:id", controllers.RevokeSession)
 
 			// Issue #722: device grants (the server half of fully biometric
-			// login) — enrolled by the authenticated caller, listed so a user
-			// can see what's signed in, and revoked individually or all at
-			// once (the lost-phone path).
-			protected.GET("/auth/device/grants", controllers.ListDeviceGrants)
-			protected.POST("/auth/device/grants", middleware.ValidateJSONMiddleware(&models.DeviceGrantInput{}), controllers.CreateDeviceGrant)
-			protected.POST("/auth/device/grants/revoke-all", controllers.RevokeAllDeviceGrants)
-			protected.DELETE("/auth/device/grants/:id", controllers.RevokeDeviceGrant)
+			// login) — absent in embedded mode (ADR 0028).
+			if !cfg.IsEmbedded() {
+				protected.GET("/auth/device/grants", controllers.ListDeviceGrants)
+				protected.POST("/auth/device/grants", middleware.ValidateJSONMiddleware(&models.DeviceGrantInput{}), controllers.CreateDeviceGrant)
+				protected.POST("/auth/device/grants/revoke-all", controllers.RevokeAllDeviceGrants)
+				protected.DELETE("/auth/device/grants/:id", controllers.RevokeDeviceGrant)
+			}
 
-			// Webhook routes
-			protected.GET("/webhooks", controllers.ListWebhooks)
-			protected.POST("/webhooks", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), controllers.CreateWebhook)
-			protected.GET("/webhooks/:id", controllers.GetWebhook)
-			protected.PUT("/webhooks/:id", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), controllers.UpdateWebhook)
-			protected.DELETE("/webhooks/:id", controllers.DeleteWebhook)
-			protected.POST("/webhooks/:id/test", controllers.TestWebhook)
-			protected.GET("/webhooks/:id/deliveries", controllers.GetWebhookDeliveries)
+			// Webhook routes (absent in embedded mode — no outbound surface).
+			if !cfg.IsEmbedded() {
+				protected.GET("/webhooks", controllers.ListWebhooks)
+				protected.POST("/webhooks", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), controllers.CreateWebhook)
+				protected.GET("/webhooks/:id", controllers.GetWebhook)
+				protected.PUT("/webhooks/:id", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), controllers.UpdateWebhook)
+				protected.DELETE("/webhooks/:id", controllers.DeleteWebhook)
+				protected.POST("/webhooks/:id/test", controllers.TestWebhook)
+				protected.GET("/webhooks/:id/deliveries", controllers.GetWebhookDeliveries)
+			}
 
 			// Audit trail routes (T18 — T18). Read-only log surface + update-only undo.
 			protected.GET("/audit", controllers.ListAuditEvents)
@@ -547,17 +562,24 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/notifications/config", controllers.GetNotificationConfig)
 			protected.PUT("/notifications/config", middleware.ValidateJSONMiddleware(&models.NotificationConfigInput{}), controllers.SaveNotificationConfig)
 			protected.POST("/notifications/config/test", controllers.TestNotificationChannel)
-			protected.GET("/notifications/push-subscriptions", controllers.ListPushSubscriptions)
-			protected.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), controllers.CreatePushSubscription)
-			protected.DELETE("/notifications/push-subscriptions/:id", controllers.DeletePushSubscription)
+			// Web Push is a server-mediated delivery channel (a push service
+			// the operator configures), so its subscriptions are absent in
+			// embedded mode (ADR 0028).
+			if !cfg.IsEmbedded() {
+				protected.GET("/notifications/push-subscriptions", controllers.ListPushSubscriptions)
+				protected.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), controllers.CreatePushSubscription)
+				protected.DELETE("/notifications/push-subscriptions/:id", controllers.DeletePushSubscription)
+			}
 
 			// Mobile push device registrations (M2 — M2). Platform-agnostic: a device registers
 			// a token + client (fcm today, apns accepted), the backend
 			// dispatches delivery by client. The web app never enrolls
 			// devices; it lists and deletes them in Settings.
-			protected.GET("/notifications/devices", controllers.ListDeviceRegistrations)
-			protected.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), controllers.CreateDeviceRegistration)
-			protected.DELETE("/notifications/devices/:id", controllers.DeleteDeviceRegistration)
+			if !cfg.IsEmbedded() {
+				protected.GET("/notifications/devices", controllers.ListDeviceRegistrations)
+				protected.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), controllers.CreateDeviceRegistration)
+				protected.DELETE("/notifications/devices/:id", controllers.DeleteDeviceRegistration)
+			}
 
 			// Calendar subscription routes (CalDAV/iCS activity import)
 			protected.GET("/calendars", controllers.ListCalendarSubscriptions)
@@ -751,14 +773,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		protected.POST("/data-decay-policies/:id/verify", controllers.VerifyDataDecayPolicy)
 	}
 
-	// CardDAV routes (optional, enabled via CARDDAV_ENABLED)
-	if cfg.CardDAVEnabled {
+	// CardDAV routes (optional, enabled via CARDDAV_ENABLED). Embedded mode
+	// never serves DAV — there is no remote client to sync with (ADR 0028).
+	if cfg.CardDAVEnabled && !cfg.IsEmbedded() {
 		registerCardDAVRoutes(router, cfg, db)
 	}
 
 	// CalDAV routes (optional, enabled via CALDAV_ENABLED) — serve the CRM's
 	// own Activities/LifeEvents out as an iCalendar collection (T12b).
-	if cfg.CalDAVEnabled {
+	if cfg.CalDAVEnabled && !cfg.IsEmbedded() {
 		registerCalDAVRoutes(router, db)
 	}
 }
