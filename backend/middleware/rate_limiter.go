@@ -365,7 +365,8 @@ func StartCleanupRoutine() {
 		return
 	}
 
-	cleanupDone = make(chan struct{})
+	done := make(chan struct{})
+	cleanupDone = done
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
@@ -376,7 +377,12 @@ func StartCleanupRoutine() {
 				apiLimiter.CleanupStaleEntries()
 				cardDAVLimiter.CleanupStaleEntries()
 				accountLimiter.CleanupStaleAccountEntries()
-			case <-cleanupDone:
+			case <-done:
+				// Read the goroutine's own channel, not the package global:
+				// StopCleanupRoutine nils the global under cleanupMu while this
+				// goroutine runs, and reading the global here was a data race
+				// (surfaced by embedded mode's Start/Stop/Start cycle under
+				// -race).
 				return
 			}
 		}
