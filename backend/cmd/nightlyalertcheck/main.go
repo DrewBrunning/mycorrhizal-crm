@@ -73,6 +73,11 @@ func runAt(w io.Writer, root string) int {
 		fmt.Fprintln(w, workflowsDir+"/"+nightlyalert.AlertWorkflowFile+" does not exist")
 		return 2
 	}
+	reconcileBytes, ok := files[nightlyalert.ReconcileWorkflowFile]
+	if !ok {
+		fmt.Fprintln(w, workflowsDir+"/"+nightlyalert.ReconcileWorkflowFile+" does not exist")
+		return 2
+	}
 
 	scheduled, findings := nightlyalert.ScheduledWorkflowNames(files)
 	registered, err := nightlyalert.RegisteredWorkflowNames(alertBytes)
@@ -81,6 +86,15 @@ func runAt(w io.Writer, root string) int {
 		return 2
 	}
 	findings = append(findings, nightlyalert.CheckDrift(scheduled, registered)...)
+
+	scheduledFiles, fileFindings := nightlyalert.ScheduledWorkflowFiles(files)
+	findings = append(findings, fileFindings...)
+	reconciled, err := nightlyalert.ReconcileWorkflowFiles(reconcileBytes)
+	if err != nil {
+		fmt.Fprintln(w, err.Error())
+		return 2
+	}
+	findings = append(findings, nightlyalert.CheckFileDrift(scheduledFiles, reconciled)...)
 
 	if len(findings) == 0 {
 		fmt.Fprintf(w, "nightlyalertcheck OK: %d scheduled workflow(s), all registered in %s\n",

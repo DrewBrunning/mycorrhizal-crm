@@ -1,0 +1,153 @@
+name: Nightly failure alert reconciliation
+
+# Backstop for nightly-failure-alert.yml's event-driven path (issue: a
+# Reference-Client E2E nightly run failed and this repo never raised an
+# alert for it -- not a mis-registration, the workflow was correctly listed
+# in nightly-failure-alert.yml's `on.workflow_run.workflows`, and no
+# `nightly-failure`-labelled issue existed anywhere for it under any title.
+# Every neighboring alert-workflow run in the surrounding window referenced
+# a *different* workflow's completion. The only explanation left is a
+# silently dropped `workflow_run` webhook delivery -- a known, if rare,
+# GitHub platform behavior that no workflow-level code can prevent).
+#
+# Once a day (well after every nightly workflow's own cron has had time to
+# finish -- the latest is 03:45 UTC), this polls the Actions API for each
+# scheduled workflow's own most recent `schedule`-triggered run and drives
+# it through the exact same ensure-alert.sh the event-driven workflow uses,
+# so the two paths can never disagree on what counts as a reportable
+# failure or a recovery. This is deliberately NOT a substitute for that
+# workflow -- it is slower (up to ~24h latency instead of near-instant) and
+# exists only to self-heal the rare dropped-delivery case.
+#
+# `workflow_file` must list exactly the filename of every workflow under
+# .github/workflows/ that declares a top-level `schedule:` trigger --
+# `go run ./cmd/nightlyalertcheck` fails the build if this list and that set
+# of files ever diverge, the same drift gate nightly-failure-alert.yml's own
+# `workflows:` list gets.
+on:
+  schedule:
+    - cron: '30 5 * * *' # 05:30 UTC, after every other nightly cron (latest is 03:45) has had time to finish
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    name: Reconcile ${{ matrix.workflow_file }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        workflow_file:
+          - android-tests.yml
+          - asvs-staleness.yml
+          - carddav-e2e.yml
+          - chaos-tests.yml
+          - codeql.yml
+          - container-hardening.yml
+          - deploy-smoke.yml
+          - differential-e2e.yml
+          - docker-pin-check.yml
+          - e2e-tests.yml
+          - go-mutation.yml
+          - governance-drift.yml
+          - grype.yml
+          - license-compliance.yml
+          - migration-tests.yml
+          - min-version-tests.yml
+          - pentest-harness.yml
+          - reference-clients-e2e.yml
+          - release-dry-run.yml
+          - reproducibility.yml
+          - sast.yml
+          - schemathesis.yml
+          - scorecard.yml
+          - security-cadence.yml
+          - stryker.yml
+          - trufflehog.yml
+          - unit-tests.yml
+          - zap-dast.yml
+          - zizmor.yml
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Only `event=schedule` runs are this tier's concern (same reasoning
+      # as nightly-failure-alert.yml's own `if:` gate) -- a workflow's most
+      # recent push/PR/dispatch run is irrelevant here even if it is newer.
+      # `status=completed` excludes an in-progress run so this never acts on
+      # a conclusion that hasn't been decided yet.
+      - name: Find the latest scheduled run
+        id: latest-run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_FILE: ${{ matrix.workflow_file }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${GH_REPO}/actions/workflows/${WORKFLOW_FILE}/runs" \
+            -f event=schedule -f status=completed -f per_page=1 --jq '.workflow_runs[0] // empty')"
+          if [ -z "$run_json" ]; then
+            echo "No completed scheduled run found yet for ${WORKFLOW_FILE} -- nothing to reconcile."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "name=$(echo "$run_json" | jq -r '.name')"
+            echo "id=$(echo "$run_json" | jq -r '.id')"
+            echo "url=$(echo "$run_json" | jq -r '.html_url')"
+            echo "conclusion=$(echo "$run_json" | jq -r '.conclusion')"
+            echo "attempt=$(echo "$run_json" | jq -r '.run_attempt')"
+          } >> "$GITHUB_OUTPUT"
+
+      # A failure conclusion this run_id is already referenced by (an issue
+      # body or a later comment) was already handled -- either by
+      # nightly-failure-alert.yml's own event-driven path, or by a previous
+      # day's reconciliation pass. Skip it so an issue that is still open
+      # because the underlying failure is still unfixed doesn't get a fresh
+      # "still broken" comment every single day. A success conclusion always
+      # goes through ensure-alert.sh: closing is naturally a no-op when there
+      # is no open issue, so there is nothing to dedupe there.
+      - name: Check whether this run was already reported
+        id: already-reported
+        if: >-
+          steps.latest-run.outputs.found == 'true' &&
+          contains(fromJSON('["failure","timed_out","startup_failure","cancelled"]'), steps.latest-run.outputs.conclusion)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ steps.latest-run.outputs.id }}
+        run: |
+          set -euo pipefail
+          query="repo:${GH_REPO} is:issue label:nightly-failure \"${RUN_ID}\" in:body,comments"
+          encoded="$(jq -rn --arg q "$query" '$q | @uri')"
+          count="$(gh api -X GET "search/issues?q=${encoded}" --jq '.total_count')"
+          if [ "$count" -gt 0 ]; then
+            echo "Run ${RUN_ID} is already referenced by an existing issue -- already reported."
+            echo "reported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reported=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open/update or close the nightly-failure issue
+        if: >-
+          steps.latest-run.outputs.found == 'true' &&
+          steps.already-reported.outputs.reported != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ steps.latest-run.outputs.name }}
+          RUN_ID: ${{ steps.latest-run.outputs.id }}
+          RUN_URL: ${{ steps.latest-run.outputs.url }}
+          CONCLUSION: ${{ steps.latest-run.outputs.conclusion }}
+          RUN_ATTEMPT: ${{ steps.latest-run.outputs.attempt }}
+        run: .github/scripts/nightly-alert/ensure-alert.sh
