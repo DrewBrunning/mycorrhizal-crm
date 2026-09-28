@@ -1,0 +1,221 @@
+{
+  "_comment": [
+    "Shared, cross-implementation deep-link route vectors (ADR 0029 §5, issue #1267).",
+    "One hand-authored file consumed by every parser and by the backend's emitter",
+    "conformance test: Android's NotificationDeepLinkRouteTest (deepLinkRoute), the",
+    "web service-worker notificationclick target resolver, and",
+    "backend/services/deep_link_vectors_test.go. A route added to one client without a",
+    "vector, or a vector one client fails, breaks that client's build.",
+    "Each vector: `uri` is the input; `android_route` is the NavHost route the Android",
+    "client resolves it to (or null when it must reject the input); `web_path` is the",
+    "path on the user's own server (or null when it must reject). A route may be null",
+    "for one client when that client degrades to a nearest parent (see `why`); rejected",
+    "vectors are null for both. The backend must never emit a URI that is not accepted",
+    "(`android_route` or `web_path` non-null) here.",
+    "Grammar (ADR 0029 §2-§3): scheme+host+path matched exactly, case-sensitive;",
+    "integer ids are decimal `1..2147483647` with no sign, `+`, or leading zero; opaque",
+    "ids match `[A-Za-z0-9._:-]{1,128}`; search `q` is trimmed, has Unicode Cc/Cf",
+    "stripped, and is truncated (not rejected) at 200 chars; unknown query params are",
+    "ignored; OIDC callback is auth-only and never navigable."
+  ],
+  "vectors": [
+    {
+      "uri": "mycorrhizal://home",
+      "android_route": "home",
+      "web_path": "/",
+      "why": "home/dashboard: the one alias; `home` stands for `/`"
+    },
+    {
+      "uri": "mycorrhizal://contacts/1",
+      "android_route": "contacts/1",
+      "web_path": "/contacts/1",
+      "why": "contact detail, lower id bound"
+    },
+    {
+      "uri": "mycorrhizal://contacts/42",
+      "android_route": "contacts/42",
+      "web_path": "/contacts/42",
+      "why": "contact detail: the backend's reminder push emits exactly this (fcmReminderData/contactDeepLink)"
+    },
+    {
+      "uri": "mycorrhizal://contacts/2147483647",
+      "android_route": "contacts/2147483647",
+      "web_path": "/contacts/2147483647",
+      "why": "contact detail, 2^31-1 upper bound"
+    },
+    {
+      "uri": "mycorrhizal://contacts/42/activities",
+      "android_route": "contacts/42/activities",
+      "web_path": "/contacts/42",
+      "why": "activity timeline; web has no timeline screen and degrades to the contact page"
+    },
+    {
+      "uri": "mycorrhizal://circles/abc-123",
+      "android_route": "circles/abc-123",
+      "web_path": "/circles",
+      "why": "circle; web has no per-circle page, degrades to the circles list"
+    },
+    {
+      "uri": "mycorrhizal://tags/x",
+      "android_route": "tags/x",
+      "web_path": "/circles?tab=tags",
+      "why": "tag; web degrades to the tags tab of the circles/tags page"
+    },
+    {
+      "uri": "mycorrhizal://households/h.1",
+      "android_route": "households/h.1",
+      "web_path": "/households",
+      "why": "household; web has no per-household page, degrades to the list"
+    },
+    {
+      "uri": "mycorrhizal://search?q=ann",
+      "android_route": "contacts?search=ann",
+      "web_path": "/search?q=ann",
+      "why": "search: Android opens the contact list with the query, web its search page"
+    },
+    {
+      "uri": "mycorrhizal://search?q=",
+      "android_route": "contacts",
+      "web_path": "/contacts",
+      "why": "empty query opens the plain list, not an error"
+    },
+    {
+      "uri": "mycorrhizal://search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "android_route": "contacts?search=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "web_path": "/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "why": "q is truncated to 200 characters, not rejected"
+    },
+    {
+      "uri": "mycorrhizal://search?q=a%07b",
+      "android_route": "contacts?search=ab",
+      "web_path": "/search?q=ab",
+      "why": "Unicode Cc/Cf control and format characters are stripped from q (BEL here)"
+    },
+    {
+      "uri": "mycorrhizal://contacts/42?foo=bar",
+      "android_route": "contacts/42",
+      "web_path": "/contacts/42",
+      "why": "unknown query parameters are ignored, not forwarded"
+    },
+    {
+      "uri": "https://contacts/42",
+      "android_route": null,
+      "web_path": null,
+      "why": "wrong scheme: only `mycorrhizal` is the app scheme"
+    },
+    {
+      "uri": "mycorrhizal2://home",
+      "android_route": null,
+      "web_path": null,
+      "why": "wrong scheme: `mycorrhizal2` is not the app scheme"
+    },
+    {
+      "uri": "mycorrhizal://settings",
+      "android_route": null,
+      "web_path": null,
+      "why": "unknown host: settings is deliberately not navigable (ADR 0029 §2)"
+    },
+    {
+      "uri": "mycorrhizal://contacts",
+      "android_route": null,
+      "web_path": null,
+      "why": "contact host with no id segment"
+    },
+    {
+      "uri": "mycorrhizal://contacts/0",
+      "android_route": null,
+      "web_path": null,
+      "why": "contact id 0 is below the 1..2^31-1 range"
+    },
+    {
+      "uri": "mycorrhizal://contacts/-1",
+      "android_route": null,
+      "web_path": null,
+      "why": "negative id: no sign is allowed"
+    },
+    {
+      "uri": "mycorrhizal://contacts/+42",
+      "android_route": null,
+      "web_path": null,
+      "why": "leading `+` is not allowed (strict decimal form)"
+    },
+    {
+      "uri": "mycorrhizal://contacts/042",
+      "android_route": null,
+      "web_path": null,
+      "why": "leading zero is not allowed (strict decimal form)"
+    },
+    {
+      "uri": "mycorrhizal://contacts/2147483648",
+      "android_route": null,
+      "web_path": null,
+      "why": "contact id above 2^31-1"
+    },
+    {
+      "uri": "mycorrhizal://contacts/abc",
+      "android_route": null,
+      "web_path": null,
+      "why": "contact id must be decimal digits"
+    },
+    {
+      "uri": "mycorrhizal://contacts/42/edit",
+      "android_route": null,
+      "web_path": null,
+      "why": "write/edit screens are not navigable (ADR 0029 §2)"
+    },
+    {
+      "uri": "mycorrhizal://contacts/42/activities/x",
+      "android_route": null,
+      "web_path": null,
+      "why": "extra path segment after activities"
+    },
+    {
+      "uri": "mycorrhizal://contacts//42",
+      "android_route": null,
+      "web_path": null,
+      "why": "empty path segment"
+    },
+    {
+      "uri": "mycorrhizal://contacts/%2e%2e",
+      "android_route": null,
+      "web_path": null,
+      "why": "path segment decodes to `..`"
+    },
+    {
+      "uri": "mycorrhizal://circles/",
+      "android_route": null,
+      "web_path": null,
+      "why": "empty opaque id"
+    },
+    {
+      "uri": "mycorrhizal://circles/a%2Fb",
+      "android_route": null,
+      "web_path": null,
+      "why": "opaque id decodes to contain `/`"
+    },
+    {
+      "uri": "mycorrhizal://circles/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "android_route": null,
+      "web_path": null,
+      "why": "opaque id longer than 128 characters"
+    },
+    {
+      "uri": "mycorrhizal://circles/a b",
+      "android_route": null,
+      "web_path": null,
+      "why": "space is outside the opaque-id `[A-Za-z0-9._:-]` set"
+    },
+    {
+      "uri": "mycorrhizal://oidc/callback?code=x&state=y",
+      "android_route": null,
+      "web_path": null,
+      "why": "OIDC return is auth-only and is not a navigation route (ADR 0029 §2)"
+    },
+    {
+      "uri": "mycorrhizal://HOME",
+      "android_route": null,
+      "web_path": null,
+      "why": "hosts are matched case-sensitively; `HOME` is not `home`"
+    }
+  ]
+}

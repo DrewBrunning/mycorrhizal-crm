@@ -960,7 +960,7 @@ func TestFcmReminderData(t *testing.T) {
 		assert.Equal(t, "42", data["reminder_id"])
 		// Second-truncated UTC — nanoseconds and the local offset are gone.
 		assert.Equal(t, "2026-08-18T19:14:28Z", data["due_at"])
-		assert.Equal(t, "mycorrhizal://contacts/7", data["deep_link"])
+		assert.Equal(t, contactDeepLink(7), data["deep_link"])
 	})
 
 	t.Run("without contact", func(t *testing.T) {
@@ -1082,7 +1082,7 @@ func TestSendReminders_FCMDelivers(t *testing.T) {
 	assert.Equal(t, "reminder", sent.Message.Data["type"])
 	assert.Equal(t, strconv.FormatUint(uint64(reminder.ID), 10), sent.Message.Data["reminder_id"])
 	assert.Equal(t, reminder.RemindAt.UTC().Truncate(time.Second).Format(time.RFC3339), sent.Message.Data["due_at"])
-	assert.Equal(t, fmt.Sprintf("mycorrhizal://contacts/%d", *reminder.ContactID), sent.Message.Data["deep_link"])
+	assert.Equal(t, contactDeepLink(*reminder.ContactID), sent.Message.Data["deep_link"])
 
 	var deliveries []models.NotificationDelivery
 	require.NoError(t, db.Where("reminder_id = ?", reminder.ID).Find(&deliveries).Error)
