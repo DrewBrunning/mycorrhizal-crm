@@ -129,10 +129,25 @@ jobs:
       # ZAP runs headless via its automation framework (zap/zap-dast.yaml).
       # --network host lets the container reach both the app (:7300, exposed by
       # compose) and the canary (:7301, a host process). The plan writes
-      # report.json into ./zap for the gate (and the run artifact). -Xmx3g caps
-      # the JVM heap so the active scan fits the runner (zap.sh otherwise sizes
-      # 1/4 of host memory, which is both more than the scan needs and more
-      # than a standard runner has).
+      # report.json into ./zap for the gate (and the run artifact). -Xmx6g caps
+      # the JVM heap so the active scan fits the runner while still leaving
+      # headroom for the docker-compose app stack alongside it (zap.sh
+      # otherwise sizes 1/4 of host memory, which overcommits a standard
+      # runner).
+      #
+      # Was -Xmx3g until run 36393384309 (issue #1278): the report's own
+      # `insights` block recorded `insight.memory.usage: High, "Exceeded
+      # High", 98%`, and the canary's activeScan job -- which normally spends
+      # several seconds probing the planted reflected-XSS parameter --
+      # completed in ~1s. The report came back with *zero* alerts on either
+      # site (not just the canary), including the self-test signal zapgate
+      # requires, which is consistent with the JVM running out of heap
+      # partway through the active scan and silently dropping in-progress
+      # alert data rather than crashing outright. 325 URLs get seeded from
+      # openapi.yaml today; 3g was sized for a smaller surface. Bumped to 6g,
+      # comfortably inside the ~16GB a GitHub-hosted runner reports (see the
+      # same run's "Available memory: 15989 MB" line) with room left for the
+      # app + canary containers.
       - name: Run ZAP scan
         env:
           ZAP_AUTH_HEADER: Authorization
@@ -156,7 +171,7 @@ jobs:
             -v "$PWD/zap:/zap/wrk:rw" \
             -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
             ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
-            zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml || rc=$?
+            zap.sh -Xmx6g -cmd -autorun /zap/wrk/zap-dast.yaml || rc=$?
 
           # zap.sh -autorun exit codes: 0 clean, 1 the plan had *failures*,
           # 2 the plan had *warnings* and no failure. A warning must not fail
