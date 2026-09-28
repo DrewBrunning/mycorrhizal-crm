@@ -93,13 +93,33 @@ export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
  * `Element.getAnimations()` (Web Animations API) returns running CSS
  * transitions as well as CSS/WAAPI animations, so this covers MUI's
  * transition-based Dialog/Fade/Grow without needing to special-case them.
+ *
+ * Two guards keep this from hanging the scan (the bug that turned the above
+ * fix into a red `Run E2E Tests` on PR #1281, job 109021190856):
+ *
+ * 1. Skip animations that can never settle. MUI's indeterminate
+ *    `CircularProgress`/`LinearProgress`/`Skeleton` -- and a keyboard-focus
+ *    ripple's `pulsate` (`TouchRipple.js`, `animation-iteration-count:
+ *    infinite`) -- never fire `finished`, so awaiting one hangs forever. The
+ *    failing case was `reminders.spec.ts`'s "should show reminder form
+ *    fields": `Escape` closes the dialog and MUI restores focus to the
+ *    trigger button; the Escape keydown had set MUI's global keyboard-modality
+ *    flag, so the restored focus counted as focus-visible and started an
+ *    infinite pulsate ripple. `getComputedTiming().iterations` is `Infinity`
+ *    for exactly those; only finite animations can be waited out.
+ * 2. Cap the wait anyway, matching the per-test wait below. A finite
+ *    animation can still be interrupted or thrash, and the whole point of
+ *    this helper is to settle *before* a scan, not to block it.
  */
 async function waitForAnimationsToSettle(page: Page, context?: string): Promise<void> {
   await page.evaluate((selector) => {
     const root = selector ? document.querySelector(selector) : document.body;
     if (!root) return Promise.resolve();
-    const animations = root.getAnimations({ subtree: true });
-    return Promise.all(animations.map((a) => a.finished.catch(() => {})));
+    const pending = root
+      .getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => {}));
+    return Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, 500))]);
   }, context ?? null);
 }
 
