@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.OIDC_PENDING_REQUEST_TTL_MILLIS
 import com.mycorrhizal.crm.data.session.OidcPendingRequest
 import com.mycorrhizal.crm.data.session.OidcPendingRequestStore
+import com.mycorrhizal.crm.data.session.ProfilesSnapshot
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -30,38 +31,55 @@ import org.junit.Test
 class OidcLoginCoordinatorTest {
 
     private class FakeTokenStorage : TokenStorage {
-        var stored: String? = null
-        override suspend fun save(token: String) {
-            stored = token
+        val tokens = mutableMapOf<String, String>()
+        private var legacy: String? = null
+
+        /** The only saved token (single-profile tests). */
+        val stored: String? get() = tokens.values.lastOrNull()
+
+        override suspend fun save(profileId: String, token: String) {
+            tokens[profileId] = token
         }
-        override suspend fun load(): String? = stored
-        override suspend fun clear() {
-            stored = null
+        override suspend fun load(profileId: String): String? = tokens[profileId]
+        override suspend fun clear(profileId: String) {
+            tokens.remove(profileId)
+        }
+        override suspend fun loadLegacy(): String? = legacy
+        override suspend fun clearLegacy() {
+            legacy = null
         }
     }
 
     private class FakePrefsStorage : SessionPrefsStorage {
         var url: String? = null
+        var snapshot = ProfilesSnapshot()
         override suspend fun save(serverUrl: String?) {
             url = serverUrl
         }
         override suspend fun loadServerUrl(): String? = url
+        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) {
+            this.snapshot = snapshot
+        }
+        override suspend fun loadProfiles(): ProfilesSnapshot = snapshot
         override suspend fun clear() {
             url = null
+            snapshot = ProfilesSnapshot()
         }
     }
 
     private class FakePendingStore : OidcPendingRequestStore {
         var request: OidcPendingRequest? = null
         var clearCount = 0
-        override suspend fun save(state: String, codeVerifier: String) {
+        override suspend fun save(profileId: String, state: String, codeVerifier: String) {
             request = OidcPendingRequest(state, codeVerifier, System.currentTimeMillis())
         }
-        override suspend fun load(): OidcPendingRequest? = request
-        override suspend fun clear() {
+        override suspend fun load(profileId: String): OidcPendingRequest? = request
+        override suspend fun clear(profileId: String) {
             request = null
             clearCount++
         }
+        override suspend fun loadLegacy(): OidcPendingRequest? = null
+        override suspend fun clearLegacy() = Unit
     }
 
     private class Harness {
@@ -133,6 +151,7 @@ class OidcLoginCoordinatorTest {
     @Test
     fun `an error return clears the pending request and reports failure`() = runTest {
         val h = Harness()
+        h.withServer()
         seedPending(h)
 
         val outcome = h.coordinator().onCallback(OidcReturn.Failure)

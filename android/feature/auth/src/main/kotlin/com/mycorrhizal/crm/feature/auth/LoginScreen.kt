@@ -55,6 +55,11 @@ fun LoginScreen(
     // M26: links to the register and forgot-password flows.
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
+    // ADR 0028 Decision 1/2: "Use on this device only" creates/re-activates the
+    // Local profile. Gated behind the app's LOCAL_MODE_ENABLED build flag until
+    // the embedded host (issue #1262) and account-bundle backup (#1264) land.
+    localModeEnabled: Boolean = false,
+    onUseLocalOnly: () -> Unit = {},
     // #203: the OIDC native-return failure (MainActivity) has no ViewModel of
     // its own to report through — it's a session-level event injected from
     // outside, shown through this screen's existing SnackbarHostState.
@@ -99,6 +104,8 @@ fun LoginScreen(
         onSignInWithSso = onSignInWithSso,
         onRegisterClick = onRegisterClick,
         onForgotPasswordClick = onForgotPasswordClick,
+        localModeEnabled = localModeEnabled,
+        onUseLocalOnly = onUseLocalOnly,
         onErrorShown = viewModel::onErrorShown,
         oidcError = oidcError,
         onOidcErrorShown = onOidcErrorShown,
@@ -123,6 +130,8 @@ fun LoginScreenContent(
     onSignInWithSso: (String) -> Unit = {},
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
+    localModeEnabled: Boolean = false,
+    onUseLocalOnly: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     oidcError: String? = null,
     onOidcErrorShown: () -> Unit = {},
@@ -292,6 +301,16 @@ fun LoginScreenContent(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.login_forgot_password))
+                }
+                // ADR 0028 Decision 1/2: the Local-profile entry, only shown
+                // when the embedded host has shipped (build flag on).
+                if (localModeEnabled) {
+                    TextButton(
+                        onClick = onUseLocalOnly,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.login_use_local_only))
+                    }
                 }
             }
 

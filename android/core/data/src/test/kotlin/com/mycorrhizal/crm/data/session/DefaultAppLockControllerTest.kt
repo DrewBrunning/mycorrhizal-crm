@@ -41,7 +41,11 @@ class DefaultAppLockControllerTest {
     private class Harness(var now: Long = 0L) {
         val settings = FakeLocalAuthSettingsRepository()
         val tokenStorage = FakeTokenStorage()
-        val sessionManager = DefaultSessionManager(tokenStorage, FakeSessionPrefsStorage())
+        // ADR 0028 Decision 1: a pre-seeded token (tokenStorage.stored = ...)
+        // is the legacy `jwt` slot, which init() only migrates onto a profile
+        // when a legacy server_url anchors one.
+        val prefs = FakeSessionPrefsStorage().apply { serverUrl = "https://crm.example.com" }
+        val sessionManager = DefaultSessionManager(tokenStorage, prefs)
         val controller = DefaultAppLockController(settings, sessionManager) { now }
     }
 

@@ -1715,4 +1715,23 @@
     <string name="occasions_validation_title_required">Gib einen Titel für diese Veranstaltung ein.</string>
     <string name="occasions_validation_start_required">Wähle ein Startdatum und eine Uhrzeit.</string>
     <string name="occasions_validation_end_before_start">Das Ende darf nicht vor dem Beginn liegen.</string>
+    <string name="settings_servers_title">Server</string>
+    <string name="settings_servers_add">Server hinzufügen</string>
+    <string name="settings_servers_empty">Noch keine Server konfiguriert.</string>
+    <string name="settings_servers_label">Bezeichnung</string>
+    <string name="settings_servers_url">Server-URL</string>
+    <string name="settings_servers_active">Aktiv</string>
+    <string name="settings_servers_rename">Umbenennen</string>
+    <string name="settings_servers_rename_title">Server umbenennen</string>
+    <string name="settings_servers_rename_named">%1$s umbenennen</string>
+    <string name="settings_servers_remove">Entfernen</string>
+    <string name="settings_servers_remove_title">Server entfernen</string>
+    <string name="settings_servers_remove_body">%1$s von diesem Gerät entfernen? Die gespeicherte Anmeldung wird verworfen.</string>
+    <string name="settings_servers_remove_named">%1$s entfernen</string>
+    <string name="settings_servers_local_kind">Auf diesem Gerät</string>
+    <string name="settings_servers_switch_title">Ungesendete Aktivitäten</string>
+    <string name="settings_servers_switch_body">%1$d erfasste Interaktion(en) wurden noch nicht gesendet. Beim Wechsel zu %2$s werden sie verworfen.</string>
+    <string name="settings_servers_switch_confirm">Verwerfen und wechseln</string>
+    <string name="servers_add_invalid_url">Gib eine gültige Server-URL ein, zum Beispiel https://crm.example.com.</string>
+    <string name="login_use_local_only">Nur auf diesem Gerät verwenden</string>
 </resources>

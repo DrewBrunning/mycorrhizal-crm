@@ -111,6 +111,8 @@ fun SettingsScreen(
     // Issue #424: the operational-event timeline.
     onSystemEvents: () -> Unit = {},
     onLocaleChanged: () -> Unit = {},
+    // ADR 0028 Decision 1: the server-profile management screen.
+    onServers: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -225,6 +227,7 @@ fun SettingsScreen(
             onContactFieldSettings = onContactFieldSettings,
             onManageUsers = onManageUsers,
             onSystemEvents = onSystemEvents,
+            onServers = onServers,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
@@ -279,6 +282,7 @@ fun SettingsContent(
     onContactFieldSettings: () -> Unit = {},
     onManageUsers: () -> Unit = {},
     onSystemEvents: () -> Unit = {},
+    onServers: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {},
@@ -334,6 +338,8 @@ fun SettingsContent(
             stringResource(R.string.settings_admin),
             if (state.session.isAdmin) stringResource(R.string.settings_yes) else stringResource(R.string.settings_no),
         )
+        // ADR 0028 Decision 1: manage/toggle server profiles.
+        NavigationRow(stringResource(R.string.settings_servers_title), onClick = onServers)
 
         HorizontalDivider()
 

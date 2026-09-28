@@ -1730,4 +1730,23 @@
     <string name="occasions_validation_title_required">Enter a title for this event.</string>
     <string name="occasions_validation_start_required">Choose a start date and time.</string>
     <string name="occasions_validation_end_before_start">The end time cannot be before the start time.</string>
+    <string name="settings_servers_title">Servers</string>
+    <string name="settings_servers_add">Add server</string>
+    <string name="settings_servers_empty">No servers configured yet.</string>
+    <string name="settings_servers_label">Label</string>
+    <string name="settings_servers_url">Server URL</string>
+    <string name="settings_servers_active">Active</string>
+    <string name="settings_servers_rename">Rename</string>
+    <string name="settings_servers_rename_title">Rename server</string>
+    <string name="settings_servers_rename_named">Rename %1$s</string>
+    <string name="settings_servers_remove">Remove</string>
+    <string name="settings_servers_remove_title">Remove server</string>
+    <string name="settings_servers_remove_body">Remove %1$s from this device? Its saved sign-in is discarded.</string>
+    <string name="settings_servers_remove_named">Remove %1$s</string>
+    <string name="settings_servers_local_kind">On this device</string>
+    <string name="settings_servers_switch_title">Unsent activity</string>
+    <string name="settings_servers_switch_body">%1$d captured interaction(s) have not been sent yet. Switching to %2$s will discard them.</string>
+    <string name="settings_servers_switch_confirm">Discard and switch</string>
+    <string name="servers_add_invalid_url">Enter a valid server URL, for example https://crm.example.com.</string>
+    <string name="login_use_local_only">Use on this device only</string>
 </resources>

@@ -28,38 +28,43 @@ class DeviceGrantManager @Inject constructor(
     private val sessionManager: SessionManager,
 ) : DeviceGrantRepository {
 
-    /** The plaintext grant stored for this install, or null when not enrolled. */
-    suspend fun storedGrantToken(): String? = storage.loadToken()
+    /** The plaintext grant stored for the active profile, or null. */
+    suspend fun storedGrantToken(): String? = activeProfileId()?.let { storage.loadToken(it) }
 
-    /** Whether this install has an enrolled (stored) grant. */
-    suspend fun isEnrolled(): Boolean = storage.loadToken() != null
+    /** Whether the active profile has an enrolled (stored) grant. */
+    suspend fun isEnrolled(): Boolean = storedGrantToken() != null
 
     fun enrollmentStatus(): Flow<BiometricEnrollmentStatus> = settings.biometricEnrollmentStatus()
 
     /**
-     * Enroll this device for biometric sign-in: mint a grant while the caller
-     * is authenticated, store it securely, and mark the install ENROLLED. The
-     * plaintext grant is only ever handled here, between the server response
+     * Enroll the active profile for biometric sign-in: mint a grant while the
+     * caller is authenticated, store it securely, and mark the install ENROLLED.
+     * The plaintext grant is only ever handled here, between the server response
      * and the encrypted store.
      */
-    suspend fun enroll(label: String): Result<Unit> =
-        createDeviceGrant(label).fold(
+    suspend fun enroll(label: String): Result<Unit> {
+        val profileId = activeProfileId()
+            ?: return Result.failure(IllegalStateException("No active server profile to enroll"))
+        return createDeviceGrant(label).fold(
             onSuccess = { created ->
-                storage.save(created.token, created.id)
+                storage.save(profileId, created.token, created.id)
                 settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED)
                 Result.success(Unit)
             },
             onFailure = { Result.failure(it) },
         )
+    }
 
     /**
-     * Remove biometric sign-in from this device: revoke its server grant (the
-     * lost-phone path revokes every grant if the id is somehow missing),
+     * Remove biometric sign-in from the active profile: revoke its server grant
+     * (the lost-phone path revokes every grant if the id is somehow missing),
      * clear the local copy, and drop the status back to OPTED_OUT so the user
      * is not nagged at the next login — they can re-enroll from Settings.
      */
     suspend fun removeEnrollment(): Result<Unit> {
-        val id = storage.loadGrantId()
+        val profileId = activeProfileId()
+            ?: return Result.failure(IllegalStateException("No active server profile to remove"))
+        val id = storage.loadGrantId(profileId)
         val revoke = if (id != null) {
             api.revokeDeviceGrant(id)
         } else {
@@ -67,7 +72,7 @@ class DeviceGrantManager @Inject constructor(
         }
         return revoke.fold(
             onSuccess = {
-                storage.clear()
+                storage.clear(profileId)
                 settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT)
                 Result.success(Unit)
             },
@@ -101,10 +106,13 @@ class DeviceGrantManager @Inject constructor(
      * get false fall back to the normal clear-to-login path.
      */
     suspend fun refreshSessionFromStoredGrant(): Boolean {
-        val token = storage.loadToken() ?: return false
+        val token = activeProfileId()?.let { storage.loadToken(it) } ?: return false
         return exchangeDeviceSession(token).isSuccess
     }
 
     override suspend fun revokeAllDeviceGrants(): Result<Unit> =
         api.revokeAllDeviceGrants().map { Unit }
+
+    /** The profile whose credential every per-profile grant operation targets. */
+    private suspend fun activeProfileId(): String? = sessionManager.activeProfileId()
 }

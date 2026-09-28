@@ -47,7 +47,13 @@ internal class OidcLoginCoordinator(
     suspend fun start(serverUrl: String) {
         val state = OidcPkce.generateState()
         val verifier = OidcPkce.generateVerifier()
-        pendingStore.save(state, verifier)
+        // ADR 0028 Decision 1: the pending request is per-profile. The Auth
+        // screen's URL field has already created/updated the active profile,
+        // but anchor it here too so a direct SSO tap is never profile-less.
+        sessionManager.setServerUrl(serverUrl)
+        val profileId = sessionManager.activeProfileId()
+            ?: return
+        pendingStore.save(profileId, state, verifier)
         // The verifier never goes in the URL — only its one-way S256 hash.
         val url = serverUrl.trim().trimEnd('/') +
             "/api/v1/auth/oidc/login?client=android" +
@@ -67,7 +73,7 @@ internal class OidcLoginCoordinator(
         is OidcReturn.Failure -> {
             // Best-effort clear so a later callback cannot match a stale
             // pending state; the flow is over either way.
-            pendingStore.clear()
+            sessionManager.activeProfileId()?.let { pendingStore.clear(it) }
             OidcCallbackOutcome.Failed
         }
 
@@ -80,11 +86,12 @@ internal class OidcLoginCoordinator(
         sessionManager.awaitHydrated()
         val serverUrl = sessionManager.serverUrl()
         if (serverUrl.isNullOrBlank()) return OidcCallbackOutcome.Failed
+        val profileId = sessionManager.activeProfileId() ?: return OidcCallbackOutcome.Failed
 
         // Accept only a callback bound to a live request this app started. The
         // pending request is consumed whatever the outcome.
-        val pending = pendingStore.load()
-        pendingStore.clear()
+        val pending = pendingStore.load(profileId)
+        pendingStore.clear(profileId)
         if (pending == null ||
             pending.isExpired(nowMillis()) ||
             !OidcPkce.verifyState(pending.state, result.state)

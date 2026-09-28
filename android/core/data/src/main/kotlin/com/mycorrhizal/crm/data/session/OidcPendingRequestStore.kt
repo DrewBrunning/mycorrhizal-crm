@@ -32,13 +32,20 @@ data class OidcPendingRequest(
 }
 
 /**
- * Storage for the pending OIDC request. The verifier is a short-lived secret,
- * so the production implementation encrypts it at rest.
+ * Storage for the pending OIDC request, keyed by server-profile ID (ADR 0028
+ * Decision 1: keyed the same way as `jwt:<id>`). The verifier is a short-lived
+ * secret, so the production implementation encrypts it at rest.
  */
 interface OidcPendingRequestStore {
-    suspend fun save(state: String, codeVerifier: String)
-    suspend fun load(): OidcPendingRequest?
-    suspend fun clear()
+    suspend fun save(profileId: String, state: String, codeVerifier: String)
+    suspend fun load(profileId: String): OidcPendingRequest?
+    suspend fun clear(profileId: String)
+
+    /** The pre-profiles pending request, or null. */
+    suspend fun loadLegacy(): OidcPendingRequest?
+
+    /** Removes the pre-profiles pending slots once migrated. */
+    suspend fun clearLegacy()
 }
 
 /**
@@ -62,32 +69,61 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
         )
     }
 
-    override suspend fun save(state: String, codeVerifier: String) { // # pragma: no cover — needs a real Android Keystore
+    override suspend fun save(profileId: String, state: String, codeVerifier: String) { // # pragma: no cover — needs a real Android Keystore
         prefs.edit() // # pragma: no cover
-            .putString(KEY_STATE, state) // # pragma: no cover
-            .putString(KEY_VERIFIER, codeVerifier) // # pragma: no cover
-            .putLong(KEY_CREATED_AT, System.currentTimeMillis()) // # pragma: no cover
+            .putString(stateKey(profileId), state) // # pragma: no cover
+            .putString(verifierKey(profileId), codeVerifier) // # pragma: no cover
+            .putLong(createdAtKey(profileId), System.currentTimeMillis()) // # pragma: no cover
             .apply() // # pragma: no cover
     }
 
-    override suspend fun load(): OidcPendingRequest? { // # pragma: no cover — needs a real Android Keystore
-        val state = prefs.getString(KEY_STATE, null) ?: return null // # pragma: no cover
-        val verifier = prefs.getString(KEY_VERIFIER, null) ?: return null // # pragma: no cover
+    override suspend fun load(profileId: String): OidcPendingRequest? { // # pragma: no cover — needs a real Android Keystore
+        val state = prefs.getString(stateKey(profileId), null) ?: return null // # pragma: no cover
+        val verifier = prefs.getString(verifierKey(profileId), null) ?: return null // # pragma: no cover
         return OidcPendingRequest( // # pragma: no cover
             state = state, // # pragma: no cover
             codeVerifier = verifier, // # pragma: no cover
-            createdAtMillis = prefs.getLong(KEY_CREATED_AT, 0L), // # pragma: no cover
+            createdAtMillis = prefs.getLong(createdAtKey(profileId), 0L), // # pragma: no cover
         )
     }
 
-    override suspend fun clear() { // # pragma: no cover — needs a real Android Keystore
-        prefs.edit().clear().apply() // # pragma: no cover
+    override suspend fun clear(profileId: String) { // # pragma: no cover — needs a real Android Keystore
+        prefs.edit() // # pragma: no cover
+            .remove(stateKey(profileId)) // # pragma: no cover
+            .remove(verifierKey(profileId)) // # pragma: no cover
+            .remove(createdAtKey(profileId)) // # pragma: no cover
+            .apply() // # pragma: no cover
     }
+
+    override suspend fun loadLegacy(): OidcPendingRequest? { // # pragma: no cover — needs a real Android Keystore
+        val state = prefs.getString(KEY_LEGACY_STATE, null) ?: return null // # pragma: no cover
+        val verifier = prefs.getString(KEY_LEGACY_VERIFIER, null) ?: return null // # pragma: no cover
+        return OidcPendingRequest( // # pragma: no cover
+            state = state, // # pragma: no cover
+            codeVerifier = verifier, // # pragma: no cover
+            createdAtMillis = prefs.getLong(KEY_LEGACY_CREATED_AT, 0L), // # pragma: no cover
+        )
+    }
+
+    override suspend fun clearLegacy() { // # pragma: no cover — needs a real Android Keystore
+        prefs.edit() // # pragma: no cover
+            .remove(KEY_LEGACY_STATE) // # pragma: no cover
+            .remove(KEY_LEGACY_VERIFIER) // # pragma: no cover
+            .remove(KEY_LEGACY_CREATED_AT) // # pragma: no cover
+            .apply() // # pragma: no cover
+    }
+
+    private fun stateKey(profileId: String): String = "$KEY_STATE_PREFIX$profileId"
+    private fun verifierKey(profileId: String): String = "$KEY_VERIFIER_PREFIX$profileId"
+    private fun createdAtKey(profileId: String): String = "$KEY_CREATED_AT_PREFIX$profileId"
 
     companion object {
         private const val FILE_NAME = "secure_oidc_pending"
-        private const val KEY_STATE = "state"
-        private const val KEY_VERIFIER = "code_verifier"
-        private const val KEY_CREATED_AT = "created_at"
+        private const val KEY_LEGACY_STATE = "state"
+        private const val KEY_LEGACY_VERIFIER = "code_verifier"
+        private const val KEY_LEGACY_CREATED_AT = "created_at"
+        private const val KEY_STATE_PREFIX = "state:"
+        private const val KEY_VERIFIER_PREFIX = "code_verifier:"
+        private const val KEY_CREATED_AT_PREFIX = "created_at:"
     }
 }
