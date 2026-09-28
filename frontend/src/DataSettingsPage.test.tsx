@@ -85,6 +85,19 @@ vi.mock('./components/MeerkatImportDialog', () => ({
       </div>
     ) : null,
 }));
+vi.mock('./components/MycorrhizalImportDialog', () => ({
+  default: (props: { open: boolean; onClose: () => void; onImportComplete: () => void }) =>
+    props.open ? (
+      <div>
+        <button type="button" onClick={props.onClose}>
+          mycorrhizal-close
+        </button>
+        <button type="button" onClick={props.onImportComplete}>
+          mycorrhizal-complete
+        </button>
+      </div>
+    ) : null,
+}));
 vi.mock('./components/RelationshipSuggestionsInbox', () => ({ default: () => null }));
 
 vi.mock('./api/import', async (importOriginal) => {
@@ -411,6 +424,24 @@ test('opening and closing the Meerkat import dialog, then reloading history on c
   historyMock.mockClear();
   fireEvent.click(screen.getByRole('button', { name: 'Import from Meerkat' }));
   fireEvent.click(await screen.findByRole('button', { name: 'meerkat-complete' }));
+
+  await waitFor(() => expect(historyMock).toHaveBeenCalledTimes(1));
+});
+
+test('opening and closing the Mycorrhizal import dialog, then reloading history on completion', async () => {
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Import account bundle' }));
+  expect(await screen.findByRole('button', { name: 'mycorrhizal-close' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'mycorrhizal-close' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'mycorrhizal-close' })).not.toBeInTheDocument(),
+  );
+
+  historyMock.mockClear();
+  fireEvent.click(screen.getByRole('button', { name: 'Import account bundle' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'mycorrhizal-complete' }));
 
   await waitFor(() => expect(historyMock).toHaveBeenCalledTimes(1));
 });

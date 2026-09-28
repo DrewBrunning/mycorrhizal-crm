@@ -515,19 +515,22 @@ design is ADR-0010 / CON-04, issue #479).
   `backend/services/alerting_conditions_test.go`
   (`TestBackupStaleConditionMeasuresOperatorBackups`).
 
-## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log)
+## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log / account bundle)
 
 - **Where / who**: generated per-request and streamed directly to the HTTP response
-  (`backend/controllers/export_controller.go`) — never written to disk server-side (no `os.WriteFile`
-  anywhere in the export path). Once downloaded, the file is the requesting user's own device/browser —
-  outside this app's retention control by definition (same boundary as any file a user saves from any
-  web app). Issue #416 added a fifth export in this same category: `GET /audit/export`
-  (`ExportAuditLog`), an unbounded CSV of the caller's own audit trail — same generation/no-server-copy
-  shape as the other four.
-- **Retention**: nothing server-side to retain.
+  (`backend/controllers/export_controller.go`, `backend/controllers/account_bundle_controller.go`) —
+  never written to disk server-side (no `os.WriteFile` anywhere in the export path). Once downloaded,
+  the file is the requesting user's own device/browser — outside this app's retention control by
+  definition (same boundary as any file a user saves from any web app). Issue #416 added a fifth export
+  in this same category: `GET /audit/export` (`ExportAuditLog`), an unbounded CSV of the caller's own
+  audit trail — same generation/no-server-copy shape as the other four. Issue #1259 added the sixth,
+  `GET /export/account` (the account bundle), and #1260 the `mycorrhizal` import source that consumes it.
+- **Retention**: nothing server-side to retain. An uploaded bundle is held only in the import session's
+  memory for the wizard's lifetime (60-minute idle expiry, 6-hour hard cap; `services/mycorrhizal_import_session.go`)
+  and is never written to disk.
 - **Deletion / propagation**: nothing to delete — there is no export artifact that outlives the request.
   CSV-formula-injection payloads are neutralized on every CSV path *before* the export leaves the server.
-  Sensitivity filtering, however, is **not** uniform across the five exports, and the split is deliberate
+  Sensitivity filtering, however, is **not** uniform across the six exports, and the split is deliberate
   (issue #861):
   - **vCard 3 / vCard 4 / JSContact** — sensitive-above-`normal` fields are filtered in the projection
     query (`sensitivity` classification, ASVS 8.3.4), re-includable only via the explicit
@@ -546,6 +549,14 @@ design is ADR-0010 / CON-04, issue #479).
     nothing, vCard withholds exactly the sensitive rows — over one seeded dataset, with a
     normal-sensitivity control paired to every absence check. Making the CSV filter is a policy change,
     not a bug fix.
+  - **The account bundle (`GET /export/account`, `ExportAccountBundle`, issue #1259)** — the second
+    full-fidelity exception, for the same reason as the CSV: it carries every sensitivity and every
+    `status: suggested` row with no `include_sensitive` parameter at all. It is the versioned,
+    re-importable document that moves a user's own data between their own instances (server-to-server,
+    or a local-only profile attaching to a remote server), so withholding there would be silent data
+    loss on the user's own migration. Photos are embedded as base64 data URIs (size-capped), and
+    attachments are listed by metadata only with the omission recorded in the document. Pinned by
+    `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip).
   - **The audit-log export's** `before_snapshot` column is omitted unless the caller explicitly passes
     `?include_snapshots=true`: it is already credential-redacted at write time (`auditDenyList`,
     `models/audit.go`) but is **not** filtered by contact-field sensitivity the way the three

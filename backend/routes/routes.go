@@ -252,6 +252,18 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMeerkatImport)
 			protected.POST("/contacts/import/meerkat/cancel", controllers.CancelMeerkatImport)
 
+			// Mycorrhizal account-bundle import source (issue #1260, ADR 0028
+			// Decision 3) — upload a bundle produced by GET /export/account,
+			// review (with the loss report) then confirm through the shared
+			// source-import engine. The upload route carries its own body-size
+			// limit (MaxMycorrhizalBundleSize).
+			protected.POST("/import/mycorrhizal/upload", middleware.BodySizeLimitMiddleware(services.MaxMycorrhizalBundleSize), controllers.UploadMycorrhizalBundle)
+			protected.POST("/import/mycorrhizal/fetch", middleware.ValidateJSONMiddleware(&models.MycorrhizalFetchRequest{}), controllers.StartMycorrhizalFetch)
+			protected.GET("/import/mycorrhizal/status", controllers.GetMycorrhizalImportStatus)
+			protected.GET("/import/mycorrhizal/preview", controllers.GetMycorrhizalImportPreview)
+			protected.POST("/import/mycorrhizal/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMycorrhizalImport)
+			protected.POST("/import/mycorrhizal/cancel", controllers.CancelMycorrhizalImport)
+
 			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload
@@ -475,6 +487,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// producing the file — same shared computation as the export
 			// handlers, loss-report-only response.
 			protected.GET("/export/preflight", controllers.ExportPreflight)
+			// Issue #1259 (ADR 0028 Decision 3): the full-fidelity, re-importable
+			// account bundle.
+			protected.GET("/export/account", controllers.ExportAccountBundle)
 
 			// Graph/Network visualization route
 			protected.GET("/graph", controllers.GetGraph)

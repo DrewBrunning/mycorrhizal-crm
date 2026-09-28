@@ -59,6 +59,24 @@
         }
       }
     },
+    "export.account_bundle": {
+      "category": "export",
+      "expected_memory_growth": "linear",
+      "profiles": {
+        "smoke": {
+          "rows_touched": 170,
+          "row_scale": 350,
+          "probe_stalled_out": false,
+          "output_present": true
+        },
+        "typical": {
+          "rows_touched": 918,
+          "row_scale": 945,
+          "probe_stalled_out": false,
+          "output_present": true
+        }
+      }
+    },
     "export.bundle": {
       "category": "export",
       "expected_memory_growth": "linear",

@@ -1406,11 +1406,13 @@
             "jscontact": "JSContact",
             "records": "Device",
             "monica": "Monica",
-            "meerkat": "Meerkat"
+            "meerkat": "Meerkat",
+            "mycorrhizal": "Mycorrhizal"
           }
         },
         "monicaButton": "Import from Monica",
-        "meerkatButton": "Import from Meerkat"
+        "meerkatButton": "Import from Meerkat",
+        "mycorrhizalButton": "Import account bundle"
       },
       "propose": {
         "title": "Propose data",
@@ -1612,6 +1614,17 @@
         "found": "{{contacts}} contacts, {{relationships}} relationships, {{notes}} notes.",
         "pickUser": "This database has more than one user — choose whose contacts to import:",
         "userOption": "{{name}} — {{count}} contacts",
+        "start": "Start import"
+      }
+    },
+    "mycorrhizalImport": {
+      "title": "Import account bundle",
+      "connect": {
+        "description": "Move your data to this server from a local-only profile or another Mycorrhizal instance. Upload the account bundle file exported from the other installation.",
+        "chooseFile": "Choose bundle file",
+        "uploading": "Uploading…",
+        "fileHelp": "The .json account bundle, exported with \"Export account bundle\". Nothing is kept after the import.",
+        "found": "{{contacts}} contacts, {{relationships}} relationships, {{notes}} notes.",
         "start": "Start import"
       }
     }

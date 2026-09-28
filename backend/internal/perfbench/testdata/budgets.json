@@ -88,6 +88,10 @@
       "max_peak_heap_mib": 128,
       "reason": "ExportData builds one bytes.Buffer for the whole multi-section dump before the first byte is sent (linear, expected — 27 MiB at typical). 128 MiB is ~4.5x the measured typical peak; an export that also duplicated the buffer, or stopped freeing per-record scratch, would trip it well before OOM on a 512 MiB box."
     },
+    "export.account_bundle": {
+      "max_peak_heap_mib": 128,
+      "reason": "The account bundle marshals the whole versioned document (every entity plus embedded base64 photos) into one buffer before the first byte is sent, so peak heap is linear in account size like the other exporters. Photos are size-capped per contact (MaxAccountBundlePhotoBytes), bounding the worst case; 128 MiB is the same OOM-boundary ceiling as the CSV/VCF/JSContact exporters."
+    },
     "export.jscontact": {
       "max_peak_heap_mib": 128,
       "reason": "Same whole-result buffering as export.bundle (21 MiB at typical), JSContact serialization. Same 128 MiB OOM-boundary ceiling."

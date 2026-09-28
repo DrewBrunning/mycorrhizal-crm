@@ -3,6 +3,7 @@
 # matches internal/mutationscope.Scopes again.
 unleash:
     exclude-files:
+        - ^account_bundle_controller\.go$
         - ^activity_controller\.go$
         - ^address_suggestion_controller\.go$
         - ^api_token_controller\.go$
@@ -47,6 +48,7 @@ unleash:
         - ^meerkat_import_controller\.go$
         - ^metrics_controller\.go$
         - ^monica_import_controller\.go$
+        - ^mycorrhizal_import_controller\.go$
         - ^note_controller\.go$
         - ^notification_controller\.go$
         - ^notification_health_controller\.go$

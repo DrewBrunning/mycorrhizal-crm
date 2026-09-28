@@ -350,6 +350,12 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/contacts/import/meerkat/preview":   {class: classProtected},
 		"POST /api/v1/contacts/import/meerkat/confirm":  {class: classProtected},
 		"POST /api/v1/contacts/import/meerkat/cancel":   {class: classProtected},
+		"POST /api/v1/import/mycorrhizal/upload":        {class: classProtected},
+		"POST /api/v1/import/mycorrhizal/fetch":         {class: classProtected},
+		"GET /api/v1/import/mycorrhizal/status":         {class: classProtected},
+		"GET /api/v1/import/mycorrhizal/preview":        {class: classProtected},
+		"POST /api/v1/import/mycorrhizal/confirm":       {class: classProtected},
+		"POST /api/v1/import/mycorrhizal/cancel":        {class: classProtected},
 
 		// --- contact shares -------------------------------------------------
 		"POST /api/v1/contact-shares":             {class: classProtected},
@@ -526,6 +532,7 @@ func buildTable(s seeded) map[string]authzRow {
 		// Issue #442 (DATA-02): loss-report preflight, user-scoped exactly
 		// like the exports it mirrors.
 		"GET /api/v1/export/preflight": {class: classProtected},
+		"GET /api/v1/export/account":   {class: classProtected},
 
 		// --- graph / search -------------------------------------------------
 		"GET /api/v1/graph":             {class: classProtected},

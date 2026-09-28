@@ -115,18 +115,29 @@ type MappedContact struct {
 // (CLAUDE.md domain note). Status defaults to confirmed, Sensitivity to
 // normal.
 type MappedRelationship struct {
-	Ref         SourceRef
+	Ref SourceRef
+	// ID, when set, preserves the source's stable edge UUID (the account
+	// bundle). Empty for external sources, letting BeforeCreate mint one.
+	ID          string
 	Source      SourceRef
 	Target      SourceRef
 	Type        string
 	Directional bool
 	Status      string
 	Sensitivity string
+	// Provenance and Confidence preserve the edge's provenance token and score
+	// when the source supplies them (the account bundle); empty/zero falls
+	// back to the import defaults.
+	Provenance string
+	Confidence float64
 }
 
-// MappedNote is one note on a plan contact.
+// MappedNote is one note on a plan contact. UUID, when set, preserves the
+// source's stable note identity (the account bundle uses it so a re-export is
+// comparable).
 type MappedNote struct {
 	Ref     SourceRef
+	UUID    string
 	Contact SourceRef
 	Content string
 	Date    string // RFC3339-ish; parsed by the engine into the Note's time.Time
@@ -134,13 +145,16 @@ type MappedNote struct {
 
 // MappedActivity is one shared activity with a set of plan contacts.
 type MappedActivity struct {
-	Ref         SourceRef
+	Ref SourceRef
+	// UUID, when set, preserves the source's stable activity identity.
+	UUID        string
 	Contacts    []SourceRef
 	Title       string
 	Description string
 	Location    string
 	Date        string
 	Type        string // Activity.Type (InteractionType*), best-effort
+	ExternalRef string
 }
 
 // MappedReminder is one reminder on a plan contact. Recurrence uses the local
@@ -148,16 +162,22 @@ type MappedActivity struct {
 // RFC3339-ish.
 type MappedReminder struct {
 	Ref                   SourceRef
+	UUID                  string
 	Contact               SourceRef
 	Message               string
 	RemindAt              string
 	Recurrence            string
 	ReoccurFromCompletion *bool
+	Completed             bool
+	LastSent              *time.Time
+	LifeEventID           string
+	OccasionObligationID  string
 }
 
 // MappedGift is one gift record on a plan contact.
 type MappedGift struct {
 	Ref         SourceRef
+	ID          string
 	Contact     SourceRef
 	Status      string // idea|purchased|given|received
 	Occasion    string
@@ -167,16 +187,25 @@ type MappedGift struct {
 	Date        string
 	ValueCents  int64
 	Currency    string
+	LifeEventID string
+	// ActivityUUID references a MappedActivity by its stable UUID.
+	ActivityUUID string
 }
 
 // MappedPreference is one preference on a plan contact.
 type MappedPreference struct {
-	Ref      SourceRef
-	Contact  SourceRef
-	Category string
-	Key      string
-	Value    string
-	Notes    string
+	Ref           SourceRef
+	ID            string
+	Contact       SourceRef
+	Category      string
+	Key           string
+	Value         string
+	Notes         string
+	Level         *string
+	Source        string
+	Confidence    *float64
+	LastConfirmed *time.Time
+	Sensitivity   string
 }
 
 // MappedHouseholdMember is one membership of a plan contact in a household.
@@ -190,6 +219,7 @@ type MappedHouseholdMember struct {
 // MappedHousehold is one co-residence grouping.
 type MappedHousehold struct {
 	Ref     SourceRef
+	ID      string
 	Name    string
 	Type    string // family_unit|roommates|other
 	Address *contactmodel.Address
@@ -199,6 +229,7 @@ type MappedHousehold struct {
 // MappedCircle is one social grouping with member plan contacts.
 type MappedCircle struct {
 	Ref     SourceRef
+	ID      string
 	Name    string
 	Members []SourceRef
 }
@@ -206,6 +237,7 @@ type MappedCircle struct {
 // MappedTag is one attribute with tagged plan contacts.
 type MappedTag struct {
 	Ref      SourceRef
+	ID       string
 	Name     string
 	Contacts []SourceRef
 }
@@ -219,6 +251,13 @@ type MappedCustomField struct {
 	Key     string
 	Label   string
 	Value   string
+	// RawValue, when set, is the already-JSON-encoded value (the account
+	// bundle stores typed values as JSON, not a string); it takes precedence
+	// over Value.
+	RawValue json.RawMessage
+	// FieldDefinitionID, when set, is the source's stable definition ID (the
+	// account bundle), preserved so the definition round-trips.
+	FieldDefinitionID string
 }
 
 // ImportSourcePlan is the complete mapped output of one source: every record
@@ -238,6 +277,18 @@ type ImportSourcePlan struct {
 	Circles       []MappedCircle
 	Tags          []MappedTag
 	CustomFields  []MappedCustomField
+
+	// The account bundle (issue #1259) extends the plan to the remaining
+	// user-authored entities the original Meerkat/Monica mappings did not
+	// cover. External sources leave these empty.
+	FieldDefinitions    []MappedFieldDefinition
+	ReminderCompletions []MappedReminderCompletion
+	LifeEvents          []MappedLifeEvent
+	ConversationAgenda  []MappedConversationAgenda
+	CadencePolicies     []MappedCadencePolicy
+	DataDecayPolicies   []MappedDataDecayPolicy
+	Occasions           []MappedOccasion
+	OccasionEvents      []MappedOccasionEvent
 
 	// Report carries every issue the mapping and the execution produced.
 	Report ImportReport
@@ -367,8 +418,9 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 }
 
 // importGraphKinds is the number of pass-2 entity-kind import calls in
-// executeSourceImport — used only to size the progress bar's total.
-const importGraphKinds = 10
+// executeSourceImport — used only to size the progress bar's total. Keep in
+// sync with the graphKinds slice below.
+const importGraphKinds = 18
 
 func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func()) error {
 	// Issue #434/#498 failure-injection seam: an armed fault fails the whole
@@ -506,14 +558,27 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 	// promptly on a large graph.
 	graphKinds := []func() error{
 		func() error { return importRelationships(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importFieldDefinitions(tx, userID, plan, imported, skipImported, report) },
 		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importCircles(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importTags(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importGifts(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importPreferences(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importNotes(tx, userID, plan, imported, refToID, skipImported, report) },
+		// Activities before gifts/agenda (both resolve an activity by UUID).
 		func() error { return importActivities(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importReminders(tx, userID, plan, imported, refToID, skipImported, report) },
+		func() error { return importLifeEvents(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importOccasions(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error {
+			return importOccasionEvents(tx, userID, plan, imported, uidOf, skipImported, report)
+		},
+		func() error { return importGifts(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importConversationAgenda(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importCadencePolicies(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importDataDecayPolicies(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error {
+			return importReminderCompletions(tx, userID, plan, imported, uidOf, refToID, skipImported, report)
+		},
 		func() error { return importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report) },
 	}
 	for _, importKind := range graphKinds {
@@ -663,25 +728,42 @@ func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, import
 			})
 			continue
 		}
-		def, ok := defByKey[f.Key]
-		if !ok {
-			def = models.FieldDefinition{
-				UserID:      userID,
-				Label:       f.Label,
-				Key:         f.Key,
-				Target:      models.FieldDefinitionTargetContact,
-				Type:        models.FieldTypeText,
-				Projection:  "internal-only",
-				Sensitivity: models.RelationshipSensitivityNormal,
-			}
-			if err := tx.Create(&def).Error; err != nil {
-				report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryInvalid, Message: err.Error()})
-				continue
-			}
-			defByKey[f.Key] = def
+		cacheKey := f.FieldDefinitionID
+		if cacheKey == "" {
+			cacheKey = "key:" + f.Key
 		}
-		rawValue, _ := json.Marshal(f.Value)
-		fv := models.FieldValue{FieldDefinitionID: def.ID, UserID: userID, EntityID: uid, Value: json.RawMessage(rawValue)}
+		def, ok := defByKey[cacheKey]
+		if !ok {
+			// A bundle supplies the definition's stable ID and the definition
+			// rows are imported up front; reuse it. External sources leave the
+			// ID empty and get one FieldDefinition per unique key, as before.
+			if f.FieldDefinitionID != "" {
+				if err := tx.Where("user_id = ? AND id = ?", userID, f.FieldDefinitionID).First(&def).Error; err != nil {
+					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryUnsupported, Message: "references a field definition that was not imported"})
+					continue
+				}
+			} else {
+				def = models.FieldDefinition{
+					UserID:      userID,
+					Label:       f.Label,
+					Key:         f.Key,
+					Target:      models.FieldDefinitionTargetContact,
+					Type:        models.FieldTypeText,
+					Projection:  "internal-only",
+					Sensitivity: models.RelationshipSensitivityNormal,
+				}
+				if err := tx.Create(&def).Error; err != nil {
+					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryInvalid, Message: err.Error()})
+					continue
+				}
+			}
+			defByKey[cacheKey] = def
+		}
+		rawValue := f.RawValue
+		if len(rawValue) == 0 {
+			rawValue, _ = json.Marshal(f.Value)
+		}
+		fv := models.FieldValue{FieldDefinitionID: def.ID, UserID: userID, EntityID: uid, Value: rawValue}
 		if err := tx.Create(&fv).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryInvalid, Message: err.Error()})
 			continue
@@ -753,14 +835,23 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 		if sensitivity == "" {
 			sensitivity = models.RelationshipSensitivityNormal
 		}
+		provenance := rel.Provenance
+		if provenance == "" {
+			provenance = models.RelationshipSourceImported
+		}
+		confidence := rel.Confidence
+		if confidence == 0 {
+			confidence = 1
+		}
 		edge := models.RelationshipEdge{
+			ID:          rel.ID,
 			UserID:      userID,
 			SourceID:    sourceUID,
 			TargetID:    targetUID,
 			Type:        rel.Type,
 			Directional: rel.Directional,
-			Source:      models.RelationshipSourceImported,
-			Confidence:  1,
+			Source:      provenance,
+			Confidence:  confidence,
 			Status:      status,
 			Sensitivity: sensitivity,
 		}
@@ -807,6 +898,7 @@ func importHouseholds(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			continue
 		}
 		household := models.Household{
+			ID:      hh.ID,
 			UserID:  userID,
 			Name:    hh.Name,
 			Type:    hh.Type,
@@ -850,7 +942,7 @@ func importCircles(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported ma
 		if skipImported(record, c.Ref) {
 			continue
 		}
-		circle := models.Circle{UserID: userID, Name: c.Name}
+		circle := models.Circle{ID: c.ID, UserID: userID, Name: c.Name}
 		if err := tx.Create(&circle).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "circle", Category: ImportIssueCategoryInvalid, Message: err.Error()})
 			continue
@@ -882,7 +974,7 @@ func importTags(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[s
 		if skipImported(record, t.Ref) {
 			continue
 		}
-		tag := models.Tag{UserID: userID, Name: t.Name}
+		tag := models.Tag{ID: t.ID, UserID: userID, Name: t.Name}
 		if err := tx.Create(&tag).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "tag", Category: ImportIssueCategoryInvalid, Message: err.Error()})
 			continue
@@ -919,6 +1011,7 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 			continue
 		}
 		gift := models.Gift{
+			ID:          g.ID,
 			UserID:      userID,
 			EntityID:    uid,
 			Status:      g.Status,
@@ -928,6 +1021,8 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 			Notes:       g.Notes,
 			ValueCents:  g.ValueCents,
 			Currency:    g.Currency,
+			LifeEventID: g.LifeEventID,
+			ActivityID:  activityIDByUUID(tx, userID, g.ActivityUUID),
 		}
 		if g.Date != "" {
 			if t, err := parseSourceTime(g.Date); err == nil {
@@ -967,15 +1062,27 @@ func importPreferences(tx *gorm.DB, userID uint, plan *ImportSourcePlan, importe
 		if !ok {
 			continue
 		}
+		source := p.Source
+		if source == "" {
+			source = models.PreferenceSourceExternal
+		}
+		sensitivity := p.Sensitivity
+		if sensitivity == "" {
+			sensitivity = models.RelationshipSensitivityNormal
+		}
 		pref := models.Preference{
-			UserID:      userID,
-			EntityID:    uid,
-			Category:    p.Category,
-			Key:         p.Key,
-			Value:       p.Value,
-			Notes:       p.Notes,
-			Source:      models.PreferenceSourceExternal,
-			Sensitivity: models.RelationshipSensitivityNormal,
+			ID:            p.ID,
+			UserID:        userID,
+			EntityID:      uid,
+			Category:      p.Category,
+			Key:           p.Key,
+			Value:         p.Value,
+			Level:         p.Level,
+			Notes:         p.Notes,
+			Source:        source,
+			Confidence:    p.Confidence,
+			LastConfirmed: p.LastConfirmed,
+			Sensitivity:   sensitivity,
 		}
 		if err := tx.Create(&pref).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "preference", Category: ImportIssueCategoryInvalid, Message: err.Error()})
@@ -1014,7 +1121,7 @@ func importNotes(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 			report.appendIssue(ImportIssue{Record: record, Field: "note.date", Category: ImportIssueCategoryInvalid, Message: "unparseable date: " + n.Date})
 			continue
 		}
-		note := models.Note{UserID: userID, Content: n.Content, Date: date, ContactID: &contactID}
+		note := models.Note{UUID: n.UUID, UserID: userID, Content: n.Content, Date: date, ContactID: &contactID}
 		if err := tx.Create(&note).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "note", Category: ImportIssueCategoryInvalid, Message: err.Error()})
 			continue
@@ -1058,12 +1165,14 @@ func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			continue
 		}
 		activity := models.Activity{
+			UUID:        a.UUID,
 			UserID:      userID,
 			Title:       a.Title,
 			Description: a.Description,
 			Location:    a.Location,
 			Date:        date,
 			Type:        a.Type,
+			ExternalRef: a.ExternalRef,
 		}
 		if err := tx.Create(&activity).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			report.appendIssue(ImportIssue{Record: record, Field: "activity", Category: ImportIssueCategoryInvalid, Message: err.Error()})
@@ -1105,12 +1214,24 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 			report.appendIssue(ImportIssue{Record: record, Field: "reminder.remind_at", Category: ImportIssueCategoryInvalid, Message: "unparseable date: " + r.RemindAt})
 			continue
 		}
+		var lifeEventID, occasionID *string
+		if r.LifeEventID != "" {
+			lifeEventID = &r.LifeEventID
+		}
+		if r.OccasionObligationID != "" {
+			occasionID = &r.OccasionObligationID
+		}
 		reminder := models.Reminder{
+			UUID:                  r.UUID,
 			UserID:                userID,
 			Message:               r.Message,
 			RemindAt:              remindAt,
 			Recurrence:            r.Recurrence,
 			ReoccurFromCompletion: r.ReoccurFromCompletion,
+			Completed:             r.Completed,
+			LastSent:              r.LastSent,
+			LifeEventID:           lifeEventID,
+			OccasionObligationID:  occasionID,
 			ContactID:             &contactID,
 		}
 		if err := tx.Create(&reminder).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
