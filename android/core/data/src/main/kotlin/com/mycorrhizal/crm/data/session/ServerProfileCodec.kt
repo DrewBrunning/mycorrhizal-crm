@@ -22,7 +22,7 @@ internal object ServerProfileCodec {
 
     fun encode(snapshot: ProfilesSnapshot): String =
         snapshot.profiles.joinToString("\n") { profile ->
-            val kind = when (val k = profile.kind) {
+            val kind = when (profile.kind) {
                 is ServerProfileKind.Remote -> KIND_REMOTE
                 ServerProfileKind.Local -> KIND_LOCAL
             }
