@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +20,12 @@ type Reminder struct {
 	EmailSent             bool       `gorm:"default:false" json:"email_sent"`
 	LastSent              *time.Time `gorm:"default:null" json:"last_sent"`
 	ContactID             *uint      `gorm:"not null" json:"contact_id" validate:"required"`
-	LifeEventID           *string    `gorm:"index" json:"life_event_id,omitempty"`
+	// UUID is the stable portable identity the account bundle carries for a
+	// reminder (issue #1260, ADR 0028 Decision 3). Generated in BeforeCreate
+	// when empty; migration 000067 adds the column and backfills every
+	// existing row. Kept off the existing reminder wire shape.
+	UUID        string  `gorm:"column:uuid;index" json:"-"`
+	LifeEventID *string `gorm:"index" json:"life_event_id,omitempty"`
 	// OccasionObligationID mirrors LifeEventID exactly (docs/adrs/0024-occasions.md,
 	// issue #387, ticket #1223) — the materialized-reminder link
 	// syncOccasionObligationReminder uses to find and hard-delete/regenerate
@@ -50,6 +56,16 @@ type Reminder struct {
 	revisionStampedOnCreate bool
 }
 
+// BeforeCreate generates the stable portable UUID for a new reminder (issue
+// #1260) when the caller did not supply one; an account-bundle import supplies
+// the source row's UUID so a re-export is comparable.
+func (r *Reminder) BeforeCreate(tx *gorm.DB) error {
+	if r.UUID == "" {
+		r.UUID = uuid.New().String()
+	}
+	return nil
+}
+
 // AfterCreate stamps the initial revision and derives the ETag from it (ADR
 // 0006), mirroring Contact.AfterCreate. UpdateColumns bypasses GORM's update
 // hooks, so this cannot recursively trigger AfterSave. The marker tells the
@@ -66,9 +82,23 @@ func (r *Reminder) AfterCreate(tx *gorm.DB) error {
 
 type ReminderCompletion struct {
 	gorm.Model
-	UserID      uint      `gorm:"not null;index" json:"-"`
-	ReminderID  *uint     `gorm:"index" json:"reminder_id,omitempty"`
-	ContactID   uint      `gorm:"not null;index" json:"contact_id"`
+	UserID     uint  `gorm:"not null;index" json:"-"`
+	ReminderID *uint `gorm:"index" json:"reminder_id,omitempty"`
+	ContactID  uint  `gorm:"not null;index" json:"contact_id"`
+	// UUID is the stable portable identity the account bundle carries for a
+	// completion (issue #1260, ADR 0028 Decision 3). Generated in BeforeCreate
+	// when empty; migration 000067 adds the column and backfills every
+	// existing row. Kept off the existing completion wire shape.
+	UUID        string    `gorm:"column:uuid;index" json:"-"`
 	Message     string    `gorm:"not null;type:text;serializer:encrypted" json:"message"`
 	CompletedAt time.Time `gorm:"not null" json:"completed_at"`
+}
+
+// BeforeCreate generates the stable portable UUID for a new completion (issue
+// #1260) when the caller did not supply one.
+func (rc *ReminderCompletion) BeforeCreate(tx *gorm.DB) error {
+	if rc.UUID == "" {
+		rc.UUID = uuid.New().String()
+	}
+	return nil
 }

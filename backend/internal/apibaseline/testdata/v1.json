@@ -3719,6 +3719,25 @@
     },
     {
       "method": "GET",
+      "path": "/export/account",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:AccountBundle"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "507",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/export/jscontact",
       "parameters": [
         {
@@ -4988,6 +5007,104 @@
         {
           "status": "503",
           "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/import/mycorrhizal/cancel",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/import/mycorrhizal/confirm",
+      "parameters": null,
+      "request_body": "ref:MonicaConfirmRequest",
+      "responses": [
+        {
+          "status": "202",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/import/mycorrhizal/fetch",
+      "parameters": null,
+      "request_body": "ref:MycorrhizalFetchRequest",
+      "responses": [
+        {
+          "status": "202",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/import/mycorrhizal/preview",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaPreviewResponse"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/import/mycorrhizal/status",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaImportStatus"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/import/mycorrhizal/upload",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MycorrhizalUploadResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "422",
+          "schema": ""
+        },
+        {
+          "status": "429",
+          "schema": ""
         }
       ]
     },
@@ -7929,6 +8046,197 @@
             "roommates",
             "other"
           ]
+        }
+      ]
+    },
+    {
+      "name": "AccountBundle",
+      "properties": [
+        {
+          "name": "attachments",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "exported_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "mycorrhizal-account"
+          ]
+        },
+        {
+          "name": "omitted",
+          "type": "ref:AccountBundleOmissions",
+          "required": true
+        },
+        {
+          "name": "plan",
+          "type": "ref:AccountBundlePlan",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "required": true,
+          "enum": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AccountBundleAttachment",
+      "properties": [
+        {
+          "name": "contact_vcard_uid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "content_type",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "original_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "size_bytes",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "AccountBundleOmissions",
+      "properties": [
+        {
+          "name": "attachments",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "photos_omitted",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "AccountBundlePlan",
+      "properties": [
+        {
+          "name": "activities",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "cadence_policies",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "circles",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "contacts",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "conversation_agenda",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_field_definitions",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_field_values",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "data_decay_policies",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "gifts",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "households",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "life_events",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "occasion_events",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "occasions",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "preferences",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "relationships",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "reminder_completions",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "reminders",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "type": "array\u003cobject\u003e",
+          "required": false
         }
       ]
     },
@@ -13717,7 +14025,8 @@
             "jscontact",
             "records",
             "monica",
-            "meerkat"
+            "meerkat",
+            "mycorrhizal"
           ]
         },
         {
@@ -15084,6 +15393,136 @@
           "name": "reminders",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "MycorrhizalBundleCounts",
+      "properties": [
+        {
+          "name": "activities",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "cadence_policies",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "circles",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contacts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "conversation_agenda",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "custom_field_definitions",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "custom_field_values",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "data_decay_policies",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "gifts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "households",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "life_events",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "occasion_events",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "occasions",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "preferences",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "relationships",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminder_completions",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminders",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MycorrhizalFetchRequest",
+      "properties": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "MycorrhizalUploadResponse",
+      "properties": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "totals",
+          "type": "ref:MycorrhizalBundleCounts",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "required": true
         }
       ]
     },

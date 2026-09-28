@@ -2943,6 +2943,109 @@ paths:
         "404":
           description: Unknown or expired session.
 
+  # --- Mycorrhizal account-bundle import source (issue #1260, ADR 0028) ---
+  # Upload a bundle produced by GET /export/account, review (with the loss
+  # report) then confirm through the shared source-import engine. Confirming
+  # re-uploading the same bundle is a no-op for entities already imported
+  # (the import_source_links ledger is keyed on the bundle's stable IDs).
+  /import/mycorrhizal/upload:
+    post:
+      summary: Upload a Mycorrhizal account bundle and open an import session
+      operationId: uploadMycorrhizalBundle
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Bundle validated; per-section totals + a new session ID returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MycorrhizalUploadResponse"
+        "400":
+          description: Not a readable bundle, too large, or over the account-size cap.
+        "422":
+          description: Unsupported bundle format or version.
+        "429":
+          description: Too many concurrent Mycorrhizal import sessions for this user.
+  /import/mycorrhizal/fetch:
+    post:
+      operationId: startMycorrhizalFetch
+      summary: Start the background map + preview build for an uploaded bundle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MycorrhizalFetchRequest"
+      responses:
+        "202":
+          description: Mapping started; poll GET /import/mycorrhizal/status.
+  /import/mycorrhizal/status:
+    get:
+      operationId: getMycorrhizalImportStatus
+      summary: Get the phase and progress of a Mycorrhizal import session
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The current phase and progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaImportStatus"
+  /import/mycorrhizal/preview:
+    get:
+      operationId: getMycorrhizalImportPreview
+      summary: Get the review rows and loss report for a prepared bundle
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The review payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaPreviewResponse"
+  /import/mycorrhizal/confirm:
+    post:
+      operationId: confirmMycorrhizalImport
+      summary: Apply the reviewed bundle through the shared import engine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaConfirmRequest"
+      responses:
+        "202":
+          description: Import started; poll GET /import/mycorrhizal/status.
+  /import/mycorrhizal/cancel:
+    post:
+      operationId: cancelMycorrhizalImport
+      summary: Cancel an in-flight Mycorrhizal import, or drop the session
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: In-flight import cancelled (rolled back), or the session was dropped.
+
   # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
@@ -7776,6 +7879,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /export/account:
+    get:
+      summary: Export the full-fidelity, re-importable account bundle
+      operationId: exportAccountBundle
+      description: >
+        Issue #1259 (ADR 0028 Decision 3). Versioned JSON shaped after the
+        source-import plan, carrying every user-authored entity with a stable
+        portable ID. Full-fidelity: every sensitivity level and
+        status=suggested row is included with no include_sensitive parameter,
+        for the same reason the flat CSV export is (issue #861) — it is the
+        user's own data going to the user's own destination. Photos are
+        embedded as base64 data URIs in each card (size-capped); attachments
+        are listed by metadata only and recorded as omitted. Response headers
+        carry the bundle version and photo counts.
+      responses:
+        "200":
+          description: The account bundle JSON.
+          headers:
+            X-Mycorrhizal-Bundle-Version:
+              schema: { type: integer }
+            X-Mycorrhizal-Bundle-Contacts:
+              schema: { type: integer }
+            X-Mycorrhizal-Bundle-Photos:
+              schema: { type: integer }
+            X-Mycorrhizal-Bundle-Photos-Omitted:
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountBundle"
+              example:
+                format: mycorrhizal-account
+                version: 1
+                exported_at: "2026-09-28T12:00:00Z"
+                plan:
+                  contacts: []
+                  relationships: []
+                  notes: []
+                  reminders: []
+                  reminder_completions: []
+                  activities: []
+                  life_events: []
+                  gifts: []
+                  preferences: []
+                  conversation_agenda: []
+                  cadence_policies: []
+                  data_decay_policies: []
+                  households: []
+                  circles: []
+                  tags: []
+                  custom_field_definitions: []
+                  custom_field_values: []
+                  occasions: []
+                  occasion_events: []
+                attachments: []
+                omitted:
+                  attachments: true
+                  photos_omitted: 0
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "507":
+          description: The account exceeds the single-request export limit.
 
   # --- Graph ---
   /graph:
@@ -14740,7 +14909,7 @@ components:
         user_id: { type: integer }
         format:
           type: string
-          enum: [csv, vcf, jscontact, records, monica, meerkat]
+          enum: [csv, vcf, jscontact, records, monica, meerkat, mycorrhizal]
           description: "Source of the imported data. Mirrored by migration 000042's CHECK (widened by 000046 for the source-import formats) and frontend/src/api/import.ts."
         total_processed: { type: integer }
         created: { type: integer }
@@ -14919,6 +15088,104 @@ components:
           type: integer
           format: int64
           description: Which source user's data to import; omit to use the default.
+
+    # --- Account bundle export + mycorrhizal import (issues #1259/#1260) ---
+    AccountBundle:
+      type: object
+      description: >
+        The full-fidelity, re-importable account bundle (GET /export/account).
+        Full-fidelity: every sensitivity and suggested row, no opt-in, like the
+        flat CSV export (issue #861).
+      required: [format, version, exported_at, plan, attachments, omitted]
+      properties:
+        format: { type: string, enum: ["mycorrhizal-account"] }
+        version: { type: integer, enum: [1] }
+        exported_at: { type: string, format: date-time }
+        plan: { $ref: "#/components/schemas/AccountBundlePlan" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AccountBundleAttachment" }
+        omitted: { $ref: "#/components/schemas/AccountBundleOmissions" }
+    AccountBundlePlan:
+      type: object
+      description: >
+        Entity payload, mirroring services.ImportSourcePlan and extending it to
+        every user-authored entity. Contacts carry the neutral card/crm/
+        passthrough Record; cross-references use stable IDs.
+      properties:
+        contacts: { type: array, items: { type: object, additionalProperties: true } }
+        relationships: { type: array, items: { type: object, additionalProperties: true } }
+        notes: { type: array, items: { type: object, additionalProperties: true } }
+        reminders: { type: array, items: { type: object, additionalProperties: true } }
+        reminder_completions: { type: array, items: { type: object, additionalProperties: true } }
+        activities: { type: array, items: { type: object, additionalProperties: true } }
+        life_events: { type: array, items: { type: object, additionalProperties: true } }
+        gifts: { type: array, items: { type: object, additionalProperties: true } }
+        preferences: { type: array, items: { type: object, additionalProperties: true } }
+        conversation_agenda: { type: array, items: { type: object, additionalProperties: true } }
+        cadence_policies: { type: array, items: { type: object, additionalProperties: true } }
+        data_decay_policies: { type: array, items: { type: object, additionalProperties: true } }
+        households: { type: array, items: { type: object, additionalProperties: true } }
+        circles: { type: array, items: { type: object, additionalProperties: true } }
+        tags: { type: array, items: { type: object, additionalProperties: true } }
+        custom_field_definitions: { type: array, items: { type: object, additionalProperties: true } }
+        custom_field_values: { type: array, items: { type: object, additionalProperties: true } }
+        occasions: { type: array, items: { type: object, additionalProperties: true } }
+        occasion_events: { type: array, items: { type: object, additionalProperties: true } }
+    AccountBundleAttachment:
+      type: object
+      description: Attachment metadata only; bytes are not embedded in v1.
+      required: [id, contact_vcard_uid, original_name, content_type, size_bytes, created_at]
+      properties:
+        id: { type: integer }
+        contact_vcard_uid: { type: string }
+        original_name: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+    AccountBundleOmissions:
+      type: object
+      required: [attachments, photos_omitted]
+      description: What the bundle deliberately did not carry — recorded, never silent.
+      properties:
+        attachments: { type: boolean }
+        photos_omitted: { type: integer }
+    MycorrhizalBundleCounts:
+      type: object
+      description: Per-section tally of an uploaded account bundle, shown after upload.
+      properties:
+        contacts: { type: integer }
+        relationships: { type: integer }
+        notes: { type: integer }
+        reminders: { type: integer }
+        reminder_completions: { type: integer }
+        activities: { type: integer }
+        life_events: { type: integer }
+        gifts: { type: integer }
+        preferences: { type: integer }
+        conversation_agenda: { type: integer }
+        cadence_policies: { type: integer }
+        data_decay_policies: { type: integer }
+        households: { type: integer }
+        circles: { type: integer }
+        tags: { type: integer }
+        custom_field_definitions: { type: integer }
+        custom_field_values: { type: integer }
+        occasions: { type: integer }
+        occasion_events: { type: integer }
+    MycorrhizalUploadResponse:
+      type: object
+      required: [session_id, version, totals]
+      properties:
+        session_id: { type: string }
+        version: { type: integer }
+        totals: { $ref: "#/components/schemas/MycorrhizalBundleCounts" }
+    MycorrhizalFetchRequest:
+      type: object
+      required: [session_id]
+      description: Starts the background map + preview build for an uploaded bundle.
+      properties:
+        session_id: { type: string }
 
     # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:

@@ -1379,11 +1379,13 @@
             "jscontact": "JSContact",
             "records": "Gerät",
             "monica": "Monica",
-            "meerkat": "Meerkat"
+            "meerkat": "Meerkat",
+            "mycorrhizal": "Mycorrhizal"
           }
         },
         "monicaButton": "Aus Monica importieren",
-        "meerkatButton": "Aus Meerkat importieren"
+        "meerkatButton": "Aus Meerkat importieren",
+        "mycorrhizalButton": "Kontobündel importieren"
       },
       "propose": {
         "title": "Daten vorschlagen",
@@ -1585,6 +1587,17 @@
         "found": "{{contacts}} Kontakte, {{relationships}} Beziehungen, {{notes}} Notizen.",
         "pickUser": "Diese Datenbank hat mehrere Benutzer — wähle, wessen Kontakte importiert werden:",
         "userOption": "{{name}} — {{count}} Kontakte",
+        "start": "Import starten"
+      }
+    },
+    "mycorrhizalImport": {
+      "title": "Kontobündel importieren",
+      "connect": {
+        "description": "Übertrage deine Daten aus einem lokalen Profil oder einer anderen Mycorrhizal-Instanz auf diesen Server. Lade die Kontobündel-Datei hoch, die in der anderen Installation exportiert wurde.",
+        "chooseFile": "Bündeldatei auswählen",
+        "uploading": "Wird hochgeladen…",
+        "fileHelp": "Die JSON-Kontobündel-Datei, exportiert über „Kontobündel exportieren“. Nach dem Import wird nichts aufbewahrt.",
+        "found": "{{contacts}} Kontakte, {{relationships}} Beziehungen, {{notes}} Notizen.",
         "start": "Import starten"
       }
     }

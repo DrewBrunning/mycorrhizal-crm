@@ -14,6 +14,51 @@ export type AcceptHouseholdSuggestionInput = {
   type?: 'family_unit' | 'roommates' | 'other';
 };
 
+export type AccountBundle = {
+  attachments: AccountBundleAttachment[];
+  exported_at: string;
+  format: 'mycorrhizal-account';
+  omitted: AccountBundleOmissions;
+  plan: AccountBundlePlan;
+  version: 1;
+};
+
+export type AccountBundleAttachment = {
+  contact_vcard_uid: string;
+  content_type: string;
+  created_at: string;
+  id: number;
+  original_name: string;
+  size_bytes: number;
+};
+
+export type AccountBundleOmissions = {
+  attachments: boolean;
+  photos_omitted: number;
+};
+
+export type AccountBundlePlan = {
+  activities?: Record<string, unknown>[];
+  cadence_policies?: Record<string, unknown>[];
+  circles?: Record<string, unknown>[];
+  contacts?: Record<string, unknown>[];
+  conversation_agenda?: Record<string, unknown>[];
+  custom_field_definitions?: Record<string, unknown>[];
+  custom_field_values?: Record<string, unknown>[];
+  data_decay_policies?: Record<string, unknown>[];
+  gifts?: Record<string, unknown>[];
+  households?: Record<string, unknown>[];
+  life_events?: Record<string, unknown>[];
+  notes?: Record<string, unknown>[];
+  occasion_events?: Record<string, unknown>[];
+  occasions?: Record<string, unknown>[];
+  preferences?: Record<string, unknown>[];
+  relationships?: Record<string, unknown>[];
+  reminder_completions?: Record<string, unknown>[];
+  reminders?: Record<string, unknown>[];
+  tags?: Record<string, unknown>[];
+};
+
 export type Activity = {
   CreatedAt: string;
   DeletedAt: string | null;
@@ -1303,7 +1348,7 @@ export type ImportRun = {
   created?: number;
   created_at?: string;
   error_count?: number;
-  format?: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat';
+  format?: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat' | 'mycorrhizal';
   id?: number;
   skipped?: number;
   total_processed?: number;
@@ -1615,6 +1660,38 @@ export type MonicaRowRelatedCounts = {
   notes?: number;
   relationships?: number;
   reminders?: number;
+};
+
+export type MycorrhizalBundleCounts = {
+  activities?: number;
+  cadence_policies?: number;
+  circles?: number;
+  contacts?: number;
+  conversation_agenda?: number;
+  custom_field_definitions?: number;
+  custom_field_values?: number;
+  data_decay_policies?: number;
+  gifts?: number;
+  households?: number;
+  life_events?: number;
+  notes?: number;
+  occasion_events?: number;
+  occasions?: number;
+  preferences?: number;
+  relationships?: number;
+  reminder_completions?: number;
+  reminders?: number;
+  tags?: number;
+};
+
+export type MycorrhizalFetchRequest = {
+  session_id: string;
+};
+
+export type MycorrhizalUploadResponse = {
+  session_id: string;
+  totals: MycorrhizalBundleCounts;
+  version: number;
 };
 
 export type Name = {

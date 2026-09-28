@@ -550,6 +550,14 @@ These are real bugs that shipped, not hypotheticals.
     `controllers/export_csv_full_fidelity_test.go`, which asserts both halves of the asymmetry.
     Making the CSV filter is a **policy change**, not a bug fix — a pen-test read the old blanket
     wording here and correctly reported the CSV as a leak against a claim that was never true.
+  - **The account bundle (`GET /api/v1/export/account`, issue #1259, ADR 0028 Decision 3) is the
+    second exception, for the same reason.** It is the versioned, re-importable full-fidelity
+    document that moves a user's data between their own instances (server-to-server, or a
+    local-only profile attaching to a remote server): every sensitivity and `status: suggested`
+    row is included with no `include_sensitive` parameter, because withholding there would be
+    silent data loss on the user's own migration. It rides the `mycorrhizal` import source
+    (issue #1260) through the shared source-import engine. Pinned by
+    `services/account_bundle_test.go` (scoping + full-fidelity + round-trip).
 
 ## Frontend traps
 

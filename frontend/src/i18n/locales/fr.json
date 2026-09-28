@@ -1379,11 +1379,13 @@
             "jscontact": "JSContact",
             "records": "Appareil",
             "monica": "Monica",
-            "meerkat": "Meerkat"
+            "meerkat": "Meerkat",
+            "mycorrhizal": "Mycorrhizal"
           }
         },
         "monicaButton": "Importer depuis Monica",
-        "meerkatButton": "Importer depuis Meerkat"
+        "meerkatButton": "Importer depuis Meerkat",
+        "mycorrhizalButton": "Importer le paquet de compte"
       },
       "propose": {
         "title": "Proposer des données",
@@ -1585,6 +1587,17 @@
         "found": "{{contacts}} contacts, {{relationships}} relations, {{notes}} notes.",
         "pickUser": "Cette base contient plusieurs utilisateurs — choisissez les contacts de qui importer :",
         "userOption": "{{name}} — {{count}} contacts",
+        "start": "Démarrer l'import"
+      }
+    },
+    "mycorrhizalImport": {
+      "title": "Importer le paquet de compte",
+      "connect": {
+        "description": "Déplacez vos données vers ce serveur depuis un profil local ou une autre instance Mycorrhizal. Importez le fichier de paquet de compte exporté depuis l'autre installation.",
+        "chooseFile": "Choisir le fichier de paquet",
+        "uploading": "Envoi…",
+        "fileHelp": "Le fichier JSON du paquet de compte, exporté avec « Exporter le paquet de compte ». Rien n'est conservé après l'import.",
+        "found": "{{contacts}} contacts, {{relationships}} relations, {{notes}} notes.",
         "start": "Démarrer l'import"
       }
     }

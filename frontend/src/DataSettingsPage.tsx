@@ -39,6 +39,7 @@ import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import MeerkatImportDialog from './components/MeerkatImportDialog';
 import MonicaImportDialog from './components/MonicaImportDialog';
+import MycorrhizalImportDialog from './components/MycorrhizalImportDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
@@ -67,6 +68,9 @@ export default function DataSettingsPage() {
   // Meerkat import assistant (issue #550) — direct-DB upload for migrating
   // from an upstream meerkat-crm deployment.
   const [meerkatImportOpen, setMeerkatImportOpen] = useState(false);
+  // Mycorrhizal account-bundle import source (issue #1260) — upload a bundle
+  // produced by Export account bundle.
+  const [mycorrhizalImportOpen, setMycorrhizalImportOpen] = useState(false);
 
   // Issue #651: persisted import run history, refreshed on mount and whenever
   // an import completes.
@@ -312,6 +316,13 @@ export default function DataSettingsPage() {
               <Button variant="outlined" size="small" onClick={() => setMeerkatImportOpen(true)}>
                 {t('settings.data.import.meerkatButton')}
               </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setMycorrhizalImportOpen(true)}
+              >
+                {t('settings.data.import.mycorrhizalButton')}
+              </Button>
             </Stack>
 
             <Divider />
@@ -525,6 +536,15 @@ export default function DataSettingsPage() {
         onClose={() => setMeerkatImportOpen(false)}
         onImportComplete={() => {
           setMeerkatImportOpen(false);
+          void loadImportHistory();
+        }}
+      />
+
+      <MycorrhizalImportDialog
+        open={mycorrhizalImportOpen}
+        onClose={() => setMycorrhizalImportOpen(false)}
+        onImportComplete={() => {
+          setMycorrhizalImportOpen(false);
           void loadImportHistory();
         }}
       />

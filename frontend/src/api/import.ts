@@ -142,11 +142,12 @@ export interface ImportResult {
 
 // One persisted import outcome (issue #651). Mirrors backend models.ImportRun
 // and migration 000042's `format` CHECK vocabulary (widened by 000046 for the
-// source-import assistants) — if a token is added backend-side, add it here
-// too (no dynamic type-list endpoint by design).
+// source-import assistants and by 000068 for the `mycorrhizal` account bundle)
+// — if a token is added backend-side, add it here too (no dynamic type-list
+// endpoint by design).
 export interface ImportRun {
   id: number;
-  format: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat';
+  format: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat' | 'mycorrhizal';
   total_processed: number;
   created: number;
   updated: number;

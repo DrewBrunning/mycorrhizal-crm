@@ -88,4 +88,14 @@ var Allowlist = map[string]string{
 	// `custom_field_candidates?:`), not required ones.
 	"ImportRowPreview.Diagnostics":           "documented absent-vs-empty semantic (see the field's own doc comment); frontend/src/api/import.ts already declares it optional (`diagnostics?:`), not required",
 	"ImportRowPreview.CustomFieldCandidates": "documented absent-vs-empty semantic (see the field's own doc comment); frontend/src/api/import.ts already declares it optional (`custom_field_candidates?:`), not required",
+
+	// The account bundle (models/account_bundle.go) is a versioned internal
+	// document, not a rendered client response: the `mycorrhizal` import
+	// mapper (services/account_bundle_import.go) treats an absent section and
+	// an empty one identically and no TypeScript type declares these fields
+	// required. The free-form metadata/related-ids/qualifying-types fields
+	// mirror the persisted-row columns above and legitimately omit when empty.
+	"AccountBundleRelationship.Metadata":         "internal versioned account-bundle document (not a rendered response); the import mapper treats absent and empty identically",
+	"AccountBundleLifeEvent.RelatedEntityIDs":    "see AccountBundleRelationship.Metadata",
+	"AccountBundleCadencePolicy.QualifyingTypes": "see AccountBundleRelationship.Metadata",
 }

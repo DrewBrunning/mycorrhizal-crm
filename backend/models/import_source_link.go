@@ -16,6 +16,15 @@ const (
 	ImportSourceLinkKindNote         = "note"
 	ImportSourceLinkKindReminder     = "reminder"
 	ImportSourceLinkKindCustomField  = "custom_field"
+	// Account-bundle entity kinds (issue #1259/#1260).
+	ImportSourceLinkKindFieldDefinition    = "field_definition"
+	ImportSourceLinkKindReminderCompletion = "reminder_completion"
+	ImportSourceLinkKindLifeEvent          = "life_event"
+	ImportSourceLinkKindAgendaItem         = "conversation_agenda"
+	ImportSourceLinkKindCadencePolicy      = "cadence_policy"
+	ImportSourceLinkKindDataDecayPolicy    = "data_decay_policy"
+	ImportSourceLinkKindOccasion           = "occasion"
+	ImportSourceLinkKindOccasionEvent      = "occasion_event"
 )
 
 // ImportSourceLink is the idempotency ledger for source imports (issues #351,

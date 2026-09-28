@@ -44,15 +44,16 @@ type ImportRun struct {
 }
 
 // ImportRun format tokens. Mirrored by migration 000042's CHECK constraint
-// (widened by 000046 for the source formats), frontend/src/api/import.ts, and
-// backend/openapi.yaml.
+// (widened by 000046 for the source formats and 000068 for the account
+// bundle), frontend/src/api/import.ts, and backend/openapi.yaml.
 const (
-	ImportFormatCSV       = "csv"
-	ImportFormatVCF       = "vcf"
-	ImportFormatJSContact = "jscontact"
-	ImportFormatRecords   = "records"
-	ImportFormatMonica    = "monica"  // Monica import assistant (issue #549)
-	ImportFormatMeerkat   = "meerkat" // Meerkat import assistant (issue #550)
+	ImportFormatCSV         = "csv"
+	ImportFormatVCF         = "vcf"
+	ImportFormatJSContact   = "jscontact"
+	ImportFormatRecords     = "records"
+	ImportFormatMonica      = "monica"      // Monica import assistant (issue #549)
+	ImportFormatMeerkat     = "meerkat"     // Meerkat import assistant (issue #550)
+	ImportFormatMycorrhizal = "mycorrhizal" // account-bundle import source (issue #1260)
 )
 
 // ImportFormats is the full format vocabulary, for validation and tests.
@@ -63,6 +64,7 @@ var ImportFormats = []string{
 	ImportFormatRecords,
 	ImportFormatMonica,
 	ImportFormatMeerkat,
+	ImportFormatMycorrhizal,
 }
 
 // RecordImportRun persists one import outcome, best-effort: it fills CreatedAt

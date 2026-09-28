@@ -87,6 +87,15 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		return nil, fmt.Errorf("embedded: start aborted before boot: %w", err)
 	}
 
+	// Embedded mode serves only the caller's listener. Validate it before any
+	// work at all: the later check happens after the scheduler and the
+	// boot-time catch-up goroutines have started, and a failed Start there
+	// leaked those goroutines (they kept reading the global logger while a
+	// later Start re-initialized it — a data race under -race).
+	if cfg.IsEmbedded() && opts.Listener == nil {
+		return nil, errors.New("embedded: Options.Listener is required (embedded serves only the caller's listener)")
+	}
+
 	logger.InitLogger(logger.Config{Level: cfg.LogLevel, Pretty: cfg.LogPretty})
 	logger.Info().Msg("Loading server...")
 

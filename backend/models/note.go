@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -15,6 +16,13 @@ type Note struct {
 	Date      time.Time `json:"date" validate:"required"`
 	ContactID *uint     `json:"contact_id"`
 	Contact   Contact   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty"`
+
+	// UUID is the stable portable identity the account bundle carries for a
+	// note (issue #1260, ADR 0028 Decision 3). Generated in BeforeCreate when
+	// empty; migration 000067 adds the column and backfills every existing
+	// row. Kept off the existing note wire shape (json:"-") — the bundle DTO
+	// reads the field directly.
+	UUID string `gorm:"column:uuid;index" json:"-"`
 
 	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
 	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
@@ -42,6 +50,17 @@ type Note struct {
 	// deleted_at. gorm:"-" keeps it out of the schema; it exists purely so an
 	// incremental sync client can apply the deletion.
 	Deleted bool `gorm:"-" json:"deleted,omitempty"`
+}
+
+// BeforeCreate generates the stable portable UUID for a new note (issue
+// #1260) when the caller did not supply one. An account-bundle import supplies
+// the source row's UUID so a re-export is comparable; everything else gets a
+// fresh one.
+func (n *Note) BeforeCreate(tx *gorm.DB) error {
+	if n.UUID == "" {
+		n.UUID = uuid.New().String()
+	}
+	return nil
 }
 
 // AfterCreate stamps the initial revision and derives the ETag from it (ADR

@@ -3,6 +3,8 @@
 # matches internal/mutationscope.Scopes again.
 unleash:
     exclude-files:
+        - ^account_bundle\.go$
+        - ^account_bundle_import\.go$
         - ^address_suggestion_service\.go$
         - ^alerting_conditions\.go$
         - ^alerting_service\.go$
@@ -37,6 +39,7 @@ unleash:
         - ^immich_client\.go$
         - ^immich_service\.go$
         - ^import_session\.go$
+        - ^import_source_bundle\.go$
         - ^integration_fault_seam\.go$
         - ^integration_terminal\.go$
         - ^job_lock\.go$
@@ -44,6 +47,7 @@ unleash:
         - ^job_run_purge_service\.go$
         - ^life_event_suggestion_service\.go$
         - ^mailer\.go$
+        - ^mycorrhizal_import_session\.go$
         - ^notification_health\.go$
         - ^notification_service\.go$
         - ^occasion_service\.go$

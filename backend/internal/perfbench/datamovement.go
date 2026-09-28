@@ -131,6 +131,19 @@ func DataMovementRegistry() []DataMovementOperation {
 			},
 		},
 		{
+			Name:     "export.account_bundle",
+			Category: "export",
+			// The account bundle marshals the whole versioned document (every
+			// entity plus embedded photos) into one buffer before writing, so
+			// peak heap is linear in the account size, like the other exporters.
+			ExpectedMemoryGrowth: GrowthLinear,
+			FreeSpaceNote:        "None (streamed to the client). Server RAM ≈ the whole serialized bundle — it is buffered before the first byte is sent; embedded photos dominate it.",
+			Run: func(e *Env, _ string) (int, int64, error) {
+				n, err := exportViaDiscard(e, func(c *gin.Context) { controllers.ExportAccountBundle(c) }, "/export/account")
+				return liveContactCount(e), n, err
+			},
+		},
+		{
 			Name:                 "export.vcard4",
 			Category:             "export",
 			ExpectedMemoryGrowth: GrowthLinear,
