@@ -127,7 +127,7 @@ type MappedOccasionAttendee struct {
 // reference it. Existing sources have no definitions here (the old importer
 // created one implicitly per value), so this is bundle-only.
 func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	skipImported func(string, SourceRef) bool, report *ImportReport,
+	fieldDefRemap map[string]string, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, d := range plan.FieldDefinitions {
 		record := d.Ref.String()
@@ -153,7 +153,10 @@ func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, im
 				if findErr := tx.Where("user_id = ? AND key = ?", userID, def.Key).First(&existing).Error; findErr == nil {
 					if err := recordSourceLink(tx, userID, plan.System, d.Ref.ExternalID,
 						models.ImportSourceLinkKindFieldDefinition, existing.ID); err != nil { // # pragma: no cover — defensive
-						return err
+						return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
+					}
+					if d.ID != "" {
+						fieldDefRemap[d.ID] = existing.ID
 					}
 					imported[d.Ref.ExternalID] = true
 					continue
@@ -164,7 +167,10 @@ func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, im
 		}
 		if err := recordSourceLink(tx, userID, plan.System, d.Ref.ExternalID,
 			models.ImportSourceLinkKindFieldDefinition, def.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
+		}
+		if d.ID != "" {
+			fieldDefRemap[d.ID] = def.ID
 		}
 		imported[d.Ref.ExternalID] = true
 	}
@@ -210,7 +216,7 @@ func importReminderCompletions(tx *gorm.DB, userID uint, plan *ImportSourcePlan,
 		}
 		if err := recordSourceLink(tx, userID, plan.System, c.Ref.ExternalID,
 			models.ImportSourceLinkKindReminderCompletion, completion.UUID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[c.Ref.ExternalID] = true
 	}
@@ -248,7 +254,7 @@ func importLifeEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 		}
 		if err := recordSourceLink(tx, userID, plan.System, le.Ref.ExternalID,
 			models.ImportSourceLinkKindLifeEvent, event.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[le.Ref.ExternalID] = true
 	}
@@ -282,7 +288,7 @@ func importConversationAgenda(tx *gorm.DB, userID uint, plan *ImportSourcePlan, 
 		}
 		if err := recordSourceLink(tx, userID, plan.System, it.Ref.ExternalID,
 			models.ImportSourceLinkKindAgendaItem, item.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[it.Ref.ExternalID] = true
 	}
@@ -314,7 +320,7 @@ func importCadencePolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imp
 		}
 		if err := recordSourceLink(tx, userID, plan.System, p.Ref.ExternalID,
 			models.ImportSourceLinkKindCadencePolicy, policy.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[p.Ref.ExternalID] = true
 	}
@@ -347,7 +353,7 @@ func importDataDecayPolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, i
 		}
 		if err := recordSourceLink(tx, userID, plan.System, p.Ref.ExternalID,
 			models.ImportSourceLinkKindDataDecayPolicy, policy.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[p.Ref.ExternalID] = true
 	}
@@ -386,7 +392,7 @@ func importOccasions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 		}
 		if err := recordSourceLink(tx, userID, plan.System, o.Ref.ExternalID,
 			models.ImportSourceLinkKindOccasion, occasion.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[o.Ref.ExternalID] = true
 	}
@@ -436,7 +442,7 @@ func importOccasionEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impo
 		}
 		if err := recordSourceLink(tx, userID, plan.System, e.Ref.ExternalID,
 			models.ImportSourceLinkKindOccasionEvent, event.ID); err != nil { // # pragma: no cover — defensive
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[e.Ref.ExternalID] = true
 	}

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { uploadMycorrhizalBundle } from '../api/mycorrhizalImport';
+import { startMycorrhizalFetch, uploadMycorrhizalBundle } from '../api/mycorrhizalImport';
 import MycorrhizalImportDialog from './MycorrhizalImportDialog';
 
 afterEach(cleanup);
@@ -16,7 +16,11 @@ vi.mock('../api/mycorrhizalImport', async (importOriginal) => {
 });
 
 const uploadMock = vi.mocked(uploadMycorrhizalBundle);
-beforeEach(() => uploadMock.mockReset());
+const fetchMock = vi.mocked(startMycorrhizalFetch);
+beforeEach(() => {
+  uploadMock.mockReset();
+  fetchMock.mockClear();
+});
 
 function renderOpen() {
   return render(<MycorrhizalImportDialog open onClose={() => {}} onImportComplete={() => {}} />);
@@ -74,4 +78,55 @@ test('a rejected upload shows the error inline and stays on the connect step', a
   );
   expect(screen.getByRole('button', { name: 'Choose bundle file' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Start import' })).not.toBeInTheDocument();
+});
+
+test('shows the uploading state, then starts the fetch on Start', async () => {
+  let resolveUpload: (v: Awaited<ReturnType<typeof uploadMycorrhizalBundle>>) => void = () => {};
+  uploadMock.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveUpload = resolve;
+      }),
+  );
+
+  renderOpen();
+  pickFile();
+
+  expect(await screen.findByRole('button', { name: 'Uploading…' })).toBeInTheDocument();
+
+  resolveUpload({
+    session_id: 's1',
+    version: 1,
+    totals: {
+      contacts: 5,
+      relationships: 2,
+      notes: 3,
+      reminders: 0,
+      reminder_completions: 0,
+      activities: 0,
+      life_events: 0,
+      gifts: 0,
+      preferences: 0,
+      conversation_agenda: 0,
+      cadence_policies: 0,
+      data_decay_policies: 0,
+      households: 0,
+      circles: 0,
+      tags: 0,
+      custom_field_definitions: 0,
+      custom_field_values: 0,
+      occasions: 0,
+      occasion_events: 0,
+    },
+  });
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('s1'));
+});
+
+test('Escape closes the dialog and resets it', async () => {
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
 });

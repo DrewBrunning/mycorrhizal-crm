@@ -437,6 +437,10 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 	// refToID carries the flat contact ID for the entities that key on it
 	// (notes, reminders).
 	refToUID := make(map[string]string, len(plan.Contacts))
+	// fieldDefRemap maps a bundle field-definition's stable ID to the local
+	// definition it landed as (itself, or an existing same-key definition it
+	// reused) so custom-field values resolve even when the ID collided.
+	fieldDefRemap := map[string]string{}
 	for i := range plan.Contacts {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -558,7 +562,9 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 	// promptly on a large graph.
 	graphKinds := []func() error{
 		func() error { return importRelationships(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importFieldDefinitions(tx, userID, plan, imported, skipImported, report) },
+		func() error {
+			return importFieldDefinitions(tx, userID, plan, imported, fieldDefRemap, skipImported, report)
+		},
 		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importCircles(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error { return importTags(tx, userID, plan, imported, uidOf, skipImported, report) },
@@ -579,7 +585,9 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 		func() error {
 			return importReminderCompletions(tx, userID, plan, imported, uidOf, refToID, skipImported, report)
 		},
-		func() error { return importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report) },
+		func() error {
+			return importCustomFields(tx, userID, plan, imported, refToUID, fieldDefRemap, skipImported, report)
+		},
 	}
 	for _, importKind := range graphKinds {
 		if err := ctx.Err(); err != nil {
@@ -708,7 +716,7 @@ func recordSourceLink(tx *gorm.DB, userID uint, system, externalID, kind, uid st
 }
 
 func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	refToUID map[string]string, skipImported func(string, SourceRef) bool, report *ImportReport,
+	refToUID map[string]string, fieldDefRemap map[string]string, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	// One FieldDefinition per unique key; later values reuse it (values key on
 	// the definition's ID, and the unique (user, key) index forbids duplicates).
@@ -738,7 +746,11 @@ func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, import
 			// rows are imported up front; reuse it. External sources leave the
 			// ID empty and get one FieldDefinition per unique key, as before.
 			if f.FieldDefinitionID != "" {
-				if err := tx.Where("user_id = ? AND id = ?", userID, f.FieldDefinitionID).First(&def).Error; err != nil {
+				resolvedID := f.FieldDefinitionID
+				if local, ok := fieldDefRemap[f.FieldDefinitionID]; ok {
+					resolvedID = local
+				}
+				if err := tx.Where("user_id = ? AND id = ?", userID, resolvedID).First(&def).Error; err != nil {
 					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryUnsupported, Message: "references a field definition that was not imported"})
 					continue
 				}
