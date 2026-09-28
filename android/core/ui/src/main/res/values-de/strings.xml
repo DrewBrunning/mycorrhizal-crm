@@ -1729,6 +1729,11 @@
     <string name="settings_servers_remove_body">%1$s von diesem Gerät entfernen? Die gespeicherte Anmeldung wird verworfen.</string>
     <string name="settings_servers_remove_named">%1$s entfernen</string>
     <string name="settings_servers_local_kind">Auf diesem Gerät</string>
+
+    <string name="settings_delete_local_data_title">Lokale Daten löschen?</string>
+    <string name="settings_delete_local_data_body">Dies löscht dauerhaft alle auf diesem Gerät für „%1$s“ gespeicherten Daten. Es gibt weder eine Serverkopie noch ein Backup.</string>
+    <string name="settings_delete_local_data_hint">%1$s zur Bestätigung eingeben</string>
+    <string name="settings_delete_local_data_confirm">Lokale Daten löschen</string>
     <string name="settings_servers_switch_title">Ungesendete Aktivitäten</string>
     <string name="settings_servers_switch_body">%1$d erfasste Interaktion(en) wurden noch nicht gesendet. Beim Wechsel zu %2$s werden sie verworfen.</string>
     <string name="settings_servers_switch_confirm">Verwerfen und wechseln</string>

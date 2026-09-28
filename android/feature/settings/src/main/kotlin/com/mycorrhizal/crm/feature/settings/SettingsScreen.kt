@@ -64,11 +64,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
+import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
+import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 
@@ -314,8 +316,25 @@ fun SettingsContent(
     // hidden. Null server version (unknown / fail open) leaves everything
     // visible.
     val serverVersion = LocalServerVersion.current
-    val systemEventsSupported = ServerCapabilities.isSupported(serverVersion, ServerFeature.SYSTEM_EVENTS)
-    val deviceGrantSignInSupported = ServerCapabilities.isSupported(serverVersion, ServerFeature.DEVICE_GRANT_SIGNIN)
+    // Issue #1263 / ADR 0028 Decision 2: entries whose capability the active
+    // deployment does not declare are hidden. Unknown (fail open) shows
+    // everything, so an unreachable /health never strips the UI.
+    val capabilities = LocalServerCapabilities.current
+    // Admin user management and operator system events are surfaces of a
+    // multi-user server deployment; a deployment that cannot register users
+    // (the embedded single-user store) omits `registration`, so both are hidden
+    // there. There is no dedicated admin token in the health contract.
+    val multiUserAdminSupported = capabilities.supports(ServerCapability.REGISTRATION)
+    val systemEventsSupported =
+        multiUserAdminSupported && ServerCapabilities.isSupported(serverVersion, ServerFeature.SYSTEM_EVENTS)
+    val deviceGrantSignInSupported =
+        capabilities.supports(ServerCapability.DEVICE_GRANTS) &&
+            ServerCapabilities.isSupported(serverVersion, ServerFeature.DEVICE_GRANT_SIGNIN)
+    val twoFactorSupported = capabilities.supports(ServerCapability.TWO_FACTOR)
+    val webhooksSupported = capabilities.supports(ServerCapability.WEBHOOKS)
+    val apiTokensSupported = capabilities.supports(ServerCapability.API_TOKENS)
+    val calendarSyncSupported = capabilities.supports(ServerCapability.CALENDAR)
+    val notificationChannelsSupported = capabilities.supports(ServerCapability.PUSH)
 
     Column(
         modifier = modifier
@@ -454,7 +473,10 @@ fun SettingsContent(
         HorizontalDivider()
 
         // N8 (issue #814): TOTP two-factor enrollment/management (web parity).
-        NavigationRow(stringResource(R.string.settings_two_factor_title), onClick = onTwoFactor)
+        // Issue #1263: absent on a deployment that does not offer 2FA.
+        if (twoFactorSupported) {
+            NavigationRow(stringResource(R.string.settings_two_factor_title), onClick = onTwoFactor)
+        }
 
         HorizontalDivider()
 
@@ -557,7 +579,7 @@ fun SettingsContent(
         // Issue #348: admin-only user management, reachable only when the
         // session is an admin (the backend also 403s every admin route for
         // non-admins, so this gate is a navigation affordance, not a guard).
-        if (state.session.isAdmin) {
+        if (state.session.isAdmin && multiUserAdminSupported) {
             NavigationRow(stringResource(R.string.users_title), onClick = onManageUsers)
             // Issue #692: the system-events surface needs the v0.6.2 admin
             // endpoints; an older server has none of them.
@@ -618,13 +640,23 @@ fun SettingsContent(
             }
         }
 
-        // M25: channels surfaces.
-        NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
+        // M25: channels surfaces. Issue #1263: each is hidden when the
+        // deployment does not declare its capability (an embedded local server
+        // omits webhooks, API tokens, DAV serving and push).
+        if (webhooksSupported) {
+            NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
+        }
         // Issue #413's Android follow-up (#573): API token management.
-        NavigationRow(stringResource(R.string.settings_api_tokens_title), onClick = onApiTokens)
+        if (apiTokensSupported) {
+            NavigationRow(stringResource(R.string.settings_api_tokens_title), onClick = onApiTokens)
+        }
         // Issue #390's Android follow-up (#628): calendar/contact sync management.
-        NavigationRow(stringResource(R.string.settings_calendar_sync_title), onClick = onCalendarSync)
-        NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+        if (calendarSyncSupported) {
+            NavigationRow(stringResource(R.string.settings_calendar_sync_title), onClick = onCalendarSync)
+        }
+        if (notificationChannelsSupported) {
+            NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+        }
         // Issue #236: the Immich connection-config settings screen.
         NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
         // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.

@@ -1,0 +1,39 @@
+{
+  "api_contract_version": "v1",
+  "capabilities": [
+    "contacts",
+    "dashboard",
+    "notes",
+    "activities",
+    "reminders",
+    "life_events",
+    "graph",
+    "search",
+    "import",
+    "export",
+    "calendar",
+    "notifications",
+    "registration",
+    "login",
+    "password_reset",
+    "oidc",
+    "two_factor",
+    "email",
+    "api_tokens",
+    "contact_shares",
+    "webhooks",
+    "carddav",
+    "caldav",
+    "device_grants",
+    "push"
+  ],
+  "commit": "abc1234",
+  "database": {
+    "response_time_ms": 0.4,
+    "status": "healthy"
+  },
+  "deployment": "server",
+  "status": "healthy",
+  "timestamp": "2026-09-28T12:00:00Z",
+  "version": "1.2.0"
+}

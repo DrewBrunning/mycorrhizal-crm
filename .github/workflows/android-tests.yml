@@ -181,6 +181,25 @@ jobs:
           flags: android
           fail_ci_if_error: false
 
+      # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
+      # cross-compiled from backend/ at the same commit and packaged as
+      # jniLibs/arm64-v8a/libmycorrhizal.so. This step proves both the
+      # `GOOS=android GOARCH=arm64 CGO_ENABLED=0 -tags nodynamic` build and the
+      # Gradle packaging wiring (a missing binary would silently ship a build
+      # with no local mode).
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Build the embedded server binary and assert it is packaged
+        working-directory: android
+        run: |
+          ./gradlew :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          apk="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
+          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
+
       - name: Lint
         working-directory: android
         run: ./gradlew lintDebug :app:lintObtainiumDebug :app:lintFossDebug

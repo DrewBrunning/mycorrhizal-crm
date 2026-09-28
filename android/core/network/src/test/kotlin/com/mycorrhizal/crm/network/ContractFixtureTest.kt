@@ -6,6 +6,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -165,6 +166,43 @@ class ContractFixtureTest {
         assertEquals(1, dashboard.upcomingReminders.size)
         assertEquals("Fix Primary", dashboard.upcomingReminders[0].contactName)
         assertTrue(dashboard.birthdays.isEmpty())
+    }
+
+    // ADR 0028 Decision 2 / issue #1263: the client must see the deployment
+    // word and the capability list a server declares, so it can gate UI on
+    // token presence rather than on "is this server local". Both fixtures are
+    // generated from the same /health operation's two named examples.
+    @Test
+    fun `getHealth parses the full-server capability fixture`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(readFixture("health.json")))
+
+        val result = client.getHealth()
+
+        assertTrue("expected success, got $result", result.isSuccess)
+        val health = result.getOrThrow()
+        assertEquals("server", health.deployment)
+        val capabilities = checkNotNull(health.capabilities) { "capabilities must parse" }
+        assertTrue(capabilities.contains("contacts"))
+        assertTrue(capabilities.contains("registration"))
+        assertTrue(capabilities.contains("push"))
+    }
+
+    @Test
+    fun `getHealth parses the embedded capability fixture`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(readFixture("health-embedded.json")))
+
+        val result = client.getHealth()
+
+        assertTrue("expected success, got $result", result.isSuccess)
+        val health = result.getOrThrow()
+        assertEquals("embedded", health.deployment)
+        val capabilities = checkNotNull(health.capabilities) { "capabilities must parse" }
+        // Core product surfaces survive; the network-only ones are absent.
+        assertTrue(capabilities.contains("contacts"))
+        assertTrue(capabilities.contains("calendar"))
+        assertFalse("login is not registered in embedded mode", capabilities.contains("login"))
+        assertFalse("push is not registered in embedded mode", capabilities.contains("push"))
+        assertFalse("carddav is not registered in embedded mode", capabilities.contains("carddav"))
     }
 
     private fun readFixture(name: String): String =

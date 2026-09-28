@@ -3,6 +3,10 @@ package com.mycorrhizal.crm.feature.tracking
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.model.network.DeviceRegistration
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.network.ApiClient
@@ -38,7 +42,51 @@ class DeviceRegistrationManagerTest {
         availability: FcmAvailability,
         store: DeviceRegistrationStore,
         tokenSource: FcmTokenSource = fakeToken,
-    ) = DeviceRegistrationManager(apiClient, availability, store, context, tokenSource)
+        capabilities: ServerCapabilitiesStore = DefaultServerCapabilitiesStore(),
+    ) = DeviceRegistrationManager(apiClient, availability, store, context, tokenSource, capabilities)
+
+    @Test
+    fun `registration is a no-op when the deployment does not offer push`() = runTest {
+        // Issue #1263 / ADR 0028 Decision 2: an embedded local server omits the
+        // push capability, so registering would 404. Skip before any Firebase
+        // work, exactly like the unavailable-Firebase path.
+        val apiClient = mockk<ApiClient>(relaxed = true)
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val tokenSource = mockk<FcmTokenSource>(relaxed = true)
+        val capabilities = DefaultServerCapabilitiesStore().apply {
+            record(ServerCapabilitiesInfo(capabilities = setOf(ServerCapability.CONTACTS)))
+        }
+
+        val result = manager(
+            apiClient,
+            availability,
+            mockk<DeviceRegistrationStore>(relaxed = true),
+            tokenSource,
+            capabilities,
+        ).register()
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 0) { tokenSource.token() }
+        coVerify(exactly = 0) { apiClient.registerDevice(any()) }
+    }
+
+    @Test
+    fun `registration proceeds when capabilities are unknown`() = runTest {
+        // Fail-open: an unreachable /health must not suppress push.
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.registerDevice(any()) } returns
+            Result.success(DeviceRegistration(id = 1, token = "fetched-token", client = "fcm"))
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        every { store.loadDeviceId() } returns null
+
+        val result = manager(apiClient, availability, store, capabilities = DefaultServerCapabilitiesStore()).register()
+
+        assertTrue(result.isSuccess)
+        coVerify { apiClient.registerDevice(any()) }
+    }
 
     @Test
     fun `registration is a no-op when Firebase is unavailable`() = runTest {

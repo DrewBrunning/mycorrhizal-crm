@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.tracking
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.ProfilesSnapshot
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
@@ -69,6 +70,7 @@ class DeviceRegistrationLogoutTeardownTest {
             store,
             context,
             FcmTokenSource { "fetched-token" },
+            DefaultServerCapabilitiesStore(),
         )
         sessionManager = DefaultSessionManager(
             InMemoryTokenStorage(),

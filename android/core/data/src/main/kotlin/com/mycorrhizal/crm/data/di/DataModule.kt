@@ -77,6 +77,8 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.SessionTeardown
 import com.mycorrhizal.crm.data.session.TokenStorage
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -398,6 +400,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindBaseUrlProvider(impl: SessionManager): BaseUrlProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindServerCapabilitiesStore(impl: DefaultServerCapabilitiesStore): ServerCapabilitiesStore
 
     @Binds
     @Singleton

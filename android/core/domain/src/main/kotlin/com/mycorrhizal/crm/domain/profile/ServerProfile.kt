@@ -37,6 +37,13 @@ data class ServerProfile(
  * install, or a login typed straight into the Auth screen. Deliberately derived
  * from the host (readable and recognisable in a list) rather than the raw URL.
  */
+/**
+ * The label the single [ServerProfileKind.Local] profile is created with. The
+ * Servers list localizes its display separately (the label is non-secret
+ * metadata); this is only the stored fallback.
+ */
+const val LOCAL_PROFILE_LABEL = "On this device"
+
 fun defaultProfileLabel(url: String): String {
     val host = url
         .substringAfter("://", url)

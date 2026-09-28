@@ -213,6 +213,35 @@ changed 2FA posture cannot keep a passwordless door open. Phone (have) + biometr
 *locally* by the OS; the server sees a single possession factor — the standard refresh-token model,
 which is how the docs describe it rather than claiming server-verified 2FA.
 
+### P8 — Embedded local store: field-level at-rest encryption + FBE, with accepted plaintext residue (issue #1262)
+
+The local-only Android mode (ADR 0028 Decision 2) runs the real Go backend on the device, so a `Local`
+profile holds a store that is the **only** copy of the user's data — not a rebuildable cache like the
+Room mirror (P4). The mirror's control, whole-database SQLCipher, does not carry over: the embedded
+server's SQLite driver is pure Go (`modernc.org/sqlite`, built `CGO_ENABLED=0`), and an encrypted-SQLite
+Go driver would reintroduce cgo and an NDK build. ADR 0028 Decision 4 therefore adopts the backend's
+existing **field-level `atrest` encryption** (`backend/atrest/atrest.go`) under a master key generated
+on-device, plus Android **file-based encryption** of app-private storage (credential-encrypted, locked
+until first unlock). The embedded binary, its database, photos, attachments and the Unix socket live
+under `filesDir/local-server/`, which the Room-mirror cleaner deliberately does not touch
+(`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/LocalDataCleaner.kt`).
+
+**The residue is accepted, not a silent gap.** Field-level `atrest` encryption leaves the full-text
+search index and structural columns — names in `sort_name`, ids, timestamps — in the clear inside the
+database file. On a single-user, single-device store already protected by Android FBE, encrypting those
+would be a marginal gain for a large build cost, so this position records them as accepted, exactly as
+ADR 0028 Decision 4 requires. The store is deletable in one action ("Delete local data", gated behind a
+typed confirmation), which stops the embedded server and removes the directory and its Keystore-wrapped
+keys (`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerHost.kt`).
+
+**Secrets.** The embedded server's JWT signing secret and at-rest master key are generated on first run
+and wrapped by **a dedicated Android Keystore AES-256-GCM key per purpose** (MASVS CRYPTO), stored in
+`filesDir/local-server/keys.bin`, and handed to the child process over its private stdin — never an
+environment variable, a log, or a plaintext file
+(`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerSecrets.kt`). The host's
+Keystore calls cannot be exercised on the JVM (no Keystore under Robolectric), so they are pinned by a
+source guard test in the same file's module, like the token/device-grant stores.
+
 ---
 
 ## V2 — Data Storage and Privacy (MSTG-STORAGE)
@@ -224,9 +253,9 @@ L2 but satisfied — see the row below and P6.)
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| STORAGE-1 | Sensitive data in system credential storage | satisfied | The JWT is stored in `EncryptedSharedPreferences` with a Keystore `MasterKey` (AES256_GCM) — `core/data/.../EncryptedTokenStorage.kt:14-25`, DI binding `SessionStorageModule.kt:25-26`. The Room mirror is SQLCipher whole-DB encrypted — random 32-byte passphrase in `EncryptedSharedPreferences` + Keystore `MasterKey` (`RoomPassphraseStore.kt`), `SupportOpenHelperFactory` wired in `DataModule.kt:194`, plaintext→encrypted transition at `RoomCacheEncryption.kt` (P4); a database that fails to open under its passphrase is wiped and rebuilt rather than boot-looping (`RoomDatabaseRecovery.kt`, issue #998). |
+| STORAGE-1 | Sensitive data in system credential storage | satisfied | The JWT is stored in `EncryptedSharedPreferences` with a Keystore `MasterKey` (AES256_GCM) — `core/data/.../EncryptedTokenStorage.kt:14-25`, DI binding `SessionStorageModule.kt:25-26`. The Room mirror is SQLCipher whole-DB encrypted — random 32-byte passphrase in `EncryptedSharedPreferences` + Keystore `MasterKey` (`RoomPassphraseStore.kt`), `SupportOpenHelperFactory` wired in `DataModule.kt:196`, plaintext→encrypted transition at `RoomCacheEncryption.kt` (P4); a database that fails to open under its passphrase is wiped and rebuilt rather than boot-looping (`RoomDatabaseRecovery.kt`, issue #998). The embedded local store (ADR 0028 Decision 2, P8) is app-private and FBE-protected, with its own field-level `atrest` encryption under a Keystore-wrapped master key; it lives outside the mirror under `filesDir/local-server/` and is deleted only by the explicit "Delete local data" action. |
 | STORAGE-2 | No sensitive data outside app container / credential storage | satisfied | All persistence is inside the sandbox (EncryptedSharedPreferences, DataStore, SQLCipher-encrypted Room). No external/shared storage for app data; the only `content://` surface is the FileProvider cache for user-initiated vCard sharing (`app/src/main/AndroidManifest.xml:78-86`). Offline PII is purged on logout/account-removal: the Room tables are cleared and the photo/attachment cache directory deleted (`LocalDataCleaner.kt`, invoked from `DefaultSessionManager.clearSession()`). |
-| STORAGE-3 | No sensitive data written to logs | satisfied | The JWT is never logged (`EncryptedTokenStorage.kt:10` comment); OkHttp debug logging is `Level.BASIC` (request line only, no headers/body) and debug-only (`core/network/.../NetworkFactory.kt:53-59`). |
+| STORAGE-3 | No sensitive data written to logs | satisfied | The JWT is never logged (`EncryptedTokenStorage.kt:10` comment); OkHttp debug logging is `Level.BASIC` (request line only, no headers/body) and debug-only (`core/network/.../NetworkFactory.kt:62-68`). |
 | STORAGE-4 | No sharing with third parties unless necessary | satisfied | No telemetry/analytics/third-party SDKs; Firebase is a distribution-variant concern (issue #1133): the Google Services plugin is applied only when a real `google-services.json` exists (`app/build.gradle.kts:20-21`), the FCM SDK is on the `obtainium`/`play` flavors only, and the `foss` (F-Droid) variant binds a no-op push seam (`app/src/foss/kotlin/com/mycorrhizal/crm/push/FossPushModule.kt`) with no Firebase/GMS. The FCM service is declared in the main manifest and removed for the FOSS flavor (`app/src/main/AndroidManifest.xml:110-117`). vCard export is a user-initiated system share sheet (`AndroidManifest.xml:76-86`). |
 | STORAGE-5 | Keyboard cache disabled on sensitive inputs | partial | Register / forgot-password / settings / users secret fields use `KeyboardType.Password` (the Android signal that disables IME personalized learning) alongside `PasswordVisualTransformation` — `feature/auth/.../RegisterScreen.kt:151-152`, `ForgotPasswordScreen.kt:147-148,156-157`, `feature/settings/.../SettingsScreen.kt:268`. **Gap:** the login screen's password field (`feature/auth/.../LoginScreen.kt:221-227`) masks via `PasswordVisualTransformation` + autofill `ContentType.Password` but keeps default keyboard options — no `KeyboardType.Password` on the one field where a password is typed most often. |
 | STORAGE-6 | No sensitive data exposed via IPC | satisfied | The only exported components are system-driven: `MainActivity` (launcher + OIDC deep link) and the `PHONE_STATE`/`SMS_RECEIVED` receivers (the latter guarded by `android.permission.BROADCAST_SMS`); everything else is `exported="false"` (`AndroidManifest.xml:78-129`). The FileProvider is `exported="false"` with per-URI grants (`:80-81`). |
@@ -244,7 +273,7 @@ No L2-only rows in this chapter (CRYPTO-1…6 are all L1).
 | CRYPTO-2 | Proven cryptographic implementations | satisfied | `androidx.security:crypto` (`EncryptedSharedPreferences`, `MasterKey`) for the session token and Room passphrase, and SQLCipher (`net.zetetic:sqlcipher-android`) for the Room mirror — both platform-standard, no hand-rolled crypto (`EncryptedTokenStorage.kt:5-6`, `RoomPassphraseStore.kt`, `DataModule.kt`). |
 | CRYPTO-3 | Appropriate primitives, best-practice parameters | satisfied | Master key `AES256_GCM`; pref keys `AES256_SIV`; pref values `AES256_GCM` (`EncryptedTokenStorage.kt:21,27-28`). SQLCipher uses AES-256-CBC pages with per-page random IVs + HMAC-SHA512 page integrity, keyed via PBKDF2-HMAC-SHA512 (256k iterations) from a random 32-byte passphrase — the library's standard parameters. |
 | CRYPTO-4 | No deprecated algorithms | satisfied | No MD5/SHA1/DES/ECB/Blowfish anywhere in `android/`; only AES-256 (GCM/SIV/CBC) + HMAC-SHA512 via the platform library and SQLCipher. |
-| CRYPTO-5 | No key reuse across purposes | satisfied | The single Keystore master key wraps *distinct* keys per purpose: the session-token key and the Room-mirror passphrase are separately generated (`EncryptedTokenStorage.kt`, `RoomPassphraseStore.kt`); the DB passphrase never encrypts anything but the SQLCipher database. No key is reused across different secrets. |
+| CRYPTO-5 | No key reuse across purposes | satisfied | The single Keystore master key wraps *distinct* keys per purpose: the session-token key and the Room-mirror passphrase are separately generated (`EncryptedTokenStorage.kt`, `RoomPassphraseStore.kt`); the DB passphrase never encrypts anything but the SQLCipher database. The embedded local store adds one dedicated Keystore AES-256-GCM key **per purpose** — `mycorrhizal.local_server.jwt` and `mycorrhizal.local_server.atrest` (`LocalServerSecrets.kt`) — so the JWT signing secret and the at-rest master key are never wrapped by the same key. No key is reused across different secrets. |
 | CRYPTO-6 | Secure random number generator | satisfied | No custom RNG; the Keystore master key, `androidx.security.crypto`, and `SecureRandom` (Room passphrase, `RoomPassphraseStore.kt`) all draw from the platform CSPRNG; SQLCipher generates its per-page IVs and DB salt internally. |
 
 ## V4 — Authentication and Session Management (MSTG-AUTH)
@@ -300,11 +329,11 @@ No L2-only rows in this chapter.
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
 | CODE-1 | Signed with valid cert, private key protected | satisfied | Release signing via env/properties only, never committed; a partial set fails fast rather than producing a null-password APK (`app/build.gradle.kts:17-32`). |
-| CODE-2 | Release-mode build, non-debuggable | satisfied | `isMinifyEnabled = true`, `isShrinkResources = true`, ProGuard rules for R8 (`app/build.gradle.kts:109-113`, `app/proguard-rules.pro`); release builds are non-debuggable by AGP default; `./gradlew :app:assembleObtainiumRelease` is gated in `.github/workflows/android-apk-build.yml` (signing secrets required, fail-fast) and `docker-publish.yml:421`. |
+| CODE-2 | Release-mode build, non-debuggable | satisfied | `isMinifyEnabled = true`, `isShrinkResources = true`, ProGuard rules for R8 (`app/build.gradle.kts:135-139`, `app/proguard-rules.pro`); release builds are non-debuggable by AGP default; `./gradlew :app:assembleObtainiumRelease` is gated in `.github/workflows/android-apk-build.yml` (signing secrets required, fail-fast) and `docker-publish.yml:421`. |
 | CODE-3 | Debug symbols removed from native binaries | not-applicable | No native code (pure Kotlin/JVM); nothing to strip. |
-| CODE-4 | No debug/backdoor code, no verbose logging | satisfied | HTTP logging is debug-build-only and `Level.BASIC` (`NetworkFactory.kt:53-59`); no hidden settings/backdoors; `detekt` in CI gates dead code and leftover debug paths (`android-tests.yml` → `./gradlew detekt`). |
+| CODE-4 | No debug/backdoor code, no verbose logging | satisfied | HTTP logging is debug-build-only and `Level.BASIC` (`NetworkFactory.kt:62-68`); no hidden settings/backdoors; `detekt` in CI gates dead code and leftover debug paths (`android-tests.yml` → `./gradlew detekt`). |
 | CODE-5 | Third-party components identified + vulnerability-checked | satisfied | CodeQL `java-kotlin` (`codeql.yml:132-184`), mobsfscan (`sast.yml`), Android Lint, `detekt`, and Dependabot's `gradle` ecosystem (`/android`, `.github/dependabot.yml`) + GitHub Dependency Review (`dependency-review.yml`). `filters.yaml` maps `android/**` to the Android + SAST + CodeQL jobs. |
 | CODE-6 | Exceptions caught and handled | satisfied | Result/`fold` error handling across repositories and the OIDC flow (`MainActivity.kt:220-263`); `detekt`'s over-broad-exception rule in CI. |
 | CODE-7 | Error handling denies access by default | satisfied | 401/404s clear the session rather than leaking data; failed profile fetch flips to logged-out (`OidcLoginCoordinator.kt:77-128`); no client-side fallback that reveals data on error. |
 | CODE-8 | Unmanaged-code memory handled securely | not-applicable | No unmanaged/native code. |
-| CODE-9 | Free toolchain security features enabled | satisfied | R8 byte-code minification + resource shrink (`app/build.gradle.kts:109-110`), ProGuard rules for reflection-using libs (`app/proguard-rules.pro`), and the platform's default hardening (NX, ASLR) apply to the managed app. |
+| CODE-9 | Free toolchain security features enabled | satisfied | R8 byte-code minification + resource shrink (`app/build.gradle.kts:135-136`), ProGuard rules for reflection-using libs (`app/proguard-rules.pro`), and the platform's default hardening (NX, ASLR) apply to the managed app. |

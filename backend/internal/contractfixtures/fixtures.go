@@ -39,6 +39,11 @@ type Pin struct {
 	Method   string // HTTP method
 	Path     string // spec path (already in {param} form)
 	Status   string // response status code
+	// Example names one entry of the response's OpenAPI `examples` map. Empty
+	// selects the singular `example:`. The map form lets one operation pin
+	// several variants (e.g. /health's server and embedded deployments, issue
+	// #1263) without inventing a second operation.
+	Example string
 }
 
 // Pinned are the contract fixtures the web and Android suites share. Adding a
@@ -60,6 +65,12 @@ var Pinned = []Pin{
 	{Filename: "circles-list.json", Method: "GET", Path: "/circles", Status: "200"},
 	{Filename: "tags-list.json", Method: "GET", Path: "/tags", Status: "200"},
 	{Filename: "occasion-events-list.json", Method: "GET", Path: "/occasion-events", Status: "200"},
+	// ADR 0028 Decision 2 (issue #1263): the two capability shapes a client
+	// must gate on — an older/full server (every token) and the Android app's
+	// embedded deployment (network-only surfaces omitted). One operation, two
+	// named examples.
+	{Filename: "health.json", Method: "GET", Path: "/health", Status: "200", Example: "server"},
+	{Filename: "health-embedded.json", Method: "GET", Path: "/health", Status: "200", Example: "embedded"},
 }
 
 // FixturesDir is the shared checked-in fixture directory, repo-relative.
@@ -128,16 +139,33 @@ func responseExample(doc *openapi3.T, pin Pin) (any, error) {
 	if media == nil {
 		return nil, fmt.Errorf("spec %s %s %s has no application/json content", pin.Method, pin.Path, pin.Status)
 	}
-	if media.Example == nil {
-		return nil, fmt.Errorf("spec %s %s %s has no example — add one to %s", pin.Method, pin.Path, pin.Status, SpecPath)
+	example, err := mediaExample(media, pin)
+	if err != nil {
+		return nil, err
 	}
 	if media.Schema == nil || media.Schema.Value == nil {
 		return nil, fmt.Errorf("spec %s %s %s has no resolvable schema", pin.Method, pin.Path, pin.Status)
 	}
-	if err := media.Schema.Value.VisitJSON(media.Example); err != nil {
+	if err := media.Schema.Value.VisitJSON(example); err != nil {
 		return nil, fmt.Errorf("spec %s %s %s example fails schema validation: %w", pin.Method, pin.Path, pin.Status, err)
 	}
-	return media.Example, nil
+	return example, nil
+}
+
+// mediaExample resolves the pinned example value, from the named `examples` map
+// when Pin.Example is set or from the singular `example:` otherwise.
+func mediaExample(media *openapi3.MediaType, pin Pin) (any, error) {
+	if pin.Example == "" {
+		if media.Example == nil {
+			return nil, fmt.Errorf("spec %s %s %s has no example — add one to %s", pin.Method, pin.Path, pin.Status, SpecPath)
+		}
+		return media.Example, nil
+	}
+	ref, ok := media.Examples[pin.Example]
+	if !ok || ref == nil || ref.Value == nil {
+		return nil, fmt.Errorf("spec %s %s %s has no examples.%s — add it to %s", pin.Method, pin.Path, pin.Status, pin.Example, SpecPath)
+	}
+	return ref.Value.Value, nil
 }
 
 // operationForMethod returns the PathItem's operation for the given HTTP

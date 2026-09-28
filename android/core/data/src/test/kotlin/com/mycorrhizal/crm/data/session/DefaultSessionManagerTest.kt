@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import app.cash.turbine.test
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -656,6 +657,70 @@ class DefaultSessionManagerTest {
 
         assertEquals(1, manager.observeProfiles().first().size)
         assertEquals("https://one.example.com", manager.observeActiveProfile().first()?.remoteUrl)
+    }
+
+    // --- ADR 0028 Decision 2 / issue #1262: Local profiles -------------------
+
+    @Test
+    fun `activateLocalProfile creates one Local profile and mints a sentinel session`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+
+        val profile = manager.activateLocalProfile("local-token")
+
+        assertTrue(profile.kind is ServerProfileKind.Local)
+        assertEquals("local-token", tokenStorage.tokens[profile.id])
+        // The sentinel origin is what routes requests over the Unix socket and
+        // drives the /health compatibility check for a Local profile.
+        assertEquals(LOCAL_SERVER_SENTINEL_URL, manager.baseUrl())
+        assertEquals(LOCAL_SERVER_SENTINEL_URL, manager.serverUrl())
+        assertTrue(manager.observeSession().first().isLoggedIn)
+        assertEquals(profile.id, manager.activeProfileId())
+    }
+
+    @Test
+    fun `activating a Local profile twice reuses the same profile and refreshes its token`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+
+        val first = manager.activateLocalProfile("token-one")
+        val second = manager.activateLocalProfile("token-two")
+
+        assertEquals(first.id, second.id)
+        assertEquals(1, manager.profiles().size)
+        // Each app start mints a fresh token; the stored credential tracks it.
+        assertEquals("token-two", tokenStorage.tokens[first.id])
+    }
+
+    @Test
+    fun `switching into a Local profile clears the previous profile's Room mirror`() = runTest {
+        val cleaner = RecordingSessionDataCleaner()
+        val manager = manager(cleaner = cleaner)
+        manager.init()
+        manager.setServerUrl("https://remote.example.com")
+        manager.setSession("https://remote.example.com", "remote-jwt", SessionState(userId = 1))
+
+        manager.activateLocalProfile("local-token")
+
+        assertEquals(1, cleaner.clearCount)
+        assertEquals(LOCAL_SERVER_SENTINEL_URL, manager.baseUrl())
+    }
+
+    @Test
+    fun `switching from Local back to a Remote profile restores that URL`() = runTest {
+        val manager = manager()
+        manager.init()
+        val remote = manager.addRemoteProfile("Remote", "https://remote.example.com")
+        manager.setSession("https://remote.example.com", "remote-jwt", SessionState(userId = 1))
+
+        manager.activateLocalProfile("local-token")
+        assertEquals(LOCAL_SERVER_SENTINEL_URL, manager.baseUrl())
+
+        manager.switchProfile(remote.id)
+
+        assertEquals("https://remote.example.com", manager.baseUrl())
     }
 
     /** Minimal pending-interactions fake: only the count is exercised here. */
