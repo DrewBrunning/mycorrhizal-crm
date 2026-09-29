@@ -171,6 +171,7 @@ type MappedReminder struct {
 	Message               string
 	RemindAt              string
 	Recurrence            string
+	ByMail                *bool
 	ReoccurFromCompletion *bool
 	Completed             bool
 	LastSent              *time.Time
@@ -1244,6 +1245,7 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 			Message:               r.Message,
 			RemindAt:              remindAt,
 			Recurrence:            r.Recurrence,
+			ByMail:                r.ByMail,
 			ReoccurFromCompletion: r.ReoccurFromCompletion,
 			Completed:             r.Completed,
 			LastSent:              r.LastSent,
