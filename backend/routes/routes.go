@@ -67,6 +67,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			v1.POST("/login/2fa", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
 				controllers.Complete2FALogin(c, cfg)
 			})
+			// Issue #593: passkey (WebAuthn) alternative to the TOTP step above —
+			// same 2fa_pending challenge cookie, same rate limit, same session
+			// on success.
+			v1.POST("/webauthn/login/begin", middleware.AuthRateLimitMiddleware(), func(c *gin.Context) {
+				controllers.WebAuthnLoginBegin(c, cfg)
+			})
+			v1.POST("/webauthn/login/finish", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
+				controllers.WebAuthnLoginFinish(c, cfg)
+			})
 			// Issue #722: fully biometric login — a device that holds an
 			// unrevoked device grant (and whose owner just passed the local
 			// biometric gate) exchanges it for a fresh session JWT. Rate-limited
@@ -134,6 +143,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/users/2fa/confirm", controllers.ConfirmTwoFactor)
 				protected.POST("/users/2fa/disable", controllers.DisableTwoFactor)
 				protected.POST("/users/2fa/recovery-codes/regenerate", controllers.RegenerateRecoveryCodes)
+				// Issue #593: passkey enrollment + management.
+				protected.POST("/webauthn/register/begin", controllers.WebAuthnRegisterBegin)
+				protected.POST("/webauthn/register/finish", controllers.WebAuthnRegisterFinish)
+				protected.POST("/webauthn/assert/begin", controllers.WebAuthnProofBegin)
+				protected.GET("/webauthn/credentials", controllers.ListWebAuthnCredentials)
+				protected.DELETE("/webauthn/credentials/:id", controllers.DeleteWebAuthnCredential)
 			}
 			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than

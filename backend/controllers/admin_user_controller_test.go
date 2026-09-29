@@ -795,6 +795,47 @@ func TestResetUserTwoFactor_Success(t *testing.T) {
 	assert.Zero(t, codeCount, "every recovery code must be hard-deleted")
 }
 
+// TestResetUserTwoFactor_ClearsPasskeys pins issue #593: an admin reset of a
+// TOTP+passkey account (and of a passkey-only one) must leave zero
+// webauthn_credentials for the target, else the "reset" account still holds a
+// live second factor and the lock-out recovery guarantee is void. Another
+// user's passkeys are untouched.
+func TestResetUserTwoFactor_ClearsPasskeys(t *testing.T) {
+	db, router := setupRouter(t)
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	secret := "encrypted-secret"
+	both := models.User{Username: "both", Email: "both@example.com", Password: "password123", TOTPEnabled: true, TOTPSecretEncrypted: &secret}
+	passkeyOnly := models.User{Username: "pkonly", Email: "pkonly@example.com", Password: "password123"}
+	bystander := models.User{Username: "bystander", Email: "bystander@example.com", Password: "password123"}
+	for _, u := range []*models.User{&both, &passkeyOnly, &bystander} {
+		require.NoError(t, db.Create(u).Error)
+	}
+	for i, u := range []models.User{both, both, passkeyOnly, bystander} {
+		require.NoError(t, db.Create(&models.WebAuthnCredential{UserID: u.ID, CredentialID: []byte{byte(i + 1)}, PublicKey: []byte("pk"), Name: "k"}).Error)
+	}
+	require.NoError(t, db.Create(&models.RecoveryCode{UserID: passkeyOnly.ID, CodeHash: "h"}).Error)
+
+	for _, target := range []models.User{both, passkeyOnly} {
+		req, _ := http.NewRequest("POST", "/users/"+strconv.Itoa(int(target.ID))+"/reset-2fa", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+		var n int64
+		require.NoError(t, db.Model(&models.WebAuthnCredential{}).Where("user_id = ?", target.ID).Count(&n).Error)
+		assert.Zero(t, n, "%s: passkeys must be gone after an admin 2FA reset", target.Username)
+	}
+
+	var recovery int64
+	require.NoError(t, db.Model(&models.RecoveryCode{}).Where("user_id = ?", passkeyOnly.ID).Count(&recovery).Error)
+	assert.Zero(t, recovery)
+
+	var kept int64
+	require.NoError(t, db.Model(&models.WebAuthnCredential{}).Where("user_id = ?", bystander.ID).Count(&kept).Error)
+	assert.Equal(t, int64(1), kept, "a reset must not touch other users' passkeys")
+}
+
 // TestResetUserTwoFactor_Idempotent_NoOp covers a target with no 2FA enabled
 // at all: the endpoint must still succeed (200), not error, per issue #592's
 // idempotency requirement.

@@ -78,10 +78,11 @@ const (
 // or issues a device grant. The value is the reason it is in the set. This is
 // the authoritative list the gate asserts the router against.
 var sessionMintingRoutes = map[string]string{
-	"POST /api/v1/register":            "creates an account from an unauthenticated request — a client below the floor must not be able to create an account it can never use (#692)",
-	"POST /api/v1/login":               "password login — mints the auth_token session cookie, or a 2fa_pending challenge when TOTP is enabled",
-	"POST /api/v1/login/2fa":           "step 2 of interactive login — exchanges the 2FA challenge for the real session cookie",
-	"POST /api/v1/auth/device/session": "device-grant exchange (#722) — a held grant is traded for a fresh session JWT; possession of a grant is as powerful as a password",
+	"POST /api/v1/register":              "creates an account from an unauthenticated request — a client below the floor must not be able to create an account it can never use (#692)",
+	"POST /api/v1/login":                 "password login — mints the auth_token session cookie, or a 2fa_pending challenge when TOTP is enabled",
+	"POST /api/v1/login/2fa":             "step 2 of interactive login — exchanges the 2FA challenge for the real session cookie",
+	"POST /api/v1/webauthn/login/finish": "passkey alternative to /login/2fa (#593) — exchanges the 2FA challenge + a WebAuthn assertion for the real session cookie",
+	"POST /api/v1/auth/device/session":   "device-grant exchange (#722) — a held grant is traded for a fresh session JWT; possession of a grant is as powerful as a password",
 }
 
 // clientVersionFloorExclusions documents the routes that touch authentication,

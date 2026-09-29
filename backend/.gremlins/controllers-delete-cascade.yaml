@@ -75,6 +75,7 @@ unleash:
         - ^timeline_controller\.go$
         - ^two_factor_controller\.go$
         - ^user_controller\.go$
+        - ^webauthn_controller\.go$
         - ^webdav_controller\.go$
         - ^webhook_controller\.go$
     threshold:

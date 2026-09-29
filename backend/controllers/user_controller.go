@@ -198,11 +198,16 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	// Successful login - clear any failed attempt tracking for this (identifier, IP)
 	accountLimiter.RecordLoginSuccess(identifier, clientIP)
 
-	// N8: account has 2FA enabled — the password alone must not mint a
+	// N8: account has 2FA enabled (TOTP and/or, issue #593, a passkey) — the password alone must not mint a
 	// session. Issue a short-lived, single-purpose challenge (no usable
 	// session, purpose=2fa JWT in an httpOnly cookie) and demand a TOTP or
 	// recovery code via POST /login/2fa before the real auth_token cookie.
-	if foundUser.TOTPEnabled {
+	methods, err := services.SecondFactorMethods(db, foundUser)
+	if err != nil {
+		apperrors.AbortWithError(context, apperrors.ErrDatabase("Failed to query second factors").WithError(err))
+		return
+	}
+	if len(methods) > 0 {
 		pendingToken, err := services.Generate2FAChallengeToken(foundUser, cfg)
 		if err != nil {
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate two-factor challenge").WithError(err))
@@ -222,7 +227,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 			cfg.CookieSecure, // secure
 			true,             // httpOnly
 		)
-		context.JSON(http.StatusOK, gin.H{"two_factor_required": true})
+		context.JSON(http.StatusOK, gin.H{"two_factor_required": true, "methods": methods})
 		return
 	}
 

@@ -104,6 +104,7 @@ var registeredModels = []any{
 	&Tag{},
 	&User{},
 	&WebDAVConfig{},
+	&WebAuthnCredential{},
 	&Webhook{},
 	&WebhookDelivery{},
 }

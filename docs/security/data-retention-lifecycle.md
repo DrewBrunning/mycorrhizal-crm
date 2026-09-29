@@ -204,7 +204,7 @@ phones, addresses). Surfaced by the #510 privacy/data-minimization review as the
 
 ## 4. Sessions & short-lived secrets
 
-Session/JWT cookies, TOTP recovery codes, password-reset tokens, API tokens.
+Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password-reset tokens, API tokens.
 
 - **Where / who**: the session JWT in an httpOnly cookie, plus (issue #866) a server-side `sessions`
   row per login that the cookie's `sid` claim points at — see §23 for that row's own lifecycle. API
@@ -217,7 +217,16 @@ Session/JWT cookies, TOTP recovery codes, password-reset tokens, API tokens.
   TOTP anti-replay: `users.totp_last_used_step` (issue #873, migration `000054`) holds the RFC 6238
   counter step of the last accepted TOTP code so a replay inside its ±1 step window is rejected
   (`services.BurnTOTPStep`); it is a derived monotonic marker, not a secret, and is cleared to NULL
-  on 2FA disable / admin 2FA reset.
+  on 2FA disable / admin 2FA reset. **WebAuthn passkeys** (issue #593, migration `000070`) persist as
+  `webauthn_credentials` rows — one per enrolled authenticator: the **public** key (never a
+  secret), raw credential id, AAGUID, signature counter, transports, user-supplied label and
+  `created_at`/`last_used_at`. Hard delete (no `deleted_at`; natural key `(user_id, credential_id)`):
+  gone when the user removes the passkey (gated on a live second-factor proof), on an admin 2FA reset
+  (`ResetUserTwoFactor`), and on account deletion (`DeleteUser`'s explicit cascade list). Revocation
+  history is the `webauthn_register`/`webauthn_revoke` `audit_events` rows, not a tombstone. Recovery
+  codes now outlive TOTP: they are deleted on TOTP disable only when no passkey remains, and on
+  removal of the last passkey when TOTP is off. In-flight ceremony state (the challenge) lives only in
+  process memory for ≤5 minutes and is consumed on use — never persisted, never in a backup.
 - **Deletion / propagation**: logout revokes this device's `sessions` row server-side (`RevokeSession`)
   and clears the cookie + `USER_INFO_KEY` client-side (`frontend/src/auth.ts:172`); a password / 2FA
   change revokes every row (`RevokeAllSessions`) beside the `TokenVersion` bump; revoke-all/rotate
@@ -508,7 +517,7 @@ design is ADR-0010 / CON-04, issue #479).
   `docs/operations/migration-recovery.md`).
 - **Confidentiality / encryption**: a snapshot is a **complete copy of sensitive data at full
   sensitivity** (issue #420) — `private`/`secret` fields, email addresses, password/API-token
-  hashes, TOTP recovery-code hashes, the audit trail, and still-in-window soft-deleted rows. It
+  hashes, TOTP recovery-code hashes, WebAuthn passkey public keys, the audit trail, and still-in-window soft-deleted rows. It
   inherits the DB's field-level at-rest encryption: encrypted columns travel as `encv1:` ciphertext
   and the wrapped DEK (`data_encryption_keys`) travels with them, but it carries the same
   FTS-plaintext exception as the live DB, and the photos/attachments directories are plaintext
