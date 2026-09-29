@@ -56,8 +56,8 @@ fun LoginScreen(
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     // ADR 0028 Decision 1/2: "Use on this device only" creates/re-activates the
-    // Local profile. Gated behind the app's LOCAL_MODE_ENABLED build flag until
-    // the embedded host (issue #1262) and account-bundle backup (#1264) land.
+    // Local profile. Gated behind the app's LOCAL_MODE_ENABLED build flag (on
+    // now that the embedded host #1262 and account-bundle backup #1264 have landed).
     localModeEnabled: Boolean = false,
     onUseLocalOnly: () -> Unit = {},
     // #203: the OIDC native-return failure (MainActivity) has no ViewModel of
