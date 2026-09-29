@@ -39,11 +39,18 @@ export async function listPasskeys(): Promise<Passkey[]> {
 // → finish. A dismissed browser prompt rejects with the browser's own
 // DOMException (see isCeremonyCancelled) so the caller can tell it apart from
 // a backend failure.
-export async function registerPasskey(name?: string): Promise<PasskeyEnrollment> {
+//
+// Issue #1337: once the account already holds a second factor (TOTP or a
+// passkey) the backend refuses begin without a live `proof`, which is sent
+// alongside the name.
+export async function registerPasskey(
+  name?: string,
+  proof?: SecondFactorProof,
+): Promise<PasskeyEnrollment> {
   const beginResponse = await apiFetch(`${API_BASE_URL}/webauthn/register/begin`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify(name?.trim() ? { name: name.trim() } : {}),
+    body: JSON.stringify({ ...(name?.trim() ? { name: name.trim() } : {}), ...proof }),
   });
   const options = (await handleResponse(
     beginResponse,
@@ -61,7 +68,24 @@ export async function registerPasskey(name?: string): Promise<PasskeyEnrollment>
   return { ...(data as PasskeyEnrollment), recovery_codes: data?.recovery_codes || [] };
 }
 
-export type PasskeyRemovalProof = { code: string } | { assertion: Record<string, unknown> };
+export type SecondFactorProof = { code: string } | { assertion: Record<string, unknown> };
+export type PasskeyRemovalProof = SecondFactorProof;
+
+// proveWithAnyPasskey begins a proof ceremony over ALL of the caller's passkeys
+// (nothing is being removed) and returns the assertion the enrollment
+// endpoints accept in place of a TOTP/recovery code (issue #1337).
+export async function proveWithAnyPasskey(): Promise<{ assertion: Record<string, unknown> }> {
+  const response = await apiFetch(`${API_BASE_URL}/webauthn/assert/begin`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+  const options = (await handleResponse(
+    response,
+    'Unable to start passkey verification.',
+  )) as WireRequestOptions;
+  return { assertion: await getAssertion(options) };
+}
 
 // proveWithOtherPasskey begins a proof ceremony and returns the assertion the
 // delete endpoint accepts in place of a TOTP/recovery code. `excludeId` is the

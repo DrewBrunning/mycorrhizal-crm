@@ -95,6 +95,22 @@ describe('two-factor API', () => {
     expect(init.method).toBe('POST');
   });
 
+  test('setupTwoFactor sends no body without a proof, and the proof when given (#1337)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(responseBody({ secret: 'S', otpauth_url: 'otpauth://x' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await setupTwoFactor();
+    expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
+
+    await setupTwoFactor({ code: 'AAAAA-BBBBB-CCCCC' });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ code: 'AAAAA-BBBBB-CCCCC' });
+
+    await setupTwoFactor({ assertion: { id: 'cred-id' } });
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ assertion: { id: 'cred-id' } });
+  });
+
   test('confirmTwoFactor POSTs the code and returns the recovery codes', async () => {
     const codes = ['AAAAA-BBBBB-CCCCC', 'DDDDD-EEEEE-FFFFF'];
     const fetchMock = vi

@@ -6,6 +6,7 @@ import {
   type PasskeyRemovalProof,
   registerPasskey,
   removePasskey,
+  type SecondFactorProof,
 } from '../api/webauthn';
 
 export function useWebAuthn() {
@@ -29,8 +30,8 @@ export function useWebAuthn() {
   // Errors propagate to the caller: the component owns the message wording
   // (cancelled ceremony vs backend failure).
   const register = useCallback(
-    async (name?: string): Promise<PasskeyEnrollment> => {
-      const result = await registerPasskey(name);
+    async (name?: string, proof?: SecondFactorProof): Promise<PasskeyEnrollment> => {
+      const result = await registerPasskey(name, proof);
       await refresh();
       return result;
     },
