@@ -107,10 +107,7 @@ class NotificationDeepLinkRouteTest {
         for (i in 0 until vectors.length()) {
             val v = vectors.getJSONObject(i)
             val uri = v.getString("uri")
-            var expected = if (v.isNull("android_route")) null else v.getString("android_route")
-            // TODO(#1269): the search route does not exist yet; until it does the
-            // parser must reject the search host (keyed on host, not blanket).
-            if (Uri.parse(uri).host == "search") expected = null
+            val expected = if (v.isNull("android_route")) null else v.getString("android_route")
             assertEquals("vector $uri", expected, deepLinkRoute(Uri.parse(uri)))
         }
     }
@@ -143,5 +140,60 @@ class NotificationDeepLinkRouteTest {
         val cleared = MutableStateFlow<PendingDeepLink?>(link)
         cleared.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false)))
         assertNull(cleared.value)
+    }
+
+    @Test
+    fun `search links sanitise the query and reject extra path or a foreign host`() {
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search")))
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20%20")))
+        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20ann%20")))
+        // Cf (zero-width space U+200B) and Cc (NUL) are stripped.
+        assertEquals("contacts?search=ab", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%E2%80%8Bb")))
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%00")))
+        assertEquals("contacts?search=a%20b%26c", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%20b%26c")))
+        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?x=1&q=ann")))
+        assertEquals("contacts?search=" + "a".repeat(200), deepLinkRoute(Uri.parse("mycorrhizal://search?q=" + "a".repeat(250))))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://search/extra?q=ann")))
+    }
+
+    @Test
+    fun `deepLinkUri takes a non-oidc VIEW intent's data else the notification extra`() {
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/5"))
+        assertEquals("mycorrhizal://contacts/5", deepLinkUri(view).toString())
+
+        // The OIDC callback is auth-only: never treated as a navigable link.
+        val oidc = Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://oidc/callback?error=access_denied"))
+        assertNull(deepLinkUri(oidc))
+
+        // Data on a non-VIEW intent is ignored; the extra is used.
+        val extra = Intent(Intent.ACTION_MAIN).apply {
+            data = Uri.parse("mycorrhizal://contacts/9")
+            putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://home")
+        }
+        assertEquals("mycorrhizal://home", deepLinkUri(extra).toString())
+
+        assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN)))
+        assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN).putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, " ")))
+        assertNull(deepLinkUri(null))
+    }
+
+    // ADR 0029: the manifest filter lists each allowed host explicitly — a scheme-only
+    // filter would resolve mycorrhizal://settings. (The filter is advisory; deepLinkRoute
+    // is the boundary.)
+    @Test
+    fun `the manifest resolves allowed deep-link hosts to MainActivity and nothing else`() {
+        val pm = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>().packageManager
+        fun resolves(uri: String) = pm.queryIntentActivities(
+            Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addCategory(Intent.CATEGORY_BROWSABLE),
+            0,
+        ).map { it.activityInfo.name }
+        for (ok in listOf(
+            "mycorrhizal://home", "mycorrhizal://contacts/1", "mycorrhizal://search?q=a",
+            "mycorrhizal://circles/c", "mycorrhizal://tags/t", "mycorrhizal://households/h",
+        )) {
+            assertEquals(ok, listOf(MainActivity::class.java.name), resolves(ok))
+        }
+        assertTrue(resolves("mycorrhizal://settings").isEmpty())
+        assertTrue(resolves("mycorrhizal://contacts").isNotEmpty())
     }
 }

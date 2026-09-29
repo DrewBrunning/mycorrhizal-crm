@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.feature.contacts.ContactListViewModel
 import androidx.activity.compose.BackHandler
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -208,7 +209,8 @@ private val secondaryDestinations = listOf(
 /** True when the current destination is inside a [DrawerDestination]'s route. */
 private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean {
     val route = currentRoute ?: return false
-    return route == item.route || route.startsWith("${item.route}/")
+    // The bare contacts destination's pattern carries an optional query arg (issue #1269).
+    return route == item.route || route.startsWith("${item.route}/") || route.startsWith("${item.route}?")
 }
 
 /**
@@ -263,6 +265,7 @@ internal fun NavHostController.navigateToRoot(route: String) {
  */
 internal fun isInContactsSection(route: String?): Boolean =
     route == "contacts" ||
+        route == "contacts?search={search}" ||
         route == "merge" ||
         route?.startsWith("contacts/") == true ||
         route?.startsWith("merge/") == true
@@ -638,7 +641,17 @@ private fun MainScaffold(
                 // is omitted (onMenuClick = null): at Expanded the drawer is
                 // replaced by the rail.
                 listPane = {
+                    // The list pane's ViewModel lives outside the NavHost, so it never sees
+                    // the `contacts?search=` arg through its SavedStateHandle: apply a
+                    // deep-link search here instead (ADR 0029 §4, issue #1269).
+                    val listViewModel: ContactListViewModel = hiltViewModel()
+                    val entry by navController.currentBackStackEntryAsState()
+                    val deepLinkSearch = entry?.arguments?.getString(ContactListViewModel.SEARCH_ARG)
+                    LaunchedEffect(entry) {
+                        if (!deepLinkSearch.isNullOrBlank()) listViewModel.onSearchQueryChange(deepLinkSearch)
+                    }
                     ContactListScreen(
+                        viewModel = listViewModel,
                         onContactClick = { id -> navController.navigate("contacts/$id") },
                         onCreateContact = { navController.navigate("contacts/new") },
                         onImportContacts = { navController.navigate("import") },
@@ -918,7 +931,18 @@ private fun AppNavGraph(
         navController = navController,
         startDestination = "home",
     ) {
-        composable("contacts") {
+        // ADR 0029 §4: optional `search` arg prefilled by mycorrhizal://search?q=…; every
+        // plain navigate("contacts") still works because the arg is optional.
+        composable(
+            route = "contacts?search={search}",
+            arguments = listOf(
+                navArgument("search") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
             if (isTwoPane) {
                 ContactListPlaceholder()
             } else {
