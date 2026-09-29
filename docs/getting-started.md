@@ -40,7 +40,7 @@ fresh instance (issue #450).
 | Variable | Description |
 |---|---|
 | `JWT_SECRET_KEY` | Random string used for JWT signing (minimum 32 bytes; the server refuses to start with a placeholder or weak secret — generate with `openssl rand -base64 32`) |
-| `FRONTEND_URL` | Used for CORS headers. Wildcard (`*`) is allowed but not recommended for production use |
+| `FRONTEND_URL` | Used for CORS headers and as the passkey (WebAuthn) relying party: passkeys need an exact origin, are refused when this is `*`, and changing the hostname later invalidates enrolled passkeys (see [Deployment](deployment.html#moving-to-a-new-hostname-passkeys)). Wildcard (`*`) is allowed but not recommended for production use |
 | `RESEND_API_KEY` | API key for [Resend](https://resend.com), used to send e-mail notifications. The generous free tier is more than enough for any personal setup |
 | `RESEND_FROM_EMAIL` | Sender e-mail address for Resend, needs to be configured in Resend |
 | `SMTP_HOST` | SMTP server hostname, used to send e-mail notifications via your own mail server (alternative or in addition to Resend) |

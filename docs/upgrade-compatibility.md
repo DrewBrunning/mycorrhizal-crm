@@ -52,6 +52,11 @@ only; photos and attachments are unchanged by migrations, so a full rollback
 still restores those from the routine three-piece backup
 (`docs/deployment.md` → Backups).
 
+An upgrade does not change `FRONTEND_URL`, but if you change it in the same maintenance window
+(a domain move), every enrolled passkey stops working — the WebAuthn relying party is derived from
+its hostname. See [Deployment → Moving to a new hostname](deployment.md#moving-to-a-new-hostname-passkeys)
+before you do.
+
 Upgrading is unattended; that is exactly why the supported range is bounded and
 why the refusal cases below fail loudly instead of best-effort.
 

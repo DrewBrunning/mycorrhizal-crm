@@ -974,6 +974,11 @@ design is ADR-0010 / CON-04, issue #479).
 - **Backups**: included in the DB snapshot like any other table; carries no secret and is bounded by
   the absolute-expiry window, so it needs no special handling in the backup-confidentiality boundary
   (§10).
+- **Embedded (Android local-only) shape**: the single local user's session is minted once per server
+  start, travels only over the host's private pipe to an app-private Unix socket, and the host config
+  disables idle enforcement (`SessionIdleTimeoutHours = 0`) and sets the absolute expiry to the range
+  maximum, `JWT_EXPIRY_HOURS = 8760` (issue #1312, `embedded/host.go`) — a Local profile has no login
+  surface to recover from a 401. The server-mode defaults above are unchanged.
 - **Verification**: `backend/middleware/auth_lifecycle_test.go`
   (`TestAuthMiddleware_JWTRejectedAfterSessionRevoked`, `TestAuthMiddleware_JWTRejectedAfterIdleTimeout`,
   `TestAuthMiddleware_JWTWithoutSidClaimRejected`),
@@ -1007,6 +1012,29 @@ design is ADR-0010 / CON-04, issue #479).
   contain them.
 - **Backups**: never, by the app — the log stream lives outside `SQLITE_DB_PATH` and outside the
   photo/attachment directories.
+
+## 25. Push subscriptions & device registrations (`push_subscriptions`, `device_registrations`) — delivery addresses
+
+- **Where / who**: one row per browser Web Push subscription (`push_subscriptions`: the push-service
+  `endpoint`, the `p256dh` / `auth` keys, a `device_label`) and per native device registration
+  (`device_registrations`: the FCM/APNs `token`, the `client`, a `device_label`), both `user_id`-scoped
+  (CLAUDE.md trap #5) and both listed only to their owner (`GET /notifications/push-subscriptions`,
+  `GET /notifications/devices`). They are the delivery addresses the reminder-push channel sends to;
+  the endpoint and token identify a browser/app installation. Stored in plaintext. Neither is in any
+  export, CardDAV/CalDAV projection or the Android offline mirror. Push is not registered at all in the
+  embedded (local-only) shape.
+- **Retention**: until removed — there is no TTL. A row also goes when the push service says the address
+  is dead: a 404/410 from Web Push, or a permanent rejection for an FCM/APNs token, deletes it on the
+  next send (`services/notification_service.go`).
+- **Deletion / propagation**: hard-delete (no `deleted_at` — edge/operational rows, trap #7). The user
+  removes one from Settings (`DELETE /notifications/push-subscriptions/:id`,
+  `DELETE /notifications/devices/:id`); `DeleteUser` removes every row for the account
+  (`controllers/user_delete_cascade.go`, buckets `go-cascade-user` in
+  `controllers/delete_cascade_coverage_test.go`). Removing a row does not unsubscribe the browser at the
+  push service; a dead endpoint simply stops receiving.
+- **Backups**: included in the DB snapshot like any other table. A restored backup can hold a
+  subscription the user already removed elsewhere; the next send to it self-heals per the retention
+  rule above.
 
 ## Known gaps
 
@@ -1043,4 +1071,5 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | No PII/credential in browser storage | `frontend/e2e/` (#419 Playwright regression) |
 | Backup restore actually restores | `frontend/e2e/backupRestore.spec.ts`, restore-drill job (#275) |
 | Metrics counters are RAM-only, bounded labels, token-gated | `backend/metrics/` (`registry_test.go`, `metrics_test.go`), `backend/controllers/metrics_controller_test.go`, `backend/routes/metrics_route_test.go` |
+| Push subscription / device registration deleted with the account | `backend/controllers/delete_cascade_coverage_test.go` (`push_subscriptions`, `device_registrations` seeded + swept, bucket `go-cascade-user`) |
 | Request/access log retention (operator-owned rotation) | No app code to test — stdout stream, no in-app file or TTL; documented in §24 and `pii-inventory.md` §3.3 |

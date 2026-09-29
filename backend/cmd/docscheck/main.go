@@ -40,6 +40,11 @@
 //     docs/getting-started.md must state the same bring-up command, and
 //     docs/deployment.md's upgrade block must state the same command pair the
 //     operator is told to run.
+//
+//  7. PII-inventory ↔ schema drift (issue #1316). Every table in a freshly
+//     migrated database appears in docs/security/pii-inventory.md (a code span
+//     in a table row or heading) or in the reasoned exclusion list in
+//     pii_inventory.go.
 package main
 
 import (
@@ -89,6 +94,7 @@ func collectFindings(root string) []string {
 	findings = append(findings, checkSupportedVersionsDrift(root)...)
 	findings = append(findings, checkIntegrationOwnership(root)...)
 	findings = append(findings, checkCICommandBinding(root)...)
+	findings = append(findings, checkPIIInventory(root)...)
 	return findings
 }
 
