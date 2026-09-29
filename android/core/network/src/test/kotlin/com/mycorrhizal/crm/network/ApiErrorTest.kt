@@ -66,6 +66,22 @@ class ApiErrorTest {
     }
 
     @Test
+    fun `display message for 507 shows the server's actionable capacity message`() {
+        val msg = "The account bundle is 70.0 MiB, which is over the 64 MiB limit the import accepts."
+        assertEquals(msg, ApiError.Server(507, msg).displayMessage)
+    }
+
+    @Test
+    fun `display message for 507 with an empty body falls back to the generic text`() {
+        assertEquals("Server error (507)", ApiError.Server(507, "").displayMessage)
+    }
+
+    @Test
+    fun `display message for other 5xx never leaks the body`() {
+        assertEquals("Server error (503)", ApiError.Server(503, "internal detail").displayMessage)
+    }
+
+    @Test
     fun `network display message is generic`() {
         assertEquals("No connection", ApiError.Network(ConnectException("x")).displayMessage)
     }

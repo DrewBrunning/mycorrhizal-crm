@@ -267,6 +267,23 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
+    fun `an over-limit export shows the server's actionable message on the prepare-failed step`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val msg = "The account bundle is 70.0 MiB, which is over the 64 MiB limit the import accepts."
+            coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
+                Result.success(AttachSignInResult.SignedIn)
+            coEvery { coordinator.prepare(any()) } returns Result.failure(ApiError.Server(507, msg))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.signIn("r1", "", "", "alice", "pw")
+            advanceUntilIdle()
+
+            assertEquals(AttachStep.PrepareFailed, vm.uiState.value.step)
+            assertEquals(msg, vm.uiState.value.error)
+        }
+
+    @Test
     fun `setRowAction changes a valid row and ignores a row with validation errors or an unknown row`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()

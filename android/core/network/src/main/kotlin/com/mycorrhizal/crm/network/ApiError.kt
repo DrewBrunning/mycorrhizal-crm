@@ -21,7 +21,11 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
         get() = when (this) {
             is Network -> "No connection"
             is Timeout -> "Request timed out"
-            is Server -> "Server error ($code)"
+            // 507 is the server's deliberate, operator-actionable capacity refusal
+            // (issue #1313: an account bundle over the import size cap) — its
+            // message names the limit and the remedy, so show it instead of the
+            // generic text. Other 5xx bodies stay hidden (may carry internals).
+            is Server -> if (code == INSUFFICIENT_STORAGE && body.isNotBlank()) body else "Server error ($code)"
             is Client -> when (code) {
                 401 -> "Session expired — please log in again"
                 403 -> "You don't have permission"
@@ -68,3 +72,5 @@ fun <T> Result<T>.foldApiError(
         onFailure = { e -> onError(e.toApiError()) },
     )
 }
+
+private const val INSUFFICIENT_STORAGE = 507
