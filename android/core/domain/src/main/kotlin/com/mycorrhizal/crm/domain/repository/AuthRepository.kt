@@ -181,8 +181,13 @@ interface AuthRepository {
     /** GET /users/2fa/status — whether 2FA is enabled. */
     suspend fun getTwoFactorStatus(): Result<TwoFactorStatusResponse>
 
-    /** POST /users/2fa/setup — mints a pending TOTP secret (409 if already enabled; 403 for OIDC accounts). */
-    suspend fun setupTwoFactor(): Result<TwoFactorSetupResponse>
+    /**
+     * POST /users/2fa/setup — mints a pending TOTP secret (409 if already enabled; 403 for OIDC accounts).
+     * A passkey-only account already holds a second factor, so [proof] is
+     * required for it (issue #1337; 400 = missing/wrong, 429 = locked out);
+     * the first factor passes null.
+     */
+    suspend fun setupTwoFactor(proof: SecondFactorProof? = null): Result<TwoFactorSetupResponse>
 
     /**
      * POST /users/2fa/confirm — enables 2FA and returns the ten one-time

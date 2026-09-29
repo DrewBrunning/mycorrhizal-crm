@@ -6,7 +6,13 @@ import {
   stubWebAuthn,
   unstubWebAuthn,
 } from '../webauthnTestUtils';
-import { listPasskeys, proveWithOtherPasskey, registerPasskey, removePasskey } from './webauthn';
+import {
+  listPasskeys,
+  proveWithAnyPasskey,
+  proveWithOtherPasskey,
+  registerPasskey,
+  removePasskey,
+} from './webauthn';
 
 afterEach(unstubWebAuthn);
 
@@ -125,5 +131,44 @@ describe('proveWithOtherPasskey / removePasskey', () => {
   test('a rejected proof throws the backend message', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(fail(400, 'Invalid code. Please try again.')));
     await expect(removePasskey('a', { code: '0' })).rejects.toThrow('Invalid code');
+  });
+});
+
+// Issue #1337: enrolling an additional factor carries a live proof.
+describe('enrollment proof (issue #1337)', () => {
+  test('registerPasskey sends the proof alongside the name on begin', async () => {
+    stubWebAuthn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok(creationOptionsWire))
+      .mockResolvedValueOnce(ok({ id: 'p1', name: 'x', created_at: 'x', recovery_codes: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    await registerPasskey('Phone', { code: 'AAAAA-BBBBB-CCCCC' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      name: 'Phone',
+      code: 'AAAAA-BBBBB-CCCCC',
+    });
+  });
+
+  test('registerPasskey sends a proof with no name', async () => {
+    stubWebAuthn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok(creationOptionsWire))
+      .mockResolvedValueOnce(ok({ id: 'p1', name: 'x', created_at: 'x' }));
+    vi.stubGlobal('fetch', fetchMock);
+    await registerPasskey(undefined, { code: '123456' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ code: '123456' });
+  });
+
+  test('proveWithAnyPasskey begins with no exclude_id and returns the assertion', async () => {
+    const { get } = stubWebAuthn();
+    const fetchMock = vi.fn().mockResolvedValue(ok(requestOptionsWire));
+    vi.stubGlobal('fetch', fetchMock);
+    const proof = await proveWithAnyPasskey();
+    expect(fetchMock.mock.calls[0][0]).toContain('/webauthn/assert/begin');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({});
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(proof.assertion.id).toBe('cred-id');
   });
 });

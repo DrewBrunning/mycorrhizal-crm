@@ -410,6 +410,10 @@
     <string name="settings_two_factor_recovery_copy">Copia tutti i codici</string>
     <string name="settings_two_factor_recovery_copied">Copiato!</string>
     <string name="settings_two_factor_recovery_done">Fatto</string>
+    <string name="settings_two_factor_proof_title">Conferma la tua identità</string>
+    <string name="settings_two_factor_proof_description">Hai già una passkey, quindi attivare un\'app di autenticazione richiede prima una verifica. Inserisci un codice di recupero oppure verifica con una passkey che hai già.</string>
+    <string name="settings_two_factor_proof_use_passkey">Verifica invece con una passkey</string>
+    <string name="settings_two_factor_proof_confirm">Verifica e continua</string>
 
     <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
     <string name="settings_passkeys_title">Passkey</string>
@@ -438,6 +442,8 @@
     <string name="settings_passkeys_remove_confirm">Rimuovi passkey</string>
     <string name="settings_passkeys_remove_submitting">Attendi…</string>
     <string name="settings_passkeys_use_another">Verifica invece con un\'altra passkey</string>
+    <string name="settings_passkeys_add_proof_description">Hai già un secondo passaggio di accesso, quindi aggiungere un\'altra passkey richiede prima una verifica. Inserisci un codice attuale della tua app di autenticazione o un codice di recupero.</string>
+    <string name="settings_passkeys_add_use_existing">Verifica invece con una passkey esistente</string>
     <string name="settings_passkeys_remove_success">Passkey rimossa.</string>
     <string name="settings_passkeys_invalid_proof">Verifica non riuscita. Riprova.</string>
     <string name="settings_two_factor_qr_content_description">Codice QR per la tua app di autenticazione. Scansionalo oppure inserisci la chiave di configurazione manuale qui sotto.</string>

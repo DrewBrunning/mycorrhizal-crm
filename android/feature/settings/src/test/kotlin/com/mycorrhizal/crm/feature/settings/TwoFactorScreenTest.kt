@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -35,6 +36,9 @@ class TwoFactorScreenTest {
         onDisable: () -> Unit = {},
         onConfirmSetup: (String) -> Unit = {},
         onCloseSetup: () -> Unit = {},
+        onSubmitSetupProofCode: (String) -> Unit = {},
+        onSetupProofWithPasskey: () -> Unit = {},
+        onDismissSetupProof: () -> Unit = {},
         onSubmitPromptCode: (String) -> Unit = {},
         onDismissPrompt: () -> Unit = {},
         onDismissRecoveryCodes: () -> Unit = {},
@@ -48,6 +52,9 @@ class TwoFactorScreenTest {
                     onDisable = onDisable,
                     onConfirmSetup = onConfirmSetup,
                     onCloseSetup = onCloseSetup,
+                    onSubmitSetupProofCode = onSubmitSetupProofCode,
+                    onSetupProofWithPasskey = onSetupProofWithPasskey,
+                    onDismissSetupProof = onDismissSetupProof,
                     onSubmitPromptCode = onSubmitPromptCode,
                     onDismissPrompt = onDismissPrompt,
                     onDismissRecoveryCodes = onDismissRecoveryCodes,
@@ -241,5 +248,66 @@ class TwoFactorScreenTest {
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals("123456", confirmed)
+    }
+
+    // --- issue #1337: proof before enabling TOTP on a passkey account ---
+
+    @Test
+    fun `the proof dialog submits a typed code and needs one`() {
+        var submitted: String? = null
+        setContent(
+            state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true, proofPrompt = true),
+            onSubmitSetupProofCode = { submitted = it },
+        )
+        composeTestRule.onNodeWithText("Verify it's you").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verify and continue").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Verification code").performTextInput("AAAAA-BBBBB-CCCCC")
+        composeTestRule.onNodeWithText("Verify and continue").assertIsEnabled().performClick()
+        assertEquals("AAAAA-BBBBB-CCCCC", submitted)
+    }
+
+    @Test
+    fun `the passkey route is offered only when the gate is open`() {
+        var used = false
+        setContent(
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = false,
+                hasPasskey = true,
+                passkeysAvailable = true,
+                proofPrompt = true,
+            ),
+            onSetupProofWithPasskey = { used = true },
+        )
+        composeTestRule.onNodeWithText("Verify with a passkey instead").performClick()
+        assertTrue(used)
+    }
+
+    @Test
+    fun `no passkey route without the gate and the proof dialog can be dismissed`() {
+        var dismissed = false
+        setContent(
+            state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true, proofPrompt = true),
+            onDismissSetupProof = { dismissed = true },
+        )
+        composeTestRule.onNodeWithText("Verify with a passkey instead").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        assertTrue(dismissed)
+    }
+
+    @Test
+    fun `a rejected proof is shown inside the dialog and the busy label blocks it`() {
+        setContent(
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = false,
+                hasPasskey = true,
+                proofPrompt = true,
+                busy = true,
+                error = "Account temporarily locked",
+            ),
+        )
+        composeTestRule.onNodeWithText("Account temporarily locked").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Please wait...").assertIsNotEnabled()
     }
 }

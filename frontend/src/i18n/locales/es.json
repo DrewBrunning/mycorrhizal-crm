@@ -1178,6 +1178,14 @@
         "useAnotherPasskey": "Verificar con otra llave de acceso"
       }
     },
+    "secondFactorProof": {
+      "title": "Confirma que eres tú",
+      "description": "Ya tienes un segundo paso de inicio de sesión, así que añadir otro requiere una comprobación previa. Introduce un código de recuperación o un código actual de tu aplicación de autenticación, o verifica con una llave de acceso que ya tengas.",
+      "codeLabel": "Código de verificación",
+      "confirm": "Verificar y continuar",
+      "submitting": "Espera un momento...",
+      "usePasskey": "Verificar con una llave de acceso"
+    },
     "deleteAccount": {
       "title": "Eliminar cuenta",
       "description": "Elimina permanentemente tu cuenta y todos tus datos: contactos, actividades, notas, recordatorios, todo. Esta acción no se puede deshacer.",

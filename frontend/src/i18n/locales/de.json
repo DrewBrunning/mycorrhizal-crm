@@ -1178,6 +1178,14 @@
         "useAnotherPasskey": "Stattdessen mit einem anderen Passkey bestätigen"
       }
     },
+    "secondFactorProof": {
+      "title": "Bestätige, dass du es bist",
+      "description": "Du hast bereits einen zweiten Anmeldeschritt, daher braucht das Hinzufügen eines weiteren zuerst einen Nachweis. Gib einen Wiederherstellungscode oder einen aktuellen Code aus deiner Authenticator-App ein, oder bestätige mit einem vorhandenen Passkey.",
+      "codeLabel": "Bestätigungscode",
+      "confirm": "Bestätigen und fortfahren",
+      "submitting": "Bitte warten...",
+      "usePasskey": "Stattdessen mit einem Passkey bestätigen"
+    },
     "deleteAccount": {
       "title": "Konto löschen",
       "description": "Löscht Ihr Konto und alle Ihre Daten dauerhaft – Kontakte, Aktivitäten, Notizen, Erinnerungen, alles. Dies kann nicht widerrufen werden.",

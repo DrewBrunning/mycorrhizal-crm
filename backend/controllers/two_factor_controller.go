@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -57,7 +58,10 @@ func GetTwoFactorStatus(c *gin.Context) {
 // SetupTwoFactor begins enrollment: mints a fresh TOTP secret, stores its
 // encrypted form, and returns the plaintext secret + otpauth URL so the client
 // can render a QR code. 2FA is NOT yet enforced — ConfirmTwoFactor flips the
-// switch once the caller proves they can generate codes.
+// switch once the caller proves they can generate codes. A passkey-only account
+// already holds a second factor, so setup needs a live proof from it (`code` or
+// `assertion`, issue #1337); confirm is only meaningful against the pending
+// secret this step mints, so gating setup gates the whole enrollment.
 func SetupTwoFactor(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -76,6 +80,21 @@ func SetupTwoFactor(c *gin.Context) {
 	}
 	if user.OIDCSubject != nil && *user.OIDCSubject != "" {
 		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr))
+		return
+	}
+
+	var input secondFactorProofInput
+	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON"))
+		return
+	}
+	cfg := currentConfig(c)
+	waUser, _, err := services.LoadWebAuthnUser(db, user)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query passkeys").WithError(err))
+		return
+	}
+	if !requireEnrollmentProof(c, db, &cfg, waUser, input) {
 		return
 	}
 

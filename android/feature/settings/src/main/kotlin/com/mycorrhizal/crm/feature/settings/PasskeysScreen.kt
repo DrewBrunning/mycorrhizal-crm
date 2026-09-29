@@ -93,7 +93,8 @@ fun PasskeysScreen(
             state = state,
             onStartAdd = viewModel::startAdd,
             onDismissAdd = viewModel::dismissAdd,
-            onConfirmAdd = { name -> viewModel.addPasskey(context, name) },
+            onConfirmAdd = { name, proofCode -> viewModel.addPasskey(context, name, proofCode) },
+            onAddWithPasskey = { name -> viewModel.addPasskeyWithExistingPasskey(context, name) },
             onRequestRemove = viewModel::requestRemove,
             onDismissRemove = viewModel::dismissRemove,
             onRemoveWithCode = viewModel::removeWithCode,
@@ -109,7 +110,8 @@ fun PasskeysContent(
     state: PasskeysUiState,
     onStartAdd: () -> Unit,
     onDismissAdd: () -> Unit,
-    onConfirmAdd: (String) -> Unit,
+    onConfirmAdd: (name: String, proofCode: String) -> Unit,
+    onAddWithPasskey: (name: String) -> Unit,
     onRequestRemove: (WebAuthnCredential) -> Unit,
     onDismissRemove: () -> Unit,
     onRemoveWithCode: (String) -> Unit,
@@ -188,9 +190,12 @@ fun PasskeysContent(
     if (state.adding) {
         AddPasskeyDialog(
             busy = state.busy,
+            needsProof = state.needsAddProof,
+            canProveWithPasskey = state.canProveAddWithPasskey,
             error = state.error,
             errorRes = state.errorRes,
             onConfirm = onConfirmAdd,
+            onUseExistingPasskey = onAddWithPasskey,
             onDismiss = onDismissAdd,
         )
     }
@@ -255,17 +260,27 @@ private fun PasskeyRow(passkey: WebAuthnCredential, enabled: Boolean, onRemove: 
 @Composable
 internal fun AddPasskeyDialog(
     busy: Boolean,
+    needsProof: Boolean,
+    canProveWithPasskey: Boolean,
     error: String?,
     errorRes: Int?,
-    onConfirm: (String) -> Unit,
+    onConfirm: (name: String, proofCode: String) -> Unit,
+    onUseExistingPasskey: (name: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
+    // Issue #1337: once the account holds a second factor, adding another needs
+    // a live proof (a code here, or an assertion from an existing passkey).
+    var code by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text(stringResource(R.string.settings_passkeys_add_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Scrolls: the proof fields (#1337) make this dialog tall on small screens.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { if (it.length <= MAX_NAME_LENGTH) name = it },
@@ -275,6 +290,31 @@ internal fun AddPasskeyDialog(
                     supportingText = { Text(stringResource(R.string.settings_passkeys_name_help)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (needsProof) {
+                    Text(
+                        text = stringResource(R.string.settings_passkeys_add_proof_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        singleLine = true,
+                        enabled = !busy,
+                        label = { Text(stringResource(R.string.settings_passkeys_code_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (canProveWithPasskey) {
+                        OutlinedButton(
+                            onClick = { onUseExistingPasskey(name) },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.settings_passkeys_add_use_existing))
+                        }
+                    }
+                }
                 if (busy) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp))
@@ -286,7 +326,7 @@ internal fun AddPasskeyDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name) }, enabled = !busy) {
+            TextButton(onClick = { onConfirm(name, code) }, enabled = !busy && (!needsProof || code.isNotBlank())) {
                 Text(stringResource(R.string.settings_passkeys_add_confirm))
             }
         },

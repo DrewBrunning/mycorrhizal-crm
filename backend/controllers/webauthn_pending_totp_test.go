@@ -14,7 +14,11 @@ import (
 // pending (totp_enabled = false) secret on the account, and returns it.
 func (e *waEnv) pendingTOTPSecret(token string) string {
 	e.t.Helper()
-	w, _ := e.do("POST", "/users/2fa/setup", nil, token)
+	var proof map[string]any
+	if e.lastAuth != nil {
+		proof = e.proofFrom(e.lastAuth, token) // issue #1337
+	}
+	w, _ := e.do("POST", "/users/2fa/setup", proof, token)
 	require.Equal(e.t, http.StatusOK, w.Code, w.Body.String())
 	var setup struct {
 		Secret string `json:"secret"`

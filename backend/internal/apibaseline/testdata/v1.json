@@ -7830,10 +7830,15 @@
       "method": "POST",
       "path": "/users/2fa/setup",
       "parameters": null,
+      "request_body": "ref:SecondFactorProofInput",
       "responses": [
         {
           "status": "200",
           "schema": "ref:TwoFactorSetupResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         },
         {
           "status": "401",
@@ -7846,6 +7851,10 @@
         {
           "status": "409",
           "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": ""
         }
       ]
     },
@@ -8144,6 +8153,10 @@
         {
           "status": "409",
           "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": ""
         }
       ]
     },
@@ -18222,6 +18235,21 @@
       ]
     },
     {
+      "name": "SecondFactorProofInput",
+      "properties": [
+        {
+          "name": "assertion",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "SelfContactInput",
       "properties": [
         {
@@ -18939,6 +18967,16 @@
     {
       "name": "WebAuthnRegisterBeginInput",
       "properties": [
+        {
+          "name": "assertion",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "required": false
+        },
         {
           "name": "name",
           "type": "string",

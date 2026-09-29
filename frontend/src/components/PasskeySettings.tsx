@@ -19,19 +19,28 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Passkey, proveWithOtherPasskey } from '../api/webauthn';
+import { getTwoFactorStatus } from '../api/users';
+import {
+  type Passkey,
+  proveWithAnyPasskey,
+  proveWithOtherPasskey,
+  type SecondFactorProof,
+} from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
+import SecondFactorProofDialog from './SecondFactorProofDialog';
 
 // PasskeySettings is the settings-page card for passkeys (issue #594, the
 // frontend half of #593): enroll via the browser's WebAuthn API, list, and
 // remove. Removal needs a live second-factor proof (ASVS 3.7.1), so it reuses
 // TwoFactorSettings' code-prompt dialog shape — with an extra "use another
-// passkey" route for accounts that have no authenticator app.
+// passkey" route for accounts that have no authenticator app. Adding a passkey
+// to an account that already holds a second factor needs the same proof
+// (issue #1337); the very first factor does not.
 export default function PasskeySettings() {
   const { t, i18n } = useTranslation();
   const { showSuccess } = useSnackbar();
@@ -44,26 +53,52 @@ export default function PasskeySettings() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Enrollment proof (issue #1337): required once the account already holds a
+  // second factor — a passkey, or a confirmed authenticator app.
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofBusy, setProofBusy] = useState(false);
+  const [proofError, setProofError] = useState('');
+
   // Removal proof dialog: `removing` is the passkey being removed.
   const [removing, setRemoving] = useState<Passkey | null>(null);
   const [proofCode, setProofCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [removeError, setRemoveError] = useState('');
 
+  useEffect(() => {
+    getTwoFactorStatus()
+      .then((status) => setTotpEnabled(status.enabled))
+      .catch(() => {
+        // Non-critical: without it the backend still enforces the proof and
+        // its rejection is surfaced below.
+      });
+  }, []);
+
   const formatDate = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleDateString(i18n.language) : '';
 
-  const handleAdd = async () => {
+  // runAdd is the enrollment itself; failures propagate so the caller decides
+  // where the message lands (the page alert, or the proof dialog).
+  const runAdd = async (proof?: SecondFactorProof) => {
     setAdding(true);
-    setError('');
     try {
-      const result = await register(name);
+      const result = await register(name, proof);
       setName('');
       if (result.recovery_codes.length > 0) {
         setRecoveryCodes(result.recovery_codes);
         setCopied(false);
       }
       showSuccess(t('settings.passkeys.addSuccess'));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleAdd = async () => {
+    setError('');
+    try {
+      await runAdd();
     } catch (err) {
       setError(
         isCeremonyCancelled(err)
@@ -72,8 +107,38 @@ export default function PasskeySettings() {
             ? err.message
             : t('settings.passkeys.addError'),
       );
+    }
+  };
+
+  const needsProof = passkeys.length > 0 || totpEnabled;
+
+  const startAdd = () => {
+    if (needsProof) {
+      setProofError('');
+      setProofOpen(true);
+      return;
+    }
+    void handleAdd();
+  };
+
+  // Enrolls with a live proof. The proof dialog stays open with the failure
+  // (wrong code, cancelled prompt, browser refusal) until fixed or cancelled.
+  const submitProof = async (getProof: () => Promise<SecondFactorProof>) => {
+    setProofBusy(true);
+    setProofError('');
+    try {
+      await runAdd(await getProof());
+      setProofOpen(false);
+    } catch (err) {
+      setProofError(
+        isCeremonyCancelled(err)
+          ? t('settings.passkeys.cancelled')
+          : err instanceof Error && err.message
+            ? err.message
+            : t('settings.passkeys.invalidProof'),
+      );
     } finally {
-      setAdding(false);
+      setProofBusy(false);
     }
   };
 
@@ -216,7 +281,7 @@ export default function PasskeySettings() {
                   variant="contained"
                   size="small"
                   sx={{ mt: 0.5 }}
-                  onClick={() => void handleAdd()}
+                  onClick={startAdd}
                   disabled={adding}
                 >
                   {adding ? t('settings.passkeys.adding') : t('settings.passkeys.addButton')}
@@ -231,6 +296,17 @@ export default function PasskeySettings() {
           </Stack>
         )}
       </CardContent>
+
+      {/* Live second-factor proof for adding a further factor (issue #1337) */}
+      <SecondFactorProofDialog
+        open={proofOpen}
+        busy={proofBusy}
+        error={proofError}
+        canUsePasskey={passkeys.length > 0 && supported}
+        onSubmitCode={(code) => void submitProof(async () => ({ code }))}
+        onUsePasskey={() => void submitProof(proveWithAnyPasskey)}
+        onClose={() => setProofOpen(false)}
+      />
 
       {/* Live second-factor proof for removal */}
       <AppDialog
