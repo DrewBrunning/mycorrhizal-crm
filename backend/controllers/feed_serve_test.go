@@ -61,6 +61,20 @@ func mintServedFeed(t *testing.T, db *gorm.DB, userID uint, kind, entityID strin
 	return &feed, plaintext
 }
 
+// awaitFeedTouch waits for ServeFeed's fire-and-forget TouchFeed goroutine to
+// land, so it cannot outlive the test and race with the global-logger swap in
+// TestServeFeed_RequestLogRedactsToken (or with a test-DB close).
+func awaitFeedTouch(t *testing.T, db *gorm.DB, feedID string) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		var f models.Feed
+		if err := db.First(&f, "id = ?", feedID).Error; err != nil {
+			return false
+		}
+		return f.LastAccessedAt != nil
+	}, 2*time.Second, 10*time.Millisecond, "a serve must touch last_accessed_at")
+}
+
 func atomGet(router *gin.Engine, rawurl string, headers map[string]string) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest("GET", rawurl, nil)
 	req.RemoteAddr = "203.0.113.9:1234"
@@ -93,6 +107,10 @@ func TestServeFeed_SuccessHeadersAndConditionalGet(t *testing.T) {
 	// The token must not be echoed into the body.
 	assert.NotContains(t, string(body), plaintext)
 
+	// Let the async touch land before the later requests (the row then carries
+	// a fresh last_accessed_at, so they take the throttled no-goroutine path).
+	awaitFeedTouch(t, db, feed.ID)
+
 	// A matching If-None-Match is a 304 with no body.
 	w2 := atomGet(router, "/api/v1/feeds/atom?token="+plaintext, map[string]string{"If-None-Match": etag})
 	require.Equal(t, http.StatusNotModified, w2.Code)
@@ -105,13 +123,6 @@ func TestServeFeed_SuccessHeadersAndConditionalGet(t *testing.T) {
 	// A non-matching validator re-renders.
 	w4 := atomGet(router, "/api/v1/feeds/atom?token="+plaintext, map[string]string{"If-None-Match": `"nope"`})
 	require.Equal(t, http.StatusOK, w4.Code)
-
-	// Touching last_accessed_at is asynchronous; poll briefly.
-	var stored models.Feed
-	require.Eventually(t, func() bool {
-		require.NoError(t, db.First(&stored, "id = ?", feed.ID).Error)
-		return stored.LastAccessedAt != nil
-	}, 2*time.Second, 20*time.Millisecond, "a serve must touch last_accessed_at")
 }
 
 func TestServeFeed_EveryMissIsIdenticalEmpty404(t *testing.T) {
@@ -120,7 +131,7 @@ func TestServeFeed_EveryMissIsIdenticalEmpty404(t *testing.T) {
 	user := seedServeUser(t, db)
 
 	// A live feed, plus a revoked one.
-	_, liveToken := mintServedFeed(t, db, user.ID, models.FeedKindAggregate, "")
+	live, liveToken := mintServedFeed(t, db, user.ID, models.FeedKindAggregate, "")
 	revoked, revokedToken := mintServedFeed(t, db, user.ID, models.FeedKindAggregate, "")
 	require.NoError(t, db.Model(revoked).Update("revoked_at", time.Now()).Error)
 
@@ -143,6 +154,7 @@ func TestServeFeed_EveryMissIsIdenticalEmpty404(t *testing.T) {
 
 	liveServes := atomGet(router, "/api/v1/feeds/atom?token="+liveToken, nil)
 	require.Equal(t, http.StatusOK, liveServes.Code, "the live feed must resolve (control)")
+	awaitFeedTouch(t, db, live.ID)
 
 	cases := []struct {
 		name  string
@@ -201,10 +213,14 @@ func TestServeFeed_RequestLogRedactsToken(t *testing.T) {
 
 	user := models.User{Username: "log-user", Email: "log-user@example.com", Password: "password123"}
 	require.NoError(t, db.Create(&user).Error)
-	_, plaintext := mintServedFeed(t, db, user.ID, models.FeedKindAggregate, "")
+	feed, plaintext := mintServedFeed(t, db, user.ID, models.FeedKindAggregate, "")
 
 	w := atomGet(router, "/api/v1/feeds/atom?token="+plaintext, nil)
 	require.Equal(t, http.StatusOK, w.Code)
+
+	// Join the async TouchFeed goroutine before the test's cleanup restores the
+	// global logger, or it races that write.
+	awaitFeedTouch(t, db, feed.ID)
 
 	logs := buf.String()
 	require.NotEmpty(t, logs)

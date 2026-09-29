@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.settings
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SwitchProfileResult
 import com.mycorrhizal.crm.domain.profile.ServerProfile
@@ -46,6 +47,7 @@ sealed interface ServersEvent {
 @HiltViewModel
 class ServersViewModel @Inject constructor(
     private val sessionManager: SessionManager,
+    private val localServerHost: LocalServerHost,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServersUiState())
@@ -114,6 +116,23 @@ class ServersViewModel @Inject constructor(
     fun remove(profileId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true) }
+            sessionManager.removeProfile(profileId)
+            _uiState.update { it.copy(isBusy = false) }
+            _events.send(ServersEvent.Removed)
+        }
+    }
+
+    /**
+     * ADR 0028 Decision 1: a Local profile's destructive action. Unlike removing
+     * a Remote profile (whose data lives on a server), this stops the embedded
+     * server and deletes the only copy of the data — the store and its
+     * Keystore-wrapped keys — then drops the profile. Callers gate it behind a
+     * typed confirmation.
+     */
+    fun deleteLocalData(profileId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true) }
+            localServerHost.deleteLocalData()
             sessionManager.removeProfile(profileId)
             _uiState.update { it.copy(isBusy = false) }
             _events.send(ServersEvent.Removed)

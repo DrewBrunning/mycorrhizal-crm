@@ -33,5 +33,7 @@
              host's loopback onto the device's own 127.0.0.1. -->
         <domain includeSubdomains="false">127.0.0.1</domain>
         <domain includeSubdomains="false">localhost</domain>
+        <!-- ADR 0028 Decision 2: the embedded local profile's sentinel host. -->
+        <domain includeSubdomains="false">embedded.invalid</domain>
     </domain-config>
 </network-security-config>

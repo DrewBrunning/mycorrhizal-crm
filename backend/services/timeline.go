@@ -571,13 +571,16 @@ func resolveTimelineCursorIDs(types []string, cur *TimelineCursor) (map[string]a
 
 // parseUintID parses a numeric primary key from a cursor id, mirroring the
 // controller helper of the same name (kept local so services does not import
-// controllers).
-func parseUintID(raw string) (uint, bool) {
+// controllers). It returns uint64 rather than converting down to uint: the
+// value is only ever bound as a SQL comparison against an INTEGER column, so
+// keeping the full parsed width avoids a narrowing conversion that CodeQL
+// flags as unguarded (go/incorrect-integer-conversion).
+func parseUintID(raw string) (uint64, bool) {
 	id, err := strconv.ParseUint(raw, 10, 64)
 	if err != nil {
 		return 0, false
 	}
-	return uint(id), true
+	return id, true
 }
 
 // timelineEntrySideOfCursor is the Go-side equivalent of

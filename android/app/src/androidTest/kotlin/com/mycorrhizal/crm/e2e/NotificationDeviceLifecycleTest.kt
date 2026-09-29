@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.e2e
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.MainActivity
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationStore
 import com.mycorrhizal.crm.feature.tracking.FcmAvailability
@@ -71,6 +72,8 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
             store = InMemoryDeviceRegistrationStore(),
             context = compose.activity.applicationContext,
             fcmToken = tokenSource,
+            // Fail-open capabilities: this suite runs against a full server.
+            serverCapabilities = DefaultServerCapabilitiesStore(),
         )
 
     private fun uniqueToken(label: String): String =

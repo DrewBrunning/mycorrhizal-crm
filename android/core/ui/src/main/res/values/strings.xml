@@ -1744,6 +1744,11 @@
     <string name="settings_servers_remove_body">Remove %1$s from this device? Its saved sign-in is discarded.</string>
     <string name="settings_servers_remove_named">Remove %1$s</string>
     <string name="settings_servers_local_kind">On this device</string>
+
+    <string name="settings_delete_local_data_title">Delete local data?</string>
+    <string name="settings_delete_local_data_body">This permanently deletes everything stored on this device for “%1$s”. There is no server copy and no backup.</string>
+    <string name="settings_delete_local_data_hint">Type %1$s to confirm</string>
+    <string name="settings_delete_local_data_confirm">Delete local data</string>
     <string name="settings_servers_switch_title">Unsent activity</string>
     <string name="settings_servers_switch_body">%1$d captured interaction(s) have not been sent yet. Switching to %2$s will discard them.</string>
     <string name="settings_servers_switch_confirm">Discard and switch</string>

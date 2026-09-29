@@ -1,8 +1,11 @@
 package com.mycorrhizal.crm.di
 
 import com.mycorrhizal.crm.BuildConfig
+import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.ClientVersionProvider
+import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
+import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.SessionExpiryInterceptor
 import com.mycorrhizal.crm.network.SessionExpiryNotifier
@@ -36,15 +39,32 @@ object AppNetworkModule {
         tokenProvider: TokenProvider,
         baseUrlProvider: BaseUrlProvider,
         sessionExpiryNotifier: SessionExpiryNotifier,
+        localServerHost: LocalServerHost,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         tokenProvider = tokenProvider,
         baseUrlProvider = baseUrlProvider,
         debug = BuildConfig.DEBUG,
         sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider),
+        // ADR 0028 Decision 2: route `Local`-profile traffic over the embedded
+        // server's Unix socket through the one shared client. Null when a Remote
+        // profile is active or the embedded server is not running, which keeps
+        // the ordinary network path.
+        localSocketPathProvider = LocalSocketPathProvider {
+            if (baseUrlProvider.baseUrl() == LOCAL_SERVER_SENTINEL_URL) {
+                localServerHost.socketPathIfRunning()
+            } else {
+                null
+            }
+        },
         // Issue #692: the app advertises its versionName on every API request
         // so the server can log it and enforce its MIN_CLIENT_VERSION floor at
         // authentication. BuildConfig is readable here because this module is
         // in :app; the interceptor keeps the header off non-API hosts.
         clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME },
-    )
+    ).newBuilder()
+        // Appended last, so it sees the rewritten (sentinel) URL and runs before
+        // the socket transport: the first Local request starts the embedded
+        // server, and every later request is a fast no-op.
+        .addInterceptor(LocalServerWakeInterceptor(localServerHost))
+        .build()
 }

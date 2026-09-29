@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.data.session
 
+import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
@@ -99,6 +101,27 @@ class DefaultAppLockControllerTest {
     fun `cold start with the app lock on gates a persisted session`() = controllerTest { h ->
         h.tokenStorage.stored = "stored-jwt"
         h.settings.setRequireLocalAuth(true)
+
+        h.sessionManager.init()
+        advanceUntilIdle()
+
+        assertEquals(AppLockState.Locked, h.controller.state.value)
+    }
+
+    // Issue #1262 / ADR 0028 Decision 1: the app lock covers a Local profile.
+    // A Local profile always has a resumable on-device session, so the same
+    // gate applies — arguably more important there, since there is no
+    // server-side revocation to fall back on.
+    @Test
+    fun `a cold start on a persisted Local profile passes the same app-lock gate`() = controllerTest { h ->
+        h.settings.setRequireLocalAuth(true)
+        h.prefs.snapshot = ProfilesSnapshot(
+            profiles = listOf(
+                ServerProfile(id = "local", kind = ServerProfileKind.Local, label = "On this device"),
+            ),
+            activeProfileId = "local",
+        )
+        h.tokenStorage.tokens["local"] = "local-jwt"
 
         h.sessionManager.init()
         advanceUntilIdle()

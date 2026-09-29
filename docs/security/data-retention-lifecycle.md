@@ -334,6 +334,32 @@ A feed is a **copy out of the instance**: a reader (Feedly, Inoreader, a local r
 - **Backups**: none — this is a device-local cache with no server-visible backup; Android's own
   Auto Backup is out of scope for app-internal DB files of this kind and isn't configured for it.
 
+### Android local-only store (embedded backend, issue #1262)
+
+The exception to §8's "the device holds only a rebuildable cache" claim. In local-only mode (ADR 0028
+Decision 2) the app runs the real Go backend on-device, so a `Local` profile's store **is a source of
+truth** — there is no server to rebuild it from.
+
+- **Where / who**: the embedded server's data directory `filesDir/local-server/`
+  (`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerHost.kt`): the SQLite
+  database, profile photos, attachments and the Unix socket. The JWT signing secret and the at-rest
+  master key are Keystore-wrapped into `filesDir/local-server/keys.bin`
+  (`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerSecrets.kt`). It is
+  app-private and FBE-protected, and the Room-mirror cleaner deliberately does not touch it
+  (`LocalDataCleaner.kt` only clears `AppDatabase` and `cacheDir`).
+- **Retention**: indefinite — it is the user's only copy. There is no server-side replica and no cloud
+  backup (`allowBackup=false` stays, ADR 0028 Decision 5).
+- **Deletion / propagation**: the explicit **"Delete local data"** action on a `Local` profile stops the
+  embedded server, deletes `filesDir/local-server/` recursively and removes the Keystore keys, behind a
+  typed confirmation (ADR 0028 Decision 1); uninstalling the app removes it with the rest of app storage.
+  Nothing propagates to a server, because none holds a copy. Attaching a `Local` profile to a remote
+  server is a one-time **export** (the account bundle, ADR 0028 Decision 3), never a live sync, and leaves
+  the local profile a read-only archive until the user deletes it explicitly.
+- **Backups**: none automatic. The user-controlled copy is the **account-bundle export** (ADR 0028
+  Decision 5, issue #1264): a versioned JSON document written through the Storage Access Framework to a
+  location the user chooses, outside app storage. That exported file's lifecycle is the user's, and is a
+  copy this app can neither track nor delete once written.
+
 **Occasion-event cache (issue #1228).** The Android events surface mirrors the server's event list into
 `cached_occasion_events` (`android/core/data/src/main/kotlin/.../local/CachedOccasionEvent.kt`, added by
 Room migration 18→19) via `OccasionEventRepositoryImpl`, which full-resyncs the table on every list and

@@ -29,4 +29,15 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <!-- ADR 0028 Decision 2 / issue #1262: the one cleartext carve-out the
+         embedded local profile needs. Its transport addresses the sentinel host
+         `embedded.invalid`; the profile-aware OkHttp SocketFactory routes those
+         bytes over the app-private Unix socket and never opens a TCP connection,
+         and the `.invalid` TLD never resolves, so this exception cannot reach a
+         network host. Without it the blanket cleartext ban above would reject
+         every local request before it reached the socket factory. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">embedded.invalid</domain>
+    </domain-config>
 </network-security-config>

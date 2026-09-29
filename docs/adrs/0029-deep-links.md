@@ -86,6 +86,9 @@ path (with `home` standing for `/`), so a route is written once and never re-inv
 | Circle / tag / household | `circles/{id}`, `tags/{id}`, `households/{id}` | degrades to `/circles`, `/circles?tab=tags`, `/households` | `id`: opaque id, see §3 |
 | OIDC native return | `oidc/callback?code&state[&language&date_format]` | *(not a web route)* | auth-only; not navigable; unchanged from #965 |
 
+The user-facing rendering of this table — and the "a link opens only after you unlock the app"
+guarantee — is the [Deep links section of the Android app page](../android-app.md#deep-links).
+
 Rules for the set:
 
 - **Closed.** An unknown host, unknown path, extra path segment, or malformed parameter resolves to

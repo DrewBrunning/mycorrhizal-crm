@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
@@ -172,22 +173,35 @@ fun ServersScreen(
     }
 
     removing?.let { profile ->
-        AlertDialog(
-            onDismissRequest = { removing = null },
-            title = { Text(stringResource(R.string.settings_servers_remove_title)) },
-            text = { Text(stringResource(R.string.settings_servers_remove_body, profile.label)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.remove(profile.id)
+        if (profile.kind is ServerProfileKind.Local) {
+            // ADR 0028 Decision 1: a Local profile's data is the only copy, so
+            // "remove" becomes an explicit, typed-confirmation delete.
+            DeleteLocalDataDialog(
+                label = profile.label,
+                onConfirm = {
+                    viewModel.deleteLocalData(profile.id)
                     removing = null
-                }) { Text(stringResource(R.string.settings_servers_remove)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { removing = null }) {
-                    Text(stringResource(R.string.settings_cancel))
-                }
-            },
-        )
+                },
+                onDismiss = { removing = null },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { removing = null },
+                title = { Text(stringResource(R.string.settings_servers_remove_title)) },
+                text = { Text(stringResource(R.string.settings_servers_remove_body, profile.label)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.remove(profile.id)
+                        removing = null
+                    }) { Text(stringResource(R.string.settings_servers_remove)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { removing = null }) {
+                        Text(stringResource(R.string.settings_cancel))
+                    }
+                },
+            )
+        }
     }
 
     state.pendingSwitch?.let { pending ->
@@ -330,6 +344,43 @@ internal fun RenameServerDialog(
         confirmButton = {
             TextButton(onClick = { onConfirm(label) }, enabled = label.isNotBlank()) {
                 Text(stringResource(R.string.settings_servers_rename))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
+    )
+}
+
+/**
+ * ADR 0028 Decision 1: the typed confirmation for deleting a Local profile. The
+ * typed word must equal the profile label, so the action cannot be a stray tap.
+ */
+@Composable
+internal fun DeleteLocalDataDialog(
+    label: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var typed by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_delete_local_data_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.settings_delete_local_data_body, label))
+                OutlinedTextField(
+                    value = typed,
+                    onValueChange = { typed = it },
+                    label = { Text(stringResource(R.string.settings_delete_local_data_hint, label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("delete-local-data-confirm"),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = typed == label) {
+                Text(stringResource(R.string.settings_delete_local_data_confirm))
             }
         },
         dismissButton = {
