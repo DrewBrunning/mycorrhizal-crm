@@ -55,6 +55,7 @@ import type { ConversationAgenda } from './conversationAgenda';
 import type { DashboardReminder, DashboardResponse } from './dashboard';
 import type { DataDecayHealth, DataDecayPolicy, OverdueDataDecayPolicy } from './dataDecayPolicies';
 import type { ExternalActivity, ExternalIdentity } from './externalLinks';
+import type { FEED_DETAILS, FEED_KINDS, Feed, FeedCreateResponse } from './feeds';
 import type { FieldDefinition, FieldValue } from './fieldDefinitions';
 import type { GIFT_STATUSES, Gift } from './gifts';
 import type { HOUSEHOLD_TYPES, Household, HouseholdMember } from './households';
@@ -210,11 +211,15 @@ export type Conformance = [
   NoDrift<ResponseDrift<CardName, S.Name>>,
   NoDrift<ResponseDrift<CardAddress, S.Address>>,
   NoDrift<ResponseDrift<CardAnniversary, S.Anniversary>>,
+  NoDrift<ResponseDrift<Feed, S.Feed>>,
+  NoDrift<ResponseDrift<FeedCreateResponse, S.FeedCreateResponse>>,
 ];
 
 // ---------------------------------------------------------------- enums
 
 export type EnumConformance = [
+  Assert<SameMembers<(typeof FEED_KINDS)[number], S.Feed['kind']>>,
+  Assert<SameMembers<(typeof FEED_DETAILS)[number], S.Feed['detail']>>,
   Assert<SameMembers<(typeof GIFT_STATUSES)[number], Defined<S.Gift['status']>>>,
   Assert<SameMembers<(typeof LIFE_EVENT_CATEGORIES)[number], Defined<S.LifeEvent['category']>>>,
   Assert<SameMembers<(typeof HOUSEHOLD_TYPES)[number], Defined<S.Household['type']>>>,

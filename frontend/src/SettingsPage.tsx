@@ -66,6 +66,7 @@ import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
 import DeleteAccountSettings from './components/DeleteAccountSettings';
+import FeedsSettings from './components/FeedsSettings';
 import ImmichSettings from './components/ImmichSettings';
 import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NextcloudSettings from './components/NextcloudSettings';
@@ -766,6 +767,8 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <FeedsSettings />
 
       {/* Create token dialog */}
       <AppDialog

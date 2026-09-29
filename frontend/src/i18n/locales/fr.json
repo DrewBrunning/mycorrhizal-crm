@@ -1767,6 +1767,85 @@
     },
     "expired": "Expiré"
   },
+  "feeds": {
+    "title": "Flux",
+    "description": "Les flux Atom privés permettent à un lecteur de flux de suivre les chronologies de vos contacts. Toute personne possédant l'URL d'un flux peut le lire tant que vous ne l'avez pas révoqué.",
+    "createButton": "Créer un flux",
+    "loadError": "Échec du chargement des flux",
+    "noFeeds": "Aucun flux pour l'instant",
+    "never": "Jamais",
+    "allContacts": "Tous les contacts",
+    "unknownContact": "Contact inconnu",
+    "kindContact": "Contact : {{name}}",
+    "subscribeAction": "S'abonner via un flux",
+    "kind": {
+      "contact": "Un contact",
+      "aggregate": "Tous les contacts"
+    },
+    "detail": {
+      "headlines": "Titres",
+      "full": "Complet"
+    },
+    "detailHelp": {
+      "headlines": "Titres et dates des entrées uniquement. Ni texte de note ni détails.",
+      "full": "Inclut le texte des notes, les détails des activités et les descriptions des cadeaux."
+    },
+    "columns": {
+      "name": "Nom",
+      "kind": "Flux de",
+      "detail": "Détail",
+      "created": "Créé",
+      "lastAccessed": "Dernier accès",
+      "actions": "Actions"
+    },
+    "revokeAllButton": "Tout révoquer",
+    "revokeSuccess": "Flux révoqué",
+    "revokeAllSuccess_one": "{{count}} flux révoqué",
+    "revokeAllSuccess_other": "{{count}} flux révoqués",
+    "rotateAria": "Renouveler le flux {{name}}",
+    "revokeAria": "Révoquer le flux {{name}}",
+    "rotateDialog": {
+      "title": "Renouveler le flux",
+      "message": "Renouveler « {{name}} » révoque immédiatement son URL et en émet une nouvelle avec les mêmes paramètres. La nouvelle URL ne sera affichée qu'une seule fois.",
+      "confirm": "Renouveler"
+    },
+    "revokeDialog": {
+      "title": "Révoquer le flux",
+      "message": "Voulez-vous vraiment révoquer « {{name}} » ? Son URL cesse de fonctionner immédiatement. Cette action est irréversible.",
+      "confirm": "Révoquer"
+    },
+    "revokeAllDialog": {
+      "title": "Révoquer tous les flux",
+      "message_one": "Voulez-vous vraiment révoquer {{count}} flux ? Son URL cesse de fonctionner immédiatement. Cette action est irréversible.",
+      "message_other": "Voulez-vous vraiment révoquer les {{count}} flux ? Leurs URL cessent de fonctionner immédiatement. Cette action est irréversible.",
+      "confirm": "Tout révoquer"
+    },
+    "rotatedDialog": {
+      "title": "Flux renouvelé"
+    },
+    "createdDialog": {
+      "title": "Flux créé",
+      "done": "Terminé, je l'ai enregistrée"
+    },
+    "createDialog": {
+      "title": "Créer un flux",
+      "description": "Crée une URL privée à laquelle un lecteur de flux peut s'abonner.",
+      "nameLabel": "Nom du flux",
+      "kindLabel": "Flux de",
+      "contactLabel": "Contact",
+      "noContacts": "Aucun contact correspondant",
+      "detailLabel": "Détail",
+      "fullWarning": "Le texte des notes, les détails des activités et les descriptions des cadeaux seront copiés dans votre lecteur de flux.",
+      "readerCopyNotice": "Un lecteur de flux conserve sa propre copie de tout ce que contient le flux, et cette application ne pourra pas supprimer cette copie par la suite. Privilégiez un lecteur de flux auto-hébergé ou local.",
+      "createButton": "Créer"
+    },
+    "url": {
+      "label": "URL du flux",
+      "copy": "Copier",
+      "copied": "Copié !",
+      "warning": "Cette URL n'est affichée qu'une seule fois. Toute personne qui la possède peut lire ce flux tant que vous ne l'avez pas révoqué."
+    }
+  },
   "sessions": {
     "title": "Sessions actives",
     "description": "Appareils actuellement connectés à votre compte. Révoquez ceux que vous ne reconnaissez pas ; une session révoquée cesse de fonctionner immédiatement.",

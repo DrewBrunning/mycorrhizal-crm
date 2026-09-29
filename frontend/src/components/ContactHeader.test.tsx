@@ -552,3 +552,33 @@ test('the health score popover closes on an outside click', async () => {
     expect(screen.queryByText('Relationship health breakdown')).not.toBeInTheDocument(),
   );
 });
+
+// --- Issue #1276: "Subscribe via feed" ------------------------------------
+
+test('the overflow menu offers "Subscribe via feed" and reports the click (#1276)', () => {
+  mockMatchMedia(true);
+  const onSubscribeFeed = vi.fn();
+  renderHeader({ onSubscribeFeed });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('Subscribe via feed'));
+
+  expect(onSubscribeFeed).toHaveBeenCalledTimes(1);
+});
+
+test('the wide layout shows a standalone "Subscribe via feed" button (#1276)', () => {
+  mockMatchMedia(false);
+  const onSubscribeFeed = vi.fn();
+  renderHeader({ onSubscribeFeed });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Subscribe via feed' }));
+
+  expect(onSubscribeFeed).toHaveBeenCalledTimes(1);
+});
+
+test('no "Subscribe via feed" action without a handler (#1276)', () => {
+  mockMatchMedia(true);
+  renderHeader();
+  fireEvent.click(screen.getByLabelText('Actions'));
+  expect(screen.queryByText('Subscribe via feed')).not.toBeInTheDocument();
+});
