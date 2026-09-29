@@ -160,7 +160,10 @@
     "twoFactorDescription": "Introduce el código de 6 dígitos de tu aplicación de autenticación o uno de tus códigos de recuperación.",
     "twoFactorCode": "Código de verificación",
     "invalidCode": "Código no válido. Inténtalo de nuevo.",
-    "backToCredentials": "Volver al inicio de sesión"
+    "backToCredentials": "Volver al inicio de sesión",
+    "passkeyOption": "Usar una llave de acceso",
+    "passkeyCancelled": "Se canceló el inicio de sesión con llave de acceso. Puedes intentarlo de nuevo o introducir un código.",
+    "passkeyFailed": "Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código."
   },
   "sessionExpired": {
     "bannerMessage": "Tu sesión ha caducado.",
@@ -1147,6 +1150,34 @@
         "done": "Hecho"
       }
     },
+    "passkeys": {
+      "title": "Llaves de acceso",
+      "description": "Inicia sesión con la huella, el rostro o el bloqueo de pantalla de tu dispositivo (o una llave de seguridad) como segundo paso en lugar de un código. Las llaves de acceso funcionan junto con una aplicación de autenticación.",
+      "empty": "Aún no hay llaves de acceso.",
+      "listLabel": "Tus llaves de acceso",
+      "addButton": "Añadir una llave de acceso",
+      "adding": "Esperando a tu dispositivo...",
+      "nameLabel": "Nombre de la llave (opcional)",
+      "nameHelp": "Por ejemplo: Portátil, YubiKey.",
+      "addSuccess": "Llave de acceso añadida.",
+      "addError": "No pudimos añadir la llave de acceso. Inténtalo de nuevo.",
+      "cancelled": "La solicitud de la llave de acceso se canceló o expiró.",
+      "unsupported": "Este navegador no admite llaves de acceso.",
+      "removeButton": "Eliminar",
+      "removeAria": "Eliminar la llave de acceso {{name}}",
+      "removeSuccess": "Llave de acceso eliminada.",
+      "invalidProof": "La verificación falló. Inténtalo de nuevo.",
+      "createdLastUsed": "Añadida el {{created}} · último uso el {{lastUsed}}",
+      "createdNeverUsed": "Añadida el {{created}} · nunca usada",
+      "remove": {
+        "title": "Eliminar llave de acceso",
+        "description": "Introduce un código actual de tu aplicación de autenticación o un código de recuperación para eliminar «{{name}}».",
+        "codeLabel": "Código de verificación",
+        "confirm": "Eliminar llave de acceso",
+        "submitting": "Espera...",
+        "useAnotherPasskey": "Verificar con otra llave de acceso"
+      }
+    },
     "deleteAccount": {
       "title": "Eliminar cuenta",
       "description": "Elimina permanentemente tu cuenta y todos tus datos: contactos, actividades, notas, recordatorios, todo. Esta acción no se puede deshacer.",
@@ -1766,6 +1797,85 @@
       "warning": "El token anterior ya está revocado. Este nuevo token no se volverá a mostrar; cópialo ahora y guárdalo de forma segura."
     },
     "expired": "Caducado"
+  },
+  "feeds": {
+    "title": "Feeds",
+    "description": "Los feeds Atom privados permiten que un lector de feeds siga las líneas de tiempo de tus contactos. Cualquiera con la URL de un feed puede leerlo hasta que lo revoques.",
+    "createButton": "Crear feed",
+    "loadError": "No se pudieron cargar los feeds",
+    "noFeeds": "Aún no hay feeds",
+    "never": "Nunca",
+    "allContacts": "Todos los contactos",
+    "unknownContact": "Contacto desconocido",
+    "kindContact": "Contacto: {{name}}",
+    "subscribeAction": "Suscribirse mediante feed",
+    "kind": {
+      "contact": "Un contacto",
+      "aggregate": "Todos los contactos"
+    },
+    "detail": {
+      "headlines": "Titulares",
+      "full": "Completo"
+    },
+    "detailHelp": {
+      "headlines": "Solo títulos y fechas de las entradas. Sin texto de notas ni detalles.",
+      "full": "Incluye el texto de las notas, los detalles de las actividades y las descripciones de los regalos."
+    },
+    "columns": {
+      "name": "Nombre",
+      "kind": "Feed de",
+      "detail": "Detalle",
+      "created": "Creado",
+      "lastAccessed": "Último acceso",
+      "actions": "Acciones"
+    },
+    "revokeAllButton": "Revocar todos",
+    "revokeSuccess": "Feed revocado",
+    "revokeAllSuccess_one": "{{count}} feed revocado",
+    "revokeAllSuccess_other": "{{count}} feeds revocados",
+    "rotateAria": "Rotar el feed {{name}}",
+    "revokeAria": "Revocar el feed {{name}}",
+    "rotateDialog": {
+      "title": "Rotar feed",
+      "message": "Al rotar «{{name}}» se revoca su URL de inmediato y se emite una nueva con la misma configuración. La nueva URL solo se mostrará una vez.",
+      "confirm": "Rotar"
+    },
+    "revokeDialog": {
+      "title": "Revocar feed",
+      "message": "¿Seguro que quieres revocar «{{name}}»? Su URL deja de funcionar de inmediato. Esto no se puede deshacer.",
+      "confirm": "Revocar"
+    },
+    "revokeAllDialog": {
+      "title": "Revocar todos los feeds",
+      "message_one": "¿Seguro que quieres revocar {{count}} feed? Su URL deja de funcionar de inmediato. Esto no se puede deshacer.",
+      "message_other": "¿Seguro que quieres revocar los {{count}} feeds? Sus URL dejan de funcionar de inmediato. Esto no se puede deshacer.",
+      "confirm": "Revocar todos"
+    },
+    "rotatedDialog": {
+      "title": "Feed rotado"
+    },
+    "createdDialog": {
+      "title": "Feed creado",
+      "done": "Listo, la guardé"
+    },
+    "createDialog": {
+      "title": "Crear feed",
+      "description": "Crea una URL privada a la que un lector de feeds puede suscribirse.",
+      "nameLabel": "Nombre del feed",
+      "kindLabel": "Feed de",
+      "contactLabel": "Contacto",
+      "noContacts": "No hay contactos coincidentes",
+      "detailLabel": "Detalle",
+      "fullWarning": "El texto de las notas, los detalles de las actividades y las descripciones de los regalos se copiarán en tu lector de feeds.",
+      "readerCopyNotice": "Un lector de feeds conserva su propia copia de todo lo que contiene el feed, y esta aplicación no puede eliminar esa copia después. Es preferible usar un lector de feeds autoalojado o local.",
+      "createButton": "Crear"
+    },
+    "url": {
+      "label": "URL del feed",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "warning": "Esta URL se muestra una sola vez. Cualquiera que la tenga puede leer este feed hasta que lo revoques."
+    }
   },
   "sessions": {
     "title": "Sesiones activas",

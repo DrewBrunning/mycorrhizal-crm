@@ -63,6 +63,7 @@ import DataDecayDialog from './components/DataDecayDialog';
 import DataDecayPanel from './components/DataDecayPanel';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import ExternalLinkPanel from './components/ExternalLinkPanel';
+import FeedCreateDialog from './components/FeedCreateDialog';
 import GiftDialog, { type GiftFormData } from './components/GiftDialog';
 import GiftList from './components/GiftList';
 import LifeEventDialog, { type LifeEventFormData } from './components/LifeEventDialog';
@@ -347,6 +348,7 @@ export default function ContactDetailPage() {
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   // Contact share dialog state (ticket P1)
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [feedDialogOpen, setFeedDialogOpen] = useState(false);
 
   // Circle/Tag membership (T4 — real entities instead of flat strings)
   const {
@@ -938,6 +940,7 @@ export default function ContactDetailPage() {
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => void navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}
+        onSubscribeFeed={() => setFeedDialogOpen(true)}
         isMe={isMe}
         onToggleMe={(...args) => void handleToggleMe(...args)}
         onExportContact={(format) => {
@@ -972,6 +975,12 @@ export default function ContactDetailPage() {
         open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
         vcardUID={record.uid}
+      />
+
+      <FeedCreateDialog
+        open={feedDialogOpen}
+        onClose={() => setFeedDialogOpen(false)}
+        contact={{ uid: record.uid, name: getContactDisplayName(record) }}
       />
 
       {/* T31: one scrollable page grouped into anchor sections, replacing the

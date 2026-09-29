@@ -3,19 +3,27 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
-import { isAuthenticated, login2FA, loginUser } from './auth';
+import { isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import LoginPage from './LoginPage';
+import { cancelledError, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
-  return { ...actual, loginUser: vi.fn(), login2FA: vi.fn(), isAuthenticated: vi.fn() };
+  return {
+    ...actual,
+    loginUser: vi.fn(),
+    login2FA: vi.fn(),
+    loginWithPasskey: vi.fn(),
+    isAuthenticated: vi.fn(),
+  };
 });
 
 vi.mock('./hooks/useOIDCConfig', () => ({ useOIDCConfig: vi.fn() }));
 
 const loginUserMock = vi.mocked(loginUser);
 const login2FAMock = vi.mocked(login2FA);
+const loginWithPasskeyMock = vi.mocked(loginWithPasskey);
 const isAuthenticatedMock = vi.mocked(isAuthenticated);
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
@@ -30,6 +38,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  unstubWebAuthn();
 });
 
 function renderLogin() {
@@ -174,5 +183,87 @@ describe('LoginPage registration gate', () => {
     });
     renderLogin();
     expect(screen.queryByRole('link', { name: /don't have an account/i })).not.toBeInTheDocument();
+  });
+});
+
+// Issue #594: the passkey option inside the twoFactor step, driven by the
+// `methods` field of /login's response.
+describe('LoginPage passkey option', () => {
+  async function toTwoFactorStep(methods?: ('totp' | 'webauthn')[]) {
+    loginUserMock.mockResolvedValue({ two_factor_required: true, methods });
+    renderLogin();
+    fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'secret123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    await waitFor(() => expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument());
+  }
+
+  test('is offered when methods includes webauthn and the browser supports it', async () => {
+    stubWebAuthn();
+    await toTwoFactorStep(['totp', 'webauthn']);
+    expect(screen.getByRole('button', { name: 'Use a passkey instead' })).toBeInTheDocument();
+    // The TOTP field is still there alongside it.
+    expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+  });
+
+  test('is not offered for a TOTP-only account', async () => {
+    stubWebAuthn();
+    await toTwoFactorStep(['totp']);
+    expect(screen.queryByRole('button', { name: 'Use a passkey instead' })).not.toBeInTheDocument();
+  });
+
+  test('is not offered for an older-shaped response with no methods', async () => {
+    stubWebAuthn();
+    await toTwoFactorStep(undefined);
+    expect(screen.queryByRole('button', { name: 'Use a passkey instead' })).not.toBeInTheDocument();
+  });
+
+  test('is not offered when the browser lacks WebAuthn', async () => {
+    await toTwoFactorStep(['totp', 'webauthn']);
+    expect(screen.queryByRole('button', { name: 'Use a passkey instead' })).not.toBeInTheDocument();
+  });
+
+  test('a successful passkey ceremony completes the login', async () => {
+    stubWebAuthn();
+    loginWithPasskeyMock.mockResolvedValue({ language: 'en', date_format: 'eu' });
+    isAuthenticatedMock.mockReturnValue(true);
+    await toTwoFactorStep(['totp', 'webauthn']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));
+
+    await waitFor(() => expect(loginWithPasskeyMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(isAuthenticatedMock).toHaveBeenCalled());
+    expect(login2FAMock).not.toHaveBeenCalled();
+  });
+
+  test('a dismissed prompt shows a soft message and keeps the code field', async () => {
+    stubWebAuthn();
+    loginWithPasskeyMock.mockRejectedValue(cancelledError());
+    await toTwoFactorStep(['totp', 'webauthn']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));
+
+    expect(await screen.findByText(/Passkey sign-in was cancelled/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+  });
+
+  test('a backend rejection shows its message', async () => {
+    stubWebAuthn();
+    loginWithPasskeyMock.mockRejectedValue(new Error('Passkey could not be verified'));
+    await toTwoFactorStep(['totp', 'webauthn']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));
+
+    expect(await screen.findByText('Passkey could not be verified')).toBeInTheDocument();
+  });
+
+  test('an error with no message falls back to the translated failure text', async () => {
+    stubWebAuthn();
+    loginWithPasskeyMock.mockRejectedValue('weird');
+    await toTwoFactorStep(['totp', 'webauthn']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));
+
+    expect(await screen.findByText(/Passkey sign-in failed/)).toBeInTheDocument();
   });
 });

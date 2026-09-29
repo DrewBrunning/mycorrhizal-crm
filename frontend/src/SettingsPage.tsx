@@ -66,11 +66,13 @@ import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
 import DeleteAccountSettings from './components/DeleteAccountSettings';
+import FeedsSettings from './components/FeedsSettings';
 import ImmichSettings from './components/ImmichSettings';
 import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NextcloudSettings from './components/NextcloudSettings';
 import NotificationSettings from './components/NotificationSettings';
 import PaperlessSettings from './components/PaperlessSettings';
+import PasskeySettings from './components/PasskeySettings';
 import SeafileSettings from './components/SeafileSettings';
 import SessionsSettings from './components/SessionsSettings';
 import TwoFactorSettings from './components/TwoFactorSettings';
@@ -607,6 +609,9 @@ export default function SettingsPage() {
       {/* N8: TOTP two-factor auth */}
       <TwoFactorSettings />
 
+      {/* Issue #594: passkeys (WebAuthn) */}
+      <PasskeySettings />
+
       {/* Issue #866: active-session inventory */}
       <SessionsSettings />
 
@@ -766,6 +771,8 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <FeedsSettings />
 
       {/* Create token dialog */}
       <AppDialog

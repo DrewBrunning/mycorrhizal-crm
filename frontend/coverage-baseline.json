@@ -64,7 +64,7 @@
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
-      "linesTotal": 104,
+      "linesTotal": 109,
       "branches": 94.23,
       "branchesTotal": 52
     },
@@ -81,10 +81,10 @@
       "branchesTotal": 27
     },
     "src/LoginPage.tsx": {
-      "lines": 93.1,
-      "linesTotal": 58,
-      "branches": 71.42,
-      "branchesTotal": 42
+      "lines": 94.2,
+      "linesTotal": 69,
+      "branches": 78.84,
+      "branchesTotal": 52
     },
     "src/NetworkPage.tsx": {
       "lines": 81.11,
@@ -320,11 +320,17 @@
       "branches": 100,
       "branchesTotal": 32
     },
+    "src/api/feeds.ts": {
+      "lines": 100,
+      "linesTotal": 18,
+      "branches": 100,
+      "branchesTotal": 6
+    },
     "src/api/fieldDefinitions.ts": {
-      "lines": 90.19,
-      "linesTotal": 51,
-      "branches": 75,
-      "branchesTotal": 60
+      "lines": 90.9,
+      "linesTotal": 55,
+      "branches": 76.56,
+      "branchesTotal": 64
     },
     "src/api/gifts.ts": {
       "lines": 100,
@@ -389,6 +395,12 @@
     "src/api/monicaImport.ts": {
       "lines": 100,
       "linesTotal": 14,
+      "branches": 75,
+      "branchesTotal": 4
+    },
+    "src/api/mycorrhizalImport.ts": {
+      "lines": 93.75,
+      "linesTotal": 16,
       "branches": 75,
       "branchesTotal": 4
     },
@@ -524,6 +536,12 @@
       "branches": 16.66,
       "branchesTotal": 12
     },
+    "src/api/webauthn.ts": {
+      "lines": 100,
+      "linesTotal": 14,
+      "branches": 100,
+      "branchesTotal": 6
+    },
     "src/api/webhooks.ts": {
       "lines": 100,
       "linesTotal": 14,
@@ -531,10 +549,10 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 68.96,
-      "linesTotal": 58,
-      "branches": 73.33,
-      "branchesTotal": 30
+      "lines": 75.34,
+      "linesTotal": 73,
+      "branches": 80.95,
+      "branchesTotal": 42
     },
     "src/components/AcceptContactShareDialog.tsx": {
       "lines": 94.28,
@@ -687,10 +705,10 @@
       "branchesTotal": 126
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 71.69,
-      "linesTotal": 159,
-      "branches": 73.26,
-      "branchesTotal": 273
+      "lines": 74.86,
+      "linesTotal": 179,
+      "branches": 74.42,
+      "branchesTotal": 305
     },
     "src/components/ContactSyncSettings.tsx": {
       "lines": 75.92,
@@ -729,9 +747,9 @@
       "branchesTotal": 16
     },
     "src/components/CustomFieldsSettings.tsx": {
-      "lines": 94.73,
-      "linesTotal": 38,
-      "branches": 70,
+      "lines": 95.23,
+      "linesTotal": 42,
+      "branches": 75,
       "branchesTotal": 20
     },
     "src/components/DataDecayDialog.tsx": {
@@ -811,6 +829,30 @@
       "linesTotal": 26,
       "branches": 80,
       "branchesTotal": 40
+    },
+    "src/components/FeedCreateDialog.tsx": {
+      "lines": 100,
+      "linesTotal": 73,
+      "branches": 94,
+      "branchesTotal": 50
+    },
+    "src/components/FeedList.tsx": {
+      "lines": 96,
+      "linesTotal": 25,
+      "branches": 91.17,
+      "branchesTotal": 34
+    },
+    "src/components/FeedUrlReveal.tsx": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 4
+    },
+    "src/components/FeedsSettings.tsx": {
+      "lines": 90.47,
+      "linesTotal": 21,
+      "branches": 100,
+      "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
       "lines": 93.42,
@@ -968,6 +1010,12 @@
       "branches": 83.33,
       "branchesTotal": 24
     },
+    "src/components/MycorrhizalImportDialog.tsx": {
+      "lines": 91.89,
+      "linesTotal": 37,
+      "branches": 87.5,
+      "branchesTotal": 16
+    },
     "src/components/NetworkGraph.tsx": {
       "lines": 75.52,
       "linesTotal": 143,
@@ -1064,6 +1112,18 @@
       "branches": 81.57,
       "branchesTotal": 38
     },
+    "src/components/PasskeySettings.tsx": {
+      "lines": 98.57,
+      "linesTotal": 70,
+      "branches": 77.35,
+      "branchesTotal": 53
+    },
+    "src/components/PeriodField.tsx": {
+      "lines": 96.66,
+      "linesTotal": 30,
+      "branches": 95,
+      "branchesTotal": 40
+    },
     "src/components/PersonalInfoEditor.tsx": {
       "lines": 50,
       "linesTotal": 20,
@@ -1119,9 +1179,9 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipSuggestionsInbox.tsx": {
-      "lines": 91.37,
+      "lines": 96.55,
       "linesTotal": 58,
-      "branches": 73.91,
+      "branches": 91.3,
       "branchesTotal": 23
     },
     "src/components/ReminderDialog.tsx": {
@@ -1253,7 +1313,7 @@
     "src/components/sourceImport/SourceImportProgress.tsx": {
       "lines": 100,
       "linesTotal": 7,
-      "branches": 75,
+      "branches": 100,
       "branchesTotal": 12
     },
     "src/components/sourceImport/SourceImportResult.tsx": {
@@ -1269,9 +1329,9 @@
       "branchesTotal": 24
     },
     "src/components/sourceImport/SourceImportWizard.tsx": {
-      "lines": 96.29,
+      "lines": 100,
       "linesTotal": 27,
-      "branches": 92.3,
+      "branches": 100,
       "branchesTotal": 26
     },
     "src/contactFields.ts": {
@@ -1281,9 +1341,9 @@
       "branchesTotal": 2
     },
     "src/contactSectionVisibility.ts": {
-      "lines": 88.88,
+      "lines": 92.59,
       "linesTotal": 27,
-      "branches": 85.18,
+      "branches": 88.88,
       "branchesTotal": 27
     },
     "src/context/AnnouncerContext.tsx": {
@@ -1484,11 +1544,17 @@
       "branches": 62.5,
       "branchesTotal": 8
     },
+    "src/hooks/useFeeds.ts": {
+      "lines": 100,
+      "linesTotal": 37,
+      "branches": 100,
+      "branchesTotal": 5
+    },
     "src/hooks/useFieldDefinitions.ts": {
-      "lines": 73.68,
-      "linesTotal": 57,
-      "branches": 37.5,
-      "branchesTotal": 8
+      "lines": 75,
+      "linesTotal": 68,
+      "branches": 57.14,
+      "branchesTotal": 14
     },
     "src/hooks/useGifts.ts": {
       "lines": 100,
@@ -1623,9 +1689,9 @@
       "branchesTotal": 4
     },
     "src/hooks/useSourceImportWizard.ts": {
-      "lines": 93.33,
+      "lines": 98.09,
       "linesTotal": 105,
-      "branches": 82.5,
+      "branches": 85,
       "branchesTotal": 40
     },
     "src/hooks/useSubsystemHealth.ts": {
@@ -1663,6 +1729,12 @@
       "linesTotal": 46,
       "branches": 76.47,
       "branchesTotal": 34
+    },
+    "src/hooks/useWebAuthn.ts": {
+      "lines": 100,
+      "linesTotal": 16,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/i18n/config.ts": {
       "lines": 81.81,
@@ -1798,9 +1870,9 @@
     },
     "src/utils/contactDetailPayloads.ts": {
       "lines": 100,
-      "linesTotal": 45,
+      "linesTotal": 43,
       "branches": 100,
-      "branchesTotal": 67
+      "branchesTotal": 63
     },
     "src/utils/contactTimeline.ts": {
       "lines": 100,
@@ -1843,6 +1915,18 @@
       "linesTotal": 10,
       "branches": 100,
       "branchesTotal": 10
+    },
+    "src/webauthnCeremony.ts": {
+      "lines": 100,
+      "linesTotal": 27,
+      "branches": 96.29,
+      "branchesTotal": 27
+    },
+    "src/webauthnTestUtils.ts": {
+      "lines": 100,
+      "linesTotal": 17,
+      "branches": 100,
+      "branchesTotal": 5
     }
   }
 }

@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID, login2FA, loginUser } from './auth';
+import {
+  fetchAndCacheUserInfo,
+  getCachedSelfContactVCardUID,
+  login2FA,
+  loginUser,
+  loginWithPasskey,
+} from './auth';
+import { requestOptionsWire, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  unstubWebAuthn();
 });
 
 const USER_INFO_KEY = 'user_info';
@@ -187,5 +195,129 @@ describe('two-factor login', () => {
     await expect(login2FA('000000')).rejects.toThrow(
       'Account temporarily locked. Try again in 60 seconds.',
     );
+  });
+});
+
+// Issue #594: passkey as the alternative second factor.
+describe('passkey login', () => {
+  test('loginUser passes through the available second-factor methods', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ two_factor_required: true, methods: ['totp', 'webauthn'] }),
+      }),
+    );
+    const result = await loginUser('alice', 'pw');
+    expect(result.methods).toEqual(['totp', 'webauthn']);
+  });
+
+  test('loginUser treats an older-shaped 2FA response (no methods) as TOTP only', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ two_factor_required: true }),
+      }),
+    );
+    expect((await loginUser('alice', 'pw')).methods).toEqual(['totp']);
+  });
+
+  test('loginWithPasskey runs begin → get() → finish and caches user info', async () => {
+    localStorage.removeItem(USER_INFO_KEY);
+    const { get } = stubWebAuthn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ language: 'de', date_format: 'eu' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 5, username: 'alice', is_admin: false }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await loginWithPasskey();
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/webauthn/login/begin');
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[1][0]).toContain('/webauthn/login/finish');
+    expect(fetchMock.mock.calls[1][1].credentials).toBe('include');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ id: 'cred-id' });
+    expect(result).toEqual({ language: 'de', date_format: 'eu' });
+    expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').user_id).toBe(5);
+  });
+
+  test('a failed begin surfaces the backend message and never prompts the browser', async () => {
+    const { get } = stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: { message: 'No passkey is registered for this account' } }),
+      }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('No passkey is registered');
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  test('a rejected assertion throws the backend message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: { message: 'Passkey could not be verified' } }),
+        }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Passkey could not be verified');
+  });
+
+  test('a lockout (429) surfaces its top-level message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => ({ message: 'Too many failed login attempts.' }),
+        }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Too many failed login attempts.');
+  });
+
+  test('an unreadable error body falls back to the generic message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => {
+          throw new Error('not json');
+        },
+      }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Unable to start passkey sign-in.');
+  });
+
+  test('a dismissed browser prompt propagates the DOMException', async () => {
+    stubWebAuthn({
+      get: () => {
+        throw new DOMException('cancelled', 'NotAllowedError');
+      },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire }),
+    );
+    await expect(loginWithPasskey()).rejects.toMatchObject({ name: 'NotAllowedError' });
   });
 });

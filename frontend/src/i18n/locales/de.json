@@ -160,7 +160,10 @@
     "twoFactorDescription": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App oder einen Ihrer Wiederherstellungscodes ein.",
     "twoFactorCode": "Verifizierungscode",
     "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
-    "backToCredentials": "Zurück zur Anmeldung"
+    "backToCredentials": "Zurück zur Anmeldung",
+    "passkeyOption": "Stattdessen einen Passkey verwenden",
+    "passkeyCancelled": "Die Anmeldung mit Passkey wurde abgebrochen. Versuchen Sie es erneut oder geben Sie einen Code ein.",
+    "passkeyFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein."
   },
   "sessionExpired": {
     "bannerMessage": "Ihre Sitzung ist abgelaufen.",
@@ -1147,6 +1150,34 @@
         "done": "Fertig"
       }
     },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Melden Sie sich als zweiten Schritt mit Fingerabdruck, Gesicht oder Bildschirmsperre Ihres Geräts (oder einem Sicherheitsschlüssel) statt mit einem Code an. Passkeys funktionieren zusätzlich zu einer Authentifizierungs-App.",
+      "empty": "Noch keine Passkeys.",
+      "listLabel": "Ihre Passkeys",
+      "addButton": "Passkey hinzufügen",
+      "adding": "Warten auf Ihr Gerät...",
+      "nameLabel": "Name des Passkeys (optional)",
+      "nameHelp": "Zum Beispiel: Laptop, YubiKey.",
+      "addSuccess": "Passkey hinzugefügt.",
+      "addError": "Der Passkey konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.",
+      "cancelled": "Die Passkey-Abfrage wurde abgebrochen oder ist abgelaufen.",
+      "unsupported": "Dieser Browser unterstützt keine Passkeys.",
+      "removeButton": "Entfernen",
+      "removeAria": "Passkey {{name}} entfernen",
+      "removeSuccess": "Passkey entfernt.",
+      "invalidProof": "Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "createdLastUsed": "Hinzugefügt am {{created}} · zuletzt verwendet am {{lastUsed}}",
+      "createdNeverUsed": "Hinzugefügt am {{created}} · nie verwendet",
+      "remove": {
+        "title": "Passkey entfernen",
+        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein, um „{{name}}“ zu entfernen.",
+        "codeLabel": "Verifizierungscode",
+        "confirm": "Passkey entfernen",
+        "submitting": "Bitte warten...",
+        "useAnotherPasskey": "Stattdessen mit einem anderen Passkey bestätigen"
+      }
+    },
     "deleteAccount": {
       "title": "Konto löschen",
       "description": "Löscht Ihr Konto und alle Ihre Daten dauerhaft – Kontakte, Aktivitäten, Notizen, Erinnerungen, alles. Dies kann nicht widerrufen werden.",
@@ -1766,6 +1797,85 @@
       "warning": "Das alte Token wurde widerrufen. Dieses neue Token wird nicht erneut angezeigt — kopieren Sie es jetzt und bewahren Sie es sicher auf."
     },
     "expired": "Abgelaufen"
+  },
+  "feeds": {
+    "title": "Feeds",
+    "description": "Private Atom-Feeds lassen einen Feed-Reader die Zeitleisten Ihrer Kontakte verfolgen. Jeder mit der URL eines Feeds kann ihn lesen, bis Sie ihn widerrufen.",
+    "createButton": "Feed erstellen",
+    "loadError": "Feeds konnten nicht geladen werden",
+    "noFeeds": "Noch keine Feeds",
+    "never": "Nie",
+    "allContacts": "Alle Kontakte",
+    "unknownContact": "Unbekannter Kontakt",
+    "kindContact": "Kontakt: {{name}}",
+    "subscribeAction": "Per Feed abonnieren",
+    "kind": {
+      "contact": "Ein Kontakt",
+      "aggregate": "Alle Kontakte"
+    },
+    "detail": {
+      "headlines": "Schlagzeilen",
+      "full": "Vollständig"
+    },
+    "detailHelp": {
+      "headlines": "Nur Eintragstitel und Datum. Kein Notiztext, keine Details.",
+      "full": "Enthält Notiztext, Aktivitätsdetails und Geschenkbeschreibungen."
+    },
+    "columns": {
+      "name": "Name",
+      "kind": "Feed von",
+      "detail": "Detailgrad",
+      "created": "Erstellt",
+      "lastAccessed": "Letzter Zugriff",
+      "actions": "Aktionen"
+    },
+    "revokeAllButton": "Alle widerrufen",
+    "revokeSuccess": "Feed widerrufen",
+    "revokeAllSuccess_one": "{{count}} Feed widerrufen",
+    "revokeAllSuccess_other": "{{count}} Feeds widerrufen",
+    "rotateAria": "Feed {{name}} erneuern",
+    "revokeAria": "Feed {{name}} widerrufen",
+    "rotateDialog": {
+      "title": "Feed erneuern",
+      "message": "Beim Erneuern von „{{name}}“ wird die URL sofort widerrufen und eine neue mit denselben Einstellungen ausgestellt. Die neue URL wird nur einmal angezeigt.",
+      "confirm": "Erneuern"
+    },
+    "revokeDialog": {
+      "title": "Feed widerrufen",
+      "message": "Möchten Sie „{{name}}“ wirklich widerrufen? Die URL funktioniert sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Widerrufen"
+    },
+    "revokeAllDialog": {
+      "title": "Alle Feeds widerrufen",
+      "message_one": "Möchten Sie {{count}} Feed wirklich widerrufen? Die URL funktioniert sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "message_other": "Möchten Sie alle {{count}} Feeds wirklich widerrufen? Die URLs funktionieren sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Alle widerrufen"
+    },
+    "rotatedDialog": {
+      "title": "Feed erneuert"
+    },
+    "createdDialog": {
+      "title": "Feed erstellt",
+      "done": "Fertig, ich habe sie gespeichert"
+    },
+    "createDialog": {
+      "title": "Feed erstellen",
+      "description": "Erstellt eine private URL, die ein Feed-Reader abonnieren kann.",
+      "nameLabel": "Feed-Name",
+      "kindLabel": "Feed von",
+      "contactLabel": "Kontakt",
+      "noContacts": "Keine passenden Kontakte",
+      "detailLabel": "Detailgrad",
+      "fullWarning": "Notiztext, Aktivitätsdetails und Geschenkbeschreibungen werden in Ihren Feed-Reader kopiert.",
+      "readerCopyNotice": "Ein Feed-Reader behält eine eigene Kopie aller Inhalte des Feeds, und diese App kann diese Kopie später nicht löschen. Verwenden Sie am besten einen selbst gehosteten oder lokalen Feed-Reader.",
+      "createButton": "Erstellen"
+    },
+    "url": {
+      "label": "Feed-URL",
+      "copy": "Kopieren",
+      "copied": "Kopiert!",
+      "warning": "Diese URL wird nur einmal angezeigt. Jeder, der sie besitzt, kann diesen Feed lesen, bis Sie ihn widerrufen."
+    }
   },
   "sessions": {
     "title": "Aktive Sitzungen",
