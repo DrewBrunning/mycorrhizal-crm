@@ -196,4 +196,100 @@ class NotificationDeepLinkRouteTest {
         assertTrue(resolves("mycorrhizal://settings").isEmpty())
         assertTrue(resolves("mycorrhizal://contacts").isNotEmpty())
     }
+
+    // --- ADR 0029 §6 (issue #1271): share-to-CRM intake ---------------------------------
+
+    private fun send(text: String?, subject: String? = null, type: String? = "text/plain", action: String = Intent.ACTION_SEND) =
+        Intent(action).apply {
+            this.type = type
+            text?.let { putExtra(Intent.EXTRA_TEXT, it) }
+            subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+        }
+
+    @Test
+    fun `a text plain SEND intent yields the sanitised draft with the subject first`() {
+        assertEquals("hello", shareDraftFromIntent(send("hello")))
+        assertEquals("Subj\n\nhello", shareDraftFromIntent(send("hello", subject = "Subj")))
+        assertEquals("ab\nc", shareDraftFromIntent(send("a\u0000b\nc\u200B")))
+    }
+
+    @Test
+    fun `the draft is truncated to 10000 characters with an ellipsis`() {
+        val draft = shareDraftFromIntent(send("y".repeat(10_050)))!!
+        assertEquals("y".repeat(10_000) + "…", draft)
+    }
+
+    @Test
+    fun `only ACTION_SEND text plain is accepted`() {
+        assertNull(shareDraftFromIntent(send("hi", type = "text/x-vcard")))
+        assertNull(shareDraftFromIntent(send("hi", type = "text/vcard")))
+        assertNull(shareDraftFromIntent(send("hi", type = "image/png")))
+        assertNull(shareDraftFromIntent(send("hi", type = null)))
+        assertNull(shareDraftFromIntent(send("hi", action = Intent.ACTION_VIEW)))
+        assertNull(shareDraftFromIntent(send("hi", action = Intent.ACTION_SEND_MULTIPLE)))
+        assertNull(shareDraftFromIntent(null))
+    }
+
+    @Test
+    fun `an empty or non-text share yields nothing`() {
+        assertNull(shareDraftFromIntent(send(null)))
+        assertNull(shareDraftFromIntent(send("  \n ")))
+        val wrongType = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, 42)
+        assertNull(shareDraftFromIntent(wrongType))
+    }
+
+    @Test
+    fun `a pending share expires strictly after the ttl`() {
+        val share = PendingShare("t", receivedAtMillis = 1_000L)
+        assertFalse(share.isExpired(1_000L + DEEP_LINK_TTL_MILLIS))
+        assertTrue(share.isExpired(1_000L + DEEP_LINK_TTL_MILLIS + 1))
+    }
+
+    @Test
+    fun `logging out clears the pending share but staying logged in keeps it`() = runTest {
+        val share = PendingShare("t", 0L)
+        val kept = MutableStateFlow<PendingShare?>(share)
+        kept.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true)))
+        assertEquals(share, kept.value)
+
+        val cleared = MutableStateFlow<PendingShare?>(share)
+        cleared.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false)))
+        assertNull(cleared.value)
+    }
+
+    @Test
+    fun `share routes carry only an encoded key never the text`() {
+        assertEquals("share/pick-contact?key=abc-123", sharePickerRoute("abc-123"))
+        assertEquals("contacts/7/notes/new?prefill=abc-123", sharedNoteRoute(7, "abc-123"))
+        assertEquals("share/pick-contact?key=a%26b", sharePickerRoute("a&b"))
+    }
+
+    @Test
+    fun `the share intake view model stashes discards and clears drafts`() {
+        val holder = com.mycorrhizal.crm.data.share.ShareDraftHolder()
+        val vm = ShareIntakeViewModel(holder)
+        val a = vm.stash("one")
+        val b = vm.stash("two")
+        vm.discard(a)
+        assertNull(holder.take(a))
+        vm.discardAll()
+        assertNull(holder.take(b))
+        // Stashed text is retrievable exactly once by the form.
+        val c = vm.stash("three")
+        assertEquals("three", holder.take(c))
+        assertNull(holder.take(c))
+    }
+
+    @Test
+    fun `the manifest offers ACTION_SEND text plain to MainActivity only`() {
+        val pm = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>().packageManager
+        fun resolves(type: String) = pm.queryIntentActivities(
+            Intent(Intent.ACTION_SEND).setType(type),
+            0,
+        ).map { it.activityInfo.name }
+        assertEquals(listOf(MainActivity::class.java.name), resolves("text/plain"))
+        assertTrue(resolves("text/vcard").isEmpty())
+        assertTrue(resolves("text/x-vcard").isEmpty())
+        assertTrue(resolves("image/png").isEmpty())
+    }
 }

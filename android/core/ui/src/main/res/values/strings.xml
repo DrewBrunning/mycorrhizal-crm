@@ -1806,4 +1806,7 @@
     <string name="dashboard_backup_reminder_body">Your data lives only on this device. Save an account bundle so you can restore it if this device is lost or reset.</string>
     <string name="dashboard_backup_reminder_action">Back up now</string>
     <string name="dashboard_backup_reminder_dismiss">Dismiss</string>
+    <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
+    <string name="share_intent_label">Add note in Mycorrhizal</string>
+    <string name="share_pick_contact_title">Share to…</string>
 </resources>

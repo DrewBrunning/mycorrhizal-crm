@@ -85,6 +85,14 @@
                 <data android:host="tags" />
                 <data android:host="households" />
             </intent-filter>
+            <!-- ADR 0029 §6: share-to-CRM. Prefill only; the user picks the contact and saves.
+                 The shared text is untrusted; the filter is advisory (MainActivity re-checks
+                 action + type and sanitises). vCard/image/stream shares are not accepted. -->
+            <intent-filter android:label="@string/share_intent_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- M24: shares exported vCard files via the system share sheet (ACTION_SEND with a

@@ -692,4 +692,58 @@ class ContactListScreenTest {
 
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
     }
+
+    // ADR 0029 §6 (issue #1271): the "Share to…" single-select picker mode.
+    private fun setPickerContent(
+        onContactClick: (Int) -> Unit = {},
+        onPickerBack: () -> Unit = {},
+        contacts: List<ContactSummary> = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+    ) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(contacts = contacts),
+                    onSearchQueryChange = {},
+                    onContactClick = onContactClick,
+                    pickerTitle = "Share to…",
+                    onPickerBack = onPickerBack,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `picker mode shows the title and a back arrow and hides every list affordance`() {
+        var backs = 0
+        setPickerContent(onPickerBack = { backs++ })
+
+        composeTestRule.onNodeWithText("Share to…").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Contacts").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Menu").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("New contact").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("enter-select-mode").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("review-duplicates").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("picker-back").performClick()
+        assertEquals(1, backs)
+    }
+
+    @Test
+    fun `picker mode single tap picks the contact and long press does not start selection`() {
+        val picked = mutableListOf<Int>()
+        setPickerContent(onContactClick = { picked += it })
+
+        composeTestRule.onNodeWithText("Alice").performTouchInput { longClick() }
+        composeTestRule.onNodeWithTag("exit-select-mode").assertDoesNotExist()
+        assertTrue(picked.isEmpty())
+
+        composeTestRule.onNodeWithText("Alice").performClick()
+        assertEquals(listOf(1), picked)
+    }
+
+    @Test
+    fun `picker mode hides the import shortcut on an empty list`() {
+        setPickerContent(contacts = emptyList())
+        composeTestRule.onNodeWithText("Import contacts").assertDoesNotExist()
+    }
 }

@@ -1791,4 +1791,7 @@
     <string name="dashboard_backup_reminder_body">I tuoi dati esistono solo su questo dispositivo. Salva un pacchetto account per poterli ripristinare se il dispositivo va perso o viene reimpostato.</string>
     <string name="dashboard_backup_reminder_action">Esegui backup</string>
     <string name="dashboard_backup_reminder_dismiss">Nascondi</string>
+    <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
+    <string name="share_intent_label">Aggiungi nota in Mycorrhizal</string>
+    <string name="share_pick_contact_title">Condividi con…</string>
 </resources>

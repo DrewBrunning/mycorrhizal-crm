@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFlat
@@ -240,11 +241,44 @@ class NoteFormViewModelTest {
         coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
     }
 
-    private fun createViewModel(contactId: Int = 5, noteId: Int? = null): NoteFormViewModel {
-        val handle = SavedStateHandle(mapOf("contactId" to contactId).toMutableMap().apply {
+    private val shareDrafts = ShareDraftHolder()
+
+    private fun createViewModel(contactId: Int = 5, noteId: Int? = null, prefill: String? = null): NoteFormViewModel {
+        val handle = SavedStateHandle(mapOf<String, Any?>("contactId" to contactId).toMutableMap().apply {
             if (noteId != null) put("noteId", noteId)
+            if (prefill != null) put("prefill", prefill)
         })
-        return NoteFormViewModel(noteRepository, contactRepository, handle)
+        return NoteFormViewModel(noteRepository, contactRepository, shareDrafts, handle)
+    }
+
+    @Test
+    fun `prefill key sets the content once and consumes the draft`() {
+        val key = shareDrafts.put("shared snippet")
+        val vm = createViewModel(prefill = key)
+        assertEquals("shared snippet", vm.uiState.value.content)
+        // Single use: the draft is gone, so a replay of the same key prefills nothing.
+        assertEquals("", createViewModel(prefill = key).uiState.value.content)
+    }
+
+    @Test
+    fun `prefill does not save anything by itself`() {
+        createViewModel(prefill = shareDrafts.put("shared snippet"))
+        coVerify(exactly = 0) { noteRepository.create(any(), any()) }
+        coVerify(exactly = 0) { noteRepository.createUnassigned(any()) }
+    }
+
+    @Test
+    fun `unknown prefill key leaves the content empty`() {
+        assertEquals("", createViewModel(prefill = "nope").uiState.value.content)
+    }
+
+    @Test
+    fun `edit mode ignores a prefill key and leaves the draft held`() {
+        coEvery { noteRepository.get(9) } returns Result.failure(RuntimeException("offline"))
+        val key = shareDrafts.put("shared snippet")
+        val vm = createViewModel(noteId = 9, prefill = key)
+        assertEquals("", vm.uiState.value.content)
+        assertEquals("shared snippet", shareDrafts.take(key))
     }
 
     @Test

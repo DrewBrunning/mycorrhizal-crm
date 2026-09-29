@@ -1791,4 +1791,7 @@
     <string name="dashboard_backup_reminder_body">Deine Daten liegen nur auf diesem Gerät. Speichere ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
     <string name="dashboard_backup_reminder_action">Jetzt sichern</string>
     <string name="dashboard_backup_reminder_dismiss">Ausblenden</string>
+    <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
+    <string name="share_intent_label">Notiz in Mycorrhizal hinzufügen</string>
+    <string name="share_pick_contact_title">Teilen mit…</string>
 </resources>
