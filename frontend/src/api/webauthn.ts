@@ -64,11 +64,16 @@ export async function registerPasskey(name?: string): Promise<PasskeyEnrollment>
 export type PasskeyRemovalProof = { code: string } | { assertion: Record<string, unknown> };
 
 // proveWithOtherPasskey begins a proof ceremony and returns the assertion the
-// delete endpoint accepts in place of a TOTP/recovery code.
-export async function proveWithOtherPasskey(): Promise<{ assertion: Record<string, unknown> }> {
+// delete endpoint accepts in place of a TOTP/recovery code. `excludeId` is the
+// passkey being removed: the backend leaves it out of allowCredentials so the
+// browser cannot pick the very credential that would be rejected.
+export async function proveWithOtherPasskey(
+  excludeId: string,
+): Promise<{ assertion: Record<string, unknown> }> {
   const response = await apiFetch(`${API_BASE_URL}/webauthn/assert/begin`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: JSON.stringify({ exclude_id: excludeId }),
   });
   const options = (await handleResponse(
     response,

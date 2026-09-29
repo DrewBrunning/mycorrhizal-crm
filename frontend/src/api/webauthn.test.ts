@@ -97,9 +97,19 @@ describe('proveWithOtherPasskey / removePasskey', () => {
     stubWebAuthn();
     const fetchMock = vi.fn().mockResolvedValue(ok(requestOptionsWire));
     vi.stubGlobal('fetch', fetchMock);
-    const proof = await proveWithOtherPasskey();
+    const proof = await proveWithOtherPasskey('p1');
     expect(fetchMock.mock.calls[0][0]).toContain('/webauthn/assert/begin');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ exclude_id: 'p1' });
     expect(proof.assertion.id).toBe('cred-id');
+  });
+
+  test('a 409 from begin (no other passkey) surfaces the backend message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(fail(409, 'No other passkey is registered to verify with')),
+    );
+    await expect(proveWithOtherPasskey('p1')).rejects.toThrow('No other passkey');
   });
 
   test('DELETEs the encoded id with the proof body', async () => {
