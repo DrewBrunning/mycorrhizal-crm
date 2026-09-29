@@ -113,6 +113,24 @@ suite already proves directly. Disposition: accept, not built — see the "E2E A
 (instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where this is
 tracked.
 
+**Known gap, accepted, with a manual gate (issue #1339): Android local-only mode.** The embedded
+server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
+process exec, Keystore-wrapped secrets, readiness handshake, `/health` over the socket) is an
+`assumeTrue` **skip** on the x86_64 `Android E2E (emulator)` gate. A skip is not evidence, so that
+green check says nothing about local mode. Two things cover it instead:
+
+- **Automated, per-PR:** `backend/main_test.go` builds the real backend binary for the CI host,
+  execs it with `--embedded-host`, and asserts the readiness handshake, `/health` over the Unix
+  socket, an authenticated call with the minted token, and clean SIGTERM shutdown; it also asserts
+  the no-arg exec fails, and pins the Kotlin `EMBEDDED_HOST_ARG` to the Go `embeddedHostArg`. This
+  is the `Backend (Go)` job, so it is merge-blocking. It proves the binary's contract, not the
+  Android host or seccomp behaviour.
+- **Manual, per release candidate:** before dispatching `release.yml`, run
+  `./gradlew :app:connectedObtainiumDebugAndroidTest --tests '*LocalOnlyModeE2eTest'` on a real
+  **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) and
+  confirm the test *ran* (not "skipped"). Do not install over the production package
+  `com.mycorrhizal.crm`; use a suffixed debug appId.
+
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.
 
