@@ -99,6 +99,11 @@ android {
         getByName("testObtainium").kotlin.srcDir("src/fcmTest/kotlin")
         getByName("testPlay").kotlin.srcDir("src/fcmTest/kotlin")
 
+        // Issue #1268 / ADR 0029 §5: the shared deep-link route vectors at
+        // /testdata/deep-links (repo root) — one hand-authored file every
+        // parser (Android, web, backend emitter) is tested against.
+        getByName("test").resources.srcDir("../../testdata/deep-links")
+
         // ADR 0028 Decision 2: the generated arm64-v8a server binary (see the
         // buildEmbeddedServer task below) is merged into the APK's jniLibs
         // exactly like a checked-in native library. The directory is empty (and

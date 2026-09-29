@@ -21,6 +21,7 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import com.mycorrhizal.crm.network.ApiClient
@@ -30,6 +31,8 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import com.mycorrhizal.crm.ui.util.LocaleContextWrapper
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
@@ -93,7 +96,12 @@ class MainActivity : FragmentActivity() {
     // calls onDeepLinkHandled to reset). A StateFlow so a deep link that lands
     // while the main tree isn't composed yet (e.g. while still logged out) is
     // still delivered once the NavHost exists.
-    private val pendingDeepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
+    //
+    // ADR 0029 §3–4 (issue #1268): each link is stamped with its arrival time so
+    // the consumer can drop one that outlived [DEEP_LINK_TTL_MILLIS], and the
+    // flow is cleared whenever the session flips to logged-out so a link fired
+    // while signed out cannot navigate in whichever account signs in next.
+    private val pendingDeepLink = MutableStateFlow<PendingDeepLink?>(null)
 
     // #203 (issue #203): the OIDC-return failure message used to be a Toast,
     // which is announced inconsistently by TalkBack and can't be re-read.
@@ -138,11 +146,19 @@ class MainActivity : FragmentActivity() {
         // masvs-l1.md P3 for android_detect_tapjacking/android_tapjacking.
         window.decorView.filterTouchesWhenObscured = true
 
+        // ADR 0029 §4: a link never outlives the session that was signed in
+        // when it arrived.
+        lifecycleScope.launch {
+            pendingDeepLink.clearWhenLoggedOut(sessionManager.observeSession())
+        }
+
         // M5 §5: handle a cold-start OIDC deep link before the first frame so
         // the session is already present when the app tree composes.
-        handleOidcReturn(intent?.data)
         // M5 §6.6: a notification tap's deep link arrives on the launch intent.
-        handleNotificationDeepLink(intent)
+        // ADR 0029 §3 (issue #1268): consume once — a recreate (language change,
+        // savedInstanceState != null) or a reopen from Recents re-delivers the
+        // original launch intent, which must not be handled a second time.
+        consumeLaunchIntent(savedStateIsNull = savedInstanceState == null)
 
         // M25: the theme preference is a live local setting (system/light/dark),
         // so darkThemeAtLaunch follows it instead of the bare system config when
@@ -205,8 +221,25 @@ class MainActivity : FragmentActivity() {
     // onCreate — handle it the same way.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleOidcReturn(intent.data)
-        handleNotificationDeepLink(intent)
+        setIntent(intent)
+        consumeLaunchIntent(savedStateIsNull = true)
+    }
+
+    /**
+     * Handles the activity intent's OIDC return / notification link at most
+     * once (ADR 0029 §3): skipped when [shouldHandleLaunchIntent] says it is a
+     * replay, and the consumed data is stripped from the retained intent so any
+     * later re-read (recreate, process restore) finds nothing to replay.
+     */
+    private fun consumeLaunchIntent(savedStateIsNull: Boolean) {
+        val current = intent ?: return
+        if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags)) return
+        handleOidcReturn(current.data)
+        handleNotificationDeepLink(current)
+        setIntent(Intent(current).apply {
+            data = null
+            removeExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+        })
     }
 
     /**
@@ -217,7 +250,7 @@ class MainActivity : FragmentActivity() {
     private fun handleNotificationDeepLink(intent: Intent?) {
         val link = intent?.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
         if (!link.isNullOrBlank()) {
-            pendingDeepLink.value = Uri.parse(link)
+            pendingDeepLink.value = PendingDeepLink(Uri.parse(link), System.currentTimeMillis())
         }
     }
 
@@ -275,37 +308,79 @@ class MainActivity : FragmentActivity() {
  * Pure and internal so it is unit-testable without an Activity. The id rules
  * follow each destination's nav-argument type: contacts/activities take a
  * positive integer; circles/tags/households take a non-blank string id
- * (VCardUID). OIDC's `mycorrhizal://oidc/callback` is deliberately not a
+ * (VCardUID). Parsing is strict (ADR 0029 §2, issue #1268). OIDC's `mycorrhizal://oidc/callback` is deliberately not a
  * navigable route (it is handled before navigation, in [MainActivity]).
  */
 internal fun deepLinkRoute(uri: Uri?): String? {
     if (uri == null || uri.scheme != "mycorrhizal") return null
-    val host = uri.host
-    val path = uri.path?.trimStart('/').orEmpty()
-    return when (host) {
-        "home" -> "home"
-        "contacts" -> contactsRoute(path)?.let { "contacts/$it" }
+    val segments = strictPathSegments(uri) ?: return null
+    return when (uri.host) {
+        "home" -> if (segments.isEmpty()) "home" else null
+        "contacts" -> contactsRoute(segments)?.let { "contacts/$it" }
         "circles", "tags", "households" ->
-            if (path.isNotBlank() && '/' !in path) "$host/$path" else null
+            if (segments.size == 1 && OPAQUE_ID.matches(segments[0])) "${uri.host}/${segments[0]}" else null
         else -> null
     }
+}
+
+/** `[1-9][0-9]{0,9}` — no sign, `+`, or leading zero (ADR 0029 §2). */
+private val INTEGER_ID = Regex("^[1-9][0-9]{0,9}$")
+
+/** Circle/tag/household ids (VCardUIDs): ADR 0029 §2's opaque-id alphabet. */
+private val OPAQUE_ID = Regex("^[A-Za-z0-9._:-]{1,128}$")
+
+/**
+ * The decoded path segments of [uri], or null when the path is malformed: an
+ * empty segment (`//`, trailing `/`), a `.`/`..` segment, or a segment that
+ * decodes to contain `/` (an encoded `%2F` smuggling a separator). Reads the
+ * *encoded* path because [Uri.getPathSegments] silently drops empty segments.
+ */
+private fun strictPathSegments(uri: Uri): List<String>? {
+    val raw = uri.encodedPath.orEmpty().removePrefix("/")
+    if (raw.isEmpty()) return emptyList()
+    val decoded = raw.split('/').map { Uri.decode(it) }
+    if (decoded.any { it.isEmpty() || it == "." || it == ".." || '/' in it }) return null
+    return decoded
 }
 
 /**
  * Deep-link path under `mycorrhizal://contacts/…`. Returns `id` or
  * `id/activities`; null for a blank/malformed path or an unknown sub-route.
  */
-private fun contactsRoute(path: String): String? {
-    if (path.isBlank()) return null
-    val segments = path.split('/')
-    if (segments.size > 2) return null
-    val id = segments[0].toIntOrNull() ?: return null
-    if (id <= 0) return null
+private fun contactsRoute(segments: List<String>): String? {
+    if (segments.isEmpty() || segments.size > 2) return null
+    val idText = segments[0]
+    if (!INTEGER_ID.matches(idText)) return null
+    val id = idText.toLongOrNull()?.takeIf { it <= Int.MAX_VALUE } ?: return null
     return when (segments.size) {
         1 -> id.toString()
-        2 -> if (segments[1] == "activities") "$id/activities" else null
-        else -> null
+        else -> if (segments[1] == "activities") "$id/activities" else null
     }
+}
+
+/** ADR 0029 §4: a pending link older than this is dropped, not navigated. */
+internal const val DEEP_LINK_TTL_MILLIS = 10 * 60 * 1000L
+
+/** A deep link waiting for the NavHost, stamped so it can expire. */
+data class PendingDeepLink(val uri: Uri, val receivedAtMillis: Long) {
+    fun isExpired(nowMillis: Long): Boolean = nowMillis - receivedAtMillis > DEEP_LINK_TTL_MILLIS
+}
+
+/**
+ * ADR 0029 §3: whether an incoming launch intent may be handled. False for a
+ * recreate (saved state present) and for a reopen from Recents
+ * (`FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`) — both re-deliver an intent that was
+ * already consumed. Pure so it is testable without an Activity.
+ */
+internal fun shouldHandleLaunchIntent(savedStateIsNull: Boolean, flags: Int): Boolean =
+    savedStateIsNull && (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
+
+/**
+ * ADR 0029 §4: clears this pending link whenever [session] reports logged-out,
+ * so a link received while signed out never navigates in the next account.
+ */
+internal suspend fun MutableStateFlow<PendingDeepLink?>.clearWhenLoggedOut(session: Flow<SessionState>) {
+    session.collect { if (!it.isLoggedIn) value = null }
 }
 
 /**

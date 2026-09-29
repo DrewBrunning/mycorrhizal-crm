@@ -283,7 +283,7 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
 fun MycorrhizalApp(
     darkTheme: Boolean,
     mainViewModel: MainViewModel = hiltViewModel(),
-    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
     // Issue #965: starts the native OIDC flow. The Activity owns the PKCE
     // generation + on-device verifier storage and the browser launch, so this
@@ -530,7 +530,7 @@ private fun MainScaffold(
     serverUrl: String,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
-    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
 ) {
     val navController = rememberNavController()
@@ -556,9 +556,12 @@ private fun MainScaffold(
     // auth tree is up is deferred until a session exists (the link is retained
     // by the flow until it is consumed).
     LaunchedEffect(deepLinks) {
-        deepLinks.filterNotNull().collect { uri ->
-            deepLinkRoute(uri)?.let { route ->
-                navController.navigateToRoot(route)
+        deepLinks.filterNotNull().collect { link ->
+            // ADR 0029 §4: a link older than the TTL is dropped, not navigated.
+            if (!link.isExpired(System.currentTimeMillis())) {
+                deepLinkRoute(link.uri)?.let { route ->
+                    navController.navigateToRoot(route)
+                }
             }
             onDeepLinkHandled()
         }
