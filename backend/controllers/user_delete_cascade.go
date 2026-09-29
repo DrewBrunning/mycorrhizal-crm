@@ -56,6 +56,11 @@ import (
 // already proves the pattern — abort the whole transaction, roll back,
 // 500 — generically; fault-injecting each of the ~50 other tables
 // individually would just re-prove the same Go idiom fifty times over.
+//
+// Every model here that carries gorm.DeletedAt is deleted with Unscoped()
+// (backend trap #7: DeleteUser is a hard delete). A plain Delete would only
+// tombstone the row and leave it to the `users` FK's ON DELETE CASCADE to
+// remove it; the coverage sweep counts Unscoped, so a regression fails there.
 func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	tx = tx.Session(&gorm.Session{SkipHooks: true})
 
@@ -104,7 +109,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	if err := tx.Exec("DELETE FROM webhook_deliveries WHERE webhook_id IN (SELECT id FROM webhooks WHERE user_id = ?)", userID).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
-	if err := tx.Where("user_id = ?", userID).Delete(&models.Webhook{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Webhook{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
@@ -112,7 +117,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactSyncLink{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
-	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactSubscription{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ContactSubscription{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
@@ -154,7 +159,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	}
 
 	// Delete API tokens
-	if err := tx.Where("user_id = ?", userID).Delete(&models.ApiToken{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ApiToken{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
@@ -167,7 +172,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 
 	// Delete device grants (issue #722) — the biometric-login credentials
 	// die with the account, exactly like API tokens.
-	if err := tx.Where("user_id = ?", userID).Delete(&models.DeviceGrant{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DeviceGrant{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
@@ -178,7 +183,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	}
 
 	// Delete reminder completions
-	if err := tx.Where("user_id = ?", userID).Delete(&models.ReminderCompletion{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ReminderCompletion{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
@@ -186,7 +191,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	if err := tx.Where("user_id = ?", userID).Delete(&models.CalendarEventLink{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
-	if err := tx.Where("user_id = ?", userID).Delete(&models.CalendarSubscription{}).Error; err != nil {
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.CalendarSubscription{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 

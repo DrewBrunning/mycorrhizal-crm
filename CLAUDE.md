@@ -483,7 +483,11 @@ These are real bugs that shipped, not hypotheticals.
 
    Note `admin_user_controller_test.go`'s `assertGone` helper counts with `db.Model(...).Count()`, which
    **excludes soft-deleted rows** — so it passes whether a row is gone or merely marked. If you need the
-   distinction pinned, assert with `Unscoped()`.
+   distinction pinned, assert with `Unscoped()`. `controllers/delete_cascade_coverage_test.go`'s
+   `scopedCount` had the same blind spot; the sweeps now use `seedRow.hard()` (Unscoped) for every
+   `DeleteUser`/`DeleteOwnAccount` table, and the `DeleteContact` sweep pins each table's expected
+   soft-vs-hard behavior in `contactSweepSoft` (issue #1314). `deleteUserCascade` uses `Unscoped()` on
+   every soft-deletable model rather than leaning on the `users` FK `ON DELETE CASCADE`.
 
 7. **Soft vs hard delete is a property of the model, not of the call site.** Decide it once when you
    create the entity; never make `tx.Delete(x)` mean different things in different functions.

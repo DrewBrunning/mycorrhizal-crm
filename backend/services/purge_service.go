@@ -15,6 +15,43 @@ import (
 // clock-skew or overlap doesn't cause a skipped run.
 var purgeMinInterval = JobCatchupWindow(24 * time.Hour)
 
+// purgedSoftDeleteModels is the list of soft-deleted child models the purge
+// hard-deletes past retention (contacts, the parent, are purged last and
+// separately). The #1310 completeness guard (purge_completeness_test.go) checks the
+// real list, not a hand-kept copy.
+var purgedSoftDeleteModels = []any{
+	&models.Note{},
+	&models.Activity{},
+	&models.Reminder{},
+	&models.LifeEvent{},
+	&models.Preference{},
+	&models.CadencePolicy{},
+	&models.DataDecayPolicy{},
+	&models.ConversationAgenda{},
+	&models.Gift{},
+	&models.ImmichConfig{},
+	&models.PaperlessConfig{},
+	&models.SeafileConfig{},
+	&models.WebDAVConfig{},
+	&models.LinkFieldType{},
+	&models.CalendarSubscription{},
+	&models.ContactSubscription{},
+	// N7: attachment files are removed at delete time by the
+	// controllers/cascade, so only the metadata row needs purging here.
+	&models.Attachment{},
+	// Occasions (ADR 0024/0026): user-authored, soft-deleted. Issue #1310:
+	// these were missing, so a deleted contact's obligations outlived the
+	// contact as orphans and soft-deleted events were kept forever.
+	&models.OccasionObligation{},
+	&models.OccasionEvent{},
+	// Soft-deleted by their DELETE endpoints (webhook_controller.go,
+	// reminder_controller.go) and, for completions, by DeleteContact — the
+	// #1310 completeness guard found both unpurged. A webhook row carries
+	// its signing secret; its deliveries go with it via the FK cascade.
+	&models.Webhook{},
+	&models.ReminderCompletion{},
+}
+
 // PurgeSoftDeletedRows hard-deletes soft-deleted rows older than the
 // retention window. Called by both the scheduled cron job and the admin
 // "purge now" trigger (T26).
@@ -60,6 +97,31 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		errs = append(errs, fmt.Errorf("purge orphaned activity_contacts: %w", err))
 	}
 
+	// occasion_event_attendees are hard-delete join rows (no deleted_at), so
+	// they never age out on their own. Remove those hanging off an event
+	// about to be purged BEFORE the event loop below (the FK is ON DELETE
+	// CASCADE; this makes the order explicit rather than constraint-reliant),
+	// and those naming a contact about to be purged (entity_id is a
+	// Contact.VCardUID, not an FK, so nothing else would ever clean them).
+	for _, c := range []struct {
+		query string
+		desc  string
+	}{
+		{
+			"DELETE FROM occasion_event_attendees WHERE event_id IN (SELECT id FROM occasion_events WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			"occasion_event_attendees (purged events)",
+		},
+		{
+			"DELETE FROM occasion_event_attendees WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			"occasion_event_attendees (purged contacts)",
+		},
+	} {
+		if err := db.Exec(c.query, cutoff).Error; err != nil {
+			logger.Error().Err(err).Str("table", c.desc).Msg("purge: failed to clean up occasion attendees")
+			errs = append(errs, fmt.Errorf("purge cleanup %s: %w", c.desc, err))
+		}
+	}
+
 	// Soft-deleted children past retention. This is the durable half of
 	// CLAUDE.md trap #7: the disconnect/delete handlers soft-delete
 	// user-authored config (an undo window), and this job is the only thing
@@ -70,27 +132,7 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 	// integration configs (Immich/Paperless/Seafile/WebDAV), the subscriptions
 	// whose URLs/credentials can embed tokens, and LinkFieldType are the
 	// issue #978 omissions this list now covers.
-	for _, model := range []any{
-		&models.Note{},
-		&models.Activity{},
-		&models.Reminder{},
-		&models.LifeEvent{},
-		&models.Preference{},
-		&models.CadencePolicy{},
-		&models.DataDecayPolicy{},
-		&models.ConversationAgenda{},
-		&models.Gift{},
-		&models.ImmichConfig{},
-		&models.PaperlessConfig{},
-		&models.SeafileConfig{},
-		&models.WebDAVConfig{},
-		&models.LinkFieldType{},
-		&models.CalendarSubscription{},
-		&models.ContactSubscription{},
-		// N7: attachment files are removed at delete time by the
-		// controllers/cascade, so only the metadata row needs purging here.
-		&models.Attachment{},
-	} {
+	for _, model := range purgedSoftDeleteModels {
 		if err := db.Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).Delete(model).Error; err != nil {
 			logger.Error().Err(err).Msg("purge: failed to delete soft-deleted rows")
 			errs = append(errs, fmt.Errorf("purge soft-deleted %T: %w", model, err))
@@ -151,6 +193,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		{
 			"DELETE FROM external_activities WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "external_activities",
+		},
+		{
+			"DELETE FROM occasion_obligations WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			[]interface{}{cutoff}, "occasion_obligations",
 		},
 		{
 			"DELETE FROM contact_sync_links WHERE contact_id IN (SELECT id FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
