@@ -3,6 +3,8 @@
 // Token is stored in httpOnly cookie (not accessible from JS for security)
 // User info is cached in localStorage for UI purposes
 
+import { getAssertion } from './webauthnCeremony';
+
 // `?.` (not just `||`) because this module is also loaded directly by Node in
 // the Playwright harness (e2e imports contacts.ts → client.ts → auth.ts),
 // where import.meta.env is undefined -- Vite always injects it, Node never
@@ -21,7 +23,12 @@ export interface LoginResponse {
   // session exists yet — call login2FA() with a TOTP/recovery code to
   // complete the login.
   two_factor_required?: boolean;
+  // Issue #594: the second-factor methods the account can use at the 2FA
+  // step. Absent on an older-shaped response, which means TOTP only.
+  methods?: SecondFactorMethod[];
 }
+
+export type SecondFactorMethod = 'totp' | 'webauthn';
 
 export interface LogoutResponse {
   redirect_url?: string;
@@ -51,7 +58,10 @@ export async function loginUser(identifier: string, password: string): Promise<L
   // When 2FA is required the server set a short-lived 2fa_pending cookie but
   // NO session — user info must not be cached until the second step succeeds.
   if (data.two_factor_required) {
-    return { two_factor_required: true };
+    return {
+      two_factor_required: true,
+      methods: Array.isArray(data.methods) ? data.methods : ['totp'],
+    };
   }
 
   // Fetch user info and cache it (since we can't read the httpOnly cookie)
@@ -99,6 +109,48 @@ export async function login2FA(code: string): Promise<LoginResponse> {
     language: data.language,
     date_format: data.date_format,
   };
+}
+
+// loginWithPasskey is the passkey alternative to login2FA (issue #594): the
+// same 2fa_pending cookie, but the second factor is a WebAuthn assertion from
+// navigator.credentials.get. A dismissed browser prompt rejects with the
+// browser's DOMException (see isCeremonyCancelled).
+export async function loginWithPasskey(): Promise<LoginResponse> {
+  const begin = await fetch(`${API_BASE_URL}/webauthn/login/begin`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!begin.ok) {
+    throw new Error(await passkeyErrorMessage(begin, 'Unable to start passkey sign-in.'));
+  }
+  const assertion = await getAssertion(await begin.json());
+
+  const finish = await fetch(`${API_BASE_URL}/webauthn/login/finish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(assertion),
+  });
+  if (!finish.ok) {
+    throw new Error(await passkeyErrorMessage(finish, 'Passkey could not be verified.'));
+  }
+  const data = await finish.json();
+
+  await fetchAndCacheUserInfo();
+
+  return { language: data.language, date_format: data.date_format };
+}
+
+async function passkeyErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const data = await response.json();
+    // 429 lockout carries a top-level message; other failures nest it.
+    const message = data?.message ?? data?.error?.message;
+    if (typeof message === 'string' && message) return message;
+  } catch {
+    // fall through
+  }
+  return fallback;
 }
 
 // Fetch current user info from the server and cache it

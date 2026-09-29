@@ -1,8 +1,9 @@
+import KeyIcon from '@mui/icons-material/Key';
 import { Alert, Box, Button, Divider, Paper, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { API_BASE_URL, isAuthenticated, login2FA, loginUser } from './auth';
+import { API_BASE_URL, isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
 import BrandLogo from './components/BrandLogo';
 import ForgotPasswordDialog from './components/ForgotPasswordDialog';
 import { initializeDateFormatFromBackend } from './DateFormatProvider';
@@ -10,6 +11,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
+import { isCeremonyCancelled, isWebAuthnSupported } from './webauthnCeremony';
 
 type LoginPageProps = {
   setToken?: (token: string | null) => void;
@@ -31,6 +33,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const [code, setCode] = useState('');
   // N8: "credentials" → password verified, waiting on the 2FA code.
   const [step, setStep] = useState<'credentials' | 'twoFactor'>('credentials');
+  // Issue #594: a passkey is an alternative action inside the twoFactor step,
+  // offered only when the account has one enrolled (/login's `methods`).
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
   // #192: moves keyboard focus to the error Alert whenever a new one is
   // reported (including an OIDC redirect error present on first load) --
   // see useErrorAlertFocus for why a plain useState+useEffect isn't enough.
@@ -73,6 +78,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       if (result.two_factor_required) {
         setStep('twoFactor');
         setCode('');
+        setPasskeyAvailable(Boolean(result.methods?.includes('webauthn')) && isWebAuthnSupported());
         return;
       }
       await finishLogin(result);
@@ -102,6 +108,27 @@ export default function LoginPage({ setToken }: LoginPageProps) {
           ? t('login.invalidCode')
           : rawMessage || t('login.invalidCode');
       setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskey = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await loginWithPasskey();
+      await finishLogin(result);
+    } catch (err) {
+      // A dismissed browser prompt is not a failure worth alarming about; the
+      // TOTP field is still right there.
+      setError(
+        isCeremonyCancelled(err)
+          ? t('login.passkeyCancelled')
+          : err instanceof Error && err.message
+            ? err.message
+            : t('login.passkeyFailed'),
+      );
     } finally {
       setLoading(false);
     }
@@ -161,6 +188,17 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 <Button type="submit" variant="contained" color="primary" disabled={loading}>
                   {loading ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>
+                {passkeyAvailable && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<KeyIcon />}
+                    onClick={() => void handlePasskey()}
+                    disabled={loading}
+                  >
+                    {t('login.passkeyOption')}
+                  </Button>
+                )}
                 {/* #187: these were color="secondary" (lichen, ~2.6:1 on the
                     login card) — the audit's worst contrast failure. Primary
                     (mycelium, 8.26:1) keeps a brand accent and passes AA. */}

@@ -86,6 +86,7 @@ import type {
 import type { Reminder, ReminderCompletion } from './reminders';
 import type { ContactTag, Tag } from './tags';
 import type { TIMELINE_TYPES } from './timeline';
+import type { Passkey, PasskeyEnrollment } from './webauthn';
 
 // ---------------------------------------------------------------- helpers
 
@@ -146,6 +147,8 @@ export type Conformance = [
   NoDrift<ResponseDrift<Note, S.Note>>,
   NoDrift<ResponseDrift<Activity, S.Activity>>,
   NoDrift<ResponseDrift<Reminder, S.Reminder>>,
+  NoDrift<ResponseDrift<Passkey, S.WebAuthnCredential>>,
+  NoDrift<ResponseDrift<PasskeyEnrollment, S.WebAuthnRegisterResponse>>,
   NoDrift<ResponseDrift<ReminderCompletion, S.ReminderCompletion>>,
   NoDrift<ResponseDrift<RelationshipEdge, S.RelationshipEdge>>,
   NoDrift<ResponseDrift<DeliberateException<LifeEvent, 'type'>, S.LifeEvent>>,

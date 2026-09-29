@@ -228,7 +228,7 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
   removal of the last passkey when TOTP is off. In-flight ceremony state (the challenge) lives only in
   process memory for ≤5 minutes and is consumed on use — never persisted, never in a backup.
 - **Deletion / propagation**: logout revokes this device's `sessions` row server-side (`RevokeSession`)
-  and clears the cookie + `USER_INFO_KEY` client-side (`frontend/src/auth.ts:172`); a password / 2FA
+  and clears the cookie + `USER_INFO_KEY` client-side (`frontend/src/auth.ts:224`); a password / 2FA
   change revokes every row (`RevokeAllSessions`) beside the `TokenVersion` bump; revoke-all/rotate
   invalidate API-token rows immediately.
 - **Backups**: API token hashes yes; `sessions` rows yes (they are DB rows now), but they carry no
@@ -485,7 +485,7 @@ design is ADR-0010 / CON-04, issue #479).
 ## 9. Browser-side storage (frontend SPA)
 
 - **`localStorage`**: holds only `user_info` (id/username/admin flag/self-contact UID) and UI
-  preferences — no auth token, no contact PII (`frontend/src/auth.ts:15,120`; pinned as a regression by
+  preferences — no auth token, no contact PII (`frontend/src/auth.ts:17,172`; pinned as a regression by
   the #419 Playwright spec asserting no long-lived credential ever lands in `localStorage`/
   `sessionStorage`/`IndexedDB`/URL). Cleared on logout (`auth.ts:172`).
 - **Auth token**: httpOnly session cookie — never readable by JS or the service worker, so there is
