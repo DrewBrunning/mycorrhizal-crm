@@ -160,7 +160,10 @@
     "twoFactorDescription": "Introduce el código de 6 dígitos de tu aplicación de autenticación o uno de tus códigos de recuperación.",
     "twoFactorCode": "Código de verificación",
     "invalidCode": "Código no válido. Inténtalo de nuevo.",
-    "backToCredentials": "Volver al inicio de sesión"
+    "backToCredentials": "Volver al inicio de sesión",
+    "passkeyOption": "Usar una llave de acceso",
+    "passkeyCancelled": "Se canceló el inicio de sesión con llave de acceso. Puedes intentarlo de nuevo o introducir un código.",
+    "passkeyFailed": "Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código."
   },
   "sessionExpired": {
     "bannerMessage": "Tu sesión ha caducado.",
@@ -1145,6 +1148,34 @@
         "copy": "Copiar todos los códigos",
         "copied": "¡Copiado!",
         "done": "Hecho"
+      }
+    },
+    "passkeys": {
+      "title": "Llaves de acceso",
+      "description": "Inicia sesión con la huella, el rostro o el bloqueo de pantalla de tu dispositivo (o una llave de seguridad) como segundo paso en lugar de un código. Las llaves de acceso funcionan junto con una aplicación de autenticación.",
+      "empty": "Aún no hay llaves de acceso.",
+      "listLabel": "Tus llaves de acceso",
+      "addButton": "Añadir una llave de acceso",
+      "adding": "Esperando a tu dispositivo...",
+      "nameLabel": "Nombre de la llave (opcional)",
+      "nameHelp": "Por ejemplo: Portátil, YubiKey.",
+      "addSuccess": "Llave de acceso añadida.",
+      "addError": "No pudimos añadir la llave de acceso. Inténtalo de nuevo.",
+      "cancelled": "La solicitud de la llave de acceso se canceló o expiró.",
+      "unsupported": "Este navegador no admite llaves de acceso.",
+      "removeButton": "Eliminar",
+      "removeAria": "Eliminar la llave de acceso {{name}}",
+      "removeSuccess": "Llave de acceso eliminada.",
+      "invalidProof": "La verificación falló. Inténtalo de nuevo.",
+      "createdLastUsed": "Añadida el {{created}} · último uso el {{lastUsed}}",
+      "createdNeverUsed": "Añadida el {{created}} · nunca usada",
+      "remove": {
+        "title": "Eliminar llave de acceso",
+        "description": "Introduce un código actual de tu aplicación de autenticación o un código de recuperación para eliminar «{{name}}».",
+        "codeLabel": "Código de verificación",
+        "confirm": "Eliminar llave de acceso",
+        "submitting": "Espera...",
+        "useAnotherPasskey": "Verificar con otra llave de acceso"
       }
     },
     "deleteAccount": {

@@ -160,7 +160,10 @@
     "twoFactorDescription": "Inserisci il codice a 6 cifre della tua app di autenticazione oppure uno dei tuoi codici di recupero.",
     "twoFactorCode": "Codice di verifica",
     "invalidCode": "Codice non valido. Riprova.",
-    "backToCredentials": "Torna all'accesso"
+    "backToCredentials": "Torna all'accesso",
+    "passkeyOption": "Usa invece una passkey",
+    "passkeyCancelled": "L'accesso con passkey è stato annullato. Puoi riprovare o inserire un codice.",
+    "passkeyFailed": "Accesso con passkey non riuscito. Riprova o inserisci un codice."
   },
   "sessionExpired": {
     "bannerMessage": "La tua sessione è scaduta.",
@@ -1145,6 +1148,34 @@
         "copy": "Copia tutti i codici",
         "copied": "Copiato!",
         "done": "Fatto"
+      }
+    },
+    "passkeys": {
+      "title": "Passkey",
+      "description": "Accedi con l'impronta digitale, il volto o il blocco schermo del dispositivo (o una chiave di sicurezza) come secondo passaggio, al posto di un codice. Le passkey funzionano insieme a un'app di autenticazione.",
+      "empty": "Nessuna passkey per ora.",
+      "listLabel": "Le tue passkey",
+      "addButton": "Aggiungi una passkey",
+      "adding": "In attesa del dispositivo...",
+      "nameLabel": "Nome della passkey (facoltativo)",
+      "nameHelp": "Ad esempio: Portatile, YubiKey.",
+      "addSuccess": "Passkey aggiunta.",
+      "addError": "Impossibile aggiungere la passkey. Riprova.",
+      "cancelled": "La richiesta della passkey è stata annullata o è scaduta.",
+      "unsupported": "Questo browser non supporta le passkey.",
+      "removeButton": "Rimuovi",
+      "removeAria": "Rimuovi la passkey {{name}}",
+      "removeSuccess": "Passkey rimossa.",
+      "invalidProof": "Verifica non riuscita. Riprova.",
+      "createdLastUsed": "Aggiunta il {{created}} · ultimo utilizzo il {{lastUsed}}",
+      "createdNeverUsed": "Aggiunta il {{created}} · mai utilizzata",
+      "remove": {
+        "title": "Rimuovi passkey",
+        "description": "Inserisci un codice attuale della tua app di autenticazione, o un codice di recupero, per rimuovere «{{name}}».",
+        "codeLabel": "Codice di verifica",
+        "confirm": "Rimuovi passkey",
+        "submitting": "Attendi...",
+        "useAnotherPasskey": "Verifica invece con un'altra passkey"
       }
     },
     "deleteAccount": {

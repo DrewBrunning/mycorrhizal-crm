@@ -160,7 +160,10 @@
     "twoFactorDescription": "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
     "twoFactorCode": "Verification code",
     "invalidCode": "Invalid code. Please try again.",
-    "backToCredentials": "Back to sign in"
+    "backToCredentials": "Back to sign in",
+    "passkeyOption": "Use a passkey instead",
+    "passkeyCancelled": "Passkey sign-in was cancelled. You can try again or enter a code.",
+    "passkeyFailed": "Passkey sign-in failed. Please try again or enter a code."
   },
   "sessionExpired": {
     "bannerMessage": "Your session has expired.",
@@ -1172,6 +1175,34 @@
         "copy": "Copy all codes",
         "copied": "Copied!",
         "done": "Done"
+      }
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Sign in with your device's fingerprint, face or screen lock (or a security key) as your second step instead of a code. Passkeys work alongside an authenticator app.",
+      "empty": "No passkeys yet.",
+      "listLabel": "Your passkeys",
+      "addButton": "Add a passkey",
+      "adding": "Waiting for your device...",
+      "nameLabel": "Passkey name (optional)",
+      "nameHelp": "For example: Laptop, YubiKey.",
+      "addSuccess": "Passkey added.",
+      "addError": "We couldn't add the passkey. Please try again.",
+      "cancelled": "The passkey prompt was cancelled or timed out.",
+      "unsupported": "This browser doesn't support passkeys.",
+      "removeButton": "Remove",
+      "removeAria": "Remove passkey {{name}}",
+      "removeSuccess": "Passkey removed.",
+      "invalidProof": "Verification failed. Please try again.",
+      "createdLastUsed": "Added {{created}} · last used {{lastUsed}}",
+      "createdNeverUsed": "Added {{created}} · never used",
+      "remove": {
+        "title": "Remove passkey",
+        "description": "Enter a current code from your authenticator app, or a recovery code, to remove \"{{name}}\".",
+        "codeLabel": "Verification code",
+        "confirm": "Remove passkey",
+        "submitting": "Please wait...",
+        "useAnotherPasskey": "Verify with another passkey instead"
       }
     },
     "deleteAccount": {

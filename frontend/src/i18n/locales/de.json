@@ -160,7 +160,10 @@
     "twoFactorDescription": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App oder einen Ihrer Wiederherstellungscodes ein.",
     "twoFactorCode": "Verifizierungscode",
     "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
-    "backToCredentials": "Zurück zur Anmeldung"
+    "backToCredentials": "Zurück zur Anmeldung",
+    "passkeyOption": "Stattdessen einen Passkey verwenden",
+    "passkeyCancelled": "Die Anmeldung mit Passkey wurde abgebrochen. Versuchen Sie es erneut oder geben Sie einen Code ein.",
+    "passkeyFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein."
   },
   "sessionExpired": {
     "bannerMessage": "Ihre Sitzung ist abgelaufen.",
@@ -1145,6 +1148,34 @@
         "copy": "Alle Codes kopieren",
         "copied": "Kopiert!",
         "done": "Fertig"
+      }
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Melden Sie sich als zweiten Schritt mit Fingerabdruck, Gesicht oder Bildschirmsperre Ihres Geräts (oder einem Sicherheitsschlüssel) statt mit einem Code an. Passkeys funktionieren zusätzlich zu einer Authentifizierungs-App.",
+      "empty": "Noch keine Passkeys.",
+      "listLabel": "Ihre Passkeys",
+      "addButton": "Passkey hinzufügen",
+      "adding": "Warten auf Ihr Gerät...",
+      "nameLabel": "Name des Passkeys (optional)",
+      "nameHelp": "Zum Beispiel: Laptop, YubiKey.",
+      "addSuccess": "Passkey hinzugefügt.",
+      "addError": "Der Passkey konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.",
+      "cancelled": "Die Passkey-Abfrage wurde abgebrochen oder ist abgelaufen.",
+      "unsupported": "Dieser Browser unterstützt keine Passkeys.",
+      "removeButton": "Entfernen",
+      "removeAria": "Passkey {{name}} entfernen",
+      "removeSuccess": "Passkey entfernt.",
+      "invalidProof": "Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "createdLastUsed": "Hinzugefügt am {{created}} · zuletzt verwendet am {{lastUsed}}",
+      "createdNeverUsed": "Hinzugefügt am {{created}} · nie verwendet",
+      "remove": {
+        "title": "Passkey entfernen",
+        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein, um „{{name}}“ zu entfernen.",
+        "codeLabel": "Verifizierungscode",
+        "confirm": "Passkey entfernen",
+        "submitting": "Bitte warten...",
+        "useAnotherPasskey": "Stattdessen mit einem anderen Passkey bestätigen"
       }
     },
     "deleteAccount": {

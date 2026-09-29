@@ -71,6 +71,7 @@ import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NextcloudSettings from './components/NextcloudSettings';
 import NotificationSettings from './components/NotificationSettings';
 import PaperlessSettings from './components/PaperlessSettings';
+import PasskeySettings from './components/PasskeySettings';
 import SeafileSettings from './components/SeafileSettings';
 import SessionsSettings from './components/SessionsSettings';
 import TwoFactorSettings from './components/TwoFactorSettings';
@@ -606,6 +607,9 @@ export default function SettingsPage() {
 
       {/* N8: TOTP two-factor auth */}
       <TwoFactorSettings />
+
+      {/* Issue #594: passkeys (WebAuthn) */}
+      <PasskeySettings />
 
       {/* Issue #866: active-session inventory */}
       <SessionsSettings />

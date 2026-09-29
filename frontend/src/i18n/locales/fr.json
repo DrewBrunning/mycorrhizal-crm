@@ -160,7 +160,10 @@
     "twoFactorDescription": "Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de récupération.",
     "twoFactorCode": "Code de vérification",
     "invalidCode": "Code invalide. Veuillez réessayer.",
-    "backToCredentials": "Retour à la connexion"
+    "backToCredentials": "Retour à la connexion",
+    "passkeyOption": "Utiliser plutôt une clé d'accès",
+    "passkeyCancelled": "La connexion par clé d'accès a été annulée. Vous pouvez réessayer ou saisir un code.",
+    "passkeyFailed": "La connexion par clé d'accès a échoué. Réessayez ou saisissez un code."
   },
   "sessionExpired": {
     "bannerMessage": "Votre session a expiré.",
@@ -1145,6 +1148,34 @@
         "copy": "Copier tous les codes",
         "copied": "Copié !",
         "done": "Terminé"
+      }
+    },
+    "passkeys": {
+      "title": "Clés d'accès",
+      "description": "Connectez-vous avec l'empreinte digitale, le visage ou le verrouillage d'écran de votre appareil (ou une clé de sécurité) comme seconde étape, à la place d'un code. Les clés d'accès fonctionnent en complément d'une application d'authentification.",
+      "empty": "Aucune clé d'accès pour le moment.",
+      "listLabel": "Vos clés d'accès",
+      "addButton": "Ajouter une clé d'accès",
+      "adding": "En attente de votre appareil...",
+      "nameLabel": "Nom de la clé (facultatif)",
+      "nameHelp": "Par exemple : Ordinateur portable, YubiKey.",
+      "addSuccess": "Clé d'accès ajoutée.",
+      "addError": "Impossible d'ajouter la clé d'accès. Veuillez réessayer.",
+      "cancelled": "La demande de clé d'accès a été annulée ou a expiré.",
+      "unsupported": "Ce navigateur ne prend pas en charge les clés d'accès.",
+      "removeButton": "Supprimer",
+      "removeAria": "Supprimer la clé d'accès {{name}}",
+      "removeSuccess": "Clé d'accès supprimée.",
+      "invalidProof": "La vérification a échoué. Veuillez réessayer.",
+      "createdLastUsed": "Ajoutée le {{created}} · dernière utilisation le {{lastUsed}}",
+      "createdNeverUsed": "Ajoutée le {{created}} · jamais utilisée",
+      "remove": {
+        "title": "Supprimer la clé d'accès",
+        "description": "Saisissez un code actuel de votre application d'authentification, ou un code de récupération, pour supprimer « {{name}} ».",
+        "codeLabel": "Code de vérification",
+        "confirm": "Supprimer la clé d'accès",
+        "submitting": "Veuillez patienter...",
+        "useAnotherPasskey": "Vérifier plutôt avec une autre clé d'accès"
       }
     },
     "deleteAccount": {
