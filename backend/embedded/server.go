@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"mycorrhizal/atrest"
@@ -73,6 +74,14 @@ type Server struct {
 	ln     net.Listener
 	token  string
 	userID uint
+
+	// bg tracks the boot-time catch-up burst (its deferred timer and the job
+	// goroutines it spawned) so Stop can cancel and drain it before the
+	// database closes (issue #1311).
+	bg *initialRunner
+
+	stopOnce sync.Once
+	stopErr  error
 }
 
 // Start boots the server described by cfg and returns after it is listening.
@@ -142,7 +151,11 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 	}
 
 	// From here on, any failure must close the DB we just opened.
+	var bg *initialRunner
 	fail := func(err error) (*Server, error) {
+		if bg != nil {
+			_ = bg.shutdown(context.Background())
+		}
 		if sqlDB, dbErr := db.DB(); dbErr == nil {
 			_ = sqlDB.Close()
 		}
@@ -208,16 +221,21 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 	// Boot-time "Initial" triggers (ADR 0011 catch-up). In embedded mode these
 	// may be deferred so the first request is not stuck behind them (spike
 	// #1256).
-	dispatchInitial := func() { dispatchInitialTriggers(db, cfg) }
+	bg = &initialRunner{}
+	dispatchInitial := func() { dispatchInitialTriggers(db, cfg, bg.spawn) }
+	deferredCatchUp := false
 	switch {
 	case opts.disableInitialTriggers: // test-only seam; no production caller sets it
 	case cfg.IsEmbedded() && opts.CatchUpDelay > 0:
-		time.AfterFunc(opts.CatchUpDelay, dispatchInitial)
+		deferredCatchUp = true
 	default:
 		dispatchInitial()
 	}
 
-	go sched.StartBlocking()
+	// StartAsync (not `go StartBlocking()`): it marks the scheduler running
+	// synchronously, so a Stop right after Start cannot no-op against a
+	// not-yet-started scheduler and then have it start against a closed DB.
+	sched.StartAsync()
 
 	// Re-arm the rate limiter's stale-entry sweeper: its StartCleanupRoutine
 	// counterpart runs from middleware's init(), but Stop tears it down, so a
@@ -251,7 +269,7 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		}
 	}
 
-	s := &Server{cfg: cfg, db: db, sched: sched, http: srv, ln: listener}
+	s := &Server{cfg: cfg, db: db, sched: sched, http: srv, ln: listener, bg: bg}
 
 	if cfg.IsEmbedded() {
 		if err := s.provisionLocalUser(); err != nil {
@@ -274,6 +292,13 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		}
 	}()
 
+	// Arm the deferred catch-up only now that the server is ready, so the delay
+	// is measured from readiness (not from a slow boot) and no failed-Start path
+	// above has a live timer to clean up.
+	if deferredCatchUp {
+		bg.deferStart(opts.CatchUpDelay, dispatchInitial)
+	}
+
 	logger.Info().Msg("Server is ready to handle requests")
 	models.RecordSystemEvent(context.Background(), db, models.SystemEvent{
 		EventType: models.SysEventApplicationStarted,
@@ -287,7 +312,19 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 // Stop shuts the server down: the scheduler and rate-limiter sweeper stop, the
 // HTTP server is drained gracefully, and the database is closed. The scheduler
 // is stopped first so no new job starts while requests are draining.
+//
+// Stop is idempotent: later calls (including concurrent ones) wait for the
+// first to finish and return its result. It first cancels the deferred
+// catch-up timer and drains any catch-up jobs already dispatched (bounded by
+// ctx), so no job writes to the database after it is closed (issue #1311).
 func (s *Server) Stop(ctx context.Context) error {
+	s.stopOnce.Do(func() { s.stopErr = s.stop(ctx) })
+	return s.stopErr
+}
+
+func (s *Server) stop(ctx context.Context) error {
+	drainErr := s.bg.shutdown(ctx)
+
 	models.RecordSystemEvent(context.Background(), s.db, models.SystemEvent{
 		EventType: models.SysEventApplicationStopped,
 		Component: logger.ComponentApp,
@@ -300,9 +337,16 @@ func (s *Server) Stop(ctx context.Context) error {
 
 	logger.Info().Msg("Shutting down server...")
 	shutdownErr := s.http.Shutdown(ctx)
+	if shutdownErr == nil {
+		shutdownErr = drainErr
+	}
 	if shutdownErr != nil {
 		logger.Error().Err(shutdownErr).Msg("Server forced to shutdown")
 	}
+
+	// Fire-and-forget audit-chain goroutines (models.RecordAuditEvent, entity
+	// hooks) hold this DB handle too; drain them so none writes after Close.
+	models.AuditFlush()
 
 	logger.Info().Msg("Closing database connection...")
 	if sqlDB, err := s.db.DB(); err == nil {
@@ -473,7 +517,13 @@ func buildRouter(cfg *config.Config, db *gorm.DB) (*gin.Engine, *services.OIDCPr
 // de-duplicated, ADR 0011) so a process that was down past a job's interval
 // catches up instead of waiting a full cycle. The embedded-disabled jobs are
 // skipped here too, matching registerScheduledJobs.
-func dispatchInitialTriggers(db *gorm.DB, cfg *config.Config) {
+func dispatchInitialTriggers(db *gorm.DB, cfg *config.Config, spawn func(func())) {
+	safeGo := func(db *gorm.DB, jobName, trigger string, fn func() error) {
+		spawn(func() { runJob(db, jobName, trigger, fn) })
+	}
+	safeGoReport := func(db *gorm.DB, jobName, trigger string, fn func() (int, error)) {
+		spawn(func() { runJobReport(db, jobName, trigger, fn) })
+	}
 	type initial struct {
 		jobName string
 		run     func()
@@ -531,4 +581,58 @@ func splitLines(s string) []string {
 		out = append(out, s[start:])
 	}
 	return out
+}
+
+// initialRunner owns the boot-time catch-up burst: the optional deferred timer
+// and every job goroutine it spawns. shutdown cancels the timer, refuses any
+// later spawn, and waits for the in-flight jobs, so Stop can close the
+// database only once nothing can write to it (issue #1311).
+type initialRunner struct {
+	mu      sync.Mutex
+	stopped bool
+	timer   *time.Timer
+	wg      sync.WaitGroup
+}
+
+// deferStart runs fn after d unless shutdown happens first.
+func (r *initialRunner) deferStart(d time.Duration, fn func()) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.timer = time.AfterFunc(d, fn)
+}
+
+// spawn runs fn in a tracked goroutine; after shutdown it is a no-op (a timer
+// callback that was already running when shutdown began lands here).
+func (r *initialRunner) spawn(fn func()) {
+	r.mu.Lock()
+	if r.stopped {
+		r.mu.Unlock()
+		return
+	}
+	r.wg.Add(1)
+	r.mu.Unlock()
+	go func() {
+		defer r.wg.Done()
+		fn()
+	}()
+}
+
+// shutdown is idempotent. It returns ctx's error if ctx ends before the
+// in-flight jobs do.
+func (r *initialRunner) shutdown(ctx context.Context) error {
+	r.mu.Lock()
+	r.stopped = true
+	if r.timer != nil {
+		r.timer.Stop()
+	}
+	r.mu.Unlock()
+
+	done := make(chan struct{})
+	go func() { r.wg.Wait(); close(done) }()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("embedded: catch-up jobs still running at stop: %w", ctx.Err())
+	}
 }
