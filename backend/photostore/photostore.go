@@ -343,3 +343,17 @@ func ExtractPhotoData(field *vcard.Field) ([]byte, string, string) {
 
 	return DecodePhotoURI(field.Value, mediaType)
 }
+
+// RemoveContactPhoto deletes a photo file previously written by
+// SaveContactPhoto (name is the relative filename it returned). It is the
+// cleanup for a file whose owning contact row was never committed or could not
+// be updated (issue #1341). A missing file is not an error.
+func RemoveContactPhoto(photoDir, name string) error {
+	if name == "" || name != filepath.Base(name) {
+		return nil
+	}
+	if err := os.Remove(filepath.Join(photoDir, name)); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

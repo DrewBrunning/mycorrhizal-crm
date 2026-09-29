@@ -524,3 +524,57 @@ func TestExtractPhotoData_MEDIATYPEParam(t *testing.T) {
 		t.Error("decoded photo bytes do not match original PNG data")
 	}
 }
+
+func TestRemoveContactPhoto(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.jpg")
+	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RemoveContactPhoto(dir, "p.jpg"); err != nil {
+		t.Fatalf("remove existing: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("file should be gone, stat err = %v", err)
+	}
+	if err := RemoveContactPhoto(dir, "p.jpg"); err != nil {
+		t.Fatalf("missing file must not be an error: %v", err)
+	}
+}
+
+func TestRemoveContactPhoto_RejectsNonBasenames(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "photos")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(root, "keep.txt")
+	if err := os.WriteFile(outside, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"", "../keep.txt", "sub/p.jpg"} {
+		if err := RemoveContactPhoto(dir, name); err != nil {
+			t.Fatalf("name %q: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("path traversal deleted a file outside photoDir: %v", err)
+	}
+}
+
+func TestRemoveContactPhoto_PropagatesRemoveError(t *testing.T) {
+	dir := t.TempDir()
+	// A non-empty directory can't be os.Remove'd and isn't "not exist".
+	sub := filepath.Join(dir, "d")
+	if err := os.Mkdir(sub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "f"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveContactPhoto(dir, "d"); err == nil {
+		t.Fatal("expected error removing a non-empty directory")
+	}
+}

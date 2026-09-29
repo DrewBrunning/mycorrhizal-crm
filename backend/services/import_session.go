@@ -762,6 +762,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		var contact models.Contact
 		if err := db.First(&contact, task.contactID).Error; err != nil {
 			log.Warn().Err(err).Uint("contact_id", task.contactID).Msg("Failed to load contact for photo update")
+			removeOrphanedPhoto(cfg.ProfilePhotoDir, photoPath)
 			continue
 		}
 		if err := db.Model(&contact).Updates(map[string]interface{}{
@@ -769,6 +770,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 			"photo_thumbnail": thumbnailData,
 		}).Error; err != nil {
 			log.Warn().Err(err).Uint("contact_id", task.contactID).Msg("Failed to update contact with photo")
+			removeOrphanedPhoto(cfg.ProfilePhotoDir, photoPath)
 		}
 	}
 

@@ -63,8 +63,16 @@ func TestAndroidE2eDoesNotDeliverIntentsViaNewTask(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(b), "FLAG_ACTIVITY_NEW_TASK") {
-			t.Errorf("%s: use deliverToRunningActivity(intent), not FLAG_ACTIVITY_NEW_TASK", f)
+		for _, line := range strings.Split(string(b), "\n") {
+			// KDoc/line comments legitimately describe the cross-task path.
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "*") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "//") {
+				continue
+			}
+			if strings.Contains(line, "FLAG_ACTIVITY_NEW_TASK") {
+				t.Errorf("%s: use deliverToRunningActivity(intent), not FLAG_ACTIVITY_NEW_TASK", f)
+				break
+			}
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -606,4 +607,46 @@ func TestMonicaImportManager_RunImportCancelledContext(t *testing.T) {
 	var count int64
 	db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count)
 	assert.Equal(t, int64(0), count)
+}
+
+// Issue #1341: a Monica avatar whose attach fails leaves no file behind.
+func TestMonicaImportSession_AvatarAttachFailure_LeavesNoOrphanFile(t *testing.T) {
+	monica.DisableRateLimitForTesting()
+	srv := mockMonica(t, mockMonicaOptions{includeAvatar: true})
+	defer srv.Close()
+
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	log := monicaTestLogger(&syncBuffer{})
+	mgr := NewMonicaImportManager()
+
+	resp, appErr := mgr.Connect(context.Background(), user.ID,
+		models.MonicaConnectRequest{BaseURL: srv.URL, APIToken: monicaTestToken}, false)
+	require.Nil(t, appErr)
+	require.Nil(t, mgr.StartFetch(db, user.ID, models.MonicaFetchRequest{SessionID: resp.SessionID}, log))
+	waitForPhase(t, mgr, user.ID, resp.SessionID, models.MonicaPhaseReady)
+	preview, appErr := mgr.Preview(user.ID, resp.SessionID)
+	require.Nil(t, appErr)
+	actions := make([]models.RowImportAction, len(preview.Rows))
+	for i, row := range preview.Rows {
+		actions[i] = models.RowImportAction{RowIndex: row.RowIndex, Action: "add"}
+	}
+
+	require.NoError(t, db.Callback().Update().Before("gorm:update").Register("test:fail-avatar-attach", func(d *gorm.DB) {
+		// Only the photo attach (Updates with a column map) fails; the
+		// AfterSave etag UpdateColumn and the import itself must succeed.
+		if cols, isMap := d.Statement.Dest.(map[string]interface{}); isMap && cols["photo"] != nil {
+			_ = d.AddError(errors.New("injected attach failure"))
+		}
+	}))
+
+	photoDir := t.TempDir()
+	status := confirmAndWait(t, mgr, db, user.ID, resp.SessionID, actions,
+		&config.Config{ProfilePhotoDir: photoDir}, log, models.MonicaPhaseDone)
+	require.NotNil(t, status.Result)
+	assert.Equal(t, 1, status.Result.PhotosFailed)
+
+	entries, err := os.ReadDir(photoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries)
 }
