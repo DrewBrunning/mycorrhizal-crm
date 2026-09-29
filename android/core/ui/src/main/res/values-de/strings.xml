@@ -923,6 +923,12 @@
     <string name="users_delete_named">%1$s löschen</string>
     <string name="users_delete_title">Benutzer löschen?</string>
     <string name="users_delete_body">„%1$s“ löschen? Dies entfernt den Account und alle zugehörigen Daten dauerhaft.</string>
+    <string name="users_reset_2fa_named">2FA für %1$s zurücksetzen</string>
+    <string name="users_reset_2fa_title">Zwei-Faktor-Authentifizierung zurücksetzen</string>
+    <string name="users_reset_2fa_body">Möchten Sie die Zwei-Faktor-Authentifizierung für „%1$s“ wirklich zurücksetzen?</string>
+    <string name="users_reset_2fa_warning">Dies deaktiviert die Authenticator-App, entfernt alle registrierten Passkeys, löscht die Wiederherstellungscodes und beendet die aktuellen Sitzungen. Verwenden Sie dies nur, wenn ein Benutzer ausgesperrt ist und sich nicht mit der vorhandenen 2FA verifizieren kann.</string>
+    <string name="users_reset_2fa_confirm">Zurücksetzen</string>
+    <string name="users_reset_2fa_done">Zwei-Faktor-Authentifizierung zurückgesetzt</string>
     <string name="action_create">Erstellen</string>
     <string name="action_save">Speichern</string>
     <string name="action_edit">Bearbeiten</string>

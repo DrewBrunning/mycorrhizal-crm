@@ -196,4 +196,103 @@ class UsersViewModelTest {
         vm.onErrorShown()
         assertNull(vm.uiState.value.error)
     }
+
+    // --- Admin 2FA reset (issue #596) ---------------------------------------
+
+    @Test
+    fun `resetTwoFactor calls the repository with the id, replaces the row and reports done`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any()) } returns Result.success(
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            )
+            val refreshedBob = bob.copy(updatedAt = "2026-09-01T00:00:00Z")
+            coEvery { repository.resetTwoFactor(2) } returns Result.success(refreshedBob)
+
+            val vm = UsersViewModel(repository)
+            advanceUntilIdle()
+
+            var done = false
+            vm.resetTwoFactor(2, onDone = { done = true })
+            advanceUntilIdle()
+
+            assertTrue(done)
+            coVerify(exactly = 1) { repository.resetTwoFactor(2) }
+            coVerify(exactly = 0) { repository.resetTwoFactor(1) }
+            assertEquals(refreshedBob, vm.uiState.value.users.first { it.id == 2 })
+            assertEquals(alice, vm.uiState.value.users.first { it.id == 1 })
+            assertEquals(2, vm.uiState.value.total)
+            assertNull(vm.uiState.value.resettingTwoFactorId)
+            assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `resetTwoFactor exposes the in-flight id while the call is pending`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any()) } returns Result.success(
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            )
+            coEvery { repository.resetTwoFactor(2) } coAnswers {
+                kotlinx.coroutines.awaitCancellation()
+            }
+
+            val vm = UsersViewModel(repository)
+            advanceUntilIdle()
+
+            vm.resetTwoFactor(2)
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.resettingTwoFactorId)
+
+            // A second tap while one is in flight is ignored.
+            vm.resetTwoFactor(1)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { repository.resetTwoFactor(1) }
+        }
+
+    @Test
+    fun `resetTwoFactor failure surfaces the server message and allows a retry`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any()) } returns Result.success(
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            )
+            coEvery { repository.resetTwoFactor(2) } returns Result.failure(ApiError.Client(404, "User not found"))
+
+            val vm = UsersViewModel(repository)
+            advanceUntilIdle()
+
+            var done = false
+            vm.resetTwoFactor(2, onDone = { done = true })
+            advanceUntilIdle()
+
+            assertFalse(done)
+            assertEquals("User not found", vm.uiState.value.error)
+            assertNull(vm.uiState.value.resettingTwoFactorId)
+            assertEquals(listOf(alice, bob), vm.uiState.value.users)
+
+            // Retry succeeds and clears the error.
+            coEvery { repository.resetTwoFactor(2) } returns Result.success(bob)
+            vm.resetTwoFactor(2, onDone = { done = true })
+            advanceUntilIdle()
+
+            assertTrue(done)
+            assertNull(vm.uiState.value.error)
+            coVerify(exactly = 2) { repository.resetTwoFactor(2) }
+        }
+
+    @Test
+    fun `resetTwoFactor forbidden keeps the server message rather than the generic fallback`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any()) } returns Result.success(
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            )
+            coEvery { repository.resetTwoFactor(1) } returns Result.failure(ApiError.Client(403, "Admin access required"))
+
+            val vm = UsersViewModel(repository)
+            advanceUntilIdle()
+
+            vm.resetTwoFactor(1)
+            advanceUntilIdle()
+
+            assertEquals("Admin access required", vm.uiState.value.error)
+        }
 }

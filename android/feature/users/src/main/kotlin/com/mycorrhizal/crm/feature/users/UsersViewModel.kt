@@ -22,6 +22,7 @@ data class UsersUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val deletingId: Int? = null,
+    val resettingTwoFactorId: Int? = null,
     val error: String? = null,
 )
 
@@ -117,6 +118,32 @@ class UsersViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.uiMessage()) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Admin reset of a locked-out user's 2FA (issue #596). The UI only calls this after an
+     * explicit confirmation dialog; [onDone] fires on success only, so a failure leaves the
+     * caller free to retry.
+     */
+    fun resetTwoFactor(id: Int, onDone: () -> Unit = {}) {
+        if (_uiState.value.resettingTwoFactorId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(resettingTwoFactorId = id, error = null) }
+            userManagementRepository.resetTwoFactor(id).foldApiError(
+                onSuccess = { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            resettingTwoFactorId = null,
+                            users = state.users.map { if (it.id == id) updated else it },
+                        )
+                    }
+                    onDone()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(resettingTwoFactorId = null, error = error.uiMessage()) }
                 },
             )
         }

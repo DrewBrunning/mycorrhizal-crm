@@ -923,6 +923,12 @@
     <string name="users_delete_named">Eliminar %1$s</string>
     <string name="users_delete_title">¿Eliminar usuario?</string>
     <string name="users_delete_body">¿Eliminar a “%1$s”? Esto elimina permanentemente la cuenta y todos sus datos.</string>
+    <string name="users_reset_2fa_named">Restablecer 2FA de %1$s</string>
+    <string name="users_reset_2fa_title">Restablecer autenticación de dos factores</string>
+    <string name="users_reset_2fa_body">¿Seguro que quieres restablecer la autenticación de dos factores de “%1$s”?</string>
+    <string name="users_reset_2fa_warning">Esto desactiva su aplicación de autenticación, elimina las llaves de acceso (passkeys) registradas, elimina sus códigos de recuperación y finaliza sus sesiones actuales. Úsalo solo cuando un usuario esté bloqueado y no pueda verificarse con su 2FA existente.</string>
+    <string name="users_reset_2fa_confirm">Restablecer</string>
+    <string name="users_reset_2fa_done">Autenticación de dos factores restablecida</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
     <string name="action_edit">Editar</string>

@@ -940,6 +940,12 @@
     <string name="users_delete_named">Delete %1$s</string>
     <string name="users_delete_title">Delete user?</string>
     <string name="users_delete_body">Delete “%1$s”? This permanently removes the account and all of its data.</string>
+    <string name="users_reset_2fa_named">Reset 2FA for %1$s</string>
+    <string name="users_reset_2fa_title">Reset two-factor authentication</string>
+    <string name="users_reset_2fa_body">Are you sure you want to reset two-factor authentication for “%1$s”?</string>
+    <string name="users_reset_2fa_warning">This disables their authenticator app, removes any registered passkeys, deletes their recovery codes, and ends their current sessions. Use this only when a user is locked out and cannot verify with their existing 2FA.</string>
+    <string name="users_reset_2fa_confirm">Reset</string>
+    <string name="users_reset_2fa_done">Two-factor authentication reset</string>
 
     <!-- Shared actions -->
     <string name="action_create">Create</string>

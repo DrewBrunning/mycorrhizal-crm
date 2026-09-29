@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.LockReset
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +60,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -80,6 +83,9 @@ fun UsersScreen(
     var editorOpen by remember { mutableStateOf(false) }
     var editingUser by remember { mutableStateOf<AdminUser?>(null) }
     var deletingUser by remember { mutableStateOf<AdminUser?>(null) }
+    var resettingTwoFactorUser by remember { mutableStateOf<AdminUser?>(null) }
+    val scope = rememberCoroutineScope()
+    val resetDoneMessage = stringResource(R.string.users_reset_2fa_done)
 
     Scaffold(
         topBar = {
@@ -132,6 +138,7 @@ fun UsersScreen(
                                         editorOpen = true
                                     },
                                     onDelete = { deletingUser = user },
+                                    onResetTwoFactor = { resettingTwoFactorUser = user },
                                 )
                             }
                         }
@@ -145,7 +152,7 @@ fun UsersScreen(
     // failed delete whose dialog already closed) land in the snackbar. Errors
     // inside an open dialog are rendered inline in the dialog itself.
     state.error?.let { message ->
-        if (!editorOpen && deletingUser == null) {
+        if (!editorOpen && deletingUser == null && resettingTwoFactorUser == null) {
             LaunchedEffect(message) {
                 snackbarHostState.showSnackbar(message)
                 viewModel.onErrorShown()
@@ -237,6 +244,66 @@ fun UsersScreen(
             },
         )
     }
+
+    resettingTwoFactorUser?.let { user ->
+        val resetting = state.resettingTwoFactorId == user.id
+        AlertDialog(
+            onDismissRequest = {
+                if (!resetting) {
+                    resettingTwoFactorUser = null
+                    if (state.error != null) viewModel.onErrorShown()
+                }
+            },
+            title = { Text(stringResource(R.string.users_reset_2fa_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.users_reset_2fa_body, user.username.orEmpty()))
+                    Text(
+                        text = stringResource(R.string.users_reset_2fa_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    state.error?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                val savingLabel = stringResource(R.string.a11y_state_saving)
+                TextButton(
+                    onClick = {
+                        viewModel.resetTwoFactor(user.id) {
+                            resettingTwoFactorUser = null
+                            scope.launch { snackbarHostState.showSnackbar(resetDoneMessage) }
+                        }
+                    },
+                    enabled = !resetting,
+                    modifier = Modifier.semantics { if (resetting) stateDescription = savingLabel },
+                ) {
+                    if (resetting) {
+                        CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                    }
+                    Text(stringResource(R.string.users_reset_2fa_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        resettingTwoFactorUser = null
+                        if (state.error != null) viewModel.onErrorShown()
+                    },
+                    enabled = !resetting,
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -244,6 +311,7 @@ private fun UserRow(
     user: AdminUser,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onResetTwoFactor: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -288,6 +356,12 @@ private fun UserRow(
                 Icons.Outlined.Edit,
                 contentDescription = stringResource(R.string.users_edit_named, user.username.orEmpty()),
                 tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        AccessibleIconButton(onClick = onResetTwoFactor) {
+            Icon(
+                Icons.Outlined.LockReset,
+                contentDescription = stringResource(R.string.users_reset_2fa_named, user.username.orEmpty()),
             )
         }
         AccessibleIconButton(onClick = onDelete) {

@@ -28,4 +28,7 @@ class UserManagementRepositoryImpl @Inject constructor(
 
     override suspend fun delete(id: Int): Result<Unit> =
         apiClient.deleteUser(id)
+
+    override suspend fun resetTwoFactor(id: Int): Result<AdminUser> =
+        apiClient.resetUserTwoFactor(id)
 }

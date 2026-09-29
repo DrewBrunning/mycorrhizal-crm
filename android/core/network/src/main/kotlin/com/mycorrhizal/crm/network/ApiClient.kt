@@ -2297,6 +2297,16 @@ class ApiClient(
     suspend fun deleteUser(id: Int): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$ADMIN_USERS_PATH/$id")
 
+    /**
+     * POST /api/v1/admin/users/{id}/reset-2fa — operator-side recovery for a locked-out
+     * user (issue #596, backend #592/#593): disables TOTP, removes passkeys, deletes
+     * recovery codes and ends the target's sessions. Idempotent; 200 with the bare AdminUser.
+     */
+    suspend fun resetUserTwoFactor(id: Int): Result<AdminUser> =
+        executePostEmpty("$ADMIN_USERS_PATH/$id/reset-2fa") { _, body ->
+            moshi.adapter(AdminUser::class.java).fromJson(body)
+        }
+
     // --- Audit trail (M16, mirroring web's AuditPage over T18/T60's backend) ---
 
     /**
