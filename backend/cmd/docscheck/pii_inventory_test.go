@@ -13,13 +13,14 @@ func TestPIIInventoryFindings(t *testing.T) {
 		"| `contacts` (+ nested json) | names |\n" +
 		"| `users.password` | bcrypt hash |\n" +
 		"### 3.1 Search (`contacts_fts`)\n" +
-		"Prose mentioning `orphan_table` is not an inventory row.\n"
+		"Prose mentioning `orphan_table` is not an inventory row.\n" +
+		"\n## Changelog\n\n| Date | Change |\n|---|---|\n| 2026-01-01 | added `history_only` |\n"
 	tables := []string{
 		"contacts", "users", "contacts_fts", "contacts_fts_data", "contacts_fts_idx",
-		"schema_migrations", "sqlite_sequence", "orphan_table", "brand_new",
+		"schema_migrations", "sqlite_sequence", "orphan_table", "brand_new", "history_only",
 	}
 	got := strings.Join(piiInventoryFindings(tables, doc), "\n")
-	for _, want := range []string{`"orphan_table"`, `"brand_new"`} {
+	for _, want := range []string{`"orphan_table"`, `"brand_new"`, `"history_only"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("expected a finding for %s, got:\n%s", want, got)
 		}

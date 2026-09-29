@@ -72,6 +72,11 @@ func migratedTables() ([]string, error) {
 // `users.password` therefore inventory `notes` and `users`.
 func inventoriedNames(doc string) map[string]bool {
 	out := map[string]bool{}
+	// The changelog is history, not inventory: a table named only in a
+	// changelog row must not count as inventoried.
+	if i := strings.Index(doc, "\n## Changelog"); i >= 0 {
+		doc = doc[:i]
+	}
 	for _, line := range strings.Split(doc, "\n") {
 		t := strings.TrimSpace(line)
 		if !strings.HasPrefix(t, "|") && !strings.HasPrefix(t, "#") {
