@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ciRequiresTools, requireToolOrSkip } from './requireCiTool';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('requireToolOrSkip', () => {
   it('runs when the tool is present, in CI or not', () => {
@@ -18,6 +23,15 @@ describe('requireToolOrSkip', () => {
     expect(() =>
       requireToolOrSkip(false, 'no go', { MYCORRHIZAL_REQUIRE_REFERENCES: '1' }),
     ).toThrow();
+  });
+});
+
+describe('e2e-tests.yml wiring', () => {
+  it('sets MYCORRHIZAL_REQUIRE_REFERENCES on the main Playwright step', () => {
+    const wf = readFileSync(resolve(__dirname, '../../.github/workflows/e2e-tests.yml'), 'utf8');
+    const step = wf.split('- name: Run Playwright tests')[1]?.split('\n      - name:')[0] ?? '';
+    expect(step).toContain('npx playwright test --project=chromium');
+    expect(step).toMatch(/MYCORRHIZAL_REQUIRE_REFERENCES: '1'/);
   });
 });
 
