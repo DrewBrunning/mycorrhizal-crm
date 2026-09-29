@@ -53,6 +53,14 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var appSettings: AppSettingsRepository
 
+    // Public (like sessionManager) so the instrumented E2E suite can arm and
+    // release the app-lock gate through the app's real controller (issue #1269).
+    @Inject
+    lateinit var appLockController: com.mycorrhizal.crm.data.session.AppLockController
+
+    @Inject
+    lateinit var localAuthSettings: com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
+
     // M5 §5: the OIDC native return stores the JWT so the session flips to
     // logged-in without a second manual login (the web sets an httpOnly cookie
     // it cannot hand to bearer-token Android).
@@ -235,7 +243,7 @@ class MainActivity : FragmentActivity() {
         val current = intent ?: return
         if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags)) return
         handleOidcReturn(current.data)
-        handleNotificationDeepLink(current)
+        handleDeepLink(current)
         setIntent(Intent(current).apply {
             data = null
             removeExtra(NotificationBuilder.EXTRA_DEEP_LINK)
@@ -243,15 +251,16 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * M5 §6.6 (issue #152): a notification tap's content intent is the app's
-     * launch intent carrying [NotificationBuilder.EXTRA_DEEP_LINK] (a
-     * `mycorrhizal://…` URI). Forward it to the NavHost; see [deepLinkRoute].
+     * M5 §6.6 (issue #152) + ADR 0029 §2 (issue #1269): a deep link reaches the app
+     * either as a public `ACTION_VIEW` intent's data (launchers, bookmarks,
+     * automation) or, for a notification tap, as [NotificationBuilder.EXTRA_DEEP_LINK].
+     * The OIDC callback is also a VIEW intent but is auth-only and handled by
+     * [handleOidcReturn], never navigated. Both sources feed the same
+     * [deepLinkRoute] (the security boundary; the manifest filter is advisory).
      */
-    private fun handleNotificationDeepLink(intent: Intent?) {
-        val link = intent?.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
-        if (!link.isNullOrBlank()) {
-            pendingDeepLink.value = PendingDeepLink(Uri.parse(link), System.currentTimeMillis())
-        }
+    private fun handleDeepLink(intent: Intent?) {
+        val link = deepLinkUri(intent) ?: return
+        pendingDeepLink.value = PendingDeepLink(link, System.currentTimeMillis())
     }
 
     /**
@@ -304,6 +313,7 @@ class MainActivity : FragmentActivity() {
  *  - `mycorrhizal://contacts/{id}`                   → `contacts/{id}`
  *  - `mycorrhizal://contacts/{id}/activities`        → `contacts/{id}/activities`
  *  - `mycorrhizal://circles|tags|households/{id}`    → `circles|tags|households/{id}`
+ *  - `mycorrhizal://search?q=…`                       → `contacts?search=…` (or `contacts`)
  *
  * Pure and internal so it is unit-testable without an Activity. The id rules
  * follow each destination's nav-argument type: contacts/activities take a
@@ -316,11 +326,39 @@ internal fun deepLinkRoute(uri: Uri?): String? {
     val segments = strictPathSegments(uri) ?: return null
     return when (uri.host) {
         "home" -> if (segments.isEmpty()) "home" else null
+        "search" -> if (segments.isEmpty()) searchRoute(uri) else null
         "contacts" -> contactsRoute(segments)?.let { "contacts/$it" }
         "circles", "tags", "households" ->
             if (segments.size == 1 && OPAQUE_ID.matches(segments[0])) "${uri.host}/${segments[0]}" else null
         else -> null
     }
+}
+
+/**
+ * The deep-link URI carried by [intent]: a VIEW intent's data unless it is the
+ * OIDC callback, else the notification extra. Null when there is none.
+ */
+internal fun deepLinkUri(intent: Intent?): Uri? {
+    if (intent == null) return null
+    val data = intent.data
+    if (intent.action == Intent.ACTION_VIEW && data != null && parseOidcReturn(data) == null) return data
+    return intent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+        ?.takeIf { it.isNotBlank() }
+        ?.let(Uri::parse)
+}
+
+private const val SEARCH_QUERY_MAX_CHARS = 200
+
+/**
+ * `mycorrhizal://search?q=…` → `contacts?search=<encoded q>` or `contacts` when q is
+ * empty after sanitising (ADR 0029 §3): trim, strip Unicode Cc/Cf, truncate to 200.
+ */
+private fun searchRoute(uri: Uri): String {
+    val q = (uri.getQueryParameter("q") ?: "")
+        .trim()
+        .filter { Character.getType(it) != Character.CONTROL.toInt() && Character.getType(it) != Character.FORMAT.toInt() }
+        .take(SEARCH_QUERY_MAX_CHARS)
+    return if (q.isEmpty()) "contacts" else "contacts?search=${Uri.encode(q)}"
 }
 
 /** `[1-9][0-9]{0,9}` — no sign, `+`, or leading zero (ADR 0029 §2). */

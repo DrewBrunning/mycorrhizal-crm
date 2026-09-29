@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -92,6 +93,9 @@ class ContactListViewModel @Inject constructor(
     private val tagRepository: TagRepository,
     // T90 / issue #831: web parity for the "You" badge on the marked contact's row.
     private val authRepository: AuthRepository,
+    // ADR 0029 §4 / issue #1269: `mycorrhizal://search?q=…` navigates to `contacts?search=…`.
+    // Default so callers/tests that don't deep-link need not supply one.
+    savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactListUiState())
@@ -125,7 +129,10 @@ class ContactListViewModel @Inject constructor(
         }
         loadCircles()
         loadTags()
-        loadContacts()
+        // A deep-link search prefills the field through the same path typing does (scoped
+        // GET /search + FTS mirror run); it never auto-opens a result.
+        val deepLinkSearch = savedStateHandle.get<String>(SEARCH_ARG)?.takeIf { it.isNotBlank() }
+        if (deepLinkSearch != null) onSearchQueryChange(deepLinkSearch) else loadContacts()
         // Issue #959: reconcile the offline mirror with the T17 change feed so a
         // contact deleted on another client (a tombstone no browse page carries)
         // stops being served from the cache. Best-effort and non-blocking: the
@@ -473,5 +480,8 @@ class ContactListViewModel @Inject constructor(
 
     companion object {
         private const val SEARCH_DEBOUNCE_MS = 300L
+
+        /** Nav-argument name of the `contacts?search={search}` route (issue #1269). */
+        const val SEARCH_ARG = "search"
     }
 }
