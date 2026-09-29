@@ -694,7 +694,16 @@ paths:
         the plaintext secret + otpauth:// URL so the client can render a QR
         code. 2FA is not enforced yet — POST /users/2fa/confirm flips it on.
         Unavailable (403) for OIDC-provisioned accounts, whose second factor
-        belongs to their identity provider.
+        belongs to their identity provider. When the account already holds a
+        second factor (a passkey), a live proof is required (issue #1337): `code`
+        (a recovery code) or `assertion` (from /webauthn/assert/begin). The first
+        factor needs no proof.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecondFactorProofInput"
       responses:
         "200":
           description: The pending TOTP secret and its otpauth URL.
@@ -702,6 +711,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TwoFactorSetupResponse"
+        "400":
+          description: The account already holds a second factor and the proof is missing or wrong.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated.
           content:
@@ -714,6 +729,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many wrong enrollment proofs; enrollment is temporarily locked.
         "409":
           description: 2FA is already enabled.
           content:
@@ -854,7 +871,12 @@ paths:
       description: >
         Authenticated. Returns WebAuthn PublicKeyCredentialCreationOptions for
         `navigator.credentials.create`. Unavailable to OIDC-provisioned
-        accounts. An optional `name` labels the credential.
+        accounts. An optional `name` labels the credential. When the account
+        already holds a second factor (TOTP or a passkey) a live proof is
+        required (issue #1337): `code` (TOTP or recovery code) or `assertion`
+        (from /webauthn/assert/begin, made with an existing passkey). The first
+        factor needs no proof. Finish is only reachable through the ceremony this
+        step starts.
       requestBody:
         required: false
         content:
@@ -870,7 +892,7 @@ paths:
                 type: object
                 additionalProperties: true
         "400":
-          description: Invalid name.
+          description: Invalid name, or the account already holds a second factor and the proof is missing or wrong.
           content:
             application/json:
               schema:
@@ -893,6 +915,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many wrong enrollment proofs; enrollment is temporarily locked.
   /webauthn/register/finish:
     post:
       summary: Complete passkey enrollment
@@ -947,8 +971,10 @@ paths:
       operationId: webauthnProofBegin
       description: >
         Authenticated. Returns assertion options; the resulting assertion is
-        submitted as `assertion` to DELETE /webauthn/credentials/{id}, proving
-        a passkey other than the one being removed is still held. The optional
+        submitted as `assertion` to DELETE /webauthn/credentials/{id} (proving
+        a passkey other than the one being removed is still held), to
+        POST /webauthn/register/begin or to POST /users/2fa/setup (proving a
+        second factor is held before another is enrolled). The optional
         `exclude_id` names the passkey being removed; it is left out of the
         options' `allowCredentials` so the authenticator cannot pick it.
       requestBody:
@@ -12129,8 +12155,23 @@ components:
           description: "A 6-digit TOTP code or a recovery code (XXXXX-XXXXX-XXXXX)."
     WebAuthnRegisterBeginInput:
       type: object
+      description: "`code` / `assertion` are required once the account already holds a second factor (issue #1337); at most one is used."
       properties:
         name: { type: string, maxLength: 100, description: "User-supplied label, e.g. YubiKey." }
+        code: { type: string, description: "A TOTP code or a recovery code." }
+        assertion:
+          type: object
+          additionalProperties: true
+          description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
+    SecondFactorProofInput:
+      type: object
+      description: "Live second-factor proof, required to enroll an additional factor once one already exists (issue #1337). At most one of `code` / `assertion`."
+      properties:
+        code: { type: string, description: "A TOTP code or a recovery code." }
+        assertion:
+          type: object
+          additionalProperties: true
+          description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
     WebAuthnRegisterResponse:
       type: object
       required: [id, name, created_at, recovery_codes]

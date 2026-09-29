@@ -70,8 +70,67 @@ var errCloneWarning = errors.New("authenticator signature counter did not increa
 
 func isOIDCUser(u models.User) bool { return u.OIDCSubject != nil && *u.OIDCSubject != "" }
 
+// secondFactorProofInput is the live-proof half of a request body: either a
+// TOTP / recovery code, or an assertion from WebAuthnProofBegin. Embedded in the
+// enrollment bodies (issue #1337) so they carry the same proof as removal.
+type secondFactorProofInput struct {
+	Code      string          `json:"code"`
+	Assertion json.RawMessage `json:"assertion"`
+}
+
+// enrollProofLockKey is the account-limiter bucket for enrollment-proof
+// guessing. It is keyed on the user id, separate from the login buckets, so a
+// stolen session guessing codes locks only further enrollments, never the
+// owner's sign-in.
+func enrollProofLockKey(userID uint) string { return fmt.Sprintf("enroll-proof:%d", userID) }
+
+// requireEnrollmentProof gates enrolling an ADDITIONAL second factor (issue
+// #1337). When the account holds no confirmed factor (no TOTP, no passkey) this
+// is the first factor and needs no proof. Otherwise the caller must present a
+// live proof (a TOTP/recovery code or an assertion from an existing passkey),
+// the same bar as removal (DeleteWebAuthnCredential / DisableTwoFactor), so a
+// stolen session alone cannot add its own authenticator and then use it to
+// remove the owner's. Wrong proofs are counted against the account limiter and
+// lock out after MaxLoginAttempts. Returns false after aborting the request.
+func requireEnrollmentProof(c *gin.Context, db *gorm.DB, cfg *config.Config, waUser *services.WebAuthnUser, in secondFactorProofInput) bool {
+	user := waUser.User
+	confirmedTOTP := user.TOTPEnabled && user.TOTPSecretEncrypted != nil && *user.TOTPSecretEncrypted != ""
+	if !confirmedTOTP && len(waUser.Credentials) == 0 {
+		return true
+	}
+	if in.Code == "" && len(in.Assertion) == 0 {
+		apperrors.AbortWithError(c, apperrors.ErrMissingField("code"))
+		return false
+	}
+	limiter := middleware.GetAccountRateLimiter()
+	key := enrollProofLockKey(user.ID)
+	if locked, secs := limiter.IsLocked(key); locked {
+		abortLoginLocked(c, secs)
+		return false
+	}
+	var proved bool
+	if len(in.Assertion) > 0 {
+		proved, _ = verifyProofAssertion(c, cfg, waUser, nil, in.Assertion)
+	} else {
+		proved = valid2FAProof(db, &user, in.Code, cfg.JWTSecretKey)
+	}
+	if !proved {
+		if locked, secs := limiter.RecordFailedAttempt(key); locked {
+			abortLoginLocked(c, secs)
+			return false
+		}
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
+		return false
+	}
+	limiter.RecordSuccessfulLogin(key)
+	return true
+}
+
 // WebAuthnRegisterBegin starts the enrollment ceremony. The optional `name`
-// (a user label like "YubiKey") is remembered and stored on finish.
+// (a user label like "YubiKey") is remembered and stored on finish. Once the
+// account already holds a second factor it also needs a live proof (`code` or
+// `assertion`, issue #1337); finish is only reachable through the ceremony
+// this step stores, so gating begin gates the whole enrollment.
 func WebAuthnRegisterBegin(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	cfg := currentConfig(c)
@@ -89,6 +148,7 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 	}
 
 	var input struct {
+		secondFactorProofInput
 		Name string `json:"name"`
 	}
 	if c.Request.ContentLength != 0 {
@@ -104,6 +164,9 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 	}
 	if name == "" {
 		name = services.RandomCredentialLabel()
+	}
+	if !requireEnrollmentProof(c, db, &cfg, waUser, input.secondFactorProofInput) {
+		return
 	}
 
 	exclusions := make([]protocol.CredentialDescriptor, 0, len(rows))
@@ -507,8 +570,10 @@ func DeleteWebAuthnCredential(c *gin.Context) {
 }
 
 // verifyProofAssertion validates an assertion produced for the CeremonyProof
-// begun by WebAuthnProofBegin, requiring it to come from a passkey other than
-// the one being deleted (proving another factor is still held).
+// begun by WebAuthnProofBegin. When target is non-nil it must come from a
+// passkey other than the one being deleted (proving another factor is still
+// held); a nil target (enrollment, issue #1337) accepts any of the caller's
+// passkeys.
 func verifyProofAssertion(c *gin.Context, cfg *config.Config, waUser *services.WebAuthnUser, target *models.WebAuthnCredential, raw []byte) (proved, sameCredential bool) {
 	wa, err := services.NewWebAuthn(cfg)
 	if err != nil {
@@ -526,7 +591,7 @@ func verifyProofAssertion(c *gin.Context, cfg *config.Config, waUser *services.W
 	if err != nil || cred.Authenticator.CloneWarning {
 		return false, false
 	}
-	if bytes.Equal(cred.ID, target.CredentialID) {
+	if target != nil && bytes.Equal(cred.ID, target.CredentialID) {
 		return false, true
 	}
 	db := c.MustGet("db").(*gorm.DB)
