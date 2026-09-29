@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -311,7 +312,7 @@ class LoginScreenTest {
         setContent(
             uiState = LoginUiState(
                 twoFactorStep = true,
-                twoFactorPrompt = TwoFactorPrompt.RECOVERY_CODE_ONLY,
+                twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
                 twoFactorMethods = listOf("webauthn"),
             ),
             onTwoFactorSubmit = { submitted = it },
@@ -336,7 +337,7 @@ class LoginScreenTest {
         setContent(
             uiState = LoginUiState(
                 twoFactorStep = true,
-                twoFactorPrompt = TwoFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                twoFactorPrompt = SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
                 twoFactorMethods = listOf("totp", "webauthn"),
             ),
         )

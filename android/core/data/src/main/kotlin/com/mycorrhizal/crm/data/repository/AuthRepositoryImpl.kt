@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.LoginResult
 import com.mycorrhizal.crm.network.toApiError
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -69,15 +70,49 @@ class AuthRepositoryImpl @Inject constructor(
             return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
         }
 
-        val result = apiClient.complete2faLogin(code.trim(), pending)
+        return finishSecondFactor(apiClient.complete2faLogin(code.trim(), pending))
+    }
+
+    override suspend fun beginPasskeyLogin(): Result<String> {
+        val pending = pending2faCookie
+        if (pending.isNullOrBlank()) {
+            return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
+        }
+        val options = apiClient.webauthnLoginBegin(pending).getOrElse { error ->
+            // Same as a wrong-challenge code: an expired/consumed challenge is
+            // gone for good and only a fresh password step can mint another.
+            clearPendingOn401(error)
+            return Result.failure(error.toApiError())
+        }
+        return Result.success(options)
+    }
+
+    override suspend fun completePasskeyLogin(assertionJson: String): Result<Unit> {
+        val pending = pending2faCookie
+        if (pending.isNullOrBlank()) {
+            return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
+        }
+        // Unlike a wrong TOTP code, a 401 here can mean "assertion rejected" with
+        // the challenge still valid (a retry re-runs /login/begin, which itself
+        // 401s and clears the pending state if the challenge really is gone), so
+        // only a real session outcome consumes it.
+        return finishSecondFactor(apiClient.webauthnLoginFinish(assertionJson, pending), clearOn401 = false)
+    }
+
+    /**
+     * The shared tail of every 2FA step-2 ([complete2faLogin] and
+     * [completePasskeyLogin]): turn the finished login into a persisted
+     * session, so the two factors cannot diverge on how a session is stored.
+     */
+    private suspend fun finishSecondFactor(
+        result: Result<LoginResult>,
+        clearOn401: Boolean = true,
+    ): Result<Unit> {
         val login = result.getOrElse { error ->
-            // A 401 means the challenge was consumed/expired/disabled — the
-            // pending state is gone for good, so the caller must restart at
-            // step 1 rather than retry the same code.
-            val apiError = error as? ApiError
-            if (apiError is ApiError.Client && apiError.code == 401) {
-                pending2faCookie = null
-            }
+            // A 401 on the code step means the challenge was consumed/expired/
+            // disabled — the pending state is gone for good, so the caller must
+            // restart at step 1 rather than retry the same code.
+            if (clearOn401) clearPendingOn401(error)
             return Result.failure(error.toApiError())
         }
         pending2faCookie = null
@@ -88,6 +123,13 @@ class AuthRepositoryImpl @Inject constructor(
         }
 
         return persistSessionWithProfileFetch(token)
+    }
+
+    private fun clearPendingOn401(error: Throwable) {
+        val apiError = error as? ApiError
+        if (apiError is ApiError.Client && apiError.code == 401) {
+            pending2faCookie = null
+        }
     }
 
     override suspend fun loginWithApiToken(token: String): Result<Unit> =

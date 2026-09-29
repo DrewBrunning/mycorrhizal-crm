@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -47,6 +48,9 @@ import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachStage
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.feature.imports.ImportReviewStep
+import com.mycorrhizal.crm.data.passkey.PasskeyIssue
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
+import com.mycorrhizal.crm.data.passkey.offersPasskey
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 
@@ -64,6 +68,8 @@ fun AttachToRemoteScreen(
     viewModel: AttachToRemoteViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Issue #1293: Activity context for the passkey provider UI (handed over per call, not retained).
+    val context = LocalContext.current
     val leave = {
         // Before the switch, leaving abandons the run (drops the remote session
         // and the in-memory bundle); after Done there is nothing to drop.
@@ -111,7 +117,12 @@ fun AttachToRemoteScreen(
                     remoteProfiles = state.remoteProfiles,
                     onSignIn = viewModel::signIn,
                 )
-                AttachStep.TwoFactor -> TwoFactorStep(onSubmit = viewModel::submitTwoFactor)
+                AttachStep.TwoFactor -> TwoFactorStep(
+                    prompt = state.twoFactorPrompt,
+                    passkeyIssue = state.passkeyIssue,
+                    onSubmit = viewModel::submitTwoFactor,
+                    onUsePasskey = { viewModel.usePasskey(context) },
+                )
                 AttachStep.Working -> Working(progress = state.progress)
                 AttachStep.PrepareFailed -> PrepareFailedStep(onRetry = viewModel::retryPrepare)
                 AttachStep.Review -> ReviewStep(state = state, viewModel = viewModel)
@@ -254,14 +265,59 @@ private fun ServerChoice(
 }
 
 @Composable
-private fun TwoFactorStep(onSubmit: (String) -> Unit) {
+internal fun TwoFactorStep(
+    prompt: SecondFactorPrompt = SecondFactorPrompt.STANDARD,
+    passkeyIssue: PasskeyIssue? = null,
+    onSubmit: (String) -> Unit,
+    onUsePasskey: () -> Unit = {},
+) {
     var code by remember { mutableStateOf("") }
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.attach_two_factor_prompt), style = MaterialTheme.typography.bodyLarge)
+        // Issue #1293 (ADR 0034 Decision 4): honour the account's enrolled `methods`.
+        // The code field below is on screen in EVERY variant, so a code (or, for a
+        // passkey-only account, a recovery code) always works.
+        val descriptionRes = when (prompt) {
+            SecondFactorPrompt.RECOVERY_CODE_ONLY -> when (passkeyIssue) {
+                PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_only_description
+                PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_only_description
+                null -> R.string.login_two_factor_passkey_only_description
+            }
+            SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE -> R.string.login_two_factor_passkey_or_recovery_description
+            else -> R.string.attach_two_factor_prompt
+        }
+        Text(stringResource(descriptionRes), style = MaterialTheme.typography.bodyLarge)
+        if (prompt == SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE) {
+            Text(
+                text = stringResource(
+                    when (passkeyIssue) {
+                        PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_note
+                        PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_note
+                        null -> R.string.login_two_factor_passkey_unavailable_note
+                    },
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (prompt.offersPasskey) {
+            Button(
+                onClick = onUsePasskey,
+                modifier = Modifier.fillMaxWidth().testTag("attach-2fa-passkey"),
+            ) {
+                Text(stringResource(R.string.login_two_factor_use_passkey))
+            }
+        }
+        val recoveryOnly = prompt == SecondFactorPrompt.RECOVERY_CODE_ONLY ||
+            prompt == SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
         OutlinedTextField(
             value = code,
             onValueChange = { code = it },
-            label = { Text(stringResource(R.string.attach_two_factor_code)) },
+            label = {
+                Text(
+                    stringResource(
+                        if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.attach_two_factor_code,
+                    ),
+                )
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().testTag("attach-2fa-code"),
         )

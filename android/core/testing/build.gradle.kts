@@ -14,6 +14,7 @@ android {
 // `test` source sets across modules, so putting it in `main` (the
 // Now-In-Android `core:testing` pattern) is the standard way around that.
 dependencies {
+    implementation(project(":core:data"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.test.junit4)

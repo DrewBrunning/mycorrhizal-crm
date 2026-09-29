@@ -75,6 +75,26 @@ interface AuthRepository {
      */
     suspend fun complete2faLogin(code: String): Result<Unit>
 
+    /**
+     * Issue #1293 (passkey alternative to [complete2faLogin]): POST
+     * /webauthn/login/begin for the in-flight 2FA login. Returns the server's
+     * raw PublicKeyCredentialRequestOptions JSON. The `2fa_pending` challenge
+     * stays private to the repository. 401 (expired / consumed) clears the
+     * pending state, so the caller must restart at step 1; 409 means no passkey
+     * is registered / the RP is not configured.
+     */
+    suspend fun beginPasskeyLogin(): Result<String>
+
+    /**
+     * Issue #1293: POST /webauthn/login/finish with the authenticator's
+     * assertion JSON, then persist the session through EXACTLY the path
+     * [complete2faLogin] uses (persist token, then profile fetch, rolling back
+     * on a failed fetch). A rejected assertion (401) leaves the pending
+     * challenge in place so the user can retry or fall back to a code; a
+     * success or a failed profile fetch consumes it.
+     */
+    suspend fun completePasskeyLogin(assertionJson: String): Result<Unit>
+
     /** Authenticate with a `mycorrhizal_` API token (no password; bypasses 2FA). */
     suspend fun loginWithApiToken(token: String): Result<Unit>
 

@@ -1,6 +1,9 @@
 package com.mycorrhizal.crm.feature.auth
 
 import app.cash.turbine.test
+import com.mycorrhizal.crm.testing.FakePasskeyClient
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.ProfilesSnapshot
 import com.mycorrhizal.crm.data.session.SessionManager
@@ -38,11 +41,13 @@ class LoginViewModelTest {
         val viewModel: LoginViewModel,
         val authRepository: AuthRepository,
         val sessionManager: SessionManager,
+        val passkeyClient: FakePasskeyClient,
     )
 
     private fun harness(
         storedServerUrl: String? = null,
         passkeyAvailable: Boolean = false,
+        passkeyClient: FakePasskeyClient = FakePasskeyClient(),
     ): Harness {
         val authRepository = mockk<AuthRepository>()
         coEvery { authRepository.observeSession() } returns MutableStateFlow(SessionState())
@@ -60,8 +65,9 @@ class LoginViewModelTest {
             sessionManager = sessionManager,
             authRepository = authRepository,
             passkeyAvailability = PasskeyAvailability { passkeyAvailable },
+            passkeyClient = passkeyClient,
         )
-        return Harness(viewModel, authRepository, sessionManager)
+        return Harness(viewModel, authRepository, sessionManager, passkeyClient)
     }
 
     private fun submit(
@@ -156,7 +162,8 @@ class LoginViewModelTest {
                 loginWithApiTokenUseCase = LoginWithApiTokenUseCase(authRepository),
                 sessionManager = manager,
                 authRepository = authRepository,
-                passkeyAvailability = NoPasskeyAvailability(),
+                passkeyAvailability = PasskeyAvailability { false },
+                passkeyClient = FakePasskeyClient(),
             )
             advanceUntilIdle()
 
@@ -283,34 +290,34 @@ class LoginViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val state = loginWithMethods(harness(), null)
             assertTrue(state.twoFactorStep)
-            assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+            assertEquals(SecondFactorPrompt.STANDARD, state.twoFactorPrompt)
         }
 
     @Test
     fun `totp-only and unknown methods keep the standard code prompt`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("totp")).twoFactorPrompt)
-            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("hwkey")).twoFactorPrompt)
-            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), emptyList()).twoFactorPrompt)
+            assertEquals(SecondFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("totp")).twoFactorPrompt)
+            assertEquals(SecondFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("hwkey")).twoFactorPrompt)
+            assertEquals(SecondFactorPrompt.STANDARD, loginWithMethods(harness(), emptyList()).twoFactorPrompt)
         }
 
     @Test
     fun `passkey-only account degrades to the recovery-code prompt`() = runTest(mainDispatcherRule.testDispatcher) {
         val state = loginWithMethods(harness(), listOf("webauthn"))
         assertTrue(state.twoFactorStep)
-        assertEquals(TwoFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
+        assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
     }
 
     @Test
     fun `mixed account keeps the code field and adds the passkey note`() = runTest(mainDispatcherRule.testDispatcher) {
         val state = loginWithMethods(harness(), listOf("totp", "webauthn"))
-        assertEquals(TwoFactorPrompt.CODE_WITH_PASSKEY_NOTE, state.twoFactorPrompt)
+        assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, state.twoFactorPrompt)
     }
 
     @Test
     fun `an open passkey gate does not degrade`() = runTest(mainDispatcherRule.testDispatcher) {
         val state = loginWithMethods(harness(passkeyAvailable = true), listOf("webauthn"))
-        assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+        assertEquals(SecondFactorPrompt.STANDARD, state.twoFactorPrompt)
     }
 
     @Test
@@ -327,7 +334,7 @@ class LoginViewModelTest {
             coVerify(exactly = 1) { h.authRepository.complete2faLogin("AAAAA-BBBBB-CCCCC") }
             val state = h.viewModel.uiState.value
             assertTrue(state.twoFactorStep)
-            assertEquals(TwoFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
+            assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
             assertEquals(R.string.login_error_two_factor_invalid, state.errorRes)
         }
 
@@ -350,7 +357,7 @@ class LoginViewModelTest {
         h.viewModel.onBackToCredentials()
         val state = h.viewModel.uiState.value
         assertFalse(state.twoFactorStep)
-        assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+        assertEquals(SecondFactorPrompt.STANDARD, state.twoFactorPrompt)
         assertNull(state.twoFactorMethods)
     }
 

@@ -94,6 +94,8 @@ fun SettingsScreen(
     onCalendarSync: () -> Unit = {},
     // Issue #814 Phase 2: TOTP two-factor enrollment/management.
     onTwoFactor: () -> Unit = {},
+    // Issue #1293: passkey enrollment/management (shown only when the passkey gate is open).
+    onPasskeys: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     // Issue #236: the Immich connection-config settings screen.
     onImmichSettings: () -> Unit = {},
@@ -218,6 +220,7 @@ fun SettingsScreen(
             onApiTokens = onApiTokens,
             onCalendarSync = onCalendarSync,
             onTwoFactor = onTwoFactor,
+            onPasskeys = onPasskeys,
             onNotificationChannels = onNotificationChannels,
             onImmichSettings = onImmichSettings,
             onPaperlessSettings = onPaperlessSettings,
@@ -273,6 +276,8 @@ fun SettingsContent(
     onApiTokens: () -> Unit = {},
     onCalendarSync: () -> Unit = {},
     onTwoFactor: () -> Unit = {},
+    // Issue #1293: passkey enrollment/management (shown only when the passkey gate is open).
+    onPasskeys: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     onImmichSettings: () -> Unit = {},
     onPaperlessSettings: () -> Unit = {},
@@ -476,6 +481,15 @@ fun SettingsContent(
         // Issue #1263: absent on a deployment that does not offer 2FA.
         if (twoFactorSupported) {
             NavigationRow(stringResource(R.string.settings_two_factor_title), onClick = onTwoFactor)
+        }
+
+        // Issue #1293 / ADR 0034: passkeys, offered only through an open gate (Remote
+        // profile + server capability + Credential Manager on this device). An
+        // OIDC-provisioned account still sees the entry and gets the server-worded
+        // refusal on the screen, exactly like the TOTP screen.
+        if (state.passkeysAvailable) {
+            HorizontalDivider()
+            NavigationRow(stringResource(R.string.settings_passkeys_title), onClick = onPasskeys)
         }
 
         HorizontalDivider()

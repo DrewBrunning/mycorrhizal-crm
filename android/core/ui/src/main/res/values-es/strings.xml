@@ -60,6 +60,15 @@
     <string name="login_two_factor_passkey_unavailable_note">Tu cuenta también tiene una llave de acceso (passkey), pero las llaves de acceso no están disponibles en esta app para este servidor.</string>
     <string name="login_two_factor_passkey_only_description">Tu cuenta usa una llave de acceso (passkey), pero las llaves de acceso no están disponibles en esta app para este servidor. Introduce uno de tus códigos de recuperación para iniciar sesión.</string>
     <string name="login_two_factor_recovery_code_label">Código de recuperación</string>
+    <!-- Issue #1293 / ADR 0034: passkey sign-in on the 2FA step -->
+    <string name="login_two_factor_use_passkey">Usar una llave de acceso</string>
+    <string name="login_two_factor_passkey_or_recovery_description">Usa tu llave de acceso para iniciar sesión o introduce uno de tus códigos de recuperación.</string>
+    <string name="login_two_factor_passkey_not_associated_note">Tu cuenta también tiene una llave de acceso, pero este servidor no está configurado para llaves de acceso en Android.</string>
+    <string name="login_two_factor_passkey_not_associated_only_description">Tu cuenta usa una llave de acceso, pero este servidor no está configurado para llaves de acceso en Android. Introduce uno de tus códigos de recuperación para iniciar sesión.</string>
+    <string name="login_two_factor_passkey_no_provider_note">Tu cuenta también tiene una llave de acceso, pero este dispositivo no tiene ningún proveedor de llaves de acceso configurado.</string>
+    <string name="login_two_factor_passkey_no_provider_only_description">Tu cuenta usa una llave de acceso, pero este dispositivo no tiene ningún proveedor de llaves de acceso configurado. Introduce uno de tus códigos de recuperación para iniciar sesión.</string>
+    <string name="login_error_passkey_failed">Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código.</string>
+    <string name="login_error_passkey_no_match">No se encontró ninguna llave de acceso coincidente en este dispositivo. Inténtalo de nuevo o introduce un código.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">¿No tienes cuenta? Crea una</string>
@@ -401,6 +410,36 @@
     <string name="settings_two_factor_recovery_copy">Copiar todos los códigos</string>
     <string name="settings_two_factor_recovery_copied">¡Copiado!</string>
     <string name="settings_two_factor_recovery_done">Hecho</string>
+
+    <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
+    <string name="settings_passkeys_title">Llaves de acceso</string>
+    <string name="settings_passkeys_description">Usa la huella, el rostro o el bloqueo de pantalla de tu dispositivo (o una llave de seguridad) como segundo paso de inicio de sesión en lugar de un código. Las llaves de acceso funcionan junto con una aplicación de autenticación.</string>
+    <string name="settings_passkeys_empty">Aún no hay llaves de acceso.</string>
+    <string name="settings_passkeys_add_button">Añadir una llave de acceso</string>
+    <string name="settings_passkeys_add_title">Añadir una llave de acceso</string>
+    <string name="settings_passkeys_add_confirm">Continuar</string>
+    <string name="settings_passkeys_adding">Esperando a tu dispositivo…</string>
+    <string name="settings_passkeys_name_label">Nombre de la llave (opcional)</string>
+    <string name="settings_passkeys_name_help">Por ejemplo: Teléfono, YubiKey.</string>
+    <string name="settings_passkeys_add_success">Llave de acceso añadida.</string>
+    <string name="settings_passkeys_add_error">No pudimos añadir la llave de acceso. Inténtalo de nuevo.</string>
+    <string name="settings_passkeys_already_registered">Ya hay una llave de acceso de este dispositivo registrada en tu cuenta.</string>
+    <string name="settings_passkeys_not_associated">Este servidor no está configurado para llaves de acceso en Android, así que no puedes añadir una desde esta app.</string>
+    <string name="settings_passkeys_no_provider">Este dispositivo no tiene ningún proveedor de llaves de acceso configurado, así que no puedes añadir una aquí.</string>
+    <string name="settings_passkeys_unavailable">Las llaves de acceso no están disponibles en esta app para este servidor.</string>
+    <string name="settings_passkeys_no_other_here">No se encontró en este dispositivo otra llave de acceso de tu cuenta. Usa un código en su lugar.</string>
+    <string name="settings_passkeys_created_last_used">Añadida el %1$s · último uso el %2$s</string>
+    <string name="settings_passkeys_created_never_used">Añadida el %1$s · nunca usada</string>
+    <string name="settings_passkeys_remove_button">Eliminar</string>
+    <string name="settings_passkeys_remove_cd">Eliminar la llave de acceso %1$s</string>
+    <string name="settings_passkeys_remove_title">Eliminar llave de acceso</string>
+    <string name="settings_passkeys_remove_description">Introduce un código actual de tu aplicación de autenticación o un código de recuperación para eliminar «%1$s».</string>
+    <string name="settings_passkeys_code_label">Código de verificación</string>
+    <string name="settings_passkeys_remove_confirm">Eliminar llave de acceso</string>
+    <string name="settings_passkeys_remove_submitting">Espera…</string>
+    <string name="settings_passkeys_use_another">Verificar con otra llave de acceso</string>
+    <string name="settings_passkeys_remove_success">Llave de acceso eliminada.</string>
+    <string name="settings_passkeys_invalid_proof">La verificación falló. Inténtalo de nuevo.</string>
     <string name="settings_two_factor_qr_content_description">Código QR para tu aplicación de autenticación. Escanéalo o introduce la clave de configuración manual de abajo.</string>
     <string name="data_relationships_section">Relaciones</string>
     <string name="data_relationships_description">Deje que la aplicación encuentre relaciones que sus relaciones existentes implican. Las sugerencias solo son propuestas: revíselas antes de aceptarlas.</string>

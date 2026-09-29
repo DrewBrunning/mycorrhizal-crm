@@ -216,6 +216,11 @@ class MainViewModel @Inject constructor(
         _serverOutdatedNoticeVersion.value = null
         _serverVersion.value = null
         _serverCapabilities.value = ServerCapabilitiesInfo.Unknown
+        // Issue #1293: a server/profile switch must not leave the PREVIOUS
+        // server's capability set behind for out-of-tree consumers (the
+        // passkey gate reads it strictly); Unknown is the fail-open default
+        // they already see before the first check resolves.
+        serverCapabilitiesStore.record(ServerCapabilitiesInfo.Unknown)
     }
 
     /**

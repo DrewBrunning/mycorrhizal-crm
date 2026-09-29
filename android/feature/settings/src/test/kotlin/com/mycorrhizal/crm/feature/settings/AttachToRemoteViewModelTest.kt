@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachSignInResult
 import com.mycorrhizal.crm.data.attach.AttachStage
 import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
+import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
@@ -59,7 +60,7 @@ class AttachToRemoteViewModelTest {
         coEvery { coordinator.begin() } returns
             if (beginOk) Result.success(local) else Result.failure(AttachException("nope"))
         coEvery { session.profiles() } returns listOf(local, remoteProfile)
-        return AttachToRemoteViewModel(coordinator, session)
+        return AttachToRemoteViewModel(coordinator, session, FakePasskeyClient())
     }
 
     private fun stubPrepareOk() {
@@ -199,7 +200,7 @@ class AttachToRemoteViewModelTest {
     fun `a two-factor account is asked for its code then continues to review`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-                Result.success(AttachSignInResult.TwoFactorRequired)
+                Result.success(AttachSignInResult.TwoFactorRequired())
             coEvery { coordinator.completeTwoFactor("123456") } returns Result.success(AttachSignInResult.SignedIn)
             coEvery { coordinator.prepare(any()) } returns Result.success(preview)
             val vm = viewModel()
@@ -218,7 +219,7 @@ class AttachToRemoteViewModelTest {
     @Test
     fun `a wrong two-factor code stays on the code step`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-            Result.success(AttachSignInResult.TwoFactorRequired)
+            Result.success(AttachSignInResult.TwoFactorRequired())
         coEvery { coordinator.completeTwoFactor(any()) } returns Result.failure(ApiError.Client(401, "bad"))
         val vm = viewModel()
         advanceUntilIdle()

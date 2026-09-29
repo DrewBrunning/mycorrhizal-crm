@@ -60,6 +60,15 @@
     <string name="login_two_factor_passkey_unavailable_note">Ihr Konto hat auch einen Passkey, aber Passkeys sind in dieser App für diesen Server nicht verfügbar.</string>
     <string name="login_two_factor_passkey_only_description">Ihr Konto verwendet einen Passkey, aber Passkeys sind in dieser App für diesen Server nicht verfügbar. Geben Sie zum Anmelden einen Ihrer Wiederherstellungscodes ein.</string>
     <string name="login_two_factor_recovery_code_label">Wiederherstellungscode</string>
+    <!-- Issue #1293 / ADR 0034: passkey sign-in on the 2FA step -->
+    <string name="login_two_factor_use_passkey">Passkey verwenden</string>
+    <string name="login_two_factor_passkey_or_recovery_description">Melden Sie sich mit Ihrem Passkey an oder geben Sie einen Ihrer Wiederherstellungscodes ein.</string>
+    <string name="login_two_factor_passkey_not_associated_note">Ihr Konto hat auch einen Passkey, aber dieser Server ist für Passkeys unter Android nicht eingerichtet.</string>
+    <string name="login_two_factor_passkey_not_associated_only_description">Ihr Konto verwendet einen Passkey, aber dieser Server ist für Passkeys unter Android nicht eingerichtet. Geben Sie zum Anmelden einen Ihrer Wiederherstellungscodes ein.</string>
+    <string name="login_two_factor_passkey_no_provider_note">Ihr Konto hat auch einen Passkey, aber auf diesem Gerät ist kein Passkey-Anbieter eingerichtet.</string>
+    <string name="login_two_factor_passkey_no_provider_only_description">Ihr Konto verwendet einen Passkey, aber auf diesem Gerät ist kein Passkey-Anbieter eingerichtet. Geben Sie zum Anmelden einen Ihrer Wiederherstellungscodes ein.</string>
+    <string name="login_error_passkey_failed">Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein.</string>
+    <string name="login_error_passkey_no_match">Auf diesem Gerät wurde kein passender Passkey gefunden. Versuchen Sie es erneut oder geben Sie einen Code ein.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Kein Konto? Eines erstellen</string>
@@ -401,6 +410,36 @@
     <string name="settings_two_factor_recovery_copy">Alle Codes kopieren</string>
     <string name="settings_two_factor_recovery_copied">Kopiert!</string>
     <string name="settings_two_factor_recovery_done">Fertig</string>
+
+    <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
+    <string name="settings_passkeys_title">Passkeys</string>
+    <string name="settings_passkeys_description">Verwenden Sie Fingerabdruck, Gesicht oder Bildschirmsperre Ihres Geräts (oder einen Sicherheitsschlüssel) als zweiten Anmeldeschritt statt eines Codes. Passkeys funktionieren zusätzlich zu einer Authentifizierungs-App.</string>
+    <string name="settings_passkeys_empty">Noch keine Passkeys.</string>
+    <string name="settings_passkeys_add_button">Passkey hinzufügen</string>
+    <string name="settings_passkeys_add_title">Passkey hinzufügen</string>
+    <string name="settings_passkeys_add_confirm">Weiter</string>
+    <string name="settings_passkeys_adding">Warten auf Ihr Gerät…</string>
+    <string name="settings_passkeys_name_label">Name des Passkeys (optional)</string>
+    <string name="settings_passkeys_name_help">Zum Beispiel: Handy, YubiKey.</string>
+    <string name="settings_passkeys_add_success">Passkey hinzugefügt.</string>
+    <string name="settings_passkeys_add_error">Der Passkey konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.</string>
+    <string name="settings_passkeys_already_registered">Ein Passkey von diesem Gerät ist für Ihr Konto bereits registriert.</string>
+    <string name="settings_passkeys_not_associated">Dieser Server ist für Passkeys unter Android nicht eingerichtet, daher können Sie in dieser App keinen hinzufügen.</string>
+    <string name="settings_passkeys_no_provider">Auf diesem Gerät ist kein Passkey-Anbieter eingerichtet, daher können Sie hier keinen Passkey hinzufügen.</string>
+    <string name="settings_passkeys_unavailable">Passkeys sind in dieser App für diesen Server nicht verfügbar.</string>
+    <string name="settings_passkeys_no_other_here">Auf diesem Gerät wurde kein weiterer Passkey Ihres Kontos gefunden. Verwenden Sie stattdessen einen Code.</string>
+    <string name="settings_passkeys_created_last_used">Hinzugefügt am %1$s · zuletzt verwendet am %2$s</string>
+    <string name="settings_passkeys_created_never_used">Hinzugefügt am %1$s · nie verwendet</string>
+    <string name="settings_passkeys_remove_button">Entfernen</string>
+    <string name="settings_passkeys_remove_cd">Passkey %1$s entfernen</string>
+    <string name="settings_passkeys_remove_title">Passkey entfernen</string>
+    <string name="settings_passkeys_remove_description">Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein, um „%1$s“ zu entfernen.</string>
+    <string name="settings_passkeys_code_label">Verifizierungscode</string>
+    <string name="settings_passkeys_remove_confirm">Passkey entfernen</string>
+    <string name="settings_passkeys_remove_submitting">Bitte warten…</string>
+    <string name="settings_passkeys_use_another">Stattdessen mit einem anderen Passkey bestätigen</string>
+    <string name="settings_passkeys_remove_success">Passkey entfernt.</string>
+    <string name="settings_passkeys_invalid_proof">Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.</string>
     <string name="settings_two_factor_qr_content_description">QR-Code für Ihre Authentifizierungs-App. Scannen Sie ihn oder geben Sie den manuellen Einrichtungsschlüssel unten ein.</string>
     <string name="data_relationships_section">Beziehungen</string>
     <string name="data_relationships_description">Lassen Sie die App Beziehungen finden, die Ihre bestehenden nahelegen. Vorschläge sind nur Vorschläge – prüfen Sie jeden einzeln, bevor Sie ihn bestätigen.</string>

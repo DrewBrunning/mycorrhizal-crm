@@ -725,4 +725,161 @@ class AuthRepositoryImplTest {
         assertTrue(result.isSuccess)
         assertTrue(result.getOrThrow().enabled)
     }
+
+    // --- Issue #1293 passkey alternative to the code step ---
+
+    private fun Harness.stubPasskeyPending() {
+        coEvery { apiClient.login(any(), any()) } returns Result.success(
+            LoginResult(
+                token = null, language = null, dateFormat = null, twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt", methods = listOf("webauthn"),
+            ),
+        )
+    }
+
+    @Test
+    fun `beginPasskeyLogin sends the private pending challenge and returns the options`() = runTest {
+        val h = Harness()
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.success("""{"publicKey":{}}""")
+
+        h.repository.login("alice", "secret")
+        val options = h.repository.beginPasskeyLogin()
+
+        assertEquals("""{"publicKey":{}}""", options.getOrThrow())
+    }
+
+    @Test
+    fun `beginPasskeyLogin without an in-flight challenge fails fast with 401`() = runTest {
+        val h = Harness()
+
+        val result = h.repository.beginPasskeyLogin()
+
+        assertEquals(401, ((result.exceptionOrNull() as ApiError) as ApiError.Client).code)
+        coVerify(exactly = 0) { h.apiClient.webauthnLoginBegin(any()) }
+    }
+
+    @Test
+    fun `an expired challenge at begin clears the pending state`() = runTest {
+        val h = Harness()
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.failure(ApiError.Client(401, "expired"))
+
+        h.repository.login("alice", "secret")
+        assertEquals(401, ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code)
+
+        // Gone for good: the next attempt never reaches the server, and a code can't use it either.
+        assertTrue(h.repository.beginPasskeyLogin().isFailure)
+        assertTrue(h.repository.complete2faLogin("123456").isFailure)
+        coVerify(exactly = 1) { h.apiClient.webauthnLoginBegin(any()) }
+        coVerify(exactly = 0) { h.apiClient.complete2faLogin(any(), any()) }
+    }
+
+    @Test
+    fun `a non-401 begin failure keeps the pending challenge`() = runTest {
+        val h = Harness()
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.failure(ApiError.Client(409, "No passkey"))
+        coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-code", language = null, dateFormat = null),
+        )
+        coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
+
+        h.repository.login("alice", "secret")
+        assertEquals(409, ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code)
+
+        // The recovery-code path is still reachable after a passkey failure.
+        assertTrue(h.repository.complete2faLogin("123456").isSuccess)
+    }
+
+    @Test
+    fun `completePasskeyLogin persists the session exactly like complete2faLogin`() = runTest {
+        val viaPasskey = Harness()
+        viaPasskey.sessionManager.setServerUrl("https://crm.example.com")
+        viaPasskey.stubPasskeyPending()
+        coEvery { viaPasskey.apiClient.webauthnLoginFinish("{assertion}", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+        )
+        val viaCode = Harness()
+        viaCode.sessionManager.setServerUrl("https://crm.example.com")
+        viaCode.stubPasskeyPending()
+        coEvery { viaCode.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+        )
+        val profile = UserProfile(id = 7, username = "alice", isAdmin = true, language = "en", dateFormat = "eu")
+        coEvery { viaPasskey.apiClient.currentUser() } returns Result.success(profile)
+        coEvery { viaCode.apiClient.currentUser() } returns Result.success(profile)
+
+        viaPasskey.repository.login("alice", "secret")
+        viaCode.repository.login("alice", "secret")
+        assertTrue(viaPasskey.repository.completePasskeyLogin("{assertion}").isSuccess)
+        assertTrue(viaCode.repository.complete2faLogin("123456").isSuccess)
+
+        assertEquals(viaCode.tokenStorage.stored, viaPasskey.tokenStorage.stored)
+        assertEquals("jwt-2fa", viaPasskey.sessionManager.bearerToken())
+        assertEquals(viaCode.sessionManager.observeSession().first(), viaPasskey.sessionManager.observeSession().first())
+        assertTrue(viaPasskey.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `completePasskeyLogin without an in-flight challenge fails fast with 401`() = runTest {
+        val h = Harness()
+
+        val result = h.repository.completePasskeyLogin("{assertion}")
+
+        assertEquals(401, ((result.exceptionOrNull() as ApiError) as ApiError.Client).code)
+        coVerify(exactly = 0) { h.apiClient.webauthnLoginFinish(any(), any()) }
+    }
+
+    @Test
+    fun `a rejected assertion keeps the challenge so the user can retry or use a code`() = runTest {
+        val h = Harness()
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginFinish("{bad}", "challenge-jwt") } returns Result.failure(
+            ApiError.Client(401, "Passkey could not be verified"),
+        )
+        coEvery { h.apiClient.webauthnLoginFinish("{good}", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = null, dateFormat = null),
+        )
+        coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
+
+        h.repository.login("alice", "secret")
+        val rejected = h.repository.completePasskeyLogin("{bad}")
+        assertEquals(401, ((rejected.exceptionOrNull() as ApiError) as ApiError.Client).code)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+
+        assertTrue(h.repository.completePasskeyLogin("{good}").isSuccess)
+    }
+
+    @Test
+    fun `completePasskeyLogin rolls the session back when the profile fetch fails`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginFinish("{assertion}", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = null, dateFormat = null),
+        )
+        coEvery { h.apiClient.currentUser() } returns Result.failure(ApiError.Server(500, "boom"))
+
+        h.repository.login("alice", "secret")
+        val result = h.repository.completePasskeyLogin("{assertion}")
+
+        assertTrue(result.isFailure)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `completePasskeyLogin fails when the server returns no token`() = runTest {
+        val h = Harness()
+        h.stubPasskeyPending()
+        coEvery { h.apiClient.webauthnLoginFinish(any(), any()) } returns Result.success(
+            LoginResult(token = null, language = null, dateFormat = null),
+        )
+
+        h.repository.login("alice", "secret")
+        val result = h.repository.completePasskeyLogin("{assertion}")
+
+        assertTrue((result.exceptionOrNull() as ApiError) is ApiError.Parse)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
 }

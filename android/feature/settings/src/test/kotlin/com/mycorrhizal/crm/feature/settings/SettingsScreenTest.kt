@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
@@ -411,6 +412,7 @@ class SettingsScreenTest {
             permissionChecker,
             catchUpScheduler,
             callSmsTrackingCapability,
+            PasskeyAvailability { false },
             appContext,
         )
 

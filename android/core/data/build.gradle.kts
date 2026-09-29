@@ -52,6 +52,9 @@ dependencies {
     // Issue #722: the device-posture check (BiometricManager) behind the
     // opt-in app-lock capability.
     implementation(libs.androidx.biometric)
+    // Issue #1293 / ADR 0034: the platform Credential Manager behind the
+    // PasskeyCredentialClient seam. The GMS-backed provider is flavor-scoped in :app.
+    implementation(libs.androidx.credentials)
     // Issue #722: ProcessLifecycleOwner drives the app-lock grace period from
     // true process background/foreground transitions.
     implementation(libs.androidx.lifecycle.process)
@@ -64,6 +67,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Issue #1265: the attach coordinator is tested at the wire level against two servers.
     testImplementation(libs.mockwebserver)
+    testImplementation(project(":core:testing"))
 }
 
 // Issue #385: the sqlcipher-android AAR's native libsqlcipher.so is merged

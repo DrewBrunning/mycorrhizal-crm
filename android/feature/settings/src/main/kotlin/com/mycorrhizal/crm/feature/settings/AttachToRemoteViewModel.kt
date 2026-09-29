@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,12 @@ import com.mycorrhizal.crm.data.attach.AttachPreview
 import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachSignInResult
 import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
+import com.mycorrhizal.crm.data.passkey.PasskeyCredentialClient
+import com.mycorrhizal.crm.data.passkey.PasskeyIssue
+import com.mycorrhizal.crm.data.passkey.PasskeyResult
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
+import com.mycorrhizal.crm.data.passkey.offersPasskey
+import com.mycorrhizal.crm.data.passkey.secondFactorPrompt
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
@@ -52,6 +59,11 @@ data class AttachUiState(
     val importApplied: Boolean = false,
     /** Unsynced Local interactions the final switch would drop; non-null shows the confirm dialog. */
     val pendingDiscardCount: Int? = null,
+    /** Issue #1293: how the 2FA step presents itself (code field always; passkey action when the gate is open). */
+    val twoFactorPrompt: SecondFactorPrompt = SecondFactorPrompt.STANDARD,
+    /** Set when a passkey attempt dropped the step to code-only at runtime, so the copy can say why. */
+    val passkeyIssue: PasskeyIssue? = null,
+    val twoFactorMethods: List<String>? = null,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
 )
@@ -67,6 +79,7 @@ data class AttachUiState(
 class AttachToRemoteViewModel @Inject constructor(
     private val coordinator: AttachToRemoteCoordinator,
     private val sessionManager: SessionManager,
+    private val passkeyClient: PasskeyCredentialClient,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AttachUiState())
@@ -117,6 +130,59 @@ class AttachToRemoteViewModel @Inject constructor(
                 onSuccess = { outcome -> onSignedIn(outcome) },
                 onFailure = { failure -> fail(AttachStep.TwoFactor, failure, badCredentialsOn401 = true) },
             )
+        }
+    }
+
+    /**
+     * Issue #1293 / ADR 0034: the passkey alternative to [submitTwoFactor] for
+     * the remote being attached. Same shape as the login screen's flow (begin →
+     * Credential Manager → finish); [context] is the Activity for the provider
+     * UI and is not retained. Cancel is silent; an association failure or a
+     * missing provider drops the step to code-only with copy saying why.
+     */
+    fun usePasskey(context: Context) {
+        val state = _uiState.value
+        if (state.step != AttachStep.TwoFactor || !state.twoFactorPrompt.offersPasskey) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
+            val options = coordinator.beginPasskey().getOrElse { failure ->
+                fail(AttachStep.TwoFactor, failure)
+                return@launch
+            }
+            when (val ceremony = passkeyClient.getPasskey(context, options)) {
+                is PasskeyResult.Success -> coordinator.completePasskey(ceremony.json).fold(
+                    onSuccess = { outcome -> onSignedIn(outcome) },
+                    onFailure = { failure -> failPasskey(failure) },
+                )
+                PasskeyResult.Cancelled -> _uiState.update { it.copy(step = AttachStep.TwoFactor) }
+                PasskeyResult.NoMatchingPasskey ->
+                    _uiState.update { it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_no_match) }
+                PasskeyResult.NotAssociated -> degradePasskey(PasskeyIssue.NOT_ASSOCIATED)
+                PasskeyResult.NoProvider -> degradePasskey(PasskeyIssue.NO_PROVIDER)
+                PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
+                    _uiState.update { it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_failed) }
+            }
+        }
+    }
+
+    private fun degradePasskey(issue: PasskeyIssue) {
+        _uiState.update {
+            it.copy(
+                step = AttachStep.TwoFactor,
+                twoFactorPrompt = secondFactorPrompt(it.twoFactorMethods, passkeyAvailable = false),
+                passkeyIssue = issue,
+            )
+        }
+    }
+
+    private fun failPasskey(failure: Throwable) {
+        val apiError = failure.toApiError()
+        if (apiError is ApiError.Client && apiError.code == HTTP_TOO_MANY_REQUESTS) {
+            fail(AttachStep.TwoFactor, failure)
+        } else {
+            _uiState.update {
+                it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_failed, error = null, progress = null)
+            }
         }
     }
 
@@ -193,7 +259,17 @@ class AttachToRemoteViewModel @Inject constructor(
 
     private suspend fun onSignedIn(outcome: AttachSignInResult) {
         when (outcome) {
-            AttachSignInResult.TwoFactorRequired -> _uiState.update { it.copy(step = AttachStep.TwoFactor) }
+            is AttachSignInResult.TwoFactorRequired -> _uiState.update {
+                it.copy(
+                    step = AttachStep.TwoFactor,
+                    twoFactorMethods = outcome.methods,
+                    passkeyIssue = null,
+                    twoFactorPrompt = secondFactorPrompt(
+                        outcome.methods,
+                        passkeyAvailable = outcome.serverOffersPasskeys && passkeyClient.isSupported(),
+                    ),
+                )
+            }
             AttachSignInResult.SignedIn -> prepare()
         }
     }
@@ -253,6 +329,7 @@ class AttachToRemoteViewModel @Inject constructor(
 
     private companion object {
         const val HTTP_UNAUTHORIZED = 401
+        const val HTTP_TOO_MANY_REQUESTS = 429
     }
 }
 

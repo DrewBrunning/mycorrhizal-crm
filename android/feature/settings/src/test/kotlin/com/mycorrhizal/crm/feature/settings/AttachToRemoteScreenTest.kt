@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachSignInResult
 import com.mycorrhizal.crm.data.attach.AttachStage
 import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
+import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
@@ -64,7 +65,7 @@ class AttachToRemoteScreenTest {
         coEvery { coordinator.begin() } returns
             if (beginOk) Result.success(local) else Result.failure(AttachException("x"))
         coEvery { session.profiles() } returns listOf(local) + remotes
-        val vm = AttachToRemoteViewModel(coordinator, session)
+        val vm = AttachToRemoteViewModel(coordinator, session, FakePasskeyClient())
         composeTestRule.setContent {
             MycorrhizalTheme { AttachToRemoteScreen(onBack = { backCount++ }, viewModel = vm) }
         }
@@ -122,7 +123,7 @@ class AttachToRemoteScreenTest {
     @Test
     fun `two-factor accounts are asked for a code`() {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-            Result.success(AttachSignInResult.TwoFactorRequired)
+            Result.success(AttachSignInResult.TwoFactorRequired())
         coEvery { coordinator.completeTwoFactor(any()) } returns Result.failure(AttachException("nope"))
         show()
 
