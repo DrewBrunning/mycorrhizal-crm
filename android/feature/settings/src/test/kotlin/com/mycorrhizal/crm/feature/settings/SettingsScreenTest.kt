@@ -92,6 +92,33 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Show notifications").performScrollTo().assertIsDisplayed()
     }
 
+    // Issue #1293 / ADR 0034: the Passkeys entry appears only through an open gate.
+    @Test
+    fun `the passkeys entry is offered only when the passkey gate is open`() {
+        var opened = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(passkeysAvailable = true),
+                    onLogout = {},
+                    onPasskeys = { opened++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Passkeys").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(1, opened)
+    }
+
+    @Test
+    fun `the passkeys entry is hidden when the gate is closed`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(state = SettingsUiState(passkeysAvailable = false), onLogout = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Passkeys").assertDoesNotExist()
+    }
+
     @Test
     fun `shows the call and SMS capture toggles in a build with the feature`() {
         composeTestRule.setContent {

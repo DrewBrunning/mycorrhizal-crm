@@ -7,6 +7,9 @@ import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachSignInResult
 import com.mycorrhizal.crm.data.attach.AttachStage
 import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
+import com.mycorrhizal.crm.data.passkey.PasskeyIssue
+import com.mycorrhizal.crm.data.passkey.PasskeyResult
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
@@ -45,6 +48,8 @@ class AttachToRemoteViewModelTest {
 
     private val coordinator = mockk<AttachToRemoteCoordinator>(relaxed = true)
     private val session = mockk<SessionManager>(relaxed = true)
+    private val passkeyClient = FakePasskeyClient()
+    private val context = mockk<android.content.Context>(relaxed = true)
 
     private val rows = listOf(
         ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
@@ -60,7 +65,7 @@ class AttachToRemoteViewModelTest {
         coEvery { coordinator.begin() } returns
             if (beginOk) Result.success(local) else Result.failure(AttachException("nope"))
         coEvery { session.profiles() } returns listOf(local, remoteProfile)
-        return AttachToRemoteViewModel(coordinator, session, FakePasskeyClient())
+        return AttachToRemoteViewModel(coordinator, session, passkeyClient)
     }
 
     private fun stubPrepareOk() {
@@ -232,6 +237,152 @@ class AttachToRemoteViewModelTest {
         assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
         assertEquals(R.string.attach_error_bad_credentials, vm.uiState.value.errorRes)
     }
+
+    // --- Issue #1293: `methods` and the passkey route in the attach wizard ---
+
+    private suspend fun kotlinx.coroutines.test.TestScope.reachTwoFactor(
+        methods: List<String>?,
+        serverOffers: Boolean,
+        deviceSupported: Boolean = true,
+    ): AttachToRemoteViewModel {
+        passkeyClient.supported = deviceSupported
+        coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
+            Result.success(AttachSignInResult.TwoFactorRequired(methods, serverOffers))
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.signIn("r1", "", "", "alice", "pw")
+        advanceUntilIdle()
+        return vm
+    }
+
+    @Test
+    fun `absent methods keep the standard code prompt`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = reachTwoFactor(null, serverOffers = false)
+        assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
+        assertEquals(SecondFactorPrompt.STANDARD, vm.uiState.value.twoFactorPrompt)
+    }
+
+    @Test
+    fun `a passkey-only account on a server without the capability is steered to a recovery code`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("webauthn"), serverOffers = false)
+            assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, vm.uiState.value.twoFactorPrompt)
+        }
+
+    @Test
+    fun `a device without Credential Manager degrades even when the server offers passkeys`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("totp", "webauthn"), serverOffers = true, deviceSupported = false)
+            assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, vm.uiState.value.twoFactorPrompt)
+        }
+
+    @Test
+    fun `an open gate offers the passkey and completes the sign-in then continues to review`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
+            assertEquals(SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE, vm.uiState.value.twoFactorPrompt)
+            coEvery { coordinator.beginPasskey() } returns Result.success("""{"publicKey":{}}""")
+            coEvery { coordinator.completePasskey("""{"id":"asserted"}""") } returns Result.success(AttachSignInResult.SignedIn)
+            coEvery { coordinator.prepare(any()) } returns Result.success(preview)
+
+            vm.usePasskey(context)
+            advanceUntilIdle()
+
+            assertEquals(listOf("""{"publicKey":{}}"""), passkeyClient.requested)
+            assertEquals(AttachStep.Review, vm.uiState.value.step)
+        }
+
+    @Test
+    fun `a cancelled passkey returns to the code step silently`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = reachTwoFactor(listOf("totp", "webauthn"), serverOffers = true)
+        coEvery { coordinator.beginPasskey() } returns Result.success("{}")
+        passkeyClient.getResult = PasskeyResult.Cancelled
+
+        vm.usePasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
+        assertNull(vm.uiState.value.errorRes)
+        assertNull(vm.uiState.value.error)
+        coVerify(exactly = 0) { coordinator.completePasskey(any()) }
+    }
+
+    @Test
+    fun `an association failure or missing provider degrades the step with the reason`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
+            coEvery { coordinator.beginPasskey() } returns Result.success("{}")
+
+            passkeyClient.getResult = PasskeyResult.NotAssociated
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
+            assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, vm.uiState.value.twoFactorPrompt)
+            assertEquals(PasskeyIssue.NOT_ASSOCIATED, vm.uiState.value.passkeyIssue)
+
+            val vm2 = reachTwoFactor(listOf("totp", "webauthn"), serverOffers = true)
+            passkeyClient.getResult = PasskeyResult.NoProvider
+            vm2.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, vm2.uiState.value.twoFactorPrompt)
+            assertEquals(PasskeyIssue.NO_PROVIDER, vm2.uiState.value.passkeyIssue)
+        }
+
+    @Test
+    fun `passkey failures stay on the step with the passkey-failed message`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
+            coEvery { coordinator.beginPasskey() } returns Result.success("{}")
+
+            passkeyClient.getResult = PasskeyResult.NoMatchingPasskey
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals(R.string.login_error_passkey_no_match, vm.uiState.value.errorRes)
+
+            passkeyClient.getResult = PasskeyResult.Failed("x")
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals(R.string.login_error_passkey_failed, vm.uiState.value.errorRes)
+
+            passkeyClient.getResult = PasskeyResult.Success("{}")
+            coEvery { coordinator.completePasskey(any()) } returns Result.failure(ApiError.Client(401, "no"))
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
+            assertEquals(R.string.login_error_passkey_failed, vm.uiState.value.errorRes)
+
+            coEvery { coordinator.completePasskey(any()) } returns Result.failure(ApiError.Client(429, "Too many attempts"))
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            assertEquals("Too many attempts", vm.uiState.value.error)
+        }
+
+    @Test
+    fun `a begin failure returns to the code step with the server message`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
+            coEvery { coordinator.beginPasskey() } returns Result.failure(ApiError.Client(409, "No passkey registered"))
+
+            vm.usePasskey(context)
+            advanceUntilIdle()
+
+            assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
+            assertEquals("No passkey registered", vm.uiState.value.error)
+        }
+
+    @Test
+    fun `the passkey action is ignored when not offered or off the code step`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reachTwoFactor(listOf("totp"), serverOffers = false)
+            vm.usePasskey(context)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { coordinator.beginPasskey() }
+
+            val fresh = viewModel()
+            advanceUntilIdle()
+            fresh.usePasskey(context)
+            coVerify(exactly = 0) { coordinator.beginPasskey() }
+        }
 
     @Test
     fun `a blank two-factor code or one submitted on the wrong step is ignored`() =

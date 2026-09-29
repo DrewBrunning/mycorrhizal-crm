@@ -138,6 +138,77 @@ class AttachToRemoteScreenTest {
         coVerify { coordinator.completeTwoFactor("123456") }
     }
 
+    // --- Issue #1293: the 2FA step honours `methods` and the passkey gate ---
+
+    private fun showTwoFactorStep(
+        prompt: com.mycorrhizal.crm.data.passkey.SecondFactorPrompt,
+        issue: com.mycorrhizal.crm.data.passkey.PasskeyIssue? = null,
+        onSubmit: (String) -> Unit = {},
+        onUsePasskey: () -> Unit = {},
+    ) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TwoFactorStep(prompt = prompt, passkeyIssue = issue, onSubmit = onSubmit, onUsePasskey = onUsePasskey)
+            }
+        }
+    }
+
+    @Test
+    fun `the standard step is unchanged and has no passkey action`() {
+        showTwoFactorStep(com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.STANDARD)
+        composeTestRule.onNodeWithText("Enter your two-factor code").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("attach-2fa-passkey").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an open gate offers the passkey next to the code field`() {
+        var used = 0
+        showTwoFactorStep(
+            com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.CODE_OR_PASSKEY,
+            onUsePasskey = { used++ },
+        )
+        composeTestRule.onNodeWithTag("attach-2fa-passkey").performClick()
+        composeTestRule.onNodeWithTag("attach-2fa-code").assertIsDisplayed()
+        org.junit.Assert.assertEquals(1, used)
+    }
+
+    @Test
+    fun `a passkey-only open gate labels the field for a recovery code`() {
+        showTwoFactorStep(com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE)
+        composeTestRule.onNodeWithText("Use your passkey to sign in, or enter one of your recovery codes.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recovery code").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("attach-2fa-passkey").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a passkey-only degraded step steers to a recovery code and keeps the field`() {
+        var submitted: String? = null
+        showTwoFactorStep(
+            com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.RECOVERY_CODE_ONLY,
+            onSubmit = { submitted = it },
+        )
+        composeTestRule.onNodeWithText(
+            "Your account uses a passkey, but passkeys aren't available on this app for this server. " +
+                "Enter one of your recovery codes to sign in.",
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("attach-2fa-passkey").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("attach-2fa-code").performTextInput("AAAAA-BBBBB-CCCCC")
+        composeTestRule.onNodeWithTag("attach-2fa-submit").performClick()
+        org.junit.Assert.assertEquals("AAAAA-BBBBB-CCCCC", submitted)
+    }
+
+    @Test
+    fun `a mixed degraded step notes why with the runtime reason`() {
+        showTwoFactorStep(
+            com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+            com.mycorrhizal.crm.data.passkey.PasskeyIssue.NOT_ASSOCIATED,
+        )
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but this server isn't set up for passkeys on Android.",
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("attach-2fa-code").assertIsDisplayed()
+    }
+
     @Test
     fun `the working step shows the stage the coordinator reports`() {
         val gate = CompletableDeferred<Unit>()
