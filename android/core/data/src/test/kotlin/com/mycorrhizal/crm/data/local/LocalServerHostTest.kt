@@ -89,6 +89,9 @@ class LocalServerHostTest {
         assertEquals(1, launcher.calls)
 
         val command = launcher.commands.single()
+        // Without this arg the binary runs the normal env-configured main() and
+        // dies on missing JWT_SECRET_KEY (found on-device, issue #1108).
+        assertEquals(listOf("--embedded-host"), command.args)
         // The secrets travel on stdin only.
         assertTrue(command.stdinPayload.contains("\"jwt_secret\""))
         assertTrue(command.stdinPayload.contains("\"data_encryption_key\""))

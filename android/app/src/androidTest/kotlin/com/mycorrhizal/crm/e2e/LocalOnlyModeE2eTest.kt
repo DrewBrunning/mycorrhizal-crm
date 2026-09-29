@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit
  * readiness handshake, and the `/health` probe over the app-private socket.
  *
  * It deliberately exercises [LocalServerHost] directly rather than the "Use on
- * this device only" button, because that entry stays behind the
- * `LOCAL_MODE_ENABLED` build flag until account-bundle backup (#1264) ships.
+ * this device only" button, to test the host independent of the
+ * sign-in UI and the `LOCAL_MODE_ENABLED` build flag.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalOnlyModeE2eTest {

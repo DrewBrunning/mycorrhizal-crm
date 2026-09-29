@@ -26,7 +26,7 @@ internal class AndroidLocalServerProcess(command: LocalServerCommand) : LocalSer
     private val sessionToken = AtomicReference<String?>(null)
 
     init {
-        val builder = ProcessBuilder(command.binaryPath)
+        val builder = ProcessBuilder(listOf(command.binaryPath) + command.args)
             .directory(java.io.File(command.workDir))
             .redirectErrorStream(false)
         // Start from a clean environment so nothing from the app process (which
