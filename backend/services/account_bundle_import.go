@@ -47,6 +47,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Sensitivity: r.Sensitivity,
 			Provenance:  r.Source,
 			Confidence:  r.Confidence,
+			Metadata:    r.Metadata,
 		})
 	}
 

@@ -130,6 +130,10 @@ type MappedRelationship struct {
 	// back to the import defaults.
 	Provenance string
 	Confidence float64
+	// Metadata is the edge's free-form metadata (since/until, kind, ...) when
+	// the source supplies it (the account bundle, issue #1307). Other sources
+	// leave it nil.
+	Metadata map[string]interface{}
 }
 
 // MappedNote is one note on a plan contact. UUID, when set, preserves the
@@ -866,6 +870,7 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 			Confidence:  confidence,
 			Status:      status,
 			Sensitivity: sensitivity,
+			Metadata:    rel.Metadata,
 		}
 		if err := tx.Create(&edge).Error; err != nil {
 			// A duplicate natural key (same source/target/type already stored,
