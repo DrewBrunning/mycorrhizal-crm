@@ -337,6 +337,11 @@ the scenario that decides whether your backup strategy was real.
    sessions; harmless). If `JWT_SECRET_KEY` changed *and* it was the at-rest key
    fallback, stored integration credentials and TOTP secrets must be re-entered —
    see `docs/security/incident-response.md` → `JWT_SECRET_KEY`.
+   If the new host has a **different hostname** (a different `FRONTEND_URL`), every
+   enrolled passkey stops working — passkeys are bound to that hostname. Users fall back to
+   TOTP or a recovery code; a passkey-only user with no codes left needs an admin
+   `POST /api/v1/admin/users/:id/reset-2fa`. See
+   [Deployment → Moving to a new hostname](../deployment.md#moving-to-a-new-hostname-passkeys).
 
 ### Scenario: loss of an attachment or photo directory while the database survives
 

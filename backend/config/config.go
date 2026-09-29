@@ -52,7 +52,7 @@ type Config struct {
 	// category). See GetReminderLocation.
 	ReminderTime     string `cfgreg:"env=REMINDER_TIME;type=string;range=HH:MM 24h wall time;default=06:00;required=false;restart=true;desc=Daily reminder wall-clock time"`
 	ReminderTimezone string `cfgreg:"env=REMINDER_TIMEZONE;type=string;range=IANA timezone name;default=UTC;required=false;restart=true;desc=Reminder clock's IANA timezone"`
-	FrontendURL      string `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs"`
+	FrontendURL      string `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs and as the WebAuthn relying party: its hostname is the passkey RP ID and it is the only allowed passkey origin. Passkeys are refused when it is * and changing the hostname invalidates every enrolled passkey"`
 	Port             string `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
 	// Deployment selects the deployment shape (ADR 0028, issue #1258).
 	// DeploymentServer (the default) is the full, multi-user network surface.

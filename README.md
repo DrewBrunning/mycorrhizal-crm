@@ -131,9 +131,12 @@ another user on the same instance as a point-in-time copy, not an ongoing sync.
 
 ### Account security
 
-Two-factor authentication (TOTP, RFC 6238) is available as a second factor on interactive login,
-with single-use recovery codes for when you lose the device - SSO via OIDC remains available as an
-alternative, and CardDAV/API-token auth is unaffected either way.
+Two-factor authentication is available on interactive login as either a TOTP authenticator app
+(RFC 6238) or a **passkey / security key** (FIDO2/WebAuthn, enrolled from the web UI; Android
+support is tracked separately), with single-use recovery codes for when you lose the device. Passkeys are
+bound to the hostname in `FRONTEND_URL`, so moving the instance to a new hostname invalidates them
+(see [Deployment](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#moving-to-a-new-hostname-passkeys)).
+SSO via OIDC remains available as an alternative, and CardDAV/API-token auth is unaffected either way.
 
 ### Native Android app
 
