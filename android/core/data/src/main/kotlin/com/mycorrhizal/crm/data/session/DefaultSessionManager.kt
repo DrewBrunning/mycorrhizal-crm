@@ -1,8 +1,10 @@
 package com.mycorrhizal.crm.data.session
 
+import com.mycorrhizal.crm.domain.profile.LOCAL_PROFILE_LABEL
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.profile.defaultProfileLabel
+import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import kotlinx.coroutines.flow.Flow
@@ -100,14 +102,14 @@ class DefaultSessionManager(
 
     override fun bearerToken(): String? = cachedToken
 
-    override fun baseUrl(): String = activeProfileSync()?.remoteUrl.orEmpty()
+    override fun baseUrl(): String = profileBaseUrl(activeProfileSync()).orEmpty()
 
     override fun observeSession(): Flow<SessionState> = sessionState
 
     /** Raw server URL flow for callers that need the current value. */
     fun serverUrlFlow(): Flow<String?> = sessionState.map { it.serverUrl }
 
-    override suspend fun serverUrl(): String? = activeProfile()?.remoteUrl
+    override suspend fun serverUrl(): String? = profileBaseUrl(activeProfile())
 
     override suspend fun token(): String? = cachedToken
 
@@ -176,7 +178,7 @@ class DefaultSessionManager(
         persistProfiles()
         refreshProfiles()
         sessionState.value = state.copy(
-            serverUrl = activeProfileSync()?.remoteUrl,
+            serverUrl = profileBaseUrl(activeProfileSync()),
             isLoggedIn = true,
         )
     }
@@ -243,7 +245,7 @@ class DefaultSessionManager(
         // Issue #385: purge the offline PII mirror + image cache on logout /
         // account removal so a dropped session leaves no contact data on disk.
         localDataCleaner.clear()
-        sessionState.value = SessionState(serverUrl = activeProfile()?.remoteUrl)
+        sessionState.value = SessionState(serverUrl = profileBaseUrl(activeProfile()))
         if (cachedActiveProfileId == null) {
             // No profile left: don't keep a stale active pointer in the flow.
             activeProfileState.value = null
@@ -264,6 +266,33 @@ class DefaultSessionManager(
         cachedProfiles = cachedProfiles + profile
         persistProfiles()
         refreshProfiles()
+        return profile
+    }
+
+    override suspend fun activateLocalProfile(token: String): ServerProfile {
+        val existing = cachedProfiles.find { it.kind is ServerProfileKind.Local }
+        val profile = existing ?: ServerProfile(
+            id = newProfileId(),
+            kind = ServerProfileKind.Local,
+            label = LOCAL_PROFILE_LABEL,
+        )
+        if (existing == null) {
+            cachedProfiles = cachedProfiles + profile
+        }
+        if (cachedActiveProfileId != profile.id) {
+            // The Room mirror belongs to the profile being left (a cache), just
+            // as on any switch; the Local server's own files are untouched.
+            if (cachedActiveProfileId != null) localDataCleaner.clear()
+            cachedActiveProfileId = profile.id
+        }
+        cachedToken = token
+        tokenStorage.save(profile.id, token)
+        persistProfiles()
+        refreshProfiles()
+        // serverUrl is the sentinel so the root's compatibility/capability check
+        // fetches /health over the local socket, exactly as a Remote profile
+        // fetches its server's.
+        sessionState.value = SessionState(serverUrl = LOCAL_SERVER_SENTINEL_URL, isLoggedIn = true)
         return profile
     }
 
@@ -303,7 +332,7 @@ class DefaultSessionManager(
             cachedToken = null
             cachedActiveProfileId = cachedProfiles.firstOrNull()?.id
             localDataCleaner.clear()
-            sessionState.value = SessionState(serverUrl = activeProfile()?.remoteUrl)
+            sessionState.value = SessionState(serverUrl = profileBaseUrl(activeProfile()))
         }
         persistProfiles()
         refreshProfiles()
@@ -338,7 +367,7 @@ class DefaultSessionManager(
         // 4. Re-emit the session: MainViewModel re-runs the compatibility gate
         //    because the server URL changed.
         sessionState.value = SessionState(
-            serverUrl = target.remoteUrl,
+            serverUrl = profileBaseUrl(target),
             isLoggedIn = !cachedToken.isNullOrBlank(),
         )
         return SwitchProfileResult.Switched
@@ -360,9 +389,20 @@ class DefaultSessionManager(
     private fun activeProfileSync(): ServerProfile? =
         cachedProfiles.find { it.id == cachedActiveProfileId }
 
+    /**
+     * The origin a profile's requests are addressed to: the Remote URL, or the
+     * sentinel host the profile-aware transport routes over the embedded Unix
+     * socket for a [ServerProfileKind.Local] profile.
+     */
+    private fun profileBaseUrl(profile: ServerProfile?): String? = when (val kind = profile?.kind) {
+        is ServerProfileKind.Remote -> kind.url
+        ServerProfileKind.Local -> LOCAL_SERVER_SENTINEL_URL
+        null -> null
+    }
+
     private fun refreshState() {
         sessionState.value = SessionState(
-            serverUrl = activeProfileSync()?.remoteUrl,
+            serverUrl = profileBaseUrl(activeProfileSync()),
             isLoggedIn = !cachedToken.isNullOrBlank(),
         )
     }

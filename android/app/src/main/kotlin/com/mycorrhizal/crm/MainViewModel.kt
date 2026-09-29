@@ -1,13 +1,19 @@
 package com.mycorrhizal.crm
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.AppLockState
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.compat.Compatibility
 import com.mycorrhizal.crm.domain.compat.CompatibilityResolver
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.toCapabilitiesInfo
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
@@ -79,10 +85,12 @@ sealed interface CompatibilityGate {
  */
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    sessionManager: SessionManager,
+    private val sessionManager: SessionManager,
     appLockController: AppLockController,
     private val serverCompatibilityRepository: ServerCompatibilityRepository,
     private val authRepository: AuthRepository,
+    private val serverCapabilitiesStore: ServerCapabilitiesStore,
+    private val localServerHost: LocalServerHost,
 ) : ViewModel() {
     val session: StateFlow<SessionState> = sessionManager.observeSession()
         .stateIn(viewModelScope, SharingStarted.Eagerly, SessionState())
@@ -107,6 +115,14 @@ class MainViewModel @Inject constructor(
      */
     private val _serverVersion = MutableStateFlow<AppVersion?>(null)
     val serverVersion: StateFlow<AppVersion?> = _serverVersion.asStateFlow()
+
+    /**
+     * The capability set the current session's server declared on /health
+     * (issue #1263). [ServerCapabilitiesInfo.Unknown] until the check resolves
+     * and whenever /health was unreachable — the fail-open default.
+     */
+    private val _serverCapabilities = MutableStateFlow(ServerCapabilitiesInfo.Unknown)
+    val serverCapabilities: StateFlow<ServerCapabilitiesInfo> = _serverCapabilities.asStateFlow()
 
     private var compatibilityCheck: Job? = null
     private var checkedServerUrl: String? = null
@@ -169,6 +185,22 @@ class MainViewModel @Inject constructor(
     }
 
     /**
+     * ADR 0028 Decision 2 / issue #1262: "Use on this device only". Starts the
+     * embedded server (which mints the Local profile's session) and activates
+     * the Local profile; the session flow then lands on the main tree. Only
+     * offered when the build flag and the device ABI allow it.
+     */
+    fun useLocalOnly() {
+        viewModelScope.launch {
+            localServerHost.ensureStarted()
+                .onSuccess { sessionManager.activateLocalProfile(it.sessionToken) }
+                .onFailure { error ->
+                    Log.w("MainViewModel", "embedded local server failed to start: ${error.message}")
+                }
+        }
+    }
+
+    /**
      * Dismisses a blocking pre-login gate (no session exists yet) so the auth
      * screen returns and a different server can be entered. Deliberately a
      * no-op once a session exists — the force-update escape there is logout.
@@ -183,6 +215,7 @@ class MainViewModel @Inject constructor(
         _compatibilityGate.value = CompatibilityGate.NotRequired
         _serverOutdatedNoticeVersion.value = null
         _serverVersion.value = null
+        _serverCapabilities.value = ServerCapabilitiesInfo.Unknown
     }
 
     /**
@@ -198,6 +231,22 @@ class MainViewModel @Inject constructor(
         _compatibilityGate.value = outcome.gate
         _serverOutdatedNoticeVersion.value = outcome.noticeVersion
         _serverVersion.value = outcome.serverVersion
+
+        val capabilities = server?.toCapabilitiesInfo() ?: ServerCapabilitiesInfo.Unknown
+        _serverCapabilities.value = capabilities
+        // Issue #1263: the push/lifecycle consumers outside the Compose tree
+        // (DeviceRegistrationManager) read the same resolved set.
+        serverCapabilitiesStore.record(capabilities)
+
+        // Issue #1262: the request above is what lazily woke the embedded server
+        // (the transport interceptor starts it for the sentinel host). Adopt the
+        // freshly minted session token so a Local profile's stored credential
+        // never ages out across app starts.
+        if (sessionManager.activeProfile()?.kind is ServerProfileKind.Local) {
+            localServerHost.sessionTokenIfRunning()?.let { token ->
+                sessionManager.activateLocalProfile(token)
+            }
+        }
     }
 }
 

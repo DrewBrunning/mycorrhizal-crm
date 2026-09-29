@@ -1729,6 +1729,11 @@
     <string name="settings_servers_remove_body">Rimuovere %1$s da questo dispositivo? La sessione salvata andrà persa.</string>
     <string name="settings_servers_remove_named">Rimuovi %1$s</string>
     <string name="settings_servers_local_kind">Su questo dispositivo</string>
+
+    <string name="settings_delete_local_data_title">Eliminare i dati locali?</string>
+    <string name="settings_delete_local_data_body">Questa operazione elimina definitivamente tutto ciò che è memorizzato su questo dispositivo per «%1$s». Non esiste una copia sul server né un backup.</string>
+    <string name="settings_delete_local_data_hint">Digita %1$s per confermare</string>
+    <string name="settings_delete_local_data_confirm">Elimina dati locali</string>
     <string name="settings_servers_switch_title">Attività non inviata</string>
     <string name="settings_servers_switch_body">%1$d interazione/i acquisita/e non è ancora stata inviata. Passando a %2$s verranno eliminate.</string>
     <string name="settings_servers_switch_confirm">Elimina e cambia</string>

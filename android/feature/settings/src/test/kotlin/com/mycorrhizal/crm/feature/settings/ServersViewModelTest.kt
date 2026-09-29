@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SwitchProfileResult
 import com.mycorrhizal.crm.domain.profile.ServerProfile
@@ -39,7 +40,7 @@ class ServersViewModelTest {
     fun `profiles and the active id are surfaced`() = runTest(mainDispatcherRule.testDispatcher) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         active.value = profile("p2", "Two")
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
         advanceUntilIdle()
 
         assertEquals(2, vm.uiState.value.profiles.size)
@@ -49,7 +50,7 @@ class ServersViewModelTest {
     @Test
     fun `select switches and emits Switched`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -59,11 +60,28 @@ class ServersViewModelTest {
     }
 
     @Test
+    fun `deleteLocalData stops the host, removes the profile, and emits Removed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            profiles.value = listOf(
+                ServerProfile(id = "loc", kind = ServerProfileKind.Local, label = "On this device"),
+            )
+            val host = mockk<LocalServerHost>(relaxed = true)
+            val vm = ServersViewModel(session, host)
+
+            vm.deleteLocalData("loc")
+            advanceUntilIdle()
+
+            coVerify { host.deleteLocalData() }
+            coVerify { session.removeProfile("loc") }
+            assertEquals(ServersEvent.Removed, vm.events.first())
+        }
+
+    @Test
     fun `select surfaces the confirmation without switching when the outbox is non-empty`() =
         runTest(mainDispatcherRule.testDispatcher) {
             profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
             coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
-            val vm = ServersViewModel(session)
+            val vm = ServersViewModel(session, mockk(relaxed = true))
 
             vm.select("p2")
             advanceUntilIdle()
@@ -77,7 +95,7 @@ class ServersViewModelTest {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
         coEvery { session.switchProfile("p2", true) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -92,7 +110,7 @@ class ServersViewModelTest {
     fun `dismissPendingSwitch clears the dialog without switching`() = runTest(mainDispatcherRule.testDispatcher) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -104,7 +122,7 @@ class ServersViewModelTest {
 
     @Test
     fun `addRemote rejects an invalid url`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.addRemote("Bad", "not a url")
         advanceUntilIdle()
@@ -118,7 +136,7 @@ class ServersViewModelTest {
         coEvery { session.addRemoteProfile("Work", "https://work.example.com") } returns
             profile("p9", "Work", "https://work.example.com")
         coEvery { session.switchProfile("p9", false) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.addRemote("Work", "https://work.example.com/")
         advanceUntilIdle()
@@ -130,7 +148,7 @@ class ServersViewModelTest {
 
     @Test
     fun `rename delegates the trimmed label`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.rename("p1", "  Home  ")
         advanceUntilIdle()
@@ -140,7 +158,7 @@ class ServersViewModelTest {
 
     @Test
     fun `remove delegates and emits Removed`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session)
+        val vm = ServersViewModel(session, mockk(relaxed = true))
 
         vm.remove("p1")
         advanceUntilIdle()

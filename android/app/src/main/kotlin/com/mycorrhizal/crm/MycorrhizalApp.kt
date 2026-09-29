@@ -93,8 +93,11 @@ import com.mycorrhizal.crm.applock.AppLockScreen
 import com.mycorrhizal.crm.compat.ForceUpdateScreen
 import com.mycorrhizal.crm.compat.ServerOutdatedNotice
 import com.mycorrhizal.crm.compat.ServerTooOldScreen
+import com.mycorrhizal.crm.data.local.LocalServerAvailability
 import com.mycorrhizal.crm.data.session.AppLockState
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
+import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.enroll.BiometricEnrollmentPromptHost
 import com.mycorrhizal.crm.model.AppVersion
@@ -164,6 +167,7 @@ import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
+import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -204,6 +208,33 @@ private val secondaryDestinations = listOf(
 private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean {
     val route = currentRoute ?: return false
     return route == item.route || route.startsWith("${item.route}/")
+}
+
+/**
+ * Issue #1263 / ADR 0028 Decision 2: a nav entry is shown only when the
+ * connected deployment offers its capability. Fail-open when the set is unknown
+ * ([ServerCapabilitiesInfo.Unknown]) so an unreachable /health never hides
+ * navigation. So far only the shares inbox has a server-gated token; the rest of
+ * the drawer is available on every deployment.
+ */
+private fun isDestinationAvailable(
+    item: DrawerDestination,
+    capabilities: ServerCapabilitiesInfo,
+): Boolean = when (item.route) {
+    "shares" -> capabilities.supports(ServerCapability.CONTACT_SHARES)
+    else -> true
+}
+
+/**
+ * ADR 0028 ("arm64-v8a only") / issue #1262: the embedded server ships only for
+ * arm64-v8a, so on any other ABI the `Local` kind is not offered and the "Use on
+ * this device only" entry is hidden. The build flag also keeps it off until
+ * bundle backup ships (#1264), but this is the runtime capability check.
+ */
+@Composable
+private fun localModeAvailable(): Boolean {
+    val context = LocalContext.current
+    return BuildConfig.LOCAL_MODE_ENABLED && LocalServerAvailability.isSupported(context)
 }
 
 /**
@@ -282,6 +313,9 @@ fun MycorrhizalApp(
     // gates (provided to the main tree via LocalServerVersion) and the
     // device-grant enrollment offer. Null until the per-session check resolves.
     val serverVersion by mainViewModel.serverVersion.collectAsStateWithLifecycle()
+    // Issue #1263: the capability set the deployment declared on /health, which
+    // gates navigation and settings entries.
+    val serverCapabilities by mainViewModel.serverCapabilities.collectAsStateWithLifecycle()
 
     // Issue #722: the one-shot biometric-enrollment prompt fires right after
     // an interactive login (password / API token / 2FA / register auto-login),
@@ -351,7 +385,8 @@ fun MycorrhizalApp(
                     onRegisterClick = { authScreen = AuthScreen.REGISTER },
                     onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
                     // ADR 0028 Decision 2: off until the embedded host (#1262).
-                    localModeEnabled = BuildConfig.LOCAL_MODE_ENABLED,
+                    localModeEnabled = localModeAvailable(),
+                    onUseLocalOnly = mainViewModel::useLocalOnly,
                     oidcError = oidcErrorState,
                     onOidcErrorShown = onOidcErrorShown,
                 )
@@ -415,6 +450,7 @@ fun MycorrhizalApp(
                     drawerState = drawerState,
                     serverUrl = session.serverUrl.orEmpty(),
                     serverVersion = serverVersion,
+                    serverCapabilities = serverCapabilities,
                     deepLinks = deepLinks,
                     onDeepLinkHandled = onDeepLinkHandled,
                 )
@@ -493,6 +529,7 @@ private fun MainScaffold(
     drawerState: DrawerState,
     serverUrl: String,
     serverVersion: AppVersion? = null,
+    serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
     deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
 ) {
@@ -569,6 +606,7 @@ private fun MainScaffold(
         LocalDarkTheme provides darkTheme,
         LocalServerUrl provides serverUrl,
         LocalServerVersion provides serverVersion,
+        LocalServerCapabilities provides serverCapabilities,
     ) {
         MainNavScaffold(
             currentRoute = currentRoute,
@@ -666,11 +704,13 @@ private fun MycorrhizalNavigationRail(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
 ) {
+    // Issue #1263: hide entries the connected deployment does not offer.
+    val capabilities = LocalServerCapabilities.current
     NavigationRail(
         modifier = Modifier.width(NavigationRailWidth).testTag("navigation-rail"),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        primaryDestinations.forEach { item ->
+        primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
             RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
         }
         Spacer(Modifier.height(8.dp))
@@ -684,7 +724,7 @@ private fun MycorrhizalNavigationRail(
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
-            secondaryDestinations.forEach { item ->
+            secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
                 RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
             }
         }
@@ -719,6 +759,8 @@ private fun DrawerContent(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
 ) {
+    // Issue #1263: hide entries the connected deployment does not offer.
+    val capabilities = LocalServerCapabilities.current
     ModalDrawerSheet {
         // #208: the drawer's sheet title carried no heading semantics.
         Text(
@@ -729,7 +771,7 @@ private fun DrawerContent(
                 .semantics { heading() },
         )
         HorizontalDivider()
-        primaryDestinations.forEach { item ->
+        primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
             NavigationDrawerItem(
                 // T100: labelLarge is 14sp -- Material's chip/button
                 // size, too small for the app's only global nav. Bumped
@@ -750,7 +792,7 @@ private fun DrawerContent(
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
         }
-        secondaryDestinations.forEach { item ->
+        secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
             NavigationDrawerItem(
                 // T100/T99: see the primaryDestinations loop's
                 // matching comment above.
@@ -1272,12 +1314,16 @@ private fun AppNavGraph(
         // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
         // screen. The "Use on this device only" entry stays behind the
         // BuildConfig.LOCAL_MODE_ENABLED flag until the embedded host lands.
-        composable("servers") {
-            ServersScreen(
-                onBack = { navController.popBackStack() },
-                localModeEnabled = BuildConfig.LOCAL_MODE_ENABLED,
-            )
-        }
+    composable("servers") {
+        // A hiltViewModel here shares the app singletons with the root's
+        // MainViewModel, so useLocalOnly starts the same embedded host.
+        val mainViewModel: MainViewModel = hiltViewModel()
+        ServersScreen(
+            onBack = { navController.popBackStack() },
+            localModeEnabled = localModeAvailable(),
+            onUseLocalOnly = mainViewModel::useLocalOnly,
+        )
+    }
         // Issue #348: admin user management, reached from Settings (gated on
         // SessionState.isAdmin there). The route lives outside the drawer set.
         composable("admin/users") {

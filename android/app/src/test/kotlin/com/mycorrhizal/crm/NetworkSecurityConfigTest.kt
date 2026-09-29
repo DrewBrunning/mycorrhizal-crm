@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,14 +27,24 @@ class NetworkSecurityConfigTest {
         rawProductionConfig.replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
 
     @Test
-    fun `production config forbids cleartext traffic`() {
+    fun `production config forbids cleartext traffic with only the embedded sentinel exception`() {
         assertTrue(
             "The production base-config must set cleartextTrafficPermitted=\"false\"",
             productionConfig.contains("cleartextTrafficPermitted=\"false\""),
         )
-        assertFalse(
-            "The production config must not permit cleartext for any domain",
-            productionConfig.contains("cleartextTrafficPermitted=\"true\""),
+        // Issue #1262 / ADR 0028 Decision 2: exactly one cleartext carve-out is
+        // allowed, for the embedded local profile's sentinel host — whose bytes
+        // travel over an app-private Unix socket, never the network, and which
+        // is under the non-resolving `.invalid` TLD. Every other host must
+        // still be refused cleartext.
+        val cleartextDomains = Regex("""<domain[^>]*>([^<]+)</domain>""")
+            .findAll(productionConfig)
+            .map { it.groupValues[1].trim() }
+            .toSet()
+        assertEquals(
+            "The only cleartext host in the production config must be the embedded sentinel",
+            setOf("embedded.invalid"),
+            cleartextDomains,
         )
     }
 

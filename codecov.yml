@@ -151,3 +151,12 @@ ignore:
   # EncryptedOidcPendingRequestStorageGuardTest). Its pure TTL helper is still
   # unit-tested, but the file's store methods cannot run on the JVM.
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/OidcPendingRequestStore.kt"
+  # Issue #1262 / ADR 0028 Decision 2: the embedded local server's real
+  # platform seams. The host's lifecycle is unit-tested through fake seams
+  # (LocalServerHostTest), but these three touch things a JVM test cannot:
+  # a real ProcessBuilder/child pipe, a real Unix-socket HTTP probe, and the
+  # AndroidKeyStore. Each is pinned by LocalServerSecurityGuardTest and/or the
+  # arm64 on-device LocalOnlyModeE2eTest.
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/AndroidLocalServerProcess.kt"  # real ProcessBuilder + child stdout/stderr drain; guarded by LocalServerSecurityGuardTest
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/AndroidLocalServerHealthProbe.kt"  # real /health request over the Unix socket; guarded by the Go-side host test + LocalOnlyModeE2eTest
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/KeystoreLocalServerSecretCipher.kt"  # AndroidKeyStore AES-GCM wrapping; guarded by LocalServerSecurityGuardTest

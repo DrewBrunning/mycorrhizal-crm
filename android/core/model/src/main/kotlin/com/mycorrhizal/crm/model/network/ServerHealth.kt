@@ -17,6 +17,11 @@ import com.squareup.moshi.JsonClass
  *  - [apiContractVersion] is the API contract generation the server speaks
  *    ("v1" while the API is on /api/v1); announced before any client has to
  *    react to it, so it is parsed and retained but not yet acted on.
+ *  - [deployment] is "server" or "embedded" (ADR 0028 Decision 2, issue
+ *    #1263); absent on an older server.
+ *  - [capabilities] is the surface-token list the deployment exposes. Absent on
+ *    an older server, which the client treats as "every capability present"
+ *    (fail open).
  *
  * Fail-open contract: a fetch that errors, or a body where [version] /
  * [minClientVersion] are absent or unparseable, resolves to "compatible"
@@ -27,4 +32,6 @@ data class ServerHealth(
     val version: String? = null,
     @Json(name = "api_contract_version") val apiContractVersion: String? = null,
     @Json(name = "min_client_version") val minClientVersion: String? = null,
+    val deployment: String? = null,
+    val capabilities: List<String>? = null,
 )

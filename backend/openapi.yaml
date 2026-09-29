@@ -142,6 +142,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+              examples:
+                server:
+                  summary: A full multi-user server deployment (every capability).
+                  value:
+                    status: healthy
+                    timestamp: "2026-09-28T12:00:00Z"
+                    database: { status: healthy, response_time_ms: 0.4 }
+                    version: "1.2.0"
+                    commit: "abc1234"
+                    api_contract_version: "v1"
+                    deployment: "server"
+                    capabilities:
+                      - contacts
+                      - dashboard
+                      - notes
+                      - activities
+                      - reminders
+                      - life_events
+                      - graph
+                      - search
+                      - import
+                      - export
+                      - calendar
+                      - notifications
+                      - registration
+                      - login
+                      - password_reset
+                      - oidc
+                      - two_factor
+                      - email
+                      - api_tokens
+                      - contact_shares
+                      - webhooks
+                      - carddav
+                      - caldav
+                      - device_grants
+                      - push
+                embedded:
+                  summary: >
+                    The Android app's embedded single-user deployment (ADR 0028,
+                    issue #1258/#1262): the network-only surfaces are omitted,
+                    so a client gates on token presence.
+                  value:
+                    status: healthy
+                    timestamp: "2026-09-28T12:00:00Z"
+                    database: { status: healthy, response_time_ms: 0.3 }
+                    version: "1.2.0"
+                    api_contract_version: "v1"
+                    deployment: "embedded"
+                    capabilities:
+                      - contacts
+                      - dashboard
+                      - notes
+                      - activities
+                      - reminders
+                      - life_events
+                      - graph
+                      - search
+                      - import
+                      - export
+                      - calendar
+                      - notifications
         "503":
           description: The database is unreachable (same body shape, status unhealthy).
           content:

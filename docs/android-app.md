@@ -69,9 +69,36 @@ Manage them under **Settings → Servers**:
 An upgrade preserves your existing server and sign-in: the first launch after
 updating migrates them into a single Remote profile, with no re-login.
 
-A **local, on-device profile** (no server at all) is designed (ADR 0028
-Decision 2) but not yet offered: the "Use on this device only" entry stays
-behind a build flag until the embedded server and account-bundle backup ship.
+## Local (on-device) profiles
+
+A **local profile** runs the real Mycorrhizal backend *inside the app* — no
+server at all ([ADR 0028](adrs/0028-local-only-android-mode-and-server-profiles.md)
+Decision 2). The app starts the embedded server lazily on the first request,
+stores its data under its own app-private directory (`filesDir/local-server/`),
+and talks to it over a private Unix socket. The whole product is the same code
+the server runs, so a local profile has the same dashboard, cadence, duplicates
+and exports a remote one does.
+
+Constraints:
+
+- **arm64-v8a devices only.** The embedded server is built for, and shipped on,
+  arm64-v8a alone; on any other ABI the "Use on this device only" entry is
+  hidden. (The pure-Go SQLite stack's x86_64 syscalls are blocked by Android's
+  seccomp filter, and `GOOS=android` links internally only for arm64.)
+- **The local store is the only copy.** It is not backed by any server and is
+  *not* included in Android's cloud backup (`allowBackup=false`). Removing the
+  app, or **Settings → Servers → (local) → Delete local data**, permanently
+  deletes it — hence the typed confirmation.
+- **Backup and attach are user-initiated.** "Export account bundle to file"
+  writes a full-fidelity JSON backup through the system file picker; a local
+  profile can later be *attached* to a remote server by importing that bundle
+  (one-time move, never a live two-way sync). See ADR 0028 Decisions 3 and 5.
+
+The entry point ("Use on this device only", on the sign-in screen and in
+**Settings → Servers**) is present in every distribution variant but stays
+behind a build flag until the account-bundle backup UI ships — a local profile
+holds the only copy of its data, so the app does not offer it before a
+user-initiated backup exists.
 
 ## Deep links
 

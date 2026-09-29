@@ -45,7 +45,7 @@ class ServersScreenTest {
         ServerProfile(id = id, kind = ServerProfileKind.Remote(url), label = label)
 
     private fun setScreen(localModeEnabled: Boolean = false) {
-        val viewModel = ServersViewModel(session)
+        val viewModel = ServersViewModel(session, mockk(relaxed = true))
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ServersScreen(onBack = {}, localModeEnabled = localModeEnabled, viewModel = viewModel)

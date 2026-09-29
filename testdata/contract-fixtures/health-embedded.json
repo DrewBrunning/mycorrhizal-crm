@@ -1,0 +1,25 @@
+{
+  "api_contract_version": "v1",
+  "capabilities": [
+    "contacts",
+    "dashboard",
+    "notes",
+    "activities",
+    "reminders",
+    "life_events",
+    "graph",
+    "search",
+    "import",
+    "export",
+    "calendar",
+    "notifications"
+  ],
+  "database": {
+    "response_time_ms": 0.3,
+    "status": "healthy"
+  },
+  "deployment": "embedded",
+  "status": "healthy",
+  "timestamp": "2026-09-28T12:00:00Z",
+  "version": "1.2.0"
+}

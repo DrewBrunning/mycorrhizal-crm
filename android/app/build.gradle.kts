@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.Exec
+
 plugins {
     id("mycorrhizal.android.application")
     id("mycorrhizal.android.hilt")
@@ -37,6 +39,11 @@ val signingStorePassword = envOrProperty("SIGNING_STORE_PASSWORD")
 val signingKeyAlias = envOrProperty("SIGNING_KEY_ALIAS")
 val signingKeyPassword = envOrProperty("SIGNING_KEY_PASSWORD")
 val releaseSigningConfigured = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword).all { it != null }
+
+// ADR 0028 Decision 2: where the packaged embedded server binary is written,
+// before jniLibs packaging picks it up (see the sourceSets entry and the
+// buildEmbeddedServer task below).
+val embeddedServerJniLibs = layout.buildDirectory.dir("generated/embeddedServer/jniLibs")
 
 android {
     namespace = "com.mycorrhizal.crm"
@@ -91,6 +98,25 @@ android {
         // only for the two FCM flavors.
         getByName("testObtainium").kotlin.srcDir("src/fcmTest/kotlin")
         getByName("testPlay").kotlin.srcDir("src/fcmTest/kotlin")
+
+        // ADR 0028 Decision 2: the generated arm64-v8a server binary (see the
+        // buildEmbeddedServer task below) is merged into the APK's jniLibs
+        // exactly like a checked-in native library. The directory is empty (and
+        // the file optional) until the task runs, so an ordinary build without
+        // the Go toolchain still succeeds — it just ships without local mode.
+        getByName("main").jniLibs.srcDir(embeddedServerJniLibs.get().asFile)
+    }
+
+    // ADR 0028 Decision 2: the embedded Go server ships as an executable in
+    // jniLibs/arm64-v8a, run from applicationInfo.nativeLibraryDir. Executing
+    // an extracted native binary requires legacy packaging (native libraries
+    // stored compressed and extracted at install time). This also compresses
+    // the SQLCipher libraries already in the APK, which is why the net size
+    // growth is smaller than the server's own compressed size.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     signingConfigs {
@@ -179,6 +205,9 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // ADR 0028 Decision 2: ProcessLifecycleOwner stops the embedded local
+    // server when the app is backgrounded.
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
@@ -236,4 +265,61 @@ dependencies {
     "obtainiumImplementation"(libs.kotlinx.coroutines.play.services)
     "playImplementation"(libs.firebase.messaging)
     "playImplementation"(libs.kotlinx.coroutines.play.services)
+}
+
+// ---------------------------------------------------------------------------
+// ADR 0028 Decision 2 / issue #1262: the embedded Go server binary.
+//
+// The backend is cross-compiled for `GOOS=android GOARCH=arm64 CGO_ENABLED=0
+// -tags nodynamic` and dropped into jniLibs/arm64-v8a as `libmycorrhizal.so`
+// (the executable name pattern Android extracts from nativeLibraryDir). It is
+// BUILT, never committed: CI/F-Droid build it from the same commit as the app,
+// and this task is the one build step that does so.
+//
+// `-tags nodynamic` is required: GOOS=android satisfies the `linux` build
+// constraint, so heic's optional libheif dlopen path (via purego) would be
+// compiled in and needs cgo on Android. The tag keeps the pure-WASM decoder.
+//
+// Only arm64-v8a is built or shipped (ADR 0028, "arm64-v8a only"): GOOS=android
+// links internally only for arm64, and the pure-Go SQLite stack's x86_64 legacy
+// syscalls are blocked by Android's seccomp filter. The app hides the Local
+// profile on any other ABI (LocalServerAvailability).
+//
+// The task is skipped when the Go toolchain is absent, so an ordinary Gradle
+// build without Go still succeeds (it just ships no local mode). Set the
+// MYCORRHIZAL_BUILD_EMBEDDED_SERVER=true property to make the packaging tasks
+// build it automatically.
+val goAvailable: Boolean = runCatching {
+    val probe = ProcessBuilder("go", "version").redirectErrorStream(true).start()
+    probe.waitFor()
+    probe.exitValue() == 0
+}.getOrDefault(false)
+
+val embeddedServerOutput = embeddedServerJniLibs.map { it.file("arm64-v8a/libmycorrhizal.so").asFile }
+
+val buildEmbeddedServer by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Cross-compiles the embedded Go server for Android arm64-v8a into jniLibs."
+    workingDir = rootProject.file("../backend")
+    environment("CGO_ENABLED", "0")
+    environment("GOOS", "android")
+    environment("GOARCH", "arm64")
+    // backend/go.mod pins a Go toolchain newer than some runners' preinstalled
+    // `go`. auto lets whatever `go` is on PATH fetch the required toolchain
+    // instead of failing with "go.mod requires go >= 1.26.0 ... GOTOOLCHAIN=local".
+    environment("GOTOOLCHAIN", "auto")
+    commandLine(
+        "go", "build",
+        "-tags", "nodynamic",
+        "-trimpath",
+        "-buildvcs=false",
+        "-o", embeddedServerOutput.get().absolutePath,
+        ".",
+    )
+    onlyIf { goAvailable }
+    doFirst { embeddedServerOutput.get().parentFile.mkdirs() }
+}
+
+if (providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true") {
+    tasks.named("preBuild").configure { dependsOn(buildEmbeddedServer) }
 }

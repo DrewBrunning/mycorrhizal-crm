@@ -190,6 +190,15 @@ interface SessionManager : TokenProvider, BaseUrlProvider {
      */
     suspend fun addRemoteProfile(label: String, url: String): ServerProfile
 
+    /**
+     * ADR 0028 Decision 2 / issue #1262: create a [ServerProfileKind.Local]
+     * profile (or reuse the existing one), make it active, and store the session
+     * token the embedded server just minted as its credential. A Local profile
+     * is always logged in — there is no login surface. The previous profile's
+     * Room mirror is cleared like any other switch.
+     */
+    suspend fun activateLocalProfile(token: String): ServerProfile
+
     /** Rename a profile (the label is non-secret UI metadata). */
     suspend fun renameProfile(id: String, label: String)
 

@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.feature.tracking
 
 import android.content.Context
 import android.os.Build
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.network.ApiClient
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,13 +26,18 @@ class DeviceRegistrationManager @Inject constructor(
     private val store: DeviceRegistrationStore,
     @ApplicationContext private val context: Context,
     private val fcmToken: FcmTokenSource,
+    private val serverCapabilities: ServerCapabilitiesStore,
 ) {
 
     /**
      * Registers the current FCM token (or [tokenOverride], from `onNewToken`)
-     * as this user's device. No-op success when Firebase is unavailable.
+     * as this user's device. No-op success when Firebase is unavailable, and —
+     * issue #1263 / ADR 0028 Decision 2 — when the connected deployment does not
+     * offer push at all (the embedded single-user store), so a local profile
+     * never attempts an FCM registration the server would 404.
      */
     suspend fun register(tokenOverride: String? = null): Result<Unit> {
+        if (!serverCapabilities.current().supports(ServerCapability.PUSH)) return Result.success(Unit)
         if (!availability.isAvailable(context)) return Result.success(Unit)
         val token = tokenOverride
             ?: runCatching { fcmToken.token() }.getOrElse {

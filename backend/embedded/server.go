@@ -108,6 +108,12 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		}
 		return nil, err
 	}
+	// The success counterpart of the block above. The deploy-smoke ordering
+	// assertion greps the boot log for this exact phrase to prove config
+	// validation precedes the migration run and the listener; the old
+	// ValidateOrPanic path printed it, and the #1257 refactor onto
+	// ValidateError dropped it (caught by deploy-smoke.yml).
+	logger.Info().Msg("Configuration validated successfully")
 
 	// Issue #936: config.Config is the single source of truth for the
 	// profile-photo directory.

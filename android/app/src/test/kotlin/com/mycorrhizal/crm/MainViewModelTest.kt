@@ -1,8 +1,11 @@
 package com.mycorrhizal.crm
 
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
+import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.AppLockState
 import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
@@ -43,6 +46,9 @@ class MainViewModelTest {
     private fun sessionManager(flow: MutableStateFlow<SessionState>): SessionManager =
         mockk<SessionManager> {
             every { observeSession() } returns flow
+            // resolveCompatibility consults the active profile to refresh a
+            // Local profile's token; Remote/no-profile is the test default.
+            coEvery { activeProfile() } returns null
         }
 
     private fun loggedInState(): SessionState = SessionState(
@@ -56,11 +62,15 @@ class MainViewModelTest {
         sessionManager: SessionManager,
         repo: ServerCompatibilityRepository,
         authRepository: AuthRepository = mockk(),
+        capabilitiesStore: ServerCapabilitiesStore = DefaultServerCapabilitiesStore(),
+        localServerHost: LocalServerHost = mockk(relaxed = true),
     ): MainViewModel = MainViewModel(
         sessionManager,
         appLockController(),
         repo,
         authRepository,
+        capabilitiesStore,
+        localServerHost,
     )
 
     @Test
@@ -104,7 +114,14 @@ class MainViewModelTest {
             every { this@mockk.state } returns lock
         }
 
-        val viewModel = MainViewModel(sessionManager, controller, compatibilityRepository(Result.success(ServerHealth())), mockk())
+        val viewModel = MainViewModel(
+            sessionManager,
+            controller,
+            compatibilityRepository(Result.success(ServerHealth())),
+            mockk(),
+            DefaultServerCapabilitiesStore(),
+            mockk(relaxed = true),
+        )
         advanceUntilIdle()
         assertEquals(AppLockState.Resolving, viewModel.appLockState.value)
 
@@ -357,6 +374,31 @@ class MainViewModelTest {
         // URL change (2) + the second login edge (1) against the same URL.
         coVerify(exactly = 3) { repo.getServerHealth() }
     }
+
+    @Test
+    fun `the resolved capability set is exposed and recorded for out-of-tree consumers`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val flow = MutableStateFlow(loggedInState())
+            val sessionManager = sessionManager(flow)
+            val health = ServerHealth(
+                version = "1.2.0",
+                deployment = "embedded",
+                capabilities = listOf("contacts", "calendar"),
+            )
+            val store = DefaultServerCapabilitiesStore()
+            val viewModel = vm(
+                sessionManager,
+                compatibilityRepository(Result.success(health)),
+                capabilitiesStore = store,
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.serverCapabilities.value.isEmbedded)
+            assertTrue(viewModel.serverCapabilities.value.supports("contacts"))
+            assertFalse(viewModel.serverCapabilities.value.supports("push"))
+            // The shared store is what DeviceRegistrationManager reads.
+            assertFalse(store.current().supports("push"))
+        }
 
     @Test
     fun `logout on the force-update screen ends the session`() = runTest(mainDispatcherRule.testDispatcher) {

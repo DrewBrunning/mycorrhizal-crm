@@ -26,6 +26,7 @@ object NetworkFactory {
         debug: Boolean = false,
         sessionExpiryInterceptor: SessionExpiryInterceptor? = null,
         clientVersionProvider: ClientVersionProvider? = null,
+        localSocketPathProvider: LocalSocketPathProvider? = null,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .addInterceptor(BaseUrlInterceptor(baseUrlProvider))
@@ -42,6 +43,14 @@ object NetworkFactory {
             .addInterceptor(RetryInterceptor())
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+
+        // ADR 0028 Decision 2: one client for both profile kinds. When a
+        // provider is supplied, the sentinel host routes over the embedded
+        // server's Unix socket and every other host keeps the network path.
+        if (localSocketPathProvider != null) {
+            builder.socketFactory(ProfileAwareSocketFactory(localSocketPathProvider))
+            builder.dns(ProfileAwareDns(localSocketPathProvider))
+        }
 
         // Issue #678: 401 detection is optional — callers that own the session
         // (the app) pass it in; library/test callers that don't care about
