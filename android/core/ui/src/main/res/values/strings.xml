@@ -56,6 +56,10 @@
     <string name="login_two_factor_back">Back to sign in</string>
     <string name="login_error_two_factor_invalid">Invalid code. Please try again.</string>
     <string name="login_error_two_factor_expired">Your sign-in session expired. Please sign in again.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Your account also has a passkey, but passkeys aren\'t available on this app for this server.</string>
+    <string name="login_two_factor_passkey_only_description">Your account uses a passkey, but passkeys aren\'t available on this app for this server. Enter one of your recovery codes to sign in.</string>
+    <string name="login_two_factor_recovery_code_label">Recovery code</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">No account? Create one</string>

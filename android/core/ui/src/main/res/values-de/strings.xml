@@ -56,6 +56,10 @@
     <string name="login_two_factor_back">Zurück zur Anmeldung</string>
     <string name="login_error_two_factor_invalid">Ungültiger Code. Bitte versuchen Sie es erneut.</string>
     <string name="login_error_two_factor_expired">Ihre Anmeldesitzung ist abgelaufen. Bitte melden Sie sich erneut an.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Ihr Konto hat auch einen Passkey, aber Passkeys sind in dieser App für diesen Server nicht verfügbar.</string>
+    <string name="login_two_factor_passkey_only_description">Ihr Konto verwendet einen Passkey, aber Passkeys sind in dieser App für diesen Server nicht verfügbar. Geben Sie zum Anmelden einen Ihrer Wiederherstellungscodes ein.</string>
+    <string name="login_two_factor_recovery_code_label">Wiederherstellungscode</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Kein Konto? Eines erstellen</string>

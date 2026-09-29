@@ -19,6 +19,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -41,6 +42,7 @@ class LoginViewModelTest {
 
     private fun harness(
         storedServerUrl: String? = null,
+        passkeyAvailable: Boolean = false,
     ): Harness {
         val authRepository = mockk<AuthRepository>()
         coEvery { authRepository.observeSession() } returns MutableStateFlow(SessionState())
@@ -57,6 +59,7 @@ class LoginViewModelTest {
             loginWithApiTokenUseCase = LoginWithApiTokenUseCase(authRepository),
             sessionManager = sessionManager,
             authRepository = authRepository,
+            passkeyAvailability = PasskeyAvailability { passkeyAvailable },
         )
         return Harness(viewModel, authRepository, sessionManager)
     }
@@ -153,6 +156,7 @@ class LoginViewModelTest {
                 loginWithApiTokenUseCase = LoginWithApiTokenUseCase(authRepository),
                 sessionManager = manager,
                 authRepository = authRepository,
+                passkeyAvailability = NoPasskeyAvailability(),
             )
             advanceUntilIdle()
 
@@ -253,7 +257,7 @@ class LoginViewModelTest {
     fun `2fa account moves to the code step instead of logging in`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
 
         submit(h)
         advanceUntilIdle()
@@ -263,6 +267,105 @@ class LoginViewModelTest {
         assertFalse(state.isLoading)
         coVerify(exactly = 0) { h.authRepository.complete2faLogin(any()) }
     }
+
+    // --- Issue #1293: passkey graceful degradation (ADR 0034 Decision 4) ---
+
+    private fun TestScope.loginWithMethods(h: Harness, methods: List<String>?): LoginUiState {
+        coEvery { h.authRepository.login("alice", "secret") } returns
+            Result.success(LoginOutcome.TwoFactorRequired(methods))
+        submit(h)
+        advanceUntilIdle()
+        return h.viewModel.uiState.value
+    }
+
+    @Test
+    fun `absent methods from an older server keeps the standard code prompt`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val state = loginWithMethods(harness(), null)
+            assertTrue(state.twoFactorStep)
+            assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+        }
+
+    @Test
+    fun `totp-only and unknown methods keep the standard code prompt`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("totp")).twoFactorPrompt)
+            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), listOf("hwkey")).twoFactorPrompt)
+            assertEquals(TwoFactorPrompt.STANDARD, loginWithMethods(harness(), emptyList()).twoFactorPrompt)
+        }
+
+    @Test
+    fun `passkey-only account degrades to the recovery-code prompt`() = runTest(mainDispatcherRule.testDispatcher) {
+        val state = loginWithMethods(harness(), listOf("webauthn"))
+        assertTrue(state.twoFactorStep)
+        assertEquals(TwoFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
+    }
+
+    @Test
+    fun `mixed account keeps the code field and adds the passkey note`() = runTest(mainDispatcherRule.testDispatcher) {
+        val state = loginWithMethods(harness(), listOf("totp", "webauthn"))
+        assertEquals(TwoFactorPrompt.CODE_WITH_PASSKEY_NOTE, state.twoFactorPrompt)
+    }
+
+    @Test
+    fun `an open passkey gate does not degrade`() = runTest(mainDispatcherRule.testDispatcher) {
+        val state = loginWithMethods(harness(passkeyAvailable = true), listOf("webauthn"))
+        assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+    }
+
+    @Test
+    fun `the recovery code path stays reachable and a wrong code keeps the degraded prompt`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val h = harness()
+            loginWithMethods(h, listOf("webauthn"))
+            coEvery { h.authRepository.complete2faLogin("AAAAA-BBBBB-CCCCC") } returns
+                Result.failure(ApiError.Client(400, "Invalid"))
+
+            h.viewModel.onSubmitTwoFactorCode("AAAAA-BBBBB-CCCCC")
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { h.authRepository.complete2faLogin("AAAAA-BBBBB-CCCCC") }
+            val state = h.viewModel.uiState.value
+            assertTrue(state.twoFactorStep)
+            assertEquals(TwoFactorPrompt.RECOVERY_CODE_ONLY, state.twoFactorPrompt)
+            assertEquals(R.string.login_error_two_factor_invalid, state.errorRes)
+        }
+
+    @Test
+    fun `a recovery code completes a passkey-only login`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        loginWithMethods(h, listOf("webauthn"))
+        h.viewModel.events.test {
+            assertEquals(LoginEvent.ServerUrlUpdated, awaitItem()) // buffered from the password step
+            h.viewModel.onSubmitTwoFactorCode("AAAAA-BBBBB-CCCCC")
+            advanceUntilIdle()
+            assertEquals(LoginEvent.LoggedIn, awaitItem())
+        }
+    }
+
+    @Test
+    fun `going back to credentials clears the passkey prompt`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        loginWithMethods(h, listOf("webauthn"))
+        h.viewModel.onBackToCredentials()
+        val state = h.viewModel.uiState.value
+        assertFalse(state.twoFactorStep)
+        assertEquals(TwoFactorPrompt.STANDARD, state.twoFactorPrompt)
+        assertNull(state.twoFactorMethods)
+    }
+
+    @Test
+    fun `an expired challenge from a passkey-only login returns to credentials with the expiry error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val h = harness()
+            loginWithMethods(h, listOf("webauthn"))
+            coEvery { h.authRepository.complete2faLogin(any()) } returns Result.failure(ApiError.Client(401, "expired"))
+            h.viewModel.onSubmitTwoFactorCode("x")
+            advanceUntilIdle()
+            val state = h.viewModel.uiState.value
+            assertFalse(state.twoFactorStep)
+            assertEquals(R.string.login_error_two_factor_expired, state.errorRes)
+        }
 
     // Regression (issue #814): non-2FA password login is untouched.
     @Test
@@ -297,7 +400,7 @@ class LoginViewModelTest {
     fun `2fa code success emits LoggedIn`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
         coEvery { h.authRepository.complete2faLogin("123456") } returns Result.success(Unit)
 
         h.viewModel.events.test {
@@ -314,7 +417,7 @@ class LoginViewModelTest {
     fun `wrong 2fa code keeps the code step and shows an invalid code error`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
         coEvery { h.authRepository.complete2faLogin("000000") } returns
             Result.failure(ApiError.Client(400, "Invalid value for field 'code'"))
 
@@ -335,7 +438,7 @@ class LoginViewModelTest {
     fun `expired 2fa challenge returns to the credentials step`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
         coEvery { h.authRepository.complete2faLogin(any()) } returns Result.failure(
             ApiError.Client(401, "Invalid or expired two-factor session. Please sign in again."),
         )
@@ -359,7 +462,7 @@ class LoginViewModelTest {
     fun `2fa lockout surfaces the server lockout text`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
         coEvery { h.authRepository.complete2faLogin(any()) } returns Result.failure(
             ApiError.Client(429, "Too many failed login attempts. Please try again later."),
         )
@@ -379,7 +482,7 @@ class LoginViewModelTest {
     fun `back to credentials leaves the code step`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
         coEvery { h.authRepository.login(any(), any()) } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
 
         submit(h)
         advanceUntilIdle()

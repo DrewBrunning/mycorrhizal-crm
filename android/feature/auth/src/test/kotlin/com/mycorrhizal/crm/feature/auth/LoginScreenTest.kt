@@ -304,6 +304,60 @@ class LoginScreenTest {
         assertEquals("123456", submitted)
     }
 
+    // Issue #1293: passkey-only account on a build/server without the ceremony.
+    @Test
+    fun `passkey-only prompt steers to a recovery code and keeps the field reachable`() {
+        var submitted: String? = null
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = TwoFactorPrompt.RECOVERY_CODE_ONLY,
+                twoFactorMethods = listOf("webauthn"),
+            ),
+            onTwoFactorSubmit = { submitted = it },
+        )
+
+        composeTestRule.onNodeWithText(
+            "Your account uses a passkey, but passkeys aren't available on this app for this server. " +
+                "Enter one of your recovery codes to sign in.",
+        ).performScrollTo().assertIsDisplayed()
+        // The bare TOTP-only copy is gone; the field is labelled for a recovery code.
+        composeTestRule.onNodeWithText(
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText("Recovery code").performScrollTo().performTextInput("AAAAA-BBBBB-CCCCC")
+        composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
+
+        assertEquals("AAAAA-BBBBB-CCCCC", submitted)
+    }
+
+    @Test
+    fun `mixed account shows the normal code field plus the unavailable note`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = TwoFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                twoFactorMethods = listOf("totp", "webauthn"),
+            ),
+        )
+
+        composeTestRule.onNodeWithText(
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `standard prompt shows no passkey note`() {
+        setContent(uiState = LoginUiState(twoFactorStep = true))
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+        ).assertDoesNotExist()
+    }
+
     @Test
     fun `the back link leaves the code step`() {
         var backed = false

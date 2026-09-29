@@ -56,6 +56,10 @@
     <string name="login_two_factor_back">Retour à la connexion</string>
     <string name="login_error_two_factor_invalid">Code invalide. Veuillez réessayer.</string>
     <string name="login_error_two_factor_expired">Votre session de connexion a expiré. Veuillez vous reconnecter.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Votre compte possède aussi une clé d\'accès (passkey), mais les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur.</string>
+    <string name="login_two_factor_passkey_only_description">Votre compte utilise une clé d\'accès (passkey), mais les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur. Saisissez l\'un de vos codes de récupération pour vous connecter.</string>
+    <string name="login_two_factor_recovery_code_label">Code de récupération</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Pas de compte ? Créez-en un</string>

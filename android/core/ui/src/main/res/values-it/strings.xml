@@ -56,6 +56,10 @@
     <string name="login_two_factor_back">Torna all\'accesso</string>
     <string name="login_error_two_factor_invalid">Codice non valido. Riprova.</string>
     <string name="login_error_two_factor_expired">La sessione di accesso è scaduta. Accedi di nuovo.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Il tuo account ha anche una passkey, ma le passkey non sono disponibili in questa app per questo server.</string>
+    <string name="login_two_factor_passkey_only_description">Il tuo account usa una passkey, ma le passkey non sono disponibili in questa app per questo server. Inserisci uno dei tuoi codici di recupero per accedere.</string>
+    <string name="login_two_factor_recovery_code_label">Codice di recupero</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Non hai un account? Creane uno</string>

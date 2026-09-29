@@ -198,6 +198,7 @@ fun LoginScreenContent(
                     onTwoFactorSubmit = { onTwoFactorSubmit(twoFactorCode) },
                     onBackToCredentials = onBackToCredentials,
                     isLoading = uiState.isLoading,
+                    prompt = uiState.twoFactorPrompt,
                 )
             } else {
                 Text(
@@ -347,20 +348,39 @@ private fun TwoFactorLoginStep(
     onTwoFactorSubmit: () -> Unit,
     onBackToCredentials: () -> Unit,
     isLoading: Boolean,
+    prompt: TwoFactorPrompt = TwoFactorPrompt.STANDARD,
 ) {
     Text(
         text = stringResource(R.string.login_two_factor_title),
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.semantics { heading() },
     )
+    // Issue #1293 (ADR 0034 Decision 4): a passkey-only account on a build/server
+    // that cannot run the ceremony is steered to a recovery code; the same code
+    // field stays (it accepts a recovery code), so the path is always reachable.
+    val recoveryOnly = prompt == TwoFactorPrompt.RECOVERY_CODE_ONLY
     Text(
-        text = stringResource(R.string.login_two_factor_description),
+        text = stringResource(
+            if (recoveryOnly) R.string.login_two_factor_passkey_only_description else R.string.login_two_factor_description,
+        ),
         style = MaterialTheme.typography.bodyLarge,
     )
+    if (prompt == TwoFactorPrompt.CODE_WITH_PASSKEY_NOTE) {
+        Text(
+            text = stringResource(R.string.login_two_factor_passkey_unavailable_note),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
     OutlinedTextField(
         value = code,
         onValueChange = onCodeChange,
-        label = { Text(stringResource(R.string.login_two_factor_code_label)) },
+        label = {
+            Text(
+                stringResource(
+                    if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.login_two_factor_code_label,
+                ),
+            )
+        },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
         modifier = Modifier.fillMaxWidth(),

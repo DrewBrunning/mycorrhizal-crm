@@ -47,7 +47,10 @@ sealed interface LoginOutcome {
      * The account has 2FA enabled — complete the login with a TOTP/recovery
      * code via [AuthRepository.complete2faLogin] before any session exists.
      */
-    data object TwoFactorRequired : LoginOutcome
+    data class TwoFactorRequired(
+        /** Issue #1293: enrolled second-factor tokens from the login response; null from an older server. */
+        val methods: List<String>? = null,
+    ) : LoginOutcome
 }
 
 /**

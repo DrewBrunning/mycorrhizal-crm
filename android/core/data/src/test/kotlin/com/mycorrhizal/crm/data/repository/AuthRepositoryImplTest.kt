@@ -514,11 +514,30 @@ class AuthRepositoryImplTest {
         val result = h.repository.login("alice", "secret")
 
         assertTrue(result.isSuccess)
-        assertEquals(LoginOutcome.TwoFactorRequired, result.getOrThrow())
+        assertEquals(LoginOutcome.TwoFactorRequired(), result.getOrThrow())
         // No session, and the profile was never fetched (there is no token yet).
         assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
         coVerify(exactly = 0) { h.apiClient.currentUser() }
         assertNull(h.tokenStorage.stored)
+    }
+
+    // Issue #1293: `methods` flows through to the outcome; absent stays null (older server).
+    @Test
+    fun `login carries the enrolled methods into the TwoFactorRequired outcome`() = runTest {
+        for (methods in listOf(null, listOf("totp"), listOf("webauthn"), listOf("totp", "webauthn"), listOf("hwkey"))) {
+            val h = Harness()
+            h.sessionManager.setServerUrl("https://crm.example.com")
+            coEvery { h.apiClient.login("alice", "secret") } returns Result.success(
+                LoginResult(
+                    token = null, language = null, dateFormat = null,
+                    twoFactorRequired = true, pending2faCookie = "challenge-jwt", methods = methods,
+                ),
+            )
+
+            val outcome = h.repository.login("alice", "secret").getOrThrow()
+
+            assertEquals(LoginOutcome.TwoFactorRequired(methods), outcome)
+        }
     }
 
     @Test
@@ -536,7 +555,7 @@ class AuthRepositoryImplTest {
         )
 
         val first = h.repository.login("alice", "secret")
-        assertEquals(LoginOutcome.TwoFactorRequired, first.getOrThrow())
+        assertEquals(LoginOutcome.TwoFactorRequired(), first.getOrThrow())
 
         val result = h.repository.complete2faLogin("123456")
 

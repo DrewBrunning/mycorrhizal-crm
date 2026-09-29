@@ -48,7 +48,7 @@ class AuthRepositoryImpl @Inject constructor(
                 return Result.failure(ApiError.Parse("2FA required but no pending challenge was returned"))
             }
             pending2faCookie = pending
-            return Result.success(LoginOutcome.TwoFactorRequired)
+            return Result.success(LoginOutcome.TwoFactorRequired(login.methods))
         }
         pending2faCookie = null
 

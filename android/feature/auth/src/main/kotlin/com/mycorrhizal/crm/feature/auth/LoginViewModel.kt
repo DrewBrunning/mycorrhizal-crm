@@ -32,6 +32,11 @@ data class LoginUiState(
     // N8 (#814): the password step succeeded but the account has 2FA — the UI
     // swaps to a code-entry step until the TOTP/recovery code clears.
     val twoFactorStep: Boolean = false,
+    // Issue #1293 (ADR 0034 Decision 4): how the 2FA step presents itself,
+    // decided from the account's enrolled `methods` and the passkey gate.
+    val twoFactorPrompt: TwoFactorPrompt = TwoFactorPrompt.STANDARD,
+    // Kept so a wrong-code retry rebuilds the same prompt.
+    val twoFactorMethods: List<String>? = null,
 )
 
 enum class LoginMode { PASSWORD, API_TOKEN }
@@ -52,6 +57,8 @@ class LoginViewModel @Inject constructor(
     // that core:domain deliberately does not depend on (see RegisterViewModel
     // for the same direct-repository pattern).
     private val authRepository: AuthRepository,
+    // Issue #1293: the passkey capability gate; always false until the ceremony slice.
+    private val passkeyAvailability: PasskeyAvailability,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -149,7 +156,16 @@ class LoginViewModel @Inject constructor(
                 // N8 (#814): 2FA account — the password was correct but no
                 // session exists yet. Stay on this screen's code step.
                 is LoginUseCase.Result.TwoFactorRequired -> {
-                    _uiState.update { it.copy(isLoading = false, twoFactorStep = true, errorRes = null, error = null) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            twoFactorStep = true,
+                            twoFactorMethods = result.methods,
+                            twoFactorPrompt = twoFactorPrompt(result.methods, passkeyAvailability.isAvailable()),
+                            errorRes = null,
+                            error = null,
+                        )
+                    }
                 }
                 is LoginUseCase.Result.Failure -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
@@ -168,7 +184,15 @@ class LoginViewModel @Inject constructor(
     /** The user left the 2FA code step (back button) — return to the credentials form. */
     fun onBackToCredentials() {
         if (_uiState.value.isLoading) return
-        _uiState.update { it.copy(twoFactorStep = false, errorRes = null, error = null) }
+        _uiState.update {
+            it.copy(
+                twoFactorStep = false,
+                twoFactorPrompt = TwoFactorPrompt.STANDARD,
+                twoFactorMethods = null,
+                errorRes = null,
+                error = null,
+            )
+        }
     }
 
     /**
@@ -206,6 +230,8 @@ class LoginViewModel @Inject constructor(
             mode = LoginMode.PASSWORD,
             isLoading = false,
             twoFactorStep = true,
+            twoFactorMethods = _uiState.value.twoFactorMethods,
+            twoFactorPrompt = _uiState.value.twoFactorPrompt,
         )
         _uiState.value = when {
             apiError is ApiError.Client && apiError.code == 401 ->
