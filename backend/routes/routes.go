@@ -288,7 +288,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// review (with the loss report) then confirm through the shared
 			// source-import engine. The upload route carries its own body-size
 			// limit (MaxMycorrhizalBundleSize).
-			protected.POST("/import/mycorrhizal/upload", middleware.BodySizeLimitMiddleware(services.MaxMycorrhizalBundleSize), controllers.UploadMycorrhizalBundle)
+			protected.POST("/import/mycorrhizal/upload", middleware.BodySizeLimitMiddleware(services.MycorrhizalUploadBodyLimit), controllers.UploadMycorrhizalBundle)
 			protected.POST("/import/mycorrhizal/fetch", middleware.ValidateJSONMiddleware(&models.MycorrhizalFetchRequest{}), controllers.StartMycorrhizalFetch)
 			protected.GET("/import/mycorrhizal/status", controllers.GetMycorrhizalImportStatus)
 			protected.GET("/import/mycorrhizal/preview", controllers.GetMycorrhizalImportPreview)

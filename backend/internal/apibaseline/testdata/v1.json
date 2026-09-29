@@ -7978,6 +7978,7 @@
       "method": "POST",
       "path": "/webauthn/assert/begin",
       "parameters": null,
+      "request_body": "ref:WebAuthnProofBeginInput",
       "responses": [
         {
           "status": "200",
@@ -7985,6 +7986,10 @@
         },
         {
           "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
           "schema": "ref:Error"
         },
         {
@@ -18901,6 +18906,16 @@
         },
         {
           "name": "code",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnProofBeginInput",
+      "properties": [
+        {
+          "name": "exclude_id",
           "type": "string",
           "required": false
         }

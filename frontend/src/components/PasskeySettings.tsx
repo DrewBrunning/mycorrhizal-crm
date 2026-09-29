@@ -111,10 +111,11 @@ export default function PasskeySettings() {
   };
 
   const removeWithPasskey = async () => {
+    if (!removing) return;
     setBusy(true);
     setRemoveError('');
     try {
-      await finishRemove(await proveWithOtherPasskey());
+      await finishRemove(await proveWithOtherPasskey(removing.id));
     } catch (err) {
       setRemoveError(
         isCeremonyCancelled(err)

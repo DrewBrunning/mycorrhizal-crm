@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"mycorrhizal/atrest"
@@ -166,7 +167,10 @@ func TestNormalizeContactsToNFC_EncryptedAtRestDatabase(t *testing.T) {
 	var raw struct{ Card string }
 	require.NoError(t, db.Raw("SELECT card FROM contacts WHERE id = ?", stored.ID).Scan(&raw).Error)
 	assert.NotContains(t, raw.Card, "José", "the encrypted card column must not hold plaintext")
-	assert.NotContains(t, raw.Card, "Jos", "the encrypted card column must not hold plaintext")
+	// Positive proof of the envelope instead of a short-substring negative: the
+	// ciphertext is random base64url, so any 3-char plaintext fragment like
+	// "Jos" turns up by chance in ~0.1% of runs (a real CI flake).
+	assert.True(t, strings.HasPrefix(raw.Card, "encv1:"), "the card column must carry the at-rest envelope prefix")
 }
 
 // TestNormalizeContactsToNFC_MissingLedgerFailsClosed pins that running on a

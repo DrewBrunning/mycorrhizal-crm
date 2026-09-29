@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.TokenProvider
+import com.mycorrhizal.crm.network.toApiError
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -60,6 +61,7 @@ class AttachToRemoteCoordinatorTest {
     private var confirmed = false
     private val uploadCount = AtomicInteger()
     private var exportStatus = 200
+    private var exportBody: String? = null
 
     private var pending: PendingInteractionRepository? = null
 
@@ -69,7 +71,7 @@ class AttachToRemoteCoordinatorTest {
             dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse =
                     if (request.path == "/api/v1/export/account" && request.method == "GET") {
-                        MockResponse().setResponseCode(exportStatus).setBody(if (exportStatus == 200) bundleJson else "{}")
+                        MockResponse().setResponseCode(exportStatus).setBody(exportBody ?: if (exportStatus == 200) bundleJson else "{}")
                     } else {
                         // The Local server must ONLY ever be asked to export.
                         MockResponse().setResponseCode(599)
@@ -397,6 +399,24 @@ class AttachToRemoteCoordinatorTest {
 
         assertTrue(c.prepare().isFailure)
 
+        assertEquals(0, uploadCount.get())
+        assertLocalStillActiveAndWritable()
+    }
+
+    @Test
+    fun `an over-limit export surfaces the server's actionable message on the export step and uploads nothing`() = runTest {
+        val msg = "The account bundle is 70.0 MiB, which is over the 64 MiB limit the import accepts."
+        exportStatus = 507
+        exportBody = """{"error":{"code":"INSUFFICIENT_STORAGE","message":"$msg"}}"""
+        val c = coordinator()
+        c.begin().getOrThrow()
+        c.signInNew().getOrThrow()
+        val stages = mutableListOf<AttachStage>()
+
+        val failure = c.prepare { stages += it.stage }.exceptionOrNull()
+
+        assertEquals(msg, failure?.toApiError()?.displayMessage)
+        assertEquals(listOf(AttachStage.Exporting), stages)
         assertEquals(0, uploadCount.get())
         assertLocalStillActiveAndWritable()
     }

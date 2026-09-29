@@ -371,7 +371,7 @@ func WebAuthnProofBegin(c *gin.Context) {
 	if !ok {
 		return
 	}
-	waUser, _, ok := loadWebAuthnCaller(c, db)
+	waUser, rows, ok := loadWebAuthnCaller(c, db)
 	if !ok {
 		return
 	}
@@ -379,7 +379,43 @@ func WebAuthnProofBegin(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey is registered for this account"))
 		return
 	}
-	assertion, session, err := wa.BeginLogin(waUser)
+	// Optional body: {"exclude_id": "<passkey id>"} names the passkey being
+	// removed, which must not be offered as the proof (it would be rejected
+	// after the user already spent the ceremony on it — issue #1317).
+	var input struct {
+		ExcludeID string `json:"exclude_id"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("exclude_id", "Invalid request body"))
+		return
+	}
+	var opts []webauthn.LoginOption
+	if input.ExcludeID != "" {
+		// rows is already scoped to the caller, so another user's id is
+		// indistinguishable from an unknown one.
+		var excluded *models.WebAuthnCredential
+		for i := range rows {
+			if rows[i].ID == input.ExcludeID {
+				excluded = &rows[i]
+			}
+		}
+		if excluded == nil {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Passkey"))
+			return
+		}
+		allowed := make([]protocol.CredentialDescriptor, 0, len(rows))
+		for _, r := range rows {
+			if r.ID != excluded.ID {
+				allowed = append(allowed, protocol.CredentialDescriptor{Type: protocol.PublicKeyCredentialType, CredentialID: r.CredentialID})
+			}
+		}
+		if len(allowed) == 0 {
+			apperrors.AbortWithError(c, apperrors.ErrConflict("No other passkey is registered to verify with"))
+			return
+		}
+		opts = append(opts, webauthn.WithAllowedCredentials(allowed))
+	}
+	assertion, session, err := wa.BeginLogin(waUser, opts...)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not start passkey verification").WithError(err)) // # pragma: no cover — go-webauthn only errors here on an invalid Config, which NewWebAuthn already rejected
 		return
@@ -424,10 +460,15 @@ func DeleteWebAuthnCredential(c *gin.Context) {
 	}
 
 	proved := false
+	sameCredential := false
 	if len(input.Assertion) > 0 {
-		proved = verifyProofAssertion(c, &cfg, waUser, target, input.Assertion)
+		proved, sameCredential = verifyProofAssertion(c, &cfg, waUser, target, input.Assertion)
 	} else {
 		proved = valid2FAProof(db, &user, input.Code, cfg.JWTSecretKey)
+	}
+	if sameCredential {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("assertion", "That is the passkey being removed. Verify with a different passkey."))
+		return
 	}
 	if !proved {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
@@ -468,29 +509,29 @@ func DeleteWebAuthnCredential(c *gin.Context) {
 // verifyProofAssertion validates an assertion produced for the CeremonyProof
 // begun by WebAuthnProofBegin, requiring it to come from a passkey other than
 // the one being deleted (proving another factor is still held).
-func verifyProofAssertion(c *gin.Context, cfg *config.Config, waUser *services.WebAuthnUser, target *models.WebAuthnCredential, raw []byte) bool {
+func verifyProofAssertion(c *gin.Context, cfg *config.Config, waUser *services.WebAuthnUser, target *models.WebAuthnCredential, raw []byte) (proved, sameCredential bool) {
 	wa, err := services.NewWebAuthn(cfg)
 	if err != nil {
-		return false
+		return false, false
 	}
 	session, _, found := services.DefaultCeremonies.Take(services.CeremonyProof, waUser.User.ID)
 	if !found {
-		return false
+		return false, false
 	}
 	parsed, err := protocol.ParseCredentialRequestResponseBody(bytes.NewReader(raw))
 	if err != nil {
-		return false
+		return false, false
 	}
 	cred, err := wa.ValidateLogin(waUser, session, parsed)
 	if err != nil || cred.Authenticator.CloneWarning {
-		return false
+		return false, false
 	}
 	if bytes.Equal(cred.ID, target.CredentialID) {
-		return false
+		return false, true
 	}
 	db := c.MustGet("db").(*gorm.DB)
 	if err := services.RecordWebAuthnUse(db, waUser.User.ID, cred); err != nil {
 		logger.FromContext(c).Error().Err(err).Msg("Failed to record passkey use") // # pragma: no cover — only a failing store trips this
 	}
-	return true
+	return true, false
 }

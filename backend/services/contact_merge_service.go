@@ -607,6 +607,14 @@ func RepointContactAssociations(
 		}
 	}
 
+	// Issue #1309: entity_id-keyed tables added after the original repoint
+	// list. Each was added to deleteContactAssociations but not here, so the
+	// merge's defense-in-depth sweep destroyed (or revoked) the loser's rows
+	// instead of moving them. See repointLateEntityKeyedTables.
+	if err := repointLateEntityKeyedTables(tx, userID, keeper, loser); err != nil {
+		return 0, err
+	}
+
 	// cadence_policies (T19): one-per-contact (migration 000002's partial
 	// unique index on (user_id, entity_id)), so unlike everything above it
 	// can genuinely conflict rather than just dedupe. See
@@ -644,6 +652,71 @@ func RepointContactAssociations(
 	}
 
 	return edgesDropped, nil
+}
+
+// repointLateEntityKeyedTables moves the loser's occasion obligations, occasion
+// event attendance, contact feeds, import provenance links and life-event
+// suggestion resolutions onto the keeper (issue #1309). Collision policy:
+//
+//   - occasion_obligations: plain repoint. Several obligations of one Kind per
+//     contact are legitimate and there is no unique key, so nothing collides.
+//   - occasion_event_attendees: unique on (event_id, entity_id). Where the
+//     keeper is already on the event, the keeper's row (and RSVP) wins and the
+//     loser's join row is hard-deleted (join-shaped, trap #7); the rest move.
+//   - feeds (kind='contact'): plain repoint, revoked rows included so the audit
+//     trail follows the surviving contact. There is no unique key; both
+//     contacts having a feed just leaves the keeper with two credentials, each
+//     independently revocable. The total count is unchanged, so the
+//     MaxActiveFeedsPerUser accounting is too.
+//   - import_source_links (entity_kind='contact'): unique on
+//     (system, external_id, user_id), which excludes entity_uid, so a plain
+//     repoint cannot collide; the source record keeps mapping to the survivor.
+//   - life_event_suggestion_resolutions: unique on (user, entity, source_kind,
+//     source_entry_id, event_type). Where the keeper already holds a decision
+//     for the same candidate the keeper's wins; the rest move so a dismissed
+//     suggestion is not resurrected by the merge.
+func repointLateEntityKeyedTables(tx *gorm.DB, userID uint, keeper, loser *models.Contact) error {
+	if err := tx.Model(&models.OccasionObligation{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Exec(
+		"DELETE FROM occasion_event_attendees WHERE entity_id = ? AND user_id = ? AND event_id IN "+
+			"(SELECT event_id FROM occasion_event_attendees WHERE entity_id = ? AND user_id = ?)",
+		loser.VCardUID, userID, keeper.VCardUID, userID,
+	).Error; err != nil {
+		return err
+	}
+	if err := tx.Exec(
+		"UPDATE occasion_event_attendees SET entity_id = ? WHERE entity_id = ? AND user_id = ?",
+		keeper.VCardUID, loser.VCardUID, userID,
+	).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&models.Feed{}).
+		Where("kind = ? AND entity_id = ? AND user_id = ?", models.FeedKindContact, loser.VCardUID, userID).
+		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&models.ImportSourceLink{}).
+		Where("entity_kind = ? AND entity_uid = ? AND user_id = ?", models.ImportSourceLinkKindContact, loser.VCardUID, userID).
+		Update("entity_uid", keeper.VCardUID).Error; err != nil {
+		return err
+	}
+	if err := tx.Exec(
+		"DELETE FROM life_event_suggestion_resolutions WHERE entity_id = ? AND user_id = ? AND EXISTS "+
+			"(SELECT 1 FROM life_event_suggestion_resolutions k WHERE k.entity_id = ? AND k.user_id = ? "+
+			"AND k.source_kind = life_event_suggestion_resolutions.source_kind "+
+			"AND k.source_entry_id = life_event_suggestion_resolutions.source_entry_id "+
+			"AND k.event_type = life_event_suggestion_resolutions.event_type)",
+		loser.VCardUID, userID, keeper.VCardUID, userID,
+	).Error; err != nil {
+		return err
+	}
+	return tx.Exec(
+		"UPDATE life_event_suggestion_resolutions SET entity_id = ? WHERE entity_id = ? AND user_id = ?",
+		keeper.VCardUID, loser.VCardUID, userID,
+	).Error
 }
 
 // cadencePolicyConflictField is the fixed conflict key for a CadencePolicy

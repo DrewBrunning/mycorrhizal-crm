@@ -30,8 +30,8 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `DataDecayPolicy` (issue #352 — same opt-in, per-contact, soft-deleting shape as `CadencePolicy`),
 `ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
 `CalendarSubscription`/`ContactSubscription`,
-`ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Attachment` (metadata row only —
-see [§5](#5-attachments--profile-photos-files-on-disk)).
+`ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
+`Attachment` (metadata row only — see [§5](#5-attachments--profile-photos-files-on-disk)).
 
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (CLAUDE.md trap #5). Reachable
   only via the authenticated owner's API session.
@@ -48,11 +48,25 @@ see [§5](#5-attachments--profile-photos-files-on-disk)).
   its remaining edge references, run daily by cron and on-demand via the admin `TriggerPurge` endpoint
   (`admin_user_controller.go:37-42`). The list covers every soft-deletable user-authored entity —
   including the integration configs and the token-bearing `LinkFieldType`/subscription rows that issue
-  [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978) found omitted. A `?since=` cursor
+  [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978) found omitted, and the occasion
+  obligations/events, webhooks and reminder completions that
+  [#1310](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1310) found omitted (a deleted
+  contact's obligations previously outlived it as orphans). It is no longer a hand-kept promise:
+  `backend/services/purge_completeness_test.go` derives every table with a `deleted_at` column from the
+  migrated schema and fails unless it is purged or excluded with a written reason (`users`,
+  `api_tokens`, `device_grants`, `notification_configs`, `job_executions`, `webhook_deliveries`). A `?since=` cursor
   older than the window gets `410 Gone`
   (`controllers/helpers.go:360-370`) — deliberately the *same* `DeleteRetentionDays` config the purge job
   reads, so a client can never observe a tombstone gap; propagation to CardDAV/CalDAV and the Android
   mirror is covered in §7/§8, both of which key off this same soft-delete state.
+- **Contact merge (issue #1309)**: a merge is not a delete. `RepointContactAssociations`
+  (`backend/services/contact_merge_service.go`) moves every contact-keyed row from the merged-away contact
+  onto the survivor *before* the `deleteContactAssociations` sweep runs, so the sweep only ever removes
+  what is deliberately dropped (CardDAV sync links/conflicts and duplicate-pair dismissals). Unique-key
+  collisions (event attendance, suggestion resolutions) keep the survivor's row. Contact feeds and import
+  provenance links follow the survivor; `audit_events` keep naming the merged-away contact. Pinned by
+  `controllers/contact_merge_repoint_coverage_test.go`, whose schema-driven guard fails when a new
+  contact-keyed table has no declared merge disposition.
 - **Backups**: yes, full row (including still-in-window soft-deleted rows) — see [§10](#10-backups).
 - **Verification**: `backend/services/purge_service_test.go` (`TestPurgeSoftDeletedRows_*`, including
   idempotency, "never touches live rows", and the non-positive-retention guard of issue #971);
@@ -628,7 +642,10 @@ design is ADR-0010 / CON-04, issue #479).
     re-importable document that moves a user's own data between their own instances (server-to-server,
     or a local-only profile attaching to a remote server), so withholding there would be silent data
     loss on the user's own migration. Photos are embedded as base64 data URIs (size-capped), and
-    attachments are listed by metadata only with the omission recorded in the document. Pinned by
+    attachments are listed by metadata only with the omission recorded in the document. The bundle is
+    capped at `services.MaxMycorrhizalBundleSize` (64 MiB, the import's limit): a larger export is
+    refused up front with a structured 507 rather than producing a bundle no destination would accept
+    (issue #1313). Pinned by
     `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip).
   - **The audit-log export's** `before_snapshot` column is omitted unless the caller explicitly passes
     `?include_snapshots=true`: it is already credential-redacted at write time (`auditDenyList`,
@@ -966,6 +983,11 @@ design is ADR-0010 / CON-04, issue #479).
 - **Backups**: included in the DB snapshot like any other table; carries no secret and is bounded by
   the absolute-expiry window, so it needs no special handling in the backup-confidentiality boundary
   (§10).
+- **Embedded (Android local-only) shape**: the single local user's session is minted once per server
+  start, travels only over the host's private pipe to an app-private Unix socket, and the host config
+  disables idle enforcement (`SessionIdleTimeoutHours = 0`) and sets the absolute expiry to the range
+  maximum, `JWT_EXPIRY_HOURS = 8760` (issue #1312, `embedded/host.go`) — a Local profile has no login
+  surface to recover from a 401. The server-mode defaults above are unchanged.
 - **Verification**: `backend/middleware/auth_lifecycle_test.go`
   (`TestAuthMiddleware_JWTRejectedAfterSessionRevoked`, `TestAuthMiddleware_JWTRejectedAfterIdleTimeout`,
   `TestAuthMiddleware_JWTWithoutSidClaimRejected`),
@@ -999,6 +1021,29 @@ design is ADR-0010 / CON-04, issue #479).
   contain them.
 - **Backups**: never, by the app — the log stream lives outside `SQLITE_DB_PATH` and outside the
   photo/attachment directories.
+
+## 25. Push subscriptions & device registrations (`push_subscriptions`, `device_registrations`) — delivery addresses
+
+- **Where / who**: one row per browser Web Push subscription (`push_subscriptions`: the push-service
+  `endpoint`, the `p256dh` / `auth` keys, a `device_label`) and per native device registration
+  (`device_registrations`: the FCM/APNs `token`, the `client`, a `device_label`), both `user_id`-scoped
+  (CLAUDE.md trap #5) and both listed only to their owner (`GET /notifications/push-subscriptions`,
+  `GET /notifications/devices`). They are the delivery addresses the reminder-push channel sends to;
+  the endpoint and token identify a browser/app installation. Stored in plaintext. Neither is in any
+  export, CardDAV/CalDAV projection or the Android offline mirror. Push is not registered at all in the
+  embedded (local-only) shape.
+- **Retention**: until removed — there is no TTL. A row also goes when the push service says the address
+  is dead: a 404/410 from Web Push, or a permanent rejection for an FCM/APNs token, deletes it on the
+  next send (`services/notification_service.go`).
+- **Deletion / propagation**: hard-delete (no `deleted_at` — edge/operational rows, trap #7). The user
+  removes one from Settings (`DELETE /notifications/push-subscriptions/:id`,
+  `DELETE /notifications/devices/:id`); `DeleteUser` removes every row for the account
+  (`controllers/user_delete_cascade.go`, buckets `go-cascade-user` in
+  `controllers/delete_cascade_coverage_test.go`). Removing a row does not unsubscribe the browser at the
+  push service; a dead endpoint simply stops receiving.
+- **Backups**: included in the DB snapshot like any other table. A restored backup can hold a
+  subscription the user already removed elsewhere; the next send to it self-heals per the retention
+  rule above.
 
 ## Known gaps
 
@@ -1035,4 +1080,5 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | No PII/credential in browser storage | `frontend/e2e/` (#419 Playwright regression) |
 | Backup restore actually restores | `frontend/e2e/backupRestore.spec.ts`, restore-drill job (#275) |
 | Metrics counters are RAM-only, bounded labels, token-gated | `backend/metrics/` (`registry_test.go`, `metrics_test.go`), `backend/controllers/metrics_controller_test.go`, `backend/routes/metrics_route_test.go` |
+| Push subscription / device registration deleted with the account | `backend/controllers/delete_cascade_coverage_test.go` (`push_subscriptions`, `device_registrations` seeded + swept, bucket `go-cascade-user`) |
 | Request/access log retention (operator-owned rotation) | No app code to test — stdout stream, no in-app file or TTL; documented in §24 and `pii-inventory.md` §3.3 |

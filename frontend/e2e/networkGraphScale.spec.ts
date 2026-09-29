@@ -65,6 +65,8 @@ test.describe('Network graph scale benchmark', {
   // accessibility.spec.ts and networkPerf.spec.ts.
   annotation: { type: SKIP_A11Y_SCAN, description: 'perf benchmark; a11y covered elsewhere' },
 }, () => {
+  // Intentional #556 tier gate (nightly schedule sets RUN_PERF_HEAVY=1), NOT a
+  // missing-tool skip -- exempt from requireCiTool (issue #1315 audit).
   test.skip(
     !process.env.RUN_PERF_HEAVY,
     'perf-heavy: runs in the nightly e2e schedule only (set RUN_PERF_HEAVY=1)',

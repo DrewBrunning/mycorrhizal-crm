@@ -48,6 +48,7 @@ import (
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -407,7 +408,54 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	}))
 	require.NoError(t, db.Delete(&contact).Error)
 
-	assertEmptied(t, db, seeded, "after DeleteContact")
+	assertContactSweepExpectations(t, db, seeded)
+}
+
+// contactSweepSoft names the contact-scoped tables DeleteContact must
+// SOFT-delete (user-authored content: undo + sync tombstone, backend trap #7).
+// Every other table in the contact sweep is edge/join-shaped and must be
+// physically gone. Explicit rather than derived so a change of a table's
+// policy is a reviewed edit here; assertContactSweepExpectations also proves
+// each entry agrees with the model (soft <=> the model carries DeletedAt).
+var contactSweepSoft = map[string]bool{
+	"attachments":          true,
+	"cadence_policies":     true,
+	"conversation_agenda":  true,
+	"data_decay_policies":  true,
+	"gifts":                true,
+	"life_events":          true,
+	"notes":                true,
+	"occasion_obligations": true,
+	"preferences":          true,
+	"reminder_completions": true,
+	"reminders":            true,
+}
+
+// assertContactSweepExpectations asserts, per table, the delete behavior it
+// is declared to have — not merely "no live row remains", which a soft delete
+// and a hard delete both satisfy (issue #1314):
+//   - soft: no live row, but the tombstone still exists (Unscoped count > 0);
+//   - hard: no row at all, even Unscoped.
+func assertContactSweepExpectations(t *testing.T, db *gorm.DB, rows []seedRow) {
+	t.Helper()
+	for _, r := range rows {
+		hasDeletedAt := false
+		if r.model != nil {
+			stmt := &gorm.Statement{DB: db}
+			require.NoError(t, stmt.Parse(r.model))
+			hasDeletedAt = stmt.Schema.LookUpField("DeletedAt") != nil
+		}
+		soft := contactSweepSoft[r.table]
+		assert.Equal(t, hasDeletedAt, soft,
+			"%s: contactSweepSoft disagrees with the model (soft iff it carries gorm.DeletedAt)", r.table)
+
+		assert.Zero(t, r.run(t, db), "%s still has a LIVE row after DeleteContact — deleteContactAssociations misses it", r.table)
+		if n := r.hard().run(t, db); soft {
+			assert.NotZero(t, n, "%s is declared soft-delete but has no tombstone — it was hard-deleted", r.table)
+		} else {
+			assert.Zero(t, n, "%s is declared hard-delete but %d row(s) remain (soft-deleted?)", r.table, n)
+		}
+	}
 }
 
 // TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable seeds a
@@ -631,6 +679,11 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: target.ID, SourceID: uid, TargetID: uid, Type: "related_to"}).Error)
 	require.NoError(t, db.Create(&models.ReminderCompletion{UserID: target.ID, ContactID: contact.ID, Message: "done", CompletedAt: time.Now()}).Error)
 
+	// DeleteUser / DeleteOwnAccount hard-delete (backend trap #7): assert every
+	// table is PHYSICALLY empty, so a cascade that only soft-deletes a table
+	// fails here instead of hiding behind the live-rows-only default scope
+	// (issue #1314).
+	seeded = hardAll(seeded)
 	assertSeeded(t, db, seeded)
 
 	return seeded
@@ -641,6 +694,11 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 type seedRow struct {
 	table string
 	count func(t *testing.T, db *gorm.DB) int64
+	// model/where/args let hard() rebuild the count with Unscoped(); nil model
+	// means a raw-table count (already unscoped).
+	model any
+	where string
+	args  []any
 }
 
 func (s seedRow) run(t *testing.T, db *gorm.DB) int64 {
@@ -666,10 +724,17 @@ func assertEmptied(t *testing.T, db *gorm.DB, rows []seedRow, phase string) {
 	}
 }
 
-// scopedCount returns a seedRow counting rows via a GORM model + where clause.
+// scopedCount returns a seedRow counting LIVE rows via a GORM model + where
+// clause. For a model with gorm.DeletedAt this excludes soft-deleted rows, so
+// it proves only "no live row remains" — right for a soft-delete expectation,
+// wrong for a hard-delete claim (backend trap #6; issue #1314). Use hardCount
+// (or seedRow.hard) wherever the assertion is "physically gone".
 func scopedCount(table string, model any, where string, args ...any) seedRow {
 	return seedRow{
 		table: table,
+		model: model,
+		where: where,
+		args:  args,
 		count: func(t *testing.T, db *gorm.DB) int64 {
 			t.Helper()
 			var n int64
@@ -677,6 +742,31 @@ func scopedCount(table string, model any, where string, args ...any) seedRow {
 			return n
 		},
 	}
+}
+
+// hard returns the same seedRow counting with Unscoped(), so a soft-deleted
+// row still counts. A model-less row (rawCount) is already unscoped.
+func (s seedRow) hard() seedRow {
+	if s.model == nil {
+		return s
+	}
+	model, where, args, table := s.model, s.where, s.args, s.table
+	s.count = func(t *testing.T, db *gorm.DB) int64 {
+		t.Helper()
+		var n int64
+		require.NoError(t, db.Unscoped().Model(model).Where(where, args...).Count(&n).Error, "counting %s (unscoped)", table)
+		return n
+	}
+	return s
+}
+
+// hardAll applies hard() to every row.
+func hardAll(rows []seedRow) []seedRow {
+	out := make([]seedRow, len(rows))
+	for i, r := range rows {
+		out[i] = r.hard()
+	}
+	return out
 }
 
 // rawCount returns a seedRow counting rows via a raw WHERE expression.

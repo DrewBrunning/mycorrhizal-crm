@@ -84,13 +84,34 @@ Set these variables in `.env` when running over HTTPS:
 
 | Variable | Value |
 |---|---|
-| `FRONTEND_URL` | Exact origin, e.g. `https://mycorrhizal.example.com` (never `*`) |
+| `FRONTEND_URL` | Exact origin, e.g. `https://mycorrhizal.example.com` (never `*`). It is also the **WebAuthn relying party**: its hostname is the passkey RP ID and it is the only origin passkeys work from, so a web UI reached through any other origin cannot use them. **Moving the instance to a new hostname invalidates every enrolled passkey** — see [Moving to a new hostname](#moving-to-a-new-hostname-passkeys) |
 | `COOKIE_SECURE` | `true` |
 | `COOKIE_DOMAIN` | Your domain |
 | `TRUSTED_PROXIES` | The address(es) of the reverse proxy hop(s) that connect to the backend, comma-separated (IPs or CIDRs). Leave unset for the bundled all-in-one nginx (loopback is trusted by default); set it when an external proxy reaches the backend directly, or every client shares one rate-limit bucket. Never `0.0.0.0/0` — the server refuses it. See [Trusted proxies](#trusted-proxies-trusted_proxies). |
 | `JWT_SECRET_KEY` | Generate with `openssl rand -base64 32`; the server refuses to start with the `.env.example` placeholder or a weak secret |
 | `WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`, `IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`, `MONICA_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` | `true` on any instance reachable from the internet or hosting accounts you do not personally vet. These default to `false` (trusted-LAN assumption); with them off, an authenticated user's webhook/integration URL can reach loopback, LAN hosts, and `169.254.169.254`. See the [SSRF hardening row](security/deployment-baseline.html#recommended-baseline) in the security baseline. |
 
+
+### Moving to a new hostname (passkeys)
+
+Passkeys and security keys (an alternative second factor to TOTP) are bound by the browser to the
+**relying-party ID**, which the server derives from the hostname in `FRONTEND_URL`
+(`services.NewWebAuthn`); the exact `FRONTEND_URL` origin is the only origin the server accepts for
+a passkey ceremony. Consequences when you change `FRONTEND_URL` — a domain move, a restore onto a
+host with a different name, or a switch from an IP address to a domain:
+
+- **A new hostname invalidates every enrolled passkey.** The stored credentials stay in the
+  database but no browser will offer them for the new RP ID. Changing only the scheme or port
+  keeps the RP ID, but the new origin must still equal `FRONTEND_URL` exactly.
+- A user who has TOTP or recovery codes keeps signing in with those, then removes the dead passkeys
+  and enrolls new ones under the new name (Settings → Passkeys).
+- A **passkey-only** user (no TOTP) must sign in with a single-use **recovery code**. If none are
+  left, an admin clears their second factor with `POST /api/v1/admin/users/:id/reset-2fa`
+  (the "Reset 2FA" action on the admin Users page), after which they re-enroll.
+- `FRONTEND_URL=*` (dev only) disables passkeys entirely: the server refuses to build a relying
+  party from a wildcard.
+
+Tell passkey users before you move; nothing in the app warns them.
 
 ## Multi-user instances
 

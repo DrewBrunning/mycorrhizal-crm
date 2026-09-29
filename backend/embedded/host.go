@@ -139,8 +139,8 @@ func (h HostConfig) Config() (*config.Config, error) {
 // first — the host guarantees the path is inside its own data directory), and
 // runs the server until ctx is cancelled, then stops it gracefully. ready, when
 // non-nil, is called with the running server so a caller can record the socket
-// path; the Android host learns liveness by polling GET /health over the
-// socket, not through this process's stdout.
+// path; the packaged binary's ready callback (main.go runEmbeddedHost) also writes the
+// {"host_ready":true,"session_token":…} line to stdout, and the host polls GET /health.
 //
 // Process death is also a stop path: the Android host signals SIGTERM
 // (Process.destroy()) and cancels the same context, so Stop runs on both.
