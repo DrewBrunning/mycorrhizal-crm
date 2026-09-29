@@ -246,8 +246,16 @@ var requestBodyBindings = map[string]requestBodyBinding{
 // route the live router registers — enforced by TestOpenAPIRequestFieldCoverage's
 // completeness net.
 var noBodyMutatingRoutes = map[string]bool{
-	"POST /logout":                                true,
-	"POST /users/2fa/setup":                       true,
+	"POST /logout":          true,
+	"POST /users/2fa/setup": true,
+	// Issue #593 WebAuthn ceremonies: bodies are protocol documents the
+	// go-webauthn library parses itself (PublicKeyCredential JSON), or a tiny
+	// anonymous-struct label — no Go request struct to pin against the schema.
+	"POST /webauthn/login/begin":                  true,
+	"POST /webauthn/login/finish":                 true,
+	"POST /webauthn/register/begin":               true,
+	"POST /webauthn/register/finish":              true,
+	"POST /webauthn/assert/begin":                 true,
 	"POST /contacts/address-suggestions":          true,
 	"POST /contacts/{id}/archive":                 true,
 	"POST /contacts/{id}/unarchive":               true,

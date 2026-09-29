@@ -67,6 +67,7 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 	// Down drops the table. 000038 is no longer the migration tip — later
 	// migrations sit on top — so roll each of them back first, then 000038's
 	// own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000069_webauthn_credentials
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000068_import_runs_mycorrhizal_format
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000067_note_reminder_uuid
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000066_field_definition_position

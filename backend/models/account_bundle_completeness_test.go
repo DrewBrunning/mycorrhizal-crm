@@ -84,6 +84,7 @@ var bundleExcluded = map[string]string{
 	"SeafileConfig":                 "per-instance integration configuration/credential",
 	"Session":                       "authentication session; never exported",
 	"SystemEvent":                   "system-generated diagnostic timeline; not user-authored data",
+	"WebAuthnCredential":            "2FA credential material; never exported",
 	"WebDAVConfig":                  "per-instance integration configuration/credential",
 	"Webhook":                       "per-instance webhook configuration/credential",
 	"WebhookDelivery":               "webhook delivery bookkeeping",

@@ -164,6 +164,11 @@ func ConfirmTwoFactor(c *gin.Context) {
 		}).Error; err != nil {
 			return err
 		}
+		// Issue #593: a passkey-only account may already hold a recovery set;
+		// replace it so TOTP enrollment never leaves two overlapping sets.
+		if err := tx.Where("user_id = ?", user.ID).Delete(&models.RecoveryCode{}).Error; err != nil {
+			return err
+		}
 		if err := services.StoreRecoveryCodes(tx, user.ID, recoveryCodes); err != nil {
 			return err
 		}
@@ -250,8 +255,16 @@ func DisableTwoFactor(c *gin.Context) {
 		}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("user_id = ?", user.ID).Delete(&models.RecoveryCode{}).Error; err != nil {
+		// Issue #593: recovery codes back every enrolled factor, so they only
+		// go when no passkey is left to keep them alive.
+		var passkeys int64
+		if err := tx.Model(&models.WebAuthnCredential{}).Where("user_id = ?", user.ID).Count(&passkeys).Error; err != nil {
 			return err
+		}
+		if passkeys == 0 {
+			if err := tx.Where("user_id = ?", user.ID).Delete(&models.RecoveryCode{}).Error; err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -302,7 +315,14 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
 		return
 	}
-	if !user.TOTPEnabled {
+	// Issue #593: any enrolled factor (TOTP or a passkey) qualifies — a
+	// passkey-only account has recovery codes but never enabled TOTP.
+	methods, err := services.SecondFactorMethods(db, user)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query second factors").WithError(err))
+		return
+	}
+	if len(methods) == 0 {
 		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is not enabled"))
 		return
 	}
@@ -405,7 +425,10 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 	}
 	// The account must still require 2FA: the challenge was minted against a
 	// state that may have changed (2FA disabled, 2FA never enabled).
-	if !user.TOTPEnabled {
+	if methods, err := services.SecondFactorMethods(db, user); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query second factors").WithError(err))
+		return
+	} else if len(methods) == 0 {
 		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Two-factor authentication is no longer enabled. Please sign in again."))
 		return
 	}
@@ -428,7 +451,13 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 		return
 	}
 	accountLimiter.RecordLoginSuccess(username, clientIP)
+	issueLoginSession(c, cfg, db, user)
+}
 
+// issueLoginSession is the shared success tail of every step-2 login (TOTP /
+// recovery code, or a WebAuthn assertion): mint the session row + JWT, audit
+// the login, clear the one-time 2fa_pending challenge and set auth_token.
+func issueLoginSession(c *gin.Context, cfg *config.Config, db *gorm.DB, user models.User) {
 	tokenString, err := services.IssueSession(db, user, cfg, c.Request.UserAgent(), c.ClientIP())
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not generate token").WithError(err))

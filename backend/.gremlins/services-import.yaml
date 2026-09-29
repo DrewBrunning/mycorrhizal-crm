@@ -80,6 +80,7 @@ unleash:
         - ^user_quota\.go$
         - ^user_service\.go$
         - ^vcard21_normalize\.go$
+        - ^webauthn\.go$
         - ^webdav_client\.go$
         - ^webdav_service\.go$
         - ^webhook_broadcast\.go$

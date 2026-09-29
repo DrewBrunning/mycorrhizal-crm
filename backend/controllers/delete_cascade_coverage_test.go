@@ -115,6 +115,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"sessions":               goCascadeUser,
 	"tags":                   goCascadeUser,
 	"users":                  goCascadeUser,
+	"webauthn_credentials":   goCascadeUser,
 	"webdav_configs":         goCascadeUser,
 	"webhooks":               goCascadeUser,
 	"webhook_deliveries":     goCascadeUser,
@@ -532,6 +533,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.PushSubscription{UserID: target.ID, Endpoint: "https://e", P256dh: "p", Auth: "a"}).Error)
 	require.NoError(t, db.Create(&models.ReachOutCursor{UserID: target.ID, LastAuditEventID: 1}).Error)
 	require.NoError(t, db.Create(&models.RecoveryCode{UserID: target.ID, CodeHash: "h"}).Error)
+	require.NoError(t, db.Create(&models.WebAuthnCredential{UserID: target.ID, CredentialID: []byte("cred"), PublicKey: []byte("pk"), Name: "YubiKey"}).Error)
 	require.NoError(t, db.Create(&models.SeafileConfig{UserID: target.ID, BaseURL: "https://seafile.example"}).Error)
 	require.NoError(t, db.Create(&models.WebDAVConfig{UserID: target.ID, BaseURL: "https://nc.example", Username: "u"}).Error)
 
@@ -585,6 +587,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("reach_out_cursors", &models.ReachOutCursor{}, "user_id = ?", target.ID),
 		scopedCount("reach_out_suggestions", &models.ReachOutSuggestion{}, "user_id = ?", target.ID),
 		scopedCount("recovery_codes", &models.RecoveryCode{}, "user_id = ?", target.ID),
+		scopedCount("webauthn_credentials", &models.WebAuthnCredential{}, "user_id = ?", target.ID),
 		scopedCount("relationship_edges", &models.RelationshipEdge{}, "user_id = ?", target.ID),
 		scopedCount("reminder_completions", &models.ReminderCompletion{}, "user_id = ?", target.ID),
 		scopedCount("reminders", &models.Reminder{}, "user_id = ?", target.ID),

@@ -1829,7 +1829,7 @@
     "resetTwoFactorDialog": {
       "title": "Reimposta Autenticazione a Due Fattori",
       "message": "Sei sicuro di voler reimpostare l'autenticazione a due fattori per \"{{username}}\"?",
-      "warning": "Questo disattiva la sua app di autenticazione ed elimina i suoi codici di recupero, e termina le sue sessioni attuali. Usalo solo quando un utente è bloccato e non può verificarsi con la sua 2FA esistente."
+      "warning": "Questo disattiva la sua app di autenticazione, rimuove le passkey registrate, elimina i suoi codici di recupero e termina le sue sessioni attuali. Usalo solo quando un utente è bloccato e non può verificarsi con la sua 2FA esistente."
     },
     "updateError": "Impossibile aggiornare l'utente",
     "createError": "Impossibile creare l'utente",

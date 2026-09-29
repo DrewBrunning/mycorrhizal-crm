@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/database"
 
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // Split from #923 into issue #997: docs/operations/migration-recovery.md's
@@ -92,7 +93,46 @@ func TestBadReleaseRollbackDrill(t *testing.T) {
 	// just that the restored rollback instance is a structurally valid
 	// database, but that it actually serves the same real workflow
 	// exerciseUpgradedApp already proves for the forward-upgrade side.
+	//
+	// exerciseUpgradedApp runs CURRENT code, which reads tables added by
+	// migrations newer than N on the login path (issue #593: LoginUser counts
+	// webauthn_credentials, migration 000069). The real rollback runs N's own
+	// binary, which never touches them; this in-process stand-in cannot. So once
+	// the restored state has been verified above (snapshot integrity, version ==
+	// N, three-piece completeness), roll the restored file forward so the
+	// current code and schema agree before driving traffic -- the same
+	// stand-in limit the doc comment above records for older releases.
+	rdb = migrateRestoredForward(t, rdb)
 	exerciseUpgradedApp(t, rdb, username, liveID, liveFirst, restoredPhotos, restoredAttach)
+}
+
+// migrateRestoredForward closes the restored rollback-point handle, applies
+// every pending migration to that same file, and returns a fresh handle.
+func migrateRestoredForward(t *testing.T, rdb *gorm.DB) *gorm.DB {
+	t.Helper()
+	var dbs []struct {
+		Seq  int
+		Name string
+		File string
+	}
+	require.NoError(t, rdb.Raw("PRAGMA database_list").Scan(&dbs).Error)
+	var path string
+	for _, d := range dbs {
+		if d.Name == "main" {
+			path = d.File
+		}
+	}
+	require.NotEmpty(t, path, "restored database must be file-backed")
+	closeFixtureDB(t, rdb)
+	require.NoError(t, database.MigrateUp(path))
+	migrated, err := database.OpenMigratedFile(path)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := migrated.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	return migrated
 }
 
 // mostRecentSupportedReleaseBelow returns the last release in

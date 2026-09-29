@@ -310,6 +310,8 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/register":                            exempt(reasonAuth),
 		"POST /api/v1/login":                               exempt(reasonAuth),
 		"POST /api/v1/login/2fa":                           exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/begin":                exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/finish":               exempt(reasonAuth),
 		"POST /api/v1/auth/device/session":                 exempt(reasonAuth),
 		"POST /api/v1/logout":                              exempt(reasonAuth),
 		"POST /api/v1/check-password-strength":             exempt(reasonAuth),
@@ -325,6 +327,10 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/users/2fa/confirm":                   exempt(reasonAuth),
 		"POST /api/v1/users/2fa/disable":                   exempt(reasonAuth),
 		"POST /api/v1/users/2fa/recovery-codes/regenerate": exempt(reasonAuth),
+		"POST /api/v1/webauthn/register/begin":             exempt(reasonAuth),
+		"POST /api/v1/webauthn/register/finish":            exempt(reasonAuth),
+		"POST /api/v1/webauthn/assert/begin":               exempt(reasonAuth),
+		"DELETE /api/v1/webauthn/credentials/:id":          exempt(reasonAuth),
 
 		// === Admin ===
 		"POST /api/v1/admin/users":                    exempt(reasonAdmin),

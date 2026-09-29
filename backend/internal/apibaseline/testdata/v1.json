@@ -7862,6 +7862,187 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/webauthn/assert/begin",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/webauthn/credentials",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:WebAuthnCredentialListResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/webauthn/credentials/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:WebAuthnDeleteInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/login/begin",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/login/finish",
+      "parameters": [
+        {
+          "name": "X-Client-Version",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "object",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": ""
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/register/begin",
+      "parameters": null,
+      "request_body": "ref:WebAuthnRegisterBeginInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/register/finish",
+      "parameters": null,
+      "request_body": "object",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:WebAuthnRegisterResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/webhooks",
       "parameters": null,
@@ -8897,7 +9078,10 @@
             "totp_disable",
             "recovery_regenerate",
             "revoke",
-            "role_change"
+            "role_change",
+            "two_factor_admin_reset",
+            "webauthn_register",
+            "webauthn_revoke"
           ]
         },
         {
@@ -14790,6 +14974,11 @@
           "required": false
         },
         {
+          "name": "methods",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "two_factor_required",
           "type": "boolean",
           "required": false
@@ -18453,6 +18642,91 @@
         {
           "name": "username",
           "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnCredential",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "last_used_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnCredentialListResponse",
+      "properties": [
+        {
+          "name": "credentials",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnDeleteInput",
+      "properties": [
+        {
+          "name": "assertion",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnRegisterBeginInput",
+      "properties": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnRegisterResponse",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "recovery_codes",
+          "type": "array\u003cstring\u003e",
           "required": true
         }
       ]

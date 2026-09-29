@@ -1829,7 +1829,7 @@
     "resetTwoFactorDialog": {
       "title": "Restablecer Autenticación de Dos Factores",
       "message": "¿Estás seguro de que quieres restablecer la autenticación de dos factores de \"{{username}}\"?",
-      "warning": "Esto desactiva su aplicación de autenticación y elimina sus códigos de recuperación, y finaliza sus sesiones actuales. Úsalo solo cuando un usuario esté bloqueado y no pueda verificarse con su 2FA existente."
+      "warning": "Esto desactiva su aplicación de autenticación, elimina las llaves de acceso (passkeys) registradas, elimina sus códigos de recuperación y finaliza sus sesiones actuales. Úsalo solo cuando un usuario esté bloqueado y no pueda verificarse con su 2FA existente."
     },
     "updateError": "Error al actualizar el usuario",
     "createError": "Error al crear el usuario",

@@ -316,6 +316,13 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Issue #593: WebAuthn passkeys (hard, join-shaped — natural key
+	// (user_id, credential_id); FK cascade would cover it, but the manual
+	// checklist stays complete rather than relying on the constraint)
+	if err := tx.Where("user_id = ?", userID).Delete(&models.WebAuthnCredential{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete import run history (issue #651 — hard, user-scoped
 	// operational bookkeeping; the account is gone, nothing to keep).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImportRun{}).Error; err != nil {

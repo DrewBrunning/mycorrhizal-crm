@@ -1829,7 +1829,7 @@
     "resetTwoFactorDialog": {
       "title": "Zwei-Faktor-Authentifizierung zurücksetzen",
       "message": "Möchten Sie die Zwei-Faktor-Authentifizierung für \"{{username}}\" wirklich zurücksetzen?",
-      "warning": "Dies deaktiviert die Authenticator-App und löscht die Wiederherstellungscodes und beendet die aktuellen Sitzungen. Verwenden Sie dies nur, wenn ein Benutzer ausgesperrt ist und sich nicht mit der vorhandenen 2FA verifizieren kann."
+      "warning": "Dies deaktiviert die Authenticator-App, entfernt alle registrierten Passkeys, löscht die Wiederherstellungscodes und beendet die aktuellen Sitzungen. Verwenden Sie dies nur, wenn ein Benutzer ausgesperrt ist und sich nicht mit der vorhandenen 2FA verifizieren kann."
     },
     "updateError": "Benutzer konnte nicht aktualisiert werden",
     "createError": "Benutzer konnte nicht erstellt werden",

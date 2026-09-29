@@ -532,7 +532,7 @@ func UpdateUser(c *gin.Context) {
 // the target -- the acting admin's own authenticated, admin-scoped session is
 // the trust boundary, same as the existing admin password reset.
 //
-// Disables TOTP and hard-deletes all recovery codes for the target user,
+// Disables TOTP and hard-deletes all recovery codes and WebAuthn passkeys for the target user,
 // mirroring DisableTwoFactor's own update (two_factor_controller.go). Bumps
 // TokenVersion the same way an admin password reset does, so the reset
 // itself can't be silently undone by a session minted before it. Idempotent:
@@ -576,6 +576,11 @@ func ResetUserTwoFactor(c *gin.Context) {
 			return err
 		}
 		if err := tx.Where("user_id = ?", user.ID).Delete(&models.RecoveryCode{}).Error; err != nil {
+			return err
+		}
+		// Issue #593: passkeys are a live second factor too — leaving one
+		// would defeat the reset's lock-out-recovery guarantee.
+		if err := tx.Where("user_id = ?", user.ID).Delete(&models.WebAuthnCredential{}).Error; err != nil {
 			return err
 		}
 		return nil
