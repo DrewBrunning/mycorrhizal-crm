@@ -2,7 +2,9 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.backup.BundleBackupReminder
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
@@ -51,6 +53,12 @@ data class DashboardUiState(
     val verifyingDataDecayId: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
+    /**
+     * Issue #1264: a `Local` profile holds the only copy of the user's data, so
+     * this banner nudges an account-bundle export when none exists or the last
+     * is over 30 days old (see [BundleBackupReminder]). Dismissible.
+     */
+    val showBackupReminder: Boolean = false,
 ) {
     /** True when at least one widget has data, so a refresh keeps the list on screen. */
     val hasContent: Boolean
@@ -77,7 +85,11 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val authRepository: AuthRepository,
+    private val bundleBackupRepository: BundleBackupRepository,
 ) : ViewModel() {
+
+    /** Epoch-millis clock; overridable so tests can pin "now" for the 30-day rule. */
+    internal var nowMillis: () -> Long = System::currentTimeMillis
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -87,6 +99,11 @@ class DashboardViewModel @Inject constructor(
 
     init {
         load()
+        viewModelScope.launch {
+            bundleBackupRepository.observeStatus().collect { status ->
+                _uiState.update { it.copy(showBackupReminder = BundleBackupReminder.shouldShow(status, nowMillis())) }
+            }
+        }
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
                 _uiState.update { it.copy(dateFormat = session.dateFormat) }
@@ -223,6 +240,11 @@ class DashboardViewModel @Inject constructor(
     }
 
     /** Clears the transient complete/skip error once its snackbar has been shown. */
+    /** Snooze the backup banner (it may return after [BundleBackupReminder.SNOOZE_MILLIS]). */
+    fun dismissBackupReminder() {
+        viewModelScope.launch { bundleBackupRepository.dismissReminder(nowMillis()) }
+    }
+
     fun onActionErrorShown() {
         _uiState.update { it.copy(actionError = null) }
     }

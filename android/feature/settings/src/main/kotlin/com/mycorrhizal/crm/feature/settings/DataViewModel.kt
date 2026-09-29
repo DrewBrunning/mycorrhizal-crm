@@ -3,12 +3,14 @@ package com.mycorrhizal.crm.feature.settings
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
 import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +18,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -43,6 +48,13 @@ data class DataUiState(
     val isExporting: Boolean = false,
     /** One-shot: the finished export, cleared by [DataViewModel.onExportHandled]. */
     val exported: DataExport? = null,
+    /**
+     * Issue #1264: true when the active profile is a `Local` one that holds no
+     * contacts yet — the only state in which "Restore from bundle" is offered
+     * (a restore into a populated profile would merge, which is not the
+     * backup-recovery flow this entry point is for).
+     */
+    val canRestoreBundle: Boolean = false,
     val error: String? = null,
 )
 
@@ -81,10 +93,31 @@ class DataViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val relationshipEdgeRepository: RelationshipEdgeRepository,
     private val exportRepository: ExportRepository,
+    private val bundleBackupRepository: BundleBackupRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataUiState())
     val uiState: StateFlow<DataUiState> = _uiState.asStateFlow()
+
+    /** Epoch-millis clock; overridable so tests can pin the export timestamp and file name. */
+    internal var nowMillis: () -> Long = System::currentTimeMillis
+
+    init {
+        viewModelScope.launch {
+            bundleBackupRepository.observeStatus().collect { status ->
+                if (!status.isLocalProfile) {
+                    _uiState.update { it.copy(canRestoreBundle = false) }
+                } else {
+                    // A failed probe leaves restore hidden: offering it on a
+                    // profile we could not prove empty risks a merge into live data.
+                    val empty = contactRepository.listContacts(limit = 1)
+                        .map { it.contacts.isEmpty() }
+                        .getOrDefault(false)
+                    _uiState.update { it.copy(canRestoreBundle = empty) }
+                }
+            }
+        }
+    }
 
     /** T104: run one round of graph inference over confirmed edges. */
     fun suggestRelationships() {
@@ -198,6 +231,38 @@ class DataViewModel @Inject constructor(
         }
     }
 
+    /** The suggested SAF file name for the account bundle, e.g. `mycorrhizal-account-2026-09-28.json`. */
+    fun accountBundleFileName(): String = accountBundleFileName(nowMillis())
+
+    /**
+     * Issue #1264: fetches the account bundle and hands the bytes to [write]
+     * (the screen's SAF `ACTION_CREATE_DOCUMENT` destination). The last-export
+     * timestamp is recorded **only after [write] succeeds** — a bundle that
+     * never reached the user's file must not silence the backup reminder.
+     */
+    fun exportAccountBundle(write: suspend (ByteArray) -> Result<Unit>) {
+        if (_uiState.value.isExporting) return
+        _uiState.update { it.copy(isExporting = true, error = null) }
+        viewModelScope.launch {
+            exportRepository.exportAccountBundle().fold(
+                onSuccess = { bytes ->
+                    val written = write(bytes)
+                    if (written.isSuccess) {
+                        bundleBackupRepository.recordExport(nowMillis())
+                        _uiState.update { it.copy(isExporting = false, infoRes = R.string.data_bundle_exported) }
+                    } else {
+                        _uiState.update {
+                            it.copy(isExporting = false, infoRes = R.string.data_bundle_write_failed)
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(isExporting = false, error = error.toApiError().displayMessage) }
+                },
+            )
+        }
+    }
+
     fun onExportHandled() {
         _uiState.update { it.copy(exported = null) }
     }
@@ -208,6 +273,12 @@ class DataViewModel @Inject constructor(
 
     private fun suggestionKey(suggestion: ContactAddressSuggestion): String =
         "${suggestion.contactVCardUid}|${suggestion.addressKey}"
+}
+
+/** `mycorrhizal-account-<yyyy-MM-dd>.json` for the device-local date of [nowMillis]. */
+fun accountBundleFileName(nowMillis: Long): String {
+    val date = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date(nowMillis))
+    return "mycorrhizal-account-$date.json"
 }
 
 /** Human label for a relation token in the address-reason line (e.g. "parent_of" -> "parent of"). */

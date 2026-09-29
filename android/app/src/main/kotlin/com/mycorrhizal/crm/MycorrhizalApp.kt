@@ -124,6 +124,7 @@ import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
+import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
@@ -1273,6 +1274,7 @@ private fun AppNavGraph(
             DashboardScreen(
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
                 onMenuClick = menu,
+                onBackUp = { navController.navigate("data") },
             )
         }
 
@@ -1344,6 +1346,14 @@ private fun AppNavGraph(
             DataScreen(
                 onBack = { navController.popBackStack() },
                 onCustomExport = { navController.navigate("data/custom-export") },
+                onRestoreBundle = { navController.navigate("data/restore-bundle") },
+            )
+        }
+        // Issue #1264: restore an account bundle into a fresh Local profile.
+        composable("data/restore-bundle") {
+            BundleRestoreScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
         // Issue #835 (T9 selective-export Android parity, web's

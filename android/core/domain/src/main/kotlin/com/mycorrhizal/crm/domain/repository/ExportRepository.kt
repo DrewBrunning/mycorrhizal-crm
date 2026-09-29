@@ -47,4 +47,11 @@ interface ExportRepository {
         sections: List<String>,
         includeSensitive: Boolean,
     ): Result<ExportLossPreflightResponse>
+
+    /**
+     * GET /export/account (issues #1259/#1264) — the full-fidelity, re-importable
+     * account bundle as raw JSON bytes. Every sensitivity level is included;
+     * there is no opt-in (the user's own backup, ADR 0028 Decision 3).
+     */
+    suspend fun exportAccountBundle(): Result<ByteArray>
 }

@@ -333,7 +333,16 @@ truth** — there is no server to rebuild it from.
 - **Backups**: none automatic. The user-controlled copy is the **account-bundle export** (ADR 0028
   Decision 5, issue #1264): a versioned JSON document written through the Storage Access Framework to a
   location the user chooses, outside app storage. That exported file's lifecycle is the user's, and is a
-  copy this app can neither track nor delete once written.
+  copy this app can neither track nor delete once written. It is full-fidelity (every sensitivity level,
+  see §11), so it is as sensitive as the store itself; the app never keeps a copy (the bytes go straight
+  from the response to the SAF output stream, not through `cacheDir`). The only thing the app retains is
+  **non-secret bookkeeping** — per-profile `last_export:<profileId>` / `dismissed:<profileId>` epoch-millis
+  keys in the `bundle_backup` DataStore (`BundleBackupRepositoryImpl.kt`), which drive the dashboard
+  "back up your data" banner (never exported, or last export over 30 days ago; dismissal snoozes it 7
+  days). They are dropped by `forget(profileId)` when the profile is removed or its local data deleted.
+  **Restore** (Settings → Data → "Restore from bundle", offered only on an empty `Local` profile) reads
+  the chosen file once and uploads it to the embedded server's `mycorrhizal` import session (§11:
+  memory-only, 60-minute idle expiry); the app keeps no copy of the file.
 
 **Occasion-event cache (issue #1228).** The Android events surface mirrors the server's event list into
 `cached_occasion_events` (`android/core/data/src/main/kotlin/.../local/CachedOccasionEvent.kt`, added by

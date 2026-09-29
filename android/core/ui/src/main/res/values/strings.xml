@@ -1754,4 +1754,21 @@
     <string name="settings_servers_switch_confirm">Discard and switch</string>
     <string name="servers_add_invalid_url">Enter a valid server URL, for example https://crm.example.com.</string>
     <string name="login_use_local_only">Use on this device only</string>
+    <string name="data_export_bundle">Account bundle (full backup)</string>
+    <string name="data_restore_bundle">Restore from bundle</string>
+    <string name="data_bundle_exported">Account bundle saved</string>
+    <string name="data_bundle_write_failed">Could not save the account bundle to that location</string>
+    <string name="bundle_restore_title">Restore from bundle</string>
+    <string name="bundle_restore_pick_hint">Choose an account bundle file exported from Mycorrhizal. You can review everything before it is restored.</string>
+    <string name="bundle_restore_pick">Choose bundle file</string>
+    <string name="bundle_restore_working">Working on your bundle…</string>
+    <string name="bundle_restore_loss">%1$d items cannot be restored exactly</string>
+    <string name="bundle_restore_result">Restored: %1$d created, %2$d updated, %3$d skipped</string>
+    <string name="bundle_restore_error_too_large">That file is too large to be an account bundle</string>
+    <string name="bundle_restore_error_invalid_file">That file is empty or not an account bundle</string>
+    <string name="bundle_restore_error_failed">The restore did not complete. Nothing was changed.</string>
+    <string name="dashboard_backup_reminder_title">Back up your data</string>
+    <string name="dashboard_backup_reminder_body">Your data lives only on this device. Save an account bundle so you can restore it if this device is lost or reset.</string>
+    <string name="dashboard_backup_reminder_action">Back up now</string>
+    <string name="dashboard_backup_reminder_dismiss">Dismiss</string>
 </resources>

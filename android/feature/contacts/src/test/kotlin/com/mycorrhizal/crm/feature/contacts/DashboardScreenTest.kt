@@ -113,6 +113,8 @@ class DashboardScreenTest {
         onCompleteReminder: (id: Int, skip: Boolean) -> Unit = { _, _ -> },
         onDismissReachOutSuggestion: (id: String) -> Unit = {},
         onVerifyDataDecay: (id: String) -> Unit = {},
+        onBackUpNow: () -> Unit = {},
+        onDismissBackupReminder: () -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -124,6 +126,8 @@ class DashboardScreenTest {
                     onCompleteReminder = onCompleteReminder,
                     onDismissReachOutSuggestion = onDismissReachOutSuggestion,
                     onVerifyDataDecay = onVerifyDataDecay,
+                    onBackUpNow = onBackUpNow,
+                    onDismissBackupReminder = onDismissBackupReminder,
                 )
             }
         }
@@ -386,7 +390,13 @@ class DashboardScreenTest {
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
-        val viewModel = DashboardViewModel(apiClient, authRepository)
+        val viewModel = DashboardViewModel(
+            apiClient,
+            authRepository,
+            mockk<com.mycorrhizal.crm.domain.repository.BundleBackupRepository> {
+                every { observeStatus() } returns flowOf(com.mycorrhizal.crm.domain.backup.BundleBackupStatus())
+            },
+        )
 
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -424,5 +434,41 @@ class DashboardScreenTest {
         scrollTo("Reasons to Reach Out")
         composeTestRule.onNodeWithText("Reasons to Reach Out")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    // --- Issue #1264: local-profile backup reminder banner -----------------------
+
+    @Test
+    fun `the backup banner is absent by default`() {
+        setContent(populatedState())
+
+        composeTestRule.onNodeWithTag("backup-reminder-banner").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the backup banner renders with its title and both actions`() {
+        setContent(populatedState().copy(showBackupReminder = true))
+
+        composeTestRule.onNodeWithTag("backup-reminder-banner").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Back up your data").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Back up now").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dismiss").assertIsDisplayed()
+    }
+
+    @Test
+    fun `back up now and dismiss invoke their callbacks`() {
+        var backedUp = 0
+        var dismissed = 0
+        setContent(
+            populatedState().copy(showBackupReminder = true),
+            onBackUpNow = { backedUp++ },
+            onDismissBackupReminder = { dismissed++ },
+        )
+
+        composeTestRule.onNodeWithText("Back up now").performClick()
+        composeTestRule.onNodeWithText("Dismiss").performClick()
+
+        assertEquals(1, backedUp)
+        assertEquals(1, dismissed)
     }
 }
