@@ -242,4 +242,27 @@ class UsersScreenTest {
         composeTestRule.onNodeWithText(str(R.string.action_cancel)).assertIsNotEnabled()
         coVerify(exactly = 1) { repository.resetTwoFactor(2) }
     }
+
+    @Test
+    fun `cancelling after a failed reset clears the stale error and makes no further call`() {
+        val repository = repoWithTwoUsers()
+        coEvery { repository.resetTwoFactor(2) } returns Result.failure(ApiError.Client(404, "User not found"))
+        setScreen(UsersViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_confirm)).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("User not found").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText(str(R.string.action_cancel)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_title)).assertDoesNotExist()
+        coVerify(exactly = 1) { repository.resetTwoFactor(2) }
+
+        // Re-opening starts clean: no stale error, and still no extra call until confirmed.
+        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithText("User not found").assertDoesNotExist()
+        coVerify(exactly = 1) { repository.resetTwoFactor(2) }
+    }
 }
