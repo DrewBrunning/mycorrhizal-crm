@@ -23,4 +23,10 @@ interface UserManagementRepository {
 
     /** DELETE /admin/users/{id} — hard-deletes the account and all its data (T26). */
     suspend fun delete(id: Int): Result<Unit>
+
+    /**
+     * POST /admin/users/{id}/reset-2fa — disables the user's TOTP, removes passkeys,
+     * deletes recovery codes and ends their sessions (issue #596); returns the user.
+     */
+    suspend fun resetTwoFactor(id: Int): Result<AdminUser>
 }

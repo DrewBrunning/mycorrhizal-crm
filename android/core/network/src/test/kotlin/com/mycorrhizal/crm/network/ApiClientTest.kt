@@ -4907,6 +4907,49 @@ class ApiClientTest {
         assertEquals(403, (error as ApiError.Client).code)
     }
 
+    @Test
+    fun `resetUserTwoFactor POSTs an empty body to the admin reset-2fa route`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 3, "username": "bob", "email": "bob@example.com",
+                    "language": "en", "date_format": "eu", "is_admin": false,
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.resetUserTwoFactor(3)
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
+        assertEquals("bob", result.getOrThrow().username)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/admin/users/3/reset-2fa", request.path)
+        assertEquals(0L, request.body.size)
+    }
+
+    @Test
+    fun `resetUserTwoFactor maps 403 and 404 to client errors carrying the server message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(403).setBody(
+                """{"error":{"code":"forbidden","message":"Admin access required"}}""",
+            ),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody(
+                """{"error":{"code":"not_found","message":"User not found"}}""",
+            ),
+        )
+
+        val forbidden = client.resetUserTwoFactor(3).exceptionOrNull() as ApiError.Client
+        assertEquals(403, forbidden.code)
+        assertEquals("Admin access required", forbidden.message)
+
+        val missing = client.resetUserTwoFactor(999).exceptionOrNull() as ApiError.Client
+        assertEquals(404, missing.code)
+        assertEquals("User not found", missing.message)
+    }
+
     // --- T93 duplicate scan (issue #710, web parity) ---
 
     @Test
