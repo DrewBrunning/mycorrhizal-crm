@@ -495,7 +495,11 @@ func issueLoginSession(c *gin.Context, cfg *config.Config, db *gorm.DB, user mod
 // code is rejected for the rest of its ±1 step window (issue #873, RFC 6238
 // §5.2). jwtSecret decrypts the stored TOTP secret.
 func valid2FAProof(db *gorm.DB, user *models.User, code, jwtSecret string) bool {
-	if user.TOTPSecretEncrypted != nil && *user.TOTPSecretEncrypted != "" {
+	// Only a CONFIRMED TOTP enrollment is a second factor. SetupTwoFactor writes
+	// the secret before ConfirmTwoFactor proves possession, so a pending secret
+	// must never satisfy a proof (issue #1306) — a passkey-only account has
+	// totp_enabled = false yet still passes the "has a second factor" gate.
+	if user.TOTPEnabled && user.TOTPSecretEncrypted != nil && *user.TOTPSecretEncrypted != "" {
 		secret, err := services.DecryptCredential(jwtSecret, *user.TOTPSecretEncrypted)
 		if err == nil {
 			if step, ok := services.ValidateTOTPStep(secret, code); ok {
