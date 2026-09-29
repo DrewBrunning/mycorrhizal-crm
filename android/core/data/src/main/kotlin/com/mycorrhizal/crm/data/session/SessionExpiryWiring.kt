@@ -19,6 +19,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * clear. A grant that the server has revoked therefore still ends exactly as
  * a 401 always has.
  *
+ * Issue #1312: a Local profile's 401 (the embedded server's session idled out or
+ * expired) re-mints via [localRemint] instead of clearing; the session is only
+ * cleared if that restart fails.
+ *
  * Issue #957/#967 — two guards on the naive "every 401 launches a refresh"
  * design, both real bugs found by the same adversarial review pass:
  *  - **Re-entrancy** ([SessionManager.isClearingSession]): [clearSession]'s
@@ -36,6 +40,13 @@ class SessionExpiryWiring(
     private val sessionExpiryNotifier: SessionExpiryNotifier,
     private val sessionManager: SessionManager,
     private val refresher: suspend () -> Boolean = { false },
+    /**
+     * Issue #1312: re-mint hook for a `Local` profile, which has no login and no
+     * device grant. Returns null when the active profile is not Local (fall
+     * through to [refresher]); otherwise whether the embedded server restarted
+     * and a fresh session was adopted.
+     */
+    private val localRemint: suspend () -> Boolean? = { null },
 ) {
     private val refreshInFlight = AtomicBoolean(false)
 
@@ -45,7 +56,7 @@ class SessionExpiryWiring(
             if (!refreshInFlight.compareAndSet(false, true)) return@register
             scope.launch {
                 try {
-                    val refreshed = refresher()
+                    val refreshed = localRemint() ?: refresher()
                     if (!refreshed) sessionManager.clearSession()
                 } finally {
                     refreshInFlight.set(false)
