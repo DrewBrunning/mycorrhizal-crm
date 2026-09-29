@@ -31,7 +31,7 @@ describe('e2e-tests.yml wiring', () => {
     const wf = readFileSync(resolve(__dirname, '../../.github/workflows/e2e-tests.yml'), 'utf8');
     const step = wf.split('- name: Run Playwright tests')[1]?.split('\n      - name:')[0] ?? '';
     expect(step).toContain('npx playwright test --project=chromium');
-    expect(step).toMatch(/MYCORRHIZAL_REQUIRE_REFERENCES: '1'/);
+    expect(step).toMatch(/^\s*MYCORRHIZAL_REQUIRE_REFERENCES: '1'/m);
   });
 });
 
