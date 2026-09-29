@@ -170,6 +170,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 
 	// --- API tokens / webhooks / notifications / calendars / subscriptions ---
 	"POST /api-tokens": bindingFor(models.ApiTokenInput{}),
+	// Issue #382: private Atom feeds.
+	"POST /feeds": bindingFor(models.FeedInput{}),
 	// Issue #722: the device-grant surface.
 	"POST /auth/device/grants":               bindingFor(models.DeviceGrantInput{}),
 	"POST /auth/device/session":              bindingFor(models.DeviceGrantSessionInput{}),
@@ -246,8 +248,16 @@ var requestBodyBindings = map[string]requestBodyBinding{
 // route the live router registers — enforced by TestOpenAPIRequestFieldCoverage's
 // completeness net.
 var noBodyMutatingRoutes = map[string]bool{
-	"POST /logout":                                true,
-	"POST /users/2fa/setup":                       true,
+	"POST /logout":          true,
+	"POST /users/2fa/setup": true,
+	// Issue #593 WebAuthn ceremonies: bodies are protocol documents the
+	// go-webauthn library parses itself (PublicKeyCredential JSON), or a tiny
+	// anonymous-struct label — no Go request struct to pin against the schema.
+	"POST /webauthn/login/begin":                  true,
+	"POST /webauthn/login/finish":                 true,
+	"POST /webauthn/register/begin":               true,
+	"POST /webauthn/register/finish":              true,
+	"POST /webauthn/assert/begin":                 true,
 	"POST /contacts/address-suggestions":          true,
 	"POST /contacts/{id}/archive":                 true,
 	"POST /contacts/{id}/unarchive":               true,
@@ -286,8 +296,10 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /admin/contacts/rebuild-derived":        true,
 	"POST /reach-out-suggestions/{id}/dismiss":    true,
 	"POST /api-tokens/revoke-all":                 true,
+	"POST /feeds/revoke-all":                      true,
 	"POST /auth/device/grants/revoke-all":         true,
 	"POST /api-tokens/{id}/rotate":                true,
+	"POST /feeds/{id}/rotate":                     true,
 	"POST /contact-sync-conflicts/{id}/restore":   true,
 	"POST /contact-sync-conflicts/{id}/dismiss":   true,
 	"POST /data-decay-policies/{id}/verify":       true,

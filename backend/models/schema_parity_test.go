@@ -65,6 +65,7 @@ var registeredModels = []any{
 	&DismissedHouseholdSuggestion{},
 	&ExternalActivity{},
 	&ExternalIdentity{},
+	&Feed{},
 	&FieldDefinition{},
 	&FieldValue{},
 	&Gift{},
@@ -103,6 +104,7 @@ var registeredModels = []any{
 	&Tag{},
 	&User{},
 	&WebDAVConfig{},
+	&WebAuthnCredential{},
 	&Webhook{},
 	&WebhookDelivery{},
 }

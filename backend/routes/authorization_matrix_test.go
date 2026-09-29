@@ -137,6 +137,7 @@ type seeded struct {
 	extIdentity        string
 	extActivity        string
 	webhook            string
+	feed               string
 }
 
 func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
@@ -198,6 +199,14 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	webhook := models.Webhook{UserID: ownerID, Name: "matrix webhook", URL: "https://example.com/hook", Secret: "secret", Events: []string{}}
 	require.NoError(t, db.Create(&webhook).Error)
 
+	// Issue #382: a private feed credential owned by the owner, so the
+	// DELETE/rotate BOLA probes target a real row.
+	feed := models.Feed{
+		UserID: ownerID, Name: "matrix feed", Kind: models.FeedKindAggregate,
+		Detail: models.FeedDetailHeadlines, TokenHash: "matrix-feed-token-hash",
+	}
+	require.NoError(t, db.Create(&feed).Error)
+
 	return seeded{
 		contact:            strconv.FormatUint(uint64(c.ID), 10),
 		contactUID:         c.VCardUID,
@@ -221,6 +230,7 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 		extIdentity:        extIdentity.ID,
 		extActivity:        extActivity.ID,
 		webhook:            strconv.FormatUint(uint64(webhook.ID), 10),
+		feed:               feed.ID,
 	}
 }
 
@@ -242,6 +252,8 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/register":                {class: classPublic},
 		"POST /api/v1/login":                   {class: classPublic},
 		"POST /api/v1/login/2fa":               {class: classPublic},
+		"POST /api/v1/webauthn/login/begin":    {class: classPublic},
+		"POST /api/v1/webauthn/login/finish":   {class: classPublic},
 		"POST /api/v1/logout":                  {class: classPublic},
 		"POST /api/v1/check-password-strength": {class: classPublic},
 		"POST /api/v1/password-reset/request":  {class: classPublic},
@@ -250,6 +262,9 @@ func buildTable(s seeded) map[string]authzRow {
 		// session without a password — public (rate-limited like /login), never
 		// a passwordless back door for a stale API session.
 		"POST /api/v1/auth/device/session": {class: classPublic},
+		// Issue #382 (ADR 0030 decision 7): the private Atom feed. The token
+		// query value is the only credential; no auth boundary exists.
+		"GET /api/v1/feeds/atom": {class: classPublic},
 
 		// --- admin routes --------------------------------------------------
 		"GET /api/v1/admin/users":                     {class: classAdmin},
@@ -286,6 +301,11 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/users/2fa/confirm":                   {class: classProtected},
 		"POST /api/v1/users/2fa/disable":                   {class: classProtected},
 		"POST /api/v1/users/2fa/recovery-codes/regenerate": {class: classProtected},
+		"POST /api/v1/webauthn/register/begin":             {class: classProtected},
+		"POST /api/v1/webauthn/register/finish":            {class: classProtected},
+		"POST /api/v1/webauthn/assert/begin":               {class: classProtected},
+		"GET /api/v1/webauthn/credentials":                 {class: classProtected},
+		"DELETE /api/v1/webauthn/credentials/:id":          {class: classProtected},
 		"GET /api/v1/users/directory":                      {class: classProtected},
 		"GET /api/v1/dashboard":                            {class: classProtected},
 
@@ -545,9 +565,16 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/api-tokens/revoke-all": {class: classProtected},
 		"DELETE /api/v1/api-tokens/:id":      {class: classItem, probe: "/api/v1/api-tokens/" + fabricatedNum},
 		"POST /api/v1/api-tokens/:id/rotate": {class: classItem, probe: "/api/v1/api-tokens/" + fabricatedNum + "/rotate"},
-		"GET /api/v1/sessions":               {class: classProtected},
-		"DELETE /api/v1/sessions":            {class: classProtected},
-		"DELETE /api/v1/sessions/:id":        {class: classItem, probe: "/api/v1/sessions/" + fabricatedNum},
+
+		// --- private Atom feeds (issue #382, ADR 0030 decision 8) -----------
+		"GET /api/v1/feeds":             {class: classProtected},
+		"POST /api/v1/feeds":            {class: classProtected},
+		"POST /api/v1/feeds/revoke-all": {class: classProtected},
+		"DELETE /api/v1/feeds/:id":      {class: classItem, probe: "/api/v1/feeds/" + s.feed},
+		"POST /api/v1/feeds/:id/rotate": {class: classItem, probe: "/api/v1/feeds/" + s.feed + "/rotate"},
+		"GET /api/v1/sessions":          {class: classProtected},
+		"DELETE /api/v1/sessions":       {class: classProtected},
+		"DELETE /api/v1/sessions/:id":   {class: classItem, probe: "/api/v1/sessions/" + fabricatedNum},
 
 		// --- device grants (issue #722, the server half of biometric login) --
 		"GET /api/v1/auth/device/grants":             {class: classProtected},

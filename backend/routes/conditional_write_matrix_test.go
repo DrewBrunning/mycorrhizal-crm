@@ -161,6 +161,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contact-subscriptions":            exempt(reasonCreate),
 		"POST /api/v1/contact-shares":                   exempt(reasonCreate),
 		"POST /api/v1/api-tokens":                       exempt(reasonCreate),
+		"POST /api/v1/feeds":                            exempt(reasonCreate),
 		"POST /api/v1/notifications/devices":            exempt(reasonCreate),
 		"POST /api/v1/notifications/push-subscriptions": exempt(reasonCreate),
 		// Issue #722: a device grant is a fresh, revision-free row like an API
@@ -215,7 +216,9 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"PUT /api/v1/contacts/:id/field-values":                   exempt(reasonNonRevision),
 		"PUT /api/v1/notifications/config":                        exempt(reasonNonRevision),
 		"DELETE /api/v1/api-tokens/:id":                           exempt(reasonNonRevision),
+		"DELETE /api/v1/feeds/:id":                                exempt(reasonNonRevision),
 		"POST /api/v1/api-tokens/revoke-all":                      exempt(reasonNonRevision),
+		"POST /api/v1/feeds/revoke-all":                           exempt(reasonNonRevision),
 		"DELETE /api/v1/sessions/:id":                             exempt(reasonNonRevision),
 		"DELETE /api/v1/sessions":                                 exempt(reasonNonRevision),
 		"DELETE /api/v1/attachments/:id":                          exempt(reasonNonRevision),
@@ -270,6 +273,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		// === Per-row actions on non-revisioned surfaces ===
 		"POST /api/v1/audit/:id/undo":                     exempt(reasonAction),
 		"POST /api/v1/api-tokens/:id/rotate":              exempt(reasonAction),
+		"POST /api/v1/feeds/:id/rotate":                   exempt(reasonAction),
 		"POST /api/v1/webhooks/:id/test":                  exempt(reasonAction),
 		"POST /api/v1/calendars/:id/sync":                 exempt(reasonAction),
 		"POST /api/v1/contact-subscriptions/:id/sync":     exempt(reasonAction),
@@ -310,6 +314,8 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/register":                            exempt(reasonAuth),
 		"POST /api/v1/login":                               exempt(reasonAuth),
 		"POST /api/v1/login/2fa":                           exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/begin":                exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/finish":               exempt(reasonAuth),
 		"POST /api/v1/auth/device/session":                 exempt(reasonAuth),
 		"POST /api/v1/logout":                              exempt(reasonAuth),
 		"POST /api/v1/check-password-strength":             exempt(reasonAuth),
@@ -325,6 +331,10 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/users/2fa/confirm":                   exempt(reasonAuth),
 		"POST /api/v1/users/2fa/disable":                   exempt(reasonAuth),
 		"POST /api/v1/users/2fa/recovery-codes/regenerate": exempt(reasonAuth),
+		"POST /api/v1/webauthn/register/begin":             exempt(reasonAuth),
+		"POST /api/v1/webauthn/register/finish":            exempt(reasonAuth),
+		"POST /api/v1/webauthn/assert/begin":               exempt(reasonAuth),
+		"DELETE /api/v1/webauthn/credentials/:id":          exempt(reasonAuth),
 
 		// === Admin ===
 		"POST /api/v1/admin/users":                    exempt(reasonAdmin),

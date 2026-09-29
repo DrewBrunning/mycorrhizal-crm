@@ -574,6 +574,25 @@ type ApiTokenCreateResponse struct {
 	Token string `json:"token"`
 }
 
+// FeedInput is the DTO for creating a private Atom feed credential (issue
+// #382, ADR 0030 decision 8). kind=contact requires entity_id to name a live
+// contact the caller owns; kind=aggregate requires it to be empty. detail
+// defaults to headlines server-side when omitted.
+type FeedInput struct {
+	Name     string `json:"name" validate:"required,min=1,max=100"`
+	Kind     string `json:"kind" validate:"required,oneof=contact aggregate"`
+	EntityID string `json:"entity_id" validate:"omitempty,uuid4"`
+	Detail   string `json:"detail" validate:"omitempty,oneof=headlines full"`
+}
+
+// FeedCreateResponse is returned on feed creation/rotation and carries the
+// one-time plaintext URL. The plaintext token appears only here; the stored
+// row keeps its hash.
+type FeedCreateResponse struct {
+	Feed Feed   `json:"feed"`
+	URL  string `json:"url"`
+}
+
 // WebhookInput is the DTO for creating/updating a webhook
 type WebhookInput struct {
 	Name string `json:"name" validate:"required,min=1,max=200"`

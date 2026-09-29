@@ -109,3 +109,43 @@ test('reject calls the delete endpoint (reject is DELETE)', async () => {
   });
   vi.unstubAllGlobals();
 });
+
+test('surfaces a load error instead of an empty inbox', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('suggestions endpoint down')));
+  render(<RelationshipSuggestionsInbox loadKey={0} />);
+
+  expect(await screen.findByText('Could not load suggestions.')).toBeInTheDocument();
+  vi.unstubAllGlobals();
+});
+
+test('treats a response without a relationship_edges key as empty', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ total: 0 }) }));
+  render(<RelationshipSuggestionsInbox loadKey={0} />);
+
+  expect(await screen.findByText('No new relationship suggestions right now.')).toBeInTheDocument();
+  vi.unstubAllGlobals();
+});
+
+test('falls back to an unknown-contact label when a referenced contact is missing', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/relationship-edges')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            relationship_edges: [{ ...edge, source_id: 'ghost-uid' }],
+            total: 1,
+            next_cursor: '',
+            limit: 100,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ contacts: [] }) });
+    }),
+  );
+  render(<RelationshipSuggestionsInbox loadKey={0} />);
+
+  expect(await screen.findByText(/Unknown contact/)).toBeInTheDocument();
+  vi.unstubAllGlobals();
+});

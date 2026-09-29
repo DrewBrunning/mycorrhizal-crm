@@ -11,7 +11,7 @@ import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
-import com.mycorrhizal.crm.model.network.MycorrhizalImportResult
+import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.network.ApiError
@@ -47,7 +47,7 @@ data class AttachUiState(
     val preview: AttachPreview? = null,
     /** Per-row add/skip/update decisions, seeded from each row's suggested action. */
     val rowActions: Map<Int, String> = emptyMap(),
-    val result: MycorrhizalImportResult? = null,
+    val result: SourceImportResult? = null,
     /** The remote import has been applied; only the switch + archive remain. */
     val importApplied: Boolean = false,
     /** Unsynced Local interactions the final switch would drop; non-null shows the confirm dialog. */

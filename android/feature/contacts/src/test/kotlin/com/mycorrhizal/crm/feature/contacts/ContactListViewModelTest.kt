@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
@@ -56,7 +57,10 @@ class ContactListViewModelTest {
      *  on init, defaults /search to an empty (never-called-in-most-tests) result, stubs the
      *  M23 circle/tag list loads so the dropdown/picker state is deterministic, and stubs the
      *  T90/#831 session stream with [selfContactVCardUid] (null by default — no contact marked). */
-    private fun newViewModel(selfContactVCardUid: String? = null): ListVmFixture {
+    private fun newViewModel(
+        selfContactVCardUid: String? = null,
+        savedState: SavedStateHandle = SavedStateHandle(),
+    ): ListVmFixture {
         val repo = mockk<ContactRepository>()
         val apiClient = mockk<ApiClient>()
         val circleRepository = mockk<CircleRepository>()
@@ -70,7 +74,7 @@ class ContactListViewModelTest {
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         coEvery { tagRepository.list() } returns Result.success(emptyList())
         every { authRepository.observeSession() } returns flowOf(SessionState(selfContactVCardUid = selfContactVCardUid))
-        val viewModel = ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
+        val viewModel = ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository, authRepository, savedState)
         return ListVmFixture(viewModel, repo, apiClient, authRepository)
     }
 
@@ -756,5 +760,35 @@ class ContactListViewModelTest {
 
         assertEquals(setOf(1), vm.uiState.value.selected)
         assertEquals("boom", vm.uiState.value.error)
+    }
+
+    // ADR 0029 §4 / issue #1269: mycorrhizal://search?q=… arrives as a `search` nav arg.
+    @Test
+    fun `a search saved-state arg prefills the query and runs the scoped search`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) =
+            newViewModel(savedState = SavedStateHandle(mapOf(ContactListViewModel.SEARCH_ARG to "ann")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ann") } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Ann")))
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("ann", state.searchQuery)
+        assertEquals(listOf("Ann"), state.contacts.map { it.fn })
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = "ann") }
+        coVerify { apiClient.search(any(), any(), any()) }
+        // It filters the list; it never opens a result or selects anything.
+        assertTrue(state.selected.isEmpty())
+    }
+
+    @Test
+    fun `an absent or blank search saved-state arg leaves the list unfiltered`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (blank, blankRepo, _) =
+            newViewModel(savedState = SavedStateHandle(mapOf(ContactListViewModel.SEARCH_ARG to "  ")))
+        coEvery { blankRepo.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+        advanceUntilIdle()
+        assertEquals("", blank.uiState.value.searchQuery)
+        coVerify { blankRepo.listContacts(cursor = null, limit = 50, search = null) }
     }
 }

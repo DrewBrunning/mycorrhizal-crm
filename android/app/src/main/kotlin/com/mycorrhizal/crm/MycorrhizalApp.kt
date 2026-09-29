@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.feature.contacts.ContactListViewModel
 import androidx.activity.compose.BackHandler
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -124,6 +125,7 @@ import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
+import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
@@ -208,7 +210,8 @@ private val secondaryDestinations = listOf(
 /** True when the current destination is inside a [DrawerDestination]'s route. */
 private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean {
     val route = currentRoute ?: return false
-    return route == item.route || route.startsWith("${item.route}/")
+    // The bare contacts destination's pattern carries an optional query arg (issue #1269).
+    return route == item.route || route.startsWith("${item.route}/") || route.startsWith("${item.route}?")
 }
 
 /**
@@ -263,6 +266,7 @@ internal fun NavHostController.navigateToRoot(route: String) {
  */
 internal fun isInContactsSection(route: String?): Boolean =
     route == "contacts" ||
+        route == "contacts?search={search}" ||
         route == "merge" ||
         route?.startsWith("contacts/") == true ||
         route?.startsWith("merge/") == true
@@ -284,7 +288,7 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
 fun MycorrhizalApp(
     darkTheme: Boolean,
     mainViewModel: MainViewModel = hiltViewModel(),
-    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
     // Issue #965: starts the native OIDC flow. The Activity owns the PKCE
     // generation + on-device verifier storage and the browser launch, so this
@@ -531,7 +535,7 @@ private fun MainScaffold(
     serverUrl: String,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
-    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
 ) {
     val navController = rememberNavController()
@@ -557,9 +561,12 @@ private fun MainScaffold(
     // auth tree is up is deferred until a session exists (the link is retained
     // by the flow until it is consumed).
     LaunchedEffect(deepLinks) {
-        deepLinks.filterNotNull().collect { uri ->
-            deepLinkRoute(uri)?.let { route ->
-                navController.navigateToRoot(route)
+        deepLinks.filterNotNull().collect { link ->
+            // ADR 0029 §4: a link older than the TTL is dropped, not navigated.
+            if (!link.isExpired(System.currentTimeMillis())) {
+                deepLinkRoute(link.uri)?.let { route ->
+                    navController.navigateToRoot(route)
+                }
             }
             onDeepLinkHandled()
         }
@@ -635,7 +642,17 @@ private fun MainScaffold(
                 // is omitted (onMenuClick = null): at Expanded the drawer is
                 // replaced by the rail.
                 listPane = {
+                    // The list pane's ViewModel lives outside the NavHost, so it never sees
+                    // the `contacts?search=` arg through its SavedStateHandle: apply a
+                    // deep-link search here instead (ADR 0029 §4, issue #1269).
+                    val listViewModel: ContactListViewModel = hiltViewModel()
+                    val entry by navController.currentBackStackEntryAsState()
+                    val deepLinkSearch = entry?.arguments?.getString(ContactListViewModel.SEARCH_ARG)
+                    LaunchedEffect(entry) {
+                        if (!deepLinkSearch.isNullOrBlank()) listViewModel.onSearchQueryChange(deepLinkSearch)
+                    }
                     ContactListScreen(
+                        viewModel = listViewModel,
                         onContactClick = { id -> navController.navigate("contacts/$id") },
                         onCreateContact = { navController.navigate("contacts/new") },
                         onImportContacts = { navController.navigate("import") },
@@ -915,7 +932,18 @@ private fun AppNavGraph(
         navController = navController,
         startDestination = "home",
     ) {
-        composable("contacts") {
+        // ADR 0029 §4: optional `search` arg prefilled by mycorrhizal://search?q=…; every
+        // plain navigate("contacts") still works because the arg is optional.
+        composable(
+            route = "contacts?search={search}",
+            arguments = listOf(
+                navArgument("search") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
             if (isTwoPane) {
                 ContactListPlaceholder()
             } else {
@@ -1274,6 +1302,7 @@ private fun AppNavGraph(
             DashboardScreen(
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
                 onMenuClick = menu,
+                onBackUp = { navController.navigate("data") },
             )
         }
 
@@ -1351,6 +1380,14 @@ private fun AppNavGraph(
             DataScreen(
                 onBack = { navController.popBackStack() },
                 onCustomExport = { navController.navigate("data/custom-export") },
+                onRestoreBundle = { navController.navigate("data/restore-bundle") },
+            )
+        }
+        // Issue #1264: restore an account bundle into a fresh Local profile.
+        composable("data/restore-bundle") {
+            BundleRestoreScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
         // Issue #835 (T9 selective-export Android parity, web's

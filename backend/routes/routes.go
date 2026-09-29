@@ -67,6 +67,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			v1.POST("/login/2fa", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
 				controllers.Complete2FALogin(c, cfg)
 			})
+			// Issue #593: passkey (WebAuthn) alternative to the TOTP step above —
+			// same 2fa_pending challenge cookie, same rate limit, same session
+			// on success.
+			v1.POST("/webauthn/login/begin", middleware.AuthRateLimitMiddleware(), func(c *gin.Context) {
+				controllers.WebAuthnLoginBegin(c, cfg)
+			})
+			v1.POST("/webauthn/login/finish", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
+				controllers.WebAuthnLoginFinish(c, cfg)
+			})
 			// Issue #722: fully biometric login — a device that holds an
 			// unrevoked device grant (and whose owner just passed the local
 			// biometric gate) exchanges it for a fresh session JWT. Rate-limited
@@ -86,6 +95,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			controllers.LogoutUser(c, cfg, oidcProvider)
 		})
 		v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
+
+		// Private Atom feed serving (issue #382, ADR 0030 decision 7). The
+		// token in the query string is the only credential, so this is on the
+		// unauthenticated v1 group — never `protected`. Absent in embedded
+		// mode (no network feed surface).
+		if !cfg.IsEmbedded() {
+			v1.GET("/feeds/atom", middleware.FeedRateLimitMiddleware(), controllers.ServeFeed(cfg))
+		}
 
 		// Protected routes (authentication required, general rate limiting)
 		protected := v1.Group("/")
@@ -126,6 +143,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/users/2fa/confirm", controllers.ConfirmTwoFactor)
 				protected.POST("/users/2fa/disable", controllers.DisableTwoFactor)
 				protected.POST("/users/2fa/recovery-codes/regenerate", controllers.RegenerateRecoveryCodes)
+				// Issue #593: passkey enrollment + management.
+				protected.POST("/webauthn/register/begin", controllers.WebAuthnRegisterBegin)
+				protected.POST("/webauthn/register/finish", controllers.WebAuthnRegisterFinish)
+				protected.POST("/webauthn/assert/begin", controllers.WebAuthnProofBegin)
+				protected.GET("/webauthn/credentials", controllers.ListWebAuthnCredentials)
+				protected.DELETE("/webauthn/credentials/:id", controllers.DeleteWebAuthnCredential)
 			}
 			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than
@@ -519,6 +542,17 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/api-tokens/revoke-all", controllers.RevokeAllApiTokens)
 				protected.DELETE("/api-tokens/:id", controllers.RevokeApiToken)
 				protected.POST("/api-tokens/:id/rotate", controllers.RotateApiToken)
+
+				// Private Atom feed credentials (issue #382, ADR 0030 decision
+				// 8). Management only; the serving endpoint is the
+				// unauthenticated GET /feeds/atom registered below. Absent in
+				// embedded mode like API tokens — a local-only profile serves
+				// no network feed.
+				protected.GET("/feeds", controllers.ListFeeds)
+				protected.POST("/feeds", middleware.ValidateJSONMiddleware(&models.FeedInput{}), controllers.CreateFeed(cfg))
+				protected.POST("/feeds/revoke-all", controllers.RevokeAllFeeds)
+				protected.DELETE("/feeds/:id", controllers.DeleteFeed)
+				protected.POST("/feeds/:id/rotate", controllers.RotateFeed(cfg))
 			}
 
 			// Issue #866: active-session inventory. List this account's live

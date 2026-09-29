@@ -1774,4 +1774,21 @@
     <string name="attach_archived_badge">Schreibgeschütztes Archiv</string>
     <string name="attach_archived_hint">Diese Kopie wurde auf einen Server verschoben. Sie können sie ansehen, aber nicht ändern.</string>
     <string name="attach_archived_delete">Archivierte lokale Daten löschen</string>
+    <string name="data_export_bundle">Konto-Bundle (vollständige Sicherung)</string>
+    <string name="data_restore_bundle">Aus Bundle wiederherstellen</string>
+    <string name="data_bundle_exported">Konto-Bundle gespeichert</string>
+    <string name="data_bundle_write_failed">Das Konto-Bundle konnte an diesem Ort nicht gespeichert werden</string>
+    <string name="bundle_restore_title">Aus Bundle wiederherstellen</string>
+    <string name="bundle_restore_pick_hint">Wähle eine aus Mycorrhizal exportierte Konto-Bundle-Datei. Du kannst alles prüfen, bevor es wiederhergestellt wird.</string>
+    <string name="bundle_restore_pick">Bundle-Datei auswählen</string>
+    <string name="bundle_restore_working">Dein Bundle wird verarbeitet…</string>
+    <string name="bundle_restore_loss">%1$d Elemente können nicht exakt wiederhergestellt werden</string>
+    <string name="bundle_restore_result">Wiederhergestellt: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen</string>
+    <string name="bundle_restore_error_too_large">Diese Datei ist zu groß für ein Konto-Bundle</string>
+    <string name="bundle_restore_error_invalid_file">Diese Datei ist leer oder kein Konto-Bundle</string>
+    <string name="bundle_restore_error_failed">Die Wiederherstellung wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
+    <string name="dashboard_backup_reminder_title">Sichere deine Daten</string>
+    <string name="dashboard_backup_reminder_body">Deine Daten liegen nur auf diesem Gerät. Speichere ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
+    <string name="dashboard_backup_reminder_action">Jetzt sichern</string>
+    <string name="dashboard_backup_reminder_dismiss">Ausblenden</string>
 </resources>

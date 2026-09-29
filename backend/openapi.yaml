@@ -713,6 +713,279 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /webauthn/login/begin:
+    post:
+      summary: Begin a passkey login (step 2 of login)
+      operationId: webauthnLoginBegin
+      security: []
+      description: >
+        Passkey alternative to POST /login/2fa (issue #593). Requires the
+        short-lived 2fa_pending cookie set by POST /login. Returns the WebAuthn
+        PublicKeyCredentialRequestOptions (`publicKey`) to pass to
+        `navigator.credentials.get`. FRONTEND_URL must be a concrete origin.
+      responses:
+        "200":
+          description: WebAuthn assertion options (go-webauthn CredentialAssertion).
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: No 2fa_pending cookie (log in with a password first).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid or expired 2fa_pending challenge.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: No passkey registered, or FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/login/finish:
+    post:
+      summary: Complete a passkey login
+      operationId: webauthnLoginFinish
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientVersion"
+      description: >
+        Body is the JSON-serialized PublicKeyCredential returned by
+        `navigator.credentials.get`. On success sets the real auth_token cookie
+        and clears 2fa_pending, exactly like POST /login/2fa. Failures count
+        toward the same per-account lockout.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Logged in; auth_token cookie set, 2fa_pending cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  language: { type: string }
+                  date_format: { type: string }
+        "400":
+          description: No 2fa_pending cookie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Assertion rejected, or expired challenge.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The client is below the configured MIN_CLIENT_VERSION floor (CLIENT_NOT_SUPPORTED).
+        "409":
+          description: No passkey login in progress (call /webauthn/login/begin first).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Account temporarily locked after repeated failures.
+  /webauthn/register/begin:
+    post:
+      summary: Begin passkey enrollment
+      operationId: webauthnRegisterBegin
+      description: >
+        Authenticated. Returns WebAuthn PublicKeyCredentialCreationOptions for
+        `navigator.credentials.create`. Unavailable to OIDC-provisioned
+        accounts. An optional `name` labels the credential.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnRegisterBeginInput"
+      responses:
+        "200":
+          description: WebAuthn creation options (go-webauthn CredentialCreation).
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Invalid name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: OIDC-provisioned account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/register/finish:
+    post:
+      summary: Complete passkey enrollment
+      operationId: webauthnRegisterFinish
+      description: >
+        Body is the JSON-serialized PublicKeyCredential from
+        `navigator.credentials.create`. Stores the credential. If the account
+        has no recovery codes yet, a set is minted and returned once; if this
+        is the account's first second factor of any kind, other sessions are
+        invalidated (the caller's cookie is re-issued).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Passkey enrolled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnRegisterResponse"
+        "400":
+          description: Attestation could not be verified.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: OIDC-provisioned account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: No registration in progress, or FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/assert/begin:
+    post:
+      summary: Begin a passkey re-authentication (proof for sensitive operations)
+      operationId: webauthnProofBegin
+      description: >
+        Authenticated. Returns assertion options; the resulting assertion is
+        submitted as `assertion` to DELETE /webauthn/credentials/{id}, proving
+        a passkey other than the one being removed is still held.
+      responses:
+        "200":
+          description: WebAuthn assertion options.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: No passkey registered, or FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/credentials:
+    get:
+      summary: List the caller's passkeys
+      operationId: listWebauthnCredentials
+      description: Id, name and timestamps only — never the public key or raw credential id.
+      responses:
+        "200":
+          description: The caller's passkeys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnCredentialListResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/credentials/{id}:
+    delete:
+      summary: Remove a passkey
+      operationId: deleteWebauthnCredential
+      description: >
+        Requires a live second-factor proof: `code` (TOTP or recovery code) or
+        `assertion` (from /webauthn/assert/begin, made with a DIFFERENT
+        remaining passkey). Hard-deletes the row and records an audit event.
+        Removing the account's last factor also deletes its recovery codes and
+        invalidates other sessions.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnDeleteInput"
+      responses:
+        "200":
+          description: Passkey removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Missing or invalid proof.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such passkey for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/2fa/disable:
     post:
       summary: Disable 2FA
@@ -8377,6 +8650,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Private Atom feeds (issue #382, docs/adrs/0030-feeds-atom-emission.md) ---
+  /feeds:
+    get:
+      summary: List the caller's active private feed credentials
+      operationId: listFeeds
+      description: |
+        The caller's unrevoked feeds, newest first. No pagination; creation is
+        capped at 50 active feeds per account. The plaintext token is never
+        returned (only its hash is stored).
+      responses:
+        "200":
+          description: The caller's active feeds (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feeds]
+                properties:
+                  feeds:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Feed"
+    post:
+      summary: Create a private Atom feed credential
+      operationId: createFeed
+      description: |
+        Mints a feed URL whose only credential is the `token` query value. The
+        plaintext URL is returned only here, once. A `contact` feed requires
+        `entity_id` to name a live contact the caller owns (404 otherwise); an
+        `aggregate` feed requires an empty `entity_id` (400 otherwise). A 51st
+        active feed is rejected with 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedInput"
+      responses:
+        "201":
+          description: Feed created; the subscription URL is shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedCreateResponse"
+        "400":
+          description: Validation failed, or entity_id set for an aggregate feed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The contact named by entity_id does not exist or is not owned by the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The caller already holds the maximum number of active feeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/revoke-all:
+    post:
+      summary: Revoke every active feed for the current user
+      operationId: revokeAllFeeds
+      description: |
+        Self-service bulk revocation. Already-revoked feeds are left untouched
+        and not recounted.
+      responses:
+        "200":
+          description: Feeds revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked:
+                    type: integer
+                    description: How many previously-active feeds were revoked.
+  /feeds/{id}:
+    delete:
+      summary: Revoke a feed
+      operationId: revokeFeed
+      description: Sets revoked_at. A missing or already-revoked feed is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Feed revoked.
+        "404":
+          description: Feed not found or already revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/{id}/rotate:
+    post:
+      summary: Revoke a feed and reissue it with the same configuration
+      operationId: rotateFeed
+      description: |
+        Revoke + reissue in one transaction, preserving name, kind, entity_id
+        and detail. The new plaintext URL is shown exactly once. A missing or
+        already-revoked feed is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Old feed revoked; replacement created; new URL shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedCreateResponse"
+        "404":
+          description: Feed not found or already revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/atom:
+    get:
+      summary: Serve a private Atom feed
+      operationId: serveFeed
+      description: |
+        The unauthenticated feed-serving endpoint (issue #382, ADR 0030
+        decision 7). The feed token travels in the query string because most
+        feed readers cannot set an Authorization header. Every miss — missing,
+        wrong-prefix, unknown or revoked token, soft-deleted contact or owner —
+        is an identical 404 with an empty body. The body is deterministic, so
+        the strong ETag is stable across renders and If-None-Match returns 304.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: The plaintext feed token (`mycorrhizal_feed_` + base64url).
+          schema: { type: string }
+      responses:
+        "200":
+          description: The Atom 1.0 feed.
+          headers:
+            ETag:
+              description: Strong validator — SHA-256 of the rendered body.
+              schema: { type: string }
+            X-Robots-Tag:
+              description: Tells search engines not to index the feed.
+              schema: { type: string }
+          content:
+            application/atom+xml:
+              schema: { type: string }
+        "304":
+          description: The client's If-None-Match matched the current ETag; no body.
+        "404":
+          description: No feed matches the token (all miss cases are indistinguishable).
+
   # --- Sessions (issue #866) ---
   /sessions:
     get:
@@ -11609,7 +12042,11 @@ components:
         date_format: { type: string }
         two_factor_required:
           type: boolean
-          description: "Present and true when the account has 2FA enabled: a session is NOT issued; POST /login/2fa with a TOTP/recovery code completes the login."
+          description: "Present and true when the account has 2FA enabled: a session is NOT issued; POST /login/2fa with a TOTP/recovery code (or the /webauthn/login/* ceremony) completes the login."
+        methods:
+          type: array
+          items: { type: string, enum: [totp, webauthn] }
+          description: "Present with two_factor_required: the enrolled second factors, so the client can offer the right ceremony. Either one satisfies 2FA."
     TwoFactorCodeInput:
       type: object
       required: [code]
@@ -11617,6 +12054,45 @@ components:
         code:
           type: string
           description: "A 6-digit TOTP code or a recovery code (XXXXX-XXXXX-XXXXX)."
+    WebAuthnRegisterBeginInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 100, description: "User-supplied label, e.g. YubiKey." }
+    WebAuthnRegisterResponse:
+      type: object
+      required: [id, name, created_at, recovery_codes]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        recovery_codes:
+          type: array
+          items: { type: string }
+          description: "Freshly minted single-use recovery codes, shown once; empty when the account already had a set."
+    WebAuthnCredential:
+      type: object
+      required: [id, name, created_at, last_used_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time, nullable: true }
+    WebAuthnCredentialListResponse:
+      type: object
+      required: [credentials]
+      properties:
+        credentials:
+          type: array
+          items: { $ref: "#/components/schemas/WebAuthnCredential" }
+    WebAuthnDeleteInput:
+      type: object
+      description: "Exactly one proof: `code`, or `assertion`."
+      properties:
+        code: { type: string, description: "A TOTP code or a recovery code." }
+        assertion:
+          type: object
+          additionalProperties: true
+          description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
     TwoFactorStatusResponse:
       type: object
       required: [enabled]
@@ -13247,9 +13723,9 @@ components:
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
-        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token] }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token, feed] }
         entity_id: { type: string }
-        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change] }
+        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change, two_factor_admin_reset, webauthn_register, webauthn_revoke] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
         hash: { type: string, description: "SHA-256 of (prev_hash || canonical content); the tamper-evident chain link (issue #381)" }
         prev_hash: { type: string, description: "Hash of the preceding audit row (empty for the head of the chain)" }
@@ -14395,6 +14871,35 @@ components:
         - type: object
           properties:
             token: { type: string, description: "The plaintext token, shown only once." }
+    Feed:
+      type: object
+      description: |
+        A private, revocable Atom feed credential (issue #382, ADR 0030). The
+        plaintext token is never returned except embedded in FeedCreateResponse.url.
+        Revocation is `revoked_at`; there is no soft-delete.
+      required: [id, name, kind, entity_id, detail, last_accessed_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string, enum: [contact, aggregate] }
+        entity_id: { type: string, description: "Contact VCardUID for kind=contact; empty for kind=aggregate." }
+        detail: { type: string, enum: [headlines, full] }
+        last_accessed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    FeedInput:
+      type: object
+      required: [name, kind]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        kind: { type: string, enum: [contact, aggregate] }
+        entity_id: { type: string, format: uuid, description: "Required for kind=contact; must be omitted for kind=aggregate." }
+        detail: { type: string, enum: [headlines, full], description: "Defaults to headlines." }
+    FeedCreateResponse:
+      type: object
+      required: [feed, url]
+      properties:
+        feed: { $ref: "#/components/schemas/Feed" }
+        url: { type: string, description: "The subscription URL, including the one-time plaintext token." }
     SessionResponse:
       type: object
       description: One active server-side session (issue #866).

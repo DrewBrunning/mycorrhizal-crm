@@ -158,16 +158,16 @@ import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
-import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
-import com.mycorrhizal.crm.model.network.MycorrhizalImportStatus
-import com.mycorrhizal.crm.model.network.MycorrhizalPreviewResponse
-import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
+import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
+import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
@@ -2114,6 +2114,77 @@ class ApiClient(
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
+    // --- Account bundle (issues #1259/#1260/#1264, ADR 0028 Decision 3) ---
+
+    /**
+     * GET /api/v1/export/account — the full-fidelity, re-importable account
+     * bundle (every sensitivity level, no opt-in). Returns the raw JSON bytes,
+     * written verbatim to the user's chosen file.
+     */
+    suspend fun exportAccountBundle(): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_PATH/account")
+
+    /** POST /api/v1/import/mycorrhizal/upload — stages a bundle and opens an import session. */
+    suspend fun uploadMycorrhizalBundle(fileBytes: ByteArray, fileName: String): Result<MycorrhizalUploadResponse> =
+        uploadMycorrhizalBundleInternal(fileBytes, fileName, null)
+
+    /**
+     * Same upload, keyed (the attach wizard, issue #1265): [idempotencyKey] (the attach wizard, issue #1265) makes a retry after an ambiguous
+     * failure replay the first response instead of opening a second session.
+     */
+    suspend fun uploadMycorrhizalBundle(
+        fileBytes: ByteArray,
+        fileName: String,
+        idempotencyKey: String,
+    ): Result<MycorrhizalUploadResponse> =
+        uploadMycorrhizalBundleInternal(fileBytes, fileName, idempotencyKey)
+
+    private suspend fun uploadMycorrhizalBundleInternal(
+        fileBytes: ByteArray,
+        fileName: String,
+        idempotencyKey: String?,
+    ): Result<MycorrhizalUploadResponse> =
+        executeMultipartUpload(
+            "$IMPORT_MYCORRHIZAL_PATH/upload",
+            fieldName = "file",
+            fileName = fileName,
+            mediaType = "application/json",
+            fileBytes = fileBytes,
+            idempotencyKey = idempotencyKey,
+        ) { _, body ->
+            moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/import/mycorrhizal/fetch — starts the background map + preview build (202). */
+    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> =
+        executePost("$IMPORT_MYCORRHIZAL_PATH/fetch", MycorrhizalFetchRequest(sessionId)) { _, _ -> Unit }
+
+    /** GET /api/v1/import/mycorrhizal/status — the session's phase and progress. */
+    suspend fun getMycorrhizalImportStatus(sessionId: String): Result<SourceImportStatus> =
+        executeGet(mycorrhizalSessionUrl("status", sessionId)) { _, body ->
+            moshi.adapter(SourceImportStatus::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/import/mycorrhizal/preview — review rows + loss report for a prepared bundle. */
+    suspend fun getMycorrhizalImportPreview(sessionId: String): Result<SourceImportPreviewResponse> =
+        executeGet(mycorrhizalSessionUrl("preview", sessionId)) { _, body ->
+            moshi.adapter(SourceImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/import/mycorrhizal/confirm — starts the import with per-row actions (202). */
+    suspend fun confirmMycorrhizalImport(request: ImportConfirmRequest): Result<Unit> =
+        executePost("$IMPORT_MYCORRHIZAL_PATH/confirm", request) { _, _ -> Unit }
+
+    /** POST /api/v1/import/mycorrhizal/cancel — cancels an in-flight import or drops the session. */
+    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> =
+        executePostEmpty(mycorrhizalSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)) { _, _ -> Unit }
+
+    private fun mycorrhizalSessionUrl(action: String, sessionId: String): String =
+        "$PLACEHOLDER_ORIGIN$IMPORT_MYCORRHIZAL_PATH/$action".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+            .toString()
+
     /**
      * GET /api/v1/contacts/import/history (issue #651) — the caller's recent
      * import outcomes, newest first, as a bare JSON array (never null, even
@@ -2125,76 +2196,6 @@ class ApiClient(
                 com.squareup.moshi.Types.newParameterizedType(List::class.java, ImportRun::class.java),
             ).fromJson(body)
         }
-
-    // --- Account-bundle attach (ADR 0028 Decision 3; issues #1259/#1260/#1265) ---
-
-    /**
-     * GET /api/v1/export/account — the full-fidelity account bundle as raw JSON
-     * bytes (held in memory by the caller; never re-encoded, so the upload is the
-     * exact document the exporting server produced).
-     */
-    suspend fun exportAccountBundle(): Result<ByteArray> =
-        executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_PATH/account")
-
-    /**
-     * POST /api/v1/import/mycorrhizal/upload — uploads a bundle and opens an
-     * import session. [idempotencyKey] makes an ambiguous-failure retry of the
-     * upload replay the first response instead of opening a second session.
-     */
-    suspend fun uploadMycorrhizalBundle(
-        bundle: ByteArray,
-        idempotencyKey: String,
-    ): Result<MycorrhizalUploadResponse> =
-        executeMultipartUpload(
-            "$IMPORT_PATH/mycorrhizal/upload",
-            fieldName = "file",
-            fileName = "account-bundle.json",
-            mediaType = "application/json",
-            fileBytes = bundle,
-            idempotencyKey = idempotencyKey,
-        ) { _, body ->
-            moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
-        }
-
-    /** POST /api/v1/import/mycorrhizal/fetch — starts the background map + preview build (202). */
-    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> =
-        executePost("$IMPORT_PATH/mycorrhizal/fetch", MycorrhizalFetchRequest(sessionId)) { _, _ -> Unit }
-
-    /** GET /api/v1/import/mycorrhizal/status?session_id= — phase + progress. */
-    suspend fun getMycorrhizalImportStatus(sessionId: String): Result<MycorrhizalImportStatus> {
-        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/status".toHttpUrl().newBuilder()
-            .addQueryParameter("session_id", sessionId)
-            .build()
-        return executeGet(url.toString()) { _, body ->
-            moshi.adapter(MycorrhizalImportStatus::class.java).fromJson(body)
-        }
-    }
-
-    /** GET /api/v1/import/mycorrhizal/preview?session_id= — review rows + loss report. */
-    suspend fun getMycorrhizalImportPreview(sessionId: String): Result<MycorrhizalPreviewResponse> {
-        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/preview".toHttpUrl().newBuilder()
-            .addQueryParameter("session_id", sessionId)
-            .build()
-        return executeGet(url.toString()) { _, body ->
-            moshi.adapter(MycorrhizalPreviewResponse::class.java).fromJson(body)
-        }
-    }
-
-    /** POST /api/v1/import/mycorrhizal/confirm — applies the reviewed bundle (202; poll status). */
-    suspend fun confirmMycorrhizalImport(request: ImportConfirmRequest): Result<Unit> =
-        executePost("$IMPORT_PATH/mycorrhizal/confirm", request) { _, _ -> Unit }
-
-    /** POST /api/v1/import/mycorrhizal/cancel?session_id= — cancels or drops the session. */
-    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> {
-        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/cancel".toHttpUrl().newBuilder()
-            .addQueryParameter("session_id", sessionId)
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
-            .build()
-        return execute(request) { _, _ -> Unit }
-    }
 
     // M15: contact sharing (P1) — the backend endpoints have served web since
     // P1 shipped; this closes the missing Android client surface (the ticket's
@@ -2722,7 +2723,7 @@ class ApiClient(
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val EXPORT_PATH = "$API_V1/export"
-        private const val IMPORT_PATH = "$API_V1/import"
+        private const val IMPORT_MYCORRHIZAL_PATH = "$API_V1/import/mycorrhizal"
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"

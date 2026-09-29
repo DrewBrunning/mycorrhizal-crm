@@ -407,7 +407,9 @@ test('resetting 2FA requires confirmation, warns what it does, and shows success
   fireEvent.click(screen.getByTitle('Reset 2FA'));
   expect(resetUserTwoFactor).not.toHaveBeenCalled();
   expect(
-    screen.getByText(/disables their authenticator app and deletes their recovery codes/i),
+    screen.getByText(
+      /disables their authenticator app, removes any registered passkeys, deletes their recovery codes/i,
+    ),
   ).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /^reset 2fa$/i }));

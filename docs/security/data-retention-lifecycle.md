@@ -204,7 +204,7 @@ phones, addresses). Surfaced by the #510 privacy/data-minimization review as the
 
 ## 4. Sessions & short-lived secrets
 
-Session/JWT cookies, TOTP recovery codes, password-reset tokens, API tokens.
+Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password-reset tokens, API tokens.
 
 - **Where / who**: the session JWT in an httpOnly cookie, plus (issue #866) a server-side `sessions`
   row per login that the cookie's `sid` claim points at — see §23 for that row's own lifecycle. API
@@ -217,7 +217,16 @@ Session/JWT cookies, TOTP recovery codes, password-reset tokens, API tokens.
   TOTP anti-replay: `users.totp_last_used_step` (issue #873, migration `000054`) holds the RFC 6238
   counter step of the last accepted TOTP code so a replay inside its ±1 step window is rejected
   (`services.BurnTOTPStep`); it is a derived monotonic marker, not a secret, and is cleared to NULL
-  on 2FA disable / admin 2FA reset.
+  on 2FA disable / admin 2FA reset. **WebAuthn passkeys** (issue #593, migration `000070`) persist as
+  `webauthn_credentials` rows — one per enrolled authenticator: the **public** key (never a
+  secret), raw credential id, AAGUID, signature counter, transports, user-supplied label and
+  `created_at`/`last_used_at`. Hard delete (no `deleted_at`; natural key `(user_id, credential_id)`):
+  gone when the user removes the passkey (gated on a live second-factor proof), on an admin 2FA reset
+  (`ResetUserTwoFactor`), and on account deletion (`DeleteUser`'s explicit cascade list). Revocation
+  history is the `webauthn_register`/`webauthn_revoke` `audit_events` rows, not a tombstone. Recovery
+  codes now outlive TOTP: they are deleted on TOTP disable only when no passkey remains, and on
+  removal of the last passkey when TOTP is off. In-flight ceremony state (the challenge) lives only in
+  process memory for ≤5 minutes and is consumed on use — never persisted, never in a backup.
 - **Deletion / propagation**: logout revokes this device's `sessions` row server-side (`RevokeSession`)
   and clears the cookie + `USER_INFO_KEY` client-side (`frontend/src/auth.ts:172`); a password / 2FA
   change revokes every row (`RevokeAllSessions`) beside the `TokenVersion` bump; revoke-all/rotate
@@ -283,6 +292,31 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
     comment at `backend/caldav/backend.go:314`), not a gap this ticket introduces or needs to close.
 - **Backups**: not a separate store — see §1.
 
+### 7a. Private Atom feeds (issue #382, ADR 0030)
+
+A feed is a **copy out of the instance**: a reader (Feedly, Inoreader, a local reader) polls
+`GET /api/v1/feeds/atom?token=…` and stores whatever it receives in its own database.
+
+- **Where / who**: the `feeds` table holds the credential only — `token_hash` (SHA-256 hex), owner,
+  `kind`, `entity_id`, `detail`, `last_accessed_at`, `revoked_at`. The **plaintext** token exists once,
+  in the create/rotate response URL; it is never persisted. The feed *content* is composed on demand from
+  the live `contacts`/`notes`/`activities`/`reminders`/`life_events`/`external_activities`/`gifts` tables
+  (sensitivity-filtered), so there is no server-side feed-content copy to retain.
+- **Retention**: `feeds` rows persist until revoked or the account is deleted. Nothing expires
+  automatically — feed tokens deliberately have **no expiry** (ADR 0030 decision 6), so a subscription
+  stays live until `DELETE /feeds/:id`, a rotate, `POST /feeds/revoke-all`, a contact deletion (that
+  contact's feeds), or an account-takeover response (recovery-path/admin password reset).
+- **Deletion / propagation**: revocation sets `revoked_at`; the row is retained for the audit trail and
+  the next poll 404s. `DeleteContact` revokes that contact's `kind=contact` feeds; `DeleteUser`
+  hard-deletes every feed row. **The reader's copy is not recallable**: an entry a reader already fetched
+  — at `headlines` or `full` detail — stays in that reader after revocation, after contact deletion and
+  after account deletion. This is the main reason `headlines` (no user-authored free text) is the default,
+  and why the web UI warns before `full` is chosen. It mirrors §11's export copies with a stronger caveat:
+  an export lands on the user's own device, whereas a feed can land in a third-party reader with no
+  deletion channel this instance controls.
+- **Backups**: the `feeds` credential rows sit in the DB and travel in a snapshot like any other table —
+  but they are hashes, not usable tokens, and the plaintext no longer exists. See §10.
+
 ## 8. Android offline mirror (Room)
 
 - **Where / who**: `AppDatabase`, SQLCipher-encrypted end to end (issue #385,
@@ -337,7 +371,16 @@ truth** — there is no server to rebuild it from.
 - **Backups**: none automatic. The user-controlled copy is the **account-bundle export** (ADR 0028
   Decision 5, issue #1264): a versioned JSON document written through the Storage Access Framework to a
   location the user chooses, outside app storage. That exported file's lifecycle is the user's, and is a
-  copy this app can neither track nor delete once written.
+  copy this app can neither track nor delete once written. It is full-fidelity (every sensitivity level,
+  see §11), so it is as sensitive as the store itself; the app never keeps a copy (the bytes go straight
+  from the response to the SAF output stream, not through `cacheDir`). The only thing the app retains is
+  **non-secret bookkeeping** — per-profile `last_export:<profileId>` / `dismissed:<profileId>` epoch-millis
+  keys in the `bundle_backup` DataStore (`BundleBackupRepositoryImpl.kt`), which drive the dashboard
+  "back up your data" banner (never exported, or last export over 30 days ago; dismissal snoozes it 7
+  days). They are dropped by `forget(profileId)` when the profile is removed or its local data deleted.
+  **Restore** (Settings → Data → "Restore from bundle", offered only on an empty `Local` profile) reads
+  the chosen file once and uploads it to the embedded server's `mycorrhizal` import session (§11:
+  memory-only, 60-minute idle expiry); the app keeps no copy of the file.
 
 **Occasion-event cache (issue #1228).** The Android events surface mirrors the server's event list into
 `cached_occasion_events` (`android/core/data/src/main/kotlin/.../local/CachedOccasionEvent.kt`, added by
@@ -478,7 +521,7 @@ design is ADR-0010 / CON-04, issue #479).
   `docs/operations/migration-recovery.md`).
 - **Confidentiality / encryption**: a snapshot is a **complete copy of sensitive data at full
   sensitivity** (issue #420) — `private`/`secret` fields, email addresses, password/API-token
-  hashes, TOTP recovery-code hashes, the audit trail, and still-in-window soft-deleted rows. It
+  hashes, TOTP recovery-code hashes, WebAuthn passkey public keys, the audit trail, and still-in-window soft-deleted rows. It
   inherits the DB's field-level at-rest encryption: encrypted columns travel as `encv1:` ciphertext
   and the wrapped DEK (`data_encryption_keys`) travels with them, but it carries the same
   FTS-plaintext exception as the live DB, and the photos/attachments directories are plaintext

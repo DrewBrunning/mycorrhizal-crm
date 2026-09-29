@@ -31,5 +31,19 @@
     "reminderUnknownContact": "Inconnu",
     "testTitle": "Notification de test",
     "testBody": "Ceci est une notification de test de Mycorrhizal CRM."
+  },
+  "feeds": {
+    "title": {
+      "contact": "Fil pour {{name}}",
+      "aggregate": "Tous les contacts"
+    },
+    "type": {
+      "note": "Note",
+      "activity": "Activité",
+      "completion": "Rappel terminé",
+      "life_event": "Événement de vie",
+      "external_activity": "Activité externe",
+      "gift": "Cadeau"
+    }
   }
 }

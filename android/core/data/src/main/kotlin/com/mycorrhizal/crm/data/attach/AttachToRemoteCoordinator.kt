@@ -6,9 +6,9 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
-import com.mycorrhizal.crm.model.network.MycorrhizalImportResult
-import com.mycorrhizal.crm.model.network.MycorrhizalImportStatus
-import com.mycorrhizal.crm.model.network.MycorrhizalPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportResult
+import com.mycorrhizal.crm.model.network.SourceImportStatus
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
@@ -50,7 +50,7 @@ data class AttachProgress(val stage: AttachStage, val done: Int = 0, val total: 
 /** What [AttachToRemoteCoordinator.prepare] hands the review step. */
 data class AttachPreview(
     val totals: MycorrhizalBundleCounts,
-    val preview: MycorrhizalPreviewResponse,
+    val preview: SourceImportPreviewResponse,
 )
 
 /** Outcome of [AttachToRemoteCoordinator.finish]. */
@@ -169,7 +169,7 @@ class AttachToRemoteCoordinator @Inject constructor(
         val session = sessionId ?: run {
             onProgress(AttachProgress(AttachStage.Uploading))
             val key = uploadKey ?: newKey().also { uploadKey = it }
-            val uploaded = api.uploadMycorrhizalBundle(bytes, key).getOrThrow()
+            val uploaded = api.uploadMycorrhizalBundle(bytes, "account-bundle.json", key).getOrThrow()
             totals = uploaded.totals
             sessionId = uploaded.sessionId
             uploaded.sessionId
@@ -189,7 +189,7 @@ class AttachToRemoteCoordinator @Inject constructor(
     suspend fun confirm(
         actions: List<RowImportAction>,
         onProgress: (AttachProgress) -> Unit = {},
-    ): Result<MycorrhizalImportResult> = attempt {
+    ): Result<SourceImportResult> = attempt {
         val api = remoteApi ?: throw AttachException("Not signed in")
         val session = sessionId ?: throw AttachException("Nothing to confirm")
         onProgress(AttachProgress(AttachStage.Importing))
@@ -199,7 +199,7 @@ class AttachToRemoteCoordinator @Inject constructor(
         // only hold a few (MaxMycorrhizalImportSessionsPerUser) — so a wizard
         // re-run would hit a 429 without this.
         dropRemoteSession()
-        done.result ?: MycorrhizalImportResult()
+        done.result ?: SourceImportResult()
     }
 
     /**
@@ -297,8 +297,8 @@ class AttachToRemoteCoordinator @Inject constructor(
         session: String,
         stage: AttachStage,
         onProgress: (AttachProgress) -> Unit,
-        predicate: (MycorrhizalImportStatus) -> Boolean,
-    ): MycorrhizalImportStatus {
+        predicate: (SourceImportStatus) -> Boolean,
+    ): SourceImportStatus {
         repeat(maxPolls) {
             val status = api.getMycorrhizalImportStatus(session).getOrThrow()
             if (status.isFailed) {

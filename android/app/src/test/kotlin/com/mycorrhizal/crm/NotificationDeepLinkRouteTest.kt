@@ -3,7 +3,15 @@ package com.mycorrhizal.crm
 import android.app.Application
 import android.net.Uri
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.json.JSONObject
+import android.content.Intent
+import com.mycorrhizal.crm.domain.repository.SessionState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -72,5 +80,120 @@ class NotificationDeepLinkRouteTest {
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles")))
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://tags/")))
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://households/a/b")))
+    }
+
+    @Test
+    fun `lenient integer ids and path tricks are rejected`() {
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://contacts/+42")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://contacts/042")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://contacts/2147483648")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://contacts/99999999999")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://contacts//42")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/%2e%2e")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/.")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/a%2Fb")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/a b")))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/" + "a".repeat(129))))
+        assertEquals("circles/" + "a".repeat(128), deepLinkRoute(Uri.parse("mycorrhizal://circles/" + "a".repeat(128))))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://home/extra")))
+    }
+
+    @Test
+    fun `every shared vector resolves to its android route`() {
+        val text = javaClass.classLoader!!.getResourceAsStream("vectors.json")!!
+            .bufferedReader().use { it.readText() }
+        val vectors = JSONObject(text).getJSONArray("vectors")
+        assertTrue(vectors.length() > 0)
+        for (i in 0 until vectors.length()) {
+            val v = vectors.getJSONObject(i)
+            val uri = v.getString("uri")
+            val expected = if (v.isNull("android_route")) null else v.getString("android_route")
+            assertEquals("vector $uri", expected, deepLinkRoute(Uri.parse(uri)))
+        }
+    }
+
+    @Test
+    fun `shouldHandleLaunchIntent only accepts a fresh non-history launch`() {
+        val history = Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY
+        assertTrue(shouldHandleLaunchIntent(savedStateIsNull = true, flags = 0))
+        assertFalse(shouldHandleLaunchIntent(savedStateIsNull = false, flags = 0))
+        assertFalse(shouldHandleLaunchIntent(savedStateIsNull = true, flags = history))
+        assertFalse(shouldHandleLaunchIntent(savedStateIsNull = false, flags = history))
+        assertTrue(shouldHandleLaunchIntent(savedStateIsNull = true, flags = Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    @Test
+    fun `a pending link expires strictly after the ttl`() {
+        val link = PendingDeepLink(Uri.parse("mycorrhizal://home"), receivedAtMillis = 1_000L)
+        assertFalse(link.isExpired(1_000L + DEEP_LINK_TTL_MILLIS))
+        assertTrue(link.isExpired(1_000L + DEEP_LINK_TTL_MILLIS + 1))
+        assertEquals(10 * 60 * 1000L, DEEP_LINK_TTL_MILLIS)
+    }
+
+    @Test
+    fun `logging out clears the pending link but staying logged in keeps it`() = runTest {
+        val link = PendingDeepLink(Uri.parse("mycorrhizal://home"), 0L)
+        val kept = MutableStateFlow<PendingDeepLink?>(link)
+        kept.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true)))
+        assertEquals(link, kept.value)
+
+        val cleared = MutableStateFlow<PendingDeepLink?>(link)
+        cleared.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false)))
+        assertNull(cleared.value)
+    }
+
+    @Test
+    fun `search links sanitise the query and reject extra path or a foreign host`() {
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search")))
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20%20")))
+        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20ann%20")))
+        // Cf (zero-width space U+200B) and Cc (NUL) are stripped.
+        assertEquals("contacts?search=ab", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%E2%80%8Bb")))
+        assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%00")))
+        assertEquals("contacts?search=a%20b%26c", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%20b%26c")))
+        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?x=1&q=ann")))
+        assertEquals("contacts?search=" + "a".repeat(200), deepLinkRoute(Uri.parse("mycorrhizal://search?q=" + "a".repeat(250))))
+        assertNull(deepLinkRoute(Uri.parse("mycorrhizal://search/extra?q=ann")))
+    }
+
+    @Test
+    fun `deepLinkUri takes a non-oidc VIEW intent's data else the notification extra`() {
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/5"))
+        assertEquals("mycorrhizal://contacts/5", deepLinkUri(view).toString())
+
+        // The OIDC callback is auth-only: never treated as a navigable link.
+        val oidc = Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://oidc/callback?error=access_denied"))
+        assertNull(deepLinkUri(oidc))
+
+        // Data on a non-VIEW intent is ignored; the extra is used.
+        val extra = Intent(Intent.ACTION_MAIN).apply {
+            data = Uri.parse("mycorrhizal://contacts/9")
+            putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://home")
+        }
+        assertEquals("mycorrhizal://home", deepLinkUri(extra).toString())
+
+        assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN)))
+        assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN).putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, " ")))
+        assertNull(deepLinkUri(null))
+    }
+
+    // ADR 0029: the manifest filter lists each allowed host explicitly — a scheme-only
+    // filter would resolve mycorrhizal://settings. (The filter is advisory; deepLinkRoute
+    // is the boundary.)
+    @Test
+    fun `the manifest resolves allowed deep-link hosts to MainActivity and nothing else`() {
+        val pm = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>().packageManager
+        fun resolves(uri: String) = pm.queryIntentActivities(
+            Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addCategory(Intent.CATEGORY_BROWSABLE),
+            0,
+        ).map { it.activityInfo.name }
+        for (ok in listOf(
+            "mycorrhizal://home", "mycorrhizal://contacts/1", "mycorrhizal://search?q=a",
+            "mycorrhizal://circles/c", "mycorrhizal://tags/t", "mycorrhizal://households/h",
+        )) {
+            assertEquals(ok, listOf(MainActivity::class.java.name), resolves(ok))
+        }
+        assertTrue(resolves("mycorrhizal://settings").isEmpty())
+        assertTrue(resolves("mycorrhizal://contacts").isNotEmpty())
     }
 }

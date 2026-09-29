@@ -198,11 +198,16 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	// Successful login - clear any failed attempt tracking for this (identifier, IP)
 	accountLimiter.RecordLoginSuccess(identifier, clientIP)
 
-	// N8: account has 2FA enabled — the password alone must not mint a
+	// N8: account has 2FA enabled (TOTP and/or, issue #593, a passkey) — the password alone must not mint a
 	// session. Issue a short-lived, single-purpose challenge (no usable
 	// session, purpose=2fa JWT in an httpOnly cookie) and demand a TOTP or
 	// recovery code via POST /login/2fa before the real auth_token cookie.
-	if foundUser.TOTPEnabled {
+	methods, err := services.SecondFactorMethods(db, foundUser)
+	if err != nil {
+		apperrors.AbortWithError(context, apperrors.ErrDatabase("Failed to query second factors").WithError(err))
+		return
+	}
+	if len(methods) > 0 {
 		pendingToken, err := services.Generate2FAChallengeToken(foundUser, cfg)
 		if err != nil {
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate two-factor challenge").WithError(err))
@@ -222,7 +227,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 			cfg.CookieSecure, // secure
 			true,             // httpOnly
 		)
-		context.JSON(http.StatusOK, gin.H{"two_factor_required": true})
+		context.JSON(http.StatusOK, gin.H{"two_factor_required": true, "methods": methods})
 		return
 	}
 
@@ -518,6 +523,11 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		// The password change already succeeded; a failure here would be
 		// misleading to report as a reset failure. Logged so it isn't silent.
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after password reset")
+	}
+	// Issue #382 (ADR 0030 decision 6): a feed URL grants read access to the
+	// same data a leaked API token would, so the compromise response ends both.
+	if _, err := services.RevokeAllFeeds(db, user.ID); err != nil {
+		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke feeds after password reset") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
 	}
 	// Issue #722: the same compromise logic applies to device grants — a
 	// "forgot my password" reset must not leave a remembered device able to

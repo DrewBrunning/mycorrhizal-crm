@@ -71,6 +71,20 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="mycorrhizal" android:host="oidc" android:pathPrefix="/callback" />
             </intent-filter>
+            <!-- ADR 0029: public, navigation-only deep links. The filter is advisory
+                 (explicit intents bypass it); deepLinkRoute is the security boundary. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mycorrhizal" />
+                <data android:host="home" />
+                <data android:host="contacts" />
+                <data android:host="search" />
+                <data android:host="circles" />
+                <data android:host="tags" />
+                <data android:host="households" />
+            </intent-filter>
         </activity>
 
         <!-- M24: shares exported vCard files via the system share sheet (ACTION_SEND with a

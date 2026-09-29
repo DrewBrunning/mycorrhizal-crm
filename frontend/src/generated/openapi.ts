@@ -200,10 +200,10 @@ export type AuditEvent = {
   before_snapshot?: string;
   created_at?: string;
   entity_id?: string;
-  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token';
+  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token' | 'feed';
   hash?: string;
   id?: number;
-  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change';
+  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke';
   prev_hash?: string;
 };
 
@@ -1042,6 +1042,28 @@ export type ExternalIdentityInput = {
   url?: string;
 };
 
+export type Feed = {
+  created_at: string;
+  detail: 'headlines' | 'full';
+  entity_id: string;
+  id: string;
+  kind: 'contact' | 'aggregate';
+  last_accessed_at: string | null;
+  name: string;
+};
+
+export type FeedCreateResponse = {
+  feed: Feed;
+  url: string;
+};
+
+export type FeedInput = {
+  detail?: 'headlines' | 'full';
+  entity_id?: string;
+  kind: 'contact' | 'aggregate';
+  name: string;
+};
+
 export type FieldConstraints = {
   max?: number | null;
   maxLength?: number | null;
@@ -1525,6 +1547,7 @@ export type LoginInput = {
 export type LoginResponse = {
   date_format?: string;
   language?: string;
+  methods?: ('totp' | 'webauthn')[];
   two_factor_required?: boolean;
 };
 
@@ -2463,6 +2486,33 @@ export type UserRegistrationInput = {
   language?: 'en' | 'de' | 'it' | 'es' | 'fr';
   password: string;
   username: string;
+};
+
+export type WebAuthnCredential = {
+  created_at: string;
+  id: string;
+  last_used_at: string | null;
+  name: string;
+};
+
+export type WebAuthnCredentialListResponse = {
+  credentials: WebAuthnCredential[];
+};
+
+export type WebAuthnDeleteInput = {
+  assertion?: Record<string, unknown>;
+  code?: string;
+};
+
+export type WebAuthnRegisterBeginInput = {
+  name?: string;
+};
+
+export type WebAuthnRegisterResponse = {
+  created_at: string;
+  id: string;
+  name: string;
+  recovery_codes: string[];
 };
 
 export type WebDAVConfigInput = {

@@ -20,9 +20,9 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
-import com.mycorrhizal.crm.model.network.MycorrhizalImportIssue
-import com.mycorrhizal.crm.model.network.MycorrhizalImportResult
-import com.mycorrhizal.crm.model.network.MycorrhizalPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportIssue
+import com.mycorrhizal.crm.model.network.SourceImportResult
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -51,10 +51,10 @@ class AttachToRemoteScreenTest {
 
     private val preview = AttachPreview(
         totals = MycorrhizalBundleCounts(contacts = 3, notes = 4, activities = 5),
-        preview = MycorrhizalPreviewResponse(
+        preview = SourceImportPreviewResponse(
             sessionId = "s",
             rows = listOf(ImportRowPreview(rowIndex = 0, parsedContact = mapOf("firstname" to "Ada"))),
-            lossReport = listOf(MycorrhizalImportIssue(record = "c1", field = "f", category = "lossy", message = "m")),
+            lossReport = listOf(SourceImportIssue(record = "c1", field = "f", category = "lossy", message = "m")),
         ),
     )
 
@@ -204,7 +204,7 @@ class AttachToRemoteScreenTest {
     @Test
     fun `confirming imports then shows the done summary and the archive note`() {
         coEvery { coordinator.confirm(any(), any()) } returns
-            Result.success(MycorrhizalImportResult(created = 7, updated = 2, skipped = 1))
+            Result.success(SourceImportResult(created = 7, updated = 2, skipped = 1))
         coEvery { coordinator.finish(false) } returns AttachFinishResult.Done
         reachReview()
 
@@ -222,7 +222,7 @@ class AttachToRemoteScreenTest {
 
     @Test
     fun `unsent local activity prompts before finishing and can be discarded`() {
-        coEvery { coordinator.confirm(any(), any()) } returns Result.success(MycorrhizalImportResult())
+        coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
         coEvery { coordinator.finish(false) } returns AttachFinishResult.NeedsConfirmation(2)
         coEvery { coordinator.finish(true) } returns AttachFinishResult.Done
         reachReview()

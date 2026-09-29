@@ -12,8 +12,8 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
-import com.mycorrhizal.crm.model.network.MycorrhizalImportResult
-import com.mycorrhizal.crm.model.network.MycorrhizalPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportResult
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -52,7 +52,7 @@ class AttachToRemoteViewModelTest {
     )
     private val preview = AttachPreview(
         totals = MycorrhizalBundleCounts(contacts = 3),
-        preview = MycorrhizalPreviewResponse(sessionId = "s", rows = rows),
+        preview = SourceImportPreviewResponse(sessionId = "s", rows = rows),
     )
 
     private fun viewModel(beginOk: Boolean = true): AttachToRemoteViewModel {
@@ -324,7 +324,7 @@ class AttachToRemoteViewModelTest {
     fun `confirm sends the reviewed actions, finishes, and lands on done`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            val result = MycorrhizalImportResult(created = 2)
+            val result = SourceImportResult(created = 2)
             coEvery { coordinator.confirm(any(), any()) } returns Result.success(result)
             coEvery { coordinator.finish(false) } returns AttachFinishResult.Done
             val vm = viewModel()
@@ -381,7 +381,7 @@ class AttachToRemoteViewModelTest {
     fun `unsent local interactions ask for confirmation and discarding finishes the move`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(MycorrhizalImportResult())
+            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(false) } returns AttachFinishResult.NeedsConfirmation(3)
             coEvery { coordinator.finish(true) } returns AttachFinishResult.Done
             val vm = viewModel()
@@ -403,7 +403,7 @@ class AttachToRemoteViewModelTest {
     fun `declining the discard keeps the import applied so confirm only finishes and never re-imports`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(MycorrhizalImportResult())
+            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(false) } returnsMany
                 listOf(AttachFinishResult.NeedsConfirmation(1), AttachFinishResult.Done)
             val vm = viewModel()
@@ -425,7 +425,7 @@ class AttachToRemoteViewModelTest {
     fun `a failure while finishing returns to review with the error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(MycorrhizalImportResult())
+            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(any()) } throws AttachException("switch failed")
             val vm = viewModel()
             toReview(vm)

@@ -1856,7 +1856,7 @@
     "resetTwoFactorDialog": {
       "title": "Reset Two-Factor Authentication",
       "message": "Are you sure you want to reset two-factor authentication for \"{{username}}\"?",
-      "warning": "This disables their authenticator app and deletes their recovery codes, and ends their current sessions. Use this only when a user is locked out and cannot verify with their existing 2FA."
+      "warning": "This disables their authenticator app, removes any registered passkeys, deletes their recovery codes, and ends their current sessions. Use this only when a user is locked out and cannot verify with their existing 2FA."
     },
     "updateError": "Failed to update user",
     "createError": "Failed to create user",

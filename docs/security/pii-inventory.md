@@ -107,6 +107,7 @@ known gap owned by #380, out of scope here.
 | `users.oidc_subject` / `oidc_provider` | External IdP subject identifier | per-user | `necessary` when OIDC is configured; `NULL` otherwise | |
 | `users.self_contact_vcard_uid` | Which contact row *is* the user | per-user | `necessary` | |
 | `api_tokens` | `name`, `token_hash`, `last_used_at`, `scope` | per-user | `necessary` | hash only; plaintext shown once at creation |
+| `feeds` | `name` (user label), `entity_id` (a contact's VCardUID for a contact feed), `kind`, `detail`, `token_hash`, `last_accessed_at` | per-user | `necessary` | hash only; the plaintext exists once, in the create/rotate URL. No expiry (ADR 0030 decision 6); revoked per `data-retention-lifecycle.md` §7a. The reader's fetched copy outlives revocation |
 
 ---
 
@@ -193,7 +194,7 @@ The #510 question: *can an instance-wide store name a specific user's personal d
 | `users` directory (`GET /api/v1/users/directory`, `ListUserDirectory`) | yes | **usernames are visible to every other authenticated user** on the instance | `deliberate, documented` — required for contact-sharing (issue [#574](https://github.com/DrewBrunning/mycorrhizal-crm/issues/574)); the operator must know usernames are not private between co-tenants. Stated in `../privacy.md` |
 | `contact_shares` | table instance-wide; rows scoped to `from_user_id`/`to_user_id` | `contact_display_name` + frozen `payload` cross a user boundary **by the sending user's explicit action** | `deliberate, documented` — 30-day window (`CONTACT_SHARE_RETENTION_DAYS`), `data-retention-lifecycle.md` §1 |
 | `job_executions`, `server_settings` | yes | no | — |
-| Admin API | — | **Admin cannot read another user's contacts, notes, or activities** — the admin routes (`routes/routes.go:509-529`) are user-account CRUD, 2FA reset, and job triggers only. Admin *can* delete a user (cascade) and, as operator, has filesystem/DB/backup access | This is the #371 admin-capability answer; stated plainly in `../privacy.md` |
+| Admin API | — | **Admin cannot read another user's contacts, notes, or activities** — the admin routes (`routes/routes.go:524-544`) are user-account CRUD, 2FA reset, and job triggers only. Admin *can* delete a user (cascade) and, as operator, has filesystem/DB/backup access | This is the #371 admin-capability answer; stated plainly in `../privacy.md` |
 
 No metrics endpoint, no Prometheus exporter, no per-user counters that outlive a request.
 

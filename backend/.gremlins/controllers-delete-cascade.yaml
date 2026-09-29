@@ -32,6 +32,7 @@ unleash:
         - ^export_loss\.go$
         - ^external_activity_controller\.go$
         - ^external_identity_controller\.go$
+        - ^feed_controller\.go$
         - ^field_definition_controller\.go$
         - ^gift_controller\.go$
         - ^graph_controller\.go$
@@ -74,6 +75,7 @@ unleash:
         - ^timeline_controller\.go$
         - ^two_factor_controller\.go$
         - ^user_controller\.go$
+        - ^webauthn_controller\.go$
         - ^webdav_controller\.go$
         - ^webhook_controller\.go$
     threshold:

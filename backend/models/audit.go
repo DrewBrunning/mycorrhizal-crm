@@ -35,8 +35,11 @@ const (
 	AuditOpTOTPEnable             = "totp_enable"
 	AuditOpTOTPDisable            = "totp_disable"
 	AuditOpRecoveryRegen          = "recovery_regenerate"
-	AuditOpRevoke                 = "revoke"
-	AuditOpRoleChange             = "role_change"
+	// Issue #593: passkey enrollment / removal (entity = the user).
+	AuditOpWebAuthnRegister = "webauthn_register" //nolint:gosec // G101 false positive: an audit operation token, not a credential
+	AuditOpWebAuthnRevoke   = "webauthn_revoke"   //nolint:gosec // G101 false positive: an audit operation token, not a credential
+	AuditOpRevoke           = "revoke"
+	AuditOpRoleChange       = "role_change"
 	// AuditOpTwoFactorAdminReset fires when an admin resets another user's
 	// second factor (issue #592) -- distinct from AuditOpTOTPDisable, which
 	// fires only on the self-service path where the caller proves they still
@@ -64,6 +67,10 @@ const (
 	AuditEntityUser     = "user"
 	AuditEntityAuth     = "auth"
 	AuditEntityAPIToken = "api_token"
+	// AuditEntityFeed is the private Atom feed credential (issue #382, ADR
+	// 0030). Create/rotate/revoke record under it, mirroring the API-token
+	// events.
+	AuditEntityFeed = "feed"
 )
 
 // AuditEvent is one immutable create/update/delete record for an audited

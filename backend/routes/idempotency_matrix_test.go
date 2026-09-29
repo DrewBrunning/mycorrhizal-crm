@@ -109,6 +109,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contact-subscriptions",
 		"POST /api/v1/contact-shares",
 		"POST /api/v1/api-tokens",
+		"POST /api/v1/feeds",
 		"POST /api/v1/auth/device/grants",
 		"POST /api/v1/notifications/devices",
 		"POST /api/v1/notifications/push-subscriptions",
@@ -167,6 +168,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/immich/sync",
 		"POST /api/v1/api-tokens/:id/rotate",
 		"POST /api/v1/api-tokens/revoke-all",
+		"POST /api/v1/feeds/:id/rotate",
+		"POST /api/v1/feeds/revoke-all",
 		"POST /api/v1/auth/device/grants/revoke-all",
 		"POST /api/v1/notifications/config/test",
 		"POST /api/v1/audit/:id/undo",
@@ -219,6 +222,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/register",
 		"POST /api/v1/login",
 		"POST /api/v1/login/2fa",
+		"POST /api/v1/webauthn/login/begin",
+		"POST /api/v1/webauthn/login/finish",
 		"POST /api/v1/auth/device/session",
 		"POST /api/v1/logout",
 		"POST /api/v1/check-password-strength",
@@ -229,6 +234,9 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/users/2fa/confirm",
 		"POST /api/v1/users/2fa/disable",
 		"POST /api/v1/users/2fa/recovery-codes/regenerate",
+		"POST /api/v1/webauthn/register/begin",
+		"POST /api/v1/webauthn/register/finish",
+		"POST /api/v1/webauthn/assert/begin",
 	} {
 		t[k] = exempt(idemReasonAuth)
 	}

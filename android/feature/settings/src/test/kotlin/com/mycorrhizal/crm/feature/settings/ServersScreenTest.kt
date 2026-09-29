@@ -47,7 +47,7 @@ class ServersScreenTest {
     private var attachClicks = 0
 
     private fun setScreen(localModeEnabled: Boolean = false) {
-        val viewModel = ServersViewModel(session, mockk(relaxed = true))
+        val viewModel = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ServersScreen(
@@ -175,7 +175,7 @@ class ServersScreenTest {
         profiles.value = listOf(localProfile(archived = true), profile("p1", "Home"))
         active.value = profile("p1", "Home")
         val host = mockk<com.mycorrhizal.crm.data.local.LocalServerHost>(relaxed = true)
-        val viewModel = ServersViewModel(session, host)
+        val viewModel = ServersViewModel(session, host, mockk(relaxed = true))
         composeTestRule.setContent {
             MycorrhizalTheme { ServersScreen(onBack = {}, viewModel = viewModel) }
         }

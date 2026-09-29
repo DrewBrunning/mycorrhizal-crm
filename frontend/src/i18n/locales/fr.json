@@ -1829,7 +1829,7 @@
     "resetTwoFactorDialog": {
       "title": "Réinitialiser l'authentification à deux facteurs",
       "message": "Êtes-vous sûr de vouloir réinitialiser l'authentification à deux facteurs de \"{{username}}\" ?",
-      "warning": "Cela désactive son application d'authentification et supprime ses codes de récupération, et met fin à ses sessions actuelles. À utiliser uniquement lorsqu'un utilisateur est bloqué et ne peut pas se vérifier avec sa 2FA existante."
+      "warning": "Cela désactive son application d'authentification, supprime toutes les clés d'accès (passkeys) enregistrées, supprime ses codes de récupération et met fin à ses sessions actuelles. À utiliser uniquement lorsqu'un utilisateur est bloqué et ne peut pas se vérifier avec sa 2FA existante."
     },
     "updateError": "Échec de la mise à jour de l'utilisateur",
     "createError": "Échec de la création de l'utilisateur",

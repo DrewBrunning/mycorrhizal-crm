@@ -4101,6 +4101,119 @@
     },
     {
       "method": "GET",
+      "path": "/feeds",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds",
+      "parameters": null,
+      "request_body": "ref:FeedInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:FeedCreateResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/atom",
+      "parameters": [
+        {
+          "name": "token",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "304",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds/revoke-all",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "204",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds/{id}/rotate",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:FeedCreateResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/field-definitions",
       "parameters": [
         {
@@ -7862,6 +7975,187 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/webauthn/assert/begin",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/webauthn/credentials",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:WebAuthnCredentialListResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/webauthn/credentials/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:WebAuthnDeleteInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/login/begin",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/login/finish",
+      "parameters": [
+        {
+          "name": "X-Client-Version",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "object",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": ""
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/register/begin",
+      "parameters": null,
+      "request_body": "ref:WebAuthnRegisterBeginInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/register/finish",
+      "parameters": null,
+      "request_body": "object",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:WebAuthnRegisterResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/webhooks",
       "parameters": null,
@@ -8866,7 +9160,8 @@
             "reminder",
             "user",
             "auth",
-            "api_token"
+            "api_token",
+            "feed"
           ]
         },
         {
@@ -8897,7 +9192,10 @@
             "totp_disable",
             "recovery_regenerate",
             "revoke",
-            "role_change"
+            "role_change",
+            "two_factor_admin_reset",
+            "webauthn_register",
+            "webauthn_revoke"
           ]
         },
         {
@@ -12736,6 +13034,102 @@
       ]
     },
     {
+      "name": "Feed",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "detail",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "headlines",
+            "full"
+          ]
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "aggregate"
+          ]
+        },
+        {
+          "name": "last_accessed_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "FeedCreateResponse",
+      "properties": [
+        {
+          "name": "feed",
+          "type": "ref:Feed",
+          "required": true
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "FeedInput",
+      "properties": [
+        {
+          "name": "detail",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "headlines",
+            "full"
+          ]
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "aggregate"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "FieldConstraints",
       "properties": [
         {
@@ -14787,6 +15181,11 @@
         {
           "name": "language",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "methods",
+          "type": "array\u003cstring\u003e",
           "required": false
         },
         {
@@ -18453,6 +18852,91 @@
         {
           "name": "username",
           "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnCredential",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "last_used_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnCredentialListResponse",
+      "properties": [
+        {
+          "name": "credentials",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnDeleteInput",
+      "properties": [
+        {
+          "name": "assertion",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnRegisterBeginInput",
+      "properties": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnRegisterResponse",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "recovery_codes",
+          "type": "array\u003cstring\u003e",
           "required": true
         }
       ]

@@ -132,3 +132,87 @@ data class ImportRun(
     @Json(name = "error_count") val errorCount: Int = 0,
     @Json(name = "created_at") val createdAt: String? = null,
 )
+
+// --- Mycorrhizal account-bundle import source (issues #1260/#1264, ADR 0028) ---
+// Mirrors backend/openapi.yaml's MycorrhizalUploadResponse / MonicaImportStatus /
+// MonicaPreviewResponse (the shared source-import engine's status + preview shapes).
+
+/** Per-section tally of an uploaded bundle. Section names are the bundle plan's keys. */
+@JsonClass(generateAdapter = true)
+data class MycorrhizalBundleCounts(
+    val contacts: Int = 0,
+    val relationships: Int = 0,
+    val notes: Int = 0,
+    val reminders: Int = 0,
+    val activities: Int = 0,
+    @Json(name = "life_events") val lifeEvents: Int = 0,
+    val gifts: Int = 0,
+    val households: Int = 0,
+    val circles: Int = 0,
+    val tags: Int = 0,
+)
+
+@JsonClass(generateAdapter = true)
+data class MycorrhizalUploadResponse(
+    @Json(name = "session_id") val sessionId: String = "",
+    val version: Int = 0,
+    val totals: MycorrhizalBundleCounts = MycorrhizalBundleCounts(),
+)
+
+@JsonClass(generateAdapter = true)
+data class MycorrhizalFetchRequest(
+    @Json(name = "session_id") val sessionId: String,
+)
+
+/** Outcome of a finished source import: the shared [ImportResult] counts plus graph-entity counts. */
+@JsonClass(generateAdapter = true)
+data class SourceImportResult(
+    @Json(name = "total_processed") val totalProcessed: Int = 0,
+    val created: Int = 0,
+    val updated: Int = 0,
+    val skipped: Int = 0,
+    val errors: List<String> = emptyList(),
+    @Json(name = "relationships_created") val relationshipsCreated: Int = 0,
+    @Json(name = "notes_created") val notesCreated: Int = 0,
+    @Json(name = "activities_created") val activitiesCreated: Int = 0,
+    @Json(name = "reminders_created") val remindersCreated: Int = 0,
+)
+
+/**
+ * Poll payload for a source-import session. [phase] is one of the backend's
+ * `connecting … building_preview, ready, importing, importing_photos, done,
+ * failed, cancelled`; [error] is set on `failed`.
+ */
+@JsonClass(generateAdapter = true)
+data class SourceImportStatus(
+    @Json(name = "session_id") val sessionId: String = "",
+    val phase: String = "",
+    @Json(name = "phase_done") val phaseDone: Int = 0,
+    @Json(name = "phase_total") val phaseTotal: Int = 0,
+    val error: String? = null,
+    val result: SourceImportResult? = null,
+) {
+    val isReady: Boolean get() = phase == "ready"
+    val isDone: Boolean get() = phase == "done"
+    val isFailed: Boolean get() = phase == "failed" || phase == "cancelled"
+}
+
+/** One mapping issue the loss report lists before the user commits (issue #442). */
+@JsonClass(generateAdapter = true)
+data class SourceImportIssue(
+    val record: String = "",
+    val field: String = "",
+    val category: String = "",
+    val message: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class SourceImportPreviewResponse(
+    @Json(name = "session_id") val sessionId: String = "",
+    val rows: List<ImportRowPreview> = emptyList(),
+    @Json(name = "total_rows") val totalRows: Int = 0,
+    @Json(name = "valid_rows") val validRows: Int = 0,
+    @Json(name = "duplicate_count") val duplicateCount: Int = 0,
+    @Json(name = "error_count") val errorCount: Int = 0,
+    @Json(name = "loss_report") val lossReport: List<SourceImportIssue> = emptyList(),
+)

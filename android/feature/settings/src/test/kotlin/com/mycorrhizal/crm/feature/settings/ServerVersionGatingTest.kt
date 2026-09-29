@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
+import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
@@ -16,6 +18,8 @@ import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
+import io.mockk.every
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -129,6 +133,7 @@ class ServerVersionGatingTest {
             mockk<ContactRepository>(),
             mockk<RelationshipEdgeRepository>(),
             mockk<ExportRepository>(),
+            mockk<BundleBackupRepository> { every { observeStatus() } returns flowOf(BundleBackupStatus()) },
         )
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {

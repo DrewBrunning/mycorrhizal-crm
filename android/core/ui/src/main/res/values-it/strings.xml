@@ -1774,4 +1774,21 @@
     <string name="attach_archived_badge">Archivio di sola lettura</string>
     <string name="attach_archived_hint">Questa copia è stata spostata su un server. Puoi consultarla, ma non modificarla.</string>
     <string name="attach_archived_delete">Elimina i dati locali archiviati</string>
+    <string name="data_export_bundle">Pacchetto account (backup completo)</string>
+    <string name="data_restore_bundle">Ripristina da pacchetto</string>
+    <string name="data_bundle_exported">Pacchetto account salvato</string>
+    <string name="data_bundle_write_failed">Impossibile salvare il pacchetto account in quella posizione</string>
+    <string name="bundle_restore_title">Ripristina da pacchetto</string>
+    <string name="bundle_restore_pick_hint">Scegli un file di pacchetto account esportato da Mycorrhizal. Potrai controllare tutto prima del ripristino.</string>
+    <string name="bundle_restore_pick">Scegli file del pacchetto</string>
+    <string name="bundle_restore_working">Elaborazione del pacchetto…</string>
+    <string name="bundle_restore_loss">%1$d elementi non possono essere ripristinati esattamente</string>
+    <string name="bundle_restore_result">Ripristinato: %1$d creati, %2$d aggiornati, %3$d saltati</string>
+    <string name="bundle_restore_error_too_large">Il file è troppo grande per essere un pacchetto account</string>
+    <string name="bundle_restore_error_invalid_file">Il file è vuoto o non è un pacchetto account</string>
+    <string name="bundle_restore_error_failed">Il ripristino non è stato completato. Non è stato modificato nulla.</string>
+    <string name="dashboard_backup_reminder_title">Fai il backup dei tuoi dati</string>
+    <string name="dashboard_backup_reminder_body">I tuoi dati esistono solo su questo dispositivo. Salva un pacchetto account per poterli ripristinare se il dispositivo va perso o viene reimpostato.</string>
+    <string name="dashboard_backup_reminder_action">Esegui backup</string>
+    <string name="dashboard_backup_reminder_dismiss">Nascondi</string>
 </resources>
