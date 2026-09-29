@@ -2,10 +2,12 @@ package services
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"sync"
 	"testing"
@@ -1285,4 +1287,63 @@ func TestSessionBelongsToShare_FalseForWrongUser(t *testing.T) {
 func TestSessionBelongsToShare_FalseForUnknownSession(t *testing.T) {
 	m := NewImportSessionManager()
 	assert.False(t, m.SessionBelongsToShare("nonexistent", 1, "share-a"))
+}
+
+// Issue #1341: when the post-commit photo attach fails, the saved file must not
+// be left behind with no contact row referencing it.
+func TestConfirmVCF_Add_PhotoAttachFailure_LeavesNoOrphanFile(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+	cfg := testImportConfig(t)
+
+	require.NoError(t, db.Callback().Update().Before("gorm:update").Register("test:fail-photo-attach", func(d *gorm.DB) {
+		// Only the photo attach (Updates with a column map) fails; the
+		// AfterSave etag UpdateColumn and the import itself must succeed.
+		if cols, isMap := d.Statement.Dest.(map[string]interface{}); isMap && cols["photo"] != nil {
+			_ = d.AddError(errors.New("injected attach failure"))
+		}
+	}))
+
+	contact := &models.Contact{Firstname: "Orphan", Lastname: "Photo", Email: "orphan-photo@example.com"}
+	vcfContacts := []VCFContactData{{Contact: contact, PhotoData: decodeTestPNGForImportSession(t), PhotoMediaType: "image/png"}}
+	id := m.CreateVCFSession(1, vcfContacts, []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
+
+	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
+	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	require.Nil(t, appErr)
+	require.Equal(t, 1, result.Created)
+
+	entries, err := os.ReadDir(cfg.ProfilePhotoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "a photo that could not be attached must be removed")
+}
+
+// The contact vanishing between commit and the photo attach (load fails) is the
+// other orphan path.
+func TestConfirmVCF_Add_PhotoContactGone_LeavesNoOrphanFile(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+	cfg := testImportConfig(t)
+
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("test:fail-photo-load", func(d *gorm.DB) {
+		if d.Statement.Table == "contacts" && d.Statement.Dest != nil {
+			if _, ok := d.Statement.Dest.(*models.Contact); ok {
+				_ = d.AddError(gorm.ErrRecordNotFound)
+			}
+		}
+	}))
+
+	contact := &models.Contact{Firstname: "Gone", Lastname: "Photo", Email: "gone-photo@example.com"}
+	vcfContacts := []VCFContactData{{Contact: contact, PhotoData: decodeTestPNGForImportSession(t), PhotoMediaType: "image/png"}}
+	id := m.CreateVCFSession(1, vcfContacts, []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
+
+	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
+	_, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	require.Nil(t, appErr)
+
+	entries, err := os.ReadDir(cfg.ProfilePhotoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries)
 }

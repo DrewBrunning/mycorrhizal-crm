@@ -13,6 +13,7 @@ import (
 	"mycorrhizal/photostore"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -408,10 +409,17 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 		return nil, nil, spaceErr
 	}
 
+	// Issue #1341: profile-photo files are written to disk inside the
+	// transaction (before the owning row's Create), and a rollback cannot
+	// unwrite them. Track every file written and, if the transaction does
+	// not commit, remove them all — otherwise a failed or cancelled import
+	// leaves unreferenced personal photos with no owner row.
+	written := &importedPhotoFiles{dir: models.DefaultPhotoDir}
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return executeSourceImport(ctx, tx, userID, plan, actions, report, refToID, tick)
+		return executeSourceImport(ctx, tx, userID, plan, actions, report, refToID, tick, written)
 	})
 	if err != nil {
+		written.removeAll()
 		return nil, nil, err
 	}
 	// The merged outcome is the return value only — we deliberately do not
@@ -428,7 +436,7 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 // sync with the graphKinds slice below.
 const importGraphKinds = 18
 
-func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func()) error {
+func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func(), written *importedPhotoFiles) error {
 	// Issue #434/#498 failure-injection seam: an armed fault fails the whole
 	// source import at the transaction boundary — everything rolls back, no
 	// partial state, a retry re-runs cleanly. Unarmed this is a nil return.
@@ -508,9 +516,12 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			continue
 		}
 
-		persistEmbeddedPhoto(contact, mc, report)
+		photoFile := persistEmbeddedPhoto(contact, mc, report)
+		written.track(photoFile)
 
 		if err := tx.Create(contact).Error; err != nil {
+			// The row did not land, so neither may its photo (issue #1341).
+			written.discard(photoFile)
 			report.appendIssue(ImportIssue{
 				Record:   mc.Ref.String(),
 				Field:    "contact",
@@ -714,9 +725,13 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 // ingesting caller downloads later (INV-D8), and this pass never makes network
 // calls. An embedded photo that cannot be persisted is named on the report as
 // a transformed field rather than dropped silently.
-func persistEmbeddedPhoto(contact *models.Contact, mc *MappedContact, report *ImportReport) {
+//
+// It returns the photo file name it wrote (relative to the photo directory),
+// or "" when nothing was written, so the caller can remove it if the owning
+// row is never committed (issue #1341).
+func persistEmbeddedPhoto(contact *models.Contact, mc *MappedContact, report *ImportReport) string {
 	if mc.Record == nil {
-		return
+		return ""
 	}
 	var uri string
 	for _, m := range mc.Record.Card.Media {
@@ -726,7 +741,7 @@ func persistEmbeddedPhoto(contact *models.Contact, mc *MappedContact, report *Im
 		}
 	}
 	if !strings.HasPrefix(uri, "data:") {
-		return
+		return ""
 	}
 	issue := func(msg string) {
 		report.appendIssue(ImportIssue{
@@ -739,20 +754,63 @@ func persistEmbeddedPhoto(contact *models.Contact, mc *MappedContact, report *Im
 	data, mediaType, _ := extractPhotoFromRecord(mc.Record)
 	if len(data) == 0 {
 		issue("embedded photo could not be decoded and was not imported")
-		return
+		return ""
 	}
 	photoDir := models.DefaultPhotoDir
 	if photoDir == "" {
 		issue("embedded photo was not imported: no profile-photo directory is configured")
-		return
+		return ""
 	}
 	path, thumbnail, err := photostore.SaveContactPhoto(data, mediaType, photoDir)
 	if err != nil {
 		issue("embedded photo could not be saved and was not imported: " + err.Error())
-		return
+		return ""
 	}
 	contact.Photo = path
 	contact.PhotoThumbnail = thumbnail
+	return path
+}
+
+// importedPhotoFiles records the profile-photo files an import wrote so they
+// can be removed when the transaction that owns them does not commit
+// (issue #1341).
+type importedPhotoFiles struct {
+	dir   string
+	files []string
+}
+
+func (w *importedPhotoFiles) track(name string) {
+	if name != "" {
+		w.files = append(w.files, name)
+	}
+}
+
+// discard removes one tracked file (its row failed to insert).
+func (w *importedPhotoFiles) discard(name string) {
+	if name == "" {
+		return
+	}
+	w.remove(name)
+	for i, f := range w.files {
+		if f == name {
+			w.files = append(w.files[:i], w.files[i+1:]...)
+			break
+		}
+	}
+}
+
+// removeAll removes every tracked file (the transaction rolled back).
+func (w *importedPhotoFiles) removeAll() {
+	for _, f := range w.files {
+		w.remove(f)
+	}
+	w.files = nil
+}
+
+func (w *importedPhotoFiles) remove(name string) {
+	if err := photostore.RemoveContactPhoto(w.dir, name); err != nil { // # pragma: no cover — removing a file this process just wrote; a failure is a filesystem fault
+		log.Warn().Err(err).Str("file", name).Msg("could not remove orphaned import photo")
+	}
 }
 
 // loadSourceLinks returns the set of already-imported external IDs for a
@@ -1324,4 +1382,12 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 		imported[r.Ref.ExternalID] = true
 	}
 	return nil
+}
+
+// removeOrphanedPhoto deletes a photo file that was saved but never attached to
+// a contact row (issue #1341), so a failed attach leaves nothing on disk.
+func removeOrphanedPhoto(photoDir, name string) {
+	if err := photostore.RemoveContactPhoto(photoDir, name); err != nil { // # pragma: no cover — removing a file this process just wrote; failure is a filesystem fault
+		log.Warn().Err(err).Str("file", name).Msg("could not remove orphaned import photo")
+	}
 }

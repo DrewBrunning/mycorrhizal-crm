@@ -261,6 +261,12 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
   (`contact_controller.go:888-939`) remove the file from disk right after the DB transaction commits (file
   deletion can't be rolled back, so it happens after, not inside, the transaction). A failed file removal
   is logged as a leak but never fails the request.
+- **Import-written photos (#1341)**: the source-import engine (account bundle, Meerkat, Monica rows
+  carrying an embedded photo) writes the photo file inside the import transaction, which a rollback
+  cannot unwrite, so it tracks each file it writes and removes them all when the transaction does not
+  commit (and the single file when that contact's `Create` fails). The VCF-confirm and Monica-avatar
+  paths write after commit and remove the file if attaching it to the row fails. Net: a photo file
+  never outlives a failed import without an owning row.
 - **Backups**: yes, if the operator's backup includes the photo/attachment directories — `docs/
   deployment.md`'s Backups section is explicit that a DB-only backup is *not* a complete backup for
   exactly this reason, and ships `rsync` commands for both directories alongside `make backup`.
