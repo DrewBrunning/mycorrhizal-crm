@@ -107,6 +107,7 @@ known gap owned by #380, out of scope here.
 | `users.oidc_subject` / `oidc_provider` | External IdP subject identifier | per-user | `necessary` when OIDC is configured; `NULL` otherwise | |
 | `users.self_contact_vcard_uid` | Which contact row *is* the user | per-user | `necessary` | |
 | `api_tokens` | `name`, `token_hash`, `last_used_at`, `scope` | per-user | `necessary` | hash only; plaintext shown once at creation |
+| `feeds` | `name` (user label), `entity_id` (a contact's VCardUID for a contact feed), `kind`, `detail`, `token_hash`, `last_accessed_at` | per-user | `necessary` | hash only; the plaintext exists once, in the create/rotate URL. No expiry (ADR 0030 decision 6); revoked per `data-retention-lifecycle.md` §7a. The reader's fetched copy outlives revocation |
 
 ---
 

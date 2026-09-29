@@ -8377,6 +8377,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Private Atom feeds (issue #382, docs/adrs/0030-feeds-atom-emission.md) ---
+  /feeds:
+    get:
+      summary: List the caller's active private feed credentials
+      operationId: listFeeds
+      description: |
+        The caller's unrevoked feeds, newest first. No pagination; creation is
+        capped at 50 active feeds per account. The plaintext token is never
+        returned (only its hash is stored).
+      responses:
+        "200":
+          description: The caller's active feeds (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feeds]
+                properties:
+                  feeds:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Feed"
+    post:
+      summary: Create a private Atom feed credential
+      operationId: createFeed
+      description: |
+        Mints a feed URL whose only credential is the `token` query value. The
+        plaintext URL is returned only here, once. A `contact` feed requires
+        `entity_id` to name a live contact the caller owns (404 otherwise); an
+        `aggregate` feed requires an empty `entity_id` (400 otherwise). A 51st
+        active feed is rejected with 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedInput"
+      responses:
+        "201":
+          description: Feed created; the subscription URL is shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedCreateResponse"
+        "400":
+          description: Validation failed, or entity_id set for an aggregate feed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The contact named by entity_id does not exist or is not owned by the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The caller already holds the maximum number of active feeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/revoke-all:
+    post:
+      summary: Revoke every active feed for the current user
+      operationId: revokeAllFeeds
+      description: |
+        Self-service bulk revocation. Already-revoked feeds are left untouched
+        and not recounted.
+      responses:
+        "200":
+          description: Feeds revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked:
+                    type: integer
+                    description: How many previously-active feeds were revoked.
+  /feeds/{id}:
+    delete:
+      summary: Revoke a feed
+      operationId: revokeFeed
+      description: Sets revoked_at. A missing or already-revoked feed is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Feed revoked.
+        "404":
+          description: Feed not found or already revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/{id}/rotate:
+    post:
+      summary: Revoke a feed and reissue it with the same configuration
+      operationId: rotateFeed
+      description: |
+        Revoke + reissue in one transaction, preserving name, kind, entity_id
+        and detail. The new plaintext URL is shown exactly once. A missing or
+        already-revoked feed is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Old feed revoked; replacement created; new URL shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedCreateResponse"
+        "404":
+          description: Feed not found or already revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feeds/atom:
+    get:
+      summary: Serve a private Atom feed
+      operationId: serveFeed
+      description: |
+        The unauthenticated feed-serving endpoint (issue #382, ADR 0030
+        decision 7). The feed token travels in the query string because most
+        feed readers cannot set an Authorization header. Every miss — missing,
+        wrong-prefix, unknown or revoked token, soft-deleted contact or owner —
+        is an identical 404 with an empty body. The body is deterministic, so
+        the strong ETag is stable across renders and If-None-Match returns 304.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: The plaintext feed token (`mycorrhizal_feed_` + base64url).
+          schema: { type: string }
+      responses:
+        "200":
+          description: The Atom 1.0 feed.
+          headers:
+            ETag:
+              description: Strong validator — SHA-256 of the rendered body.
+              schema: { type: string }
+            X-Robots-Tag:
+              description: Tells search engines not to index the feed.
+              schema: { type: string }
+          content:
+            application/atom+xml:
+              schema: { type: string }
+        "304":
+          description: The client's If-None-Match matched the current ETag; no body.
+        "404":
+          description: No feed matches the token (all miss cases are indistinguishable).
+
   # --- Sessions (issue #866) ---
   /sessions:
     get:
@@ -13247,7 +13407,7 @@ components:
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
-        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token] }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token, feed] }
         entity_id: { type: string }
         operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
@@ -14395,6 +14555,35 @@ components:
         - type: object
           properties:
             token: { type: string, description: "The plaintext token, shown only once." }
+    Feed:
+      type: object
+      description: |
+        A private, revocable Atom feed credential (issue #382, ADR 0030). The
+        plaintext token is never returned except embedded in FeedCreateResponse.url.
+        Revocation is `revoked_at`; there is no soft-delete.
+      required: [id, name, kind, entity_id, detail, last_accessed_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string, enum: [contact, aggregate] }
+        entity_id: { type: string, description: "Contact VCardUID for kind=contact; empty for kind=aggregate." }
+        detail: { type: string, enum: [headlines, full] }
+        last_accessed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    FeedInput:
+      type: object
+      required: [name, kind]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        kind: { type: string, enum: [contact, aggregate] }
+        entity_id: { type: string, format: uuid, description: "Required for kind=contact; must be omitted for kind=aggregate." }
+        detail: { type: string, enum: [headlines, full], description: "Defaults to headlines." }
+    FeedCreateResponse:
+      type: object
+      required: [feed, url]
+      properties:
+        feed: { $ref: "#/components/schemas/Feed" }
+        url: { type: string, description: "The subscription URL, including the one-time plaintext token." }
     SessionResponse:
       type: object
       description: One active server-side session (issue #866).

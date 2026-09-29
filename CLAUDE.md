@@ -654,7 +654,7 @@ project, no security budget).
 
 **What the project actually claims, and when it was last checked, is
 `docs/security/asvs-l2-verification-report.md`** (issue #378) — the dated verification pass over both
-checklists: the level claim (**ASVS L2 with 23 documented exceptions**, **MASVS-L1 with 1**, both
+checklists: the level claim (**ASVS L2 with 24 documented exceptions**, **MASVS-L1 with 1**, both
 **self-assessed** — see the report §6, not a third-party audit), the
 method used per class of control, the four manual audits (handler scoping/IDOR, cookie flags, crypto
 + unauthenticated routes, error-path leakage), the enumerated exception register, and what each pass

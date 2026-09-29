@@ -203,5 +203,7 @@ test('AUDIT_ENTITY_TYPES mirrors the backend enum exactly', () => {
     'user',
     'auth',
     'api_token',
+    // Private Atom feed credentials (issue #382).
+    'feed',
   ]);
 });

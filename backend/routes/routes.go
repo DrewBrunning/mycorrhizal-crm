@@ -87,6 +87,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		})
 		v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
 
+		// Private Atom feed serving (issue #382, ADR 0030 decision 7). The
+		// token in the query string is the only credential, so this is on the
+		// unauthenticated v1 group — never `protected`. Absent in embedded
+		// mode (no network feed surface).
+		if !cfg.IsEmbedded() {
+			v1.GET("/feeds/atom", middleware.FeedRateLimitMiddleware(), controllers.ServeFeed(cfg))
+		}
+
 		// Protected routes (authentication required, general rate limiting)
 		protected := v1.Group("/")
 		protected.Use(middleware.APIRateLimitMiddleware())
@@ -519,6 +527,17 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/api-tokens/revoke-all", controllers.RevokeAllApiTokens)
 				protected.DELETE("/api-tokens/:id", controllers.RevokeApiToken)
 				protected.POST("/api-tokens/:id/rotate", controllers.RotateApiToken)
+
+				// Private Atom feed credentials (issue #382, ADR 0030 decision
+				// 8). Management only; the serving endpoint is the
+				// unauthenticated GET /feeds/atom registered below. Absent in
+				// embedded mode like API tokens — a local-only profile serves
+				// no network feed.
+				protected.GET("/feeds", controllers.ListFeeds)
+				protected.POST("/feeds", middleware.ValidateJSONMiddleware(&models.FeedInput{}), controllers.CreateFeed(cfg))
+				protected.POST("/feeds/revoke-all", controllers.RevokeAllFeeds)
+				protected.DELETE("/feeds/:id", controllers.DeleteFeed)
+				protected.POST("/feeds/:id/rotate", controllers.RotateFeed(cfg))
 			}
 
 			// Issue #866: active-session inventory. List this account's live
