@@ -363,7 +363,11 @@ truth** — there is no server to rebuild it from.
   typed confirmation (ADR 0028 Decision 1); uninstalling the app removes it with the rest of app storage.
   Nothing propagates to a server, because none holds a copy. Attaching a `Local` profile to a remote
   server is a one-time **export** (the account bundle, ADR 0028 Decision 3), never a live sync, and leaves
-  the local profile a read-only archive until the user deletes it explicitly.
+  the local profile a read-only archive until the user deletes it explicitly (issue #1265). The archive
+  therefore **outlives the move**: the same data now lives on the server *and* in the archived local
+  store, with no retention limit on the latter, and deleting it on either side does not delete the other.
+  The wizard holds the exported bundle only in memory for the duration of the flow — it is never written to
+  app storage — and the archived profile's writes are refused client-side (`ArchivedProfileWriteInterceptor`).
 - **Backups**: none automatic. The user-controlled copy is the **account-bundle export** (ADR 0028
   Decision 5, issue #1264): a versioned JSON document written through the Storage Access Framework to a
   location the user chooses, outside app storage. That exported file's lifecycle is the user's, and is a

@@ -158,6 +158,17 @@ class E2eBackend(
         }
     }
 
+    /** The raw list JSON (`GET /contacts?limit=200`) — for tests asserting on what an account holds. */
+    fun contactsJson(): String =
+        get("/contacts?limit=200", authenticated = true).use {
+            check(it.code == 200) { "contact list failed: ${it.code} ${it.body?.string().orEmpty()}" }
+            it.body?.string().orEmpty()
+        }
+
+    /** How many of the caller's contacts have [marker] in their name (search is by name). */
+    fun countContactsWithMarker(marker: String): Int =
+        if (marker.isBlank()) 0 else searchContacts(marker).size
+
     // --- audit ---------------------------------------------------------------
 
     /** The caller's audit events, newest first, filtered when supplied. */

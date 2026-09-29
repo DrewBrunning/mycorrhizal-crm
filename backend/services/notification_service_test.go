@@ -598,6 +598,20 @@ func TestPushRecordSize(t *testing.T) {
 	assert.Equal(t, webpush.MaxRecordSize, pushRecordSize(int(webpush.MaxRecordSize)))
 }
 
+// TestPushRecordSizeWithPath (issue #1270): the payload now carries a path, so
+// a max-length title/body plus a path must still be sized within the record.
+func TestPushRecordSizeWithPath(t *testing.T) {
+	title := strings.Repeat("t", 100)
+	body := strings.Repeat("b", 500)
+	without, err := json.Marshal(pushPayload(title, body, ""))
+	require.NoError(t, err)
+	with, err := json.Marshal(pushPayload(title, body, contactWebPath(2147483647)))
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(with)-len(without), 40, "the path adds only a few bytes")
+	assert.Equal(t, uint32(len(with)+103), pushRecordSize(len(with)))
+	assert.Less(t, pushRecordSize(len(with)), webpush.MaxRecordSize)
+}
+
 // TestPushRecordSizeMatchesWebpushFraming pins webPushRecordOverhead against
 // the actual library rather than against arithmetic that reuses it (T51).
 // For each payload size, the RecordSize pushRecordSize computes must encode

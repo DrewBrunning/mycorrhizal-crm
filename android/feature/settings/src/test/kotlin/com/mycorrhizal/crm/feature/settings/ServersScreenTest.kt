@@ -44,11 +44,18 @@ class ServersScreenTest {
     private fun profile(id: String, label: String, url: String = "https://$id.example") =
         ServerProfile(id = id, kind = ServerProfileKind.Remote(url), label = label)
 
+    private var attachClicks = 0
+
     private fun setScreen(localModeEnabled: Boolean = false) {
         val viewModel = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ServersScreen(onBack = {}, localModeEnabled = localModeEnabled, viewModel = viewModel)
+                ServersScreen(
+                    onBack = {},
+                    localModeEnabled = localModeEnabled,
+                    onAttachToServer = { attachClicks++ },
+                    viewModel = viewModel,
+                )
             }
         }
         composeTestRule.waitForIdle()
@@ -106,4 +113,83 @@ class ServersScreenTest {
         setScreen(localModeEnabled = true)
         composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed()
     }
+
+    // --- Issue #1265: attach-to-remote entry + archived state -----------------------
+
+    private fun localProfile(archived: Boolean = false) =
+        ServerProfile("loc", ServerProfileKind.Local, "On this device", archived = archived)
+
+    @Test
+    fun `the active writable Local profile offers Move this data to a server`() {
+        profiles.value = listOf(localProfile(), profile("p1", "Home"))
+        active.value = localProfile()
+        setScreen()
+
+        composeTestRule.onNodeWithTag("server-attach-loc").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("server-attach-loc").performClick()
+
+        assert(attachClicks == 1)
+    }
+
+    @Test
+    fun `an inactive Local profile does not offer the move - it must be the running one`() {
+        profiles.value = listOf(localProfile(), profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen()
+
+        composeTestRule.onAllNodesWithText("Move this data to a server").assertCountEquals(0)
+    }
+
+    @Test
+    fun `a Remote profile never offers the move`() {
+        profiles.value = listOf(profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen()
+
+        composeTestRule.onAllNodesWithText("Move this data to a server").assertCountEquals(0)
+    }
+
+    @Test
+    fun `an archived Local profile is labelled read-only, cannot be moved again, and offers a persistent delete`() {
+        profiles.value = listOf(localProfile(archived = true), profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen()
+
+        composeTestRule.onNodeWithTag("server-archived-loc", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithText("Delete archived local data").assertExists()
+        composeTestRule.onAllNodesWithText("Move this data to a server").assertCountEquals(0)
+    }
+
+    @Test
+    fun `an active archived Local profile does not offer the move either`() {
+        profiles.value = listOf(localProfile(archived = true))
+        active.value = localProfile(archived = true)
+        setScreen()
+
+        composeTestRule.onAllNodesWithText("Move this data to a server").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Delete archived local data").assertExists()
+    }
+
+    @Test
+    fun `deleting the archive is a typed confirmation and only then deletes`() {
+        profiles.value = listOf(localProfile(archived = true), profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        val host = mockk<com.mycorrhizal.crm.data.local.LocalServerHost>(relaxed = true)
+        val viewModel = ServersViewModel(session, host, mockk(relaxed = true))
+        composeTestRule.setContent {
+            MycorrhizalTheme { ServersScreen(onBack = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("server-delete-archive-loc").performClick()
+        composeTestRule.onNodeWithText("Delete local data?").assertIsDisplayed()
+        coVerify(exactly = 0) { host.deleteLocalData() }
+        composeTestRule.onNodeWithTag("delete-local-data-confirm").performTextInput("On this device")
+        composeTestRule.onNodeWithText("Delete local data").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify { host.deleteLocalData() }
+        coVerify { session.removeProfile("loc") }
+    }
 }
+

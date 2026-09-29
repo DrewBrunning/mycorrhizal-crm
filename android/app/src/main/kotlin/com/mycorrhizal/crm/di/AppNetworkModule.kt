@@ -2,6 +2,9 @@ package com.mycorrhizal.crm.di
 
 import com.mycorrhizal.crm.BuildConfig
 import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.network.ArchivedProfileProvider
+import com.mycorrhizal.crm.data.attach.AttachRemoteApiFactory
+import com.mycorrhizal.crm.data.attach.DefaultAttachRemoteApiFactory
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.ClientVersionProvider
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
@@ -40,10 +43,14 @@ object AppNetworkModule {
         baseUrlProvider: BaseUrlProvider,
         sessionExpiryNotifier: SessionExpiryNotifier,
         localServerHost: LocalServerHost,
+        archivedProfileProvider: ArchivedProfileProvider,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         tokenProvider = tokenProvider,
         baseUrlProvider = baseUrlProvider,
         debug = BuildConfig.DEBUG,
+        // ADR 0028 Decision 3: writes on a read-only archived profile fail
+        // before leaving the process.
+        archivedProfileProvider = archivedProfileProvider,
         sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider),
         // ADR 0028 Decision 2: route `Local`-profile traffic over the embedded
         // server's Unix socket through the one shared client. Null when a Remote
@@ -67,4 +74,12 @@ object AppNetworkModule {
         // server, and every later request is a fast no-op.
         .addInterceptor(LocalServerWakeInterceptor(localServerHost))
         .build()
+
+    /** ADR 0028 Decision 3 / issue #1265: the attach wizard's client to the chosen Remote server. */
+    @Provides
+    fun provideAttachRemoteApiFactory(): AttachRemoteApiFactory =
+        DefaultAttachRemoteApiFactory(
+            clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME },
+            debug = BuildConfig.DEBUG,
+        )
 }

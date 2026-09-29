@@ -191,7 +191,11 @@ data class SourceImportStatus(
     @Json(name = "phase_total") val phaseTotal: Int = 0,
     val error: String? = null,
     val result: SourceImportResult? = null,
-)
+) {
+    val isReady: Boolean get() = phase == "ready"
+    val isDone: Boolean get() = phase == "done"
+    val isFailed: Boolean get() = phase == "failed" || phase == "cancelled"
+}
 
 /** One mapping issue the loss report lists before the user commits (issue #442). */
 @JsonClass(generateAdapter = true)
