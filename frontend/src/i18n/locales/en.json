@@ -1205,6 +1205,14 @@
         "useAnotherPasskey": "Verify with another passkey instead"
       }
     },
+    "secondFactorProof": {
+      "title": "Verify it's you",
+      "description": "You already have a second sign-in step, so adding another needs proof first. Enter a recovery code, or a current code from your authenticator app, or verify with a passkey you already have.",
+      "codeLabel": "Verification code",
+      "confirm": "Verify and continue",
+      "submitting": "Please wait...",
+      "usePasskey": "Verify with a passkey instead"
+    },
     "deleteAccount": {
       "title": "Delete account",
       "description": "Permanently delete your account and all your data — contacts, activities, notes, reminders, everything. This cannot be undone.",

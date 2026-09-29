@@ -33,6 +33,13 @@ type waEnv struct {
 	router *gin.Engine
 	cfg    *config.Config
 	user   models.User
+	// lastAuth is the most recently enrolled passkey. register uses it to
+	// answer the enrollment proof (issue #1337) when the account already holds a
+	// factor, so multi-passkey fixtures read the same as before the gate.
+	lastAuth *virtualAuthenticator
+	// codes are the recovery codes minted by enableTOTP; with no passkey
+	// enrolled, register spends one of them as the enrollment proof.
+	codes []string
 }
 
 func newWAEnv(t *testing.T) *waEnv {
@@ -54,6 +61,11 @@ func newWAEnv(t *testing.T) *waEnv {
 	require.NoError(t, err)
 	user := models.User{Username: username, Email: username + "@example.com", Password: hashed}
 	require.NoError(t, db.Create(&user).Error)
+	// The ceremony store is process-wide and keyed by user id, which repeats
+	// across per-test databases: drop anything an earlier test left in flight.
+	for _, purpose := range []string{services.CeremonyRegister, services.CeremonyLogin, services.CeremonyProof} {
+		services.DefaultCeremonies.Take(purpose, user.ID)
+	}
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -101,11 +113,40 @@ func (e *waEnv) do(method, path string, body any, token string) (*httptest.Respo
 	return doRequest(e.router, sessionRequest(method, path, body, token))
 }
 
+// proofFrom runs the proof ceremony (POST /webauthn/assert/begin) and returns
+// the {"assertion": ...} body fragment answered by va.
+func (e *waEnv) proofFrom(va *virtualAuthenticator, token string) map[string]any {
+	e.t.Helper()
+	w, _ := e.do("POST", "/webauthn/assert/begin", nil, token)
+	require.Equal(e.t, http.StatusOK, w.Code, "assert/begin: %s", w.Body.String())
+	return map[string]any{"assertion": va.assertion(challengeFrom(e.t, w.Body.Bytes()))}
+}
+
 // register runs the whole enrollment ceremony with va and returns the finish
-// response recorder + cookies. token must be a live session.
+// response recorder + cookies. token must be a live session. When a passkey is
+// already enrolled it proves with that one (issue #1337).
 func (e *waEnv) register(va *virtualAuthenticator, name, token string) (*httptest.ResponseRecorder, map[string]*http.Cookie) {
 	e.t.Helper()
-	w, _ := e.do("POST", "/webauthn/register/begin", map[string]string{"name": name}, token)
+	var proof map[string]any
+	switch {
+	case e.lastAuth != nil:
+		proof = e.proofFrom(e.lastAuth, token)
+	case len(e.codes) > 0:
+		proof = map[string]any{"code": e.codes[0]}
+		e.codes = e.codes[1:]
+	}
+	return e.registerWith(va, name, token, proof)
+}
+
+// registerWith is register with an explicit proof (nil = none), merged into
+// the register/begin body.
+func (e *waEnv) registerWith(va *virtualAuthenticator, name, token string, proof map[string]any) (*httptest.ResponseRecorder, map[string]*http.Cookie) {
+	e.t.Helper()
+	body := map[string]any{"name": name}
+	for k, v := range proof {
+		body[k] = v
+	}
+	w, _ := e.do("POST", "/webauthn/register/begin", body, token)
 	require.Equal(e.t, http.StatusOK, w.Code, "register/begin: %s", w.Body.String())
 	return e.do("POST", "/webauthn/register/finish", va.attestation(challengeFrom(e.t, w.Body.Bytes())), token)
 }
@@ -116,6 +157,7 @@ func (e *waEnv) enroll(va *virtualAuthenticator, name, token string) (id string,
 	e.t.Helper()
 	w, cookies := e.register(va, name, token)
 	require.Equal(e.t, http.StatusCreated, w.Code, "register/finish: %s", w.Body.String())
+	e.lastAuth = va
 	var out struct {
 		ID            string   `json:"id"`
 		RecoveryCodes []string `json:"recovery_codes"`
@@ -179,14 +221,23 @@ func (e *waEnv) auditCount(op string) int64 {
 // the re-issued session.
 func (e *waEnv) enableTOTP(token string) (secret string, session string) {
 	e.t.Helper()
-	w, _ := e.do("POST", "/users/2fa/setup", nil, token)
-	require.Equal(e.t, http.StatusOK, w.Code)
+	var proof map[string]any
+	if e.lastAuth != nil {
+		proof = e.proofFrom(e.lastAuth, token) // passkey-only account: setup needs a proof (issue #1337)
+	}
+	w, _ := e.do("POST", "/users/2fa/setup", proof, token)
+	require.Equal(e.t, http.StatusOK, w.Code, w.Body.String())
 	var setup struct {
 		Secret string `json:"secret"`
 	}
 	require.NoError(e.t, json.Unmarshal(w.Body.Bytes(), &setup))
 	w, cookies := e.do("POST", "/users/2fa/confirm", map[string]string{"code": totpCodeAt(e.t, setup.Secret, time.Now().Add(-30*time.Second))}, token)
 	require.Equal(e.t, http.StatusOK, w.Code, w.Body.String())
+	var confirmed struct {
+		RecoveryCodes []string `json:"recovery_codes"`
+	}
+	require.NoError(e.t, json.Unmarshal(w.Body.Bytes(), &confirmed))
+	e.codes = confirmed.RecoveryCodes
 	return setup.Secret, cookies["auth_token"].Value
 }
 
@@ -251,9 +302,10 @@ func TestWebAuthn_TOTPUserCanAddPasskeyAndUseEither(t *testing.T) {
 
 	va := e.auth()
 	_, codes, session := e.enroll(va, "Phone", session)
-	// Not the first factor: no session churn, and recovery codes already exist.
+	// Not the first factor: no session churn, and recovery codes already exist
+	// (one was spent as the enrollment proof, issue #1337).
 	assert.Empty(t, codes)
-	assert.Equal(t, recoveryBefore, e.recoveryCount())
+	assert.Equal(t, recoveryBefore-1, e.recoveryCount())
 	w, _ := e.do("GET", "/webauthn/credentials", nil, session)
 	require.Equal(t, http.StatusOK, w.Code)
 
@@ -296,7 +348,7 @@ func TestWebAuthn_DisablingTOTPLeavesPasskeyAndRecoveryCodes(t *testing.T) {
 
 	assert.False(t, e.reload().TOTPEnabled)
 	assert.Equal(t, int64(1), e.credentialCount(), "passkey must survive TOTP disable")
-	assert.Equal(t, int64(recoveryCodeCount), e.recoveryCount(), "recovery codes must survive while a passkey remains")
+	assert.Equal(t, int64(recoveryCodeCount-1), e.recoveryCount(), "recovery codes must survive while a passkey remains (one spent proving the enrollment)")
 
 	// Login still demands the passkey.
 	pending, methods := e.passwordStep()
@@ -453,7 +505,7 @@ func TestWebAuthn_DeleteKeepsRecoveryCodesWhileTOTPRemains(t *testing.T) {
 	id, _, session := e.enroll(va, "Phone", session)
 	w, _ := e.do("DELETE", "/webauthn/credentials/"+id, map[string]string{"code": totpCodeAt(t, secret, time.Now().Add(30*time.Second))}, session)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	assert.Equal(t, int64(recoveryCodeCount), e.recoveryCount())
+	assert.Equal(t, int64(recoveryCodeCount-1), e.recoveryCount(), "one spent proving the enrollment")
 	assert.True(t, e.reload().TOTPEnabled)
 }
 
@@ -594,10 +646,11 @@ func TestWebAuthn_RegisterFailurePaths(t *testing.T) {
 	var row models.WebAuthnCredential
 	require.NoError(t, e.db.Where("user_id = ?", e.user.ID).First(&row).Error)
 	assert.True(t, strings.HasPrefix(row.Name, "Passkey "), row.Name)
+	e.lastAuth = va
 
 	// Wrong challenge → 400, nothing stored.
 	tok = e.session()
-	w, _ = e.do("POST", "/webauthn/register/begin", map[string]string{"name": "x"}, tok)
+	w, _ = e.do("POST", "/webauthn/register/begin", map[string]any{"name": "x", "assertion": e.proofFrom(va, tok)["assertion"]}, tok)
 	require.Equal(t, http.StatusOK, w.Code)
 	w, _ = e.do("POST", "/webauthn/register/finish", e.auth().attestation("d3JvbmctY2hhbGxlbmdl"), tok)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -605,7 +658,7 @@ func TestWebAuthn_RegisterFailurePaths(t *testing.T) {
 
 	// Duplicate credential id (an authenticator ignoring excludeCredentials) →
 	// 409 from the (user_id, credential_id) natural key, not a 500.
-	w, _ = e.do("POST", "/webauthn/register/begin", map[string]string{"name": "dup"}, tok)
+	w, _ = e.do("POST", "/webauthn/register/begin", map[string]any{"name": "dup", "assertion": e.proofFrom(va, tok)["assertion"]}, tok)
 	require.Equal(t, http.StatusOK, w.Code)
 	w, _ = e.do("POST", "/webauthn/register/finish", va.attestation(challengeFrom(t, w.Body.Bytes())), tok)
 	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
@@ -616,7 +669,7 @@ func TestWebAuthn_RegisterBeginExcludesExistingCredentials(t *testing.T) {
 	e := newWAEnv(t)
 	va := e.auth()
 	_, _, session := e.enroll(va, "One", e.session())
-	w, _ := e.do("POST", "/webauthn/register/begin", nil, session)
+	w, _ := e.do("POST", "/webauthn/register/begin", e.proofFrom(va, session), session)
 	require.Equal(t, http.StatusOK, w.Code)
 	var opts struct {
 		PublicKey struct {
@@ -715,7 +768,7 @@ func TestWebAuthn_StoreFailuresSurfaceAs500(t *testing.T) {
 	id, codes, session := e.enroll(va, "Key", e.session())
 	pending, _ := e.passwordStep()
 	// A registration ceremony in flight, so finish gets past the ceremony lookup.
-	w, _ := e.do("POST", "/webauthn/register/begin", nil, session)
+	w, _ := e.do("POST", "/webauthn/register/begin", e.proofFrom(va, session), session)
 	require.Equal(t, http.StatusOK, w.Code)
 	att := e.auth().attestation(challengeFrom(t, w.Body.Bytes()))
 

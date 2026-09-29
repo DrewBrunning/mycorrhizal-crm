@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.model.network.WebAuthnRegisterResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -20,8 +21,12 @@ class PasskeyRepositoryImpl @Inject constructor(
             onFailure = { Result.failure(it.toApiError()) },
         )
 
-    override suspend fun beginRegistration(name: String?): Result<String> =
-        apiClient.webauthnRegisterBegin(name?.trim()).fold(
+    override suspend fun beginRegistration(name: String?, proof: SecondFactorProof?): Result<String> =
+        apiClient.webauthnRegisterBegin(
+            name = name?.trim(),
+            code = (proof as? SecondFactorProof.Code)?.code?.trim(),
+            assertionJson = (proof as? SecondFactorProof.Assertion)?.json,
+        ).fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(it.toApiError()) },
         )
@@ -36,7 +41,7 @@ class PasskeyRepositoryImpl @Inject constructor(
         return Result.success(body.value)
     }
 
-    override suspend fun beginProof(excludeId: String): Result<String> =
+    override suspend fun beginProof(excludeId: String?): Result<String> =
         apiClient.webauthnProofBegin(excludeId).fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(it.toApiError()) },

@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
+import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
@@ -881,5 +883,37 @@ class AuthRepositoryImplTest {
 
         assertTrue((result.exceptionOrNull() as ApiError) is ApiError.Parse)
         assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `setupTwoFactor maps a code proof to a trimmed code`() = runTest {
+        val h = Harness()
+        val response = TwoFactorSetupResponse(secret = "S", otpauthUrl = "otpauth://x")
+        coEvery { h.apiClient.setupTwoFactor(any(), any()) } returns Result.success(response)
+
+        assertEquals(response, h.repository.setupTwoFactor(SecondFactorProof.Code(" AAAAA-BBBBB-CCCCC ")).getOrThrow())
+
+        coVerify { h.apiClient.setupTwoFactor("AAAAA-BBBBB-CCCCC", null) }
+    }
+
+    @Test
+    fun `setupTwoFactor maps an assertion proof to its json`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.setupTwoFactor(any(), any()) } returns
+            Result.success(TwoFactorSetupResponse(secret = "S", otpauthUrl = "otpauth://x"))
+
+        h.repository.setupTwoFactor(SecondFactorProof.Assertion("""{"id":"a"}"""))
+
+        coVerify { h.apiClient.setupTwoFactor(null, """{"id":"a"}""") }
+    }
+
+    @Test
+    fun `setupTwoFactor surfaces a rejected proof`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.setupTwoFactor(any(), any()) } returns Result.failure(ApiError.Client(400, "Invalid code"))
+
+        val error = h.repository.setupTwoFactor(SecondFactorProof.Code("0")).exceptionOrNull()
+
+        assertEquals(400, (error as ApiError.Client).code)
     }
 }

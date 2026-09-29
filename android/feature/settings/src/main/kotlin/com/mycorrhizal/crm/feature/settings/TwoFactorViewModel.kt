@@ -1,9 +1,15 @@
 package com.mycorrhizal.crm.feature.settings
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
+import com.mycorrhizal.crm.data.passkey.PasskeyCredentialClient
+import com.mycorrhizal.crm.data.passkey.PasskeyResult
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.PasskeyRepository
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
@@ -28,6 +34,11 @@ enum class TwoFactorPrompt { DISABLE, REGENERATE }
  *    the secret/URL in [setup] are transient — nothing 2FA-related is kept in
  *    the session or persisted beyond the normal bearer token.
  *
+ * A passkey-only account already holds a second factor, so enabling TOTP there
+ * first asks for a live proof (issue #1337): a recovery code, or an assertion
+ * from one of its passkeys ([submitSetupProofWithPasskey]). The first factor
+ * needs none.
+ *
  * Error mapping mirrors web: a rejected code (400) maps to the localized
  * "Invalid code" text; setup's 403 (OIDC account) / 409 (already enabled) and
  * any 429 surface the server's own message.
@@ -35,6 +46,9 @@ enum class TwoFactorPrompt { DISABLE, REGENERATE }
 @HiltViewModel
 class TwoFactorViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val passkeyRepository: PasskeyRepository,
+    private val passkeyClient: PasskeyCredentialClient,
+    private val passkeyAvailability: PasskeyAvailability,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TwoFactorUiState())
@@ -48,9 +62,20 @@ class TwoFactorViewModel @Inject constructor(
         if (_uiState.value.busy) return
         _uiState.update { it.copy(loading = true, error = null, errorRes = null) }
         viewModelScope.launch {
+            // Decides only whether Enable asks for a proof first; the server enforces
+            // it either way, so a failed lookup is not fatal.
+            val hasPasskey = passkeyRepository.listPasskeys().getOrNull()?.isNotEmpty() ?: false
+            val available = passkeyAvailability.isAvailable()
             authRepository.getTwoFactorStatus()
                 .onSuccess { status ->
-                    _uiState.update { it.copy(loading = false, enabled = status.enabled) }
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            enabled = status.enabled,
+                            hasPasskey = hasPasskey,
+                            passkeysAvailable = available,
+                        )
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(loading = false, error = e.displayText()) }
@@ -58,17 +83,76 @@ class TwoFactorViewModel @Inject constructor(
         }
     }
 
-    /** Begin enrollment: mints a pending secret the wizard shows as QR + manual key. */
+    /**
+     * Begin enrollment: mints a pending secret the wizard shows as QR + manual
+     * key. An account that already holds a passkey is asked for a proof first
+     * ([TwoFactorUiState.proofPrompt]).
+     */
     fun startSetup() {
-        if (_uiState.value.busy) return
+        val state = _uiState.value
+        if (state.busy) return
+        if (state.hasPasskey) {
+            _uiState.update { it.copy(proofPrompt = true, error = null, errorRes = null) }
+            return
+        }
+        runSetup(null)
+    }
+
+    /** Setup proven by a recovery [code] (passkey-only account). */
+    fun submitSetupProofCode(code: String) {
+        val state = _uiState.value
+        if (state.busy || !state.proofPrompt || code.isBlank()) return
+        runSetup(SecondFactorProof.Code(code.trim()))
+    }
+
+    /**
+     * Setup proven by an assertion from an existing passkey. No-op when
+     * [TwoFactorUiState.canProveWithPasskey] is false (the option is hidden then).
+     */
+    fun submitSetupProofWithPasskey(context: Context) {
+        val state = _uiState.value
+        if (state.busy || !state.proofPrompt || !state.canProveWithPasskey) return
         _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
         viewModelScope.launch {
-            authRepository.setupTwoFactor()
+            val options = passkeyRepository.beginProof().getOrElse { e ->
+                _uiState.update { it.copy(busy = false, error = e.displayText()) }
+                return@launch
+            }
+            when (val ceremony = passkeyClient.getPasskey(context, options)) {
+                is PasskeyResult.Success -> {
+                    _uiState.update { it.copy(busy = false) }
+                    runSetup(SecondFactorProof.Assertion(ceremony.json))
+                }
+                PasskeyResult.Cancelled -> _uiState.update { it.copy(busy = false) }
+                PasskeyResult.NoMatchingPasskey ->
+                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_other_here) }
+                PasskeyResult.NotAssociated ->
+                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_not_associated) }
+                PasskeyResult.NoProvider ->
+                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_provider) }
+                PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
+                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+            }
+        }
+    }
+
+    fun dismissSetupProof() {
+        if (_uiState.value.busy) return
+        _uiState.update { it.copy(proofPrompt = false, error = null, errorRes = null) }
+    }
+
+    private fun runSetup(proof: SecondFactorProof?) {
+        _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
+        viewModelScope.launch {
+            authRepository.setupTwoFactor(proof)
                 .onSuccess { setup ->
-                    _uiState.update { it.copy(busy = false, setup = setup) }
+                    _uiState.update { it.copy(busy = false, setup = setup, proofPrompt = false) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(busy = false, error = e.displayText()) }
+                    _uiState.update {
+                        // A rejected proof (400) keeps the proof dialog open with localized copy.
+                        if (proof != null) it.copy(busy = false).withCodeError(e) else it.copy(busy = false, error = e.displayText())
+                    }
                 }
         }
     }
@@ -183,11 +267,20 @@ data class TwoFactorUiState(
     val recoveryCodes: List<String>? = null,
     /** Which code-gated action is prompting (disable/regenerate). */
     val prompt: TwoFactorPrompt? = null,
+    /** The account holds a passkey, so enabling TOTP needs a live proof first (issue #1337). */
+    val hasPasskey: Boolean = false,
+    /** The passkey ceremony gate is open on this device (server capability + Credential Manager). */
+    val passkeysAvailable: Boolean = false,
+    /** The setup-proof dialog is open. */
+    val proofPrompt: Boolean = false,
     /** A transient action error (server text), shown and then cleared. */
     val error: String? = null,
     /** A localized action error (rejected code), shown and then cleared. */
     @StringRes val errorRes: Int? = null,
-)
+) {
+    /** "Verify with a passkey" for the setup proof: the gate is open and a passkey exists to answer. */
+    val canProveWithPasskey: Boolean get() = hasPasskey && passkeysAvailable
+}
 
 private fun Throwable.displayText(): String {
     val apiError = this as? ApiError ?: return message ?: "error"

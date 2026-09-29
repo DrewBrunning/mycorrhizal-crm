@@ -1,6 +1,7 @@
 // User settings and preferences API calls
 import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
+import type { SecondFactorProof } from './webauthn';
 
 export async function updateLanguage(language: string): Promise<string> {
   const response = await apiFetch(`${API_BASE_URL}/users/language`, {
@@ -85,10 +86,14 @@ export async function getTwoFactorStatus(): Promise<TwoFactorStatus> {
   return { enabled: !!data.enabled };
 }
 
-export async function setupTwoFactor(): Promise<TwoFactorSetupResult> {
+// Issue #1337: a passkey-only account already holds a second factor, so the
+// backend refuses setup without a live `proof` (recovery code or passkey
+// assertion). The first factor needs none.
+export async function setupTwoFactor(proof?: SecondFactorProof): Promise<TwoFactorSetupResult> {
   const response = await apiFetch(`${API_BASE_URL}/users/2fa/setup`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    ...(proof ? { body: JSON.stringify(proof) } : {}),
   });
 
   const data = await handleResponse(response, 'Unable to start two-factor setup.');

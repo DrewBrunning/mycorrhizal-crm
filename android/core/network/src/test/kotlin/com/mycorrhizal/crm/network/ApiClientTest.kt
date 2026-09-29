@@ -5519,5 +5519,58 @@ class ApiClientTest {
         assertTrue(done.isDone && !done.isReady && !done.isFailed)
         assertTrue(failed.isFailed && cancelled.isFailed)
     }
-}
 
+    // --- issue #1337: 2fa setup proof on a passkey-only account ---
+
+    private val setupBody = """{"secret":"JBSWY3DPEHPK3PXP","otpauth_url":"otpauth://totp/x?secret=JBSWY3DPEHPK3PXP"}"""
+
+    @Test
+    fun `two factor setup without a proof posts an empty body`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(setupBody))
+
+        client.setupTwoFactor().getOrThrow()
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/users/2fa/setup", request.path)
+        assertEquals(0L, request.bodySize)
+    }
+
+    @Test
+    fun `two factor setup sends a code proof`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(setupBody))
+
+        val setup = client.setupTwoFactor(code = "AAAAA-BBBBB-CCCCC").getOrThrow()
+
+        assertEquals("JBSWY3DPEHPK3PXP", setup.secret)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/users/2fa/setup", request.path)
+        assertEquals("""{"code":"AAAAA-BBBBB-CCCCC"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `two factor setup embeds an assertion proof verbatim`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(setupBody))
+        val assertion = """{"id":"AAA","response":{"signature":"sig"}}"""
+
+        client.setupTwoFactor(assertionJson = assertion).getOrThrow()
+
+        assertEquals("""{"assertion":$assertion}""", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    fun `two factor setup rejects a non-object assertion without a request`() = runBlocking {
+        val error = client.setupTwoFactor(assertionJson = "[1]").exceptionOrNull()
+        assertTrue(error is ApiError.Parse)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `two factor setup maps a rejected proof to Client 400`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"Invalid code"}}"""))
+
+        val error = client.setupTwoFactor(code = "0").exceptionOrNull()
+
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+    }
+}

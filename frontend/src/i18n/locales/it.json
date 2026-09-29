@@ -1178,6 +1178,14 @@
         "useAnotherPasskey": "Verifica invece con un'altra passkey"
       }
     },
+    "secondFactorProof": {
+      "title": "Conferma la tua identità",
+      "description": "Hai già un secondo passaggio di accesso, quindi aggiungerne un altro richiede prima una verifica. Inserisci un codice di recupero o un codice attuale della tua app di autenticazione, oppure verifica con una passkey che hai già.",
+      "codeLabel": "Codice di verifica",
+      "confirm": "Verifica e continua",
+      "submitting": "Attendi...",
+      "usePasskey": "Verifica invece con una passkey"
+    },
     "deleteAccount": {
       "title": "Elimina account",
       "description": "Elimina definitivamente il tuo account e tutti i tuoi dati: contatti, attività, note, promemoria, tutto. Questa azione non può essere annullata.",
