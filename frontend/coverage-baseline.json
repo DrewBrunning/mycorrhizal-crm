@@ -320,6 +320,12 @@
       "branches": 100,
       "branchesTotal": 32
     },
+    "src/api/feeds.ts": {
+      "lines": 100,
+      "linesTotal": 18,
+      "branches": 100,
+      "branchesTotal": 6
+    },
     "src/api/fieldDefinitions.ts": {
       "lines": 90.19,
       "linesTotal": 51,
@@ -811,6 +817,30 @@
       "linesTotal": 26,
       "branches": 80,
       "branchesTotal": 40
+    },
+    "src/components/FeedCreateDialog.tsx": {
+      "lines": 100,
+      "linesTotal": 73,
+      "branches": 94,
+      "branchesTotal": 50
+    },
+    "src/components/FeedList.tsx": {
+      "lines": 96,
+      "linesTotal": 25,
+      "branches": 91.17,
+      "branchesTotal": 34
+    },
+    "src/components/FeedUrlReveal.tsx": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 4
+    },
+    "src/components/FeedsSettings.tsx": {
+      "lines": 90.47,
+      "linesTotal": 21,
+      "branches": 100,
+      "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
       "lines": 93.42,
@@ -1483,6 +1513,12 @@
       "linesTotal": 16,
       "branches": 62.5,
       "branchesTotal": 8
+    },
+    "src/hooks/useFeeds.ts": {
+      "lines": 100,
+      "linesTotal": 37,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/hooks/useFieldDefinitions.ts": {
       "lines": 73.68,

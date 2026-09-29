@@ -1794,6 +1794,85 @@
     },
     "expired": "Expired"
   },
+  "feeds": {
+    "title": "Feeds",
+    "description": "Private Atom feeds let a feed reader follow your contacts' timelines. Anyone with a feed's URL can read it until you revoke it.",
+    "createButton": "Create Feed",
+    "loadError": "Failed to load feeds",
+    "noFeeds": "No feeds yet",
+    "never": "Never",
+    "allContacts": "All contacts",
+    "unknownContact": "Unknown contact",
+    "kindContact": "Contact: {{name}}",
+    "subscribeAction": "Subscribe via feed",
+    "kind": {
+      "contact": "One contact",
+      "aggregate": "All contacts"
+    },
+    "detail": {
+      "headlines": "Headlines",
+      "full": "Full"
+    },
+    "detailHelp": {
+      "headlines": "Entry titles and dates only. No note text or details.",
+      "full": "Includes note text, activity details and gift descriptions."
+    },
+    "columns": {
+      "name": "Name",
+      "kind": "Feed of",
+      "detail": "Detail",
+      "created": "Created",
+      "lastAccessed": "Last accessed",
+      "actions": "Actions"
+    },
+    "revokeAllButton": "Revoke All",
+    "revokeSuccess": "Feed revoked",
+    "revokeAllSuccess_one": "{{count}} feed revoked",
+    "revokeAllSuccess_other": "{{count}} feeds revoked",
+    "rotateAria": "Rotate feed {{name}}",
+    "revokeAria": "Revoke feed {{name}}",
+    "rotateDialog": {
+      "title": "Rotate Feed",
+      "message": "Rotating \"{{name}}\" immediately revokes its URL and issues a new one with the same settings. The new URL will only be shown once.",
+      "confirm": "Rotate"
+    },
+    "revokeDialog": {
+      "title": "Revoke Feed",
+      "message": "Are you sure you want to revoke \"{{name}}\"? Its URL stops working immediately. This cannot be undone.",
+      "confirm": "Revoke"
+    },
+    "revokeAllDialog": {
+      "title": "Revoke All Feeds",
+      "message_one": "Are you sure you want to revoke {{count}} feed? Its URL stops working immediately. This cannot be undone.",
+      "message_other": "Are you sure you want to revoke all {{count}} feeds? Their URLs stop working immediately. This cannot be undone.",
+      "confirm": "Revoke All"
+    },
+    "rotatedDialog": {
+      "title": "Feed Rotated"
+    },
+    "createdDialog": {
+      "title": "Feed Created",
+      "done": "Done, I saved it"
+    },
+    "createDialog": {
+      "title": "Create Feed",
+      "description": "Creates a private URL that a feed reader can subscribe to.",
+      "nameLabel": "Feed name",
+      "kindLabel": "Feed of",
+      "contactLabel": "Contact",
+      "noContacts": "No matching contacts",
+      "detailLabel": "Detail",
+      "fullWarning": "Note text, activity details and gift descriptions will be copied into your feed reader.",
+      "readerCopyNotice": "A feed reader keeps its own copy of everything the feed contains, and this app cannot delete that copy later. Prefer a self-hosted or local feed reader.",
+      "createButton": "Create"
+    },
+    "url": {
+      "label": "Feed URL",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "warning": "This URL is shown once. Anyone with it can read this feed until you revoke it."
+    }
+  },
   "sessions": {
     "title": "Active sessions",
     "description": "Devices currently signed in to your account. Revoke any you don't recognise; a revoked session stops working immediately.",

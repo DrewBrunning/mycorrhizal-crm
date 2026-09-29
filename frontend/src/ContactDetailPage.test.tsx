@@ -1372,6 +1372,7 @@ test.each([
   ['View all', /close/i],
   ['Merge', /cancel/i],
   ['Share Contact', /cancel/i],
+  ['Subscribe via feed', /cancel/i],
 ])('the %s dialog opens from the page and closes', async (name, close) => {
   mockFetch();
   await renderLoaded();

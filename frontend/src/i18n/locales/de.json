@@ -1767,6 +1767,85 @@
     },
     "expired": "Abgelaufen"
   },
+  "feeds": {
+    "title": "Feeds",
+    "description": "Private Atom-Feeds lassen einen Feed-Reader die Zeitleisten Ihrer Kontakte verfolgen. Jeder mit der URL eines Feeds kann ihn lesen, bis Sie ihn widerrufen.",
+    "createButton": "Feed erstellen",
+    "loadError": "Feeds konnten nicht geladen werden",
+    "noFeeds": "Noch keine Feeds",
+    "never": "Nie",
+    "allContacts": "Alle Kontakte",
+    "unknownContact": "Unbekannter Kontakt",
+    "kindContact": "Kontakt: {{name}}",
+    "subscribeAction": "Per Feed abonnieren",
+    "kind": {
+      "contact": "Ein Kontakt",
+      "aggregate": "Alle Kontakte"
+    },
+    "detail": {
+      "headlines": "Schlagzeilen",
+      "full": "Vollständig"
+    },
+    "detailHelp": {
+      "headlines": "Nur Eintragstitel und Datum. Kein Notiztext, keine Details.",
+      "full": "Enthält Notiztext, Aktivitätsdetails und Geschenkbeschreibungen."
+    },
+    "columns": {
+      "name": "Name",
+      "kind": "Feed von",
+      "detail": "Detailgrad",
+      "created": "Erstellt",
+      "lastAccessed": "Letzter Zugriff",
+      "actions": "Aktionen"
+    },
+    "revokeAllButton": "Alle widerrufen",
+    "revokeSuccess": "Feed widerrufen",
+    "revokeAllSuccess_one": "{{count}} Feed widerrufen",
+    "revokeAllSuccess_other": "{{count}} Feeds widerrufen",
+    "rotateAria": "Feed {{name}} erneuern",
+    "revokeAria": "Feed {{name}} widerrufen",
+    "rotateDialog": {
+      "title": "Feed erneuern",
+      "message": "Beim Erneuern von „{{name}}“ wird die URL sofort widerrufen und eine neue mit denselben Einstellungen ausgestellt. Die neue URL wird nur einmal angezeigt.",
+      "confirm": "Erneuern"
+    },
+    "revokeDialog": {
+      "title": "Feed widerrufen",
+      "message": "Möchten Sie „{{name}}“ wirklich widerrufen? Die URL funktioniert sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Widerrufen"
+    },
+    "revokeAllDialog": {
+      "title": "Alle Feeds widerrufen",
+      "message_one": "Möchten Sie {{count}} Feed wirklich widerrufen? Die URL funktioniert sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "message_other": "Möchten Sie alle {{count}} Feeds wirklich widerrufen? Die URLs funktionieren sofort nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Alle widerrufen"
+    },
+    "rotatedDialog": {
+      "title": "Feed erneuert"
+    },
+    "createdDialog": {
+      "title": "Feed erstellt",
+      "done": "Fertig, ich habe sie gespeichert"
+    },
+    "createDialog": {
+      "title": "Feed erstellen",
+      "description": "Erstellt eine private URL, die ein Feed-Reader abonnieren kann.",
+      "nameLabel": "Feed-Name",
+      "kindLabel": "Feed von",
+      "contactLabel": "Kontakt",
+      "noContacts": "Keine passenden Kontakte",
+      "detailLabel": "Detailgrad",
+      "fullWarning": "Notiztext, Aktivitätsdetails und Geschenkbeschreibungen werden in Ihren Feed-Reader kopiert.",
+      "readerCopyNotice": "Ein Feed-Reader behält eine eigene Kopie aller Inhalte des Feeds, und diese App kann diese Kopie später nicht löschen. Verwenden Sie am besten einen selbst gehosteten oder lokalen Feed-Reader.",
+      "createButton": "Erstellen"
+    },
+    "url": {
+      "label": "Feed-URL",
+      "copy": "Kopieren",
+      "copied": "Kopiert!",
+      "warning": "Diese URL wird nur einmal angezeigt. Jeder, der sie besitzt, kann diesen Feed lesen, bis Sie ihn widerrufen."
+    }
+  },
   "sessions": {
     "title": "Aktive Sitzungen",
     "description": "Geräte, die derzeit bei deinem Konto angemeldet sind. Widerrufe alle, die du nicht kennst; eine widerrufene Sitzung wird sofort ungültig.",

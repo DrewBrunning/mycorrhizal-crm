@@ -1767,6 +1767,85 @@
     },
     "expired": "Caducado"
   },
+  "feeds": {
+    "title": "Feeds",
+    "description": "Los feeds Atom privados permiten que un lector de feeds siga las líneas de tiempo de tus contactos. Cualquiera con la URL de un feed puede leerlo hasta que lo revoques.",
+    "createButton": "Crear feed",
+    "loadError": "No se pudieron cargar los feeds",
+    "noFeeds": "Aún no hay feeds",
+    "never": "Nunca",
+    "allContacts": "Todos los contactos",
+    "unknownContact": "Contacto desconocido",
+    "kindContact": "Contacto: {{name}}",
+    "subscribeAction": "Suscribirse mediante feed",
+    "kind": {
+      "contact": "Un contacto",
+      "aggregate": "Todos los contactos"
+    },
+    "detail": {
+      "headlines": "Titulares",
+      "full": "Completo"
+    },
+    "detailHelp": {
+      "headlines": "Solo títulos y fechas de las entradas. Sin texto de notas ni detalles.",
+      "full": "Incluye el texto de las notas, los detalles de las actividades y las descripciones de los regalos."
+    },
+    "columns": {
+      "name": "Nombre",
+      "kind": "Feed de",
+      "detail": "Detalle",
+      "created": "Creado",
+      "lastAccessed": "Último acceso",
+      "actions": "Acciones"
+    },
+    "revokeAllButton": "Revocar todos",
+    "revokeSuccess": "Feed revocado",
+    "revokeAllSuccess_one": "{{count}} feed revocado",
+    "revokeAllSuccess_other": "{{count}} feeds revocados",
+    "rotateAria": "Rotar el feed {{name}}",
+    "revokeAria": "Revocar el feed {{name}}",
+    "rotateDialog": {
+      "title": "Rotar feed",
+      "message": "Al rotar «{{name}}» se revoca su URL de inmediato y se emite una nueva con la misma configuración. La nueva URL solo se mostrará una vez.",
+      "confirm": "Rotar"
+    },
+    "revokeDialog": {
+      "title": "Revocar feed",
+      "message": "¿Seguro que quieres revocar «{{name}}»? Su URL deja de funcionar de inmediato. Esto no se puede deshacer.",
+      "confirm": "Revocar"
+    },
+    "revokeAllDialog": {
+      "title": "Revocar todos los feeds",
+      "message_one": "¿Seguro que quieres revocar {{count}} feed? Su URL deja de funcionar de inmediato. Esto no se puede deshacer.",
+      "message_other": "¿Seguro que quieres revocar los {{count}} feeds? Sus URL dejan de funcionar de inmediato. Esto no se puede deshacer.",
+      "confirm": "Revocar todos"
+    },
+    "rotatedDialog": {
+      "title": "Feed rotado"
+    },
+    "createdDialog": {
+      "title": "Feed creado",
+      "done": "Listo, la guardé"
+    },
+    "createDialog": {
+      "title": "Crear feed",
+      "description": "Crea una URL privada a la que un lector de feeds puede suscribirse.",
+      "nameLabel": "Nombre del feed",
+      "kindLabel": "Feed de",
+      "contactLabel": "Contacto",
+      "noContacts": "No hay contactos coincidentes",
+      "detailLabel": "Detalle",
+      "fullWarning": "El texto de las notas, los detalles de las actividades y las descripciones de los regalos se copiarán en tu lector de feeds.",
+      "readerCopyNotice": "Un lector de feeds conserva su propia copia de todo lo que contiene el feed, y esta aplicación no puede eliminar esa copia después. Es preferible usar un lector de feeds autoalojado o local.",
+      "createButton": "Crear"
+    },
+    "url": {
+      "label": "URL del feed",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "warning": "Esta URL se muestra una sola vez. Cualquiera que la tenga puede leer este feed hasta que lo revoques."
+    }
+  },
   "sessions": {
     "title": "Sesiones activas",
     "description": "Dispositivos con sesión iniciada en tu cuenta. Revoca los que no reconozcas; una sesión revocada deja de funcionar de inmediato.",

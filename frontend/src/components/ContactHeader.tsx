@@ -10,6 +10,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import MergeIcon from '@mui/icons-material/MergeType';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonIcon from '@mui/icons-material/Person';
+import RssFeedIcon from '@mui/icons-material/RssFeed';
 import SaveIcon from '@mui/icons-material/Save';
 import ShareIcon from '@mui/icons-material/Share';
 import StarIcon from '@mui/icons-material/Star';
@@ -97,6 +98,8 @@ interface ContactHeaderProps {
   onMergeContact?: () => void;
   onPrepView?: () => void;
   onShareContact?: () => void;
+  // Issue #1276: opens the create-feed dialog pre-set to this contact.
+  onSubscribeFeed?: () => void;
   onExportContact: (format: string) => void;
   // T90: whether this contact is the caller's "Me" contact, and the handler to
   // set/clear that pointer from the header's overflow menu.
@@ -131,6 +134,7 @@ export default function ContactHeader({
   onMergeContact,
   onPrepView,
   onShareContact,
+  onSubscribeFeed,
   onExportContact,
   isMe,
   onToggleMe,
@@ -659,6 +663,20 @@ export default function ContactHeader({
                                   </ListItemText>
                                 </MenuItem>
                               ),
+                              onSubscribeFeed && (
+                                <MenuItem
+                                  key="feed"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onSubscribeFeed();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <RssFeedIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>{t('feeds.subscribeAction')}</ListItemText>
+                                </MenuItem>
+                              ),
                               <MenuItem
                                 key="vcf4"
                                 onClick={() => {
@@ -903,6 +921,16 @@ export default function ContactHeader({
                               onClick={onShareContact}
                             >
                               {t('contactShares.shareDialog.title')}
+                            </Button>
+                          )}
+                          {onSubscribeFeed && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<RssFeedIcon />}
+                              onClick={onSubscribeFeed}
+                            >
+                              {t('feeds.subscribeAction')}
                             </Button>
                           )}
                           <Button

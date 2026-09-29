@@ -31,6 +31,7 @@ afterEach(cleanup);
 // surfacing as `EnvironmentTeardownError: Closing rpc while "onUserConsoleLog"
 // was pending` and failing the run even though every assertion passed.
 vi.mock('./components/WebhooksSettings', () => ({ default: () => null }));
+vi.mock('./components/FeedsSettings', () => ({ default: () => null }));
 vi.mock('./components/ImmichSettings', () => ({ default: () => null }));
 vi.mock('./components/NotificationSettings', () => ({ default: () => null }));
 vi.mock('./components/PaperlessSettings', () => ({ default: () => null }));
