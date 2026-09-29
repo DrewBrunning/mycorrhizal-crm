@@ -10,6 +10,7 @@ import (
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
+	"mycorrhizal/photostore"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -130,6 +131,10 @@ type MappedRelationship struct {
 	// back to the import defaults.
 	Provenance string
 	Confidence float64
+	// Metadata is the edge's free-form metadata (since/until, kind, ...) when
+	// the source supplies it (the account bundle, issue #1307). Other sources
+	// leave it nil.
+	Metadata map[string]interface{}
 }
 
 // MappedNote is one note on a plan contact. UUID, when set, preserves the
@@ -167,6 +172,7 @@ type MappedReminder struct {
 	Message               string
 	RemindAt              string
 	Recurrence            string
+	ByMail                *bool
 	ReoccurFromCompletion *bool
 	Completed             bool
 	LastSent              *time.Time
@@ -502,6 +508,8 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			continue
 		}
 
+		persistEmbeddedPhoto(contact, mc, report)
+
 		if err := tx.Create(contact).Error; err != nil {
 			report.appendIssue(ImportIssue{
 				Record:   mc.Ref.String(),
@@ -691,6 +699,62 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 	return existing.VCardUID, existing.ID, nil
 }
 
+// persistEmbeddedPhoto lands a plan contact's embedded (`data:` URI) profile
+// photo on disk and in the flat photo/photo_thumbnail columns (issue #1308).
+//
+// ApplyRecordToContact is called with photoDir "" by the import engine, which
+// skips photo persistence; without this step the photo survives only as a
+// data: entry inside the stored Card, the list/thumbnail views (which read the
+// flat columns) show nothing, and Contact.mergeMedia deliberately drops that
+// entry on the next plain save — permanent loss (CLAUDE.md backend trap #3,
+// ADR 0012 INV-D8). Same pipeline as ConfirmVCF: extractPhotoFromRecord +
+// photostore.SaveContactPhoto into the configured profile-photo directory.
+//
+// A remote http(s) photo URI is left alone: it is the transient reference the
+// ingesting caller downloads later (INV-D8), and this pass never makes network
+// calls. An embedded photo that cannot be persisted is named on the report as
+// a transformed field rather than dropped silently.
+func persistEmbeddedPhoto(contact *models.Contact, mc *MappedContact, report *ImportReport) {
+	if mc.Record == nil {
+		return
+	}
+	var uri string
+	for _, m := range mc.Record.Card.Media {
+		if m.Kind == "photo" {
+			uri = m.URI
+			break
+		}
+	}
+	if !strings.HasPrefix(uri, "data:") {
+		return
+	}
+	issue := func(msg string) {
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "photo",
+			Category: ImportIssueCategoryTransformed,
+			Message:  msg,
+		})
+	}
+	data, mediaType, _ := extractPhotoFromRecord(mc.Record)
+	if len(data) == 0 {
+		issue("embedded photo could not be decoded and was not imported")
+		return
+	}
+	photoDir := models.DefaultPhotoDir
+	if photoDir == "" {
+		issue("embedded photo was not imported: no profile-photo directory is configured")
+		return
+	}
+	path, thumbnail, err := photostore.SaveContactPhoto(data, mediaType, photoDir)
+	if err != nil {
+		issue("embedded photo could not be saved and was not imported: " + err.Error())
+		return
+	}
+	contact.Photo = path
+	contact.PhotoThumbnail = thumbnail
+}
+
 // loadSourceLinks returns the set of already-imported external IDs for a
 // system and user, so the import can skip without a per-row query.
 func loadSourceLinks(tx *gorm.DB, userID uint, system string) map[string]bool {
@@ -866,6 +930,7 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 			Confidence:  confidence,
 			Status:      status,
 			Sensitivity: sensitivity,
+			Metadata:    rel.Metadata,
 		}
 		if err := tx.Create(&edge).Error; err != nil {
 			// A duplicate natural key (same source/target/type already stored,
@@ -1239,6 +1304,7 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 			Message:               r.Message,
 			RemindAt:              remindAt,
 			Recurrence:            r.Recurrence,
+			ByMail:                r.ByMail,
 			ReoccurFromCompletion: r.ReoccurFromCompletion,
 			Completed:             r.Completed,
 			LastSent:              r.LastSent,
