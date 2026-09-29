@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/i18n"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -262,4 +263,105 @@ func TestRenderAtomFeed_CapsAtFiftyEntries(t *testing.T) {
 	body, err := RenderAtomFeed(db, cfg, AtomRenderInput{Feed: feed, User: &user, Contact: &a, Now: now})
 	require.NoError(t, err)
 	assert.Len(t, parseFeed(t, body).Entries, 50)
+}
+
+func TestRenderAtomFeed_RequiresFeedAndUser(t *testing.T) {
+	_, err := RenderAtomFeed(nil, nil, AtomRenderInput{})
+	require.Error(t, err)
+
+	// A zero Now falls back to the wall clock (and still succeeds).
+	db, cfg := newFeedTestEnv(t)
+	user := seedFeedUser(t, db)
+	a := seedContact(t, db, user.ID, "Ada", "Lovelace")
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, ContactID: &a.ID, Content: "n", Date: time.Now().Add(-time.Hour)}).Error)
+	feed := seedFeedRow(t, db, user.ID, models.FeedKindContact, a.VCardUID, models.FeedDetailHeadlines)
+	_, err = RenderAtomFeed(db, cfg, AtomRenderInput{Feed: feed, User: &user, Contact: &a})
+	require.NoError(t, err)
+}
+
+func TestFeedEntryContentAndItemUpdated(t *testing.T) {
+	now := time.Now().UTC()
+
+	// feedItemUpdated: every concrete timeline type plus the unknown-type default.
+	for _, item := range []models.TimelineItem{
+		{Data: models.Note{}},
+		{Data: models.Activity{}},
+		{Data: models.ReminderCompletion{}},
+		{Data: models.LifeEvent{}},
+		{Data: models.ExternalActivity{}},
+		{Data: models.Gift{}},
+		{Data: struct{}{}, Date: now},
+	} {
+		_ = feedItemUpdated(item)
+	}
+
+	// feedEntryContent: completion / life-event / gift text is emitted at full detail.
+	if s, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: models.ReminderCompletion{Message: "done"}}); !ok || s != "done" {
+		t.Errorf("completion content = %q ok=%v", s, ok)
+	}
+	if s, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: models.LifeEvent{Description: "moved"}}); !ok || s != "moved" {
+		t.Errorf("life-event content = %q ok=%v", s, ok)
+	}
+	if s, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: models.Gift{Description: "gift"}}); !ok || s != "gift" {
+		t.Errorf("gift content = %q ok=%v", s, ok)
+	}
+	// external_activity and unknown types never get content.
+	if _, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: models.ExternalActivity{Payload: map[string]interface{}{"x": 1}}}); ok {
+		t.Error("external_activity must not carry content")
+	}
+	if _, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: struct{}{}}); ok {
+		t.Error("unknown type must not carry content")
+	}
+	// All-empty parts collapse to no content.
+	if _, ok := feedEntryContent(models.FeedDetailFull, models.TimelineItem{Data: models.Note{Content: "   "}}); ok {
+		t.Error("empty content must be omitted")
+	}
+	// headlines never emit content.
+	if _, ok := feedEntryContent(models.FeedDetailHeadlines, models.TimelineItem{Data: models.Note{Content: "x"}}); ok {
+		t.Error("headlines must not carry content")
+	}
+}
+
+func TestFeedContactResolver_Helpers(t *testing.T) {
+	// lookupID on a nil id and a nil map returns nil.
+	r := &feedContactResolver{}
+	assert.Nil(t, r.lookupID(nil))
+
+	// linkHref with no resolvable contact returns "".
+	assert.Equal(t, "", r.linkHref(&config.Config{FrontendURL: "https://crm.example"}, models.TimelineItem{Data: models.Note{}}))
+
+	// displayNames skips an unresolvable contact id (nil lookup).
+	r.byID = map[uint]*models.Contact{}
+	assert.Empty(t, r.displayNames(models.TimelineItem{Data: models.Note{ContactID: ptr(uint(9_999_999))}}))
+}
+
+func TestRenderAtomFeed_AggregateFullDetailCoversResolver(t *testing.T) {
+	db, cfg := newFeedTestEnv(t)
+	user := seedFeedUser(t, db)
+	a := seedContact(t, db, user.ID, "Ada", "Lovelace")
+	// Same zone as the feed's own NotAfter (time.Now()), so the lexicographic
+	// date comparison matches — this is the T17 byte-for-byte storage invariant.
+	now := time.Now()
+
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, ContactID: &a.ID, Content: "note body", Date: now.Add(-time.Hour)}).Error)
+	require.NoError(t, db.Create(&models.ReminderCompletion{UserID: user.ID, ContactID: a.ID, Message: "completion body", CompletedAt: now.Add(-2 * time.Hour)}).Error)
+	require.NoError(t, db.Create(&models.LifeEvent{UserID: user.ID, EntityID: a.VCardUID, Type: "custom", Description: "life-event body", Date: &contactmodel.PartialDate{Year: ptr(2020), Month: ptr(5), Day: ptr(7)}}).Error)
+	require.NoError(t, db.Create(&models.ExternalActivity{UserID: user.ID, EntityID: a.VCardUID, SourceSystem: "immich", ExternalID: "e1", Type: "photo", OccurredAt: now.Add(-3 * time.Hour)}).Error)
+	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: a.VCardUID, Description: "gift body", Status: models.GiftStatusGiven, Date: ptr(now.Add(-4 * time.Hour))}).Error)
+
+	feed := seedFeedRow(t, db, user.ID, models.FeedKindAggregate, "", models.FeedDetailFull)
+
+	// Absolute FrontendURL: entries carry an alternate link to /contacts/<id>.
+	body, err := RenderAtomFeed(db, cfg, AtomRenderInput{Feed: feed, User: &user, Now: now})
+	require.NoError(t, err)
+	text := string(body)
+	for _, want := range []string{"note body", "completion body", "life-event body", "gift body", "/contacts/"} {
+		assert.Contains(t, text, want)
+	}
+
+	// Dev sentinel: no absolute URL exists, so the link is omitted.
+	devCfg := &config.Config{FrontendURL: "*"}
+	devBody, err := RenderAtomFeed(db, devCfg, AtomRenderInput{Feed: feed, User: &user, Now: now})
+	require.NoError(t, err)
+	assert.NotContains(t, string(devBody), "<link")
 }

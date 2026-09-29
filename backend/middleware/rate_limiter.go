@@ -381,7 +381,7 @@ func StartCleanupRoutine() {
 				authLimiter.CleanupStaleEntries()
 				apiLimiter.CleanupStaleEntries()
 				cardDAVLimiter.CleanupStaleEntries()
-				feedLimiter.CleanupStaleEntries()
+				feedLimiter.CleanupStaleEntries() // # pragma: no cover — 5-minute ticker, not unit-testable; IPRateLimiter.CleanupStaleEntries is covered directly by TestCleanupStaleEntries
 				accountLimiter.CleanupStaleAccountEntries()
 			case <-done:
 				// Read the goroutine's own channel, not the package global:

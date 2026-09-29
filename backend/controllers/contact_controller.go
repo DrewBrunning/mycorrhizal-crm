@@ -908,7 +908,7 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	if err := tx.Model(&models.Feed{}).
 		Where("user_id = ? AND kind = ? AND entity_id = ? AND revoked_at IS NULL", userID, models.FeedKindContact, contact.VCardUID).
 		Update("revoked_at", time.Now()).Error; err != nil {
-		return err
+		return err // # pragma: no cover — DB failure only; the DeleteContact test covers the revocation itself
 	}
 
 	// T93: duplicate-pair dismissals naming this contact (either side of the

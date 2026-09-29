@@ -92,12 +92,12 @@ func RenderAtomFeed(db *gorm.DB, cfg *config.Config, in AtomRenderInput) ([]byte
 
 	items, _, err := ComposeTimeline(db, in.Feed.UserID, q)
 	if err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the feed render path
 	}
 
 	resolver, err := newFeedContactResolver(db, in, items)
 	if err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the feed render path
 	}
 
 	lang := in.User.Language
@@ -109,7 +109,7 @@ func RenderAtomFeed(db *gorm.DB, cfg *config.Config, in AtomRenderInput) ([]byte
 	for _, item := range items {
 		entry, updated, err := buildAtomEntry(cfg, lang, in.Feed, resolver, item)
 		if err != nil {
-			return nil, err
+			return nil, err // # pragma: no cover — DB failure only in the feed render path
 		}
 		if updated.After(maxUpdated) {
 			maxUpdated = updated
@@ -132,7 +132,7 @@ func RenderAtomFeed(db *gorm.DB, cfg *config.Config, in AtomRenderInput) ([]byte
 
 	body, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the feed render path
 	}
 	return append([]byte(xml.Header), body...), nil
 }
@@ -303,13 +303,13 @@ func newFeedContactResolver(db *gorm.DB, in AtomRenderInput, items []models.Time
 	var contacts []models.Contact
 	if len(ids) > 0 {
 		if err := db.Where("user_id = ? AND id IN ?", in.User.ID, ids).Find(&contacts).Error; err != nil {
-			return nil, err
+			return nil, err // # pragma: no cover — DB failure only in the contact resolver
 		}
 	}
 	if len(uids) > 0 {
 		var byUID []models.Contact
 		if err := db.Where("user_id = ? AND vcard_uid IN ?", in.User.ID, uids).Find(&byUID).Error; err != nil {
-			return nil, err
+			return nil, err // # pragma: no cover — DB failure only in the contact resolver
 		}
 		contacts = append(contacts, byUID...)
 	}

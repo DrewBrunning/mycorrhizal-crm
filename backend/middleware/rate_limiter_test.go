@@ -528,6 +528,25 @@ func TestCardDAVRateLimitMiddlewareAllowsBulkRequests(t *testing.T) {
 	}
 }
 
+func TestFeedRateLimitMiddleware(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(FeedRateLimitMiddleware())
+	router.GET("/api/v1/feeds/atom", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"feed": true})
+	})
+
+	// A fresh IP within the feed bucket's burst succeeds.
+	req, _ := http.NewRequest("GET", "/api/v1/feeds/atom", nil)
+	req.RemoteAddr = "192.168.7.77:1234"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+}
+
 func TestGetAccountRateLimiter(t *testing.T) {
 	limiter := GetAccountRateLimiter()
 

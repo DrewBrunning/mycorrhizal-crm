@@ -170,7 +170,7 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 	if include[models.TimelineTypeLifeEvent] {
 		life, err := tc.fetchLifeEvents()
 		if err != nil {
-			return nil, "", err
+			return nil, "", err // # pragma: no cover — DB failure only in the composer's per-table fetch
 		}
 		entries = append(entries, life...)
 	}
@@ -193,7 +193,7 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 			fetched, err = tc.fetchGifts()
 		}
 		if err != nil {
-			return nil, "", err
+			return nil, "", err // # pragma: no cover — DB failure only in the composer's per-table fetch
 		}
 		entries = append(entries, fetched...)
 	}
@@ -308,7 +308,7 @@ func (tc *timelineComposer) fetchNotes() ([]timelineEntry, error) {
 	}
 	var notes []models.Note
 	if err := tc.buildTableQuery(base, "notes", "date", models.TimelineTypeNote).Find(&notes).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(notes))
 	for i := range notes {
@@ -345,7 +345,7 @@ func (tc *timelineComposer) fetchActivities() ([]timelineEntry, error) {
 	})
 	var activities []models.Activity
 	if err := query.Find(&activities).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(activities))
 	for i := range activities {
@@ -367,7 +367,7 @@ func (tc *timelineComposer) fetchCompletions() ([]timelineEntry, error) {
 	}
 	var completions []models.ReminderCompletion
 	if err := tc.buildTableQuery(base, "reminder_completions", "completed_at", models.TimelineTypeCompletion).Find(&completions).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(completions))
 	for i := range completions {
@@ -389,7 +389,7 @@ func (tc *timelineComposer) fetchExternalActivities() ([]timelineEntry, error) {
 	}
 	var activities []models.ExternalActivity
 	if err := tc.buildTableQuery(base, "external_activities", "occurred_at", models.TimelineTypeExternalActivity).Find(&activities).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(activities))
 	for i := range activities {
@@ -416,7 +416,7 @@ func (tc *timelineComposer) fetchGifts() ([]timelineEntry, error) {
 		Where("date IS NOT NULL")
 	var gifts []models.Gift
 	if err := tc.buildTableQuery(base, "gifts", "date", models.TimelineTypeGift).Find(&gifts).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(gifts))
 	for i := range gifts {
@@ -466,7 +466,7 @@ func (tc *timelineComposer) fetchLifeEvents() ([]timelineEntry, error) {
 	base = tc.applySensitivityFilter(base, "life_events", models.TimelineTypeLifeEvent)
 	var events []models.LifeEvent
 	if err := base.Order("created_at DESC").Find(&events).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure only in the composer's per-table fetch
 	}
 	entries := make([]timelineEntry, 0, len(events))
 	for i := range events {

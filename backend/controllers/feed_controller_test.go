@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -458,4 +459,82 @@ func TestDeleteUser_HardDeletesFeeds(t *testing.T) {
 	var scopedCount int64
 	require.NoError(t, db.Unscoped().Model(&models.Feed{}).Where("user_id = ?", target.ID).Count(&scopedCount).Error)
 	assert.Zero(t, scopedCount)
+}
+
+func TestListFeeds_EmptyIsArrayNotNull(t *testing.T) {
+	_, router, _, _ := newFeedTestEnv(t, "https://crm.example")
+
+	req, _ := http.NewRequest("GET", "/feeds", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.JSONEq(t, `{"feeds":[]}`, w.Body.String())
+}
+
+func TestFeedHandlers_RequireAuthenticatedUser(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	cfg := &config.Config{FrontendURL: "https://crm.example"}
+
+	// A router with the DB but no authenticated userID in context.
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	router.GET("/feeds", ListFeeds)
+	router.POST("/feeds", middleware.ValidateJSONMiddleware(&models.FeedInput{}), CreateFeed(cfg))
+	router.POST("/feeds/:id/rotate", RotateFeed(cfg))
+	router.DELETE("/feeds/:id", DeleteFeed)
+	router.POST("/feeds/revoke-all", RevokeAllFeeds)
+
+	body := `{"name":"x","kind":"aggregate"}`
+	for _, tc := range []struct{ method, path, body string }{
+		{"GET", "/feeds", ""},
+		{"POST", "/feeds", body},
+		{"POST", "/feeds/x/rotate", ""},
+		{"DELETE", "/feeds/x", ""},
+		{"POST", "/feeds/revoke-all", ""},
+	} {
+		req, _ := http.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+		if tc.body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equalf(t, http.StatusUnauthorized, w.Code, "%s %s", tc.method, tc.path)
+	}
+}
+
+func TestCreateFeed_MissingValidatedInput(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	user := models.User{Username: "nobody", Email: "nobody@example.com", Password: "password123"}
+	require.NoError(t, db.Create(&user).Error)
+	cfg := &config.Config{FrontendURL: "https://crm.example"}
+
+	// No ValidateJSONMiddleware ran, so GetValidated finds nothing.
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/feeds", CreateFeed(cfg))
+
+	req, _ := http.NewRequest("POST", "/feeds", strings.NewReader(`{"name":"x","kind":"aggregate"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestIfNoneMatchMatches(t *testing.T) {
+	etag := `"abc123"`
+	assert.True(t, ifNoneMatchMatches("*", etag))
+	assert.True(t, ifNoneMatchMatches(etag, etag))
+	assert.True(t, ifNoneMatchMatches("W/"+etag, etag))
+	assert.True(t, ifNoneMatchMatches(`"nope", `+etag, etag))
+	assert.False(t, ifNoneMatchMatches("", etag))
+	assert.False(t, ifNoneMatchMatches(`"nope"`, etag))
 }
