@@ -21,8 +21,10 @@ import org.junit.runner.RunWith
  * written until the user saves. Against the real backend, with the notes read
  * back through the API rather than the UI.
  *
- * Delivered to the running singleTask activity via startActivity (→ onNewIntent),
- * exactly what the system share sheet does.
+ * Delivered from inside the running activity (→ onNewIntent of the rule's own instance;
+ * issue #1321) — the in-app route only. The system share sheet starts the activity from
+ * another task with FLAG_ACTIVITY_NEW_TASK; that cross-task path is covered by
+ * [CrossTaskIntentE2eTest] (issue #1343).
  */
 @RunWith(AndroidJUnit4::class)
 class ShareToCrmE2eTest : E2eBaseTest() {
