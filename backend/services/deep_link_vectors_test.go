@@ -99,3 +99,38 @@ func TestDeepLinkVectorsBackendEmitter(t *testing.T) {
 		assert.Equalf(t, contactDeepLink(id), link, "fcmReminderData must emit the link through contactDeepLink")
 	}
 }
+
+// TestContactWebPathMatchesVectors pins contactWebPath (the Web Push click
+// target, issue #1270) to the web_path of the accepted vector whose uri is
+// contactDeepLink(id), so the two emitters cannot drift apart.
+func TestContactWebPathMatchesVectors(t *testing.T) {
+	t.Parallel()
+	table := loadDeepLinkVectors(t)
+	byURI := map[string]deepLinkVector{}
+	for _, v := range table.Vectors {
+		byURI[v.URI] = v
+	}
+	for _, id := range []uint{1, 42, 2147483647} {
+		v, ok := byURI[contactDeepLink(id)]
+		require.Truef(t, ok, "no vector for %s", contactDeepLink(id))
+		require.NotNil(t, v.WebPath)
+		assert.Equal(t, *v.WebPath, contactWebPath(id))
+	}
+}
+
+func TestReminderWebPath(t *testing.T) {
+	t.Parallel()
+	id := uint(7)
+	assert.Equal(t, "/contacts/7", reminderWebPath(models.Reminder{ContactID: &id}))
+	assert.Equal(t, "", reminderWebPath(models.Reminder{}))
+}
+
+func TestPushPayloadOmitsEmptyPath(t *testing.T) {
+	t.Parallel()
+	raw, err := json.Marshal(pushPayload("t", "b", ""))
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"title":"t","body":"b"}`, string(raw))
+	raw, err = json.Marshal(pushPayload("t", "b", "/contacts/42"))
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"title":"t","body":"b","path":"/contacts/42"}`, string(raw))
+}
