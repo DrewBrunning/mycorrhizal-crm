@@ -487,6 +487,12 @@ func UpdateUser(c *gin.Context) {
 			// misleading to report as an update failure. Logged so it isn't silent.
 			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after admin password reset")
 		}
+		// Issue #382 (ADR 0030 decision 6): a feed URL grants read access to
+		// the same data a leaked API token would, so the operator-side reset
+		// ends the user's feeds too.
+		if _, err := services.RevokeAllFeeds(db, user.ID); err != nil {
+			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke feeds after admin password reset") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
+		}
 		// Issue #722: an admin password reset must not leave remembered
 		// devices able to mint fresh sessions via biometric unlock either.
 		if _, err := services.RevokeAllDeviceGrants(db, user.ID); err != nil {

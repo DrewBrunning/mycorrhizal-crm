@@ -172,6 +172,34 @@ func Registry() []Operation {
 			},
 		},
 
+		// --- private Atom feed composition (issue #382, ADR 0030) --------
+		{
+			// A contact feed composes one contact's merged timeline window
+			// (50 most recent, excluding future-dated entries).
+			Name: "feed.contact", Category: "read", ExpectedGrowth: GrowthConstant,
+			Run: func(e *Env) (int, error) {
+				now := time.Now()
+				items, _, err := services.ComposeTimeline(e.DB, e.UserID, services.TimelineQuery{
+					ContactID: &e.NormalContact.ID,
+					Limit:     50, Desc: true, NotAfter: &now, Now: now, FilterSensitivity: true,
+				})
+				return len(items), err
+			},
+		},
+		{
+			// An aggregate feed merges every live contact's timeline; the
+			// per-table queries stay bounded (subquery semi-joins), so the
+			// query count is constant regardless of contact count.
+			Name: "feed.aggregate", Category: "read", ExpectedGrowth: GrowthConstant,
+			Run: func(e *Env) (int, error) {
+				now := time.Now()
+				items, _, err := services.ComposeTimeline(e.DB, e.UserID, services.TimelineQuery{
+					Limit: 50, Desc: true, NotAfter: &now, Now: now, FilterSensitivity: true,
+				})
+				return len(items), err
+			},
+		},
+
 		// --- reach-out / cadence over the whole contact set --------------
 		{
 			Name: "cadence.list_overdue", Category: "read", ExpectedGrowth: GrowthConstant,

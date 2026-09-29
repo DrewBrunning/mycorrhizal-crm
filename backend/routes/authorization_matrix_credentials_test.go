@@ -34,6 +34,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -74,6 +75,28 @@ func mintAPIToken(t *testing.T, db *gorm.DB, userID uint, scope string) string {
 		TokenHash: hash,
 		Scope:     scope,
 		ExpiresAt: &expires,
+	}).Error)
+	return raw
+}
+
+// mintFeedToken inserts a Feed row (issue #382) and returns the plaintext
+// "mycorrhizal_feed_"-prefixed credential. Mirrors
+// controllers/feed_controller.go's generateFeedToken shape and hashing.
+var feedTokenSeq int
+
+func mintFeedToken(t *testing.T, db *gorm.DB, userID uint) string {
+	t.Helper()
+	feedTokenSeq++
+	raw := "mycorrhizal_feed_test_u" + strconv.FormatUint(uint64(userID), 10) +
+		"_n" + strconv.Itoa(feedTokenSeq)
+	sum := sha256.Sum256([]byte(raw))
+	hash := hex.EncodeToString(sum[:])
+	require.NoError(t, db.Create(&models.Feed{
+		UserID:    userID,
+		Name:      "cred feed",
+		Kind:      models.FeedKindAggregate,
+		Detail:    models.FeedDetailHeadlines,
+		TokenHash: hash,
 	}).Error)
 	return raw
 }
@@ -154,6 +177,11 @@ func TestAuthorizationMatrixNonJWTCredentials(t *testing.T) {
 	// do run and would invalidate the running credential, so it is re-minted
 	// lazily whenever a probe comes back 401 (see probeFull below).
 	fullToken := mintAPIToken(t, db, owner.ID, "full")
+	// A feed token (issue #382) is a credential for the feed endpoint only. It
+	// shares the mycorrhizal_ prefix but lives in a different table, so
+	// AuthMiddleware's LookupAPIToken (api_tokens only) must miss it → 401 on
+	// every REST route.
+	feedToken := mintFeedToken(t, db, davUser.ID)
 
 	res := seedResources(t, db, owner.ID)
 	table := buildTable(res)
@@ -252,6 +280,29 @@ func TestAuthorizationMatrixNonJWTCredentials(t *testing.T) {
 		// --- carddav-token: scope rejection is a hard 403 on every REST route -
 		if got := dispatch(router, r.Method, path, cardDAVToken); got != http.StatusForbidden {
 			fail("carddav-token", r.Method, path, got, "403")
+		}
+
+		// --- feed-token: a feed credential is never a REST bearer credential.
+		// AuthMiddleware routes mycorrhizal_-prefixed tokens to
+		// LookupAPIToken (api_tokens only), which misses a feed token → 401. ---
+		if got := dispatch(router, r.Method, path, feedToken); got != http.StatusUnauthorized {
+			fail("feed-token", r.Method, path, got, "401")
+		}
+	}
+
+	// The feed serving endpoint looks up feeds.token_hash only, so a JWT, a
+	// full API token and a carddav-scoped token presented as ?token= are all
+	// misses (404) — the credential spaces are disjoint (ADR 0030 decision 6).
+	// (The feed token itself is the one credential that *does* resolve there;
+	// its 200 is covered by the feed tests.)
+	for _, cred := range []struct{ name, token string }{
+		{"owner-jwt", ownerJWT},
+		{"full-token", fullToken},
+		{"carddav-token", cardDAVToken},
+	} {
+		got := dispatch(router, http.MethodGet, "/api/v1/feeds/atom?token="+url.QueryEscape(cred.token), "")
+		if got != http.StatusNotFound {
+			fail("atom-"+cred.name, http.MethodGet, "/api/v1/feeds/atom", got, "404")
 		}
 	}
 

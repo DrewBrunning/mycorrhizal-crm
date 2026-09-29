@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
+import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
@@ -12,6 +13,7 @@ import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferenceLevels
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.network.RowImportAction
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -5057,6 +5059,124 @@ class ApiClientTest {
         assertTrue(result.getOrThrow().decodeToString().startsWith("CONTACTS"))
         val request = server.takeRequest()
         assertEquals("/api/v1/export", request.path)
+    }
+
+    // --- Issue #1264: account bundle export + mycorrhizal import source ---
+
+    @Test
+    fun `exportAccountBundle GETs the account route and returns the raw bytes`() = runBlocking {
+        val json = """{"format":"mycorrhizal-account","version":1}"""
+        server.enqueue(MockResponse().setResponseCode(200).setBody(json))
+
+        val result = client.exportAccountBundle()
+
+        assertEquals(json, result.getOrThrow().decodeToString())
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/export/account", request.path)
+    }
+
+    @Test
+    fun `exportAccountBundle maps a server error to a failure`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"error":{"code":"x","message":"boom"}}"""))
+
+        assertTrue(client.exportAccountBundle().isFailure)
+    }
+
+    @Test
+    fun `uploadMycorrhizalBundle posts a multipart file and parses the session and totals`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s1","version":1,"totals":{"contacts":3,"notes":2,"life_events":1}}""",
+            ),
+        )
+
+        val result = client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json").getOrThrow()
+
+        assertEquals("s1", result.sessionId)
+        assertEquals(1, result.version)
+        assertEquals(3, result.totals.contacts)
+        assertEquals(2, result.totals.notes)
+        assertEquals(1, result.totals.lifeEvents)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/import/mycorrhizal/upload", request.path)
+        assertTrue(request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"))
+        assertTrue(request.body.readUtf8().contains("filename=\"b.json\""))
+    }
+
+    @Test
+    fun `startMycorrhizalFetch posts the session id as JSON`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+
+        assertTrue(client.startMycorrhizalFetch("s1").isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/import/mycorrhizal/fetch", request.path)
+        assertEquals("""{"session_id":"s1"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `getMycorrhizalImportStatus sends session_id and parses phase progress and result`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s1","phase":"done","phase_done":5,"phase_total":5,
+                    "result":{"created":4,"updated":1,"skipped":0,"notes_created":7}}""",
+            ),
+        )
+
+        val status = client.getMycorrhizalImportStatus("s 1").getOrThrow()
+
+        assertEquals("done", status.phase)
+        assertEquals(5, status.phaseDone)
+        assertEquals(4, status.result?.created)
+        assertEquals(7, status.result?.notesCreated)
+        assertEquals("/api/v1/import/mycorrhizal/status?session_id=s%201", server.takeRequest().path)
+    }
+
+    @Test
+    fun `getMycorrhizalImportPreview parses rows and the loss report`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s1","rows":[{"row_index":0,"suggested_action":"add",
+                    "parsed_contact":{},"validation_errors":[],"has_photo":true}],
+                    "total_rows":1,"valid_rows":1,
+                    "loss_report":[{"record":"contact","field":"photo","category":"skipped","message":"omitted"}]}""",
+            ),
+        )
+
+        val preview = client.getMycorrhizalImportPreview("s1").getOrThrow()
+
+        assertEquals(1, preview.rows.size)
+        assertEquals("add", preview.rows[0].suggestedAction)
+        assertEquals("omitted", preview.lossReport.single().message)
+        assertEquals("/api/v1/import/mycorrhizal/preview?session_id=s1", server.takeRequest().path)
+    }
+
+    @Test
+    fun `confirmMycorrhizalImport posts the session id and per-row actions`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+
+        val request = ImportConfirmRequest("s1", listOf(RowImportAction(0, "add"), RowImportAction(1, "skip")))
+        assertTrue(client.confirmMycorrhizalImport(request).isSuccess)
+
+        val recorded = server.takeRequest()
+        assertEquals("/api/v1/import/mycorrhizal/confirm", recorded.path)
+        val body = recorded.body.readUtf8()
+        assertTrue(body, body.contains("\"session_id\":\"s1\""))
+        assertTrue(body, body.contains("\"row_index\":1"))
+        assertTrue(body, body.contains("\"action\":\"skip\""))
+    }
+
+    @Test
+    fun `cancelMycorrhizalImport posts to cancel with the session id`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        assertTrue(client.cancelMycorrhizalImport("s1").isSuccess)
+
+        val recorded = server.takeRequest()
+        assertEquals("POST", recorded.method)
+        assertEquals("/api/v1/import/mycorrhizal/cancel?session_id=s1", recorded.path)
     }
 
     @Test

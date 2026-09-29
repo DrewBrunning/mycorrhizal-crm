@@ -1,4 +1,4 @@
--- Rollback of 000069. Enrolled passkeys are dropped; TOTP and recovery codes
+-- Rollback of 000070. Enrolled passkeys are dropped; TOTP and recovery codes
 -- are untouched, so a TOTP account keeps its second factor. A passkey-only
 -- account (no TOTP) reverts to password-only login.
 DROP TABLE IF EXISTS webauthn_credentials;

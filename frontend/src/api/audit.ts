@@ -22,7 +22,9 @@ export type AuditEntityType =
   // Auth/admin lifecycle entities (issue #381).
   | 'user'
   | 'auth'
-  | 'api_token';
+  | 'api_token'
+  // Private Atom feed credentials (issue #382).
+  | 'feed';
 
 export const AUDIT_ENTITY_TYPES: AuditEntityType[] = [
   'contact',
@@ -37,6 +39,7 @@ export const AUDIT_ENTITY_TYPES: AuditEntityType[] = [
   'user',
   'auth',
   'api_token',
+  'feed',
 ];
 
 // Mirrors models/audit.go's AuditOp* tokens (issue #381 widened the set from

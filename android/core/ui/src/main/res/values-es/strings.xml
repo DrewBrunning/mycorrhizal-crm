@@ -1739,4 +1739,21 @@
     <string name="settings_servers_switch_confirm">Descartar y cambiar</string>
     <string name="servers_add_invalid_url">Introduce una URL de servidor válida, por ejemplo https://crm.example.com.</string>
     <string name="login_use_local_only">Usar solo en este dispositivo</string>
+    <string name="data_export_bundle">Paquete de cuenta (copia completa)</string>
+    <string name="data_restore_bundle">Restaurar desde paquete</string>
+    <string name="data_bundle_exported">Paquete de cuenta guardado</string>
+    <string name="data_bundle_write_failed">No se pudo guardar el paquete de cuenta en esa ubicación</string>
+    <string name="bundle_restore_title">Restaurar desde paquete</string>
+    <string name="bundle_restore_pick_hint">Elige un archivo de paquete de cuenta exportado desde Mycorrhizal. Podrás revisarlo todo antes de restaurar.</string>
+    <string name="bundle_restore_pick">Elegir archivo de paquete</string>
+    <string name="bundle_restore_working">Procesando tu paquete…</string>
+    <string name="bundle_restore_loss">%1$d elementos no se pueden restaurar con exactitud</string>
+    <string name="bundle_restore_result">Restaurado: %1$d creados, %2$d actualizados, %3$d omitidos</string>
+    <string name="bundle_restore_error_too_large">Ese archivo es demasiado grande para ser un paquete de cuenta</string>
+    <string name="bundle_restore_error_invalid_file">Ese archivo está vacío o no es un paquete de cuenta</string>
+    <string name="bundle_restore_error_failed">La restauración no se completó. No se cambió nada.</string>
+    <string name="dashboard_backup_reminder_title">Haz una copia de tus datos</string>
+    <string name="dashboard_backup_reminder_body">Tus datos solo existen en este dispositivo. Guarda un paquete de cuenta para poder restaurarlos si el dispositivo se pierde o se restablece.</string>
+    <string name="dashboard_backup_reminder_action">Copiar ahora</string>
+    <string name="dashboard_backup_reminder_dismiss">Descartar</string>
 </resources>

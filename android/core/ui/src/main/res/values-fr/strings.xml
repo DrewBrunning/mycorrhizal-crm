@@ -1739,4 +1739,21 @@
     <string name="settings_servers_switch_confirm">Supprimer et changer</string>
     <string name="servers_add_invalid_url">Saisissez une URL de serveur valide, par exemple https://crm.example.com.</string>
     <string name="login_use_local_only">Utiliser uniquement sur cet appareil</string>
+    <string name="data_export_bundle">Archive de compte (sauvegarde complète)</string>
+    <string name="data_restore_bundle">Restaurer depuis une archive</string>
+    <string name="data_bundle_exported">Archive de compte enregistrée</string>
+    <string name="data_bundle_write_failed">Impossible d\'enregistrer l\'archive de compte à cet emplacement</string>
+    <string name="bundle_restore_title">Restaurer depuis une archive</string>
+    <string name="bundle_restore_pick_hint">Choisissez un fichier d\'archive de compte exporté depuis Mycorrhizal. Vous pourrez tout vérifier avant la restauration.</string>
+    <string name="bundle_restore_pick">Choisir le fichier d\'archive</string>
+    <string name="bundle_restore_working">Traitement de votre archive…</string>
+    <string name="bundle_restore_loss">%1$d éléments ne peuvent pas être restaurés à l\'identique</string>
+    <string name="bundle_restore_result">Restauré : %1$d créés, %2$d mis à jour, %3$d ignorés</string>
+    <string name="bundle_restore_error_too_large">Ce fichier est trop volumineux pour être une archive de compte</string>
+    <string name="bundle_restore_error_invalid_file">Ce fichier est vide ou n\'est pas une archive de compte</string>
+    <string name="bundle_restore_error_failed">La restauration n\'a pas abouti. Rien n\'a été modifié.</string>
+    <string name="dashboard_backup_reminder_title">Sauvegardez vos données</string>
+    <string name="dashboard_backup_reminder_body">Vos données n\'existent que sur cet appareil. Enregistrez une archive de compte pour pouvoir les restaurer si l\'appareil est perdu ou réinitialisé.</string>
+    <string name="dashboard_backup_reminder_action">Sauvegarder</string>
+    <string name="dashboard_backup_reminder_dismiss">Ignorer</string>
 </resources>

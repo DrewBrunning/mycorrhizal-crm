@@ -158,6 +158,13 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Delete private feed credentials (issue #382, ADR 0030 decision 6) —
+	// hard delete, because token_hash is unique and a lingering row would
+	// block nothing but serves no audit purpose once the owner is gone.
+	if err := tx.Where("user_id = ?", userID).Delete(&models.Feed{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete device grants (issue #722) — the biometric-login credentials
 	// die with the account, exactly like API tokens.
 	if err := tx.Where("user_id = ?", userID).Delete(&models.DeviceGrant{}).Error; err != nil {

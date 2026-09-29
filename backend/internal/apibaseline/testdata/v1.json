@@ -4101,6 +4101,119 @@
     },
     {
       "method": "GET",
+      "path": "/feeds",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds",
+      "parameters": null,
+      "request_body": "ref:FeedInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:FeedCreateResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/atom",
+      "parameters": [
+        {
+          "name": "token",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "304",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds/revoke-all",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "204",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/feeds/{id}/rotate",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:FeedCreateResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/field-definitions",
       "parameters": [
         {
@@ -9047,7 +9160,8 @@
             "reminder",
             "user",
             "auth",
-            "api_token"
+            "api_token",
+            "feed"
           ]
         },
         {
@@ -12916,6 +13030,102 @@
           "name": "url",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "Feed",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "detail",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "headlines",
+            "full"
+          ]
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "aggregate"
+          ]
+        },
+        {
+          "name": "last_accessed_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "FeedCreateResponse",
+      "properties": [
+        {
+          "name": "feed",
+          "type": "ref:Feed",
+          "required": true
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "FeedInput",
+      "properties": [
+        {
+          "name": "detail",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "headlines",
+            "full"
+          ]
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "aggregate"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
         }
       ]
     },

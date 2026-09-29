@@ -67,6 +67,10 @@ const (
 	AuditEntityUser     = "user"
 	AuditEntityAuth     = "auth"
 	AuditEntityAPIToken = "api_token"
+	// AuditEntityFeed is the private Atom feed credential (issue #382, ADR
+	// 0030). Create/rotate/revoke record under it, mirroring the API-token
+	// events.
+	AuditEntityFeed = "feed"
 )
 
 // AuditEvent is one immutable create/update/delete record for an audited

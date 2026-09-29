@@ -96,7 +96,7 @@ func TestBadReleaseRollbackDrill(t *testing.T) {
 	//
 	// exerciseUpgradedApp runs CURRENT code, which reads tables added by
 	// migrations newer than N on the login path (issue #593: LoginUser counts
-	// webauthn_credentials, migration 000069). The real rollback runs N's own
+	// webauthn_credentials, migration 000070). The real rollback runs N's own
 	// binary, which never touches them; this in-process stand-in cannot. So once
 	// the restored state has been verified above (snapshot integrity, version ==
 	// N, three-piece completeness), roll the restored file forward so the

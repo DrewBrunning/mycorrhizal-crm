@@ -8,7 +8,7 @@ import (
 )
 
 // WebAuthnCredential is one enrolled passkey / security key for a user
-// (issue #593, migration 000069). A passkey is an alternative second factor to
+// (issue #593, migration 000070). A passkey is an alternative second factor to
 // TOTP.
 //
 // Hard delete per /CLAUDE.md trap #7: the row's identity IS the

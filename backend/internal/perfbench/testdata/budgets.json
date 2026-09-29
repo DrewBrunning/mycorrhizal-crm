@@ -69,6 +69,14 @@
     "reachout.detect": {
       "max_wall_ms": 300,
       "reason": "Interactive: the reach-out suggestions strip. Five bounded queries. 300ms is ~1,000x the 285us median."
+    },
+    "feed.contact": {
+      "max_wall_ms": 500,
+      "reason": "Background: a feed reader polling one contact's feed (issue #382, ADR 0030). The six per-type queries are bounded (limit+1 rows each); the query count is the #469 gate. 500ms is a loose ceiling for a poll whose result is a small XML document, not a page render."
+    },
+    "feed.aggregate": {
+      "max_wall_ms": 500,
+      "reason": "Background: a reader polling the all-contacts feed. Subquery semi-joins keep the per-table query count constant as the address book grows (the PERF-02 growth gate); 500ms is a loose ceiling for a poll, deliberately looser than the 300ms interactive reads."
     }
   },
   "data_movement_operations": {

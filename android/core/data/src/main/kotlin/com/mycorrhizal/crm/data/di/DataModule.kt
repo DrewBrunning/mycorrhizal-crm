@@ -611,4 +611,11 @@ abstract class DataBindsModule {
     abstract fun bindOutboxDrainer(
         impl: com.mycorrhizal.crm.data.repository.PendingInteractionFlusher,
     ): com.mycorrhizal.crm.data.session.OutboxDrainer
+
+    // Issue #1264: per-profile account-bundle export / reminder bookkeeping.
+    @Binds
+    @Singleton
+    abstract fun bindBundleBackupRepository(
+        impl: com.mycorrhizal.crm.data.repository.BundleBackupRepositoryImpl,
+    ): com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 }

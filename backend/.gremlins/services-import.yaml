@@ -31,6 +31,8 @@ unleash:
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
         - ^error_aggregation\.go$
+        - ^feed_atom\.go$
+        - ^feed_service\.go$
         - ^graph_suggestion_service\.go$
         - ^graph_traversal\.go$
         - ^hibp_service\.go$
@@ -73,6 +75,7 @@ unleash:
         - ^sync_conflict_service\.go$
         - ^sync_event\.go$
         - ^system_event_purge_service\.go$
+        - ^timeline\.go$
         - ^twofactor\.go$
         - ^twofactor_replay\.go$
         - ^unicode_nfc_backfill\.go$

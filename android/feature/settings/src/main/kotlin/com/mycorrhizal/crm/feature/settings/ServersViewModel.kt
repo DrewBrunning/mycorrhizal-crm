@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SwitchProfileResult
 import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,6 +49,7 @@ sealed interface ServersEvent {
 class ServersViewModel @Inject constructor(
     private val sessionManager: SessionManager,
     private val localServerHost: LocalServerHost,
+    private val bundleBackupRepository: BundleBackupRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServersUiState())
@@ -117,6 +119,7 @@ class ServersViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true) }
             sessionManager.removeProfile(profileId)
+            bundleBackupRepository.forget(profileId)
             _uiState.update { it.copy(isBusy = false) }
             _events.send(ServersEvent.Removed)
         }
@@ -134,6 +137,7 @@ class ServersViewModel @Inject constructor(
             _uiState.update { it.copy(isBusy = true) }
             localServerHost.deleteLocalData()
             sessionManager.removeProfile(profileId)
+            bundleBackupRepository.forget(profileId)
             _uiState.update { it.copy(isBusy = false) }
             _events.send(ServersEvent.Removed)
         }

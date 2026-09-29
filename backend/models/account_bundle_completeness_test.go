@@ -67,6 +67,7 @@ var bundleExcluded = map[string]string{
 	"DismissedHouseholdSuggestion":  "per-instance review UI state; not portable data",
 	"ExternalActivity":              "external integration cache; re-fetched on the destination",
 	"ExternalIdentity":              "external integration identity mapping; re-derived",
+	"Feed":                          "credential material (hashed feed token); never exported",
 	"IdempotencyKey":                "request idempotency cache; not portable data",
 	"ImmichConfig":                  "per-instance integration configuration/credential",
 	"ImportRun":                     "import history bookkeeping, not user-authored data",

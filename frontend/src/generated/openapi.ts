@@ -200,7 +200,7 @@ export type AuditEvent = {
   before_snapshot?: string;
   created_at?: string;
   entity_id?: string;
-  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token';
+  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token' | 'feed';
   hash?: string;
   id?: number;
   operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke';
@@ -1040,6 +1040,28 @@ export type ExternalIdentityInput = {
   sync_status?: 'idle' | 'syncing' | 'synced' | 'error';
   system: string;
   url?: string;
+};
+
+export type Feed = {
+  created_at: string;
+  detail: 'headlines' | 'full';
+  entity_id: string;
+  id: string;
+  kind: 'contact' | 'aggregate';
+  last_accessed_at: string | null;
+  name: string;
+};
+
+export type FeedCreateResponse = {
+  feed: Feed;
+  url: string;
+};
+
+export type FeedInput = {
+  detail?: 'headlines' | 'full';
+  entity_id?: string;
+  kind: 'contact' | 'aggregate';
+  name: string;
 };
 
 export type FieldConstraints = {

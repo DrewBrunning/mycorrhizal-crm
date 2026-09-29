@@ -98,6 +98,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"contacts":               goCascadeUser,
 	"device_grants":          goCascadeUser,
 	"device_registrations":   goCascadeUser,
+	"feeds":                  goCascadeUser,
 	"field_definitions":      goCascadeUser,
 	"households":             goCascadeUser,
 	"idempotency_keys":       goCascadeUser,
