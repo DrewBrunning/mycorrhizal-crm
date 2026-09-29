@@ -292,8 +292,31 @@ test('removal can be proven with another passkey (assertion), only offered when 
 
   expect(await screen.findByText('Passkey removed.')).toBeInTheDocument();
   expect(get).toHaveBeenCalledTimes(1);
+  const begin = fetchMock.mock.calls.find(([u]) => String(u).includes('/webauthn/assert/begin'));
+  expect(JSON.parse(String(begin?.[1]?.body))).toEqual({ exclude_id: 'p1' });
   const del = fetchMock.mock.calls.find(([, i]) => i?.method === 'DELETE');
   expect(JSON.parse(String(del?.[1]?.body))).toMatchObject({ assertion: { id: 'cred-id' } });
+});
+
+test('a failed proof begin shows the backend message and deletes nothing', async () => {
+  stubWebAuthn();
+  const fetchMock = mockFetch({
+    'GET /webauthn/credentials': () => ({ credentials: [laptop, yubikey] }),
+    'POST /webauthn/assert/begin': () => ({
+      ok: false,
+      body: { message: 'No other passkey is registered to verify with' },
+    }),
+  });
+  renderCard();
+  await screen.findByText('Laptop');
+  fireEvent.click(screen.getByRole('button', { name: 'Remove passkey Laptop' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: 'Verify with another passkey instead' }),
+  );
+
+  expect(await within(dialog).findByText(/No other passkey is registered/)).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'DELETE')).toBe(false);
 });
 
 test('the another-passkey route is hidden when this is the only passkey', async () => {

@@ -901,7 +901,15 @@ paths:
       description: >
         Authenticated. Returns assertion options; the resulting assertion is
         submitted as `assertion` to DELETE /webauthn/credentials/{id}, proving
-        a passkey other than the one being removed is still held.
+        a passkey other than the one being removed is still held. The optional
+        `exclude_id` names the passkey being removed; it is left out of the
+        options' `allowCredentials` so the authenticator cannot pick it.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnProofBeginInput"
       responses:
         "200":
           description: WebAuthn assertion options.
@@ -916,8 +924,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "404":
+          description: '`exclude_id` is not one of the caller''s passkeys (another user''s id is indistinguishable from an unknown one).'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
-          description: No passkey registered, or FRONTEND_URL is not a concrete origin.
+          description: No passkey registered, no passkey other than `exclude_id` remains, or FRONTEND_URL is not a concrete origin.
           content:
             application/json:
               schema:
@@ -12084,6 +12098,12 @@ components:
         credentials:
           type: array
           items: { $ref: "#/components/schemas/WebAuthnCredential" }
+    WebAuthnProofBeginInput:
+      type: object
+      properties:
+        exclude_id:
+          type: string
+          description: "Id of the passkey being removed; it is omitted from the assertion's allowCredentials."
     WebAuthnDeleteInput:
       type: object
       description: "Exactly one proof: `code`, or `assertion`."

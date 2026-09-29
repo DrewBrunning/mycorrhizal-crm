@@ -2504,6 +2504,10 @@ export type WebAuthnDeleteInput = {
   code?: string;
 };
 
+export type WebAuthnProofBeginInput = {
+  exclude_id?: string;
+};
+
 export type WebAuthnRegisterBeginInput = {
   name?: string;
 };
