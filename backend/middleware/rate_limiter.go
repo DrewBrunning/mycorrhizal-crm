@@ -327,6 +327,11 @@ var (
 	// 10 requests per second sustained, burst of 2500 for initial address book sync
 	cardDAVLimiter = NewIPRateLimiter(rate.Every(100*time.Millisecond), 2500)
 
+	// Feed rate limiter — its own bucket so a reader polling many feeds from
+	// one host cannot starve the web UI on the same IP, and the reverse (ADR
+	// 0030 decision 7). 0.5 req/s sustained, burst of 60.
+	feedLimiter = NewIPRateLimiter(rate.Every(2*time.Second), 60)
+
 	// Per-account rate limiter for login attempts
 	// Tracks failed attempts per username/email with exponential backoff
 	// This is the primary brute force protection mechanism
@@ -376,6 +381,7 @@ func StartCleanupRoutine() {
 				authLimiter.CleanupStaleEntries()
 				apiLimiter.CleanupStaleEntries()
 				cardDAVLimiter.CleanupStaleEntries()
+				feedLimiter.CleanupStaleEntries()
 				accountLimiter.CleanupStaleAccountEntries()
 			case <-done:
 				// Read the goroutine's own channel, not the package global:
@@ -477,5 +483,14 @@ func APIRateLimitMiddleware() gin.HandlerFunc {
 // Uses a higher burst than auth endpoints to allow bulk sync from clients like vdirsyncer.
 func CardDAVRateLimitMiddleware() gin.HandlerFunc {
 	limit := RateLimitMiddleware(cardDAVLimiter)
+	return func(c *gin.Context) { limit(c) }
+}
+
+// FeedRateLimitMiddleware applies rate limiting for the private Atom feed
+// endpoint. It uses feedLimiter's own bucket so feed polling and the web UI
+// cannot exhaust each other's budget on a shared egress IP (ADR 0030 decision
+// 7).
+func FeedRateLimitMiddleware() gin.HandlerFunc {
+	limit := RateLimitMiddleware(feedLimiter)
 	return func(c *gin.Context) { limit(c) }
 }

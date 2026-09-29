@@ -32,6 +32,7 @@ unleash:
         - ^export_loss\.go$
         - ^external_activity_controller\.go$
         - ^external_identity_controller\.go$
+        - ^feed_controller\.go$
         - ^field_definition_controller\.go$
         - ^gift_controller\.go$
         - ^graph_controller\.go$

@@ -22,12 +22,12 @@ header, findings, and changelog — not 301 duplicated rows.
 
 ## The claim
 
-> **ASVS Level 2, with 23 documented exceptions.** **MASVS-L1, with 1 documented exception** (plus two
+> **ASVS Level 2, with 24 documented exceptions.** **MASVS-L1, with 1 documented exception** (plus two
 > L2 controls satisfied as a bonus, not as a level claim).
 
-Stated plainly, without a silent downgrade: 194 of 257 ASVS control rows are `satisfied` with
+Stated plainly, without a silent downgrade: 193 of 257 ASVS control rows are `satisfied` with
 verified evidence, 38 are `not-applicable` with a written reason, 2 are L3-only and out of scope, and
-**23 are `partial`** — each naming its own gap. Every one of those 23 is enumerated in
+**24 are `partial`** — each naming its own gap. Every one of those 24 is enumerated in
 [§7 Exception register](#7-exception-register). A reader who rejects any single exception should read
 the claim as "L2 except that control", which is the point of enumerating them.
 
@@ -70,7 +70,7 @@ diverge from the parsed rows.
 | V13 — API and Web Service | 7 | 2 | 2 | — |
 | V14 — Configuration | 19 | 1 | 3 | — |
 | API Security Top 10 (2023) | 9 | 1 | — | — |
-| **ASVS total** | **194** | **23** | **38** | **2** |
+| **ASVS total** | **193** | **24** | **38** | **2** |
 | MASVS V2 — Data Storage and Privacy | 8 | 1 | — | — |
 | MASVS V3 — Cryptography | 6 | — | — | — |
 | MASVS V4 — Authentication and Session Management | 7 | — | 1 | — |
@@ -454,7 +454,7 @@ re-verification.
 | **P10** | Attachment EXIF/GPS stripped for JPEG/PNG at ingest; HEIC is a named, untouched gap (#945) | A HEIC-capable metadata-editing library becomes available |
 | **P11** | Outbound email CRLF hardening (explicit `To` rejection, defensive `Subject` strip) is defense-in-depth, not a response to a reachable gap — no current caller passes anything but a validated address / fixed subject (#945) | A caller ever needs to pass a non-`user.Email` recipient or a non-fixed subject |
 
-### The 23 ASVS `partial` rows
+### The 24 ASVS `partial` rows
 
 Grouped by why each is short, because the groups have very different meanings.
 
@@ -469,8 +469,12 @@ bounded per request, not yet against the cumulative quota), 14.4.2.
 recovery path, not on self-service change), 4.3.1 (2FA available to all, not *enforced* for admins),
 API9 (no endpoint-inventory doc; `openapi.yaml` is maintained and drift-checked).
 
-**Partial mechanism (6)**: 2.3.2, 2.6.2, 2.8.2, 2.8.5 (TOTP reuse is detected, rejected and logged
-since issue #873 — no proactive owner notification, the 2.2.3 / 2.5.5 gap), 3.5.2, 13.2.5.
+**Partial mechanism (7)**: 2.3.2, 2.6.2, 2.8.2, 2.8.5 (TOTP reuse is detected, rejected and logged
+since issue #873 — no proactive owner notification, the 2.2.3 / 2.5.5 gap), 3.5.2, 13.1.3 (issue #382:
+the private Atom feed's token travels in the query string because feed readers cannot set an
+`Authorization` header — a deliberate capability-URL exception, mitigated by app-log query redaction,
+`X-Robots-Tag: noindex`, `Cache-Control: no-store`, a 256-bit revocable token and an indistinguishable
+404), 13.2.5.
 *(1.6.1 and 1.6.3 — "rotation works, no standalone runbook" — closed by issue #509's
 `docs/security/incident-response.md`.)*
 

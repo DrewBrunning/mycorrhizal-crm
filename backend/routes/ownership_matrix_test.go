@@ -506,6 +506,15 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"FeedInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
+			// A contact feed's entity_id must name a live contact the caller
+			// owns; a foreign or nonexistent UID is the same 404 (issue #382).
+			h.assertMasked(http.MethodPost, "/api/v1/feeds",
+				func(uid string) string {
+					return fmt.Sprintf(`{"name":"probe feed","kind":"contact","entity_id":%s}`, jstr(uid))
+				},
+				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
+		}),
 		"SelfContactInput.VCardUID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPatch, "/api/v1/users/me/self-contact",
 				func(uid string) string { return fmt.Sprintf(`{"vcard_uid":%s}`, jstr(uid)) },

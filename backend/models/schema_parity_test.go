@@ -65,6 +65,7 @@ var registeredModels = []any{
 	&DismissedHouseholdSuggestion{},
 	&ExternalActivity{},
 	&ExternalIdentity{},
+	&Feed{},
 	&FieldDefinition{},
 	&FieldValue{},
 	&Gift{},

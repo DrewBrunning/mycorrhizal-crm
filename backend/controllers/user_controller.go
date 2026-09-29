@@ -519,6 +519,11 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		// misleading to report as a reset failure. Logged so it isn't silent.
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after password reset")
 	}
+	// Issue #382 (ADR 0030 decision 6): a feed URL grants read access to the
+	// same data a leaked API token would, so the compromise response ends both.
+	if _, err := services.RevokeAllFeeds(db, user.ID); err != nil {
+		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke feeds after password reset") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
+	}
 	// Issue #722: the same compromise logic applies to device grants — a
 	// "forgot my password" reset must not leave a remembered device able to
 	// mint fresh sessions.

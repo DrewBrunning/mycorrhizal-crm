@@ -899,6 +899,18 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Revoke this contact's private feed credentials (issue #382, ADR 0030
+	// decision 6). A feed is a copy of the person's data leaving the instance,
+	// so deleting the contact stops it. Revoked, not deleted: the row stays for
+	// the audit trail, and undo does NOT re-arm it -- re-creating a contact does
+	// not silently resume an export. Scoped to kind='contact' so the account's
+	// aggregate feeds are untouched.
+	if err := tx.Model(&models.Feed{}).
+		Where("user_id = ? AND kind = ? AND entity_id = ? AND revoked_at IS NULL", userID, models.FeedKindContact, contact.VCardUID).
+		Update("revoked_at", time.Now()).Error; err != nil {
+		return err
+	}
+
 	// T93: duplicate-pair dismissals naming this contact (either side of the
 	// ordered uid pair) — hard-delete, join-shaped.
 	if err := tx.Where("(uid_low = ? OR uid_high = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
