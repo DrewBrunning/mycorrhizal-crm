@@ -24,7 +24,34 @@ data class LoginResponse(
     // 2fa_pending cookie instead, and POST /login/2fa with a TOTP/recovery code
     // must complete the login.
     @Json(name = "two_factor_required") val twoFactorRequired: Boolean? = null,
+    // Issue #1293 (ADR 0034 Decision 4): present with two_factor_required — the
+    // enrolled second factors ("totp" / "webauthn"). Null from an older server
+    // that predates passkeys; callers must treat null/unknown as "prompt for a
+    // TOTP or recovery code", exactly as before.
+    val methods: List<String>? = null,
 )
+
+/**
+ * Second-factor method tokens as reported by POST /login's `methods` field.
+ * Hand-mirrored from the backend's `SecondFactorTOTP` / `SecondFactorWebAuthn`
+ * (backend/services/webauthn.go) and the openapi `LoginResponse.methods` enum —
+ * there is no dynamic list endpoint, so these MUST stay in sync by hand.
+ */
+object SecondFactorMethod {
+    const val TOTP = "totp"
+    const val WEBAUTHN = "webauthn"
+}
+
+/** True when an enrolled-methods list names a passkey. Null (older server) and unknown tokens are false. */
+fun List<String>?.includesPasskey(): Boolean = this?.contains(SecondFactorMethod.WEBAUTHN) == true
+
+/**
+ * True when a passkey is enrolled and no TOTP factor is — the account can be
+ * satisfied only by a passkey or a recovery code. Null/absent `methods` (older
+ * server) is never passkey-only: it is the legacy TOTP prompt.
+ */
+fun List<String>?.isPasskeyOnly(): Boolean =
+    includesPasskey() && !this.orEmpty().contains(SecondFactorMethod.TOTP)
 
 // --- N8 two-factor auth (issue #158, web parity #814) ---
 
@@ -164,4 +191,51 @@ data class OidcNativeExchangeResponse(
     val token: String = "",
     val language: String? = null,
     @Json(name = "date_format") val dateFormat: String? = null,
+)
+
+// --- Issue #1293 WebAuthn / passkeys (backend #593, ADR 0034) ---
+// The option blobs (PublicKeyCredential{Creation,Request}Options) and the
+// credential JSON are passed through as raw strings: the ceremony slice feeds
+// them verbatim to Credential Manager, so this layer never models their shape.
+
+/** POST /api/v1/webauthn/register/begin body — optional credential label (max 100). */
+@JsonClass(generateAdapter = true)
+data class WebAuthnRegisterBeginInput(
+    val name: String? = null,
+)
+
+/** POST /api/v1/webauthn/assert/begin body — `exclude_id` is the passkey being removed (#1317). */
+@JsonClass(generateAdapter = true)
+data class WebAuthnProofBeginInput(
+    @Json(name = "exclude_id") val excludeId: String? = null,
+)
+
+/** POST /api/v1/webauthn/register/finish 201 body; [recoveryCodes] is empty when the account already had a set. */
+@JsonClass(generateAdapter = true)
+data class WebAuthnRegisterResponse(
+    val id: String = "",
+    val name: String = "",
+    @Json(name = "created_at") val createdAt: String = "",
+    @Json(name = "recovery_codes") val recoveryCodes: List<String> = emptyList(),
+)
+
+/** One enrolled passkey — never carries the public key or raw credential id. */
+@JsonClass(generateAdapter = true)
+data class WebAuthnCredential(
+    val id: String = "",
+    val name: String = "",
+    @Json(name = "created_at") val createdAt: String = "",
+    @Json(name = "last_used_at") val lastUsedAt: String? = null,
+)
+
+/** GET /api/v1/webauthn/credentials. */
+@JsonClass(generateAdapter = true)
+data class WebAuthnCredentialListResponse(
+    val credentials: List<WebAuthnCredential> = emptyList(),
+)
+
+/** DELETE /api/v1/webauthn/credentials/{id} body for the TOTP/recovery-code proof. */
+@JsonClass(generateAdapter = true)
+data class WebAuthnDeleteCodeInput(
+    val code: String,
 )

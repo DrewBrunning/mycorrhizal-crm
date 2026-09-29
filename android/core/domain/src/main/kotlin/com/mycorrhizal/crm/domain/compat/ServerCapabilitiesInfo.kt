@@ -47,6 +47,15 @@ data class ServerCapabilitiesInfo(
      */
     fun supports(token: String): Boolean = capabilities?.contains(token) ?: true
 
+    /**
+     * True only when [token] is explicitly declared — the fail-CLOSED
+     * counterpart to [supports]. For opt-in surfaces that must never appear on
+     * an older server or an unreachable `/health` (e.g. [ServerCapability.WEBAUTHN_ANDROID],
+     * which exists only when an operator enabled it and can therefore not be
+     * assumed present).
+     */
+    fun declares(token: String): Boolean = capabilities?.contains(token) == true
+
     /** True only when the server explicitly declares the embedded deployment. */
     val isEmbedded: Boolean get() = deployment == DEPLOYMENT_EMBEDDED
 
@@ -80,6 +89,14 @@ object ServerCapability {
     const val CALDAV = "caldav"
     const val DEVICE_GRANTS = "device_grants"
     const val PUSH = "push"
+
+    /**
+     * Issue #1293 / ADR 0034: native Android passkeys are available on this
+     * instance (operator opt-in + valid public HTTPS FRONTEND_URL). Opt-in, so
+     * gate with [ServerCapabilitiesInfo.declares], never the fail-open `supports`.
+     * Mirrors backend `config.CapabilityWebAuthnAndroid`.
+     */
+    const val WEBAUTHN_ANDROID = "webauthn_android"
 
     // Surfaces that exist on every deployment (kept for completeness / future
     // gates; the version gate already covers them).

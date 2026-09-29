@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
@@ -89,6 +90,33 @@ class SettingsScreenTest {
             .assertIsDisplayed()
         // Notifications are unrelated to capture and stay available.
         composeTestRule.onNodeWithText("Show notifications").performScrollTo().assertIsDisplayed()
+    }
+
+    // Issue #1293 / ADR 0034: the Passkeys entry appears only through an open gate.
+    @Test
+    fun `the passkeys entry is offered only when the passkey gate is open`() {
+        var opened = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(passkeysAvailable = true),
+                    onLogout = {},
+                    onPasskeys = { opened++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Passkeys").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(1, opened)
+    }
+
+    @Test
+    fun `the passkeys entry is hidden when the gate is closed`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(state = SettingsUiState(passkeysAvailable = false), onLogout = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Passkeys").assertDoesNotExist()
     }
 
     @Test
@@ -411,6 +439,7 @@ class SettingsScreenTest {
             permissionChecker,
             catchUpScheduler,
             callSmsTrackingCapability,
+            PasskeyAvailability { false },
             appContext,
         )
 

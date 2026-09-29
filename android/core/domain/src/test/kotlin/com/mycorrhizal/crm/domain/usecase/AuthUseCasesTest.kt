@@ -29,11 +29,21 @@ class LoginUseCaseTest {
     @Test
     fun `a 2fa account surfaces TwoFactorRequired instead of a session`() = runTest {
         coEvery { authRepository.login("alice", "secret") } returns
-            Result.success(LoginOutcome.TwoFactorRequired)
+            Result.success(LoginOutcome.TwoFactorRequired())
 
         val result = useCase("alice", "secret")
 
         assertTrue(result is LoginUseCase.Result.TwoFactorRequired)
+    }
+
+    @Test
+    fun `TwoFactorRequired carries the enrolled methods through`() = runTest {
+        coEvery { authRepository.login("alice", "secret") } returns
+            Result.success(LoginOutcome.TwoFactorRequired(listOf("webauthn")))
+
+        val result = useCase("alice", "secret")
+
+        assertEquals(LoginUseCase.Result.TwoFactorRequired(listOf("webauthn")), result)
     }
 
     @Test

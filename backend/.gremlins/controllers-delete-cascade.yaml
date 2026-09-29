@@ -7,6 +7,7 @@ unleash:
         - ^activity_controller\.go$
         - ^address_suggestion_controller\.go$
         - ^api_token_controller\.go$
+        - ^assetlinks_controller\.go$
         - ^attachment_controller\.go$
         - ^audit_controller\.go$
         - ^briefing_controller\.go$

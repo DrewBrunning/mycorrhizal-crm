@@ -27,6 +27,7 @@ import com.mycorrhizal.crm.data.local.RoomPassphraseStore
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuditRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AttachmentRepositoryImpl
 import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
@@ -82,6 +83,7 @@ import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.PasskeyRepository
 import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.DuplicateRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
@@ -419,6 +421,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPasskeyRepository(impl: PasskeyRepositoryImpl): PasskeyRepository
 
     @Binds
     @Singleton

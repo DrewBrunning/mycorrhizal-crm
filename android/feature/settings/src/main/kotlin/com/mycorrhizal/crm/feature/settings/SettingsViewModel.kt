@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
@@ -48,6 +49,8 @@ sealed interface TrackingPermissionDialog {
 
 data class SettingsUiState(
     val session: SessionState = SessionState(),
+    /** Issue #1293: the passkey gate is open, so Settings offers the Passkeys screen. */
+    val passkeysAvailable: Boolean = false,
     val isLoggingOut: Boolean = false,
     val callTrackingEnabled: Boolean = false,
     val smsTrackingEnabled: Boolean = false,
@@ -118,6 +121,8 @@ class SettingsViewModel @Inject constructor(
     // call/SMS capture feature — the toggles are hidden rather than shown
     // broken, and the setters are inert.
     private val callSmsTrackingCapability: CallSmsTrackingCapability,
+    // Issue #1293 / ADR 0034: gates the Passkeys entry point (server capability + device support).
+    private val passkeyAvailability: PasskeyAvailability,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -132,6 +137,10 @@ class SettingsViewModel @Inject constructor(
             authRepository.observeSession().collect { session ->
                 _uiState.update { it.copy(session = session) }
             }
+        }
+        viewModelScope.launch {
+            val available = passkeyAvailability.isAvailable()
+            _uiState.update { it.copy(passkeysAvailable = available) }
         }
         refreshPermissionState()
         viewModelScope.launch {

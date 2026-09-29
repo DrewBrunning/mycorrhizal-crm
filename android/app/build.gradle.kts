@@ -270,6 +270,14 @@ dependencies {
     "obtainiumImplementation"(libs.kotlinx.coroutines.play.services)
     "playImplementation"(libs.firebase.messaging)
     "playImplementation"(libs.kotlinx.coroutines.play.services)
+    // Issue #1293 / ADR 0034: the Credential Manager *provider* for Android < 14
+    // (Google Password Manager via Play services). Runtime-only — androidx.credentials
+    // discovers it reflectively — and deliberately absent from `foss`: F-Droid forbids
+    // GMS, so on that flavor passkeys work only where the platform ships Credential
+    // Manager (Android 14+) and otherwise degrade under the same gate.
+    // Guarded by the FOSS Firebase/GMS-free APK check and FossFlavorGmsFreeTest.
+    "obtainiumRuntimeOnly"(libs.androidx.credentials.play.services.auth)
+    "playRuntimeOnly"(libs.androidx.credentials.play.services.auth)
 }
 
 // ---------------------------------------------------------------------------

@@ -21,6 +21,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 	router.GET("/health/live", controllers.LivenessCheck)
 	router.GET("/health/ready", controllers.ReadinessCheck)
 
+	// Digital Asset Links for native Android passkeys (ADR 0034, issue #1293).
+	// Fetched by Google, not by a logged-in user: public, root path (outside
+	// /api), no auth, no cookies. 404 unless the feature is effective. The
+	// embedded deployment has no domain and never registers it.
+	if !cfg.IsEmbedded() {
+		router.GET("/.well-known/assetlinks.json", controllers.AssetLinksHandler(cfg))
+	}
+
 	// Prometheus metrics (issue #389). Opt-in and off by default: the route
 	// only exists when METRICS_TOKEN is configured, and then every scrape must
 	// carry `Authorization: Bearer <METRICS_TOKEN>`. Not user-scoped and not a

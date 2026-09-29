@@ -57,6 +57,10 @@ func NewWebAuthn(cfg *config.Config) (*webauthn.WebAuthn, error) {
 		RPDisplayName: "Mycorrhizal",
 		RPID:          u.Hostname(),
 		RPOrigins:     []string{origin},
+		// Native Android passkeys (ADR 0034): the android:apk-key-hash: origins
+		// are opaque origins, compared by exact string and never widening
+		// RPOrigins. Nil unless the feature is effective.
+		RPOpaqueOrigins: cfg.AndroidPasskeys().Origins(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrWebAuthnNotConfigured, err)
