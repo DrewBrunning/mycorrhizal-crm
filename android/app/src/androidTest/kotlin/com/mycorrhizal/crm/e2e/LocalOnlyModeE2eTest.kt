@@ -74,7 +74,9 @@ class LocalOnlyModeE2eTest {
     @Test
     fun embeddedServerStartsServesHealthAndDeletesOverTheSocket() = runBlocking {
         assumeTrue(
-            "the embedded server is arm64-v8a only; this ABI has no packaged binary",
+            "SKIPPED, NOT PASSED: the embedded server is arm64-v8a only and this ABI has no packaged " +
+                "binary. Local mode needs a manual real-arm64-device run before each release " +
+                "(docs/development/release-gates.md, issue #1339)",
             LocalServerAvailability.isSupported(context),
         )
         // Start from a clean slate so the run is deterministic.
