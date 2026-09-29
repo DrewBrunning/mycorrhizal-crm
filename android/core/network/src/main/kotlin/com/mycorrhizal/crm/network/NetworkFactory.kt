@@ -27,8 +27,15 @@ object NetworkFactory {
         sessionExpiryInterceptor: SessionExpiryInterceptor? = null,
         clientVersionProvider: ClientVersionProvider? = null,
         localSocketPathProvider: LocalSocketPathProvider? = null,
+        archivedProfileProvider: ArchivedProfileProvider? = null,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
+        // ADR 0028 Decision 3: first in the chain, so a write on an archived
+        // profile is refused before any other interceptor touches it.
+        if (archivedProfileProvider != null) {
+            builder.addInterceptor(ArchivedProfileWriteInterceptor(archivedProfileProvider))
+        }
+        builder
             .addInterceptor(BaseUrlInterceptor(baseUrlProvider))
             // Issue #692: the version header must see the rewritten URL (its
             // host check compares against the configured server), so it runs

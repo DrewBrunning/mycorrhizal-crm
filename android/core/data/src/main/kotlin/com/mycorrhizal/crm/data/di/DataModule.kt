@@ -125,6 +125,7 @@ import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ArchivedProfileProvider
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.SessionExpiryNotifier
@@ -400,6 +401,9 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindBaseUrlProvider(impl: SessionManager): BaseUrlProvider
+
+    @Binds
+    abstract fun bindArchivedProfileProvider(impl: SessionManager): ArchivedProfileProvider
 
     @Binds
     @Singleton
