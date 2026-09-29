@@ -12,6 +12,7 @@ import { ExpirationPlugin } from 'workbox-expiration';
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate } from 'workbox-strategies';
+import { notificationTargetPath } from './utils/notificationTarget';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -86,7 +87,7 @@ self.addEventListener('message', (event) => {
 // JSON payload to each registered subscription; the notificationclick handler
 // brings an existing app window to the front or opens a new one.
 self.addEventListener('push', (event) => {
-  let data: { title?: string; body?: string } = {};
+  let data: { title?: string; body?: string; path?: string } = {};
   if (event.data) {
     try {
       data = event.data.json();
@@ -99,12 +100,14 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: '/notification-icon-96.png',
       badge: '/notification-icon-96.png',
+      data: { path: data.path },
     }),
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const target = notificationTargetPath(event.notification.data?.path);
   event.waitUntil(
     (async () => {
       const windowClients = await self.clients.matchAll({
@@ -112,12 +115,13 @@ self.addEventListener('notificationclick', (event) => {
         includeUncontrolled: true,
       });
       for (const client of windowClients) {
-        if ('focus' in client) {
-          void client.focus();
+        if ('focus' in client && client.url.startsWith(self.location.origin)) {
+          await client.focus();
+          await client.navigate(new URL(target, self.location.origin).href);
           return;
         }
       }
-      await self.clients.openWindow('/');
+      await self.clients.openWindow(target);
     })(),
   );
 });
