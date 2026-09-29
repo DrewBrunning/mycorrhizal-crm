@@ -2,8 +2,13 @@ package services
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"mime/multipart"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,6 +33,112 @@ func bundleTestUser(t *testing.T, db *gorm.DB, username string) models.User {
 // test can assert scoping and compare round-trips.
 type bundleSeed struct {
 	Contacts []models.Contact
+	// PhotoDir is the real temp profile-photo directory the seeded contact's
+	// photo lives in; the exporter must be given it to embed the photo.
+	PhotoDir string
+}
+
+// bundleTestPNG returns a small but real (decodable) PNG so the seeded profile
+// photo goes through the real photostore pipeline.
+func bundleTestPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for x := 0; x < 64; x++ {
+		for y := 0; y < 64; y++ {
+			img.Set(x, y, color.RGBA{R: uint8(x * 4), G: uint8(y * 4), B: 128, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, img))
+	return buf.Bytes()
+}
+
+// bundleRichRecord is a contact Record exercising every Card field family the
+// neutral model has, plus Card-only data (SpeakToAs, PersonalInfo, Keywords,
+// Passthrough) that has no flat-column home — exactly what CLAUDE.md backend
+// trap #3 says a wrong read path silently drops (issue #1318).
+func bundleRichRecord(marker string, photo []byte) *contactmodel.Record {
+	one, two := 1, 2
+	ts := &contactmodel.Timestamp{UTC: "2024-05-06T07:08:09Z"}
+	card := contactmodel.Card{
+		Kind:     "individual",
+		Language: "en",
+		ProdID:   "-//bundle-test//EN",
+		Created:  ts,
+		Updated:  ts,
+		Name: &contactmodel.Name{
+			Full: "Dr Ada Q " + marker + " Jr",
+			Components: []contactmodel.NameComponent{
+				{Kind: "title", Value: "Dr"},
+				{Kind: "given", Value: "Ada" + marker},
+				{Kind: "given2", Value: "Q"},
+				{Kind: "surname", Value: marker},
+				{Kind: "credential", Value: "Jr"},
+			},
+		},
+		Nicknames:     []contactmodel.Nickname{{Name: "Countess"}},
+		Organizations: []contactmodel.Organization{{ID: "org1", Name: "Analytical Engines", Units: []contactmodel.OrgUnit{{Name: "Research"}}}},
+		Titles: []contactmodel.Title{
+			{ID: "t1", Name: "Engineer", Kind: "title", OrganizationID: "org1"},
+			{ID: "t2", Name: "Lead", Kind: "role", OrganizationID: "org1"},
+		},
+		Emails: []contactmodel.Email{
+			{ID: "e1", Address: "ada@work.example", Contexts: []string{"work"}, Pref: &one},
+			{ID: "e2", Address: "ada@home.example", Contexts: []string{"private"}, Pref: &two},
+		},
+		Phones: []contactmodel.Phone{
+			{ID: "p1", Number: "+15550100", Features: []string{"cell"}, Pref: &one},
+			{ID: "p2", Number: "+15550101", Features: []string{"voice"}, Contexts: []string{"work"}},
+		},
+		ImppAddresses:  []contactmodel.OnlineService{{ID: "i1", Service: "signal", URI: "signal:ada"}},
+		SocialProfiles: []contactmodel.OnlineService{{ID: "s1", Service: "Mastodon", URI: "https://example.social/@ada", User: "ada"}},
+		Addresses: []contactmodel.Address{{
+			ID:       "a1",
+			Contexts: []string{"private"},
+			Components: []contactmodel.AddressComponent{
+				{Kind: "number", Value: "12"}, {Kind: "name", Value: "Main St"},
+				{Kind: "locality", Value: "Springfield"}, {Kind: "region", Value: "IL"},
+				{Kind: "postcode", Value: "62701"}, {Kind: "country", Value: "USA"},
+			},
+			Pref: &one,
+		}},
+		Anniversaries: []contactmodel.Anniversary{
+			{ID: "an1", Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: bundleIntPtr(1815), Month: bundleIntPtr(12), Day: bundleIntPtr(10)}}},
+			{ID: "an2", Kind: "wedding", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Month: bundleIntPtr(7), Day: bundleIntPtr(8)}}},
+		},
+		SpeakToAs: &contactmodel.SpeakToAs{
+			GrammaticalGenders: []contactmodel.GrammaticalGender{{ID: "g1", Value: "feminine", Language: "de"}},
+			Pronouns:           []contactmodel.Pronouns{{ID: "pr1", Pronouns: "she/her", Pref: &one}},
+		},
+		PersonalInfo: []contactmodel.PersonalInfo{{ID: "pi1", Kind: "hobby", Value: "chess", Level: "high"}},
+		Notes:        []contactmodel.Note{{ID: "n1", Note: "card note " + marker, Created: ts}},
+		Keywords:     []string{"vip", "math"},
+		Media: []contactmodel.Resource{{
+			ID: "m1", Kind: "photo", MediaType: "image/png",
+			URI: "data:image/png;base64," + base64.StdEncoding.EncodeToString(photo),
+		}},
+		Calendars:           []contactmodel.Resource{{ID: "c1", URI: "https://cal.example/ada"}},
+		FreeBusyURLs:        []contactmodel.Resource{{ID: "f1", URI: "https://cal.example/ada/fb"}},
+		SchedulingAddresses: []contactmodel.Resource{{ID: "sa1", URI: "mailto:ada-sched@example.com"}},
+		CryptoKeys:          []contactmodel.Resource{{ID: "k1", URI: "https://keys.example/ada.asc"}},
+		Links:               []contactmodel.Resource{{ID: "l1", URI: "https://ada.example/", Label: "home"}},
+		ContactURIs:         []contactmodel.Resource{{ID: "cu1", URI: "https://ada.example/contact"}},
+		PreferredLanguages:  []contactmodel.LanguagePref{{ID: "lp1", Language: "en", Pref: &one}},
+	}
+	return &contactmodel.Record{
+		Card: card,
+		Envelope: contactmodel.CRMEnvelope{
+			Kind:               "human",
+			Circles:            []string{"inner"},
+			HowWeMet:           "conference " + marker,
+			WorkInformation:    "works on engines",
+			ContactInformation: "prefers email",
+			Gender:             "woman",
+		},
+		Passthrough: contactmodel.Passthrough{
+			VCard: []contactmodel.JCardProp{{Name: "x-custom", Params: map[string]any{}, Type: "text", Value: json.RawMessage(`"custom-` + marker + `"`)}},
+		},
+	}
 }
 
 // seedFullAccount creates one of every user-authored entity the account bundle
@@ -35,14 +146,25 @@ type bundleSeed struct {
 func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string) bundleSeed {
 	t.Helper()
 
+	photoDir := t.TempDir()
 	mkContact := func(given string) models.Contact {
 		c := models.Contact{UserID: user.ID, Firstname: given, Lastname: marker}
 		require.NoError(t, db.Create(&c).Error)
 		require.NotEmpty(t, c.VCardUID)
 		return c
 	}
-	ada := mkContact("Ada" + marker)
+	// Ada is the fully populated contact: every Card family, Card-only data,
+	// Passthrough and a real on-disk profile photo (issue #1318). Built through
+	// ApplyRecordToContact, never a direct Card mutation (backend trap #2).
+	ada := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&ada, bundleRichRecord(marker, bundleTestPNG(t)), photoDir)
+	require.NotEmpty(t, ada.Photo, "the seeded photo must be persisted to the flat columns")
+	require.NoError(t, db.Create(&ada).Error)
+	require.NotEmpty(t, ada.VCardUID)
 	bob := mkContact("Bob" + marker)
+	// Cy is archived and a favorite; the two flags have their own mapping lines.
+	cy := models.Contact{UserID: user.ID, Firstname: "Cy" + marker, Lastname: marker, Archived: true, IsFavorite: true}
+	require.NoError(t, db.Create(&cy).Error)
 
 	// A private and a suggested relationship edge: the bundle must carry both.
 	require.NoError(t, db.Create(&models.RelationshipEdge{
@@ -50,6 +172,7 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		Type: "friend_of", Directional: false, Source: "user-confirmed",
 		Confidence: 1, Status: models.RelationshipStatusConfirmed,
 		Sensitivity: models.RelationshipSensitivityPrivate,
+		Metadata:    map[string]interface{}{"since": "2001-01-01", "kind": "chosen"},
 	}).Error)
 	require.NoError(t, db.Create(&models.RelationshipEdge{
 		UserID: user.ID, SourceID: ada.VCardUID, TargetID: bob.VCardUID,
@@ -64,15 +187,29 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 
 	lifeEvent := models.LifeEvent{
 		UserID: user.ID, EntityID: ada.VCardUID, Type: "new_job", Category: "career",
-		Date:        &contactmodel.PartialDate{Year: bundleIntPtr(2020), Month: bundleIntPtr(3), Day: bundleIntPtr(1)},
-		Description: "life-" + marker, Source: "user",
+		Date:             &contactmodel.PartialDate{Year: bundleIntPtr(2020), Month: bundleIntPtr(3), Day: bundleIntPtr(1)},
+		EndDate:          &contactmodel.PartialDate{Year: bundleIntPtr(2022), Month: bundleIntPtr(6)},
+		RelatedEntityIDs: []string{bob.VCardUID},
+		Remind:           true,
+		Description:      "life-" + marker, Source: "user",
 	}
 	require.NoError(t, db.Create(&lifeEvent).Error)
 
+	active := true
+	obligation := models.OccasionObligation{
+		UserID: user.ID, EntityID: ada.VCardUID, Kind: models.OccasionObligationKindCard,
+		Label: "occasion-" + marker, LeadTimeDays: 7, Active: active,
+		Sensitivity: models.RelationshipSensitivityNormal, LinkedLifeEventID: lifeEvent.ID,
+	}
+	require.NoError(t, db.Create(&obligation).Error)
+
+	lastSent := time.Now().UTC().Truncate(time.Second).Add(-time.Hour)
+	byMail, fromCompletion := true, false
 	reminder := models.Reminder{
 		UserID: user.ID, ContactID: &ada.ID, Message: "reminder-" + marker,
-		RemindAt: time.Now().UTC().Truncate(time.Second), Recurrence: "once",
-		LifeEventID: &lifeEvent.ID,
+		RemindAt: time.Now().UTC().Truncate(time.Second), Recurrence: "weekly",
+		ByMail: &byMail, ReoccurFromCompletion: &fromCompletion, Completed: true, LastSent: &lastSent,
+		LifeEventID: &lifeEvent.ID, OccasionObligationID: &obligation.ID,
 	}
 	require.NoError(t, db.Create(&reminder).Error)
 
@@ -86,7 +223,7 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		Date: time.Now().UTC().Truncate(time.Second), Type: "meeting",
 	}
 	require.NoError(t, db.Create(&activity).Error)
-	require.NoError(t, db.Model(&activity).Association("Contacts").Replace(&[]models.Contact{ada}))
+	require.NoError(t, db.Model(&activity).Association("Contacts").Replace(&[]models.Contact{bob, ada, cy}))
 
 	require.NoError(t, db.Create(&models.Gift{
 		UserID: user.ID, EntityID: ada.VCardUID, Status: models.GiftStatusIdea,
@@ -109,7 +246,6 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		QualifyingTypes: []string{"meeting"},
 	}).Error)
 
-	active := true
 	require.NoError(t, db.Create(&models.DataDecayPolicy{
 		UserID: user.ID, EntityID: ada.VCardUID, IntervalDays: 90, Active: active,
 	}).Error)
@@ -138,12 +274,6 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		Value: json.RawMessage(`"Pisces"`),
 	}).Error)
 
-	require.NoError(t, db.Create(&models.OccasionObligation{
-		UserID: user.ID, EntityID: ada.VCardUID, Kind: models.OccasionObligationKindCard,
-		Label: "occasion-" + marker, LeadTimeDays: 7, Active: active,
-		Sensitivity: models.RelationshipSensitivityNormal, LinkedLifeEventID: lifeEvent.ID,
-	}).Error)
-
 	event := models.OccasionEvent{
 		UserID: user.ID, Title: "event-" + marker, StartsAt: time.Now().UTC().Truncate(time.Second),
 		Sensitivity: models.RelationshipSensitivityNormal,
@@ -153,7 +283,7 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		UserID: user.ID, EventID: event.ID, EntityID: ada.VCardUID, RSVP: models.OccasionEventRSVPAccepted,
 	}).Error)
 
-	return bundleSeed{Contacts: []models.Contact{ada, bob}}
+	return bundleSeed{Contacts: []models.Contact{ada, bob, cy}, PhotoDir: photoDir}
 }
 
 func bundleIntPtr(v int) *int { return &v }
@@ -180,7 +310,7 @@ func TestBuildAccountBundle_ScopesAndIncludesEverything(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.AccountBundleFormat, bundle.Format)
 	assert.Equal(t, models.AccountBundleVersion, bundle.Version)
-	assert.Equal(t, 2, stats.Contacts)
+	assert.Equal(t, 3, stats.Contacts)
 
 	raw, err := json.Marshal(bundle)
 	require.NoError(t, err)
@@ -218,7 +348,7 @@ func TestBuildAccountBundle_ScopesAndIncludesEverything(t *testing.T) {
 	assert.Equal(t, 1, suggested, "suggested edges must be included")
 
 	// One of every entity type is present.
-	assert.Len(t, bundle.Plan.Contacts, 2)
+	assert.Len(t, bundle.Plan.Contacts, 3)
 	assert.Len(t, bundle.Plan.Notes, 1)
 	assert.Len(t, bundle.Plan.Reminders, 1)
 	assert.Len(t, bundle.Plan.ReminderCompletions, 1)
@@ -251,23 +381,56 @@ func TestAccountBundle_RoundTrip(t *testing.T) {
 	targetDB := dbtest.New(t)
 	owner := bundleTestUser(t, ownerDB, "bundle-rt-owner")
 	target := bundleTestUser(t, targetDB, "bundle-rt-target")
-	seedFullAccount(t, ownerDB, owner, "RT")
+	seed := seedFullAccount(t, ownerDB, owner, "RT")
+	targetPhotoDir := useBundlePhotoDir(t)
 
-	exported, _, err := BuildAccountBundle(ownerDB, owner.ID, "")
+	exported, stats, err := BuildAccountBundle(ownerDB, owner.ID, seed.PhotoDir)
 	require.NoError(t, err)
+	require.Equal(t, 1, stats.PhotosEmbedded, "the seeded photo must be embedded (issue #1318)")
 
 	plan := MapAccountBundle(exported)
 	report, _, err := ExecuteSourceImportWithActions(
 		t.Context(), targetDB, target.ID, plan, map[string]SourceContactAction{}, nil)
 	require.NoError(t, err)
 	require.Empty(t, report.Issues, "a clean round-trip import must report no issues")
-	require.Equal(t, 2, report.ContactsCreated)
+	require.Equal(t, 3, report.ContactsCreated)
 
-	reexported, _, err := BuildAccountBundle(targetDB, target.ID, "")
+	reexported, _, err := BuildAccountBundle(targetDB, target.ID, targetPhotoDir)
 	require.NoError(t, err)
 
 	require.JSONEq(t, bundlePlanJSON(t, exported), bundlePlanJSON(t, reexported),
 		"the re-exported bundle must equal the original plan")
+
+	// Issue #1308: the embedded photo must land in the destination's own photo
+	// directory and flat columns, not only as a data: entry in the stored Card.
+	ada := seed.Contacts[0]
+	var imported models.Contact
+	require.NoError(t, targetDB.Where("user_id = ? AND vcard_uid = ?", target.ID, ada.VCardUID).First(&imported).Error)
+	require.NotEmpty(t, imported.Photo, "contacts.photo must be set by the import")
+	require.NotEmpty(t, imported.PhotoThumbnail, "contacts.photo_thumbnail must be set by the import")
+	assert.FileExists(t, filepath.Join(targetPhotoDir, imported.Photo))
+
+	// Backend trap #3 interaction: a later plain save of the imported contact
+	// must not delete the photo.
+	imported.Nickname = "saved-again"
+	require.NoError(t, targetDB.Save(&imported).Error)
+	var resaved models.Contact
+	require.NoError(t, targetDB.First(&resaved, imported.ID).Error)
+	require.NotEmpty(t, resaved.Photo)
+	media := models.RecordForContact(&resaved, targetPhotoDir, targetDB).Card.Media
+	require.Len(t, media, 1, "a plain save after import must keep the photo")
+	assert.Equal(t, "photo", media[0].Kind)
+}
+
+// useBundlePhotoDir points models.DefaultPhotoDir (what the import engine and
+// Contact.BeforeSave read) at a fresh temp directory for the test.
+func useBundlePhotoDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	orig := models.DefaultPhotoDir
+	models.DefaultPhotoDir = dir
+	t.Cleanup(func() { models.DefaultPhotoDir = orig })
+	return dir
 }
 
 // TestAccountBundle_RoundTripDropsEntityType is the hand-verification the
@@ -424,7 +587,7 @@ func TestMycorrhizalImportManager_Lifecycle(t *testing.T) {
 	require.Nil(t, mgr.Confirm(targetDB, target.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, &log))
 	status := waitForMycorrhizalPhase(t, mgr, target.ID, up.SessionID, models.SourceImportPhaseDone)
 	require.NotNil(t, status.Result)
-	assert.Equal(t, 2, status.Result.Created)
+	assert.Equal(t, 3, status.Result.Created)
 
 	// A second manager session cancelled while still connecting is dropped.
 	up2, appErr := mgr.Upload(target.ID, bundleMultipartHeader(t, data))
