@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
 
@@ -52,11 +53,33 @@ func ExportAccountBundle(c *gin.Context) {
 		return
 	}
 
+	// Issue #1313: refuse up front rather than hand back a bundle the
+	// destination's import (MaxMycorrhizalBundleSize) is guaranteed to reject —
+	// the attach wizard and local-profile restore would otherwise dead-end at
+	// the Upload step with no remedy.
+	if int64(len(payload)) > accountBundleMaxBytes {
+		log.Warn().
+			Int("bytes", len(payload)).
+			Int64("limit", accountBundleMaxBytes).
+			Str("operation", exportOpAccount).
+			Msg("Account bundle exceeds the import size limit; export refused")
+		apperrors.AbortWithError(c, apperrors.ErrInsufficientStorage(fmt.Sprintf(
+			"The account bundle is %.1f MiB, which is over the %d MiB limit the import accepts. "+
+				"Remove contacts or profile photos you no longer need and try again, or use the CSV/vCard export instead.",
+			float64(len(payload))/(1<<20), accountBundleMaxBytes>>20,
+		)).WithDetails("operation", exportOpAccount).
+			WithDetails("category", exportCatValidation).
+			WithDetails("bundle_bytes", len(payload)).
+			WithDetails("limit_bytes", accountBundleMaxBytes))
+		return
+	}
+
 	filename := fmt.Sprintf("mycorrhizal-account-%s.json", time.Now().Format("2006-01-02"))
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json; charset=utf-8")
 	c.Header("Content-Length", strconv.Itoa(len(payload)))
+	c.Header("X-Mycorrhizal-Bundle-Max-Bytes", strconv.FormatInt(accountBundleMaxBytes, 10))
 	c.Header("X-Mycorrhizal-Bundle-Version", strconv.Itoa(bundle.Version))
 	c.Header("X-Mycorrhizal-Bundle-Contacts", strconv.Itoa(stats.Contacts))
 	c.Header("X-Mycorrhizal-Bundle-Photos", strconv.Itoa(stats.PhotosEmbedded))
@@ -74,3 +97,9 @@ func ExportAccountBundle(c *gin.Context) {
 // exportOpAccount is the structured-failure operation token for the account
 // bundle (mirroring exportOpCSV etc.).
 const exportOpAccount = "export:account"
+
+// accountBundleMaxBytes is the mutable seam over services.MaxMycorrhizalBundleSize
+// (issue #1313): the export refuses a payload the import would refuse. Tests
+// lower it to prove the boundary without building a 64 MiB bundle. Keep equal
+// to the constant in production.
+var accountBundleMaxBytes int64 = services.MaxMycorrhizalBundleSize

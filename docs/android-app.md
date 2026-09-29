@@ -116,6 +116,16 @@ a server** (ADR 0028 Decision 3, one-time — never a live sync). The wizard:
    a persistent **Delete archived local data** action stays on its row. Nothing
    is deleted automatically.
 
+**Size limit.** The bundle is one JSON document held in memory, and the import
+accepts at most **64 MiB**. The export enforces the same limit: if the account
+is too large (typically many contacts with photos), the **Export** step (and
+"Export account bundle to file") fails immediately with a message giving the
+bundle's size and the limit — before anything is uploaded — and the local
+profile is untouched. Remove contacts or photos you no longer need, or use the
+CSV/vCard export instead. The server also reports the limit in an
+`X-Mycorrhizal-Bundle-Max-Bytes` response header on every successful export.
+Streamed/chunked bundles are out of scope.
+
 Backing out, an error, or the app being killed at any step *before* the switch
 leaves the local profile active and writable; re-running is safe because the
 server's import ledger keys on the bundle's stable IDs, so contacts already

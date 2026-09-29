@@ -8232,6 +8232,9 @@ paths:
         "200":
           description: The account bundle JSON.
           headers:
+            X-Mycorrhizal-Bundle-Max-Bytes:
+              description: The largest bundle the import accepts (issue #1313); the export never exceeds it.
+              schema: { type: integer }
             X-Mycorrhizal-Bundle-Version:
               schema: { type: integer }
             X-Mycorrhizal-Bundle-Contacts:
@@ -8279,7 +8282,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "507":
-          description: The account exceeds the single-request export limit.
+          description: >
+            Either the account exceeds the single-request contact limit, or (issue #1313)
+            the serialized bundle is larger than the import's size cap
+            (X-Mycorrhizal-Bundle-Max-Bytes, 64 MiB) and so could never be
+            re-imported. Refused before any body is sent; the message names the
+            size, the limit and a remedy, and details carry bundle_bytes/limit_bytes.
 
   # --- Graph ---
   /graph:

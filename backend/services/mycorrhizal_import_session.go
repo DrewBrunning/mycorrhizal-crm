@@ -32,7 +32,18 @@ const (
 	mycorrhizalSessionExpiry      = 60 * time.Minute
 	mycorrhizalSessionMaxLifetime = 6 * time.Hour
 	// MaxMycorrhizalBundleSize caps the uploaded bundle.
+	// The account-bundle export (GET /export/account) refuses to produce a
+	// bundle larger than this, so an exported bundle is always importable
+	// (issue #1313).
 	MaxMycorrhizalBundleSize = 64 << 20
+
+	// MycorrhizalUploadOverhead is the multipart framing slack added on top of
+	// MaxMycorrhizalBundleSize for the route's request-body cap, so a bundle at
+	// exactly the file limit is not rejected by the envelope around it.
+	MycorrhizalUploadOverhead = 1 << 20
+
+	// MycorrhizalUploadBodyLimit is the route-level request-body cap.
+	MycorrhizalUploadBodyLimit = MaxMycorrhizalBundleSize + MycorrhizalUploadOverhead
 	// MaxMycorrhizalContacts / MaxMycorrhizalEntities bound what one import
 	// can hold in memory for the wizard's lifetime (issue #415).
 	MaxMycorrhizalContacts = 20000
@@ -202,7 +213,7 @@ func (m *MycorrhizalImportManager) Cancel(userID uint, sessionID string) *apperr
 // the per-section totals.
 func (m *MycorrhizalImportManager) Upload(userID uint, header *multipart.FileHeader) (*models.MycorrhizalUploadResponse, *apperrors.AppError) {
 	if header.Size <= 0 || header.Size > MaxMycorrhizalBundleSize {
-		return nil, apperrors.ErrInvalidInput("file", "The bundle is empty or larger than the 64 MB limit")
+		return nil, apperrors.ErrInvalidInput("file", "The bundle is empty or larger than the 64 MiB limit")
 	}
 	src, err := header.Open()
 	if err != nil { // # pragma: no cover — defensive: header.Open on a staged multipart file
