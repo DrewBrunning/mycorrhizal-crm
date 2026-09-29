@@ -13,7 +13,10 @@ import org.junit.Test
 /** Issue #1312: the Local-profile 401 recovery path (restart + adopt a fresh token). */
 class LocalSessionReminterTest {
 
-    private class FakeHost(private val startResult: Result<LocalServerEndpoint>) : LocalServerHost {
+    private class FakeHost(
+        private val startResult: Result<LocalServerEndpoint>,
+        private val runningToken: String? = null,
+    ) : LocalServerHost {
         val calls = mutableListOf<String>()
 
         override suspend fun ensureStarted(): Result<LocalServerEndpoint> {
@@ -29,7 +32,7 @@ class LocalSessionReminterTest {
 
         override fun socketPathIfRunning(): String? = null
 
-        override fun sessionTokenIfRunning(): String? = null
+        override fun sessionTokenIfRunning(): String? = runningToken
     }
 
     private fun manager() = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
@@ -43,6 +46,28 @@ class LocalSessionReminterTest {
         val result = LocalSessionReminter(host, manager).remint()
 
         assertEquals(true, result)
+        assertEquals(listOf("stop", "start"), host.calls)
+        assertEquals("fresh-token", manager.bearerToken())
+    }
+
+    @Test
+    fun `a running server whose token differs from the stored one is adopted without a restart`() = runTest {
+        val manager = manager()
+        manager.activateLocalProfile("stale-token")
+        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "unused")), runningToken = "running-token")
+
+        assertEquals(true, LocalSessionReminter(host, manager).remint())
+        assertTrue(host.calls.isEmpty())
+        assertEquals("running-token", manager.bearerToken())
+    }
+
+    @Test
+    fun `a running server whose token is the rejected one is restarted`() = runTest {
+        val manager = manager()
+        manager.activateLocalProfile("same-token")
+        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "fresh-token")), runningToken = "same-token")
+
+        assertEquals(true, LocalSessionReminter(host, manager).remint())
         assertEquals(listOf("stop", "start"), host.calls)
         assertEquals("fresh-token", manager.bearerToken())
     }

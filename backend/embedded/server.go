@@ -431,6 +431,13 @@ func (s *Server) provisionLocalUser() error {
 		}
 	}
 
+	// Issue #1340: exactly one live session at a time. #1312 made embedded
+	// sessions year-long with no idle limit, so every earlier start's token would
+	// otherwise stay valid (and its row live) for a year. Revoke the previous
+	// starts' rows before minting this start's.
+	if _, err := services.RevokeAllSessions(s.db, user.ID); err != nil {
+		return fmt.Errorf("revoke previous local sessions: %w", err)
+	}
 	token, err := services.IssueSession(s.db, user, s.cfg, "embedded", "")
 	if err != nil {
 		return err
