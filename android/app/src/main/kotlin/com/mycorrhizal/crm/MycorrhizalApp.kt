@@ -290,6 +290,9 @@ fun MycorrhizalApp(
     mainViewModel: MainViewModel = hiltViewModel(),
     deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
+    // ADR 0029 §6 (issue #1271): shared text waiting for the contact picker.
+    shares: kotlinx.coroutines.flow.Flow<PendingShare?> = kotlinx.coroutines.flow.flowOf(null),
+    onShareHandled: () -> Unit = {},
     // Issue #965: starts the native OIDC flow. The Activity owns the PKCE
     // generation + on-device verifier storage and the browser launch, so this
     // is injected rather than built inline (the pre-#965 shape constructed a
@@ -458,6 +461,8 @@ fun MycorrhizalApp(
                     serverCapabilities = serverCapabilities,
                     deepLinks = deepLinks,
                     onDeepLinkHandled = onDeepLinkHandled,
+                    shares = shares,
+                    onShareHandled = onShareHandled,
                 )
                 val outdatedVersion = serverOutdatedNoticeVersion
                 if (outdatedVersion != null) {
@@ -537,6 +542,8 @@ private fun MainScaffold(
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
     deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
+    shares: kotlinx.coroutines.flow.Flow<PendingShare?> = kotlinx.coroutines.flow.flowOf(null),
+    onShareHandled: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -569,6 +576,21 @@ private fun MainScaffold(
                 }
             }
             onDeepLinkHandled()
+        }
+    }
+
+    // ADR 0029 §6 (issue #1271): shared text opens the "Share to…" contact picker. Only
+    // composed once the main tree is (after login, the compatibility gate and app lock), so
+    // the lock screen always comes first. An expired share is dropped, not navigated, and
+    // the stashed text is discarded if this tree is torn down (logout / lock) mid-flow.
+    val shareIntake = hiltViewModel<ShareIntakeViewModel>()
+    DisposableEffect(Unit) { onDispose { shareIntake.discardAll() } }
+    LaunchedEffect(shares) {
+        shares.filterNotNull().collect { share ->
+            if (!share.isExpired(System.currentTimeMillis())) {
+                navController.navigate(sharePickerRoute(shareIntake.stash(share.text)))
+            }
+            onShareHandled()
         }
     }
 
@@ -1123,9 +1145,54 @@ private fun AppNavGraph(
                 onEditNote = { noteId -> navController.navigate("contacts/$contactId/notes/$noteId/edit") },
             )
         }
+        // ADR 0029 §6 (issue #1271): "Share to…" — pick the contact the shared text becomes a
+        // note draft for. Single-select; the text stays in ShareDraftHolder, only its key is
+        // routed. Backing out discards the draft; picking hands it to the note form.
         composable(
-            route = "contacts/{contactId}/notes/new",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            route = "share/pick-contact?key={key}",
+            arguments = listOf(
+                navArgument("key") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            val key = entry.arguments?.getString("key")
+            val shareIntake = hiltViewModel<ShareIntakeViewModel>()
+            val discardAndBack = {
+                key?.let(shareIntake::discard)
+                navController.popBackStack()
+                Unit
+            }
+            BackHandler(onBack = discardAndBack)
+            ContactListScreen(
+                onContactClick = { id ->
+                    if (key == null) {
+                        navController.popBackStack()
+                    } else {
+                        // Replace the picker with the form so back from the form lands where
+                        // the user was before sharing, not on a stale picker.
+                        navController.navigate(sharedNoteRoute(id, key)) {
+                            popUpTo(entry.destination.id) { inclusive = true }
+                        }
+                    }
+                },
+                pickerTitle = stringResource(R.string.share_pick_contact_title),
+                onPickerBack = discardAndBack,
+            )
+        }
+        composable(
+            route = "contacts/{contactId}/notes/new?prefill={prefill}",
+            arguments = listOf(
+                navArgument("contactId") { type = NavType.IntType },
+                // ADR 0029 §6: opaque ShareDraftHolder key, never the shared text itself.
+                navArgument("prefill") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
         ) {
             NoteFormScreen(
                 onSaved = { navController.popBackStack() },

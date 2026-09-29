@@ -221,6 +221,19 @@ class E2eBackend(
         error("activity list did not converge after $MAX_ACTIVITY_PAGES pages")
     }
 
+    /**
+     * The contents of every note on [contactId], read straight from the API — the
+     * ground truth for "nothing was saved" assertions (issue #1271).
+     */
+    fun noteContents(contactId: Long): List<String> =
+        get("/contacts/$contactId/notes?limit=100", authenticated = true).use { response ->
+            check(response.code == 200) {
+                "note list failed: ${response.code} ${response.body?.string().orEmpty()}"
+            }
+            val notes = JSONObject(response.body?.string().orEmpty()).optJSONArray("notes") ?: JSONArray()
+            (0 until notes.length()).map { notes.getJSONObject(it).optString("content") }
+        }
+
     /** Deletes an activity by server id (used to clean up after an outbox test). */
     fun deleteActivity(id: Long) {
         delete("/activities/$id", authenticated = true).use {

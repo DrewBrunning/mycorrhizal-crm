@@ -16,6 +16,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.mycorrhizal.crm.data.repository.AppLocale
+import com.mycorrhizal.crm.data.share.composeSharedDraft
 import com.mycorrhizal.crm.data.session.OidcPendingRequestStore
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
@@ -111,6 +112,11 @@ class MainActivity : FragmentActivity() {
     // while signed out cannot navigate in whichever account signs in next.
     private val pendingDeepLink = MutableStateFlow<PendingDeepLink?>(null)
 
+    // ADR 0029 §6 (issue #1271): text shared in via ACTION_SEND. Same consume-once /
+    // 10-minute-TTL / dropped-on-logout rules as pendingDeepLink; it only ever prefills
+    // a note draft the user picks a contact for and saves by hand. Never logged.
+    private val pendingShare = MutableStateFlow<PendingShare?>(null)
+
     // #203 (issue #203): the OIDC-return failure message used to be a Toast,
     // which is announced inconsistently by TalkBack and can't be re-read.
     // Both failure paths in handleOidcReturn end with the session logged out,
@@ -158,6 +164,9 @@ class MainActivity : FragmentActivity() {
         // when it arrived.
         lifecycleScope.launch {
             pendingDeepLink.clearWhenLoggedOut(sessionManager.observeSession())
+        }
+        lifecycleScope.launch {
+            pendingShare.clearWhenLoggedOut(sessionManager.observeSession())
         }
 
         // M5 §5: handle a cold-start OIDC deep link before the first frame so
@@ -217,6 +226,8 @@ class MainActivity : FragmentActivity() {
                     darkTheme = darkTheme,
                     deepLinks = pendingDeepLink,
                     onDeepLinkHandled = { pendingDeepLink.value = null },
+                    shares = pendingShare,
+                    onShareHandled = { pendingShare.value = null },
                     onStartOidc = ::startOidcLogin,
                     oidcError = oidcError,
                     onOidcErrorShown = { oidcError.value = null },
@@ -244,9 +255,12 @@ class MainActivity : FragmentActivity() {
         if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags)) return
         handleOidcReturn(current.data)
         handleDeepLink(current)
+        handleShare(current)
         setIntent(Intent(current).apply {
             data = null
             removeExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+            removeExtra(Intent.EXTRA_TEXT)
+            removeExtra(Intent.EXTRA_SUBJECT)
         })
     }
 
@@ -261,6 +275,12 @@ class MainActivity : FragmentActivity() {
     private fun handleDeepLink(intent: Intent?) {
         val link = deepLinkUri(intent) ?: return
         pendingDeepLink.value = PendingDeepLink(link, System.currentTimeMillis())
+    }
+
+    /** ADR 0029 §6 (issue #1271): stash a shared-text draft for the picker → note form flow. */
+    private fun handleShare(intent: Intent) {
+        val draft = shareDraftFromIntent(intent) ?: return
+        pendingShare.value = PendingShare(draft, System.currentTimeMillis())
     }
 
     /**
@@ -404,6 +424,25 @@ data class PendingDeepLink(val uri: Uri, val receivedAtMillis: Long) {
     fun isExpired(nowMillis: Long): Boolean = nowMillis - receivedAtMillis > DEEP_LINK_TTL_MILLIS
 }
 
+/** ADR 0029 §6: shared text waiting for the picker, stamped so it can expire like a deep link. */
+data class PendingShare(val text: String, val receivedAtMillis: Long) {
+    fun isExpired(nowMillis: Long): Boolean = nowMillis - receivedAtMillis > DEEP_LINK_TTL_MILLIS
+}
+
+/**
+ * ADR 0029 §6 (issue #1271): the sanitised note draft carried by an `ACTION_SEND`
+ * `text/plain` [intent] (subject first, then text), or null for any other intent or when
+ * nothing usable remains. Anything else — `text/vcard`, images, streams — is ignored.
+ * The manifest filter is advisory (explicit intents bypass it), so the type is re-checked.
+ */
+internal fun shareDraftFromIntent(intent: Intent?): String? {
+    if (intent == null || intent.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
+    return composeSharedDraft(
+        subject = intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+        text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+    )
+}
+
 /**
  * ADR 0029 §3: whether an incoming launch intent may be handled. False for a
  * recreate (saved state present) and for a reopen from Recents
@@ -417,7 +456,7 @@ internal fun shouldHandleLaunchIntent(savedStateIsNull: Boolean, flags: Int): Bo
  * ADR 0029 §4: clears this pending link whenever [session] reports logged-out,
  * so a link received while signed out never navigates in the next account.
  */
-internal suspend fun MutableStateFlow<PendingDeepLink?>.clearWhenLoggedOut(session: Flow<SessionState>) {
+internal suspend fun <T : Any> MutableStateFlow<T?>.clearWhenLoggedOut(session: Flow<SessionState>) {
     session.collect { if (!it.isLoggedIn) value = null }
 }
 

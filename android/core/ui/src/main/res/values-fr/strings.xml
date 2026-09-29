@@ -1791,4 +1791,7 @@
     <string name="dashboard_backup_reminder_body">Vos données n\'existent que sur cet appareil. Enregistrez une archive de compte pour pouvoir les restaurer si l\'appareil est perdu ou réinitialisé.</string>
     <string name="dashboard_backup_reminder_action">Sauvegarder</string>
     <string name="dashboard_backup_reminder_dismiss">Ignorer</string>
+    <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
+    <string name="share_intent_label">Ajouter une note dans Mycorrhizal</string>
+    <string name="share_pick_contact_title">Partager avec…</string>
 </resources>

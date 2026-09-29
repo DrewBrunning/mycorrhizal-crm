@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -78,6 +79,7 @@ sealed interface NoteFormEvent {
 class NoteFormViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     private val contactRepository: ContactRepository,
+    private val shareDrafts: ShareDraftHolder,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -91,10 +93,21 @@ class NoteFormViewModel @Inject constructor(
         (raw as? Int) ?: (raw as? String)?.toIntOrNull()
     }
 
+    // ADR 0029 §6 (issue #1271): text shared into the app prefills a *new* note once. The
+    // route carries only an opaque key; the text itself was stashed in-memory by the intake
+    // and is consumed here, so a second read (recreate, back-stack replay) gets nothing.
+    // Edit mode never reads it — a stray key must not overwrite an existing note.
+    private val prefill: String? = if (noteId == null) {
+        (savedStateHandle.get<String>("prefill"))?.let(shareDrafts::take)
+    } else {
+        null
+    }
+
     private val _uiState = MutableStateFlow(
         NoteFormState(
             contactId = contactId,
             noteId = noteId,
+            content = prefill.orEmpty(),
             targetContactId = contactId.takeIf { it != 0 },
         ),
     )

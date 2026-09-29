@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Checklist
@@ -108,6 +109,10 @@ fun ContactListScreen(
     // T93 (issue #710): opens the duplicate-review surface (web's "Review
     // duplicates" button on the contacts page).
     onReviewDuplicates: () -> Unit = {},
+    // ADR 0029 §6 (issue #1271): non-null puts the list in single-select picker
+    // mode for share-to-CRM — see ContactListScreenContent.
+    pickerTitle: String? = null,
+    onPickerBack: () -> Unit = {},
     viewModel: ContactListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -151,6 +156,8 @@ fun ContactListScreen(
         onMenuClick = onMenuClick,
         onImportContacts = onImportContacts,
         onReviewDuplicates = onReviewDuplicates,
+        pickerTitle = pickerTitle,
+        onPickerBack = onPickerBack,
         onErrorShown = viewModel::onErrorShown,
         onLoadMore = viewModel::loadNextPage,
         onRefresh = viewModel::refresh,
@@ -181,6 +188,12 @@ fun ContactListScreenContent(
     onMenuClick: (() -> Unit)? = {},
     onImportContacts: () -> Unit = {},
     onReviewDuplicates: () -> Unit = {},
+    // ADR 0029 §6 (issue #1271): when non-null the screen is a single-select contact
+    // picker — this title, a back arrow instead of the drawer, and no FAB, bulk
+    // selection, duplicate review or import affordances. A row tap only calls
+    // onContactClick; the caller decides what picking means.
+    pickerTitle: String? = null,
+    onPickerBack: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -198,6 +211,7 @@ fun ContactListScreenContent(
     var pendingCircleId by remember { mutableStateOf<String?>(null) }
     var pendingTagId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    val isPicker = pickerTitle != null
 
     // M9: infinite scroll — fire loadNextPage() once the user scrolls within 5 rows of the end
     // of the loaded contacts, matching ContactListViewModel.loadNextPage()'s own re-entrancy
@@ -226,15 +240,26 @@ fun ContactListScreenContent(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    onMenuClick?.let { onMenu ->
-                        AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    if (isPicker) {
+                        AccessibleIconButton(onClick = onPickerBack, modifier = Modifier.testTag("picker-back")) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                            )
+                        }
+                    } else {
+                        onMenuClick?.let { onMenu ->
+                            AccessibleIconButton(onClick = onMenu) {
+                                Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            }
                         }
                     }
                 },
                 title = {
                     Text(
-                        text = if (selectMode) {
+                        text = if (pickerTitle != null) {
+                            pickerTitle
+                        } else if (selectMode) {
                             stringResource(R.string.contacts_selected_count, uiState.selected.size)
                         } else {
                             stringResource(R.string.nav_contacts)
@@ -243,7 +268,9 @@ fun ContactListScreenContent(
                     )
                 },
                 actions = {
-                    if (selectMode) {
+                    if (isPicker) {
+                        // Single-select picker: no bulk mode / duplicate review.
+                    } else if (selectMode) {
                         TextButton(
                             onClick = onToggleSelectAll,
                             modifier = Modifier.testTag("select-all"),
@@ -294,14 +321,14 @@ fun ContactListScreenContent(
             )
         },
         floatingActionButton = {
-            if (!selectMode) {
+            if (!selectMode && !isPicker) {
                 BrandFab(onClick = onCreateContact) {
                     Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
                 }
             }
         },
         bottomBar = {
-            if (selectMode && uiState.selected.isNotEmpty()) {
+            if (!isPicker && selectMode && uiState.selected.isNotEmpty()) {
                 BulkActionBar(
                     isRunning = uiState.isBulkRunning,
                     onArchive = { pendingAction = BulkActions.ARCHIVE },
@@ -366,8 +393,10 @@ fun ContactListScreenContent(
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                             ) {
                                 EmptyState(message = stringResource(R.string.contacts_empty))
-                                Button(onClick = onImportContacts) {
-                                    Text(stringResource(R.string.import_title))
+                                if (!isPicker) {
+                                    Button(onClick = onImportContacts) {
+                                        Text(stringResource(R.string.import_title))
+                                    }
                                 }
                             }
                         }
@@ -395,8 +424,10 @@ fun ContactListScreenContent(
                                         if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
                                     },
                                     onLongClick = {
-                                        selectMode = true
-                                        onToggleSelection(contact.id)
+                                        if (!isPicker) {
+                                            selectMode = true
+                                            onToggleSelection(contact.id)
+                                        }
                                     },
                                 )
                             }

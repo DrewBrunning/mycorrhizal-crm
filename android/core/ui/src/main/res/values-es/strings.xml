@@ -1791,4 +1791,7 @@
     <string name="dashboard_backup_reminder_body">Tus datos solo existen en este dispositivo. Guarda un paquete de cuenta para poder restaurarlos si el dispositivo se pierde o se restablece.</string>
     <string name="dashboard_backup_reminder_action">Copiar ahora</string>
     <string name="dashboard_backup_reminder_dismiss">Descartar</string>
+    <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
+    <string name="share_intent_label">Añadir nota en Mycorrhizal</string>
+    <string name="share_pick_contact_title">Compartir con…</string>
 </resources>
