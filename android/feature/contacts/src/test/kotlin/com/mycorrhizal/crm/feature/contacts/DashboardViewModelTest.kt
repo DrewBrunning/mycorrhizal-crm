@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.CadenceHealth
@@ -18,10 +20,13 @@ import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -37,11 +42,19 @@ class DashboardViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private val backupStatus = MutableStateFlow(BundleBackupStatus())
+    private val bundleBackupRepository = mockk<BundleBackupRepository> {
+        every { observeStatus() } returns backupStatus
+        coEvery { dismissReminder(any()) } just Runs
+    }
+
     private fun newViewModel(): Triple<DashboardViewModel, ApiClient, AuthRepository> {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        return Triple(DashboardViewModel(apiClient, authRepository), apiClient, authRepository)
+        val vm = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
+        vm.nowMillis = { NOW }
+        return Triple(vm, apiClient, authRepository)
     }
 
     private fun fullDashboard() = DashboardResponse(
@@ -367,7 +380,7 @@ class DashboardViewModelTest {
             every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = "us"))
             coEvery { apiClient.getDashboard() } returns Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository)
+            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
             advanceUntilIdle()
 
             assertEquals("us", viewModel.uiState.value.dateFormat)
@@ -384,7 +397,7 @@ class DashboardViewModelTest {
                 Result.failure(ApiError.Server(500, "boom")) andThen
                 Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository)
+            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
             advanceUntilIdle()
             assertEquals("Server error (500)", viewModel.uiState.value.error)
 
@@ -396,4 +409,61 @@ class DashboardViewModelTest {
             assertNull(viewModel.uiState.value.error)
             coVerify(exactly = 2) { apiClient.getDashboard() }
         }
+
+    // --- Issue #1264: local-profile backup reminder banner -----------------------
+
+    private fun stubDashboard(apiClient: ApiClient) {
+        coEvery { apiClient.getDashboard() } returns Result.success(DashboardResponse())
+    }
+
+    @Test
+    fun `banner shows for a never-exported local profile`() = runTest(mainDispatcherRule.testDispatcher) {
+        backupStatus.value = BundleBackupStatus(isLocalProfile = true)
+        val (vm, api, _) = newViewModel()
+        stubDashboard(api)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.showBackupReminder)
+    }
+
+    @Test
+    fun `banner is hidden for a remote profile even if never exported`() = runTest(mainDispatcherRule.testDispatcher) {
+        backupStatus.value = BundleBackupStatus(isLocalProfile = false)
+        val (vm, api, _) = newViewModel()
+        stubDashboard(api)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.showBackupReminder)
+    }
+
+    @Test
+    fun `banner is hidden right after an export and returns once it goes stale`() = runTest(mainDispatcherRule.testDispatcher) {
+        backupStatus.value = BundleBackupStatus(isLocalProfile = true, lastExportAt = NOW - DAY)
+        val (vm, api, _) = newViewModel()
+        stubDashboard(api)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.showBackupReminder)
+
+        backupStatus.value = BundleBackupStatus(isLocalProfile = true, lastExportAt = NOW - 31 * DAY)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.showBackupReminder)
+    }
+
+    @Test
+    fun `dismissing the banner records the dismissal at now`() = runTest(mainDispatcherRule.testDispatcher) {
+        backupStatus.value = BundleBackupStatus(isLocalProfile = true)
+        val (vm, api, _) = newViewModel()
+        stubDashboard(api)
+        advanceUntilIdle()
+
+        vm.dismissBackupReminder()
+        advanceUntilIdle()
+
+        coVerify { bundleBackupRepository.dismissReminder(NOW) }
+    }
+
+    private companion object {
+        const val DAY = 24L * 60 * 60 * 1000
+        const val NOW = 1_800_000_000_000L
+    }
 }

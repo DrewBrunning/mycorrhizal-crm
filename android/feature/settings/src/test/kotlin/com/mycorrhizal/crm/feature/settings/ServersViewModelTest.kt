@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SwitchProfileResult
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
+import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
@@ -40,7 +41,7 @@ class ServersViewModelTest {
     fun `profiles and the active id are surfaced`() = runTest(mainDispatcherRule.testDispatcher) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         active.value = profile("p2", "Two")
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
         advanceUntilIdle()
 
         assertEquals(2, vm.uiState.value.profiles.size)
@@ -50,7 +51,7 @@ class ServersViewModelTest {
     @Test
     fun `select switches and emits Switched`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -66,13 +67,16 @@ class ServersViewModelTest {
                 ServerProfile(id = "loc", kind = ServerProfileKind.Local, label = "On this device"),
             )
             val host = mockk<LocalServerHost>(relaxed = true)
-            val vm = ServersViewModel(session, host)
+            val backup = mockk<BundleBackupRepository>(relaxed = true)
+            val vm = ServersViewModel(session, host, backup)
 
             vm.deleteLocalData("loc")
             advanceUntilIdle()
 
             coVerify { host.deleteLocalData() }
             coVerify { session.removeProfile("loc") }
+            // Issue #1264: stale export/snooze bookkeeping must not outlive the profile.
+            coVerify { backup.forget("loc") }
             assertEquals(ServersEvent.Removed, vm.events.first())
         }
 
@@ -81,7 +85,7 @@ class ServersViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
             coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
-            val vm = ServersViewModel(session, mockk(relaxed = true))
+            val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
             vm.select("p2")
             advanceUntilIdle()
@@ -95,7 +99,7 @@ class ServersViewModelTest {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
         coEvery { session.switchProfile("p2", true) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -110,7 +114,7 @@ class ServersViewModelTest {
     fun `dismissPendingSwitch clears the dialog without switching`() = runTest(mainDispatcherRule.testDispatcher) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
         coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.select("p2")
         advanceUntilIdle()
@@ -122,7 +126,7 @@ class ServersViewModelTest {
 
     @Test
     fun `addRemote rejects an invalid url`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.addRemote("Bad", "not a url")
         advanceUntilIdle()
@@ -136,7 +140,7 @@ class ServersViewModelTest {
         coEvery { session.addRemoteProfile("Work", "https://work.example.com") } returns
             profile("p9", "Work", "https://work.example.com")
         coEvery { session.switchProfile("p9", false) } returns SwitchProfileResult.Switched
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.addRemote("Work", "https://work.example.com/")
         advanceUntilIdle()
@@ -148,7 +152,7 @@ class ServersViewModelTest {
 
     @Test
     fun `rename delegates the trimmed label`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.rename("p1", "  Home  ")
         advanceUntilIdle()
@@ -158,12 +162,23 @@ class ServersViewModelTest {
 
     @Test
     fun `remove delegates and emits Removed`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = ServersViewModel(session, mockk(relaxed = true))
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.remove("p1")
         advanceUntilIdle()
 
         coVerify { session.removeProfile("p1") }
         assertEquals(ServersEvent.Removed, vm.events.first())
+    }
+
+    @Test
+    fun `removing a remote profile forgets its backup bookkeeping`() = runTest(mainDispatcherRule.testDispatcher) {
+        val backup = mockk<BundleBackupRepository>(relaxed = true)
+        val vm = ServersViewModel(session, mockk(relaxed = true), backup)
+
+        vm.remove("p1")
+        advanceUntilIdle()
+
+        coVerify { backup.forget("p1") }
     }
 }

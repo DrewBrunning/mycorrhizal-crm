@@ -164,6 +164,10 @@ import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
+import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
+import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
@@ -2110,6 +2114,58 @@ class ApiClient(
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
+    // --- Account bundle (issues #1259/#1260/#1264, ADR 0028 Decision 3) ---
+
+    /**
+     * GET /api/v1/export/account — the full-fidelity, re-importable account
+     * bundle (every sensitivity level, no opt-in). Returns the raw JSON bytes,
+     * written verbatim to the user's chosen file.
+     */
+    suspend fun exportAccountBundle(): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_PATH/account")
+
+    /** POST /api/v1/import/mycorrhizal/upload — stages a bundle and opens an import session. */
+    suspend fun uploadMycorrhizalBundle(fileBytes: ByteArray, fileName: String): Result<MycorrhizalUploadResponse> =
+        executeMultipartUpload(
+            "$IMPORT_MYCORRHIZAL_PATH/upload",
+            fieldName = "file",
+            fileName = fileName,
+            mediaType = "application/json",
+            fileBytes = fileBytes,
+        ) { _, body ->
+            moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/import/mycorrhizal/fetch — starts the background map + preview build (202). */
+    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> =
+        executePost("$IMPORT_MYCORRHIZAL_PATH/fetch", MycorrhizalFetchRequest(sessionId)) { _, _ -> Unit }
+
+    /** GET /api/v1/import/mycorrhizal/status — the session's phase and progress. */
+    suspend fun getMycorrhizalImportStatus(sessionId: String): Result<SourceImportStatus> =
+        executeGet(mycorrhizalSessionUrl("status", sessionId)) { _, body ->
+            moshi.adapter(SourceImportStatus::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/import/mycorrhizal/preview — review rows + loss report for a prepared bundle. */
+    suspend fun getMycorrhizalImportPreview(sessionId: String): Result<SourceImportPreviewResponse> =
+        executeGet(mycorrhizalSessionUrl("preview", sessionId)) { _, body ->
+            moshi.adapter(SourceImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/import/mycorrhizal/confirm — starts the import with per-row actions (202). */
+    suspend fun confirmMycorrhizalImport(request: ImportConfirmRequest): Result<Unit> =
+        executePost("$IMPORT_MYCORRHIZAL_PATH/confirm", request) { _, _ -> Unit }
+
+    /** POST /api/v1/import/mycorrhizal/cancel — cancels an in-flight import or drops the session. */
+    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> =
+        executePostEmpty(mycorrhizalSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)) { _, _ -> Unit }
+
+    private fun mycorrhizalSessionUrl(action: String, sessionId: String): String =
+        "$PLACEHOLDER_ORIGIN$IMPORT_MYCORRHIZAL_PATH/$action".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+            .toString()
+
     /**
      * GET /api/v1/contacts/import/history (issue #651) — the caller's recent
      * import outcomes, newest first, as a bare JSON array (never null, even
@@ -2638,6 +2694,7 @@ class ApiClient(
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val EXPORT_PATH = "$API_V1/export"
+        private const val IMPORT_MYCORRHIZAL_PATH = "$API_V1/import/mycorrhizal"
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"

@@ -99,6 +99,8 @@ fun DashboardScreen(
     onOpenContact: (Int) -> Unit,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
+    // Issue #1264: opens Settings → Data, where the account bundle is exported.
+    onBackUp: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -159,6 +161,8 @@ fun DashboardScreen(
                         onCompleteReminder = viewModel::completeReminder,
                         onDismissReachOutSuggestion = viewModel::dismissReachOutSuggestion,
                         onVerifyDataDecay = viewModel::verifyDataDecay,
+                        onBackUpNow = onBackUp,
+                        onDismissBackupReminder = viewModel::dismissBackupReminder,
                     )
                 }
             }
@@ -181,6 +185,8 @@ internal fun DashboardContent(
     onCompleteReminder: (id: Int, skip: Boolean) -> Unit,
     onDismissReachOutSuggestion: (id: String) -> Unit = {},
     onVerifyDataDecay: (id: String) -> Unit = {},
+    onBackUpNow: () -> Unit = {},
+    onDismissBackupReminder: () -> Unit = {},
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
 
@@ -189,6 +195,11 @@ internal fun DashboardContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (state.showBackupReminder) {
+            item(key = dashboardKey("backup", "reminder")) {
+                BackupReminderBanner(onBackUpNow = onBackUpNow, onDismiss = onDismissBackupReminder)
+            }
+        }
         // Issue #212: the favorites quick-access block, placed first like web's
         // Column 1. Empty state present, exactly like the other widgets.
         //
@@ -324,6 +335,32 @@ private val OverdueDataDecayPolicy.dataDecaySourceId: String
     get() = policy?.id ?: "contact-$contactId"
 
 /** Full-screen load failure with retry — replaces the widgets, never shows alongside them. */
+/** Issue #1264: the dismissible "back up your local data" nudge for `Local` profiles. */
+@Composable
+private fun BackupReminderBanner(onBackUpNow: () -> Unit, onDismiss: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        modifier = Modifier.fillMaxWidth().testTag("backup-reminder-banner"),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.dashboard_backup_reminder_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Text(
+                text = stringResource(R.string.dashboard_backup_reminder_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onBackUpNow) { Text(stringResource(R.string.dashboard_backup_reminder_action)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.dashboard_backup_reminder_dismiss)) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun DashboardErrorState(message: String, onRetry: () -> Unit) {
     Column(

@@ -33,4 +33,7 @@ class ExportRepositoryImpl @Inject constructor(
         includeSensitive: Boolean,
     ): Result<ExportLossPreflightResponse> =
         apiClient.exportPreflight(format, sections, includeSensitive)
+
+    override suspend fun exportAccountBundle(): Result<ByteArray> =
+        apiClient.exportAccountBundle()
 }

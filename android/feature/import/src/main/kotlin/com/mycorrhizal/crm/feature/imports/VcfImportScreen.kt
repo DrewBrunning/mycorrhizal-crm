@@ -116,7 +116,7 @@ fun VcfImportScreenContent(
                 onFileTooLarge()
                 return@launch
             }
-            val bytes = withContext(Dispatchers.IO) { readAllBytes(resolver, uri) }
+            val bytes = withContext(Dispatchers.IO) { readPickedBytes(resolver, uri) }
             onFilePicked(meta.name, bytes)
         }
     }
@@ -224,15 +224,15 @@ private fun ResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> U
     }
 }
 
-private data class PickedFileMeta(val name: String, val size: Long?)
+internal data class PickedFileMeta(val name: String, val size: Long?)
 
 /**
  * Cheap metadata probe — reads only the provider's cursor, never the file contents, so an
  * oversized pick can be rejected without allocating it. `size` is null when the provider omits
  * the column or reports it as null, which some do.
  */
-private fun queryFileMeta(resolver: ContentResolver, uri: Uri): PickedFileMeta {
-    var name = "import.vcf"
+internal fun queryFileMeta(resolver: ContentResolver, uri: Uri, defaultName: String = "import.vcf"): PickedFileMeta {
+    var name = defaultName
     var size: Long? = null
     resolver.query(uri, null, null, null, null)?.use { cursor ->
         if (cursor.moveToFirst()) {
@@ -246,5 +246,5 @@ private fun queryFileMeta(resolver: ContentResolver, uri: Uri): PickedFileMeta {
 }
 
 /** Reads the picked file's bytes off the main thread. Only called once the size probe passes. */
-private fun readAllBytes(resolver: ContentResolver, uri: Uri): ByteArray =
+internal fun readPickedBytes(resolver: ContentResolver, uri: Uri): ByteArray =
     resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
