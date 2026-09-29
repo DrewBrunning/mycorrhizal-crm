@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"mycorrhizal/config"
@@ -140,19 +141,16 @@ func execJob(db *gorm.DB, jobName, trigger string, fn func() (*int, error)) {
 		Error:          errStr,
 		ItemsProcessed: items,
 	})
+
+	if obs := jobFinishedObserver.Load(); obs != nil {
+		(*obs)(db, jobName, trigger)
+	}
 }
 
-// safeGo runs fn in a goroutine via runJob (panic recovery + correlation ID +
-// job_runs row), so an unhandled panic in a background task doesn't crash the
-// server.
-func safeGo(db *gorm.DB, jobName, trigger string, fn func() error) {
-	go runJob(db, jobName, trigger, fn)
-}
-
-// safeGoReport is safeGo for a job that reports an item count (see runJobReport).
-func safeGoReport(db *gorm.DB, jobName, trigger string, fn func() (int, error)) {
-	go runJobReport(db, jobName, trigger, fn)
-}
+// jobFinishedObserver is a test seam: when set, it is called at the very end of
+// every execJob (after the job_runs row is persisted) so a lifecycle test can
+// assert which jobs ran and that the database was still open (issue #1311).
+var jobFinishedObserver atomic.Pointer[func(db *gorm.DB, jobName, trigger string)]
 
 // recoverJob wraps fn for a recurring gocron registration (s.Every(...).Do(...)).
 // gocron invokes the function it's given directly and, in the pinned v1.37.0,
