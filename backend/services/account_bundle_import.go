@@ -47,6 +47,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Sensitivity: r.Sensitivity,
 			Provenance:  r.Source,
 			Confidence:  r.Confidence,
+			Metadata:    r.Metadata,
 		})
 	}
 
@@ -68,6 +69,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Message:               r.Message,
 			RemindAt:              formatBundleTime(r.RemindAt),
 			Recurrence:            r.Recurrence,
+			ByMail:                r.ByMail,
 			ReoccurFromCompletion: r.ReoccurFromCompletion,
 			Completed:             r.Completed,
 			LastSent:              r.LastSent,
