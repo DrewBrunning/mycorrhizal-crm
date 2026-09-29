@@ -169,6 +169,33 @@ paths on your own server (`/contacts/{id}`, `/search?q=…`, …), which is the 
 notification taps into; where the web has no matching screen it opens the route's nearest parent (a
 tag opens `/circles?tab=tags`, a circle opens `/circles`).
 
+## Passkeys
+
+The app can use a passkey as your second sign-in step and lets you add, list and remove passkeys
+(**Settings → Passkeys**), through the platform's Credential Manager. Your passkey's private key
+stays in the Android credential provider (for example Google Password Manager), never in the app.
+The design and its limits are recorded in [ADR 0034](adrs/0034-android-passkeys.md).
+
+Passkeys appear in the app only when **all** of these hold:
+
+- you are signed in to a **remote server** (the on-device local profile has no domain, so never);
+- that server's operator has turned on native Android passkeys — the server then reports the
+  `webauthn_android` capability on `/health` (see `WEBAUTHN_ANDROID_ENABLED` in the
+  [configuration reference](configuration-reference.md)); this only works on a publicly reachable
+  HTTPS instance whose domain Google can fetch `/.well-known/assetlinks.json` from;
+- the device can run Credential Manager: Android 14 or newer, or — on Android 8–13 — the
+  Play Store and GitHub (Obtainium) builds, which bundle the Google Password Manager provider. The
+  F-Droid build has no Google Play services dependency, so below Android 14 it has no passkeys.
+
+When any of these is missing your account is never a dead end. Sign-in falls back to your
+authenticator-app code or a recovery code, and a passkey-only account is told to use a recovery
+code and why: "this server isn't set up for passkeys on Android", "this device has no passkey
+provider", or "passkeys aren't available on this app for this server". Cancelling the system
+passkey prompt is silent. Removing a passkey needs a live second-factor proof — an authenticator or
+recovery code, or an assertion from a *different* passkey (offered only when you have another).
+Accounts that sign in through an identity provider (OIDC) cannot add passkeys, same as the web app.
+When your first passkey is your account's first second factor, the app shows your recovery codes once.
+
 ## TLS
 
 The app trusts only system certificate authorities — there is no "import a self-signed certificate"
