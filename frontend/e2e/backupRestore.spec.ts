@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, request as playwrightRequest, test } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
+import { requireToolOrSkip } from './requireCiTool';
 
 // N6: full backup/restore.
 // The ticket is a docs + Makefile task with a hard requirement that the
@@ -30,7 +31,7 @@ import { toContactRecordInput } from '../src/api/contacts';
 //
 // It needs a Go toolchain + make on the host (it compiles the backend), which
 // the e2e CI job provisions (see e2e-tests.yml). On a machine without them the
-// spec skips with a message rather than failing the whole suite.
+// spec skips locally; in CI it throws instead (issue #1315, requireCiTool.ts).
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_DIR = path.resolve(__dirname, '../../backend');
@@ -191,10 +192,12 @@ test.describe('Full backup/restore (N6)', () => {
   test('a populated instance survives backup → destroy → restore with every entity intact', async () => {
     test.setTimeout(300_000);
 
-    if (!backendIsUsable()) {
-      test.skip(
-        'go/make toolchain not available on this host; cannot compile and drive the backend',
-      );
+    // Skips locally; throws in CI (issue #1315) so a broken Setup Go step can't
+    // turn this whole N6 round trip into a green skip.
+    const skipReason =
+      'go/make toolchain not available on this host; cannot compile and drive the backend';
+    if (!requireToolOrSkip(backendIsUsable(), skipReason)) {
+      test.skip(true, skipReason);
     }
 
     let dataDir: string | undefined;
