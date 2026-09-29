@@ -27,6 +27,12 @@ data class ServerProfile(
     val id: String,
     val kind: ServerProfileKind,
     val label: String,
+    /**
+     * ADR 0028 Decision 3: a `Local` profile whose data was moved to a server is
+     * a read-only archive — browsable, every write blocked — until the user
+     * deletes it. Always false for a Remote profile.
+     */
+    val archived: Boolean = false,
 ) {
     /** The remote origin, or null for a [ServerProfileKind.Local] profile. */
     val remoteUrl: String? get() = (kind as? ServerProfileKind.Remote)?.url

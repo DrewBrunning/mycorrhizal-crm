@@ -61,6 +61,8 @@ fun ServersScreen(
     // (issue #1262) lands — ADR 0028 Decision 2 / "arm64-v8a only".
     localModeEnabled: Boolean = false,
     onUseLocalOnly: () -> Unit = {},
+    // Issue #1265: opens the "Move this data to a server" wizard.
+    onAttachToServer: () -> Unit = {},
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -133,6 +135,7 @@ fun ServersScreen(
                             onSelect = { viewModel.select(profile.id) },
                             onRename = { renaming = profile },
                             onRemove = { removing = profile },
+                            onAttach = onAttachToServer,
                         )
                     }
                 }
@@ -232,7 +235,12 @@ internal fun ServerProfileRow(
     onSelect: () -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit,
+    onAttach: () -> Unit = {},
 ) {
+    // ADR 0028 Decision 3: the wizard starts from the ACTIVE, writable Local
+    // profile (it exports from the running local server).
+    val canAttach = isActive && profile.kind is ServerProfileKind.Local && !profile.archived
+    Column {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -258,6 +266,19 @@ internal fun ServerProfileRow(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (profile.archived) {
+                Text(
+                    text = stringResource(R.string.attach_archived_badge),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.testTag("server-archived-${profile.id}"),
+                )
+                Text(
+                    text = stringResource(R.string.attach_archived_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         if (isActive) {
             Icon(
@@ -272,6 +293,27 @@ internal fun ServerProfileRow(
         AccessibleIconButton(onClick = onRemove, enabled = !isBusy) {
             Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_servers_remove_named, profile.label))
         }
+    }
+    if (canAttach) {
+        TextButton(
+            onClick = onAttach,
+            enabled = !isBusy,
+            modifier = Modifier.padding(horizontal = 8.dp).testTag("server-attach-${profile.id}"),
+        ) {
+            Text(stringResource(R.string.attach_button))
+        }
+    }
+    if (profile.archived) {
+        // Persistent (not buried in the row's icon): the archive holds the only
+        // on-device copy, so its deletion is an explicit, typed-confirmation act.
+        TextButton(
+            onClick = onRemove,
+            enabled = !isBusy,
+            modifier = Modifier.padding(horizontal = 8.dp).testTag("server-delete-archive-${profile.id}"),
+        ) {
+            Text(stringResource(R.string.attach_archived_delete), color = MaterialTheme.colorScheme.error)
+        }
+    }
     }
 }
 

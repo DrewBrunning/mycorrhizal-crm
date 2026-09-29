@@ -1739,4 +1739,39 @@
     <string name="settings_servers_switch_confirm">Verwerfen und wechseln</string>
     <string name="servers_add_invalid_url">Gib eine gültige Server-URL ein, zum Beispiel https://crm.example.com.</string>
     <string name="login_use_local_only">Nur auf diesem Gerät verwenden</string>
+
+    <!-- Issue #1265: attach-to-remote migration wizard (ADR 0028 Decision 3) -->
+    <string name="attach_title">Daten auf einen Server verschieben</string>
+    <string name="attach_intro">Dies kopiert alles auf diesem Gerät auf einen Server Ihrer Wahl. Ihre Daten hier bleiben unverändert, bis der Umzug abgeschlossen ist, und werden danach zu einem schreibgeschützten Archiv.</string>
+    <string name="attach_server_heading">Server</string>
+    <string name="attach_server_new">Neuen Server hinzufügen</string>
+    <string name="attach_identifier">Benutzername oder E-Mail</string>
+    <string name="attach_password">Passwort</string>
+    <string name="attach_sign_in">Anmelden</string>
+    <string name="attach_two_factor_prompt">Geben Sie Ihren Zwei-Faktor-Code ein</string>
+    <string name="attach_two_factor_code">Code</string>
+    <string name="attach_two_factor_verify">Bestätigen</string>
+    <string name="attach_stage_exporting">Ihre Daten werden exportiert…</string>
+    <string name="attach_stage_uploading">Upload zum Server läuft…</string>
+    <string name="attach_stage_preparing">Die Prüfung wird vorbereitet…</string>
+    <string name="attach_stage_importing">Import auf dem Server läuft…</string>
+    <string name="attach_progress">%1$d von %2$d</string>
+    <string name="attach_review_totals">Bereit zum Verschieben: %1$d Kontakte, %2$d Notizen und %3$d Aktivitäten.</string>
+    <string name="attach_review_loss">%1$d Feld(er) können nicht exakt übernommen werden.</string>
+    <string name="attach_prepare_failed">Der Umzug konnte nicht vorbereitet werden. Auf diesem Gerät wurde nichts geändert.</string>
+    <string name="attach_retry">Erneut versuchen</string>
+    <string name="attach_done_title">Daten verschoben</string>
+    <string name="attach_done_result">%1$d erstellt, %2$d zusammengeführt, %3$d übersprungen.</string>
+    <string name="attach_done_archive_note">Die Kopie auf diesem Gerät ist jetzt ein schreibgeschütztes Archiv. Sie können sie ansehen, aber nicht ändern, bis Sie sie unter Einstellungen → Server löschen.</string>
+    <string name="attach_done_button">Fertig</string>
+    <string name="attach_discard_title">Nicht gesendete Aktivität</string>
+    <string name="attach_discard_body">%1$d erfasste Interaktion(en) auf diesem Gerät wurden nicht gesendet und sind nicht Teil des Umzugs. Verwerfen und abschließen?</string>
+    <string name="attach_discard_confirm">Verwerfen und abschließen</string>
+    <string name="attach_error_not_local">Nur das Profil auf dem Gerät kann auf einen Server verschoben werden.</string>
+    <string name="attach_error_credentials">Geben Sie Benutzernamen oder E-Mail und Passwort ein.</string>
+    <string name="attach_error_bad_credentials">Benutzername oder Passwort ist falsch.</string>
+    <string name="attach_button">Diese Daten auf einen Server verschieben</string>
+    <string name="attach_archived_badge">Schreibgeschütztes Archiv</string>
+    <string name="attach_archived_hint">Diese Kopie wurde auf einen Server verschoben. Sie können sie ansehen, aber nicht ändern.</string>
+    <string name="attach_archived_delete">Archivierte lokale Daten löschen</string>
 </resources>

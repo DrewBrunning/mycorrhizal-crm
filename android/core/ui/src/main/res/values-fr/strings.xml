@@ -1739,4 +1739,39 @@
     <string name="settings_servers_switch_confirm">Supprimer et changer</string>
     <string name="servers_add_invalid_url">Saisissez une URL de serveur valide, par exemple https://crm.example.com.</string>
     <string name="login_use_local_only">Utiliser uniquement sur cet appareil</string>
+
+    <!-- Issue #1265: attach-to-remote migration wizard (ADR 0028 Decision 3) -->
+    <string name="attach_title">Déplacer les données vers un serveur</string>
+    <string name="attach_intro">Cela copie tout ce qui se trouve sur cet appareil vers un serveur de votre choix. Vos données ici restent intactes jusqu\'à la fin du transfert, puis deviennent une archive en lecture seule.</string>
+    <string name="attach_server_heading">Serveur</string>
+    <string name="attach_server_new">Ajouter un nouveau serveur</string>
+    <string name="attach_identifier">Nom d\'utilisateur ou e-mail</string>
+    <string name="attach_password">Mot de passe</string>
+    <string name="attach_sign_in">Se connecter</string>
+    <string name="attach_two_factor_prompt">Saisissez votre code à deux facteurs</string>
+    <string name="attach_two_factor_code">Code</string>
+    <string name="attach_two_factor_verify">Vérifier</string>
+    <string name="attach_stage_exporting">Exportation de vos données…</string>
+    <string name="attach_stage_uploading">Envoi vers le serveur…</string>
+    <string name="attach_stage_preparing">Préparation de la revue…</string>
+    <string name="attach_stage_importing">Importation sur le serveur…</string>
+    <string name="attach_progress">%1$d sur %2$d</string>
+    <string name="attach_review_totals">Prêt à déplacer %1$d contacts, %2$d notes et %3$d activités.</string>
+    <string name="attach_review_loss">%1$d champ(s) ne peuvent pas être repris exactement.</string>
+    <string name="attach_prepare_failed">Le transfert n\'a pas pu être préparé. Rien n\'a été modifié sur cet appareil.</string>
+    <string name="attach_retry">Réessayer</string>
+    <string name="attach_done_title">Données déplacées</string>
+    <string name="attach_done_result">%1$d créés, %2$d fusionnés, %3$d ignorés.</string>
+    <string name="attach_done_archive_note">La copie de cet appareil est maintenant une archive en lecture seule. Vous pouvez la consulter, mais pas la modifier, jusqu\'à ce que vous la supprimiez dans Paramètres → Serveurs.</string>
+    <string name="attach_done_button">Terminé</string>
+    <string name="attach_discard_title">Activité non envoyée</string>
+    <string name="attach_discard_body">%1$d interaction(s) saisie(s) sur cet appareil n\'ont pas été envoyées et ne font pas partie du transfert. Les abandonner et terminer ?</string>
+    <string name="attach_discard_confirm">Abandonner et terminer</string>
+    <string name="attach_error_not_local">Seul le profil sur l\'appareil peut être déplacé vers un serveur.</string>
+    <string name="attach_error_credentials">Saisissez votre nom d\'utilisateur ou e-mail et votre mot de passe.</string>
+    <string name="attach_error_bad_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
+    <string name="attach_button">Déplacer ces données vers un serveur</string>
+    <string name="attach_archived_badge">Archive en lecture seule</string>
+    <string name="attach_archived_hint">Cette copie a été déplacée vers un serveur. Vous pouvez la consulter, mais pas la modifier.</string>
+    <string name="attach_archived_delete">Supprimer les données locales archivées</string>
 </resources>

@@ -158,6 +158,10 @@ import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
+import com.mycorrhizal.crm.model.network.MycorrhizalImportStatus
+import com.mycorrhizal.crm.model.network.MycorrhizalPreviewResponse
+import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRecordsRequest
@@ -2122,6 +2126,76 @@ class ApiClient(
             ).fromJson(body)
         }
 
+    // --- Account-bundle attach (ADR 0028 Decision 3; issues #1259/#1260/#1265) ---
+
+    /**
+     * GET /api/v1/export/account — the full-fidelity account bundle as raw JSON
+     * bytes (held in memory by the caller; never re-encoded, so the upload is the
+     * exact document the exporting server produced).
+     */
+    suspend fun exportAccountBundle(): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_PATH/account")
+
+    /**
+     * POST /api/v1/import/mycorrhizal/upload — uploads a bundle and opens an
+     * import session. [idempotencyKey] makes an ambiguous-failure retry of the
+     * upload replay the first response instead of opening a second session.
+     */
+    suspend fun uploadMycorrhizalBundle(
+        bundle: ByteArray,
+        idempotencyKey: String,
+    ): Result<MycorrhizalUploadResponse> =
+        executeMultipartUpload(
+            "$IMPORT_PATH/mycorrhizal/upload",
+            fieldName = "file",
+            fileName = "account-bundle.json",
+            mediaType = "application/json",
+            fileBytes = bundle,
+            idempotencyKey = idempotencyKey,
+        ) { _, body ->
+            moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/import/mycorrhizal/fetch — starts the background map + preview build (202). */
+    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> =
+        executePost("$IMPORT_PATH/mycorrhizal/fetch", MycorrhizalFetchRequest(sessionId)) { _, _ -> Unit }
+
+    /** GET /api/v1/import/mycorrhizal/status?session_id= — phase + progress. */
+    suspend fun getMycorrhizalImportStatus(sessionId: String): Result<MycorrhizalImportStatus> {
+        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/status".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+        return executeGet(url.toString()) { _, body ->
+            moshi.adapter(MycorrhizalImportStatus::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/import/mycorrhizal/preview?session_id= — review rows + loss report. */
+    suspend fun getMycorrhizalImportPreview(sessionId: String): Result<MycorrhizalPreviewResponse> {
+        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/preview".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+        return executeGet(url.toString()) { _, body ->
+            moshi.adapter(MycorrhizalPreviewResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/import/mycorrhizal/confirm — applies the reviewed bundle (202; poll status). */
+    suspend fun confirmMycorrhizalImport(request: ImportConfirmRequest): Result<Unit> =
+        executePost("$IMPORT_PATH/mycorrhizal/confirm", request) { _, _ -> Unit }
+
+    /** POST /api/v1/import/mycorrhizal/cancel?session_id= — cancels or drops the session. */
+    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> {
+        val url = "$PLACEHOLDER_ORIGIN$IMPORT_PATH/mycorrhizal/cancel".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .build()
+        return execute(request) { _, _ -> Unit }
+    }
+
     // M15: contact sharing (P1) — the backend endpoints have served web since
     // P1 shipped; this closes the missing Android client surface (the ticket's
     // 7-endpoint diff against ApiClient).
@@ -2453,18 +2527,27 @@ class ApiClient(
         fileName: String,
         mediaType: String,
         fileBytes: ByteArray,
+        idempotencyKey: String? = null,
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
-        val body = MultipartBody.Builder()
+        // The server fingerprints a keyed request by its raw body (ADR 0010), and
+        // OkHttp picks a random multipart boundary per builder — so a retry of the
+        // "same" upload would hash differently and be refused as key reuse. A
+        // boundary derived from the key makes every retry byte-identical.
+        val body = (if (idempotencyKey != null) MultipartBody.Builder(boundaryFor(idempotencyKey)) else MultipartBody.Builder())
             .setType(MultipartBody.FORM)
             .addFormDataPart(fieldName, fileName, fileBytes.toRequestBody(mediaType.toMediaType()))
             .build()
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(body)
-            .build()
-        return execute(request, mapper)
+        if (idempotencyKey != null) request.addHeader(IDEMPOTENCY_KEY_HEADER, idempotencyKey)
+        return execute(request.build(), mapper)
     }
+
+    /** A valid (<= 70 chars, token-safe) multipart boundary determined by [idempotencyKey]. */
+    private fun boundaryFor(idempotencyKey: String): String =
+        "mycorrhizal-" + idempotencyKey.filter { it.isLetterOrDigit() || it == '-' }.take(MAX_BOUNDARY_KEY_CHARS)
 
     private fun Any.toJsonBody(): okhttp3.RequestBody =
         moshi.adapter<Any>(javaClass).toJson(this).toRequestBody(jsonMediaType)
@@ -2583,6 +2666,7 @@ class ApiClient(
          * stored outcome for a repeated (user, key) instead of running the handler twice.
          */
         const val IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
+        private const val MAX_BOUNDARY_KEY_CHARS = 48
 
         /**
          * Every request is built against this placeholder origin and rewritten
@@ -2638,6 +2722,7 @@ class ApiClient(
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val EXPORT_PATH = "$API_V1/export"
+        private const val IMPORT_PATH = "$API_V1/import"
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"

@@ -30,6 +30,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
                 else -> message ?: "Request failed"
             }
             is Parse -> "Unexpected server response"
+            is ArchivedProfile -> "This profile is a read-only archive — switch to your server to make changes"
             is Unknown -> "Something went wrong"
         }
 
@@ -38,6 +39,9 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
     class Server(val code: Int, val body: String) : ApiError(body)
     class Client(val code: Int, val body: String) : ApiError(body)
     class Parse(body: String) : ApiError(body)
+
+    /** A write was refused because the active profile is a read-only archive (ADR 0028 Decision 3). */
+    class ArchivedProfile(cause: ArchivedProfileWriteException) : ApiError("Archived profile is read-only", cause)
     class Unknown(cause: Throwable) : ApiError("Unknown error", cause)
 }
 
@@ -47,6 +51,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
  */
 fun Throwable.toApiError(): ApiError = when (this) {
     is ApiError -> this
+    is ArchivedProfileWriteException -> ApiError.ArchivedProfile(this)
     is UnknownHostException, is ConnectException -> ApiError.Network(this as IOException)
     is SocketTimeoutException -> ApiError.Timeout(this)
     is com.squareup.moshi.JsonDataException -> ApiError.Parse(this.message ?: "Parse error")
