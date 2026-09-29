@@ -248,6 +248,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /health":                          {class: classPublic},
 		"GET /health/live":                     {class: classPublic},
 		"GET /health/ready":                    {class: classPublic},
+		"GET /.well-known/assetlinks.json":     {class: classPublic}, // ADR 0034: Google fetches it; 404 unless native Android passkeys are effective
 		"GET /api/v1/auth/oidc/config":         {class: classPublic},
 		"POST /api/v1/register":                {class: classPublic},
 		"POST /api/v1/login":                   {class: classPublic},
