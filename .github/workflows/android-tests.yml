@@ -118,6 +118,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Issue #1262: the embedded server binary is built from backend/ at the
+      # same commit. This MUST precede Set up Gradle / the first `./gradlew`
+      # call: the Gradle daemon captures PATH when it starts, and the
+      # buildEmbeddedServer Exec task inherits that environment. With the
+      # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
+      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
@@ -187,11 +198,6 @@ jobs:
       # `GOOS=android GOARCH=arm64 CGO_ENABLED=0 -tags nodynamic` build and the
       # Gradle packaging wiring (a missing binary would silently ship a build
       # with no local mode).
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: backend/go.mod
-
       - name: Build the embedded server binary and assert it is packaged
         working-directory: android
         run: |

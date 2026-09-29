@@ -304,6 +304,10 @@ val buildEmbeddedServer by tasks.registering(Exec::class) {
     environment("CGO_ENABLED", "0")
     environment("GOOS", "android")
     environment("GOARCH", "arm64")
+    // backend/go.mod pins a Go toolchain newer than some runners' preinstalled
+    // `go`. auto lets whatever `go` is on PATH fetch the required toolchain
+    // instead of failing with "go.mod requires go >= 1.26.0 ... GOTOOLCHAIN=local".
+    environment("GOTOOLCHAIN", "auto")
     commandLine(
         "go", "build",
         "-tags", "nodynamic",
