@@ -987,7 +987,9 @@ design is ADR-0010 / CON-04, issue #479).
   start, travels only over the host's private pipe to an app-private Unix socket, and the host config
   disables idle enforcement (`SessionIdleTimeoutHours = 0`) and sets the absolute expiry to the range
   maximum, `JWT_EXPIRY_HOURS = 8760` (issue #1312, `embedded/host.go`) — a Local profile has no login
-  surface to recover from a 401. The server-mode defaults above are unchanged.
+  surface to recover from a 401. Each start revokes the previous starts' sessions before minting
+  its own (issue #1340), so exactly one live session row exists; revoked rows are then purged by the
+  normal `PurgeExpiredSessions` grace window. The server-mode defaults above are unchanged.
 - **Verification**: `backend/middleware/auth_lifecycle_test.go`
   (`TestAuthMiddleware_JWTRejectedAfterSessionRevoked`, `TestAuthMiddleware_JWTRejectedAfterIdleTimeout`,
   `TestAuthMiddleware_JWTWithoutSidClaimRejected`),

@@ -7,7 +7,10 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
  * Issue #1312: a `Local` profile has no login surface (ADR 0028), so when the
  * embedded server rejects its session (401) the only recovery is to restart the
  * embedded server — which mints a fresh session for its single user at start —
- * and adopt the new token. Clearing the session instead would strand the user
+ * and adopt the new token. Issue #1340: each start revokes the previous one, so a
+ * 401 can also mean the stored token predates a restart that already happened
+ * (cold start, process death) — then the running server's token is adopted
+ * without another restart. Clearing the session instead would strand the user
  * on the auth flow with no way back short of "Use on this device only" again.
  */
 class LocalSessionReminter(
@@ -22,6 +25,11 @@ class LocalSessionReminter(
      */
     suspend fun remint(): Boolean? {
         if (sessionManager.activeProfile()?.kind !is ServerProfileKind.Local) return null
+        val running = localServerHost.sessionTokenIfRunning()
+        if (running != null && running != sessionManager.token()) {
+            sessionManager.activateLocalProfile(running)
+            return true
+        }
         localServerHost.stop()
         val endpoint = localServerHost.ensureStarted().getOrNull() ?: return false
         sessionManager.activateLocalProfile(endpoint.sessionToken)
