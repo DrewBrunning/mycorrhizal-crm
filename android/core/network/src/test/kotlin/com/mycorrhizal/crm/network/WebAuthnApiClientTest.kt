@@ -332,4 +332,56 @@ class WebAuthnApiClientTest {
         server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"bad proof"}}"""))
         assertEquals("bad proof", clientError(client.deleteWebAuthnCredentialWithAssertion("i", "{}"), 400).message)
     }
+
+    // --- issue #1337: enrollment proof on register/begin ---
+
+    @Test
+    fun `webauthnRegisterBegin sends a code proof next to the name`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"publicKey":{}}"""))
+
+        client.webauthnRegisterBegin("Pixel 8a", code = "AAAAA-BBBBB-CCCCC").getOrThrow()
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/webauthn/register/begin", request.path)
+        assertEquals("""{"name":"Pixel 8a","code":"AAAAA-BBBBB-CCCCC"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `webauthnRegisterBegin sends a proof with no name and escapes the code`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        client.webauthnRegisterBegin("   ", code = "12\"34").getOrThrow()
+        assertEquals("""{"code":"12\"34"}""", server.takeRequest().body.readUtf8())
+
+        client.webauthnRegisterBegin(null, code = "1", assertionJson = """{"id":"a"}""").getOrThrow()
+        assertEquals("""{"code":"1","assertion":{"id":"a"}}""", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    fun `webauthnRegisterBegin embeds an assertion proof verbatim`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val assertion = """{"id":"AAA","response":{"signature":"sig"},"n":1}"""
+
+        client.webauthnRegisterBegin("Tablet", assertionJson = assertion).getOrThrow()
+
+        assertEquals("""{"name":"Tablet","assertion":$assertion}""", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    fun `webauthnRegisterBegin rejects a non-object assertion without a request`() = runBlocking {
+        for (bad in listOf("not json", "[1]", "\"s\"")) {
+            val error = client.webauthnRegisterBegin("x", assertionJson = bad).exceptionOrNull()
+            assertTrue("for $bad: $error", error is ApiError.Parse)
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `webauthnRegisterBegin maps a rejected proof 400 and a lockout 429`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"Invalid code"}}"""))
+        assertEquals("Invalid code", clientError(client.webauthnRegisterBegin("x", code = "0"), 400).message)
+        server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"locked","message":"Try again later."}"""))
+        assertEquals("Try again later.", clientError(client.webauthnRegisterBegin("x", code = "0"), 429).message)
+    }
 }

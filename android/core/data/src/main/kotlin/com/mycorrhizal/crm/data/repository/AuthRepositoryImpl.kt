@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.MessageResponse
@@ -155,8 +156,11 @@ class AuthRepositoryImpl @Inject constructor(
             onFailure = { Result.failure(it.toApiError()) },
         )
 
-    override suspend fun setupTwoFactor(): Result<TwoFactorSetupResponse> =
-        apiClient.setupTwoFactor().fold(
+    override suspend fun setupTwoFactor(proof: SecondFactorProof?): Result<TwoFactorSetupResponse> =
+        apiClient.setupTwoFactor(
+            code = (proof as? SecondFactorProof.Code)?.code?.trim(),
+            assertionJson = (proof as? SecondFactorProof.Assertion)?.json,
+        ).fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(it.toApiError()) },
         )

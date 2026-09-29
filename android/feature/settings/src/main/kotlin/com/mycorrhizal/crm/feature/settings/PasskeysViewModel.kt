@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.passkey.PasskeyCredentialClient
 import com.mycorrhizal.crm.data.passkey.PasskeyResult
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
@@ -31,6 +33,11 @@ import javax.inject.Inject
  *    begin) and a server that isn't associated with this app are persistent
  *    "cannot enroll" states rather than repeating errors.
  *
+ * Enrolling ANOTHER factor needs the same live proof (issue #1337): once the
+ * account holds a passkey or a confirmed authenticator app, the add dialog asks
+ * for a code, or an assertion from an existing passkey
+ * ([addPasskeyWithExistingPasskey]); the very first factor is proof-free.
+ *
  * A removal proof is either a TOTP/recovery code, or an assertion from ANOTHER
  * passkey ([PasskeyRepository.beginProof] passes the removed id as `exclude_id`,
  * #1317); the second route is only offered when another passkey exists and the
@@ -43,6 +50,7 @@ import javax.inject.Inject
 class PasskeysViewModel @Inject constructor(
     private val passkeyRepository: PasskeyRepository,
     private val passkeyClient: PasskeyCredentialClient,
+    private val authRepository: AuthRepository,
     private val passkeyAvailability: PasskeyAvailability,
 ) : ViewModel() {
 
@@ -58,9 +66,14 @@ class PasskeysViewModel @Inject constructor(
         _uiState.update { it.copy(loading = true, error = null, errorRes = null) }
         viewModelScope.launch {
             val available = passkeyAvailability.isAvailable()
+            // Only decides whether the add dialog asks for a proof; the server
+            // enforces it either way, so a failed lookup is not fatal.
+            val totpEnabled = authRepository.getTwoFactorStatus().getOrNull()?.enabled ?: false
             passkeyRepository.listPasskeys()
                 .onSuccess { list ->
-                    _uiState.update { it.copy(loading = false, available = available, passkeys = list) }
+                    _uiState.update {
+                        it.copy(loading = false, available = available, passkeys = list, totpEnabled = totpEnabled)
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(loading = false, available = available, error = e.serverText()) }
@@ -80,14 +93,72 @@ class PasskeysViewModel @Inject constructor(
         _uiState.update { it.copy(adding = false, error = null, errorRes = null) }
     }
 
-    /** Run the whole enrollment ceremony. A blank [name] lets the server choose a default label. */
-    fun addPasskey(context: Context, name: String) {
+    /**
+     * Run the whole enrollment ceremony. A blank [name] lets the server choose a
+     * default label. When the account already holds a second factor
+     * ([PasskeysUiState.needsAddProof]) a non-blank [proofCode] (TOTP or recovery
+     * code) is required and is a no-op without one.
+     */
+    fun addPasskey(context: Context, name: String, proofCode: String = "") {
         val state = _uiState.value
         if (state.busy || !state.canAdd) return
+        if (state.needsAddProof && proofCode.isBlank()) return
+        val proof = if (state.needsAddProof) SecondFactorProof.Code(proofCode.trim()) else null
+        runAdd(context, name) { proof }
+    }
+
+    /**
+     * Enroll with the proof taken from an EXISTING passkey (issue #1337): the
+     * proof ceremony ([PasskeyRepository.beginProof] over all passkeys) runs
+     * first, then the enrollment. No-op when [PasskeysUiState.canProveAddWithPasskey]
+     * is false (the option is hidden then).
+     */
+    fun addPasskeyWithExistingPasskey(context: Context, name: String) {
+        val state = _uiState.value
+        if (state.busy || !state.canAdd || !state.canProveAddWithPasskey) return
+        runAdd(context, name) { proveWithExistingPasskey(context) }
+    }
+
+    /** Ceremony for the add-proof: null when it did not produce a proof (state already updated). */
+    private suspend fun proveWithExistingPasskey(context: Context): SecondFactorProof? {
+        val options = passkeyRepository.beginProof().getOrElse { e ->
+            _uiState.update { it.copy(busy = false, error = e.serverText()) }
+            return null
+        }
+        return when (val ceremony = passkeyClient.getPasskey(context, options)) {
+            is PasskeyResult.Success -> SecondFactorProof.Assertion(ceremony.json)
+            PasskeyResult.Cancelled -> {
+                _uiState.update { it.copy(busy = false) }
+                null
+            }
+            PasskeyResult.NoMatchingPasskey -> {
+                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_other_here) }
+                null
+            }
+            PasskeyResult.NotAssociated -> {
+                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_not_associated) }
+                null
+            }
+            PasskeyResult.NoProvider -> {
+                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_provider) }
+                null
+            }
+            PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed -> {
+                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+                null
+            }
+        }
+    }
+
+    private fun runAdd(context: Context, name: String, obtainProof: suspend () -> SecondFactorProof?) {
         _uiState.update { it.copy(busy = true, error = null, errorRes = null, messageRes = null) }
         viewModelScope.launch {
-            val options = passkeyRepository.beginRegistration(name).getOrElse { e ->
-                onAddBeginFailed(e)
+            val proof = obtainProof()
+            // A proof is owed but the passkey ceremony produced none (cancelled or
+            // failed): proveWithExistingPasskey already published why.
+            if (proof == null && _uiState.value.needsAddProof) return@launch
+            val options = passkeyRepository.beginRegistration(name, proof).getOrElse { e ->
+                onAddBeginFailed(e, proofSent = proof != null)
                 return@launch
             }
             when (val ceremony = passkeyClient.createPasskey(context, options)) {
@@ -128,9 +199,12 @@ class PasskeysViewModel @Inject constructor(
         }
     }
 
-    private fun onAddBeginFailed(error: Throwable) {
+    private fun onAddBeginFailed(error: Throwable, proofSent: Boolean) {
         val apiError = error.toApiError()
-        if (apiError is ApiError.Client && apiError.code == HTTP_FORBIDDEN) {
+        if (apiError is ApiError.Client && apiError.code == HTTP_BAD_REQUEST && proofSent) {
+            // The proof was rejected (wrong code or failed assertion): localized copy, dialog stays open.
+            _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+        } else if (apiError is ApiError.Client && apiError.code == HTTP_FORBIDDEN) {
             // The backend's oidcUserErr: an identity-provider account cannot enroll.
             // Persistent, like the TOTP screen's server-worded 403 — but it also
             // withdraws the Add action rather than offering a button that can only fail.
@@ -248,6 +322,8 @@ data class PasskeysUiState(
     /** The ceremony gate (server capability + device support); false hides Add and the passkey-proof route. */
     val available: Boolean = false,
     val passkeys: List<WebAuthnCredential> = emptyList(),
+    /** A confirmed authenticator app is enrolled (a second factor even with no passkey). */
+    val totpEnabled: Boolean = false,
     /** True while a network call or ceremony is in flight. */
     val busy: Boolean = false,
     /** The name dialog for a new passkey is open. */
@@ -267,6 +343,12 @@ data class PasskeysUiState(
 ) {
     /** Enrollment is offered only through an open gate and for an account that is not blocked. */
     val canAdd: Boolean get() = available && blockedRes == null && blockedText == null
+
+    /** Adding a further factor needs a live proof once the account holds any factor (issue #1337). */
+    val needsAddProof: Boolean get() = passkeys.isNotEmpty() || totpEnabled
+
+    /** "Verify with an existing passkey" while adding: the gate is open and a passkey exists to answer. */
+    val canProveAddWithPasskey: Boolean get() = available && adding && passkeys.isNotEmpty()
 
     /** "Verify with another passkey" needs the gate and at least one passkey besides the removed one. */
     val canProveWithPasskey: Boolean get() = available && removing != null && passkeys.size > 1

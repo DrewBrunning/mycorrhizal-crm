@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.model.network.WebAuthnCredentialListResponse
@@ -126,5 +127,37 @@ class PasskeyRepositoryImplTest {
 
         assertEquals("""{"publicKey":{}}""", h.repository.beginProof("target").getOrThrow())
         coVerify { h.apiClient.webauthnProofBegin("target") }
+    }
+
+    // --- issue #1337 ---
+
+    @Test
+    fun `begin registration maps a code proof to a trimmed code`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.webauthnRegisterBegin(any(), any(), any()) } returns Result.success("{}")
+
+        h.repository.beginRegistration("Laptop", SecondFactorProof.Code("  123456 "))
+
+        coVerify { h.apiClient.webauthnRegisterBegin("Laptop", "123456", null) }
+    }
+
+    @Test
+    fun `begin registration maps an assertion proof to its json`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.webauthnRegisterBegin(any(), any(), any()) } returns Result.success("{}")
+
+        h.repository.beginRegistration(null, SecondFactorProof.Assertion("""{"id":"a"}"""))
+
+        coVerify { h.apiClient.webauthnRegisterBegin(null, null, """{"id":"a"}""") }
+    }
+
+    @Test
+    fun `begin proof with no exclude id covers every passkey`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.webauthnProofBegin(null) } returns Result.success("""{"publicKey":{}}""")
+
+        assertEquals("""{"publicKey":{}}""", h.repository.beginProof().getOrThrow())
+
+        coVerify { h.apiClient.webauthnProofBegin(null) }
     }
 }
