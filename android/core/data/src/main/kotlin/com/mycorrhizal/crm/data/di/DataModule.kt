@@ -330,6 +330,8 @@ object DataModule {
         // switch actually tries to drain, by which point the manager exists.
         outboxDrainer: javax.inject.Provider<com.mycorrhizal.crm.data.session.OutboxDrainer>,
         profileSecretStorage: com.mycorrhizal.crm.data.session.ProfileSecretStorage,
+        // Issue #1312: a Provider for the same cycle-avoidance reason as above.
+        localServerHost: javax.inject.Provider<com.mycorrhizal.crm.data.local.LocalServerHost>,
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(
             tokenStorage,
@@ -352,6 +354,11 @@ object DataModule {
             sessionExpiryNotifier,
             manager,
             refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() },
+            // Issue #1312: a Local profile re-mints (restart the embedded server,
+            // adopt its fresh token) instead of clearing to a login it doesn't have.
+            localRemint = {
+                com.mycorrhizal.crm.data.local.LocalSessionReminter(localServerHost.get(), manager).remint()
+            },
         ).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
         // returning user is already logged in on launch (H3 review fix).

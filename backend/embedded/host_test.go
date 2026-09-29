@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/require"
 )
@@ -128,7 +130,48 @@ func TestHostConfig_ConfigAppliesDefaults(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, config.DeploymentEmbedded, cfg.Deployment)
 	require.Equal(t, "8080", cfg.Port)
+	// Issue #1312: embedded sessions must not idle out or expire on the
+	// server-mode clocks (no login surface exists to recover).
+	require.Equal(t, 0, cfg.SessionIdleTimeoutHours)
+	require.Equal(t, 8760, cfg.JWTExpiryHours)
+}
+
+// Server-mode lifetimes must be unchanged by the embedded override.
+func TestServerModeSessionLifetimeDefaultsUnchanged(t *testing.T) {
+	t.Parallel()
+	cfg := newTestConfig(t, config.DeploymentServer)
+	require.Equal(t, 12, cfg.SessionIdleTimeoutHours)
 	require.Equal(t, 96, cfg.JWTExpiryHours)
+}
+
+// Issue #1312: a session idle far past the old 12h limit (with an expiry
+// beyond the old 96h) is still accepted by AuthMiddleware.
+func TestEmbeddedSession_SurvivesOldIdleAndExpiryLimits(t *testing.T) {
+	hc := hostConfigForTest(t)
+	require.NoError(t, os.MkdirAll(filepath.Dir(hc.DBPath), 0o700))
+	cfg, err := hc.Config()
+	require.NoError(t, err)
+	ln, socket := listenUnix(t, "idle1312.sock")
+	srv, err := Start(context.Background(), cfg, Options{Listener: ln, CatchUpDelay: time.Hour})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, srv.Stop(context.Background())) }()
+
+	var sess models.Session
+	require.NoError(t, srv.DB().Where("user_id = ?", srv.LocalUserID()).First(&sess).Error)
+	require.True(t, sess.ExpiresAt.After(time.Now().Add(97*24*time.Hour)),
+		"embedded session expiry must exceed the server-mode 96h window")
+
+	// Idle for 30 days: 60x the old idle limit.
+	require.NoError(t, srv.DB().Model(&models.Session{}).Where("id = ?", sess.ID).
+		Update("last_seen_at", time.Now().Add(-30*24*time.Hour)).Error)
+
+	req, err := http.NewRequest(http.MethodGet, "http://unix/api/v1/contacts", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+srv.LocalSessionToken())
+	resp, err := unixHTTPClient(socket).Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 // TestRunHosted_ServesEmbeddedHealthOverUnixSocket is the acceptance path for

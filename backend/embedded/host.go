@@ -50,6 +50,10 @@ type HostConfig struct {
 // child read. The payload is a handful of paths and two short secrets.
 const maxHostConfigBytes = 64 << 10
 
+// embeddedJWTExpiryHours is the maximum JWT_EXPIRY_HOURS the config validator
+// accepts (one year); see HostConfig.Config.
+const embeddedJWTExpiryHours = 8760
+
 // hostStopTimeout bounds the graceful shutdown after the host signals stop.
 const hostStopTimeout = 30 * time.Second
 
@@ -115,6 +119,14 @@ func (h HostConfig) Config() (*config.Config, error) {
 		c.FrontendURL = "http://localhost"
 		c.GinMode = "release"
 		c.LogLevel = "info"
+		// Issue #1312: the single local user's session is minted once per Start and
+		// travels only over the parent/child pipe to an app-private Unix socket, so
+		// the server-mode idle timeout (12h) and 96h expiry protect nothing here,
+		// and a Local profile has no login surface to recover from a 401. Disable
+		// idle enforcement (0 is the documented "disabled" value) and use the
+		// range maximum for the absolute expiry. Server-mode defaults are untouched.
+		c.SessionIdleTimeoutHours = 0
+		c.JWTExpiryHours = embeddedJWTExpiryHours
 	})
 	if err != nil {
 		return nil, fmt.Errorf("embedded: building host config: %w", err)

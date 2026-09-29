@@ -151,6 +151,65 @@ class SessionExpiryWiringTest {
         assertNull(manager.bearerToken())
     }
 
+    // Issue #1312: a Local profile's 401 re-mints (restart + adopt the fresh
+    // token) and must neither clear the session nor fall through to the grant
+    // refresher.
+    @Test
+    fun `a successful local re-mint on 401 keeps the session and skips the grant refresher`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.activateLocalProfile("old-token")
+        var grantTried = false
+
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            refresher = { grantTried = true; true },
+            localRemint = { manager.activateLocalProfile("new-token"); true },
+        ).start(this)
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertEquals("new-token", manager.bearerToken())
+        assertTrue(manager.observeSession().first().isLoggedIn)
+        assertFalse("a Local profile has no grant to exchange", grantTried)
+    }
+
+    @Test
+    fun `a failed local re-mint on 401 clears the session`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.activateLocalProfile("old-token")
+
+        SessionExpiryWiring(notifier, manager, localRemint = { false }).start(this)
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertNull(manager.bearerToken())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    // A Remote profile (localRemint returns null) keeps the existing behavior.
+    @Test
+    fun `a null local re-mint falls through to the grant refresher for a Remote profile`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var grantTried = false
+
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            refresher = { grantTried = true; false },
+            localRemint = { null },
+        ).start(this)
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertTrue(grantTried)
+        assertNull(manager.bearerToken())
+    }
+
     private class RecordingCleaner : SessionDataCleaner {
         var clearCount = 0
         override suspend fun clear() {
