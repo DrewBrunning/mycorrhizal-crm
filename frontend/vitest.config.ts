@@ -11,7 +11,12 @@ export default defineConfig({
     // is included explicitly because it lives outside src/. scripts/*.test.mjs
     // covers build-tooling scripts (the bundle-size budget, issue #556) the
     // same way -- outside src/, node env via the file's own pragma.
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'viteConfig.test.ts', 'scripts/*.test.mjs'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'viteConfig.test.ts',
+      'scripts/*.test.mjs',
+      'e2e/*.vitest.ts',
+    ],
     // Node >= 22 ships its own experimental localStorage global, which is
     // undefined without --localstorage-file and shadows jsdom's working one
     pool: 'forks',

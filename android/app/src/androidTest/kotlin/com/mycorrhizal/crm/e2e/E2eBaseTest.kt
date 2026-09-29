@@ -115,6 +115,14 @@ abstract class E2eBaseTest {
         field.performTextInput(text)
     }
 
+    /** Clicks the node with [text], retrying if it vanishes mid-recomposition. */
+    protected fun clickTextWhenStable(text: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS) {
+        waitForText(text, timeoutMs)
+        compose.waitUntil(timeoutMs) {
+            runCatching { compose.onNodeWithText(text).performClick() }.isSuccess
+        }
+    }
+
     protected fun clickContentDescription(cd: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS) {
         waitForContentDescription(cd, timeoutMs)
         compose.onNodeWithContentDescription(cd).performClick()
@@ -135,6 +143,22 @@ abstract class E2eBaseTest {
         val size = all.fetchSemanticsNodes().size
         check(size > 0) { "expected a node with text '$text'" }
         return all.get(size - 1)
+    }
+
+    /**
+     * Delivers [intent] to the already-running singleTask [MainActivity] the way
+     * the system does for a foreground app: started from the activity itself,
+     * with no new-task flag, so it lands in onNewIntent of the rule's own instance.
+     *
+     * Starting it from the application context with the new-task flag instead
+     * routes it through a different task, leaving the rule's activity PAUSED forever — every assertion passes, then ActivityScenarioRule's
+     * teardown fails with "Activity never becomes requested state [DESTROYED]"
+     * (nightly 36556357772: DeepLinkE2eTest + ShareToCrmE2eTest, API 26 and 35).
+     */
+    protected fun deliverToRunningActivity(intent: android.content.Intent) {
+        val activity = compose.activity
+        intent.setClass(activity, MainActivity::class.java)
+        compose.runOnUiThread { activity.startActivity(intent) }
     }
 
     // --- app-state helpers ---------------------------------------------------

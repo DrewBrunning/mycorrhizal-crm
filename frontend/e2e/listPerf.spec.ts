@@ -22,6 +22,8 @@ const PAGE_LIMIT_CEILING = 100; // a bounded page — cursor pagination, not "gi
 const seededIds: number[] = [];
 
 test.describe('Contact list pagination at scale', { tag: '@perf-heavy' }, () => {
+  // Intentional #556 tier gate (nightly schedule sets RUN_PERF_HEAVY=1), NOT a
+  // missing-tool skip -- exempt from requireCiTool (issue #1315 audit).
   test.skip(
     !process.env.RUN_PERF_HEAVY,
     'perf-heavy: runs in the nightly e2e schedule only (set RUN_PERF_HEAVY=1)',
