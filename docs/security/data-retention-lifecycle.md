@@ -30,8 +30,8 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `DataDecayPolicy` (issue #352 — same opt-in, per-contact, soft-deleting shape as `CadencePolicy`),
 `ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
 `CalendarSubscription`/`ContactSubscription`,
-`ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Attachment` (metadata row only —
-see [§5](#5-attachments--profile-photos-files-on-disk)).
+`ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
+`Attachment` (metadata row only — see [§5](#5-attachments--profile-photos-files-on-disk)).
 
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (CLAUDE.md trap #5). Reachable
   only via the authenticated owner's API session.
@@ -48,7 +48,13 @@ see [§5](#5-attachments--profile-photos-files-on-disk)).
   its remaining edge references, run daily by cron and on-demand via the admin `TriggerPurge` endpoint
   (`admin_user_controller.go:37-42`). The list covers every soft-deletable user-authored entity —
   including the integration configs and the token-bearing `LinkFieldType`/subscription rows that issue
-  [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978) found omitted. A `?since=` cursor
+  [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978) found omitted, and the occasion
+  obligations/events, webhooks and reminder completions that
+  [#1310](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1310) found omitted (a deleted
+  contact's obligations previously outlived it as orphans). It is no longer a hand-kept promise:
+  `backend/services/purge_completeness_test.go` derives every table with a `deleted_at` column from the
+  migrated schema and fails unless it is purged or excluded with a written reason (`users`,
+  `api_tokens`, `device_grants`, `notification_configs`, `job_executions`, `webhook_deliveries`). A `?since=` cursor
   older than the window gets `410 Gone`
   (`controllers/helpers.go:360-370`) — deliberately the *same* `DeleteRetentionDays` config the purge job
   reads, so a client can never observe a tombstone gap; propagation to CardDAV/CalDAV and the Android
