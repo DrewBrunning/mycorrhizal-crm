@@ -87,6 +87,8 @@ fun interface LocalServerProcessLauncher {
 /** Everything needed to exec the packaged server. */
 data class LocalServerCommand(
     val binaryPath: String,
+    /** argv after the binary; must select the Go side's `--embedded-host` entry point. */
+    val args: List<String>,
     val workDir: String,
     val environment: Map<String, String>,
     /** The HostConfig JSON written to the child's stdin — the secrets' only path. */
@@ -188,6 +190,7 @@ class AndroidLocalServerHost @Inject constructor(
 
             val command = LocalServerCommand(
                 binaryPath = binary.absolutePath,
+                args = listOf(EMBEDDED_HOST_ARG),
                 workDir = paths.dataDir.absolutePath,
                 environment = mapOf(
                     "HOME" to paths.dataDir.absolutePath,
@@ -253,3 +256,6 @@ class AndroidLocalServerHost @Inject constructor(
         const val HEALTH_POLL_MS = 50L
     }
 }
+
+/** Must match `embeddedHostArg` in backend/main.go. */
+internal const val EMBEDDED_HOST_ARG = "--embedded-host"

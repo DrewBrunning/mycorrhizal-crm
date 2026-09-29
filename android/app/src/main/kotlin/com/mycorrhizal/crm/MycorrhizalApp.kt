@@ -233,8 +233,8 @@ private fun isDestinationAvailable(
 /**
  * ADR 0028 ("arm64-v8a only") / issue #1262: the embedded server ships only for
  * arm64-v8a, so on any other ABI the `Local` kind is not offered and the "Use on
- * this device only" entry is hidden. The build flag also keeps it off until
- * bundle backup ships (#1264), but this is the runtime capability check.
+ * this device only" entry is hidden. The build flag is the kill switch;
+ * this is the runtime capability check.
  */
 @Composable
 private fun localModeAvailable(): Boolean {
@@ -1412,8 +1412,8 @@ private fun AppNavGraph(
             )
         }
         // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
-        // screen. The "Use on this device only" entry stays behind the
-        // BuildConfig.LOCAL_MODE_ENABLED flag until the embedded host lands.
+        // screen. The "Use on this device only" entry is behind the
+        // BuildConfig.LOCAL_MODE_ENABLED flag.
     composable("servers") {
         // A hiltViewModel here shares the app singletons with the root's
         // MainViewModel, so useLocalOnly starts the same embedded host.

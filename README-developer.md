@@ -117,7 +117,7 @@
   ```
   This cross-compiles `backend/` (`CGO_ENABLED=0 GOOS=android GOARCH=arm64 -tags nodynamic`) into `app/build/generated/embeddedServer/jniLibs/arm64-v8a/libmycorrhizal.so`, which the packaging step merges into the APK. The task is skipped when the Go toolchain is absent, so an ordinary build without Go still succeeds — it just ships no local mode. Set `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` to make `preBuild` build it automatically. CI runs this on every PR (`android-tests.yml`, "Build the embedded server binary and assert it is packaged").
 - **arm64-v8a devices only.** The CI emulator is x86_64 and cannot run the embedded server (the pure-Go SQLite stack's x86_64 syscalls are blocked by Android's seccomp filter); use the Pixel 8a. On any other ABI `LocalServerAvailability` hides the "Use on this device only" entry.
-- The entry is also behind the `LOCAL_MODE_ENABLED` build flag (`app/build.gradle.kts`), off until the account-bundle backup ships (#1264) — a local profile is the only copy of its data. For a local test, flip it to `true` temporarily, then:
+- The entry is also behind the `LOCAL_MODE_ENABLED` build flag (`app/build.gradle.kts`), on since the account-bundle backup (#1264) shipped alongside the host (#1108) — set it `false` to hide the entry. To test locally:
   ```bash
   cd android && ./gradlew :app:installObtainiumDebug
   ```

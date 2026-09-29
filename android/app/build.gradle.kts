@@ -54,10 +54,10 @@ android {
         // emulator/device via `./gradlew :app:connectedObtainiumDebugAndroidTest`.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // ADR 0028 Decision 1/2: the "Use on this device only" (Local profile)
-        // entry stays off until the embedded backend host (issue #1262) lands
-        // AND bundle export/backup (issue #1264) exists — a local profile holds
-        // the only copy of its data. Flip to true only when both have shipped.
-        buildConfigField("boolean", "LOCAL_MODE_ENABLED", "false")
+        // entry was held off until the embedded backend host (issue #1262) AND
+        // bundle export/backup (issue #1264) both shipped — a local profile holds
+        // the only copy of its data. Both have, so it is on (issue #1108).
+        buildConfigField("boolean", "LOCAL_MODE_ENABLED", "true")
     }
 
     // Issue #1133: three distribution flavors, one per release channel. The
