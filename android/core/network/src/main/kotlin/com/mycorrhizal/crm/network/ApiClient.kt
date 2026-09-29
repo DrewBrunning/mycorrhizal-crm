@@ -2126,12 +2126,31 @@ class ApiClient(
 
     /** POST /api/v1/import/mycorrhizal/upload — stages a bundle and opens an import session. */
     suspend fun uploadMycorrhizalBundle(fileBytes: ByteArray, fileName: String): Result<MycorrhizalUploadResponse> =
+        uploadMycorrhizalBundleInternal(fileBytes, fileName, null)
+
+    /**
+     * Same upload, keyed (the attach wizard, issue #1265): [idempotencyKey] (the attach wizard, issue #1265) makes a retry after an ambiguous
+     * failure replay the first response instead of opening a second session.
+     */
+    suspend fun uploadMycorrhizalBundle(
+        fileBytes: ByteArray,
+        fileName: String,
+        idempotencyKey: String,
+    ): Result<MycorrhizalUploadResponse> =
+        uploadMycorrhizalBundleInternal(fileBytes, fileName, idempotencyKey)
+
+    private suspend fun uploadMycorrhizalBundleInternal(
+        fileBytes: ByteArray,
+        fileName: String,
+        idempotencyKey: String?,
+    ): Result<MycorrhizalUploadResponse> =
         executeMultipartUpload(
             "$IMPORT_MYCORRHIZAL_PATH/upload",
             fieldName = "file",
             fileName = fileName,
             mediaType = "application/json",
             fileBytes = fileBytes,
+            idempotencyKey = idempotencyKey,
         ) { _, body ->
             moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
         }
@@ -2509,18 +2528,27 @@ class ApiClient(
         fileName: String,
         mediaType: String,
         fileBytes: ByteArray,
+        idempotencyKey: String? = null,
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
-        val body = MultipartBody.Builder()
+        // The server fingerprints a keyed request by its raw body (ADR 0010), and
+        // OkHttp picks a random multipart boundary per builder — so a retry of the
+        // "same" upload would hash differently and be refused as key reuse. A
+        // boundary derived from the key makes every retry byte-identical.
+        val body = (if (idempotencyKey != null) MultipartBody.Builder(boundaryFor(idempotencyKey)) else MultipartBody.Builder())
             .setType(MultipartBody.FORM)
             .addFormDataPart(fieldName, fileName, fileBytes.toRequestBody(mediaType.toMediaType()))
             .build()
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(body)
-            .build()
-        return execute(request, mapper)
+        if (idempotencyKey != null) request.addHeader(IDEMPOTENCY_KEY_HEADER, idempotencyKey)
+        return execute(request.build(), mapper)
     }
+
+    /** A valid (<= 70 chars, token-safe) multipart boundary determined by [idempotencyKey]. */
+    private fun boundaryFor(idempotencyKey: String): String =
+        "mycorrhizal-" + idempotencyKey.filter { it.isLetterOrDigit() || it == '-' }.take(MAX_BOUNDARY_KEY_CHARS)
 
     private fun Any.toJsonBody(): okhttp3.RequestBody =
         moshi.adapter<Any>(javaClass).toJson(this).toRequestBody(jsonMediaType)
@@ -2639,6 +2667,7 @@ class ApiClient(
          * stored outcome for a repeated (user, key) instead of running the handler twice.
          */
         const val IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
+        private const val MAX_BOUNDARY_KEY_CHARS = 48
 
         /**
          * Every request is built against this placeholder origin and rewritten

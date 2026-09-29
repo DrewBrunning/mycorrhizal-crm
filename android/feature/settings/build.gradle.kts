@@ -13,6 +13,9 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:ui"))
     implementation(project(":feature:tracking"))
+    // Issue #1265: the attach wizard reuses the shared per-row import review step.
+    implementation(project(":feature:import"))
+    implementation(project(":core:model"))
     // Issue #814 Phase 2: encode the TOTP enrollment otpauth:// URI as a QR
     // bitmap (pure-Java, no scanning/camera).
     implementation(libs.zxing.core)

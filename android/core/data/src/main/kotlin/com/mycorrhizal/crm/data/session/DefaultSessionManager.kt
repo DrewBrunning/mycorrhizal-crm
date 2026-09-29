@@ -373,6 +373,26 @@ class DefaultSessionManager(
         return SwitchProfileResult.Switched
     }
 
+    override suspend fun saveProfileToken(id: String, token: String) {
+        if (cachedProfiles.none { it.id == id }) return
+        tokenStorage.save(id, token)
+        // The active profile's in-memory bearer must follow its stored one.
+        if (id == cachedActiveProfileId) cachedToken = token
+    }
+
+    override suspend fun setProfileArchived(id: String, archived: Boolean) {
+        val current = cachedProfiles.find { it.id == id } ?: return
+        // Only the on-device store has data that can be "moved"; a Remote
+        // profile is never a read-only archive.
+        if (current.kind !is ServerProfileKind.Local) return
+        if (current.archived == archived) return
+        cachedProfiles = cachedProfiles.map { if (it.id == id) it.copy(archived = archived) else it }
+        persistProfiles()
+        refreshProfiles()
+    }
+
+    override fun isActiveProfileArchived(): Boolean = activeProfileSync()?.archived == true
+
     // --- internals ------------------------------------------------------------
 
     private suspend fun persistProfiles() {

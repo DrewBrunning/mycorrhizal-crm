@@ -82,4 +82,41 @@ class ServerProfileCodecTest {
         assertNull(ServerProfileCodec.decode("", "p1").activeProfileId)
         assertTrue(ServerProfileCodec.decode("", "p1").profiles.isEmpty())
     }
+
+    @Test
+    fun `round-trips the archived flag on a local profile`() {
+        val snapshot = ProfilesSnapshot(
+            profiles = listOf(
+                remote("p1", "https://one.example.com", "One"),
+                ServerProfile("p2", ServerProfileKind.Local, "On this device", archived = true),
+            ),
+            activeProfileId = "p1",
+        )
+
+        val decoded = ServerProfileCodec.decode(ServerProfileCodec.encode(snapshot), "p1")
+
+        assertEquals(snapshot, decoded)
+        assertTrue(decoded.profiles[1].archived)
+        assertEquals(false, decoded.profiles[0].archived)
+    }
+
+    @Test
+    fun `a row written before the archived column existed decodes as not archived`() {
+        val legacyRow = "p1\tlocal\t\tOn+this+device"
+
+        val decoded = ServerProfileCodec.decode(legacyRow, "p1")
+
+        assertEquals(1, decoded.profiles.size)
+        assertEquals(false, decoded.profiles.single().archived)
+    }
+
+    @Test
+    fun `an unarchived profile is still written as the four-column row`() {
+        val encoded = ServerProfileCodec.encode(
+            ProfilesSnapshot(profiles = listOf(remote("p1", "https://one.example.com", "One")), activeProfileId = "p1"),
+        )
+
+        assertEquals(3, encoded.count { it == '\t' })
+    }
 }
+

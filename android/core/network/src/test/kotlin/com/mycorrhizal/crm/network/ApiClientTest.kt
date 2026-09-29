@@ -5342,4 +5342,139 @@ class ApiClientTest {
         val body = request.body.readUtf8()
         assertTrue("the level must ride the create body", body.contains("\"level\":\"high\""))
     }
+
+    // --- Account-bundle attach (ADR 0028 Decision 3; issue #1265) ---
+
+    @Test
+    fun `exportAccountBundle GETs the account export and returns the raw bytes`() = runBlocking {
+        val bundle = """{"format":"mycorrhizal-account","version":1}"""
+        server.enqueue(MockResponse().setResponseCode(200).setBody(bundle))
+
+        val result = client.exportAccountBundle()
+
+        assertEquals(bundle, String(result.getOrThrow()))
+        val recorded = server.takeRequest()
+        assertEquals("GET", recorded.method)
+        assertEquals("/api/v1/export/account", recorded.path)
+    }
+
+    @Test
+    fun `uploadMycorrhizalBundle posts multipart with the Idempotency-Key and parses the session`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s-1","version":1,"totals":{"contacts":3,"notes":2}}""",
+            ),
+        )
+
+        val result = client.uploadMycorrhizalBundle("""{"plan":{}}""".toByteArray(), "b.json", "key-123").getOrThrow()
+
+        assertEquals("s-1", result.sessionId)
+        assertEquals(3, result.totals.contacts)
+        assertEquals(2, result.totals.notes)
+        val recorded = server.takeRequest()
+        assertEquals("POST", recorded.method)
+        assertEquals("/api/v1/import/mycorrhizal/upload", recorded.path)
+        assertEquals("key-123", recorded.getHeader("Idempotency-Key"))
+        assertTrue(recorded.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"))
+        assertTrue(recorded.body.readUtf8().contains("""{"plan":{}}"""))
+    }
+
+    @Test
+    fun `a keyed upload retry sends a byte-identical body so the server fingerprint matches`() = runBlocking {
+        // The backend fingerprints a keyed POST by its raw body; a random
+        // multipart boundary per attempt would make every retry a 422.
+        server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"s-1","version":1,"totals":{}}"""))
+        val bundle = """{"plan":{}}""".toByteArray()
+
+        client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
+        client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
+
+        val first = server.takeRequest()
+        val second = server.takeRequest()
+        assertEquals(first.getHeader("Content-Type"), second.getHeader("Content-Type"))
+        assertEquals(first.body.readUtf8(), second.body.readUtf8())
+    }
+
+    @Test
+    fun `different keys use different boundaries`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"a","version":1,"totals":{}}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"b","version":1,"totals":{}}"""))
+
+        client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json", "key-one")
+        client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json", "key-two")
+
+        assertFalse(server.takeRequest().getHeader("Content-Type") == server.takeRequest().getHeader("Content-Type"))
+    }
+
+    @Test
+    fun `existing multipart uploads carry no Idempotency-Key`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"x"}"""))
+
+        client.uploadVcfImport("BEGIN:VCARD".toByteArray(), "c.vcf")
+
+        assertNull(server.takeRequest().getHeader("Idempotency-Key"))
+    }
+
+    @Test
+    fun `mycorrhizal fetch status preview confirm and cancel hit the documented routes`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s-1","phase":"building_preview","phase_done":2,"phase_total":9}""",
+            ),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"s-1","rows":[{"row_index":0,"suggested_action":"add"}],"total_rows":1,
+                   "valid_rows":1,"duplicate_count":0,"error_count":0,
+                   "loss_report":[{"record":"contact:1","field":"x","category":"lossy","message":"m"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        assertTrue(client.startMycorrhizalFetch("s-1").isSuccess)
+        val status = client.getMycorrhizalImportStatus("s-1").getOrThrow()
+        val preview = client.getMycorrhizalImportPreview("s-1").getOrThrow()
+        assertTrue(
+            client.confirmMycorrhizalImport(
+                com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                    "s-1",
+                    listOf(com.mycorrhizal.crm.model.network.RowImportAction(0, "add")),
+                ),
+            ).isSuccess,
+        )
+        assertTrue(client.cancelMycorrhizalImport("s-1").isSuccess)
+
+        assertEquals("building_preview", status.phase)
+        assertEquals(9, status.phaseTotal)
+        assertFalse(status.isReady)
+        assertEquals(1, preview.rows.size)
+        assertEquals(1, preview.lossReport.size)
+        assertEquals("lossy", preview.lossReport.single().category)
+
+        assertEquals("/api/v1/import/mycorrhizal/fetch", server.takeRequest().path)
+        assertEquals("/api/v1/import/mycorrhizal/status?session_id=s-1", server.takeRequest().path)
+        assertEquals("/api/v1/import/mycorrhizal/preview?session_id=s-1", server.takeRequest().path)
+        val confirm = server.takeRequest()
+        assertEquals("/api/v1/import/mycorrhizal/confirm", confirm.path)
+        assertTrue(confirm.body.readUtf8().contains(""""session_id":"s-1""""))
+        val cancel = server.takeRequest()
+        assertEquals("POST", cancel.method)
+        assertEquals("/api/v1/import/mycorrhizal/cancel?session_id=s-1", cancel.path)
+    }
+
+    @Test
+    fun `mycorrhizal status phase helpers classify ready done and failed`() {
+        val ready = com.mycorrhizal.crm.model.network.SourceImportStatus(phase = "ready")
+        val done = com.mycorrhizal.crm.model.network.SourceImportStatus(phase = "done")
+        val failed = com.mycorrhizal.crm.model.network.SourceImportStatus(phase = "failed")
+        val cancelled = com.mycorrhizal.crm.model.network.SourceImportStatus(phase = "cancelled")
+
+        assertTrue(ready.isReady && !ready.isDone && !ready.isFailed)
+        assertTrue(done.isDone && !done.isReady && !done.isFailed)
+        assertTrue(failed.isFailed && cancelled.isFailed)
+    }
 }
+

@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.session
 
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.network.ArchivedProfileProvider
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.TokenProvider
 import kotlinx.coroutines.flow.Flow
@@ -101,7 +102,7 @@ object NoopSessionTeardown : SessionTeardown {
  * from an in-memory cache so the synchronous OkHttp interceptors never touch
  * disk. The cache is hydrated at startup (see AppSessionManager).
  */
-interface SessionManager : TokenProvider, BaseUrlProvider {
+interface SessionManager : TokenProvider, BaseUrlProvider, ArchivedProfileProvider {
     fun observeSession(): Flow<SessionState>
     suspend fun serverUrl(): String?
     suspend fun token(): String?
@@ -225,6 +226,23 @@ interface SessionManager : TokenProvider, BaseUrlProvider {
      *     re-runs the compatibility gate for the new server.
      */
     suspend fun switchProfile(id: String, discardPending: Boolean = false): SwitchProfileResult
+
+    // --- ADR 0028 Decision 3 / issue #1265: attach-to-remote migration --------
+
+    /**
+     * Persist [token] as [id]'s credential WITHOUT activating the profile. The
+     * attach wizard logs into a Remote profile while the Local one stays active;
+     * the token must survive until the final switch, and an interrupted wizard
+     * leaves it stored (a re-run simply logs in again and overwrites it).
+     */
+    suspend fun saveProfileToken(id: String, token: String)
+
+    /**
+     * Mark a profile a read-only archive (or clear the mark). Only a Local
+     * profile can be archived. Takes effect on the very next request: the
+     * network layer's write-blocking interceptor reads [isActiveProfileArchived].
+     */
+    suspend fun setProfileArchived(id: String, archived: Boolean)
 }
 
 /**
