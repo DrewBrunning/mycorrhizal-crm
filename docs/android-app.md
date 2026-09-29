@@ -94,6 +94,34 @@ Constraints:
   profile can later be *attached* to a remote server by importing that bundle
   (one-time move, never a live two-way sync). See ADR 0028 Decisions 3 and 5.
 
+### Moving a local profile to a server
+
+**Settings → Servers**, on the active local profile, offers **Move this data to
+a server** (ADR 0028 Decision 3, one-time — never a live sync). The wizard:
+
+1. asks you to add or pick a *Remote* server and sign in to it (2FA supported) —
+   without switching to it, so the local profile stays active and writable;
+2. exports the account bundle from the on-device server, **in memory** (nothing
+   is written to disk);
+3. uploads it to the remote's `mycorrhizal` import source under an
+   `Idempotency-Key`;
+4. shows the remote's preview with per-contact add / merge / skip — the same
+   review screen the VCF import uses — plus a count of anything the bundle can't
+   carry over exactly;
+5. on confirm, applies it (and drops the remote's finished import session, which
+   would otherwise count against its per-user cap), then **switches to the remote
+   profile**;
+6. marks the local profile a **read-only archive**: still browsable, every write
+   is refused before it leaves the app (with a "read-only archive" message), and
+   a persistent **Delete archived local data** action stays on its row. Nothing
+   is deleted automatically.
+
+Backing out, an error, or the app being killed at any step *before* the switch
+leaves the local profile active and writable; re-running is safe because the
+server's import ledger keys on the bundle's stable IDs, so contacts already
+moved are not created twice. Nothing ever flows from the remote back to the
+local profile.
+
 The entry point ("Use on this device only", on the sign-in screen and in
 **Settings → Servers**) is present in every distribution variant but stays
 behind a build flag until the account-bundle backup UI ships — a local profile

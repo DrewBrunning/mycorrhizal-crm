@@ -22,7 +22,7 @@ import java.util.UUID
 class ServerProfileSwitchE2eTest : E2eBaseTest() {
 
     @Test
-    fun `switching server profiles isolates each account's contacts`() {
+    fun switchingServerProfilesIsolatesEachAccountsContacts() {
         backend.registerSeedUser(
             E2eConfig.SECOND_USERNAME,
             E2eConfig.SECOND_EMAIL,

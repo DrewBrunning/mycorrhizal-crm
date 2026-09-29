@@ -452,11 +452,31 @@ func pushRecordSize(payloadLen int) uint32 {
 	return uint32(size) // #nosec G115 -- size is clamped to webpush.MaxRecordSize above, so it cannot overflow
 }
 
+// pushPayload builds the Web Push JSON payload: {"title","body","path"?}.
+// path is the in-app route the service worker's notificationclick opens
+// (ADR 0029 §2, issue #1270); it is omitted when empty.
+func pushPayload(title, message, path string) map[string]string {
+	p := map[string]string{"title": title, "body": message}
+	if path != "" {
+		p["path"] = path
+	}
+	return p
+}
+
+// reminderWebPath is the web click target for a reminder push: the linked
+// contact's page, or "" (the client falls back to "/") when unlinked.
+func reminderWebPath(r models.Reminder) string {
+	if r.ContactID == nil {
+		return ""
+	}
+	return contactWebPath(*r.ContactID)
+}
+
 // sendPushMessage delivers one Web Push message to a subscription. Returns
 // stale=true when the push service no longer knows the subscription
 // (404/410) — the caller should drop it. Reuses clientFor so the webhook SSRF
 // policy governs the push endpoint too.
-func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub models.PushSubscription, vapidPublic, vapidPrivate, title, message string) (stale bool, err error) {
+func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub models.PushSubscription, vapidPublic, vapidPrivate, title, message, path string) (stale bool, err error) {
 	// Issue #434 failure-injection seam for the Web Push path (webpush-go does
 	// not route through postNotificationJSON). An armed fault surfaces as a
 	// non-stale send failure — a failed NotificationDelivery row, subscription
@@ -465,7 +485,7 @@ func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub model
 		return false, ferr
 	}
 
-	payload, err := json.Marshal(map[string]string{"title": title, "body": message})
+	payload, err := json.Marshal(pushPayload(title, message, path))
 	if err != nil {
 		return false, err
 	}
@@ -539,7 +559,7 @@ func (pushNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.
 	for _, sub := range subs {
 		for _, r := range reminders {
 			body := notificationShortBody(r, contactMap)
-			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, body)
+			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, body, reminderWebPath(r))
 			if err != nil {
 				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
@@ -753,6 +773,13 @@ func fcmReminderData(reminder models.Reminder) map[string]string {
 // reject.
 func contactDeepLink(id uint) string {
 	return fmt.Sprintf("mycorrhizal://contacts/%d", id)
+}
+
+// contactWebPath is the web counterpart of contactDeepLink: the path on the
+// user's own server that a Web Push click opens. Pinned to the shared vector
+// table's web_path by deep_link_vectors_test.go (ADR 0029 §5, issue #1270).
+func contactWebPath(id uint) string {
+	return fmt.Sprintf("/contacts/%d", id)
 }
 
 // fcmAccessToken obtains a short-lived OAuth2 access token for the FCM API by
@@ -1115,7 +1142,7 @@ func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, 
 		}
 		for _, sub := range subs {
 			attempted = true
-			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
+			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message, "")
 			if err != nil {
 				if sendErr == nil {
 					sendErr = err

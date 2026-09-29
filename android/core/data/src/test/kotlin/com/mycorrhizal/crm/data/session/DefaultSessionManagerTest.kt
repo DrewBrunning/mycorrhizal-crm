@@ -735,4 +735,113 @@ class DefaultSessionManagerTest {
         override suspend fun setIdempotencyKey(id: Long, key: String) = Unit
         override suspend fun clearMatchedContact(id: Long) = Unit
     }
+
+    // --- Issue #1265: attach-to-remote support ---------------------------------
+
+    @Test
+    fun `saveProfileToken stores a non-active profile's token without activating it`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+        manager.activateLocalProfile("local-token")
+        val remote = manager.addRemoteProfile("Home", "https://home.example")
+
+        manager.saveProfileToken(remote.id, "remote-token")
+
+        assertEquals("remote-token", tokenStorage.tokens[remote.id])
+        // The active (Local) session is untouched — the wizard has not switched yet.
+        assertEquals("local-token", manager.bearerToken())
+        assertEquals(ServerProfileKind.Local, manager.activeProfile()?.kind)
+    }
+
+    @Test
+    fun `saveProfileToken on the active profile also updates the in-memory bearer`() = runTest {
+        val manager = manager()
+        manager.init()
+        val local = manager.activateLocalProfile("old")
+
+        manager.saveProfileToken(local.id, "new")
+
+        assertEquals("new", manager.bearerToken())
+    }
+
+    @Test
+    fun `saveProfileToken ignores an unknown profile`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+
+        manager.saveProfileToken("nope", "t")
+
+        assertTrue(tokenStorage.tokens.isEmpty())
+    }
+
+    @Test
+    fun `setProfileArchived marks a local profile and reports it when active`() = runTest {
+        val prefs = FakeSessionPrefsStorage()
+        val manager = manager(prefsStorage = prefs)
+        manager.init()
+        val local = manager.activateLocalProfile("t")
+        assertFalse(manager.isActiveProfileArchived())
+
+        manager.setProfileArchived(local.id, true)
+
+        assertTrue(manager.isActiveProfileArchived())
+        assertTrue(manager.activeProfile()?.archived == true)
+        assertTrue("the flag is persisted", prefs.snapshot.profiles.single().archived)
+        manager.observeActiveProfile().test {
+            assertTrue(awaitItem()?.archived == true)
+        }
+    }
+
+    @Test
+    fun `an archived profile is not reported archived once another profile is active`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+        val local = manager.activateLocalProfile("t")
+        val remote = manager.addRemoteProfile("Home", "https://home.example")
+        manager.saveProfileToken(remote.id, "r")
+        manager.setProfileArchived(local.id, true)
+
+        manager.switchProfile(remote.id)
+
+        assertFalse(manager.isActiveProfileArchived())
+    }
+
+    @Test
+    fun `setProfileArchived can clear the mark`() = runTest {
+        val manager = manager()
+        manager.init()
+        val local = manager.activateLocalProfile("t")
+        manager.setProfileArchived(local.id, true)
+
+        manager.setProfileArchived(local.id, false)
+
+        assertFalse(manager.isActiveProfileArchived())
+    }
+
+    @Test
+    fun `a remote profile can never be archived`() = runTest {
+        val manager = manager()
+        manager.init()
+        val remote = manager.addRemoteProfile("Home", "https://home.example")
+        manager.switchProfile(remote.id)
+
+        manager.setProfileArchived(remote.id, true)
+
+        assertFalse(manager.isActiveProfileArchived())
+        assertFalse(manager.profiles().single().archived)
+    }
+
+    @Test
+    fun `setProfileArchived ignores an unknown id`() = runTest {
+        val manager = manager()
+        manager.init()
+
+        manager.setProfileArchived("nope", true)
+
+        assertFalse(manager.isActiveProfileArchived())
+    }
 }
+

@@ -62,6 +62,8 @@ dependencies {
 
     testImplementation(libs.room.testing)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Issue #1265: the attach coordinator is tested at the wire level against two servers.
+    testImplementation(libs.mockwebserver)
 }
 
 // Issue #385: the sqlcipher-android AAR's native libsqlcipher.so is merged

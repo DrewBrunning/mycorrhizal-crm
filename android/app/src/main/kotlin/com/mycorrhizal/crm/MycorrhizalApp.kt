@@ -141,6 +141,7 @@ import com.mycorrhizal.crm.feature.settings.NextcloudSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.PaperlessSettingsScreen
 import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
 import com.mycorrhizal.crm.feature.settings.ServersScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
@@ -1351,7 +1352,13 @@ private fun AppNavGraph(
             onBack = { navController.popBackStack() },
             localModeEnabled = localModeAvailable(),
             onUseLocalOnly = mainViewModel::useLocalOnly,
+            // Issue #1265: one-time move of the on-device data to a server.
+            onAttachToServer = { navController.navigate("servers/attach") },
         )
+    }
+    // ADR 0028 Decision 3 / issue #1265: the "Move this data to a server" wizard.
+    composable("servers/attach") {
+        AttachToRemoteScreen(onBack = { navController.popBackStack() })
     }
         // Issue #348: admin user management, reached from Settings (gated on
         // SessionState.isAdmin there). The route lives outside the drawer set.
