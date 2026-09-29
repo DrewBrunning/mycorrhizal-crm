@@ -121,6 +121,9 @@ func dispatchBasic(router http.Handler, method, path, username, password string)
 // surface rather than /api/v1 — used to exclude the wildcard CardDAV/CalDAV
 // routes from the REST-surface completeness guard.
 func isDAVSurface(path string) bool {
+	if path == "/.well-known/assetlinks.json" {
+		return false // Digital Asset Links (ADR 0034): public, not a DAV surface
+	}
 	return strings.HasPrefix(path, "/carddav") ||
 		strings.HasPrefix(path, "/caldav") ||
 		strings.HasPrefix(path, "/.well-known/")

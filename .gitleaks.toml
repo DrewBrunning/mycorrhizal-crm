@@ -11,3 +11,13 @@ title = "mycorrhizal-crm gitleaks config"
 
 [extend]
 useDefault = true
+
+# Issue #1293 / ADR 0034: an Android passkey ceremony origin is
+# "android:apk-key-hash:" + base64url of the SHA-256 of an app's PUBLIC signing
+# certificate — the same value published in /.well-known/assetlinks.json. It is
+# not a secret; the golden vectors in the androidpasskey/passkey tests trip the
+# generic-api-key rule on entropy alone.
+[[allowlists]]
+description = "Android apk-key-hash passkey origins (public certificate digests)"
+regexTarget = "line"
+regexes = ['''android:apk-key-hash:[A-Za-z0-9_-]{43}''']

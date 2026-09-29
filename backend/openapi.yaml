@@ -71,6 +71,53 @@ paths:
   # served at the app root, hence the path-level server override). Three
   # endpoints, each answering a different operator question (issue #421); all
   # unauthenticated and secret-free.
+  # Digital Asset Links for native Android passkeys (ADR 0034, issue #1293).
+  # Served at the app root; fetched by Google, never by an API client.
+  /.well-known/assetlinks.json:
+    servers:
+      - url: /
+    get:
+      summary: Digital Asset Links (native Android passkeys)
+      description: >
+        Associates the Android app with this instance's domain so Credential
+        Manager can create and use passkeys for the RP ID. Fetched by Google,
+        not by API clients. 200 only when the operator enabled native Android
+        passkeys (WEBAUTHN_ANDROID_ENABLED) with a public https FRONTEND_URL
+        and at least one signing fingerprint is known; otherwise a bare 404 —
+        never an empty or placeholder statement. Unauthenticated, no redirect,
+        sets no cookie, and is never registered in the embedded deployment.
+      operationId: getAssetLinks
+      security: []
+      responses:
+        "200":
+          description: The Digital Asset Links statements.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    relation:
+                      type: array
+                      items: { type: string }
+                    target:
+                      type: object
+                      properties:
+                        namespace: { type: string }
+                        package_name: { type: string }
+                        sha256_cert_fingerprints:
+                          type: array
+                          items: { type: string }
+              example:
+                - relation: ["delegate_permission/common.get_login_creds"]
+                  target:
+                    namespace: android_app
+                    package_name: com.mycorrhizal.crm
+                    sha256_cert_fingerprints:
+                      - "24:CF:16:6F:59:36:A6:AD:05:B4:4B:6B:56:9D:71:17:7A:03:8D:4A:06:0F:A4:85:E1:50:2E:73:29:EF:06:5E"
+        "404":
+          description: Native Android passkeys are not enabled or not valid on this instance.
   /health/live:
     servers:
       - url: /
@@ -12040,6 +12087,10 @@ components:
             array, never null); an embedded deployment omits the surfaces it
             does not register, so a client gates on token presence rather than
             branching on "deployment". See config.Capabilities for the tokens.
+            The conditional token "webauthn_android" (ADR 0034, issue #1293)
+            is present only when the operator enabled native Android passkeys
+            and the configuration is valid (public https FRONTEND_URL, known
+            signing fingerprints); it is never present in an embedded deployment.
           example: ["contacts", "dashboard", "registration", "login", "oidc"]
 
     # --- Auth & users ---

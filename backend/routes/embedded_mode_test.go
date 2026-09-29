@@ -73,6 +73,7 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"GET /.well-known/carddav",
 		"GET /.well-known/caldav",
 		"PROPFIND /.well-known/carddav",
+		"GET /.well-known/assetlinks.json", // ADR 0034: no domain in embedded mode
 	}
 	for _, route := range disabled {
 		require.Falsef(t, got[route], "%s must not be registered in embedded mode", route)
@@ -105,6 +106,7 @@ func TestRegisterRoutes_ServerKeepsNetworkSurfaces(t *testing.T) {
 	got := routeSet(t, router)
 
 	for _, route := range []string{
+		"GET /.well-known/assetlinks.json",
 		"POST /api/v1/register",
 		"POST /api/v1/login",
 		"GET /api/v1/api-tokens",

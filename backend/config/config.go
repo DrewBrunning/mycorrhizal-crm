@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/androidpasskey"
+
 	"mycorrhizal/atrest"
 )
 
@@ -53,7 +55,12 @@ type Config struct {
 	ReminderTime     string `cfgreg:"env=REMINDER_TIME;type=string;range=HH:MM 24h wall time;default=06:00;required=false;restart=true;desc=Daily reminder wall-clock time"`
 	ReminderTimezone string `cfgreg:"env=REMINDER_TIMEZONE;type=string;range=IANA timezone name;default=UTC;required=false;restart=true;desc=Reminder clock's IANA timezone"`
 	FrontendURL      string `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs and as the WebAuthn relying party: its hostname is the passkey RP ID and it is the only allowed passkey origin. Passkeys are refused when it is * and changing the hostname invalidates every enrolled passkey"`
-	Port             string `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
+	// WebAuthnAndroidEnabled / WebAuthnAndroidCertSHA256 opt the instance into
+	// native Android passkeys (ADR 0034, issue #1293). See AndroidPasskeys for
+	// the effective-state rule.
+	WebAuthnAndroidEnabled    bool     `cfgreg:"env=WEBAUTHN_ANDROID_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable native Android passkeys. ONLY for publicly reachable HTTPS instances: Google must be able to fetch https://<FRONTEND_URL host>/.well-known/assetlinks.json (served by the backend, HTTP 200, no redirects; your reverse proxy must forward that path and robots.txt must allow /.well-known/). FRONTEND_URL must be the public https URL because its hostname is the passkey RP ID. LAN / VPN / http / IP-address / .local instances cannot use this and it stays off (an ERROR is logged if it is set but the URL fails the check). Also requires at least one known signing-certificate fingerprint"`
+	WebAuthnAndroidCertSHA256 []string `cfgreg:"env=WEBAUTHN_ANDROID_CERT_SHA256;type=stringlist;range=SHA-256 fingerprints, 64 hex digits or colon-separated pairs, comma-separated;default=(none);required=false;restart=true;desc=Extra Android signing-certificate SHA-256 fingerprints trusted for native passkeys and listed in /.well-known/assetlinks.json, added to the project's built-in channel fingerprints. Needed for self-built or debug APKs and forks that sign with their own key; has no effect unless WEBAUTHN_ANDROID_ENABLED is true"`
+	Port                      string   `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
 	// Deployment selects the deployment shape (ADR 0028, issue #1258).
 	// DeploymentServer (the default) is the full, multi-user network surface.
 	// DeploymentEmbedded is the single-user, caller-supplied-listener mode a
@@ -302,6 +309,10 @@ const (
 	CapabilityCalDAV        = "caldav"
 	CapabilityDeviceGrants  = "device_grants"
 	CapabilityPush          = "push"
+	// CapabilityWebAuthnAndroid is NOT in serverCapabilityTokens: it is present
+	// only when native Android passkeys are effective (AndroidPasskeys), never
+	// merely because the deployment is a server. ADR 0034.
+	CapabilityWebAuthnAndroid = "webauthn_android"
 )
 
 // serverCapabilityTokens is the ordered set of capability tokens a
@@ -374,8 +385,22 @@ func (c *Config) Capabilities() []string {
 			continue
 		}
 		caps = append(caps, token)
+		if token == CapabilityTwoFactor && c.AndroidPasskeys().Effective {
+			caps = append(caps, CapabilityWebAuthnAndroid)
+		}
 	}
 	return caps
+}
+
+// AndroidPasskeys resolves the native-Android-passkeys state from this Config
+// (ADR 0034 Decision 2). The embedded deployment has no domain and therefore
+// never has the feature. It is a pure function of the Config, so the startup
+// log, NewWebAuthn, the assetlinks route and /health all agree.
+func (c *Config) AndroidPasskeys() androidpasskey.State {
+	if c.IsEmbedded() {
+		return androidpasskey.State{Reason: "not available in the embedded deployment"}
+	}
+	return androidpasskey.Resolve(c.FrontendURL, c.WebAuthnAndroidEnabled, c.WebAuthnAndroidCertSHA256)
 }
 
 // baseConfig returns a Config with every field at its documented default and
@@ -514,6 +539,8 @@ func LoadConfig() *Config {
 	cfg.ReminderTime = getEnv("REMINDER_TIME", cfg.ReminderTime)
 	cfg.ReminderTimezone = getEnv("REMINDER_TIMEZONE", cfg.ReminderTimezone)
 	cfg.FrontendURL = getEnv("FRONTEND_URL", cfg.FrontendURL)
+	cfg.WebAuthnAndroidEnabled = getBoolEnv("WEBAUTHN_ANDROID_ENABLED", cfg.WebAuthnAndroidEnabled)
+	cfg.WebAuthnAndroidCertSHA256 = getProxies(getEnv("WEBAUTHN_ANDROID_CERT_SHA256", ""))
 	cfg.Port = getEnv("PORT", cfg.Port)
 	cfg.ResendAPIKey = getEnv("RESEND_API_KEY", cfg.ResendAPIKey)
 	cfg.ResendFromEmail = getEnv("RESEND_FROM_EMAIL", cfg.ResendFromEmail)

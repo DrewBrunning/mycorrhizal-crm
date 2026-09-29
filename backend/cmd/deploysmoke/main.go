@@ -37,6 +37,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
@@ -149,6 +150,7 @@ var steps = []step{
 	{"export-loss-header", (*smokeRun).exportLossHeaderThroughProxy}, // issue #863
 	{"import-body-limit", (*smokeRun).importBodyLimitOwnedByApp},     // issue #876
 	{"wellknown-discovery", (*smokeRun).wellKnownDiscoveryRelative},  // issue #865
+	{"assetlinks-not-spa", (*smokeRun).assetLinksReachesBackend},     // ADR 0034 / issue #1293
 }
 
 // smokeLossyCRM is the CRM-envelope the smoke contact carries. Each field is a
@@ -623,6 +625,66 @@ func (r *smokeRun) wellKnownDiscoveryRelative() error {
 		}
 	}
 	return nil
+}
+
+// assetLinksReachesBackend pins ADR 0034 (issue #1293): the all-in-one image's
+// nginx must forward /.well-known/assetlinks.json to the backend. Without that
+// location the SPA fallback answers 200 text/html (index.html), which Google
+// would reject and which is easy to mistake for "the feature works". The smoke
+// stack runs with native Android passkeys off (they need a public https
+// FRONTEND_URL), where the backend answers 404; an operator who enabled them
+// gets 200 JSON. Both are correct; a redirect, an HTML body or any other
+// status is not.
+func (r *smokeRun) assetLinksReachesBackend() error {
+	const path = "/.well-known/assetlinks.json"
+	// Google's Digital Asset Links fetcher does not follow redirects, so
+	// neither may this check.
+	noRedirect := &http.Client{
+		Jar:     r.client.Jar,
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest(http.MethodGet, r.baseURL+path, nil)
+	if err != nil { // # pragma: no cover — method and URL are always well-formed constants
+		return fmt.Errorf("build request for %s: %w", path, err)
+	}
+	resp, err := noRedirect.Do(req)
+	if err != nil {
+		return fmt.Errorf("GET %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil { // # pragma: no cover — the test servers always send a complete body
+		return fmt.Errorf("GET %s: read body: %w", path, err)
+	}
+	mt, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return nil // feature off: the backend's own 404, not the SPA's index.html
+	case http.StatusOK:
+		if mt != "application/json" {
+			return fmt.Errorf("GET %s: 200 with Content-Type %q, want application/json — nginx is serving the SPA's index.html, not proxying to the backend (ADR 0034): %s", path, mt, truncate(body, 120))
+		}
+		var statements []struct {
+			Relation []string `json:"relation"`
+			Target   struct {
+				Namespace string `json:"namespace"`
+			} `json:"target"`
+		}
+		if err := json.Unmarshal(body, &statements); err != nil || len(statements) == 0 {
+			return fmt.Errorf("GET %s: body is not a non-empty JSON array of statements: %s", path, truncate(body, 200))
+		}
+		for _, st := range statements {
+			if st.Target.Namespace != "android_app" || !slices.Contains(st.Relation, "delegate_permission/common.get_login_creds") {
+				return fmt.Errorf("GET %s: unexpected statement shape: %s", path, truncate(body, 200))
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("GET %s: status %d, want 404 (feature off) or 200 JSON (feature on) — no redirects", path, resp.StatusCode)
+	}
 }
 
 // refetchAndAssertFields reads the contact back and checks that every field
