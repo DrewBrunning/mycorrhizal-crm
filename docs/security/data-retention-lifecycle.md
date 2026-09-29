@@ -53,6 +53,14 @@ see [§5](#5-attachments--profile-photos-files-on-disk)).
   (`controllers/helpers.go:360-370`) — deliberately the *same* `DeleteRetentionDays` config the purge job
   reads, so a client can never observe a tombstone gap; propagation to CardDAV/CalDAV and the Android
   mirror is covered in §7/§8, both of which key off this same soft-delete state.
+- **Contact merge (issue #1309)**: a merge is not a delete. `RepointContactAssociations`
+  (`backend/services/contact_merge_service.go`) moves every contact-keyed row from the merged-away contact
+  onto the survivor *before* the `deleteContactAssociations` sweep runs, so the sweep only ever removes
+  what is deliberately dropped (CardDAV sync links/conflicts and duplicate-pair dismissals). Unique-key
+  collisions (event attendance, suggestion resolutions) keep the survivor's row. Contact feeds and import
+  provenance links follow the survivor; `audit_events` keep naming the merged-away contact. Pinned by
+  `controllers/contact_merge_repoint_coverage_test.go`, whose schema-driven guard fails when a new
+  contact-keyed table has no declared merge disposition.
 - **Backups**: yes, full row (including still-in-window soft-deleted rows) — see [§10](#10-backups).
 - **Verification**: `backend/services/purge_service_test.go` (`TestPurgeSoftDeletedRows_*`, including
   idempotency, "never touches live rows", and the non-positive-retention guard of issue #971);

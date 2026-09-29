@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import kotlinx.coroutines.runBlocking
@@ -21,8 +20,8 @@ import androidx.compose.ui.test.onAllNodesWithText
  * and with the app lock armed the lock screen comes first and the contact only
  * after unlock.
  *
- * The link is delivered to the running singleTask activity via startActivity
- * (→ onNewIntent), exactly what the system does for `adb shell am start -a VIEW`.
+ * The link is delivered to the running singleTask activity via the running activity's
+ * startActivity (→ onNewIntent), exactly what the system does for `adb shell am start -a VIEW`.
  */
 @RunWith(AndroidJUnit4::class)
 class DeepLinkE2eTest : E2eBaseTest() {
@@ -43,13 +42,8 @@ class DeepLinkE2eTest : E2eBaseTest() {
         runBlocking { activity.localAuthSettings.setRequireLocalAuth(false) }
     }
 
-    private fun deliver(uri: String) {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-            .setClass(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    }
+    private fun deliver(uri: String) =
+        deliverToRunningActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
 
     @Test
     fun contactLinkOpensTheSeededContactDetail() {
