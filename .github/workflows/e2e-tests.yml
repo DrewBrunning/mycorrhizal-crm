@@ -166,6 +166,9 @@ jobs:
         run: npx playwright test --project=chromium
         env:
           CI: true
+          # Issue #1315: tool-dependent specs (backupRestore needs Go + make)
+          # throw instead of skipping, like the Go MYCORRHIZAL_REQUIRE_REFERENCES.
+          MYCORRHIZAL_REQUIRE_REFERENCES: '1'
           # Issue #556: the @perf-heavy specs (listPerf, networkGraphScale)
           # self-skip unless RUN_PERF_HEAVY is set, so they run nightly
           # only; light @perf specs run unconditionally.
