@@ -73,6 +73,37 @@ A **local, on-device profile** (no server at all) is designed (ADR 0028
 Decision 2) but not yet offered: the "Use on this device only" entry stays
 behind a build flag until the embedded server and account-bundle backup ship.
 
+## Deep links
+
+Mycorrhizal can be opened from another app — a launcher shortcut, an automation tool, a notes app — or
+from a notification, through a `mycorrhizal://` link. A link can only **navigate**: it never changes
+your data, and it carries an opaque id, never a name, number, note, or token (ADR 0029, issue #384).
+The worst a forged link can do is show you a screen of your own data you could have opened yourself.
+
+**A link opens nothing until you unlock the app.** It is held until sign-in, the server-compatibility
+check, and the app lock ([ADR 0014](adrs/0014-local-app-lock-and-biometric-resume.md)) have all
+completed. It is then dropped — not opened later, in a different account — if you sign out, switch
+[server profiles](#server-profiles) (including an active-profile switch), or the link has already
+waited more than 10 minutes. Deep-link URIs are never logged.
+
+The complete set of routes (ADR 0029 §2):
+
+| Route | Link | Opens |
+|---|---|---|
+| Home / dashboard | `mycorrhizal://home` | the dashboard |
+| Contact | `mycorrhizal://contacts/{id}` | that contact's page |
+| Contact activity timeline | `mycorrhizal://contacts/{id}/activities` | that contact's activity timeline |
+| Search | `mycorrhizal://search?q={query}` | the contact list, with `{query}` filled into search |
+| Circle | `mycorrhizal://circles/{id}` | that circle |
+| Tag | `mycorrhizal://tags/{id}` | that tag |
+| Household | `mycorrhizal://households/{id}` | that household |
+
+Anything else — an unknown route, a malformed or out-of-range id, an extra path segment — opens
+nothing: the app shows whatever it would have shown without the link. The same routes also work as
+paths on your own server (`/contacts/{id}`, `/search?q=…`, …), which is the form a Web Push
+notification taps into; where the web has no matching screen it opens the route's nearest parent (a
+tag opens `/circles?tab=tags`, a circle opens `/circles`).
+
 ## TLS
 
 The app trusts only system certificate authorities — there is no "import a self-signed certificate"

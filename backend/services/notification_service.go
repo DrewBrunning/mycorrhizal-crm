@@ -738,9 +738,21 @@ func fcmReminderData(reminder models.Reminder) map[string]string {
 		"due_at": reminder.RemindAt.UTC().Truncate(time.Second).Format(time.RFC3339),
 	}
 	if reminder.ContactID != nil {
-		data["deep_link"] = fmt.Sprintf("mycorrhizal://contacts/%d", *reminder.ContactID)
+		data["deep_link"] = contactDeepLink(*reminder.ContactID)
 	}
 	return data
+}
+
+// contactDeepLink renders the notification deep link for a contact. This is
+// the single emitter of a `mycorrhizal://` navigation URI on the backend, and
+// its exact format is pinned by the shared cross-client vector table
+// (testdata/deep-links/vectors.json, ADR 0029 §5, issue #1267): the
+// service-level conformance test asserts the emitted URI is an accepted vector,
+// so changing the grammar here without updating the table — and every client
+// parser that consumes it — fails CI instead of shipping a link the clients
+// reject.
+func contactDeepLink(id uint) string {
+	return fmt.Sprintf("mycorrhizal://contacts/%d", id)
 }
 
 // fcmAccessToken obtains a short-lived OAuth2 access token for the FCM API by
