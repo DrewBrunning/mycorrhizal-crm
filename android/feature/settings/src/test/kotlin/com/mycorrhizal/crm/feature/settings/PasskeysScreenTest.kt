@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasText
@@ -38,7 +39,8 @@ class PasskeysScreenTest {
     private fun setContent(
         state: PasskeysUiState,
         onStartAdd: () -> Unit = {},
-        onConfirmAdd: (String) -> Unit = {},
+        onConfirmAdd: (String, String) -> Unit = { _, _ -> },
+        onAddWithPasskey: (String) -> Unit = {},
         onRequestRemove: (WebAuthnCredential) -> Unit = {},
         onRemoveWithCode: (String) -> Unit = {},
         onRemoveWithPasskey: () -> Unit = {},
@@ -51,6 +53,7 @@ class PasskeysScreenTest {
                     onStartAdd = onStartAdd,
                     onDismissAdd = {},
                     onConfirmAdd = onConfirmAdd,
+                    onAddWithPasskey = onAddWithPasskey,
                     onRequestRemove = onRequestRemove,
                     onDismissRemove = {},
                     onRemoveWithCode = onRemoveWithCode,
@@ -110,15 +113,51 @@ class PasskeysScreenTest {
     @Test
     fun `the add dialog submits the typed label`() {
         var label: String? = null
-        setContent(ready { copy(adding = true) }, onConfirmAdd = { label = it })
+        setContent(ready(passkeys = emptyList()) { copy(adding = true) }, onConfirmAdd = { name, _ -> label = name })
         composeTestRule.onNodeWithText("Passkey name (optional)").performTextInput("Laptop")
         composeTestRule.onNodeWithText("Continue").performClick()
         assertEquals("Laptop", label)
     }
 
+    // --- issue #1337: a further factor needs a live proof ---
+
+    @Test
+    fun `the first passkey needs no proof field`() {
+        setContent(ready(passkeys = emptyList()) { copy(adding = true) })
+        composeTestRule.onNodeWithText("Verification code").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Verify with an existing passkey instead").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an account with a factor must type a code before Continue and it is submitted with the name`() {
+        var submitted: Pair<String, String>? = null
+        setContent(ready { copy(adding = true) }, onConfirmAdd = { name, code -> submitted = name to code })
+        composeTestRule.onNodeWithText("Continue").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Passkey name (optional)").performTextInput("Laptop")
+        composeTestRule.onNodeWithText("Verification code").performTextInput("ABCDE-12345")
+        composeTestRule.onNodeWithText("Continue").assertIsEnabled().performClick()
+        assertEquals("Laptop" to "ABCDE-12345", submitted)
+    }
+
+    @Test
+    fun `a TOTP-only account is asked for a proof but offered no passkey route`() {
+        setContent(ready(passkeys = emptyList()) { copy(adding = true, totpEnabled = true) })
+        composeTestRule.onNodeWithText("Verification code").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verify with an existing passkey instead").assertDoesNotExist()
+    }
+
+    @Test
+    fun `verifying with an existing passkey passes the typed name`() {
+        var name: String? = null
+        setContent(ready { copy(adding = true) }, onAddWithPasskey = { name = it })
+        composeTestRule.onNodeWithText("Passkey name (optional)").performTextInput("Laptop")
+        composeTestRule.onNodeWithText("Verify with an existing passkey instead").performClick()
+        assertEquals("Laptop", name)
+    }
+
     @Test
     fun `the add dialog shows progress and blocks while waiting for the device`() {
-        setContent(ready { copy(adding = true, busy = true) })
+        setContent(ready(passkeys = emptyList()) { copy(adding = true, busy = true) })
         composeTestRule.onNodeWithText("Waiting for your device…").assertIsDisplayed()
         composeTestRule.onNodeWithText("Continue").assertIsNotEnabled()
     }

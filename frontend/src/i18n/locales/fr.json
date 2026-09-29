@@ -1178,6 +1178,14 @@
         "useAnotherPasskey": "Vérifier plutôt avec une autre clé d'accès"
       }
     },
+    "secondFactorProof": {
+      "title": "Confirmez que c'est bien vous",
+      "description": "Vous disposez déjà d'une seconde étape de connexion : en ajouter une autre nécessite d'abord une preuve. Saisissez un code de récupération ou un code actuel de votre application d'authentification, ou vérifiez avec une clé d'accès que vous possédez déjà.",
+      "codeLabel": "Code de vérification",
+      "confirm": "Vérifier et continuer",
+      "submitting": "Veuillez patienter...",
+      "usePasskey": "Vérifier plutôt avec une clé d'accès"
+    },
     "deleteAccount": {
       "title": "Supprimer le compte",
       "description": "Supprime définitivement votre compte et toutes vos données : contacts, activités, notes, rappels, tout. Cette action est irréversible.",

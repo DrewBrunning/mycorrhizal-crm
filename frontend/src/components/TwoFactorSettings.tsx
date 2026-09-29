@@ -26,8 +26,11 @@ import {
   regenerateRecoveryCodes,
   setupTwoFactor,
 } from '../api/users';
+import { listPasskeys, proveWithAnyPasskey, type SecondFactorProof } from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
+import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
+import SecondFactorProofDialog from './SecondFactorProofDialog';
 
 // TwoFactorSettings is the settings-page card for N8 (issue #158): enroll,
 // disable, and regenerate recovery codes for TOTP two-factor auth.
@@ -35,6 +38,10 @@ import AppDialog from './AppDialog';
 // Enrollment is a small wizard: setup mints a secret (shown as QR + manual
 // key), the user enters a live code to confirm, and the recovery codes are
 // shown exactly once.
+//
+// A passkey-only account already holds a second factor, so starting TOTP
+// enrollment there first asks for a live proof (issue #1337): a recovery code or
+// an assertion from one of its passkeys.
 export default function TwoFactorSettings() {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
@@ -51,6 +58,12 @@ export default function TwoFactorSettings() {
   const [setupError, setSetupError] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Enrollment proof for accounts that already hold a passkey (issue #1337).
+  const [hasPasskey, setHasPasskey] = useState(false);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofBusy, setProofBusy] = useState(false);
+  const [proofError, setProofError] = useState('');
 
   // Code-prompt dialog (disable / regenerate).
   const [action, setAction] = useState<'disable' | 'regenerate' | null>(null);
@@ -71,21 +84,65 @@ export default function TwoFactorSettings() {
 
   useEffect(() => {
     void refreshStatus();
+    listPasskeys()
+      .then((passkeys) => setHasPasskey(passkeys.length > 0))
+      .catch(() => {
+        // Non-critical: the backend still enforces the proof and its rejection
+        // is surfaced when setup is attempted.
+      });
   }, []);
 
-  const handleStartSetup = async () => {
+  const handleStartSetup = async (proof?: SecondFactorProof) => {
     setEnrolling(true);
     setSetupError('');
     try {
-      const result = await setupTwoFactor();
+      const result = await setupTwoFactor(proof);
       setSetupSecret(result.secret);
       setSetupUrl(result.otpauth_url);
       setConfirmCode('');
       setSetupOpen(true);
+      return '';
     } catch (err) {
-      setSetupError(err instanceof Error ? err.message : t('settings.twoFactor.setupError'));
+      const message = err instanceof Error ? err.message : t('settings.twoFactor.setupError');
+      setSetupError(message);
+      return message;
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const startSetup = () => {
+    if (hasPasskey) {
+      setProofError('');
+      setProofOpen(true);
+      return;
+    }
+    void handleStartSetup();
+  };
+
+  // The proof dialog closes only once setup succeeded; a rejected proof stays
+  // in it with the server's message.
+  const submitProof = async (getProof: () => Promise<SecondFactorProof>) => {
+    setProofBusy(true);
+    setProofError('');
+    try {
+      const proof = await getProof();
+      const failure = await handleStartSetup(proof);
+      if (failure) {
+        setProofError(failure);
+      } else {
+        setProofOpen(false);
+      }
+    } catch (err) {
+      setProofError(
+        isCeremonyCancelled(err)
+          ? t('settings.passkeys.cancelled')
+          : err instanceof Error && err.message
+            ? err.message
+            : t('settings.passkeys.invalidProof'),
+      );
+    } finally {
+      setProofBusy(false);
     }
   };
 
@@ -178,12 +235,7 @@ export default function TwoFactorSettings() {
               {t('settings.twoFactor.description')}
             </Typography>
             <Box>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => void handleStartSetup()}
-                disabled={enrolling}
-              >
+              <Button variant="contained" size="small" onClick={startSetup} disabled={enrolling}>
                 {enrolling
                   ? t('settings.twoFactor.settingUp')
                   : t('settings.twoFactor.enableButton')}
@@ -226,6 +278,17 @@ export default function TwoFactorSettings() {
           </Stack>
         )}
       </CardContent>
+
+      {/* Live proof before adding TOTP to a passkey-protected account */}
+      <SecondFactorProofDialog
+        open={proofOpen}
+        busy={proofBusy}
+        error={proofError}
+        canUsePasskey={hasPasskey && isWebAuthnSupported()}
+        onSubmitCode={(code) => void submitProof(async () => ({ code }))}
+        onUsePasskey={() => void submitProof(proveWithAnyPasskey)}
+        onClose={() => setProofOpen(false)}
+      />
 
       {/* Enrollment wizard: QR + manual key + confirm code */}
       <AppDialog

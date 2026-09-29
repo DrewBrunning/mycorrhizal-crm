@@ -2258,6 +2258,11 @@ export type SearchResult = {
   resolved_relation?: string;
 };
 
+export type SecondFactorProofInput = {
+  assertion?: Record<string, unknown>;
+  code?: string;
+};
+
 export type SelfContactInput = {
   vcard_uid?: string | null;
 };
@@ -2509,6 +2514,8 @@ export type WebAuthnProofBeginInput = {
 };
 
 export type WebAuthnRegisterBeginInput = {
+  assertion?: Record<string, unknown>;
+  code?: string;
   name?: string;
 };
 

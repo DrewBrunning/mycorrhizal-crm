@@ -410,6 +410,10 @@
     <string name="settings_two_factor_recovery_copy">Alle Codes kopieren</string>
     <string name="settings_two_factor_recovery_copied">Kopiert!</string>
     <string name="settings_two_factor_recovery_done">Fertig</string>
+    <string name="settings_two_factor_proof_title">Bestätigen Sie, dass Sie es sind</string>
+    <string name="settings_two_factor_proof_description">Sie haben bereits einen Passkey, daher braucht das Aktivieren einer Authentifizierungs-App zuerst einen Nachweis. Geben Sie einen Wiederherstellungscode ein oder bestätigen Sie mit einem vorhandenen Passkey.</string>
+    <string name="settings_two_factor_proof_use_passkey">Stattdessen mit einem Passkey bestätigen</string>
+    <string name="settings_two_factor_proof_confirm">Bestätigen und fortfahren</string>
 
     <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
     <string name="settings_passkeys_title">Passkeys</string>
@@ -438,6 +442,8 @@
     <string name="settings_passkeys_remove_confirm">Passkey entfernen</string>
     <string name="settings_passkeys_remove_submitting">Bitte warten…</string>
     <string name="settings_passkeys_use_another">Stattdessen mit einem anderen Passkey bestätigen</string>
+    <string name="settings_passkeys_add_proof_description">Sie haben bereits einen zweiten Anmeldeschritt, daher braucht das Hinzufügen eines weiteren Passkeys zuerst einen Nachweis. Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein.</string>
+    <string name="settings_passkeys_add_use_existing">Stattdessen mit einem vorhandenen Passkey bestätigen</string>
     <string name="settings_passkeys_remove_success">Passkey entfernt.</string>
     <string name="settings_passkeys_invalid_proof">Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.</string>
     <string name="settings_two_factor_qr_content_description">QR-Code für Ihre Authentifizierungs-App. Scannen Sie ihn oder geben Sie den manuellen Einrichtungsschlüssel unten ein.</string>

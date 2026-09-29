@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -66,6 +68,9 @@ fun TwoFactorScreen(
     viewModel: TwoFactorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // The provider UI launches from this Activity context; it is handed to the
+    // ViewModel for one call and never retained.
+    val context: Context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -93,6 +98,9 @@ fun TwoFactorScreen(
             onDisable = viewModel::requestDisable,
             onConfirmSetup = viewModel::confirmSetup,
             onCloseSetup = viewModel::closeSetup,
+            onSubmitSetupProofCode = viewModel::submitSetupProofCode,
+            onSetupProofWithPasskey = { viewModel.submitSetupProofWithPasskey(context) },
+            onDismissSetupProof = viewModel::dismissSetupProof,
             onSubmitPromptCode = viewModel::submitPromptCode,
             onDismissPrompt = viewModel::dismissPrompt,
             onDismissRecoveryCodes = viewModel::dismissRecoveryCodes,
@@ -109,6 +117,9 @@ fun TwoFactorContent(
     onDisable: () -> Unit,
     onConfirmSetup: (String) -> Unit,
     onCloseSetup: () -> Unit,
+    onSubmitSetupProofCode: (String) -> Unit,
+    onSetupProofWithPasskey: () -> Unit,
+    onDismissSetupProof: () -> Unit,
     onSubmitPromptCode: (String) -> Unit,
     onDismissPrompt: () -> Unit,
     onDismissRecoveryCodes: () -> Unit,
@@ -172,7 +183,7 @@ fun TwoFactorContent(
         // A dialog-level error (rejected code during setup/prompt) is shown
         // inside the dialog; only surface it here when no dialog is up, so a
         // live-region read doesn't announce it twice.
-        val dialogOpen = state.setup != null || state.prompt != null || state.recoveryCodes != null
+        val dialogOpen = state.setup != null || state.prompt != null || state.recoveryCodes != null || state.proofPrompt
         val errorText = if (dialogOpen) null else state.errorRes?.let { stringResource(it) } ?: state.error
         errorText?.let { text ->
             Text(
@@ -182,6 +193,18 @@ fun TwoFactorContent(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
         }
+    }
+
+    if (state.proofPrompt) {
+        SetupProofDialog(
+            busy = state.busy,
+            canProveWithPasskey = state.canProveWithPasskey,
+            error = state.error,
+            errorRes = state.errorRes,
+            onConfirmCode = onSubmitSetupProofCode,
+            onUsePasskey = onSetupProofWithPasskey,
+            onDismiss = onDismissSetupProof,
+        )
     }
 
     state.setup?.let { setup ->
@@ -212,6 +235,62 @@ fun TwoFactorContent(
             onDone = onDismissRecoveryCodes,
         )
     }
+}
+
+/**
+ * Issue #1337: live proof before enabling TOTP on an account that already holds
+ * a passkey — a recovery code, or an assertion from an existing passkey.
+ */
+@Composable
+internal fun SetupProofDialog(
+    busy: Boolean,
+    canProveWithPasskey: Boolean,
+    error: String?,
+    errorRes: Int?,
+    onConfirmCode: (String) -> Unit,
+    onUsePasskey: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.settings_two_factor_proof_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_two_factor_proof_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    singleLine = true,
+                    enabled = !busy,
+                    label = { Text(stringResource(R.string.settings_two_factor_code_prompt_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val message = errorRes?.let { stringResource(it) } ?: error
+                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (canProveWithPasskey) {
+                    OutlinedButton(onClick = onUsePasskey, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.settings_two_factor_proof_use_passkey))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirmCode(code) }, enabled = !busy && code.isNotBlank()) {
+                Text(stringResource(if (busy) R.string.settings_two_factor_submitting else R.string.settings_two_factor_proof_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !busy) {
+                Text(stringResource(R.string.settings_cancel))
+            }
+        },
+    )
 }
 
 /** Issue #814 Phase 2: the enrollment wizard (QR + manual key + live-code confirm). */

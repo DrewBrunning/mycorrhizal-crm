@@ -18,8 +18,11 @@ interface PasskeyRepository {
      * POST /webauthn/register/begin — the raw creation options. A blank [name]
      * lets the server pick a default label. 403 = OIDC-provisioned account
      * (cannot enroll), 409 = the server has no valid RP configuration.
+     * Once the account already holds a second factor [proof] is required
+     * (issue #1337; 400 = missing/wrong, 429 = locked out); the first factor
+     * passes null.
      */
-    suspend fun beginRegistration(name: String?): Result<String>
+    suspend fun beginRegistration(name: String?, proof: SecondFactorProof? = null): Result<String>
 
     /**
      * POST /webauthn/register/finish with the attestation JSON. The response
@@ -31,10 +34,12 @@ interface PasskeyRepository {
 
     /**
      * POST /webauthn/assert/begin — options for a proof-of-possession made with
-     * a passkey OTHER than [excludeId] (the one being removed, #1317). 409 = no
-     * other passkey remains, 404 = unknown / foreign id.
+     * a passkey OTHER than [excludeId] (the one being removed, #1317), or with
+     * any of the account's passkeys when [excludeId] is null (proving a factor
+     * before enrolling another, #1337). 409 = no other passkey remains,
+     * 404 = unknown / foreign id.
      */
-    suspend fun beginProof(excludeId: String): Result<String>
+    suspend fun beginProof(excludeId: String? = null): Result<String>
 
     /** DELETE /webauthn/credentials/{id} proven by a live TOTP / recovery [code]. 400 = bad proof, 404 = unknown id. */
     suspend fun removeWithCode(id: String, code: String): Result<Unit>

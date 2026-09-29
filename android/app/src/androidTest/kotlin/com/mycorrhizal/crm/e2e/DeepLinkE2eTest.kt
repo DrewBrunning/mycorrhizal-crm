@@ -20,8 +20,11 @@ import androidx.compose.ui.test.onAllNodesWithText
  * and with the app lock armed the lock screen comes first and the contact only
  * after unlock.
  *
- * The link is delivered to the running singleTask activity via the running activity's
- * startActivity (→ onNewIntent), exactly what the system does for `adb shell am start -a VIEW`.
+ * These tests deliver the link from inside the running activity (→ onNewIntent of the rule's
+ * own instance; issue #1321) — the in-app route only. That is NOT how an external link
+ * (browser, another app, notification, `adb shell am start -a VIEW`) arrives: those start
+ * the activity from a different task with FLAG_ACTIVITY_NEW_TASK. That cross-task path is
+ * covered by [CrossTaskIntentE2eTest] (issue #1343).
  */
 @RunWith(AndroidJUnit4::class)
 class DeepLinkE2eTest : E2eBaseTest() {

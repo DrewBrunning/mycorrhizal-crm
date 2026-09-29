@@ -358,14 +358,33 @@ class ApiClient(
 
     /**
      * POST /api/v1/webauthn/register/begin — authenticated. Returns the raw
-     * PublicKeyCredentialCreationOptions JSON. 400 invalid name, 403 OIDC
-     * account, 409 RP not configured.
+     * PublicKeyCredentialCreationOptions JSON. 400 invalid name or (issue
+     * #1337) a missing/wrong proof, 403 OIDC account, 409 RP not configured,
+     * 429 proof guessing locked out.
+     *
+     * Once the account already holds a second factor the server needs a live
+     * proof: a TOTP/recovery [code], or [assertionJson] — a serialized
+     * PublicKeyCredential obtained against [webauthnProofBegin]'s options,
+     * embedded verbatim as the body's `assertion` object. The first factor
+     * needs none. A malformed [assertionJson] is a [ApiError.Parse] without a
+     * round trip.
      */
-    suspend fun webauthnRegisterBegin(name: String? = null): Result<String> =
-        executePost(
-            "$WEBAUTHN_PATH/register/begin",
-            WebAuthnRegisterBeginInput(name?.takeIf { it.isNotBlank() }),
-        ) { _, body -> body.ifBlank { null } }
+    suspend fun webauthnRegisterBegin(
+        name: String? = null,
+        code: String? = null,
+        assertionJson: String? = null,
+    ): Result<String> {
+        val cleanName = name?.takeIf { it.isNotBlank() }
+        if (code == null && assertionJson == null) {
+            return executePost(
+                "$WEBAUTHN_PATH/register/begin",
+                WebAuthnRegisterBeginInput(cleanName),
+            ) { _, body -> body.ifBlank { null } }
+        }
+        val json = enrollmentProofBody(cleanName, code, assertionJson)
+            ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        return executeRawPost("$WEBAUTHN_PATH/register/begin", json) { _, body -> body.ifBlank { null } }
+    }
 
     /**
      * POST /api/v1/webauthn/register/finish — [credentialJson] is the
@@ -425,10 +444,40 @@ class ApiClient(
      */
     suspend fun deleteWebAuthnCredentialWithAssertion(id: String, assertionJson: String): Result<MessageResponse> {
         // Validate it is a JSON object before splicing, so a malformed blob is a Parse error, not a 400 round-trip.
-        val isObject = runCatching { moshi.adapter(Any::class.java).fromJson(assertionJson) is Map<*, *> }
-            .getOrDefault(false)
-        if (!isObject) return Result.failure(ApiError.Parse("assertion is not a JSON object"))
+        if (!isJsonObject(assertionJson)) return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
         return deleteWebAuthnCredentialWithBody(id, "{\"assertion\":$assertionJson}")
+    }
+
+    private fun isJsonObject(json: String): Boolean =
+        runCatching { moshi.adapter(Any::class.java).fromJson(json) is Map<*, *> }.getOrDefault(false)
+
+    /**
+     * The enrollment body of [webauthnRegisterBegin] / [setupTwoFactor] when a
+     * proof rides along (#1337): optional `name`, then `code` and/or the raw
+     * `assertion` object spliced verbatim. Null when [assertionJson] is not a
+     * JSON object.
+     */
+    private fun enrollmentProofBody(name: String?, code: String?, assertionJson: String?): String? {
+        if (assertionJson != null && !isJsonObject(assertionJson)) return null
+        val string = moshi.adapter(String::class.java)
+        val parts = buildList {
+            if (name != null) add("\"name\":${string.toJson(name)}")
+            if (code != null) add("\"code\":${string.toJson(code)}")
+            if (assertionJson != null) add("\"assertion\":$assertionJson")
+        }
+        return parts.joinToString(separator = ",", prefix = "{", postfix = "}")
+    }
+
+    private suspend fun <T> executeRawPost(
+        path: String,
+        jsonBody: String,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
+            .post(jsonBody.toRequestBody(jsonMediaType))
+            .build()
+        return execute(request, mapper)
     }
 
     private suspend fun deleteWebAuthnCredentialWithBody(id: String, jsonBody: String): Result<MessageResponse> {
@@ -455,11 +504,21 @@ class ApiClient(
             moshi.adapter(TwoFactorStatusResponse::class.java).fromJson(body)
         }
 
-    /** POST /api/v1/users/2fa/setup — mints a pending TOTP secret. 409 if already enabled; 403 for OIDC accounts. */
-    suspend fun setupTwoFactor(): Result<TwoFactorSetupResponse> =
-        executePostEmpty("$TWO_FACTOR_PATH/setup") { _, body ->
+    /**
+     * POST /api/v1/users/2fa/setup — mints a pending TOTP secret. 409 if already enabled; 403 for OIDC accounts.
+     * A passkey-only account already holds a second factor, so (issue #1337)
+     * setup needs a live proof: a recovery [code], or [assertionJson] from
+     * [webauthnProofBegin]'s options. 400 = missing/wrong proof, 429 = locked out.
+     */
+    suspend fun setupTwoFactor(code: String? = null, assertionJson: String? = null): Result<TwoFactorSetupResponse> {
+        val parse = { _: okhttp3.Response, body: String ->
             moshi.adapter(TwoFactorSetupResponse::class.java).fromJson(body)
         }
+        if (code == null && assertionJson == null) return executePostEmpty("$TWO_FACTOR_PATH/setup", parse)
+        val json = enrollmentProofBody(null, code, assertionJson)
+            ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        return executeRawPost("$TWO_FACTOR_PATH/setup", json, parse)
+    }
 
     /** POST /api/v1/users/2fa/confirm — enables 2FA and mints the one-time recovery codes; re-issues the session cookie. */
     suspend fun confirmTwoFactor(code: String): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> =
@@ -2891,6 +2950,7 @@ class ApiClient(
         private const val AUTH_COOKIE = "auth_token"
         /** The short-lived 2FA login challenge cookie (600s, httpOnly) — captured, never stored. */
         private const val TWO_FACTOR_COOKIE = "2fa_pending"
+        private const val ASSERTION_NOT_OBJECT = "assertion is not a JSON object"
     }
 }
 

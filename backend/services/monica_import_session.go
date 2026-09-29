@@ -628,6 +628,7 @@ func (m *MonicaImportManager) processAvatars(db *gorm.DB, s *monicaImportSession
 			if updErr := db.Model(&models.Contact{}).Where("id = ?", task.contactID).
 				Updates(map[string]any{"photo": photoPath, "photo_thumbnail": thumb}).Error; updErr != nil {
 				log.Warn().Err(updErr).Uint("contact_id", task.contactID).Msg("Failed to attach Monica avatar")
+				removeOrphanedPhoto(cfg.ProfilePhotoDir, photoPath)
 			} else {
 				saved = true
 			}
