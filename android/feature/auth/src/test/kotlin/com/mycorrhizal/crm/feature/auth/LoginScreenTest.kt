@@ -11,10 +11,14 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.data.passkey.PasskeyIssue
+import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -38,6 +42,7 @@ class LoginScreenTest {
         onModeChange: (LoginMode) -> Unit = {},
         onSubmit: (String, String, String, String) -> Unit = { _, _, _, _ -> },
         onTwoFactorSubmit: (String) -> Unit = {},
+        onUsePasskey: () -> Unit = {},
         onBackToCredentials: () -> Unit = {},
     ) {
         composeTestRule.setContent {
@@ -48,6 +53,7 @@ class LoginScreenTest {
                     onModeChange = onModeChange,
                     onSubmit = onSubmit,
                     onTwoFactorSubmit = onTwoFactorSubmit,
+                    onUsePasskey = onUsePasskey,
                     onBackToCredentials = onBackToCredentials,
                 )
             }
@@ -302,6 +308,162 @@ class LoginScreenTest {
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
 
         assertEquals("123456", submitted)
+    }
+
+    // Issue #1293: passkey-only account on a build/server without the ceremony.
+    @Test
+    fun `passkey-only prompt steers to a recovery code and keeps the field reachable`() {
+        var submitted: String? = null
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
+                twoFactorMethods = listOf("webauthn"),
+            ),
+            onTwoFactorSubmit = { submitted = it },
+        )
+
+        composeTestRule.onNodeWithText(
+            "Your account uses a passkey, but passkeys aren't available on this app for this server. " +
+                "Enter one of your recovery codes to sign in.",
+        ).performScrollTo().assertIsDisplayed()
+        // The bare TOTP-only copy is gone; the field is labelled for a recovery code.
+        composeTestRule.onNodeWithText(
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText("Recovery code").performScrollTo().performTextInput("AAAAA-BBBBB-CCCCC")
+        composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
+
+        assertEquals("AAAAA-BBBBB-CCCCC", submitted)
+    }
+
+    @Test
+    fun `mixed account shows the normal code field plus the unavailable note`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                twoFactorMethods = listOf("totp", "webauthn"),
+            ),
+        )
+
+        composeTestRule.onNodeWithText(
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `an open gate shows Use a passkey next to the code field`() {
+        var used = 0
+        setContent(
+            uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = SecondFactorPrompt.CODE_OR_PASSKEY),
+            onUsePasskey = { used++ },
+        )
+        composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
+        assertEquals(1, used)
+    }
+
+    @Test
+    fun `a passkey-only open gate leads with the passkey and labels the field for a recovery code`() {
+        setContent(
+            uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE),
+        )
+        composeTestRule.onNodeWithText("Use your passkey to sign in, or enter one of your recovery codes.")
+            .performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recovery code").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the passkey action is disabled while a request is in flight`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.CODE_OR_PASSKEY,
+                isLoading = true,
+            ),
+        )
+        composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
+    fun `degraded prompts never show the passkey action`() {
+        val prompt = mutableStateOf(SecondFactorPrompt.STANDARD)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LoginScreenContent(
+                    uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = prompt.value),
+                    onServerUrlChange = {},
+                    onModeChange = {},
+                    onSubmit = { _, _, _, _ -> },
+                )
+            }
+        }
+        for (p in listOf(SecondFactorPrompt.STANDARD, SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, SecondFactorPrompt.RECOVERY_CODE_ONLY)) {
+            prompt.value = p
+            composeTestRule.waitForIdle()
+            composeTestRule.onNodeWithText("Use a passkey").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun `a not-associated server is explained on the passkey-only prompt`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
+                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED,
+            ),
+        )
+        composeTestRule.onNodeWithText(
+            "Your account uses a passkey, but this server isn't set up for passkeys on Android. " +
+                "Enter one of your recovery codes to sign in.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recovery code").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a missing provider is explained on the passkey-only prompt`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
+                passkeyIssue = PasskeyIssue.NO_PROVIDER,
+            ),
+        )
+        composeTestRule.onNodeWithText(
+            "Your account uses a passkey, but this device has no passkey provider set up. " +
+                "Enter one of your recovery codes to sign in.",
+        ).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `mixed account notes the runtime reason and keeps the code field`() {
+        setContent(
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED,
+            ),
+        )
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but this server isn't set up for passkeys on Android.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
+
+    }
+
+    @Test
+    fun `standard prompt shows no passkey note`() {
+        setContent(uiState = LoginUiState(twoFactorStep = true))
+        composeTestRule.onNodeWithText(
+            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+        ).assertDoesNotExist()
     }
 
     @Test

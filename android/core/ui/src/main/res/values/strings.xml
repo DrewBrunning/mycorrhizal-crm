@@ -56,6 +56,19 @@
     <string name="login_two_factor_back">Back to sign in</string>
     <string name="login_error_two_factor_invalid">Invalid code. Please try again.</string>
     <string name="login_error_two_factor_expired">Your sign-in session expired. Please sign in again.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Your account also has a passkey, but passkeys aren\'t available on this app for this server.</string>
+    <string name="login_two_factor_passkey_only_description">Your account uses a passkey, but passkeys aren\'t available on this app for this server. Enter one of your recovery codes to sign in.</string>
+    <string name="login_two_factor_recovery_code_label">Recovery code</string>
+    <!-- Issue #1293 / ADR 0034: passkey sign-in on the 2FA step -->
+    <string name="login_two_factor_use_passkey">Use a passkey</string>
+    <string name="login_two_factor_passkey_or_recovery_description">Use your passkey to sign in, or enter one of your recovery codes.</string>
+    <string name="login_two_factor_passkey_not_associated_note">Your account also has a passkey, but this server isn\'t set up for passkeys on Android.</string>
+    <string name="login_two_factor_passkey_not_associated_only_description">Your account uses a passkey, but this server isn\'t set up for passkeys on Android. Enter one of your recovery codes to sign in.</string>
+    <string name="login_two_factor_passkey_no_provider_note">Your account also has a passkey, but this device has no passkey provider set up.</string>
+    <string name="login_two_factor_passkey_no_provider_only_description">Your account uses a passkey, but this device has no passkey provider set up. Enter one of your recovery codes to sign in.</string>
+    <string name="login_error_passkey_failed">Passkey sign-in failed. Please try again or enter a code.</string>
+    <string name="login_error_passkey_no_match">No matching passkey was found on this device. Try again or enter a code.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">No account? Create one</string>
@@ -404,6 +417,36 @@
     <string name="settings_two_factor_recovery_copy">Copy all codes</string>
     <string name="settings_two_factor_recovery_copied">Copied!</string>
     <string name="settings_two_factor_recovery_done">Done</string>
+
+    <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
+    <string name="settings_passkeys_title">Passkeys</string>
+    <string name="settings_passkeys_description">Use your device\'s fingerprint, face or screen lock (or a security key) as your second sign-in step instead of a code. Passkeys work alongside an authenticator app.</string>
+    <string name="settings_passkeys_empty">No passkeys yet.</string>
+    <string name="settings_passkeys_add_button">Add a passkey</string>
+    <string name="settings_passkeys_add_title">Add a passkey</string>
+    <string name="settings_passkeys_add_confirm">Continue</string>
+    <string name="settings_passkeys_adding">Waiting for your device…</string>
+    <string name="settings_passkeys_name_label">Passkey name (optional)</string>
+    <string name="settings_passkeys_name_help">For example: Phone, YubiKey.</string>
+    <string name="settings_passkeys_add_success">Passkey added.</string>
+    <string name="settings_passkeys_add_error">We couldn\'t add the passkey. Please try again.</string>
+    <string name="settings_passkeys_already_registered">A passkey from this device is already registered for your account.</string>
+    <string name="settings_passkeys_not_associated">This server isn\'t set up for passkeys on Android, so you can\'t add one from this app.</string>
+    <string name="settings_passkeys_no_provider">This device has no passkey provider set up, so you can\'t add a passkey here.</string>
+    <string name="settings_passkeys_unavailable">Passkeys aren\'t available on this app for this server.</string>
+    <string name="settings_passkeys_no_other_here">No other passkey for your account was found on this device. Use a code instead.</string>
+    <string name="settings_passkeys_created_last_used">Added %1$s · last used %2$s</string>
+    <string name="settings_passkeys_created_never_used">Added %1$s · never used</string>
+    <string name="settings_passkeys_remove_button">Remove</string>
+    <string name="settings_passkeys_remove_cd">Remove passkey %1$s</string>
+    <string name="settings_passkeys_remove_title">Remove passkey</string>
+    <string name="settings_passkeys_remove_description">Enter a current code from your authenticator app, or a recovery code, to remove \"%1$s\".</string>
+    <string name="settings_passkeys_code_label">Verification code</string>
+    <string name="settings_passkeys_remove_confirm">Remove passkey</string>
+    <string name="settings_passkeys_remove_submitting">Please wait…</string>
+    <string name="settings_passkeys_use_another">Verify with another passkey instead</string>
+    <string name="settings_passkeys_remove_success">Passkey removed.</string>
+    <string name="settings_passkeys_invalid_proof">Verification failed. Please try again.</string>
     <string name="settings_two_factor_qr_content_description">QR code for your authenticator app. Scan it, or enter the manual setup key below.</string>
     <string name="data_relationships_section">Relationships</string>
     <string name="data_relationships_description">Let the app find relationships your existing ones imply. Suggestions are only proposals — review each one before accepting.</string>

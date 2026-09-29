@@ -136,6 +136,17 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		logger.Warn().Msg(warning)
 	}
 
+	// ADR 0034 (issue #1293): native Android passkeys are an optional capability,
+	// so a switch that is on but cannot take effect is logged once and left off —
+	// never fatal.
+	if cfg.WebAuthnAndroidEnabled && !cfg.IsEmbedded() {
+		if st := cfg.AndroidPasskeys(); st.Effective {
+			logger.Info().Int("fingerprints", len(st.Fingerprints)).Msg("Native Android passkeys enabled (serving /.well-known/assetlinks.json)")
+		} else {
+			logger.Error().Msg("WEBAUTHN_ANDROID_ENABLED is set but native Android passkeys stay OFF: " + st.Reason)
+		}
+	}
+
 	// M2: config.Validate only checks the FCM file exists; the content check
 	// lives here so a malformed service-account file still fails boot.
 	if cfg.FCMServiceAccountFile != "" {

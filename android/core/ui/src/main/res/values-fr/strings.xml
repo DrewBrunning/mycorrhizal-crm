@@ -56,6 +56,19 @@
     <string name="login_two_factor_back">Retour à la connexion</string>
     <string name="login_error_two_factor_invalid">Code invalide. Veuillez réessayer.</string>
     <string name="login_error_two_factor_expired">Votre session de connexion a expiré. Veuillez vous reconnecter.</string>
+    <!-- Issue #1293: passkey-enrolled account on a build/server that cannot run the passkey ceremony -->
+    <string name="login_two_factor_passkey_unavailable_note">Votre compte possède aussi une clé d\'accès (passkey), mais les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur.</string>
+    <string name="login_two_factor_passkey_only_description">Votre compte utilise une clé d\'accès (passkey), mais les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur. Saisissez l\'un de vos codes de récupération pour vous connecter.</string>
+    <string name="login_two_factor_recovery_code_label">Code de récupération</string>
+    <!-- Issue #1293 / ADR 0034: passkey sign-in on the 2FA step -->
+    <string name="login_two_factor_use_passkey">Utiliser une clé d\'accès</string>
+    <string name="login_two_factor_passkey_or_recovery_description">Utilisez votre clé d\'accès pour vous connecter, ou saisissez l\'un de vos codes de récupération.</string>
+    <string name="login_two_factor_passkey_not_associated_note">Votre compte possède aussi une clé d\'accès, mais ce serveur n\'est pas configuré pour les clés d\'accès sur Android.</string>
+    <string name="login_two_factor_passkey_not_associated_only_description">Votre compte utilise une clé d\'accès, mais ce serveur n\'est pas configuré pour les clés d\'accès sur Android. Saisissez l\'un de vos codes de récupération pour vous connecter.</string>
+    <string name="login_two_factor_passkey_no_provider_note">Votre compte possède aussi une clé d\'accès, mais aucun fournisseur de clés d\'accès n\'est configuré sur cet appareil.</string>
+    <string name="login_two_factor_passkey_no_provider_only_description">Votre compte utilise une clé d\'accès, mais aucun fournisseur de clés d\'accès n\'est configuré sur cet appareil. Saisissez l\'un de vos codes de récupération pour vous connecter.</string>
+    <string name="login_error_passkey_failed">La connexion par clé d\'accès a échoué. Réessayez ou saisissez un code.</string>
+    <string name="login_error_passkey_no_match">Aucune clé d\'accès correspondante n\'a été trouvée sur cet appareil. Réessayez ou saisissez un code.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Pas de compte ? Créez-en un</string>
@@ -397,6 +410,36 @@
     <string name="settings_two_factor_recovery_copy">Copier tous les codes</string>
     <string name="settings_two_factor_recovery_copied">Copié !</string>
     <string name="settings_two_factor_recovery_done">Terminé</string>
+
+    <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
+    <string name="settings_passkeys_title">Clés d\'accès</string>
+    <string name="settings_passkeys_description">Utilisez l\'empreinte digitale, le visage ou le verrouillage d\'écran de votre appareil (ou une clé de sécurité) comme seconde étape de connexion, à la place d\'un code. Les clés d\'accès fonctionnent en complément d\'une application d\'authentification.</string>
+    <string name="settings_passkeys_empty">Aucune clé d\'accès pour le moment.</string>
+    <string name="settings_passkeys_add_button">Ajouter une clé d\'accès</string>
+    <string name="settings_passkeys_add_title">Ajouter une clé d\'accès</string>
+    <string name="settings_passkeys_add_confirm">Continuer</string>
+    <string name="settings_passkeys_adding">En attente de votre appareil…</string>
+    <string name="settings_passkeys_name_label">Nom de la clé (facultatif)</string>
+    <string name="settings_passkeys_name_help">Par exemple : Téléphone, YubiKey.</string>
+    <string name="settings_passkeys_add_success">Clé d\'accès ajoutée.</string>
+    <string name="settings_passkeys_add_error">Impossible d\'ajouter la clé d\'accès. Veuillez réessayer.</string>
+    <string name="settings_passkeys_already_registered">Une clé d\'accès de cet appareil est déjà enregistrée sur votre compte.</string>
+    <string name="settings_passkeys_not_associated">Ce serveur n\'est pas configuré pour les clés d\'accès sur Android : vous ne pouvez pas en ajouter depuis cette application.</string>
+    <string name="settings_passkeys_no_provider">Aucun fournisseur de clés d\'accès n\'est configuré sur cet appareil : vous ne pouvez pas en ajouter ici.</string>
+    <string name="settings_passkeys_unavailable">Les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur.</string>
+    <string name="settings_passkeys_no_other_here">Aucune autre clé d\'accès de votre compte n\'a été trouvée sur cet appareil. Utilisez plutôt un code.</string>
+    <string name="settings_passkeys_created_last_used">Ajoutée le %1$s · dernière utilisation le %2$s</string>
+    <string name="settings_passkeys_created_never_used">Ajoutée le %1$s · jamais utilisée</string>
+    <string name="settings_passkeys_remove_button">Supprimer</string>
+    <string name="settings_passkeys_remove_cd">Supprimer la clé d\'accès %1$s</string>
+    <string name="settings_passkeys_remove_title">Supprimer la clé d\'accès</string>
+    <string name="settings_passkeys_remove_description">Saisissez un code actuel de votre application d\'authentification, ou un code de récupération, pour supprimer « %1$s ».</string>
+    <string name="settings_passkeys_code_label">Code de vérification</string>
+    <string name="settings_passkeys_remove_confirm">Supprimer la clé d\'accès</string>
+    <string name="settings_passkeys_remove_submitting">Veuillez patienter…</string>
+    <string name="settings_passkeys_use_another">Vérifier plutôt avec une autre clé d\'accès</string>
+    <string name="settings_passkeys_remove_success">Clé d\'accès supprimée.</string>
+    <string name="settings_passkeys_invalid_proof">La vérification a échoué. Veuillez réessayer.</string>
     <string name="settings_two_factor_qr_content_description">Code QR pour votre application d\'authentification. Scannez-le ou saisissez la clé de configuration manuelle ci-dessous.</string>
     <string name="data_relationships_section">Relations</string>
     <string name="data_relationships_description">Laissez l\'application découvrir des relations que vos relations existantes impliquent. Les suggestions ne sont que des propositions : examinez-les avant de les accepter.</string>

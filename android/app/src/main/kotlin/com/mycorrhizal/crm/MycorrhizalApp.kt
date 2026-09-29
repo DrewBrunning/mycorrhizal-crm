@@ -144,6 +144,7 @@ import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
 import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
 import com.mycorrhizal.crm.feature.settings.ServersScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.settings.PasskeysScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
 import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
 import com.mycorrhizal.crm.feature.settings.CalendarSyncScreen
@@ -1385,6 +1386,8 @@ private fun AppNavGraph(
                 onCalendarSync = { navController.navigate("calendar-sync") },
                 // Issue #814 Phase 2: TOTP two-factor enrollment/management.
                 onTwoFactor = { navController.navigate("two-factor") },
+                // Issue #1293: passkey enrollment/management (entry shown only when the gate is open).
+                onPasskeys = { navController.navigate("passkeys") },
                 onNotificationChannels = { navController.navigate("notification-channels") },
                 onImmichSettings = { navController.navigate("immich-settings") },
                 // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
@@ -1498,6 +1501,12 @@ private fun AppNavGraph(
         // Issue #814 Phase 2: TOTP two-factor enrollment/management.
         composable("two-factor") {
             TwoFactorScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #1293 / ADR 0034: passkey enrollment/management.
+        composable("passkeys") {
+            PasskeysScreen(
                 onBack = { navController.popBackStack() },
             )
         }

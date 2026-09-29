@@ -54,6 +54,8 @@ class AttachToRemoteCoordinatorTest {
     private var loginBody = """{"language":"en"}"""
     private var loginStatus = 200
     private var twoFactorRequired = false
+    private var loginMethodsJson = ""
+    private var healthBody = """{"version":"1.3.0"}"""
     private var uploadStatuses = ArrayDeque<Int>()
     private var fetchStatuses = ArrayDeque<Int>()
     private var preparePhases = ArrayDeque<String>()
@@ -89,11 +91,18 @@ class AttachToRemoteCoordinatorTest {
                         path == "/api/v1/login" && twoFactorRequired ->
                             MockResponse().setResponseCode(200)
                                 .setHeader("Set-Cookie", "2fa_pending=PENDING; Path=/")
-                                .setBody("""{"two_factor_required":true}""")
+                                .setBody("{\"two_factor_required\":true$loginMethodsJson}")
                         path == "/api/v1/login" ->
                             MockResponse().setResponseCode(loginStatus)
                                 .setHeader("Set-Cookie", "auth_token=REMOTE-JWT; Path=/; HttpOnly")
                                 .setBody(loginBody)
+                        path == "/health" -> MockResponse().setResponseCode(200).setBody(healthBody)
+                        path == "/api/v1/webauthn/login/begin" ->
+                            MockResponse().setResponseCode(200).setBody("""{"publicKey":{"challenge":"c"}}""")
+                        path == "/api/v1/webauthn/login/finish" ->
+                            MockResponse().setResponseCode(200)
+                                .setHeader("Set-Cookie", "auth_token=REMOTE-JWT-PASSKEY; Path=/; HttpOnly")
+                                .setBody("""{"language":"en"}""")
                         path == "/api/v1/login/2fa" ->
                             MockResponse().setResponseCode(200)
                                 .setHeader("Set-Cookie", "auth_token=REMOTE-JWT-2FA; Path=/; HttpOnly")
@@ -361,7 +370,7 @@ class AttachToRemoteCoordinatorTest {
         val c = coordinator()
         c.begin().getOrThrow()
 
-        assertEquals(AttachSignInResult.TwoFactorRequired, c.signInNew().getOrThrow())
+        assertEquals(AttachSignInResult.TwoFactorRequired(), c.signInNew().getOrThrow())
         assertEquals("no bundle may be exported before the login completes", 0, local.requestCount)
 
         assertEquals(AttachSignInResult.SignedIn, c.completeTwoFactor("123456").getOrThrow())
@@ -370,6 +379,88 @@ class AttachToRemoteCoordinatorTest {
         val twoFa = remoteRequests("/api/v1/login/2fa").single()
         assertEquals("2fa_pending=PENDING", twoFa.getHeader("Cookie"))
         assertLocalStillActiveAndWritable()
+    }
+
+    // --- Issue #1293: `methods` and the passkey route ----------------------------
+
+    @Test
+    fun `two-factor sign-in reports the enrolled methods and whether the remote offers passkeys`() = runTest {
+        twoFactorRequired = true
+        loginMethodsJson = ""","methods":["webauthn"]"""
+        healthBody = """{"version":"1.3.0","capabilities":["contacts","webauthn_android"]}"""
+        val c = coordinator()
+        c.begin().getOrThrow()
+
+        val result = c.signInNew().getOrThrow()
+
+        assertEquals(AttachSignInResult.TwoFactorRequired(listOf("webauthn"), serverOffersPasskeys = true), result)
+    }
+
+    @Test
+    fun `a remote that does not declare the capability does not offer passkeys`() = runTest {
+        twoFactorRequired = true
+        loginMethodsJson = ""","methods":["totp","webauthn"]"""
+        healthBody = """{"version":"1.3.0","capabilities":["contacts"]}"""
+        val c = coordinator()
+        c.begin().getOrThrow()
+
+        assertEquals(
+            AttachSignInResult.TwoFactorRequired(listOf("totp", "webauthn"), serverOffersPasskeys = false),
+            c.signInNew().getOrThrow(),
+        )
+    }
+
+    @Test
+    fun `an absent capability list or unreachable health fails closed`() = runTest {
+        twoFactorRequired = true
+        loginMethodsJson = ""","methods":["webauthn"]"""
+        for (body in listOf("""{"version":"1.3.0"}""", "not json")) {
+            healthBody = body
+            val c = coordinator()
+            c.begin().getOrThrow()
+            assertEquals(false, (c.signInNew().getOrThrow() as AttachSignInResult.TwoFactorRequired).serverOffersPasskeys)
+        }
+    }
+
+    @Test
+    fun `health is not consulted for an account without a passkey`() = runTest {
+        twoFactorRequired = true
+        loginMethodsJson = ""","methods":["totp"]"""
+        val c = coordinator()
+        c.begin().getOrThrow()
+
+        assertEquals(AttachSignInResult.TwoFactorRequired(listOf("totp"), false), c.signInNew().getOrThrow())
+        assertEquals(0, remoteRequests("/health").size)
+    }
+
+    @Test
+    fun `the passkey route completes the challenge with the private pending cookie`() = runTest {
+        twoFactorRequired = true
+        loginMethodsJson = ""","methods":["webauthn"]"""
+        val c = coordinator()
+        c.begin().getOrThrow()
+        c.signInNew().getOrThrow()
+
+        assertEquals("""{"publicKey":{"challenge":"c"}}""", c.beginPasskey().getOrThrow())
+        assertEquals(AttachSignInResult.SignedIn, c.completePasskey("""{"id":"x"}""").getOrThrow())
+
+        val begin = remoteRequests("/api/v1/webauthn/login/begin").single()
+        assertEquals("2fa_pending=PENDING", begin.getHeader("Cookie"))
+        val finish = remoteRequests("/api/v1/webauthn/login/finish").single()
+        assertEquals("2fa_pending=PENDING", finish.getHeader("Cookie"))
+        assertEquals("""{"id":"x"}""", finish.body.readUtf8())
+        val profile = manager.profiles().single { it.kind is ServerProfileKind.Remote }
+        assertEquals("REMOTE-JWT-PASSKEY", tokens.tokens[profile.id])
+        assertLocalStillActiveAndWritable()
+    }
+
+    @Test
+    fun `the passkey route fails without a pending challenge`() = runTest {
+        val c = coordinator()
+        c.begin().getOrThrow()
+
+        assertTrue(c.beginPasskey().exceptionOrNull() is AttachException)
+        assertTrue(c.completePasskey("{}").exceptionOrNull() is AttachException)
     }
 
     @Test

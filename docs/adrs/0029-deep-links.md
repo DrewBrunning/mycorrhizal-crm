@@ -10,7 +10,10 @@
   `docs/adrs/0014-local-app-lock-and-biometric-resume.md` (the app-lock gate every deep link must pass),
   `docs/adrs/0022-distribution-variants.md` (three signing keys for one `applicationId`).
 - **Related:** `docs/adrs/0028-local-only-android-mode-and-server-profiles.md` (links resolve against the
-  active server profile; a profile switch drops a pending link).
+  active server profile; a profile switch drops a pending link),
+  `docs/adrs/0034-android-passkeys.md` (Digital Asset Links **are** used there, for a different reason: a
+  passkey's RP ID arrives at runtime rather than from the manifest, and the server can generate the
+  fingerprint list, so the two objections below do not apply to it).
 
 ## Context
 

@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
 import android.content.Context
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -99,6 +100,7 @@ class SettingsViewModelTest {
             permissionChecker,
             catchUpScheduler,
             callSmsTrackingCapability,
+            PasskeyAvailability { false },
             appContext,
         )
     }

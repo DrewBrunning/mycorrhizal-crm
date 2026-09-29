@@ -208,6 +208,11 @@ import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
 import com.mycorrhizal.crm.model.network.UserProfile
+import com.mycorrhizal.crm.model.network.WebAuthnCredentialListResponse
+import com.mycorrhizal.crm.model.network.WebAuthnDeleteCodeInput
+import com.mycorrhizal.crm.model.network.WebAuthnProofBeginInput
+import com.mycorrhizal.crm.model.network.WebAuthnRegisterBeginInput
+import com.mycorrhizal.crm.model.network.WebAuthnRegisterResponse
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareInput
 import com.mycorrhizal.crm.model.network.ContactSharesPage
@@ -275,6 +280,7 @@ class ApiClient(
                 dateFormat = loginResponse?.dateFormat,
                 twoFactorRequired = twoFactorRequired,
                 pending2faCookie = if (twoFactorRequired) extractCookie(setCookies, TWO_FACTOR_COOKIE) else null,
+                methods = if (twoFactorRequired) loginResponse?.methods else null,
             )
         }
 
@@ -305,6 +311,135 @@ class ApiClient(
                 dateFormat = loginResponse?.dateFormat,
             )
         }
+    }
+
+    // --- Issue #1293 WebAuthn / passkeys (backend #593; ADR 0034). Nothing in
+    // the app calls these until the Credential Manager ceremony slice lands.
+    // Option blobs and credential JSON are raw strings, passed through verbatim.
+
+    /**
+     * POST /api/v1/webauthn/login/begin — passkey step 2 of login. Needs the
+     * `2fa_pending` cookie from [login] (no session yet, so it is forwarded as
+     * a header like [complete2faLogin]). Returns the raw
+     * PublicKeyCredentialRequestOptions JSON. 400 no challenge, 401 expired,
+     * 409 no passkey registered / RP not configured.
+     */
+    suspend fun webauthnLoginBegin(pending2faCookie: String): Result<String> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/begin".toHttpUrl())
+            .addHeader("Cookie", "$TWO_FACTOR_COOKIE=$pending2faCookie")
+            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .build()
+        return execute(request) { _, body -> body.ifBlank { null } }
+    }
+
+    /**
+     * POST /api/v1/webauthn/login/finish — [credentialJson] is the serialized
+     * PublicKeyCredential from the authenticator, sent verbatim. On success the
+     * real `auth_token` cookie is captured exactly like [complete2faLogin].
+     * Errors: 400 no challenge, 401 rejected/expired, 403 client too old,
+     * 409 no login in progress, 429 lockout.
+     */
+    suspend fun webauthnLoginFinish(credentialJson: String, pending2faCookie: String): Result<LoginResult> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/finish".toHttpUrl())
+            .addHeader("Cookie", "$TWO_FACTOR_COOKIE=$pending2faCookie")
+            .post(credentialJson.toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { response, body ->
+            val loginResponse = runCatching { moshi.adapter(LoginResponse::class.java).fromJson(body) }.getOrNull()
+            LoginResult(
+                token = extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE),
+                language = loginResponse?.language,
+                dateFormat = loginResponse?.dateFormat,
+            )
+        }
+    }
+
+    /**
+     * POST /api/v1/webauthn/register/begin — authenticated. Returns the raw
+     * PublicKeyCredentialCreationOptions JSON. 400 invalid name, 403 OIDC
+     * account, 409 RP not configured.
+     */
+    suspend fun webauthnRegisterBegin(name: String? = null): Result<String> =
+        executePost(
+            "$WEBAUTHN_PATH/register/begin",
+            WebAuthnRegisterBeginInput(name?.takeIf { it.isNotBlank() }),
+        ) { _, body -> body.ifBlank { null } }
+
+    /**
+     * POST /api/v1/webauthn/register/finish — [credentialJson] is the
+     * serialized attestation PublicKeyCredential, sent verbatim. 201 with the
+     * new credential + any freshly minted recovery codes (shown once). The
+     * server re-issues the session cookie when this is the account's first
+     * factor, so [ReissuedTokenResult.reissuedToken] carries it.
+     */
+    suspend fun webauthnRegisterFinish(credentialJson: String): Result<ReissuedTokenResult<WebAuthnRegisterResponse>> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/register/finish".toHttpUrl())
+            .post(credentialJson.toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { response, body ->
+            val parsed = moshi.adapter(WebAuthnRegisterResponse::class.java).fromJson(body)
+            if (parsed == null) {
+                null
+            } else {
+                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+            }
+        }
+    }
+
+    /**
+     * POST /api/v1/webauthn/assert/begin — authenticated proof-of-possession
+     * options for removing a passkey. [excludeId] (the passkey being removed,
+     * #1317) is left out of `allowCredentials` server-side so the authenticator
+     * cannot pick it. 404 unknown/foreign id, 409 no other passkey remains.
+     */
+    suspend fun webauthnProofBegin(excludeId: String? = null): Result<String> =
+        executePost(
+            "$WEBAUTHN_PATH/assert/begin",
+            WebAuthnProofBeginInput(excludeId?.takeIf { it.isNotBlank() }),
+        ) { _, body -> body.ifBlank { null } }
+
+    /** GET /api/v1/webauthn/credentials — id, name and timestamps only. */
+    suspend fun listWebAuthnCredentials(): Result<WebAuthnCredentialListResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/credentials") { _, body ->
+            moshi.adapter(WebAuthnCredentialListResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * DELETE /api/v1/webauthn/credentials/{id} with a TOTP/recovery [code]
+     * proof. 400 missing/invalid proof, 404 unknown id.
+     */
+    suspend fun deleteWebAuthnCredential(id: String, code: String): Result<MessageResponse> =
+        deleteWebAuthnCredentialWithBody(
+            id,
+            moshi.adapter(WebAuthnDeleteCodeInput::class.java).toJson(WebAuthnDeleteCodeInput(code)),
+        )
+
+    /**
+     * DELETE /api/v1/webauthn/credentials/{id} with a passkey-assertion proof:
+     * [assertionJson] is the serialized PublicKeyCredential obtained against
+     * [webauthnProofBegin]'s options (made with a DIFFERENT passkey), embedded
+     * verbatim as the body's `assertion` object.
+     */
+    suspend fun deleteWebAuthnCredentialWithAssertion(id: String, assertionJson: String): Result<MessageResponse> {
+        // Validate it is a JSON object before splicing, so a malformed blob is a Parse error, not a 400 round-trip.
+        val isObject = runCatching { moshi.adapter(Any::class.java).fromJson(assertionJson) is Map<*, *> }
+            .getOrDefault(false)
+        if (!isObject) return Result.failure(ApiError.Parse("assertion is not a JSON object"))
+        return deleteWebAuthnCredentialWithBody(id, "{\"assertion\":$assertionJson}")
+    }
+
+    private suspend fun deleteWebAuthnCredentialWithBody(id: String, jsonBody: String): Result<MessageResponse> {
+        val url = "$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/credentials".toHttpUrl().newBuilder()
+            .addPathSegment(id)
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .delete(jsonBody.toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { _, body -> moshi.adapter(MessageResponse::class.java).fromJson(body) }
     }
 
     // --- N8 2FA management (issue #158, web parity #814). Authenticated —
@@ -2691,6 +2826,7 @@ class ApiClient(
         private const val LOGIN_PATH = "$API_V1/login"
         private const val LOGIN_2FA_PATH = "$API_V1/login/2fa"
         private const val TWO_FACTOR_PATH = "$API_V1/users/2fa"
+        private const val WEBAUTHN_PATH = "$API_V1/webauthn"
         private const val AUTH_CONFIG_PATH = "$API_V1/auth/oidc/config"
         /** Unversioned public health surface (issue #528) — /health is NOT under /api/v1. */
         private const val HEALTH_PATH = "/health"
@@ -2771,6 +2907,8 @@ data class LoginResult(
     val dateFormat: String?,
     val twoFactorRequired: Boolean = false,
     val pending2faCookie: String? = null,
+    /** Issue #1293: enrolled second-factor tokens (see `SecondFactorMethod`); null from an older server. */
+    val methods: List<String>? = null,
 )
 
 /**

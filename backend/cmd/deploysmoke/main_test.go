@@ -184,6 +184,8 @@ func (s *stubServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.wellKnown(w, "/carddav/")
 	case r.Method == http.MethodGet && p == "/.well-known/caldav":
 		s.wellKnown(w, "/caldav/")
+	case r.Method == http.MethodGet && p == "/.well-known/assetlinks.json":
+		s.assetLinks(w)
 	default:
 		s.t.Errorf("stub: unexpected request %s %s", r.Method, p)
 		w.WriteHeader(http.StatusNotFound)
@@ -397,6 +399,38 @@ func (s *stubServer) importUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// assetLinks models GET /.well-known/assetlinks.json (ADR 0034). The default is
+// the feature-off backend 404; the "assetlinks-enabled" fault is the feature-on
+// 200 JSON; the rest are the misconfigurations the step must catch (nginx not
+// proxying the path, a redirect, a malformed body).
+func (s *stubServer) assetLinks(w http.ResponseWriter) {
+	const good = `[{"relation":["delegate_permission/common.get_login_creds"],"target":{"namespace":"android_app","package_name":"com.mycorrhizal.crm","sha256_cert_fingerprints":["AA"]}}]`
+	switch s.fault {
+	case "assetlinks-enabled":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(good))
+	case "assetlinks-spa":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<!doctype html><html></html>"))
+	case "assetlinks-redirect":
+		w.Header().Set("Location", "/somewhere")
+		w.WriteHeader(http.StatusMovedPermanently)
+	case "assetlinks-500":
+		w.WriteHeader(http.StatusInternalServerError)
+	case "assetlinks-notjson":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{not json"))
+	case "assetlinks-empty":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("[]"))
+	case "assetlinks-wrongshape":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app"}}]`))
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
 // wellKnown models an nginx .well-known discovery 301 (issue #865). The happy
 // path emits a relative Location; the faults model the internal-port leak and
 // a non-redirect response.
@@ -461,6 +495,16 @@ func TestRun_HappyPath(t *testing.T) {
 	defer srv.Close()
 	if err := run(smokeConfig{baseURL: srv.URL}); err != nil {
 		t.Fatalf("run against a healthy stub install failed: %v", err)
+	}
+}
+
+// The feature-on backend (200 JSON) passes the assetlinks step too; the
+// default stub above is the feature-off 404.
+func TestRun_AssetLinksEnabledPasses(t *testing.T) {
+	srv := newStubServer(t, "assetlinks-enabled")
+	defer srv.Close()
+	if err := run(smokeConfig{baseURL: srv.URL}); err != nil {
+		t.Fatalf("run() = %v, want nil", err)
 	}
 }
 
@@ -532,6 +576,12 @@ func TestRun_StepFailures(t *testing.T) {
 		{"wellknown-noloc", "wellknown-discovery"},
 		{"wellknown-absolute", "wellknown-discovery"},
 		{"wellknown-wrongpath", "wellknown-discovery"},
+		{"assetlinks-spa", "assetlinks-not-spa"},
+		{"assetlinks-redirect", "assetlinks-not-spa"},
+		{"assetlinks-500", "assetlinks-not-spa"},
+		{"assetlinks-notjson", "assetlinks-not-spa"},
+		{"assetlinks-empty", "assetlinks-not-spa"},
+		{"assetlinks-wrongshape", "assetlinks-not-spa"},
 		{"refetch-code", "refetch-fields"},
 		{"refetch-garbage", "refetch-fields"},
 		{"refetch-noname", "refetch-fields"},
@@ -590,6 +640,7 @@ func TestNginxSteps_TransportError(t *testing.T) {
 		{"export-loss-header", (*smokeRun).exportLossHeaderThroughProxy},
 		{"import-body-limit", (*smokeRun).importBodyLimitOwnedByApp},
 		{"wellknown-discovery", (*smokeRun).wellKnownDiscoveryRelative},
+		{"assetlinks-not-spa", (*smokeRun).assetLinksReachesBackend},
 	}
 	for _, s := range steps {
 		if err := s.fn(r); err == nil {

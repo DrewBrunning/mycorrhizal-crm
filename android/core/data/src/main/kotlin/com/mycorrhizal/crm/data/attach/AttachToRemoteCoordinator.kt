@@ -2,16 +2,20 @@ package com.mycorrhizal.crm.data.attach
 
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SwitchProfileResult
+import com.mycorrhizal.crm.domain.compat.ServerCapability
+import com.mycorrhizal.crm.domain.compat.toCapabilitiesInfo
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
+import com.mycorrhizal.crm.model.network.includesPasskey
 import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
+import com.mycorrhizal.crm.network.LoginResult
 import com.mycorrhizal.crm.network.ClientVersionProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.TokenProvider
@@ -37,8 +41,19 @@ fun interface AttachRemoteApiFactory {
 sealed interface AttachSignInResult {
     data object SignedIn : AttachSignInResult
 
-    /** The account has 2FA on; call [AttachToRemoteCoordinator.completeTwoFactor]. */
-    data object TwoFactorRequired : AttachSignInResult
+    /**
+     * The account has 2FA on; call [AttachToRemoteCoordinator.completeTwoFactor]
+     * (or, when a passkey can be used, [AttachToRemoteCoordinator.beginPasskey] /
+     * [AttachToRemoteCoordinator.completePasskey]). [methods] is the server's enrolled
+     * factor list (null from an older server = TOTP prompt). [serverOffersPasskeys] is
+     * whether THIS remote server's `/health` declares `webauthn_android` — asked of the
+     * remote being attached, not the active (Local) profile, and fail-closed; the
+     * caller adds the device-side check.
+     */
+    data class TwoFactorRequired(
+        val methods: List<String>? = null,
+        val serverOffersPasskeys: Boolean = false,
+    ) : AttachSignInResult
 }
 
 /** What the wizard is doing during the (long) prepare/import steps, for a progress line. */
@@ -130,7 +145,9 @@ class AttachToRemoteCoordinator @Inject constructor(
         return when {
             login.twoFactorRequired -> {
                 pendingTwoFactorCookie = login.pending2faCookie
-                Result.success(AttachSignInResult.TwoFactorRequired)
+                val offers = login.methods.includesPasskey() &&
+                    api.getHealth().getOrNull()?.toCapabilitiesInfo()?.declares(ServerCapability.WEBAUTHN_ANDROID) == true
+                Result.success(AttachSignInResult.TwoFactorRequired(login.methods, offers))
             }
             login.token.isNullOrBlank() -> Result.failure(AttachException("Server returned no session"))
             else -> {
@@ -144,8 +161,30 @@ class AttachToRemoteCoordinator @Inject constructor(
     suspend fun completeTwoFactor(code: String): Result<AttachSignInResult> {
         val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
         val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        return finishTwoFactor(api.complete2faLogin(code, cookie))
+    }
+
+    /**
+     * Step 1b, passkey route (issue #1293 / ADR 0034): POST /webauthn/login/begin
+     * for the challenge [signIn] started, returning the raw request options for
+     * Credential Manager. The pending cookie never leaves this class.
+     */
+    suspend fun beginPasskey(): Result<String> {
+        val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
+        val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        return api.webauthnLoginBegin(cookie)
+    }
+
+    /** Step 1b, passkey route: exchange the authenticator's assertion for the remote session (same tail as [completeTwoFactor]). */
+    suspend fun completePasskey(assertionJson: String): Result<AttachSignInResult> {
+        val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
+        val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        return finishTwoFactor(api.webauthnLoginFinish(assertionJson, cookie))
+    }
+
+    private suspend fun finishTwoFactor(result: Result<LoginResult>): Result<AttachSignInResult> {
         val profileId = remoteProfileId ?: return Result.failure(AttachException("Not signed in"))
-        val login = api.complete2faLogin(code, cookie).getOrElse { return Result.failure(it) }
+        val login = result.getOrElse { return Result.failure(it) }
         val token = login.token
         if (token.isNullOrBlank()) return Result.failure(AttachException("Server returned no session"))
         pendingTwoFactorCookie = null

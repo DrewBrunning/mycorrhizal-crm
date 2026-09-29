@@ -16,7 +16,8 @@ import javax.inject.Inject
 class LoginUseCase @Inject constructor(private val authRepository: AuthRepository) {
     sealed interface Result {
         data object Success : Result
-        data object TwoFactorRequired : Result
+        /** [methods]: enrolled second-factor tokens (issue #1293); null from an older server. */
+        data class TwoFactorRequired(val methods: List<String>? = null) : Result
         data class Failure(val message: String) : Result
     }
 
@@ -25,9 +26,9 @@ class LoginUseCase @Inject constructor(private val authRepository: AuthRepositor
         return if (outcome.isFailure) {
             Result.Failure(outcome.exceptionOrNull()?.message ?: "Login failed")
         } else {
-            when (outcome.getOrThrow()) {
+            when (val login = outcome.getOrThrow()) {
                 LoginOutcome.SessionEstablished -> Result.Success
-                LoginOutcome.TwoFactorRequired -> Result.TwoFactorRequired
+                is LoginOutcome.TwoFactorRequired -> Result.TwoFactorRequired(login.methods)
             }
         }
     }

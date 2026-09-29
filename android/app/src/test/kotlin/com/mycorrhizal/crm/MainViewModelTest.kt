@@ -400,6 +400,49 @@ class MainViewModelTest {
             assertFalse(store.current().supports("push"))
         }
 
+    // Issue #1293: the passkey gate reads the shared store strictly, so a server
+    // switch must not leave the previous server's tokens behind.
+    @Test
+    fun `a server switch resets the shared store so the previous servers capabilities cannot linger`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val flow = MutableStateFlow(loggedInState())
+            val sessionManager = sessionManager(flow)
+            val first = ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("webauthn_android"))
+            val second = ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("contacts"))
+            val repo = mockk<com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository>()
+            coEvery { repo.getServerHealth() } returnsMany listOf(Result.success(first), Result.success(second))
+            val store = DefaultServerCapabilitiesStore()
+            vm(sessionManager, repo, capabilitiesStore = store)
+            advanceUntilIdle()
+            assertTrue(store.current().declares("webauthn_android"))
+
+            flow.value = loggedInState().copy(serverUrl = "https://other.example.com")
+            advanceUntilIdle()
+
+            assertFalse(store.current().declares("webauthn_android"))
+            assertTrue(store.current().declares("contacts"))
+        }
+
+    @Test
+    fun `a session that ends resets the shared store to unknown`() = runTest(mainDispatcherRule.testDispatcher) {
+        val flow = MutableStateFlow(loggedInState())
+        val store = DefaultServerCapabilitiesStore()
+        vm(
+            sessionManager(flow),
+            compatibilityRepository(
+                Result.success(ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("webauthn_android"))),
+            ),
+            capabilitiesStore = store,
+        )
+        advanceUntilIdle()
+        assertTrue(store.current().declares("webauthn_android"))
+
+        flow.value = SessionState()
+        advanceUntilIdle()
+
+        assertFalse(store.current().declares("webauthn_android"))
+    }
+
     @Test
     fun `logout on the force-update screen ends the session`() = runTest(mainDispatcherRule.testDispatcher) {
         val authRepository = mockk<AuthRepository>()

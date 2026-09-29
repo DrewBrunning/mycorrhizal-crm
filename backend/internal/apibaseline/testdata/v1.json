@@ -2,6 +2,21 @@
   "version": 1,
   "operations": [
     {
+      "method": "GET",
+      "path": "/.well-known/assetlinks.json",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "array\u003cobject\u003e"
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/account",
       "parameters": null,
