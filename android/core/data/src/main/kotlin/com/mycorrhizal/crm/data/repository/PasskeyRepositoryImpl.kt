@@ -5,7 +5,9 @@ import com.mycorrhizal.crm.domain.repository.PasskeyRepository
 import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.model.network.WebAuthnRegisterResponse
+import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ReissuedTokenResult
 import com.mycorrhizal.crm.network.toApiError
 import javax.inject.Inject
 
@@ -48,14 +50,19 @@ class PasskeyRepositoryImpl @Inject constructor(
         )
 
     override suspend fun removeWithCode(id: String, code: String): Result<Unit> =
-        apiClient.deleteWebAuthnCredential(id, code.trim()).fold(
-            onSuccess = { Result.success(Unit) },
-            onFailure = { Result.failure(it.toApiError()) },
-        )
+        adoptReissuedToken(apiClient.deleteWebAuthnCredential(id, code.trim()))
 
     override suspend fun removeWithAssertion(id: String, assertionJson: String): Result<Unit> =
-        apiClient.deleteWebAuthnCredentialWithAssertion(id, assertionJson).fold(
-            onSuccess = { Result.success(Unit) },
-            onFailure = { Result.failure(it.toApiError()) },
-        )
+        adoptReissuedToken(apiClient.deleteWebAuthnCredentialWithAssertion(id, assertionJson))
+
+    /**
+     * Removing the account's last second factor bumps token_version and revokes
+     * every session (#1338), re-issuing the caller's as a fresh cookie: swap it
+     * in so the next request doesn't 401 and sign the user out (as disableTwoFactor does).
+     */
+    private suspend fun adoptReissuedToken(result: Result<ReissuedTokenResult<MessageResponse>>): Result<Unit> {
+        val body = result.getOrElse { return Result.failure(it.toApiError()) }
+        body.reissuedToken?.let { sessionManager.setToken(it) }
+        return Result.success(Unit)
+    }
 }

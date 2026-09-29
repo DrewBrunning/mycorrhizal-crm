@@ -100,14 +100,53 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `removal by code trims it and by assertion passes the id and blob`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.deleteWebAuthnCredential(any(), any()) } returns Result.success(MessageResponse("ok"))
-        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion(any(), any()) } returns Result.success(MessageResponse("ok"))
+        coEvery { h.apiClient.deleteWebAuthnCredential(any(), any()) } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
+        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion(any(), any()) } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
 
         assertTrue(h.repository.removeWithCode("a", " 123456 ").isSuccess)
         assertTrue(h.repository.removeWithAssertion("b", """{"id":"other"}""").isSuccess)
 
         coVerify { h.apiClient.deleteWebAuthnCredential("a", "123456") }
         coVerify { h.apiClient.deleteWebAuthnCredentialWithAssertion("b", """{"id":"other"}""") }
+    }
+
+    @Test
+    fun `removing the last factor by code adopts the re-issued session token`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        h.sessionManager.setToken("jwt-old")
+        coEvery { h.apiClient.deleteWebAuthnCredential("a", "1") } returns
+            Result.success(ReissuedTokenResult(MessageResponse("ok"), "jwt-new"))
+
+        assertTrue(h.repository.removeWithCode("a", "1").isSuccess)
+        assertEquals("jwt-new", h.sessionManager.bearerToken())
+    }
+
+    @Test
+    fun `removing the last factor by assertion adopts the re-issued session token`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        h.sessionManager.setToken("jwt-old")
+        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion("a", "{}") } returns
+            Result.success(ReissuedTokenResult(MessageResponse("ok"), "jwt-new"))
+
+        assertTrue(h.repository.removeWithAssertion("a", "{}").isSuccess)
+        assertEquals("jwt-new", h.sessionManager.bearerToken())
+    }
+
+    @Test
+    fun `removing a non-last passkey or failing leaves the session token alone`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        h.sessionManager.setToken("jwt-old")
+        coEvery { h.apiClient.deleteWebAuthnCredential("a", "1") } returns
+            Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
+        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion("a", "{}") } returns
+            Result.failure(ApiError.Client(400, "bad"))
+
+        assertTrue(h.repository.removeWithCode("a", "1").isSuccess)
+        assertTrue(h.repository.removeWithAssertion("a", "{}").isFailure)
+        assertEquals("jwt-old", h.sessionManager.bearerToken())
     }
 
     @Test

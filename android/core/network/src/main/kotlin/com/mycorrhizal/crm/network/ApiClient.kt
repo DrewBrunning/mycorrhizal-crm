@@ -428,9 +428,11 @@ class ApiClient(
 
     /**
      * DELETE /api/v1/webauthn/credentials/{id} with a TOTP/recovery [code]
-     * proof. 400 missing/invalid proof, 404 unknown id.
+     * proof. 400 missing/invalid proof, 404 unknown id. Removing the account's
+     * LAST second factor bumps token_version server-side and re-issues the
+     * session cookie (#1338), so [ReissuedTokenResult.reissuedToken] carries it.
      */
-    suspend fun deleteWebAuthnCredential(id: String, code: String): Result<MessageResponse> =
+    suspend fun deleteWebAuthnCredential(id: String, code: String): Result<ReissuedTokenResult<MessageResponse>> =
         deleteWebAuthnCredentialWithBody(
             id,
             moshi.adapter(WebAuthnDeleteCodeInput::class.java).toJson(WebAuthnDeleteCodeInput(code)),
@@ -442,7 +444,10 @@ class ApiClient(
      * [webauthnProofBegin]'s options (made with a DIFFERENT passkey), embedded
      * verbatim as the body's `assertion` object.
      */
-    suspend fun deleteWebAuthnCredentialWithAssertion(id: String, assertionJson: String): Result<MessageResponse> {
+    suspend fun deleteWebAuthnCredentialWithAssertion(
+        id: String,
+        assertionJson: String,
+    ): Result<ReissuedTokenResult<MessageResponse>> {
         // Validate it is a JSON object before splicing, so a malformed blob is a Parse error, not a 400 round-trip.
         if (!isJsonObject(assertionJson)) return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
         return deleteWebAuthnCredentialWithBody(id, "{\"assertion\":$assertionJson}")
@@ -480,7 +485,10 @@ class ApiClient(
         return execute(request, mapper)
     }
 
-    private suspend fun deleteWebAuthnCredentialWithBody(id: String, jsonBody: String): Result<MessageResponse> {
+    private suspend fun deleteWebAuthnCredentialWithBody(
+        id: String,
+        jsonBody: String,
+    ): Result<ReissuedTokenResult<MessageResponse>> {
         val url = "$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/credentials".toHttpUrl().newBuilder()
             .addPathSegment(id)
             .build()
@@ -488,7 +496,14 @@ class ApiClient(
             .url(url)
             .delete(jsonBody.toRequestBody(jsonMediaType))
             .build()
-        return execute(request) { _, body -> moshi.adapter(MessageResponse::class.java).fromJson(body) }
+        return execute(request) { response, body ->
+            val parsed = moshi.adapter(MessageResponse::class.java).fromJson(body)
+            if (parsed == null) {
+                null
+            } else {
+                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+            }
+        }
     }
 
     // --- N8 2FA management (issue #158, web parity #814). Authenticated —

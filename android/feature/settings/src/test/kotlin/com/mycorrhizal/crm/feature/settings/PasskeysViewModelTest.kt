@@ -253,6 +253,25 @@ class PasskeysViewModelTest {
     }
 
     @Test
+    fun `removing the last factor keeps the session and shows success`() = runTest(mainDispatcherRule.testDispatcher) {
+        // The repository adopts the re-issued token (#1338); the view model must
+        // not sign the user out. `auth` is a strict mock, so any logout call would throw.
+        val vm = vm(listOf(phone))
+        coEvery { repo.removeWithCode("id-phone", "123456") } returns Result.success(Unit)
+        coEvery { repo.listPasskeys() } returns Result.success(emptyList())
+
+        vm.requestRemove(phone)
+        vm.removeWithCode("123456")
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.passkeys.isEmpty())
+        assertNull(state.error)
+        assertEquals(R.string.settings_passkeys_remove_success, state.messageRes)
+        coVerify(exactly = 0) { auth.logout() }
+    }
+
+    @Test
     fun `a blank code is never submitted`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = vm()
         vm.requestRemove(phone)

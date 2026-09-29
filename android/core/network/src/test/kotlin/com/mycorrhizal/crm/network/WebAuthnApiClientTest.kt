@@ -283,11 +283,39 @@ class WebAuthnApiClientTest {
 
         val result = client.deleteWebAuthnCredential("cred-1", "123456").getOrThrow()
 
-        assertEquals("Passkey removed", result.message)
+        assertEquals("Passkey removed", result.value.message)
+        assertNull(result.reissuedToken)
         val request = server.takeRequest()
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/webauthn/credentials/cred-1", request.path)
         assertEquals("""{"code":"123456"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `deleteWebAuthnCredential surfaces the re-issued session when the last factor goes`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setHeader("Set-Cookie", "auth_token=reissued-del; Path=/; HttpOnly")
+                .setBody("""{"message":"Passkey removed"}"""),
+        )
+
+        val result = client.deleteWebAuthnCredential("cred-1", "123456").getOrThrow()
+
+        assertEquals("reissued-del", result.reissuedToken)
+        assertEquals("Passkey removed", result.value.message)
+    }
+
+    @Test
+    fun `deleteWebAuthnCredentialWithAssertion surfaces the re-issued session and tolerates none`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setHeader("Set-Cookie", "auth_token=reissued-assert; Path=/; HttpOnly")
+                .setBody("""{"message":"Passkey removed"}"""),
+        )
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}"""))
+
+        assertEquals("reissued-assert", client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken)
+        assertNull(client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken)
     }
 
     @Test
