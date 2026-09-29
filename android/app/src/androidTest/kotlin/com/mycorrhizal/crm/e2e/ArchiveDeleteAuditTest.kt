@@ -105,7 +105,10 @@ class ArchiveDeleteAuditTest : E2eBaseTest() {
         navigateViaDrawer("Contacts")
         searchFor(delGiven)
         waitForText(delDisplayName)
-        compose.onNodeWithText(delDisplayName).performClick()
+        // The list can recompose between the wait and the click (search results
+        // settling), dropping the node — the nightly's one-off "Failed to
+        // inject touch input". Re-find and click in one polled step.
+        clickTextWhenStable(delDisplayName)
 
         // Delete through the detail action menu + confirm dialog.
         clickContentDescription("Contact actions")

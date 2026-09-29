@@ -5,7 +5,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import kotlinx.coroutines.runBlocking
@@ -45,14 +44,11 @@ class ShareToCrmE2eTest : E2eBaseTest() {
     }
 
     private fun share(text: String, subject: String? = null) {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val intent = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
             .putExtra(Intent.EXTRA_TEXT, text)
             .apply { subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) } }
-            .setClass(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        deliverToRunningActivity(intent)
     }
 
     @Test

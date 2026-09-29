@@ -93,7 +93,7 @@ jobs:
           WORKFLOW_FILE: ${{ matrix.workflow_file }}
         run: |
           set -euo pipefail
-          run_json="$(gh api "repos/${GH_REPO}/actions/workflows/${WORKFLOW_FILE}/runs" \
+          run_json="$(gh api -X GET "repos/${GH_REPO}/actions/workflows/${WORKFLOW_FILE}/runs" \
             -f event=schedule -f status=completed -f per_page=1 --jq '.workflow_runs[0] // empty')"
           if [ -z "$run_json" ]; then
             echo "No completed scheduled run found yet for ${WORKFLOW_FILE} -- nothing to reconcile."
