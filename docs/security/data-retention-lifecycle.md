@@ -44,7 +44,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   cascades every dependent row via `deleteContactAssociations`
   (`backend/controllers/contact_controller.go:686+`) inside one transaction; `DeleteUser`
   (`backend/controllers/admin_user_controller.go`) does the account-wide equivalent. After the retention
-  window, `PurgeSoftDeletedRows` (`backend/services/purge_service.go:35-165`) hard-deletes the row and
+  window, `PurgeSoftDeletedRows` (`backend/services/purge_service.go:119-243`) hard-deletes the row and
   its remaining edge references, run daily by cron and on-demand via the admin `TriggerPurge` endpoint
   (`admin_user_controller.go:37-42`). The list covers every soft-deletable user-authored entity —
   including the integration configs and the token-bearing `LinkFieldType`/subscription rows that issue
@@ -59,6 +59,18 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   (`controllers/helpers.go:360-370`) — deliberately the *same* `DeleteRetentionDays` config the purge job
   reads, so a client can never observe a tombstone gap; propagation to CardDAV/CalDAV and the Android
   mirror is covered in §7/§8, both of which key off this same soft-delete state.
+- **Purge is owner-scoped (issue [#1351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1351))**:
+  `vcard_uid` is unique only per user and only among live contacts, so the purge's VCardUID-keyed
+  edge/config cleanups (`purgeContactUIDCleanups` in `backend/services/purge_service.go`) delete a row
+  only when *that row's own user* has a purge-eligible contact with the UID **and** no live or
+  still-in-retention contact with it. Another user's same-UID contact (two accounts importing the same
+  card, an account bundle imported into a second account) and the same user's re-created same-UID
+  contact therefore keep their data; before the fix a purge silently hard-deleted both. Data already lost
+  to that bug cannot be recovered. Pinned per table by
+  `backend/services/purge_user_scope_test.go`, which iterates the same slice the purge executes and
+  fails on any VCardUID-columned table that is neither cleaned up nor excluded with a reason.
+  `deleteContactAssociations` needs no equivalent change: it is `user_id`-scoped and only ever runs on
+  a live contact, and a same-user dead contact's join rows were already removed when it was deleted.
 - **Contact merge (issue #1309)**: a merge is not a delete. `RepointContactAssociations`
   (`backend/services/contact_merge_service.go`) moves every contact-keyed row from the merged-away contact
   onto the survivor *before* the `deleteContactAssociations` sweep runs, so the sweep only ever removes
