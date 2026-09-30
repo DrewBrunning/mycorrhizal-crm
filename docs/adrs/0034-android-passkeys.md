@@ -1,7 +1,8 @@
 # ADR 0034: Android passkeys — native Credential Manager, an operator opt-in gated on Digital Asset Links
 
-- **Status:** proposed
-- **Date:** 2026-09-29
+- **Status:** accepted — all three slices shipped (S1 operator opt-in / Digital Asset Links, S2 backend
+  `RPOpaqueOrigins` + `assetlinks.json`, S3 Android Credential Manager ceremony; PR #1335, issue #1293).
+- **Date:** 2026-09-29 (proposed); 2026-09-29 (accepted)
 - **Implements:** issue #1293 ("Android: passkey enrollment + login ceremony (WebAuthn parity)"), whose one
   genuinely open design question — RP ID / origin on Android — this ADR resolves.
 - **Depends on:** issue #560 (passkey design pass: alternative second factor, hard-delete storage,
