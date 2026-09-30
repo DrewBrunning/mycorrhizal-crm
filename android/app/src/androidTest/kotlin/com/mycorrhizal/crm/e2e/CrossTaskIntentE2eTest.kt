@@ -20,6 +20,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -108,13 +109,14 @@ class CrossTaskIntentE2eTest {
     fun warmSearchLinkFromOutsideTheTaskFiltersTheList() {
         viewCrossTask("mycorrhizal://search?q=${given.replace(" ", "%20")}")
         waitForText(displayName)
-        compose.onNodeWithText(given) // the prefilled search field
+        // The prefilled search field: an editable node holding exactly the query.
+        compose.onNode(hasSetTextAction() and hasText(given))
     }
 
     @Test
     fun warmRejectedLinkFromOutsideTheTaskLeavesTheStartScreenAlone() {
-        viewCrossTask("mycorrhizal://settings")
-        viewCrossTask("mycorrhizal://contacts/42/edit")
+        viewCrossTask("mycorrhizal://settings", mustStart = false) // matches no filter at all
+        viewCrossTask("mycorrhizal://contacts/42/edit") // resolves, then the app rejects the route
         compose.waitForIdle()
         waitForText("Dashboard")
         assertEquals(
@@ -162,35 +164,47 @@ class CrossTaskIntentE2eTest {
 
     // --- helpers -------------------------------------------------------------
 
-    /** `am start -a VIEW -d <uri>` from the shell: NEW_TASK, from outside the app's task. */
-    private fun viewCrossTask(uri: String) {
-        shell("am start -a android.intent.action.VIEW -d '$uri' -p $pkg")
+    /**
+     * `am start -a VIEW -d <uri>` from the shell: NEW_TASK, from outside the app's task.
+     *
+     * [mustStart]: fail the test if `am` could not start anything (e.g. the URI matched no
+     * intent filter). A rejected-link test passes `false` for links the filter deliberately
+     * does not resolve.
+     */
+    private fun viewCrossTask(uri: String, mustStart: Boolean = true) {
+        require(uri.none { it.isWhitespace() || it == '\'' }) { "URI must be a single unquoted shell word" }
+        val out = shell("am start -a android.intent.action.VIEW -d $uri -p $pkg")
+        if (mustStart) assertStarted(out, uri)
     }
 
     /** `am start -a SEND` from the shell; [text] must be a single shell word. */
     private fun shareCrossTask(text: String) {
-        require(text.none { it.isWhitespace() || it == '\'' })
-        shell("am start -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT '$text'")
+        require(text.none { it.isWhitespace() || it == '\'' }) { "text must be a single unquoted shell word" }
+        val out = shell("am start -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT $text")
+        assertStarted(out, text)
     }
 
-    /** Runs a shell command and drains its output so it has completed before returning. */
-    private fun shell(command: String) {
+    /**
+     * Runs a shell command and returns its output once it has completed.
+     *
+     * UiAutomation.executeShellCommand does NOT run the command through a shell: it splits
+     * on whitespace and passes quote characters through literally. Quoting an argument
+     * (`-d 'mycorrhizal://…'`) therefore sent the URI `'mycorrhizal://…'` — unresolvable
+     * (`am start` result -91, nothing started) — and `--es … 'text'` delivered the quotes as
+     * part of the text (issue #1372). Pass bare single-word arguments.
+     */
+    private fun shell(command: String): String {
         val pfd = instrumentation.uiAutomation.executeShellCommand(command)
-        java.io.FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
+        val out = java.io.FileInputStream(pfd.fileDescriptor).use { String(it.readBytes()) }
         pfd.close()
+        return out
     }
 
-    private fun mainActivities(): List<MainActivity> {
-        val found = mutableListOf<MainActivity>()
-        instrumentation.runOnMainSync {
-            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
-            for (stage in Stage.values()) {
-                if (stage == Stage.DESTROYED) continue
-                monitor.getActivitiesInStage(stage).filterIsInstance<MainActivity>().forEach { found += it }
-            }
-        }
-        return found
+    private fun assertStarted(amOutput: String, what: String) {
+        assertTrue("`am start` for $what did not start an activity: $amOutput", !amOutput.contains("Error"))
     }
+
+    private fun mainActivities(): List<MainActivity> = E2eActivities.mainActivities()
 
     private fun activity(): MainActivity? = mainActivities().firstOrNull()
 
@@ -209,11 +223,7 @@ class CrossTaskIntentE2eTest {
     }
 
     /** Finishes every live MainActivity directly and polls (bounded, never throws) for them to go. */
-    private fun finishAllActivities() {
-        instrumentation.runOnMainSync { mainActivities().forEach { it.finishAndRemoveTask() } }
-        val deadline = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < deadline && mainActivities().isNotEmpty()) Thread.sleep(200)
-    }
+    private fun finishAllActivities() = E2eActivities.finishAllMainActivities()
 
     private fun waitFor(matcher: SemanticsMatcher, timeoutMs: Long = DEFAULT_TIMEOUT_MS) =
         compose.waitUntilAtLeastOneExists(matcher, timeoutMs)

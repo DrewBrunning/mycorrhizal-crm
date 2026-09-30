@@ -51,6 +51,9 @@ abstract class E2eBaseTest {
 
     private val createdContactIds = mutableListOf<Long>()
 
+    /** The activity's intent before the first [deliverToRunningActivity]; see [restoreLaunchIntent]. */
+    private var launchIntent: android.content.Intent? = null
+
     @Before
     open fun e2eSetUp() {
         backend.registerSeedUser()
@@ -65,6 +68,7 @@ abstract class E2eBaseTest {
         createdContactIds.forEach { id -> runCatching { backend.deleteContact(id) } }
         createdContactIds.clear()
         runCatching { clearSession() }
+        restoreLaunchIntent()
     }
 
     // --- data helpers --------------------------------------------------------
@@ -157,8 +161,29 @@ abstract class E2eBaseTest {
      */
     protected fun deliverToRunningActivity(intent: android.content.Intent) {
         val activity = compose.activity
+        if (launchIntent == null) launchIntent = android.content.Intent(activity.intent)
         intent.setClass(activity, MainActivity::class.java)
         compose.runOnUiThread { activity.startActivity(intent) }
+    }
+
+    /**
+     * Issue #1372: puts the activity's intent back to the one the scenario launched it with.
+     *
+     * MainActivity does `setIntent(newIntent)` in onNewIntent (and strips the consumed
+     * link from it), which is correct app behavior — but `ActivityScenario` matches the
+     * lifecycle events it waits on by `activity.intent.filterEquals(startActivityIntent)`.
+     * After a delivery the two no longer match, so the scenario logs "Activity lifecycle
+     * changed event received but ignored because the intent does not match", never sees
+     * DESTROYED, and its `close()` (the rule's teardown) fails with `Activity never becomes
+     * requested state "[DESTROYED]" (last lifecycle transition = "PAUSED")` after the test
+     * body passed. Restoring the launch intent in teardown lets `close()` see the events.
+     * Runs for every test; a no-op unless [deliverToRunningActivity] was used.
+     */
+    private fun restoreLaunchIntent() {
+        val original = launchIntent ?: return
+        launchIntent = null
+        val activity = compose.activity
+        compose.runOnUiThread { activity.intent = original }
     }
 
     // --- app-state helpers ---------------------------------------------------
