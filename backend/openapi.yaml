@@ -1117,15 +1117,20 @@ paths:
       summary: Regenerate the single-use recovery codes
       operationId: regenerateRecoveryCodes
       description: >
-        Requires a valid TOTP code (the recovery path must be gated on the
-        strongest available proof). Replaces all unused codes with a fresh set,
-        returned plaintext exactly once; the old codes stop working.
+        Requires a live second-factor proof: `code` (a TOTP or recovery code)
+        or `assertion` (from /webauthn/assert/begin, made with any of the
+        account's passkeys, issue #1354 - the only proof a passkey-only account
+        can give once its recovery codes are spent). Wrong proofs count against
+        the account-wide second-factor proof limiter shared with 2FA disable,
+        passkey removal, enrollment and account deletion (issue #1352). Replaces
+        all unused codes with a fresh set, returned plaintext exactly once; the
+        old codes stop working.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TwoFactorCodeInput"
+              $ref: "#/components/schemas/SecondFactorProofInput"
       responses:
         "200":
           description: The new one-time recovery codes.
@@ -1134,11 +1139,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/TwoFactorConfirmResponse"
         "400":
-          description: Missing or invalid code.
+          description: Missing or invalid proof.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          description: Account temporarily locked after repeated wrong proofs (issue #1352).
         "401":
           description: Not authenticated.
           content:
@@ -12165,7 +12172,7 @@ components:
           description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
     SecondFactorProofInput:
       type: object
-      description: "Live second-factor proof, required to enroll an additional factor once one already exists (issue #1337). At most one of `code` / `assertion`."
+      description: "Live second-factor proof: required to enroll an additional factor once one already exists (issue #1337) and to regenerate recovery codes (issue #1354). At most one of `code` / `assertion`."
       properties:
         code: { type: string, description: "A TOTP code or a recovery code." }
         assertion:

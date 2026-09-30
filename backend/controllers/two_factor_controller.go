@@ -320,8 +320,9 @@ func DisableTwoFactor(c *gin.Context) {
 
 // RegenerateRecoveryCodes replaces the user's unused recovery codes with a
 // fresh set (returned plaintext, exactly once) and invalidates the old ones.
-// Requires a valid TOTP code — regeneration is the recovery path, so it must
-// be gated on the strongest proof available.
+// Requires a live second-factor proof — a TOTP/recovery code or an assertion
+// from an enrolled passkey (issue #1354) — counted against the shared proof
+// limiter (issue #1352).
 func RegenerateRecoveryCodes(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -346,16 +347,21 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 		return
 	}
 
-	var input struct {
-		Code string `json:"code"`
-	}
-	if err := c.ShouldBindJSON(&input); err != nil || input.Code == "" {
+	var input secondFactorProofInput
+	if err := c.ShouldBindJSON(&input); err != nil || (input.Code == "" && len(input.Assertion) == 0) {
 		apperrors.AbortWithError(c, apperrors.ErrMissingField("code"))
 		return
 	}
 
+	// Issue #1354: a passkey-only account has no TOTP and may have spent its
+	// recovery codes, so an assertion from WebAuthnProofBegin is accepted too.
+	waUser, _, err := services.LoadWebAuthnUser(db, user)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query passkeys").WithError(err))
+		return
+	}
 	cfg := currentConfig(c)
-	if !requireSecondFactorProof(c, db, &cfg, &user, nil, secondFactorProofInput{Code: input.Code}, proofOptions{field: "code"}) {
+	if !requireSecondFactorProof(c, db, &cfg, &user, waUser, input, proofOptions{field: "code"}) {
 		return
 	}
 
