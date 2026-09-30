@@ -336,3 +336,32 @@ val buildEmbeddedServer by tasks.registering(Exec::class) {
 if (providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true") {
     tasks.named("preBuild").configure { dependsOn(buildEmbeddedServer) }
 }
+
+// Issue #1357 (ADR 0029): the merged manifest of every shipped flavor x {debug, release} is
+// handed to ExportedSurfaceTest, which compares the externally-invokable surface (exported
+// components + every intent-filter, app code AND library contributions) with
+// exported-surface-allowlist.txt. The unit-test tasks depend on the merged manifests, so the
+// check runs in the existing `testObtainiumDebugUnitTest` / `testFossDebugUnitTest` PR steps.
+val mergedManifestsForSurfaceCheck = mutableMapOf<String, Provider<RegularFile>>()
+androidComponents {
+    onVariants { variant ->
+        val type = variant.buildType
+        if (type == "debug" || type == "release") {
+            mergedManifestsForSurfaceCheck[variant.name] =
+                variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.MERGED_MANIFEST)
+        }
+    }
+}
+val exportedSurfaceAllowlist = layout.projectDirectory.file("exported-surface-allowlist.txt")
+tasks.withType<Test>().configureEach {
+    inputs.file(exportedSurfaceAllowlist)
+    inputs.files(provider { mergedManifestsForSurfaceCheck.values.toList() })
+    jvmArgumentProviders += CommandLineArgumentProvider {
+        listOf(
+            "-DexportedSurface.allowlist=${exportedSurfaceAllowlist.asFile.absolutePath}",
+            "-DexportedSurface.manifests=" +
+                mergedManifestsForSurfaceCheck.entries.sortedBy { it.key }
+                    .joinToString(";") { "${it.key}=${it.value.get().asFile.absolutePath}" },
+        )
+    }
+}

@@ -1,0 +1,52 @@
+# Exported-surface allowlist (issue #1357, ADR 0029)
+#
+# Every externally-invokable entry point of the MERGED manifest (app code + all libraries), for
+# every shipped flavor x {debug, release}: each effectively-exported component (explicit
+# exported="true", or no exported attribute plus an intent-filter) and every <intent-filter>.
+# android/app/src/test/.../ExportedSurfaceTest.kt compares this file with the merged manifests
+# EXACTLY: a new exported component/filter fails as UNLISTED, a row matching nothing fails as
+# STALE. Run by `:app:testObtainiumDebugUnitTest` / `:app:testFossDebugUnitTest` (PR gate).
+#
+# Row format:  key | flavors | types | reason
+#   key      component <tag> <class> permission=<perm|none>
+#            filter <class> :: actions=..; categories=..; data=..
+#   flavors  * or comma list of obtainium,foss,play      types  * or debug / release
+#   reason   REQUIRED. Why this surface is acceptable, in terms of who can invoke it and what
+#            guards it. A new entry needs a security review against ADR 0029, not a rubber stamp.
+#
+# To update: run `cd android && ./gradlew :app:testFossDebugUnitTest --tests '*ExportedSurfaceTest*'`;
+# the failure message prints a ready-to-fill row for each UNLISTED item and names each STALE one.
+# Prefer removing/narrowing the surface (exported=false, tools:node="remove", a permission) over
+# allowlisting it.
+#
+component activity androidx.activity.ComponentActivity permission=none | * | debug | DEBUG ONLY (ui-test-manifest / compose test host): empty exported activity used by Compose UI tests. Absent from release.
+component activity androidx.compose.ui.tooling.PreviewActivity permission=none | * | debug | DEBUG ONLY (androidx.compose.ui:ui-tooling debugImplementation): Compose preview host, exported so Android Studio can launch it. Absent from release.
+component activity com.mycorrhizal.crm.MainActivity permission=none | * | * | The app's single exported activity: launcher, OIDC return, ADR 0029 deep links and share target (see its filter rows).
+component receiver androidx.profileinstaller.ProfileInstallReceiver permission=android.permission.DUMP | * | * | androidx.profileinstaller library receiver (baseline-profile tooling); exported but guarded by the shell-only DUMP permission.
+component receiver androidx.work.impl.diagnostics.DiagnosticsReceiver permission=android.permission.DUMP | * | * | WorkManager library diagnostics receiver; exported but guarded by the shell-only DUMP permission.
+component receiver com.google.firebase.iid.FirebaseInstanceIdReceiver permission=com.google.android.c2dm.permission.SEND | obtainium,play | * | Firebase library receiver; exported for FCM delivery, guarded by signature-level com.google.android.c2dm.permission.SEND (only Google Play services can deliver). obtainium/play only.
+component receiver com.mycorrhizal.crm.feature.tracking.PhoneStateReceiver permission=none | foss,obtainium | * | REVIEWED, low risk, no permission guard: exported so the system delivers PHONE_STATE (call tracking, obtainium/foss only; removed from play). Any local app can send it an explicit intent, but onReceive only re-checks the action and enqueues the idempotent watermark-based CallLogSyncWorker (no data read from the intent). Possible hardening (not done here): android:permission with a system-held permission, if PHONE_STATE delivery survives it.
+component receiver com.mycorrhizal.crm.feature.tracking.SmsReceiver permission=android.permission.BROADCAST_SMS | foss,obtainium | * | Opt-in SMS capture (obtainium/foss only). Guarded by signature|privileged BROADCAST_SMS so only the telephony stack can deliver to it.
+component service androidx.work.impl.background.systemjob.SystemJobService permission=android.permission.BIND_JOB_SERVICE | * | * | WorkManager library: JobScheduler service; exported but guarded by system-only BIND_JOB_SERVICE.
+component service com.google.android.gms.auth.api.signin.RevocationBoundService permission=com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION | obtainium,play | * | Play Services sign-in library (via androidx.credentials): exported bound service guarded by the Google REVOCATION_NOTIFICATION permission. obtainium/play only.
+filter androidx.profileinstaller.ProfileInstallReceiver :: actions=androidx.profileinstaller.action.BENCHMARK_OPERATION; categories=; data= | * | * | androidx.profileinstaller library receiver (baseline-profile tooling); exported but guarded by the shell-only DUMP permission.
+filter androidx.profileinstaller.ProfileInstallReceiver :: actions=androidx.profileinstaller.action.INSTALL_PROFILE; categories=; data= | * | * | androidx.profileinstaller library receiver (baseline-profile tooling); exported but guarded by the shell-only DUMP permission.
+filter androidx.profileinstaller.ProfileInstallReceiver :: actions=androidx.profileinstaller.action.SAVE_PROFILE; categories=; data= | * | * | androidx.profileinstaller library receiver (baseline-profile tooling); exported but guarded by the shell-only DUMP permission.
+filter androidx.profileinstaller.ProfileInstallReceiver :: actions=androidx.profileinstaller.action.SKIP_FILE; categories=; data= | * | * | androidx.profileinstaller library receiver (baseline-profile tooling); exported but guarded by the shell-only DUMP permission.
+filter androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy :: actions=android.intent.action.ACTION_POWER_CONNECTED,android.intent.action.ACTION_POWER_DISCONNECTED; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy :: actions=android.intent.action.BATTERY_LOW,android.intent.action.BATTERY_OKAY; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy :: actions=android.net.conn.CONNECTIVITY_CHANGE; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy :: actions=android.intent.action.DEVICE_STORAGE_LOW,android.intent.action.DEVICE_STORAGE_OK; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver :: actions=androidx.work.impl.background.systemalarm.UpdateProxies; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.background.systemalarm.RescheduleReceiver :: actions=android.intent.action.BOOT_COMPLETED,android.intent.action.TIMEZONE_CHANGED,android.intent.action.TIME_SET; categories=; data= | * | * | WorkManager library receiver, exported=false; filter is for system broadcasts WorkManager reacts to.
+filter androidx.work.impl.diagnostics.DiagnosticsReceiver :: actions=androidx.work.diagnostics.REQUEST_DIAGNOSTICS; categories=; data= | * | * | WorkManager library diagnostics receiver; exported but guarded by the shell-only DUMP permission.
+filter com.google.firebase.iid.FirebaseInstanceIdReceiver :: actions=com.google.android.c2dm.intent.RECEIVE; categories=; data= | obtainium,play | * | FCM c2dm RECEIVE filter for the guarded Firebase receiver. obtainium/play only.
+filter com.google.firebase.messaging.FirebaseMessagingService :: actions=com.google.firebase.MESSAGING_EVENT; categories=; data= | obtainium,play | * | Firebase Messaging library service (not exported); MESSAGING_EVENT filter from the library manifest. obtainium/play only.
+filter com.mycorrhizal.crm.MainActivity :: actions=android.intent.action.MAIN; categories=android.intent.category.LAUNCHER; data= | * | * | Launcher entry point. Exported by design; no data accepted.
+filter com.mycorrhizal.crm.MainActivity :: actions=android.intent.action.SEND; categories=android.intent.category.DEFAULT; data=mimeType=text/plain | * | * | ADR 0029 section 6 share-to-CRM, text/plain only. Prefill only, user picks the contact and saves; MainActivity re-checks action+type and sanitises.
+filter com.mycorrhizal.crm.MainActivity :: actions=android.intent.action.VIEW; categories=android.intent.category.BROWSABLE,android.intent.category.DEFAULT; data=host=circles ; host=contacts ; host=home ; host=households ; host=search ; host=tags ; scheme=mycorrhizal | * | * | ADR 0029 public navigation-only deep links (mycorrhizal://home|contacts|search|circles|tags|households). Filter is advisory; deepLinkRoute is the security boundary (pinned by testdata/deep-links/vectors.json, NotificationDeepLinkRouteTest, CrossTaskIntentRoutingTest).
+filter com.mycorrhizal.crm.MainActivity :: actions=android.intent.action.VIEW; categories=android.intent.category.BROWSABLE,android.intent.category.DEFAULT; data=scheme=mycorrhizal host=oidc pathPrefix=/callback | * | * | OIDC native return (mycorrhizal://oidc/callback, milestone M5 section 5). Untrusted input is parsed and validated by the OIDC return handling (OidcReturnParsingTest); the login state check guards the token.
+filter com.mycorrhizal.crm.feature.tracking.BootReceiver :: actions=android.intent.action.BOOT_COMPLETED; categories=; data= | * | * | BOOT_COMPLETED re-registers tracking workers. Component itself is exported=false (only the system boot broadcast, which is protected, matches).
+filter com.mycorrhizal.crm.feature.tracking.PhoneStateReceiver :: actions=android.intent.action.PHONE_STATE; categories=; data= | foss,obtainium | * | System PHONE_STATE broadcast for opt-in call tracking (obtainium/foss only).
+filter com.mycorrhizal.crm.feature.tracking.SmsReceiver :: actions=android.provider.Telephony.SMS_RECEIVED; categories=; data= | foss,obtainium | * | System SMS_RECEIVED broadcast for opt-in SMS capture (obtainium/foss only); sender restricted by BROADCAST_SMS.
+filter com.mycorrhizal.crm.push.MyFirebaseMessagingService :: actions=com.google.firebase.MESSAGING_EVENT; categories=; data= | obtainium,play | * | App FCM entry point; service is exported=false, filter is FCM's registration contract (obtainium/play only; foss removes it).
