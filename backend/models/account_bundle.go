@@ -32,12 +32,20 @@ const (
 // AccountBundle is the top-level wire document. The response body carries the
 // same shape written to a file by the Android "Export account bundle" flow.
 type AccountBundle struct {
-	Format      string                    `json:"format"`
-	Version     int                       `json:"version"`
-	ExportedAt  time.Time                 `json:"exported_at"`
-	Plan        AccountBundlePlan         `json:"plan"`
-	Attachments []AccountBundleAttachment `json:"attachments"`
-	Omitted     AccountBundleOmissions    `json:"omitted"`
+	Format     string    `json:"format"`
+	Version    int       `json:"version"`
+	ExportedAt time.Time `json:"exported_at"`
+	// SelfContactUID is the vcard_uid of the account's "Me" self contact
+	// (users.self_contact_vcard_uid, T90; issue #1375), which is also one of
+	// plan.contacts. Additive and optional: absent when the source had no self
+	// contact, and on any bundle written before the field existed. Import lands
+	// that contact ONTO the destination's own self contact rather than creating
+	// a second "Me". Top level rather than inside plan because plan holds only
+	// entity collections.
+	SelfContactUID string                    `json:"self_contact_uid,omitempty"`
+	Plan           AccountBundlePlan         `json:"plan"`
+	Attachments    []AccountBundleAttachment `json:"attachments"`
+	Omitted        AccountBundleOmissions    `json:"omitted"`
 }
 
 // AccountBundleOmissions records what the bundle deliberately did not carry,

@@ -272,8 +272,12 @@ type MappedCustomField struct {
 // to report before returning). All contact references inside are SourceRefs
 // the engine resolves to local VCardUIDs.
 type ImportSourcePlan struct {
-	System        string
-	Contacts      []MappedContact
+	System   string
+	Contacts []MappedContact
+	// SelfContact, when its ExternalID is non-empty, names the plan contact
+	// that is the source account's "Me" (issue #1375). The engine lands it onto
+	// the destination user's own self contact instead of creating a second one.
+	SelfContact   SourceRef
 	Relationships []MappedRelationship
 	Notes         []MappedNote
 	Activities    []MappedActivity
@@ -504,8 +508,26 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			continue
 		}
 
+		// Issue #1375: the source account's "Me" lands ONTO the destination's
+		// own self contact, whatever action the client sent (the Android
+		// restore flow forwards suggested actions blindly, so an "add" here
+		// must not mint a second "Me"). Only an explicit skip is honoured
+		// (above). With no destination self contact the row is created below
+		// and becomes the destination's "Me".
+		isSelf := plan.SelfContact.ExternalID != "" && mc.Ref.ExternalID == plan.SelfContact.ExternalID
+		if isSelf {
+			if dest := loadDestinationSelfContact(tx, userID); dest != nil {
+				action = SourceContactAction{Action: SourceActionMerge, MergeTargetUID: dest.VCardUID}
+				if dest.Photo == "" {
+					// The merge path carries no photo, so land the bundle's
+					// "Me" photo now; a destination photo is never replaced.
+					written.track(persistEmbeddedPhoto(contact, mc, report))
+				}
+			}
+		}
+
 		if action.Action == SourceActionMerge {
-			uid, localID, err := mergeSourceContact(tx, userID, plan.System, mc, contact, action.MergeTargetUID, report)
+			uid, localID, err := mergeSourceContact(tx, userID, plan.System, mc, contact, action.MergeTargetUID, isSelf, report)
 			if err != nil {
 				return err
 			}
@@ -532,6 +554,12 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			return err
 		}
 		report.ContactsCreated++
+		if isSelf {
+			if err := tx.Model(&models.User{}).Where("id = ?", userID).
+				Update("self_contact_vcard_uid", contact.VCardUID).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+				return err
+			}
+		}
 		refToUID[mc.Ref.ExternalID] = contact.VCardUID
 		refToID[mc.Ref.ExternalID] = contact.ID
 		imported[mc.Ref.ExternalID] = true
@@ -653,7 +681,7 @@ func validateMappedContact(contact *models.Contact) []string {
 // resolves graph entities onto it; returns "" (with a named issue, no error)
 // when the merge target cannot be found or saved, so the row is skipped and
 // the transaction continues.
-func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedContact, incoming *models.Contact, targetUID string, report *ImportReport) (string, uint, error) {
+func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedContact, incoming *models.Contact, targetUID string, self bool, report *ImportReport) (string, uint, error) {
 	targetUID = strings.TrimSpace(targetUID)
 	if targetUID == "" {
 		report.appendIssue(ImportIssue{
@@ -676,7 +704,15 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 		return "", 0, nil
 	}
 
-	if mc.Record != nil && (mc.Record.Card.SpeakToAs != nil || len(mc.Record.Card.PersonalInfo) > 0) {
+	if self {
+		// The bundle's "Me" is the user's own full-fidelity record, so its
+		// neutral-only members (no flat home) come along where the
+		// destination has none of its own, and no audit note is written for
+		// what is a restore rather than a dedupe decision.
+		carrySelfNeutralMembers(&existing, incoming)
+	}
+
+	if !self && mc.Record != nil && (mc.Record.Card.SpeakToAs != nil || len(mc.Record.Card.PersonalInfo) > 0) {
 		report.appendIssue(ImportIssue{
 			Record:   mc.Ref.String(),
 			Field:    "contact",
@@ -689,7 +725,9 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 	if len(label) > 0 {
 		label = strings.ToUpper(label[:1]) + label[1:]
 	}
-	if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil { // # pragma: no cover — defensive: a healthy notes table does not fail this insert
+	if self {
+		existing.IsFavorite = existing.IsFavorite || mc.Favorite
+	} else if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil { // # pragma: no cover — defensive: a healthy notes table does not fail this insert
 		log.Error().Err(err).Str("record", mc.Ref.String()).Msg("import: merge note could not be recorded")
 		report.appendIssue(ImportIssue{
 			Record:   mc.Ref.String(),
@@ -711,6 +749,37 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 	}
 	report.ContactsUpdated++
 	return existing.VCardUID, existing.ID, nil
+}
+
+// loadDestinationSelfContact returns the user's live "Me" contact (the row
+// users.self_contact_vcard_uid names), or nil when the pointer is unset or
+// dangling (soft-deleted or foreign).
+func loadDestinationSelfContact(tx *gorm.DB, userID uint) *models.Contact {
+	var user models.User
+	if err := tx.Select("id", "self_contact_vcard_uid").First(&user, userID).Error; err != nil || user.SelfContactVCardUID == nil || *user.SelfContactVCardUID == "" {
+		return nil
+	}
+	var contact models.Contact
+	if err := tx.Where("user_id = ? AND vcard_uid = ?", userID, *user.SelfContactVCardUID).First(&contact).Error; err != nil {
+		return nil
+	}
+	return &contact
+}
+
+// carrySelfNeutralMembers copies the card members MergeImportedContact cannot
+// (pronouns, personal info — no flat home) and the profile photo from the bundle's self contact onto
+// the destination's, only where the destination has none of its own, so a
+// restore never overwrites what the destination's "Me" already holds.
+func carrySelfNeutralMembers(existing, incoming *models.Contact) {
+	if existing.Card.SpeakToAs == nil {
+		existing.Card.SpeakToAs = incoming.Card.SpeakToAs
+	}
+	if len(existing.Card.PersonalInfo) == 0 {
+		existing.Card.PersonalInfo = incoming.Card.PersonalInfo
+	}
+	if existing.Photo == "" && incoming.Photo != "" {
+		existing.Photo, existing.PhotoThumbnail = incoming.Photo, incoming.PhotoThumbnail
+	}
 }
 
 // persistEmbeddedPhoto lands a plan contact's embedded (`data:` URI) profile

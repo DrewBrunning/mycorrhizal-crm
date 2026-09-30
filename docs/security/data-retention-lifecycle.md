@@ -665,8 +665,11 @@ design is ADR-0010 / CON-04, issue #479).
     attachments are listed by metadata only with the omission recorded in the document. The bundle is
     capped at `services.MaxMycorrhizalBundleSize` (64 MiB, the import's limit): a larger export is
     refused up front with a structured 507 rather than producing a bundle no destination would accept
-    (issue #1313). Pinned by
-    `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip).
+    (issue #1313). The bundle also records the account's "Me" self-contact uid (`self_contact_uid`,
+    issue #1375) — an identifier of a contact already in the bundle, not new data — so an import can
+    merge it onto the destination's own Me instead of duplicating it. Pinned by
+    `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip) and
+    `backend/services/account_bundle_self_contact_test.go`.
   - **The audit-log export's** `before_snapshot` column is omitted unless the caller explicitly passes
     `?include_snapshots=true`: it is already credential-redacted at write time (`auditDenyList`,
     `models/audit.go`) but is **not** filtered by contact-field sensitivity the way the three
