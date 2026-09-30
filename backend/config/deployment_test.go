@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -143,6 +144,8 @@ func TestCapabilities_ServerListsEveryTokenEmbeddedDropsTheDisabledOnes(t *testi
 		CapabilityOIDC, CapabilityTwoFactor, CapabilityEmail, CapabilityAPITokens,
 		CapabilityContactShares, CapabilityWebhooks, CapabilityCardDAV,
 		CapabilityCalDAV, CapabilityDeviceGrants, CapabilityPush,
+		// Storage-only (ADR 0028 amendment, issue #1367).
+		CapabilityCalendar, CapabilityNotifications,
 	} {
 		if embeddedSet[token] {
 			t.Errorf("embedded capabilities must not include %q", token)
@@ -151,11 +154,22 @@ func TestCapabilities_ServerListsEveryTokenEmbeddedDropsTheDisabledOnes(t *testi
 
 	for _, token := range []string{
 		CapabilityContacts, CapabilityDashboard, CapabilityNotes, CapabilityReminders,
-		CapabilityImport, CapabilityExport, CapabilityCalendar, CapabilitySearch,
+		CapabilityImport, CapabilityExport, CapabilitySearch,
 	} {
 		if !embeddedSet[token] {
 			t.Errorf("embedded capabilities must include %q", token)
 		}
+	}
+
+	// Exact set: a new token must be added here deliberately (and to the
+	// Android ServerCapability mirror), never by accident.
+	wantEmbedded := []string{
+		CapabilityContacts, CapabilityDashboard, CapabilityNotes, CapabilityActivities,
+		CapabilityReminders, CapabilityLifeEvents, CapabilityGraph, CapabilitySearch,
+		CapabilityImport, CapabilityExport,
+	}
+	if !reflect.DeepEqual(embeddedCaps, wantEmbedded) {
+		t.Errorf("embedded capabilities = %v, want exactly %v", embeddedCaps, wantEmbedded)
 	}
 }
 

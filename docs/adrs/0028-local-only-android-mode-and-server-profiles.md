@@ -132,6 +132,22 @@ profile talks to it exactly as a `Remote` profile talks to a server.
   - `/health` reports `deployment: "embedded"` plus a capability list, which the client's existing
     `ServerCapabilities` gate consumes to hide server-only features (the list above) — no Android
     feature code branches on "is local", only on capabilities.
+  - **Amendment, 2026-09-29 (issue #1367, maintainer decision): the embedded server is *storage
+    only*.** The list above named the identity/auth/network-serving surfaces and left everything
+    else registered "because the user might configure it". That is withdrawn. In embedded mode the
+    server additionally registers **no** outbound integration (Immich, Paperless, Seafile,
+    Nextcloud, calendar and contact subscriptions with their sync and sync-conflict routes, the
+    Monica import, the Meerkat live-fetch, the `proxy/image` remote fetch, notification-channel
+    config and its test route), **no** multi-user/admin surface (all of `/api/v1/admin/*` and
+    `GET /users/directory`), **no** public `POST /check-password-strength`, and **no** `/metrics`
+    even if `METRICS_TOKEN` is set. The scheduler correspondingly does not register
+    `calendar_sync`, `immich_sync` or `daily_reminders` (whose only function is dispatching to
+    outbound channels), and `/health` drops the `calendar` and `notifications` capability tokens.
+    The remaining surfaces have no token of their own; the Android UI hides them on
+    `deployment == "embedded"`. Upload-based imports (VCF, CSV, Meerkat file, account bundle) and
+    all exports stay. `backend/routes/embedded_route_census_test.go` enforces the boundary: every
+    embedded route must be classified as the CRM's own data surface or a health probe, and the
+    removed routes are listed in `embeddedMustBeAbsent`, so re-adding one fails the build.
 - *Android:* the app hosts the server as an executable shipped as `lib<name>.so` in
   `jniLibs/arm64-v8a` and run from `nativeLibraryDir` (the Syncthing-Android precedent; chosen by the
   spike over `gomobile bind`, below), starts it lazily from the

@@ -13,6 +13,11 @@ package routes
 // and classifies it; the reverse direction (a declared row with no registered
 // route) is a stale-row failure, so the table cannot rot.
 //
+// The embedded server is STORAGE ONLY (ADR 0028 Decision 2, amended
+// 2026-09-29, issue #1367): no outbound integration, multi-user/admin, public
+// or operator route. Those routes are listed in embeddedMustBeAbsent below and
+// asserted absent, so re-adding one fails instead of being re-classified.
+//
 // The routers are built with every optional surface switched ON in config
 // (CardDAV, CalDAV, METRICS_TOKEN) so a config-conditional route cannot hide
 // from the census.
@@ -45,29 +50,11 @@ const (
 	// embeddedClassProbe: unauthenticated readiness/liveness endpoints the
 	// embedded host's handshake depends on (backend/embedded).
 	embeddedClassProbe embeddedRouteClass = "probe"
-	// embeddedClassPublic: an unauthenticated route that is not a probe.
-	embeddedClassPublic embeddedRouteClass = "public"
-	// embeddedClassOutbound: a user-configured outbound integration or fetch.
-	// Present in embedded mode today because ADR 0028 Decision 2's disabled
-	// set does not list it; each is authenticated and SSRF-guarded.
-	embeddedClassOutbound embeddedRouteClass = "outbound"
-	// embeddedClassAdmin: multi-user administration or cross-user visibility.
-	embeddedClassAdmin embeddedRouteClass = "admin"
-	// embeddedClassOperator: a server-operator surface.
-	embeddedClassOperator embeddedRouteClass = "operator"
 )
 
 const (
 	embeddedReasonLocal = "CRM's own single-user data surface behind session auth; the on-device server exists to serve exactly this."
 	embeddedReasonProbe = "Unauthenticated health/readiness probe; the embedded host's start-up handshake and the client capability gate (GET /health) read it. Exposes no user data."
-	// FLAGGED (#1356): reviewed, kept registered, but not clearly intended.
-	embeddedReasonPublic = "FLAGGED: public unauthenticated route (rate-limited, no data). Inherited from server mode; it does not serve a purpose without a login form. Not in ADR 0028 Decision 2's disabled set; a candidate to gate."
-	// FLAGGED (#1356)
-	embeddedReasonOutbound = "FLAGGED: outbound integration / remote fetch, authenticated and SSRF-guarded, but NOT in ADR 0028 Decision 2's disabled set and not hidden by the capability-gated UI beyond notification channels. Kept registered so this gate lands without a behavior change; whether the on-device server should reach the network is an open decision."
-	// FLAGGED (#1356)
-	embeddedReasonAdmin = "FLAGGED: multi-user administration / cross-user directory. The embedded deployment is single-user; these have no purpose there (README-developer.md says the client hides them). Not gated server-side today; a candidate to gate."
-	// FLAGGED (#1356)
-	embeddedReasonOperator = "FLAGGED: Prometheus scrape route, only registered when METRICS_TOKEN is set, which the embedded host never sets. This census sets it deliberately, so a host that started setting it would expose a scrape endpoint; a candidate to gate."
 )
 
 type embeddedRouteRow struct {
@@ -293,94 +280,6 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"GET /health/live",
 		"GET /health/ready",
 	}},
-	{class: embeddedClassPublic, reason: embeddedReasonPublic, routes: []string{
-		"POST /api/v1/check-password-strength",
-	}},
-	{class: embeddedClassOutbound, reason: embeddedReasonOutbound, routes: []string{
-		"DELETE /api/v1/calendars/:id",
-		"DELETE /api/v1/contact-subscriptions/:id",
-		"DELETE /api/v1/immich/config",
-		"DELETE /api/v1/immich/contacts/:vcard_uid/link",
-		"DELETE /api/v1/nextcloud/config",
-		"DELETE /api/v1/nextcloud/contacts/:vcard_uid/links/:identity_id",
-		"DELETE /api/v1/paperless/config",
-		"DELETE /api/v1/paperless/contacts/:vcard_uid/links/:identity_id",
-		"DELETE /api/v1/seafile/config",
-		"DELETE /api/v1/seafile/contacts/:vcard_uid/links/:identity_id",
-		"GET /api/v1/calendars",
-		"GET /api/v1/contact-subscriptions",
-		"GET /api/v1/contact-sync-conflicts",
-		"GET /api/v1/contacts/import/monica/preview",
-		"GET /api/v1/contacts/import/monica/status",
-		"GET /api/v1/immich/config",
-		"GET /api/v1/immich/contacts/:vcard_uid/assets",
-		"GET /api/v1/immich/contacts/:vcard_uid/assets/:asset_id/image",
-		"GET /api/v1/immich/contacts/:vcard_uid/summary",
-		"GET /api/v1/immich/contacts/:vcard_uid/thumbnail",
-		"GET /api/v1/immich/people",
-		"GET /api/v1/nextcloud/config",
-		"GET /api/v1/nextcloud/dir",
-		"GET /api/v1/notifications/config",
-		"GET /api/v1/paperless/config",
-		"GET /api/v1/paperless/documents",
-		"GET /api/v1/proxy/image",
-		"GET /api/v1/seafile/config",
-		"GET /api/v1/seafile/libraries",
-		"GET /api/v1/seafile/libraries/:repo_id/dir",
-		"POST /api/v1/calendars",
-		"POST /api/v1/calendars/:id/sync",
-		"POST /api/v1/contact-subscriptions",
-		"POST /api/v1/contact-subscriptions/:id/sync",
-		"POST /api/v1/contact-sync-conflicts/:id/dismiss",
-		"POST /api/v1/contact-sync-conflicts/:id/restore",
-		"POST /api/v1/contacts/import/meerkat/fetch",
-		"POST /api/v1/contacts/import/monica/cancel",
-		"POST /api/v1/contacts/import/monica/confirm",
-		"POST /api/v1/contacts/import/monica/connect",
-		"POST /api/v1/contacts/import/monica/fetch",
-		"POST /api/v1/immich/contacts/:vcard_uid/link",
-		"POST /api/v1/immich/sync",
-		"POST /api/v1/immich/test-connection",
-		"POST /api/v1/nextcloud/contacts/:vcard_uid/link",
-		"POST /api/v1/nextcloud/test-connection",
-		"POST /api/v1/notifications/config/test",
-		"POST /api/v1/paperless/contacts/:vcard_uid/link",
-		"POST /api/v1/paperless/test-connection",
-		"POST /api/v1/seafile/contacts/:vcard_uid/link",
-		"POST /api/v1/seafile/test-connection",
-		"PUT /api/v1/calendars/:id",
-		"PUT /api/v1/contact-subscriptions/:id",
-		"PUT /api/v1/immich/config",
-		"PUT /api/v1/nextcloud/config",
-		"PUT /api/v1/notifications/config",
-		"PUT /api/v1/paperless/config",
-		"PUT /api/v1/seafile/config",
-	}},
-	{class: embeddedClassAdmin, reason: embeddedReasonAdmin, routes: []string{
-		"DELETE /api/v1/admin/users/:id",
-		"GET /api/v1/admin/diagnostics",
-		"GET /api/v1/admin/error-aggregation",
-		"GET /api/v1/admin/integrity-check",
-		"GET /api/v1/admin/job-runs",
-		"GET /api/v1/admin/job-runs/health",
-		"GET /api/v1/admin/notification-health",
-		"GET /api/v1/admin/subsystem-health",
-		"GET /api/v1/admin/system-events",
-		"GET /api/v1/admin/system-status",
-		"GET /api/v1/admin/users",
-		"GET /api/v1/admin/users/:id",
-		"GET /api/v1/users/directory",
-		"PATCH /api/v1/admin/users/:id",
-		"POST /api/v1/admin/contacts/rebuild-derived",
-		"POST /api/v1/admin/search/rebuild",
-		"POST /api/v1/admin/trigger-purge",
-		"POST /api/v1/admin/trigger-reminders",
-		"POST /api/v1/admin/users",
-		"POST /api/v1/admin/users/:id/reset-2fa",
-	}},
-	{class: embeddedClassOperator, reason: embeddedReasonOperator, routes: []string{
-		"GET /metrics",
-	}},
 }
 
 // embeddedRouteTable builds a router with every optional surface enabled and
@@ -461,6 +360,126 @@ func TestEmbeddedRouteSurface_DisabledSetNeverClassified(t *testing.T) {
 			for _, declared := range row.routes {
 				require.NotEqualf(t, r, declared, "%s is network-only and must not be classified as embedded-reachable", r)
 			}
+		}
+	}
+}
+
+// embeddedMustBeAbsent is every route the storage-only embedded server must
+// NOT register (ADR 0028 Decision 2 amendment, issue #1367): outbound
+// integrations / remote fetches, multi-user administration and the cross-user
+// directory, the public password-strength check, and the Prometheus scrape
+// route. Each is still registered in server mode (asserted below, so a row
+// cannot outlive its route).
+var embeddedMustBeAbsent = []string{
+	"POST /api/v1/check-password-strength",
+	"DELETE /api/v1/calendars/:id",
+	"DELETE /api/v1/contact-subscriptions/:id",
+	"DELETE /api/v1/immich/config",
+	"DELETE /api/v1/immich/contacts/:vcard_uid/link",
+	"DELETE /api/v1/nextcloud/config",
+	"DELETE /api/v1/nextcloud/contacts/:vcard_uid/links/:identity_id",
+	"DELETE /api/v1/paperless/config",
+	"DELETE /api/v1/paperless/contacts/:vcard_uid/links/:identity_id",
+	"DELETE /api/v1/seafile/config",
+	"DELETE /api/v1/seafile/contacts/:vcard_uid/links/:identity_id",
+	"GET /api/v1/calendars",
+	"GET /api/v1/contact-subscriptions",
+	"GET /api/v1/contact-sync-conflicts",
+	"GET /api/v1/contacts/import/monica/preview",
+	"GET /api/v1/contacts/import/monica/status",
+	"GET /api/v1/immich/config",
+	"GET /api/v1/immich/contacts/:vcard_uid/assets",
+	"GET /api/v1/immich/contacts/:vcard_uid/assets/:asset_id/image",
+	"GET /api/v1/immich/contacts/:vcard_uid/summary",
+	"GET /api/v1/immich/contacts/:vcard_uid/thumbnail",
+	"GET /api/v1/immich/people",
+	"GET /api/v1/nextcloud/config",
+	"GET /api/v1/nextcloud/dir",
+	"GET /api/v1/notifications/config",
+	"GET /api/v1/paperless/config",
+	"GET /api/v1/paperless/documents",
+	"GET /api/v1/proxy/image",
+	"GET /api/v1/seafile/config",
+	"GET /api/v1/seafile/libraries",
+	"GET /api/v1/seafile/libraries/:repo_id/dir",
+	"POST /api/v1/calendars",
+	"POST /api/v1/calendars/:id/sync",
+	"POST /api/v1/contact-subscriptions",
+	"POST /api/v1/contact-subscriptions/:id/sync",
+	"POST /api/v1/contact-sync-conflicts/:id/dismiss",
+	"POST /api/v1/contact-sync-conflicts/:id/restore",
+	"POST /api/v1/contacts/import/meerkat/fetch",
+	"POST /api/v1/contacts/import/monica/cancel",
+	"POST /api/v1/contacts/import/monica/confirm",
+	"POST /api/v1/contacts/import/monica/connect",
+	"POST /api/v1/contacts/import/monica/fetch",
+	"POST /api/v1/immich/contacts/:vcard_uid/link",
+	"POST /api/v1/immich/sync",
+	"POST /api/v1/immich/test-connection",
+	"POST /api/v1/nextcloud/contacts/:vcard_uid/link",
+	"POST /api/v1/nextcloud/test-connection",
+	"POST /api/v1/notifications/config/test",
+	"POST /api/v1/paperless/contacts/:vcard_uid/link",
+	"POST /api/v1/paperless/test-connection",
+	"POST /api/v1/seafile/contacts/:vcard_uid/link",
+	"POST /api/v1/seafile/test-connection",
+	"PUT /api/v1/calendars/:id",
+	"PUT /api/v1/contact-subscriptions/:id",
+	"PUT /api/v1/immich/config",
+	"PUT /api/v1/nextcloud/config",
+	"PUT /api/v1/notifications/config",
+	"PUT /api/v1/paperless/config",
+	"PUT /api/v1/seafile/config",
+	"DELETE /api/v1/admin/users/:id",
+	"GET /api/v1/admin/diagnostics",
+	"GET /api/v1/admin/error-aggregation",
+	"GET /api/v1/admin/integrity-check",
+	"GET /api/v1/admin/job-runs",
+	"GET /api/v1/admin/job-runs/health",
+	"GET /api/v1/admin/notification-health",
+	"GET /api/v1/admin/subsystem-health",
+	"GET /api/v1/admin/system-events",
+	"GET /api/v1/admin/system-status",
+	"GET /api/v1/admin/users",
+	"GET /api/v1/admin/users/:id",
+	"GET /api/v1/users/directory",
+	"PATCH /api/v1/admin/users/:id",
+	"POST /api/v1/admin/contacts/rebuild-derived",
+	"POST /api/v1/admin/search/rebuild",
+	"POST /api/v1/admin/trigger-purge",
+	"POST /api/v1/admin/trigger-reminders",
+	"POST /api/v1/admin/users",
+	"POST /api/v1/admin/users/:id/reset-2fa",
+	"GET /metrics",
+}
+
+func TestEmbeddedRouteSurface_StorageOnlyRoutesAbsent(t *testing.T) {
+	embedded := embeddedRouteTable(t, config.DeploymentEmbedded)
+	server := embeddedRouteTable(t, config.DeploymentServer)
+
+	var present, stale []string
+	for _, r := range embeddedMustBeAbsent {
+		if embedded[r] {
+			present = append(present, r)
+		}
+		if !server[r] {
+			stale = append(stale, r)
+		}
+	}
+	require.Emptyf(t, present,
+		"storage-only embedded server (ADR 0028 amendment, #1367) must not register these routes; gate them on !cfg.IsEmbedded(): %v", present)
+	require.Emptyf(t, stale,
+		"embeddedMustBeAbsent lists routes server mode no longer registers (dead entries): %v", stale)
+
+	// The class table and the absent list can never overlap.
+	absent := map[string]bool{}
+	for _, r := range embeddedMustBeAbsent {
+		require.Falsef(t, absent[r], "%s listed twice", r)
+		absent[r] = true
+	}
+	for _, row := range embeddedRouteRows {
+		for _, r := range row.routes {
+			require.Falsef(t, absent[r], "%s is in both embeddedRouteRows and embeddedMustBeAbsent", r)
 		}
 	}
 }

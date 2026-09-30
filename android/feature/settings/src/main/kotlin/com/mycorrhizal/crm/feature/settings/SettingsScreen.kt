@@ -340,6 +340,13 @@ fun SettingsContent(
     val apiTokensSupported = capabilities.supports(ServerCapability.API_TOKENS)
     val calendarSyncSupported = capabilities.supports(ServerCapability.CALENDAR)
     val notificationChannelsSupported = capabilities.supports(ServerCapability.PUSH)
+    // Issue #1367 / ADR 0028 Decision 2 amendment: the embedded (on-device)
+    // server is storage only, so the outbound file/photo integrations are
+    // absent there. They have no capability token of their own (a token would
+    // make an older remote server that predates it look like it lacked the
+    // feature), so the deployment shape is the gate. Backend counterpart:
+    // routes.go's `!cfg.IsEmbedded()` guards.
+    val integrationsSupported = !capabilities.isEmbedded
 
     Column(
         modifier = modifier
@@ -671,12 +678,14 @@ fun SettingsContent(
         if (notificationChannelsSupported) {
             NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
         }
-        // Issue #236: the Immich connection-config settings screen.
-        NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
-        // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
-        NavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
-        NavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
-        NavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
+        if (integrationsSupported) {
+            // Issue #236: the Immich connection-config settings screen.
+            NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
+            // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+            NavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
+            NavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
+            NavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
+        }
 
         // M26: one-time legacy circle/tag cleanup.
         NavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)

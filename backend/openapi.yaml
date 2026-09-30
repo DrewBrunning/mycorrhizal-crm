@@ -229,8 +229,10 @@ paths:
                 embedded:
                   summary: >
                     The Android app's embedded single-user deployment (ADR 0028,
-                    issue #1258/#1262): the network-only surfaces are omitted,
-                    so a client gates on token presence.
+                    issue #1258/#1262): storage only. The network-only and
+                    outbound-integration surfaces (including "calendar" and
+                    "notifications", issue #1367) are omitted, so a client
+                    gates on token presence.
                   value:
                     status: healthy
                     timestamp: "2026-09-28T12:00:00Z"
@@ -249,8 +251,6 @@ paths:
                       - search
                       - import
                       - export
-                      - calendar
-                      - notifications
         "503":
           description: The database is unreachable (same body shape, status unhealthy).
           content:

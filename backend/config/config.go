@@ -364,6 +364,17 @@ var embeddedDisabledCapabilities = map[string]bool{
 	CapabilityCalDAV:        true,
 	CapabilityDeviceGrants:  true,
 	CapabilityPush:          true,
+	// Storage-only embedded server (ADR 0028 Decision 2 amendment, issue
+	// #1367): calendar subscriptions/sync and notification channels are
+	// outbound integrations whose routes embedded mode no longer registers.
+	// The other newly-absent surfaces (Immich/Paperless/Seafile/Nextcloud,
+	// contact subscriptions, Monica/Meerkat fetch, admin, image proxy) have no
+	// capability token of their own; clients gate them on deployment ==
+	// "embedded" (Android: ServerCapabilitiesInfo.isEmbedded). Adding tokens
+	// for them would make an older remote server that predates the token look
+	// like it lacked the feature.
+	CapabilityCalendar:      true,
+	CapabilityNotifications: true,
 }
 
 // IsEmbedded reports whether this Config selects the embedded deployment mode

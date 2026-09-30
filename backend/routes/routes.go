@@ -35,7 +35,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 	// REST/JSON operation, so it is deliberately outside the /api/v1 group,
 	// the six-persona authorization matrix, and openapi.yaml — same rationale
 	// as the CardDAV surface.
-	if cfg.MetricsToken != "" {
+	if cfg.MetricsToken != "" && !cfg.IsEmbedded() {
 		router.GET("/metrics", controllers.MetricsHandler(cfg, db))
 	}
 
@@ -102,7 +102,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		v1.POST("/logout", func(c *gin.Context) {
 			controllers.LogoutUser(c, cfg, oidcProvider)
 		})
-		v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
+		// Storage-only embedded server (ADR 0028 amendment, issue #1367): public password-strength check; local mode has no password surface.
+		if !cfg.IsEmbedded() {
+			v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
+		}
 
 		// Private Atom feed serving (issue #382, ADR 0030 decision 7). The
 		// token in the query string is the only credential, so this is on the
@@ -161,7 +164,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than
 			// admin-only ListUsers (id+username only).
-			protected.GET("/users/directory", controllers.ListUserDirectory)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): cross-user directory has no purpose single-user.
+			if !cfg.IsEmbedded() {
+				protected.GET("/users/directory", controllers.ListUserDirectory)
+			}
 
 			// M3 dashboard composite: birthdays + random
 			// contacts + upcoming reminders + overdue cadences in one call.
@@ -267,16 +273,19 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// (with the loss report) then confirm through the shared
 			// source-import engine. The API token lives only in the in-memory
 			// session; SSRF egress is guarded per MONICA_BLOCK_PRIVATE_URLS.
-			protected.POST("/contacts/import/monica/connect", middleware.ValidateJSONMiddleware(&models.MonicaConnectRequest{}), func(c *gin.Context) {
-				controllers.ConnectMonicaImport(c, cfg)
-			})
-			protected.POST("/contacts/import/monica/fetch", middleware.ValidateJSONMiddleware(&models.MonicaFetchRequest{}), controllers.StartMonicaFetch)
-			protected.GET("/contacts/import/monica/status", controllers.GetMonicaImportStatus)
-			protected.GET("/contacts/import/monica/preview", controllers.GetMonicaImportPreview)
-			protected.POST("/contacts/import/monica/confirm", middleware.ValidateJSONMiddleware(&models.MonicaConfirmRequest{}), func(c *gin.Context) {
-				controllers.ConfirmMonicaImport(c, cfg)
-			})
-			protected.POST("/contacts/import/monica/cancel", controllers.CancelMonicaImport)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): the Monica import connects out to a live Monica instance.
+			if !cfg.IsEmbedded() {
+				protected.POST("/contacts/import/monica/connect", middleware.ValidateJSONMiddleware(&models.MonicaConnectRequest{}), func(c *gin.Context) {
+					controllers.ConnectMonicaImport(c, cfg)
+				})
+				protected.POST("/contacts/import/monica/fetch", middleware.ValidateJSONMiddleware(&models.MonicaFetchRequest{}), controllers.StartMonicaFetch)
+				protected.GET("/contacts/import/monica/status", controllers.GetMonicaImportStatus)
+				protected.GET("/contacts/import/monica/preview", controllers.GetMonicaImportPreview)
+				protected.POST("/contacts/import/monica/confirm", middleware.ValidateJSONMiddleware(&models.MonicaConfirmRequest{}), func(c *gin.Context) {
+					controllers.ConfirmMonicaImport(c, cfg)
+				})
+				protected.POST("/contacts/import/monica/cancel", controllers.CancelMonicaImport)
+			}
 
 			// Meerkat import assistant (issue #550) — upload a Meerkat CRM
 			// SQLite file, pick a source user, review (with the loss report)
@@ -285,7 +294,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// lifetime. The upload route carries its own body-size limit
 			// (MaxMeerkatDBSize), same override pattern as the CSV/VCF uploads.
 			protected.POST("/contacts/import/meerkat/upload", middleware.BodySizeLimitMiddleware(services.MaxMeerkatDBSize), controllers.UploadMeerkatDatabase)
-			protected.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), controllers.StartMeerkatFetch)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): the Meerkat live-fetch reaches a remote Meerkat server (upload-based import stays).
+			if !cfg.IsEmbedded() {
+				protected.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), controllers.StartMeerkatFetch)
+			}
 			protected.GET("/contacts/import/meerkat/status", controllers.GetMeerkatImportStatus)
 			protected.GET("/contacts/import/meerkat/preview", controllers.GetMeerkatImportPreview)
 			protected.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMeerkatImport)
@@ -355,7 +367,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			})
 
 			// Image proxy route (for fetching images from external URLs)
-			protected.GET("/proxy/image", controllers.ProxyImage)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): the image proxy fetches remote URLs.
+			if !cfg.IsEmbedded() {
+				protected.GET("/proxy/image", controllers.ProxyImage)
+			}
 
 			// Note routes
 			protected.GET("/contacts/:id/notes", controllers.GetNotesForContact)
@@ -601,9 +616,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Notification routes (N9 — N9). Per-user channel config, the
 			// per-user channel toggles, per-channel test notification, and Web
 			// Push device registrations.
-			protected.GET("/notifications/config", controllers.GetNotificationConfig)
-			protected.PUT("/notifications/config", middleware.ValidateJSONMiddleware(&models.NotificationConfigInput{}), controllers.SaveNotificationConfig)
-			protected.POST("/notifications/config/test", controllers.TestNotificationChannel)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): notification channels are outbound delivery.
+			if !cfg.IsEmbedded() {
+				protected.GET("/notifications/config", controllers.GetNotificationConfig)
+				protected.PUT("/notifications/config", middleware.ValidateJSONMiddleware(&models.NotificationConfigInput{}), controllers.SaveNotificationConfig)
+				protected.POST("/notifications/config/test", controllers.TestNotificationChannel)
+			}
 			// Web Push is a server-mediated delivery channel (a push service
 			// the operator configures), so its subscriptions are absent in
 			// embedded mode (ADR 0028).
@@ -624,26 +642,29 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			}
 
 			// Calendar subscription routes (CalDAV/iCS activity import)
-			protected.GET("/calendars", controllers.ListCalendarSubscriptions)
-			protected.POST("/calendars", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.CreateCalendarSubscription)
-			protected.PUT("/calendars/:id", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.UpdateCalendarSubscription)
-			protected.DELETE("/calendars/:id", controllers.DeleteCalendarSubscription)
-			protected.POST("/calendars/:id/sync", controllers.SyncCalendarSubscription)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): calendar / contact subscriptions and their sync conflicts are outbound sync.
+			if !cfg.IsEmbedded() {
+				protected.GET("/calendars", controllers.ListCalendarSubscriptions)
+				protected.POST("/calendars", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.CreateCalendarSubscription)
+				protected.PUT("/calendars/:id", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.UpdateCalendarSubscription)
+				protected.DELETE("/calendars/:id", controllers.DeleteCalendarSubscription)
+				protected.POST("/calendars/:id/sync", controllers.SyncCalendarSubscription)
 
-			// Contact subscription routes (CardDAV client: sync contacts in
-			// from an external address book)
-			protected.GET("/contact-subscriptions", controllers.ListContactSubscriptions)
-			protected.POST("/contact-subscriptions", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.CreateContactSubscription)
-			protected.PUT("/contact-subscriptions/:id", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.UpdateContactSubscription)
-			protected.DELETE("/contact-subscriptions/:id", controllers.DeleteContactSubscription)
-			protected.POST("/contact-subscriptions/:id/sync", controllers.SyncContactSubscription)
+				// Contact subscription routes (CardDAV client: sync contacts in
+				// from an external address book)
+				protected.GET("/contact-subscriptions", controllers.ListContactSubscriptions)
+				protected.POST("/contact-subscriptions", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.CreateContactSubscription)
+				protected.PUT("/contact-subscriptions/:id", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.UpdateContactSubscription)
+				protected.DELETE("/contact-subscriptions/:id", controllers.DeleteContactSubscription)
+				protected.POST("/contact-subscriptions/:id/sync", controllers.SyncContactSubscription)
 
-			// CardDAV sync conflict routes (issue #395): a sync overwrote a
-			// local edit; the user can review the conflict, restore the local
-			// value, or dismiss it.
-			protected.GET("/contact-sync-conflicts", controllers.ListContactSyncConflicts)
-			protected.POST("/contact-sync-conflicts/:id/restore", controllers.RestoreContactSyncConflict)
-			protected.POST("/contact-sync-conflicts/:id/dismiss", controllers.DismissContactSyncConflict)
+				// CardDAV sync conflict routes (issue #395): a sync overwrote a
+				// local edit; the user can review the conflict, restore the local
+				// value, or dismiss it.
+				protected.GET("/contact-sync-conflicts", controllers.ListContactSyncConflicts)
+				protected.POST("/contact-sync-conflicts/:id/restore", controllers.RestoreContactSyncConflict)
+				protected.POST("/contact-sync-conflicts/:id/dismiss", controllers.DismissContactSyncConflict)
+			}
 
 			// ExternalIdentity routes (T14 — T14): the generic integration
 			// substrate's link/enrichment CRUD. System-agnostic — no
@@ -668,134 +689,140 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// ExternalActivity. /contacts/:vcard_uid/thumbnail is the hardened
 			// person-thumbnail proxy (same SVG rejection + Content-Disposition
 			// as /proxy/image).
-			protected.GET("/immich/config", controllers.GetImmichConfig)
-			protected.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), controllers.SaveImmichConfig)
-			protected.DELETE("/immich/config", controllers.DeleteImmichConfig)
-			protected.POST("/immich/test-connection", controllers.TestImmichConnection)
-			protected.GET("/immich/people", controllers.ListImmichPeople)
-			protected.POST("/immich/sync", controllers.SyncImmichNow)
-			protected.POST("/immich/contacts/:vcard_uid/link", controllers.LinkImmichContact)
-			protected.DELETE("/immich/contacts/:vcard_uid/link", controllers.UnlinkImmichContact)
-			protected.GET("/immich/contacts/:vcard_uid/summary", controllers.GetImmichContactSummary)
-			protected.GET("/immich/contacts/:vcard_uid/thumbnail", controllers.GetImmichThumbnail)
-			protected.GET("/immich/contacts/:vcard_uid/assets", controllers.ListImmichContactAssets)
-			protected.GET("/immich/contacts/:vcard_uid/assets/:asset_id/image", controllers.GetImmichAssetImage)
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): Immich, Paperless, Seafile and Nextcloud are outbound integrations.
+			if !cfg.IsEmbedded() {
+				protected.GET("/immich/config", controllers.GetImmichConfig)
+				protected.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), controllers.SaveImmichConfig)
+				protected.DELETE("/immich/config", controllers.DeleteImmichConfig)
+				protected.POST("/immich/test-connection", controllers.TestImmichConnection)
+				protected.GET("/immich/people", controllers.ListImmichPeople)
+				protected.POST("/immich/sync", controllers.SyncImmichNow)
+				protected.POST("/immich/contacts/:vcard_uid/link", controllers.LinkImmichContact)
+				protected.DELETE("/immich/contacts/:vcard_uid/link", controllers.UnlinkImmichContact)
+				protected.GET("/immich/contacts/:vcard_uid/summary", controllers.GetImmichContactSummary)
+				protected.GET("/immich/contacts/:vcard_uid/thumbnail", controllers.GetImmichThumbnail)
+				protected.GET("/immich/contacts/:vcard_uid/assets", controllers.ListImmichContactAssets)
+				protected.GET("/immich/contacts/:vcard_uid/assets/:asset_id/image", controllers.GetImmichAssetImage)
 
-			// Paperless-ngx routes (issue #155): link contacts to documents in a
-			// self-hosted Paperless-ngx instance. Config is per-user-global;
-			// links are written as ExternalIdentity (system: "paperless"). L1 is
-			// read-only linking — the document stays Paperless-owned.
-			protected.GET("/paperless/config", controllers.GetPaperlessConfig)
-			protected.PUT("/paperless/config", middleware.ValidateJSONMiddleware(&models.PaperlessConfigInput{}), controllers.SavePaperlessConfig)
-			protected.DELETE("/paperless/config", controllers.DeletePaperlessConfig)
-			protected.POST("/paperless/test-connection", controllers.TestPaperlessConnection)
-			protected.GET("/paperless/documents", controllers.ListPaperlessDocuments)
-			protected.POST("/paperless/contacts/:vcard_uid/link", controllers.LinkPaperlessContact)
-			protected.DELETE("/paperless/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkPaperlessContact)
+				// Paperless-ngx routes (issue #155): link contacts to documents in a
+				// self-hosted Paperless-ngx instance. Config is per-user-global;
+				// links are written as ExternalIdentity (system: "paperless"). L1 is
+				// read-only linking — the document stays Paperless-owned.
+				protected.GET("/paperless/config", controllers.GetPaperlessConfig)
+				protected.PUT("/paperless/config", middleware.ValidateJSONMiddleware(&models.PaperlessConfigInput{}), controllers.SavePaperlessConfig)
+				protected.DELETE("/paperless/config", controllers.DeletePaperlessConfig)
+				protected.POST("/paperless/test-connection", controllers.TestPaperlessConnection)
+				protected.GET("/paperless/documents", controllers.ListPaperlessDocuments)
+				protected.POST("/paperless/contacts/:vcard_uid/link", controllers.LinkPaperlessContact)
+				protected.DELETE("/paperless/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkPaperlessContact)
 
-			// Seafile routes (issue #156): link contacts to files/folders in a
-			// self-hosted Seafile library. Config is per-user-global; links are
-			// written as ExternalIdentity (system: "seafile"). L1 is read-only
-			// linking — files/folders stay Seafile-owned.
-			protected.GET("/seafile/config", controllers.GetSeafileConfig)
-			protected.PUT("/seafile/config", middleware.ValidateJSONMiddleware(&models.SeafileConfigInput{}), controllers.SaveSeafileConfig)
-			protected.DELETE("/seafile/config", controllers.DeleteSeafileConfig)
-			protected.POST("/seafile/test-connection", controllers.TestSeafileConnection)
-			protected.GET("/seafile/libraries", controllers.ListSeafileLibraries)
-			protected.GET("/seafile/libraries/:repo_id/dir", controllers.ListSeafileDir)
-			protected.POST("/seafile/contacts/:vcard_uid/link", controllers.LinkSeafileContact)
-			protected.DELETE("/seafile/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkSeafileContact)
+				// Seafile routes (issue #156): link contacts to files/folders in a
+				// self-hosted Seafile library. Config is per-user-global; links are
+				// written as ExternalIdentity (system: "seafile"). L1 is read-only
+				// linking — files/folders stay Seafile-owned.
+				protected.GET("/seafile/config", controllers.GetSeafileConfig)
+				protected.PUT("/seafile/config", middleware.ValidateJSONMiddleware(&models.SeafileConfigInput{}), controllers.SaveSeafileConfig)
+				protected.DELETE("/seafile/config", controllers.DeleteSeafileConfig)
+				protected.POST("/seafile/test-connection", controllers.TestSeafileConnection)
+				protected.GET("/seafile/libraries", controllers.ListSeafileLibraries)
+				protected.GET("/seafile/libraries/:repo_id/dir", controllers.ListSeafileDir)
+				protected.POST("/seafile/contacts/:vcard_uid/link", controllers.LinkSeafileContact)
+				protected.DELETE("/seafile/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkSeafileContact)
 
-			// Nextcloud / ownCloud (WebDAV) routes (issue #157): link contacts
-			// to files/folders over standard WebDAV. Config is per-user-global;
-			// links are written as ExternalIdentity (system: "nextcloud"). Only
-			// an app password is accepted — never the account password. L1 is
-			// read-only linking — files/folders stay on the instance.
-			protected.GET("/nextcloud/config", controllers.GetWebDAVConfig)
-			protected.PUT("/nextcloud/config", middleware.ValidateJSONMiddleware(&models.WebDAVConfigInput{}), controllers.SaveWebDAVConfig)
-			protected.DELETE("/nextcloud/config", controllers.DeleteWebDAVConfig)
-			protected.POST("/nextcloud/test-connection", controllers.TestWebDAVConnection)
-			protected.GET("/nextcloud/dir", controllers.ListWebDAVDir)
-			protected.POST("/nextcloud/contacts/:vcard_uid/link", controllers.LinkWebDAVContact)
-			protected.DELETE("/nextcloud/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkWebDAVContact)
+				// Nextcloud / ownCloud (WebDAV) routes (issue #157): link contacts
+				// to files/folders over standard WebDAV. Config is per-user-global;
+				// links are written as ExternalIdentity (system: "nextcloud"). Only
+				// an app password is accepted — never the account password. L1 is
+				// read-only linking — files/folders stay on the instance.
+				protected.GET("/nextcloud/config", controllers.GetWebDAVConfig)
+				protected.PUT("/nextcloud/config", middleware.ValidateJSONMiddleware(&models.WebDAVConfigInput{}), controllers.SaveWebDAVConfig)
+				protected.DELETE("/nextcloud/config", controllers.DeleteWebDAVConfig)
+				protected.POST("/nextcloud/test-connection", controllers.TestWebDAVConnection)
+				protected.GET("/nextcloud/dir", controllers.ListWebDAVDir)
+				protected.POST("/nextcloud/contacts/:vcard_uid/link", controllers.LinkWebDAVContact)
+				protected.DELETE("/nextcloud/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkWebDAVContact)
+			}
 		}
 
 		// Admin routes (admin authentication required)
-		admin := v1.Group("/admin")
-		admin.Use(middleware.APIRateLimitMiddleware())
-		admin.Use(middleware.AuthMiddleware(cfg))
-		admin.Use(middleware.AdminMiddleware())
-		{
-			admin.GET("/users", controllers.ListUsers)
-			admin.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), controllers.CreateUser)
-			admin.GET("/users/:id", controllers.GetUser)
-			admin.PATCH("/users/:id", middleware.ValidateJSONMiddleware(&models.AdminUserUpdateInput{}), controllers.UpdateUser)
-			admin.DELETE("/users/:id", controllers.DeleteUser)
-			admin.POST("/users/:id/reset-2fa", controllers.ResetUserTwoFactor)
-			admin.POST("/trigger-reminders", func(c *gin.Context) {
-				controllers.TriggerReminders(c, *cfg)
-			})
-			admin.POST("/trigger-purge", func(c *gin.Context) {
-				controllers.TriggerPurge(c, *cfg)
-			})
-			// Rebuild the FTS search index (T11) — needed after bulk data
-			// changes that bypassed the FTS triggers
-			admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
+		// Storage-only embedded server (ADR 0028 amendment, issue #1367): no multi-user / admin surface.
+		if !cfg.IsEmbedded() {
+			admin := v1.Group("/admin")
+			admin.Use(middleware.APIRateLimitMiddleware())
+			admin.Use(middleware.AuthMiddleware(cfg))
+			admin.Use(middleware.AdminMiddleware())
+			{
+				admin.GET("/users", controllers.ListUsers)
+				admin.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), controllers.CreateUser)
+				admin.GET("/users/:id", controllers.GetUser)
+				admin.PATCH("/users/:id", middleware.ValidateJSONMiddleware(&models.AdminUserUpdateInput{}), controllers.UpdateUser)
+				admin.DELETE("/users/:id", controllers.DeleteUser)
+				admin.POST("/users/:id/reset-2fa", controllers.ResetUserTwoFactor)
+				admin.POST("/trigger-reminders", func(c *gin.Context) {
+					controllers.TriggerReminders(c, *cfg)
+				})
+				admin.POST("/trigger-purge", func(c *gin.Context) {
+					controllers.TriggerPurge(c, *cfg)
+				})
+				// Rebuild the FTS search index (T11) — needed after bulk data
+				// changes that bypassed the FTS triggers
+				admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
 
-			// Rebuild the denormalized contact columns (issue #497) — the flat
-			// contacts.* projection, sort_name, addresses_flat,
-			// phones_normalized — from the nested Card. Same trigger-bypass
-			// situations as the search rebuild; run both after a restore.
-			admin.POST("/contacts/rebuild-derived", controllers.RebuildDerivedColumnsHandler)
+				// Rebuild the denormalized contact columns (issue #497) — the flat
+				// contacts.* projection, sort_name, addresses_flat,
+				// phones_normalized — from the nested Card. Same trigger-bypass
+				// situations as the search rebuild; run both after a restore.
+				admin.POST("/contacts/rebuild-derived", controllers.RebuildDerivedColumnsHandler)
 
-			// Operational-event timeline (issue #424) — instance-wide
-			// diagnostics, admin-only.
-			admin.GET("/system-events", controllers.ListSystemEvents)
+				// Operational-event timeline (issue #424) — instance-wide
+				// diagnostics, admin-only.
+				admin.GET("/system-events", controllers.ListSystemEvents)
 
-			// Per-subsystem last-known-good state (issue #427), derived on
-			// read from system_events — instance-wide diagnostics, admin-only.
-			admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
+				// Per-subsystem last-known-good state (issue #427), derived on
+				// read from system_events — instance-wide diagnostics, admin-only.
+				admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
 
-			// Background-job run history + folded per-job health (issue #391),
-			// derived on read from job_runs — instance-wide diagnostics,
-			// admin-only.
-			admin.GET("/job-runs", controllers.ListJobRuns)
-			admin.GET("/job-runs/health", controllers.GetJobRunHealth)
+				// Background-job run history + folded per-job health (issue #391),
+				// derived on read from job_runs — instance-wide diagnostics,
+				// admin-only.
+				admin.GET("/job-runs", controllers.ListJobRuns)
+				admin.GET("/job-runs/health", controllers.GetJobRunHealth)
 
-			// Operational errors bucketed by cause over a rolling window
-			// (issue #426), derived on read from system_events — instance-wide
-			// diagnostics, admin-only.
-			admin.GET("/error-aggregation", controllers.GetErrorAggregation)
+				// Operational errors bucketed by cause over a rolling window
+				// (issue #426), derived on read from system_events — instance-wide
+				// diagnostics, admin-only.
+				admin.GET("/error-aggregation", controllers.GetErrorAggregation)
 
-			// Per-channel notification delivery health (issue #422) — derived
-			// on read from notification_deliveries + the per-user channel
-			// config, with the configured/failing/no-devices/unconfigured
-			// distinction the issue calls out. Instance-wide, admin-only.
-			admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
+				// Per-channel notification delivery health (issue #422) — derived
+				// on read from notification_deliveries + the per-user channel
+				// config, with the configured/failing/no-devices/unconfigured
+				// distinction the issue calls out. Instance-wide, admin-only.
+				admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
 
-			// One-pass instance diagnostics (issue #423) — the admin-gated
-			// "is this install healthy?" sweep: config, database + migration
-			// state, filesystem writability, backup validity, notification
-			// channels, integration reachability, disk usage, background-job
-			// liveness, and version, folded into an ok/warning/error checklist
-			// with a summary. Read-only and secret-free.
-			admin.GET("/diagnostics", controllers.RunDiagnostics)
+				// One-pass instance diagnostics (issue #423) — the admin-gated
+				// "is this install healthy?" sweep: config, database + migration
+				// state, filesystem writability, backup validity, notification
+				// channels, integration reachability, disk usage, background-job
+				// liveness, and version, folded into an ok/warning/error checklist
+				// with a summary. Read-only and secret-free.
+				admin.GET("/diagnostics", controllers.RunDiagnostics)
 
-			// On-demand data-integrity sweep (DB-01, issue #460) — the two
-			// SQLite structural pragmas plus the per-invariant data checks
-			// (ADR 0012: relationships pointing at deleted contacts, orphaned
-			// join rows, dangling external references, malformed canonical
-			// records, derived-index divergence), folded into one report.
-			// Read-only, secret-free, detection-only (repair is the `doctor`
-			// CLI). Instance-wide, admin-only.
-			admin.GET("/integrity-check", controllers.RunIntegrityCheck)
+				// On-demand data-integrity sweep (DB-01, issue #460) — the two
+				// SQLite structural pragmas plus the per-invariant data checks
+				// (ADR 0012: relationships pointing at deleted contacts, orphaned
+				// join rows, dangling external references, malformed canonical
+				// records, derived-index divergence), folded into one report.
+				// Read-only, secret-free, detection-only (repair is the `doctor`
+				// CLI). Instance-wide, admin-only.
+				admin.GET("/integrity-check", controllers.RunIntegrityCheck)
 
-			// Aggregated build/version, migration numbers, live
-			// config-validation read-back, enabled feature flags, SQLite
-			// operational facts and storage sizing (issue #388) — the
-			// authenticated counterpart to the unauthenticated /health
-			// surface. Instance-wide, admin-only, read-only.
-			admin.GET("/system-status", controllers.GetSystemStatus)
+				// Aggregated build/version, migration numbers, live
+				// config-validation read-back, enabled feature flags, SQLite
+				// operational facts and storage sizing (issue #388) — the
+				// authenticated counterpart to the unauthenticated /health
+				// surface. Instance-wide, admin-only, read-only.
+				admin.GET("/system-status", controllers.GetSystemStatus)
+			}
 		}
 
 		// DataDecayPolicy routes (issue #352, docs/adrs/0027-data-decay.md).

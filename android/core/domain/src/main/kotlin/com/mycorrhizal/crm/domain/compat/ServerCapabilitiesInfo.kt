@@ -90,6 +90,14 @@ object ServerCapability {
     const val DEVICE_GRANTS = "device_grants"
     const val PUSH = "push"
 
+    // Issue #1367 (storage-only embedded server): also omitted by the embedded
+    // deployment. Mirrors backend `config.embeddedDisabledCapabilities` — keep
+    // in sync by hand. The other surfaces #1367 removed (Immich, Paperless,
+    // Seafile, Nextcloud, contact subscriptions, admin, ...) have no token;
+    // gate those on [ServerCapabilitiesInfo.isEmbedded].
+    const val CALENDAR = "calendar"
+    const val NOTIFICATIONS = "notifications"
+
     /**
      * Issue #1293 / ADR 0034: native Android passkeys are available on this
      * instance (operator opt-in + valid public HTTPS FRONTEND_URL). Opt-in, so
@@ -110,6 +118,4 @@ object ServerCapability {
     const val SEARCH = "search"
     const val IMPORT = "import"
     const val EXPORT = "export"
-    const val CALENDAR = "calendar"
-    const val NOTIFICATIONS = "notifications"
 }

@@ -25,10 +25,11 @@ class ServerCapabilitiesInfoTest {
     fun `a present capability list is authoritative`() {
         val embedded = ServerCapabilitiesInfo(
             deployment = ServerCapabilitiesInfo.DEPLOYMENT_EMBEDDED,
-            capabilities = setOf(ServerCapability.CONTACTS, ServerCapability.CALENDAR),
+            capabilities = setOf(ServerCapability.CONTACTS, ServerCapability.EXPORT),
         )
         assertTrue(embedded.supports(ServerCapability.CONTACTS))
-        assertTrue(embedded.supports(ServerCapability.CALENDAR))
+        assertTrue(embedded.supports(ServerCapability.EXPORT))
+        assertFalse(embedded.supports(ServerCapability.CALENDAR))
         assertFalse(embedded.supports(ServerCapability.LOGIN))
         assertFalse(embedded.supports(ServerCapability.PUSH))
         assertFalse(embedded.supports(ServerCapability.CARDDAV))
