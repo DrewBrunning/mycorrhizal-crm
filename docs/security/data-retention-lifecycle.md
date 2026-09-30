@@ -266,7 +266,7 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
   attachment/photo, filenames server-generated (never user-controlled — path-traversal-safe).
 - **Retention**: the metadata row (`Attachment`) follows §1's soft-delete/purge window, **but the file
   itself is deleted immediately**, not window-delayed (N7, comment at
-  `backend/services/purge_service.go:48-49`): "an attachment's content IS the file; a tombstone that
+  `backend/controllers/attachment_controller.go:253-256`): "an attachment's content IS the file; a tombstone that
   outlives a vanished file is acceptable for the change feed, an orphaned file is a leak."
 - **Deletion / propagation**: `DeleteAttachment` (`backend/controllers/attachment_controller.go:244-263`)
   and `DeleteContact`'s `deleteContactPhotos`/`deleteContactAttachmentFiles`

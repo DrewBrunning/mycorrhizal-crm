@@ -146,10 +146,9 @@ records which contact is Me (`self_contact_uid`), and a bundle without it
 imports every contact as new.
 
 The entry point ("Use on this device only", on the sign-in screen and in
-**Settings → Servers**) is present in every distribution variant but stays
-behind a build flag until the account-bundle backup UI ships — a local profile
-holds the only copy of its data, so the app does not offer it before a
-user-initiated backup exists.
+**Settings → Servers**) is offered in every distribution variant. A local profile
+holds the only copy of its data, so the app pairs it with the user-initiated
+account-bundle backup described above.
 
 ## Deep links
 

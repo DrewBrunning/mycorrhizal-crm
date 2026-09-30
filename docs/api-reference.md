@@ -73,6 +73,15 @@ Every request and response carries an `X-Request-ID` header created by the middl
 | `POST` | `/check-password-strength` | Validate a password without registering |
 | `POST` | `/password-reset/request` | Send a password reset email |
 | `POST` | `/password-reset/confirm` | Apply a password reset token |
+| `POST` | `/login/2fa` | Complete a two-step login with a TOTP or recovery code |
+| `POST` | `/webauthn/login/begin` | Start a passkey assertion for a pending two-step login (public, rate-limited) |
+| `POST` | `/webauthn/login/finish` | Complete a two-step login with a passkey assertion and set the session cookie |
+| `POST` | `/webauthn/register/begin`, `/webauthn/register/finish` | Enroll a passkey (needs a live second-factor proof once one is already enrolled) |
+| `POST` | `/webauthn/assert/begin` | Start a passkey assertion used as the proof for removing a passkey or adding a factor |
+| `GET` | `/webauthn/credentials` | List the caller's passkeys |
+| `DELETE` | `/webauthn/credentials/:id` | Remove a passkey (needs a live second-factor proof) |
+
+These routes, and everything else under `/webauthn/*`, are absent from an embedded (Android local-profile) deployment.
 
 ### Users
 
@@ -203,6 +212,21 @@ and the 15-minute expiry are enforced server-side.
 |---|---|---|
 | `GET` | `/export` | Download all data as CSV |
 | `GET` | `/export/vcf` | Download all contacts as VCF (includes photos) |
+| `GET` | `/export/account` | Download the full-fidelity, re-importable account bundle (JSON; every sensitivity level and suggested rows included; size limit in the `X-Mycorrhizal-Bundle-Max-Bytes` header) |
+| `POST` | `/import/mycorrhizal/upload` | Upload an account bundle; also `/import/mycorrhizal/fetch`, `/status`, `/preview`, `/confirm`, `/cancel` for the source-import flow |
+
+### Feeds
+
+Private Atom feeds ([ADR 0030](adrs/0030-feeds-atom-emission.md)). Feed management requires authentication; the feed itself is served to a feed reader by an unguessable token, not a session.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/feeds` | List the caller's active feeds (never returns a token) |
+| `POST` | `/feeds` | Create a per-contact or aggregate feed; the feed URL, which carries the token, is returned once |
+| `POST` | `/feeds/:id/rotate` | Replace a feed's token and revoke the old URL |
+| `DELETE` | `/feeds/:id` | Revoke a feed |
+| `POST` | `/feeds/revoke-all` | Revoke every feed the caller owns |
+| `GET` | `/feeds/atom?token=…` | Public, rate-limited Atom document; every miss is an identical empty 404. Sensitivity-filtered |
 
 ### Network
 
