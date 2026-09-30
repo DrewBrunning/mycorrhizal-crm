@@ -89,6 +89,7 @@ func newWAEnv(t *testing.T) *waEnv {
 	p.POST("/webauthn/assert/begin", WebAuthnProofBegin)
 	p.GET("/webauthn/credentials", ListWebAuthnCredentials)
 	p.DELETE("/webauthn/credentials/:id", DeleteWebAuthnCredential)
+	p.DELETE("/account", func(c *gin.Context) { DeleteOwnAccount(c, cfg) })
 
 	return &waEnv{t: t, db: db, router: router, cfg: cfg, user: user}
 }

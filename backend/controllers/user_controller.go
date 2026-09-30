@@ -995,8 +995,7 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 			apperrors.AbortWithError(c, apperrors.ErrMissingField("totp_code"))
 			return
 		}
-		if !valid2FAProof(db, &user, input.TOTPCode, cfg.JWTSecretKey) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("totp_code", "Invalid code. Please try again."))
+		if !requireSecondFactorProof(c, db, cfg, &user, nil, secondFactorProofInput{Code: input.TOTPCode}, proofOptions{field: "totp_code"}) {
 			return
 		}
 	}
