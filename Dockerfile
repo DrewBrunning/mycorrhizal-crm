@@ -52,7 +52,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # repo prefers an explicit, reproducible pin over a floating tag (see the Go
 # toolchain note in CLAUDE.md). frontend/Dockerfile didn't need this change:
 # lts-alpine already resolves past the floor (Node 24 as of 2026-08).
-FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS frontend-builder
 
 WORKDIR /app
 
