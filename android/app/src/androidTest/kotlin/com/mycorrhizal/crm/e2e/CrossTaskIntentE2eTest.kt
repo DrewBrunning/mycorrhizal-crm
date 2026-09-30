@@ -110,7 +110,7 @@ class CrossTaskIntentE2eTest {
         viewCrossTask("mycorrhizal://search?q=${given.replace(" ", "%20")}")
         waitForText(displayName)
         // The prefilled search field: an editable node holding exactly the query.
-        compose.onNode(hasSetTextAction() and hasText(given))
+        waitFor(hasSetTextAction() and hasText(given))
     }
 
     @Test
@@ -173,14 +173,14 @@ class CrossTaskIntentE2eTest {
      */
     private fun viewCrossTask(uri: String, mustStart: Boolean = true) {
         require(uri.none { it.isWhitespace() || it == '\'' }) { "URI must be a single unquoted shell word" }
-        val out = shell("am start -a android.intent.action.VIEW -d $uri -p $pkg")
+        val out = shell("am start -W -a android.intent.action.VIEW -d $uri -p $pkg")
         if (mustStart) assertStarted(out, uri)
     }
 
     /** `am start -a SEND` from the shell; [text] must be a single shell word. */
     private fun shareCrossTask(text: String) {
         require(text.none { it.isWhitespace() || it == '\'' }) { "text must be a single unquoted shell word" }
-        val out = shell("am start -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT $text")
+        val out = shell("am start -W -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT $text")
         assertStarted(out, text)
     }
 
@@ -200,8 +200,13 @@ class CrossTaskIntentE2eTest {
         return out
     }
 
+    /**
+     * `am start -W` prints `Status: ok` on stdout once the activity has started. A failure
+     * (`Error: Activity not started, unable to resolve Intent …`) goes to STDERR, which
+     * [shell] does not read — so success is asserted on stdout, not failure looked for.
+     */
     private fun assertStarted(amOutput: String, what: String) {
-        assertTrue("`am start` for $what did not start an activity: $amOutput", !amOutput.contains("Error"))
+        assertTrue("`am start -W` for $what did not report `Status: ok`; it printed: [$amOutput]", amOutput.contains("Status: ok"))
     }
 
     private fun mainActivities(): List<MainActivity> = E2eActivities.mainActivities()

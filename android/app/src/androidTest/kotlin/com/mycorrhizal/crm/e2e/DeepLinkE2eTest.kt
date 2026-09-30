@@ -61,7 +61,7 @@ class DeepLinkE2eTest : E2eBaseTest() {
         deliver("mycorrhizal://search?q=$given")
         waitForText(displayName)
         // The prefilled search field: an editable node holding exactly the query.
-        compose.onNode(hasSetTextAction() and hasText(given))
+        waitFor(hasSetTextAction() and hasText(given))
     }
 
     @Test
