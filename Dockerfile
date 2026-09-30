@@ -136,6 +136,10 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 # rewrite-timestamp only normalises file mtimes, not file *contents* -- so the
 # log body alone made this layer's digest differ between two otherwise
 # byte-identical builds. The log has no value in an immutable image; drop it.
+#
+# 2026-09-30: bumped 3.5.8-r0 -> 3.5.9-r0. Alpine published 3.5.9-r0 to
+# alpine/v3.24/main and pruned 3.5.8-r0 from the index, so the old pin became
+# unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
 RUN apk add --no-cache \
     ca-certificates=20260909-r0 \
     tzdata=2026d-r0 \
@@ -143,8 +147,8 @@ RUN apk add --no-cache \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
     libc6-compat=1.1.0-r4 \
-    libssl3=3.5.8-r0 \
-    libcrypto3=3.5.8-r0 \
+    libssl3=3.5.9-r0 \
+    libcrypto3=3.5.9-r0 \
     && rm -f /var/log/apk.log \
     && find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s {} +
 

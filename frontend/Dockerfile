@@ -67,8 +67,12 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b54ac358b83fc6c965793fd27183
 # root, which is the entire point of the "-unprivileged" base image. Numeric
 # UIDs (not `root`/`nginx`) per hadolint DL3066 -- a named user may not
 # resolve the same way on every host.
+#
+# 2026-09-30: bumped 3.5.8-r0 -> 3.5.9-r0. Alpine published 3.5.9-r0 to
+# alpine/v3.24/main and pruned 3.5.8-r0 from the index, so the old pin became
+# unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
 USER 0
-RUN apk add --no-cache libssl3=3.5.8-r0 libcrypto3=3.5.8-r0
+RUN apk add --no-cache libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
 USER 101
 
 # Copy custom nginx config
