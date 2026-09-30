@@ -445,16 +445,18 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 	}
 
 	imported := loadSourceLinks(tx, userID, plan.System)
+	// ids maps a source row's ExternalID ("life_event/<sourceID>", ...) to the
+	// local primary key it landed as (issue #1355). UUID primary keys are
+	// globally unique, so a row is never inserted under its source's key --
+	// that collided when a bundle was imported into a second account on the
+	// same instance.
+	ids := importIDMap{}
 
 	// Pass 1: contacts. refToUID maps each plan contact's SourceRef to the
 	// local VCardUID it landed as; graph entities resolve through it.
 	// refToID carries the flat contact ID for the entities that key on it
 	// (notes, reminders).
 	refToUID := make(map[string]string, len(plan.Contacts))
-	// fieldDefRemap maps a bundle field-definition's stable ID to the local
-	// definition it landed as (itself, or an existing same-key definition it
-	// reused) so custom-field values resolve even when the ID collided.
-	fieldDefRemap := map[string]string{}
 	for i := range plan.Contacts {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -522,12 +524,7 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 		if err := tx.Create(contact).Error; err != nil {
 			// The row did not land, so neither may its photo (issue #1341).
 			written.discard(photoFile)
-			report.appendIssue(ImportIssue{
-				Record:   mc.Ref.String(),
-				Field:    "contact",
-				Category: ImportIssueCategoryInvalid,
-				Message:  err.Error(),
-			})
+			report.appendIssue(writeFailureIssue(mc.Ref.String(), "contact", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, mc.Ref.ExternalID,
@@ -580,32 +577,42 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 	// progress bar; ctx is re-checked between kinds so a cancel rolls back
 	// promptly on a large graph.
 	graphKinds := []func() error{
-		func() error { return importRelationships(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importRelationships(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
 		func() error {
-			return importFieldDefinitions(tx, userID, plan, imported, fieldDefRemap, skipImported, report)
+			return importFieldDefinitions(tx, userID, plan, imported, ids, skipImported, report)
 		},
-		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importCircles(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importTags(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importPreferences(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
+		func() error { return importCircles(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
+		func() error { return importTags(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
+		func() error { return importPreferences(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
 		func() error { return importNotes(tx, userID, plan, imported, refToID, skipImported, report) },
 		// Activities before gifts/agenda (both resolve an activity by UUID).
 		func() error { return importActivities(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importReminders(tx, userID, plan, imported, refToID, skipImported, report) },
-		func() error { return importLifeEvents(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importOccasions(tx, userID, plan, imported, uidOf, skipImported, report) },
 		func() error {
-			return importOccasionEvents(tx, userID, plan, imported, uidOf, skipImported, report)
+			return importLifeEvents(tx, userID, plan, imported, uidOf, refToUID, ids, skipImported, report)
 		},
-		func() error { return importGifts(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importConversationAgenda(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importCadencePolicies(tx, userID, plan, imported, uidOf, skipImported, report) },
-		func() error { return importDataDecayPolicies(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importOccasions(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
+		// Reminders after life events and occasions: they reference both by
+		// (remapped) ID.
+		func() error { return importReminders(tx, userID, plan, imported, refToID, ids, skipImported, report) },
+		func() error {
+			return importOccasionEvents(tx, userID, plan, imported, uidOf, ids, skipImported, report)
+		},
+		func() error { return importGifts(tx, userID, plan, imported, uidOf, ids, skipImported, report) },
+		func() error {
+			return importConversationAgenda(tx, userID, plan, imported, uidOf, ids, skipImported, report)
+		},
+		func() error {
+			return importCadencePolicies(tx, userID, plan, imported, uidOf, ids, skipImported, report)
+		},
+		func() error {
+			return importDataDecayPolicies(tx, userID, plan, imported, uidOf, ids, skipImported, report)
+		},
 		func() error {
 			return importReminderCompletions(tx, userID, plan, imported, uidOf, refToID, skipImported, report)
 		},
 		func() error {
-			return importCustomFields(tx, userID, plan, imported, refToUID, fieldDefRemap, skipImported, report)
+			return importCustomFields(tx, userID, plan, imported, refToUID, ids, skipImported, report)
 		},
 	}
 	for _, importKind := range graphKinds {
@@ -683,22 +690,18 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 		label = strings.ToUpper(label[:1]) + label[1:]
 	}
 	if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil { // # pragma: no cover — defensive: a healthy notes table does not fail this insert
+		log.Error().Err(err).Str("record", mc.Ref.String()).Msg("import: merge note could not be recorded")
 		report.appendIssue(ImportIssue{
 			Record:   mc.Ref.String(),
 			Field:    "contact",
 			Category: ImportIssueCategoryLossy,
-			Message:  "merge note could not be recorded: " + err.Error(),
+			Message:  "merge note could not be recorded",
 		})
 	}
 
 	MergeImportedContact(&existing, incoming)
 	if err := tx.Save(&existing).Error; err != nil { // # pragma: no cover — defensive: the row was just loaded from a healthy migrated schema
-		report.appendIssue(ImportIssue{
-			Record:   mc.Ref.String(),
-			Field:    "contact",
-			Category: ImportIssueCategoryInvalid,
-			Message:  "failed to save merged contact: " + err.Error(),
-		})
+		report.appendIssue(writeFailureIssue(mc.Ref.String(), "contact", err))
 		return "", 0, nil
 	}
 
@@ -838,7 +841,7 @@ func recordSourceLink(tx *gorm.DB, userID uint, system, externalID, kind, uid st
 }
 
 func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	refToUID map[string]string, fieldDefRemap map[string]string, skipImported func(string, SourceRef) bool, report *ImportReport,
+	refToUID map[string]string, ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	// One FieldDefinition per unique key; later values reuse it (values key on
 	// the definition's ID, and the unique (user, key) index forbids duplicates).
@@ -868,9 +871,10 @@ func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, import
 			// rows are imported up front; reuse it. External sources leave the
 			// ID empty and get one FieldDefinition per unique key, as before.
 			if f.FieldDefinitionID != "" {
-				resolvedID := f.FieldDefinitionID
-				if local, ok := fieldDefRemap[f.FieldDefinitionID]; ok {
-					resolvedID = local
+				resolvedID, ok := ids.resolve(sourceKindFieldDefinition, f.FieldDefinitionID)
+				if !ok {
+					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryUnsupported, Message: "references a field definition that was not imported"})
+					continue
 				}
 				if err := tx.Where("user_id = ? AND id = ?", userID, resolvedID).First(&def).Error; err != nil {
 					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryUnsupported, Message: "references a field definition that was not imported"})
@@ -887,7 +891,7 @@ func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, import
 					Sensitivity: models.RelationshipSensitivityNormal,
 				}
 				if err := tx.Create(&def).Error; err != nil {
-					report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryInvalid, Message: err.Error()})
+					report.appendIssue(writeFailureIssue(record, "custom_field."+f.Key, err))
 					continue
 				}
 			}
@@ -898,8 +902,8 @@ func importCustomFields(tx *gorm.DB, userID uint, plan *ImportSourcePlan, import
 			rawValue, _ = json.Marshal(f.Value)
 		}
 		fv := models.FieldValue{FieldDefinitionID: def.ID, UserID: userID, EntityID: uid, Value: rawValue}
-		if err := tx.Create(&fv).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "custom_field." + f.Key, Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&fv).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "custom_field."+f.Key, err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, f.Ref.ExternalID,
@@ -946,7 +950,7 @@ func isRelationshipEdgeNaturalKeyConflict(err error) bool {
 }
 
 func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, rel := range plan.Relationships {
 		record := rel.Ref.String()
@@ -978,7 +982,6 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 			confidence = 1
 		}
 		edge := models.RelationshipEdge{
-			ID:          rel.ID,
 			UserID:      userID,
 			SourceID:    sourceUID,
 			TargetID:    targetUID,
@@ -1006,18 +1009,14 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 				})
 				continue
 			}
-			report.appendIssue(ImportIssue{ // # pragma: no cover — a healthy migrated schema accepts every other relationship row; this is defensive
-				Record:   record,
-				Field:    "relationship",
-				Category: ImportIssueCategoryInvalid,
-				Message:  err.Error(),
-			})
+			report.appendIssue(writeFailureIssue(record, "relationship", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, rel.Ref.ExternalID,
 			models.ImportSourceLinkKindRelationship, edge.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(rel.Ref, edge.ID)
 		report.RelationshipsCreated++
 		imported[rel.Ref.ExternalID] = true
 	}
@@ -1025,7 +1024,7 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 }
 
 func importHouseholds(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, hh := range plan.Households {
 		record := hh.Ref.String()
@@ -1033,14 +1032,13 @@ func importHouseholds(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			continue
 		}
 		household := models.Household{
-			ID:      hh.ID,
 			UserID:  userID,
 			Name:    hh.Name,
 			Type:    hh.Type,
 			Address: hh.Address,
 		}
-		if err := tx.Create(&household).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "household", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&household).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "household", err))
 			continue
 		}
 		for _, member := range hh.Members {
@@ -1055,14 +1053,15 @@ func importHouseholds(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 				Role:           member.Role,
 				Since:          member.Since,
 				Until:          member.Until,
-			}).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-				report.appendIssue(ImportIssue{Record: record, Field: "household.member", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			}).Error; err != nil {
+				report.appendIssue(writeFailureIssue(record, "household.member", err))
 			}
 		}
 		if err := recordSourceLink(tx, userID, plan.System, hh.Ref.ExternalID,
 			models.ImportSourceLinkKindHousehold, household.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(hh.Ref, household.ID)
 		report.HouseholdsCreated++
 		imported[hh.Ref.ExternalID] = true
 	}
@@ -1070,16 +1069,16 @@ func importHouseholds(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 }
 
 func importCircles(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, c := range plan.Circles {
 		record := c.Ref.String()
 		if skipImported(record, c.Ref) {
 			continue
 		}
-		circle := models.Circle{ID: c.ID, UserID: userID, Name: c.Name}
-		if err := tx.Create(&circle).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "circle", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		circle := models.Circle{UserID: userID, Name: c.Name}
+		if err := tx.Create(&circle).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "circle", err))
 			continue
 		}
 		for _, member := range c.Members {
@@ -1087,14 +1086,15 @@ func importCircles(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported ma
 			if !ok {
 				continue
 			}
-			if err := tx.Create(&models.CircleMember{CircleID: circle.ID, UserID: userID, MemberVCardUID: memberUID}).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-				report.appendIssue(ImportIssue{Record: record, Field: "circle.member", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			if err := tx.Create(&models.CircleMember{CircleID: circle.ID, UserID: userID, MemberVCardUID: memberUID}).Error; err != nil {
+				report.appendIssue(writeFailureIssue(record, "circle.member", err))
 			}
 		}
 		if err := recordSourceLink(tx, userID, plan.System, c.Ref.ExternalID,
 			models.ImportSourceLinkKindCircle, circle.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(c.Ref, circle.ID)
 		report.CirclesCreated++
 		imported[c.Ref.ExternalID] = true
 	}
@@ -1102,16 +1102,16 @@ func importCircles(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported ma
 }
 
 func importTags(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, t := range plan.Tags {
 		record := t.Ref.String()
 		if skipImported(record, t.Ref) {
 			continue
 		}
-		tag := models.Tag{ID: t.ID, UserID: userID, Name: t.Name}
-		if err := tx.Create(&tag).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "tag", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		tag := models.Tag{UserID: userID, Name: t.Name}
+		if err := tx.Create(&tag).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "tag", err))
 			continue
 		}
 		for _, contact := range t.Contacts {
@@ -1119,14 +1119,15 @@ func importTags(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[s
 			if !ok {
 				continue
 			}
-			if err := tx.Create(&models.ContactTag{TagID: tag.ID, UserID: userID, ContactVCardUID: uid}).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-				report.appendIssue(ImportIssue{Record: record, Field: "tag.contact", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			if err := tx.Create(&models.ContactTag{TagID: tag.ID, UserID: userID, ContactVCardUID: uid}).Error; err != nil {
+				report.appendIssue(writeFailureIssue(record, "tag.contact", err))
 			}
 		}
 		if err := recordSourceLink(tx, userID, plan.System, t.Ref.ExternalID,
 			models.ImportSourceLinkKindTag, tag.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(t.Ref, tag.ID)
 		report.TagsCreated++
 		imported[t.Ref.ExternalID] = true
 	}
@@ -1134,7 +1135,7 @@ func importTags(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[s
 }
 
 func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, g := range plan.Gifts {
 		record := g.Ref.String()
@@ -1145,8 +1146,11 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 		if !ok {
 			continue
 		}
+		giftLifeEventID := ""
+		if g.LifeEventID != "" {
+			giftLifeEventID = ids.resolveOrReport(report, record, "gift.life_event_id", sourceKindLifeEvent, g.LifeEventID)
+		}
 		gift := models.Gift{
-			ID:          g.ID,
 			UserID:      userID,
 			EntityID:    uid,
 			Status:      g.Status,
@@ -1156,7 +1160,7 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 			Notes:       g.Notes,
 			ValueCents:  g.ValueCents,
 			Currency:    g.Currency,
-			LifeEventID: g.LifeEventID,
+			LifeEventID: giftLifeEventID,
 			ActivityID:  activityIDByUUID(tx, userID, g.ActivityUUID),
 		}
 		if g.Date != "" {
@@ -1171,14 +1175,15 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 				})
 			}
 		}
-		if err := tx.Create(&gift).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "gift", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&gift).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "gift", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, g.Ref.ExternalID,
 			models.ImportSourceLinkKindGift, gift.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(g.Ref, gift.ID)
 		report.GiftsCreated++
 		imported[g.Ref.ExternalID] = true
 	}
@@ -1186,7 +1191,7 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 }
 
 func importPreferences(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, p := range plan.Preferences {
 		record := p.Ref.String()
@@ -1206,7 +1211,6 @@ func importPreferences(tx *gorm.DB, userID uint, plan *ImportSourcePlan, importe
 			sensitivity = models.RelationshipSensitivityNormal
 		}
 		pref := models.Preference{
-			ID:            p.ID,
 			UserID:        userID,
 			EntityID:      uid,
 			Category:      p.Category,
@@ -1219,14 +1223,15 @@ func importPreferences(tx *gorm.DB, userID uint, plan *ImportSourcePlan, importe
 			LastConfirmed: p.LastConfirmed,
 			Sensitivity:   sensitivity,
 		}
-		if err := tx.Create(&pref).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "preference", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&pref).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "preference", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, p.Ref.ExternalID,
 			models.ImportSourceLinkKindPreference, pref.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
 			return err
 		}
+		ids.remember(p.Ref, pref.ID)
 		report.PreferencesCreated++
 		imported[p.Ref.ExternalID] = true
 	}
@@ -1257,8 +1262,8 @@ func importNotes(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 			continue
 		}
 		note := models.Note{UUID: n.UUID, UserID: userID, Content: n.Content, Date: date, ContactID: &contactID}
-		if err := tx.Create(&note).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "note", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&note).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "note", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, n.Ref.ExternalID,
@@ -1309,12 +1314,12 @@ func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			Type:        a.Type,
 			ExternalRef: a.ExternalRef,
 		}
-		if err := tx.Create(&activity).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "activity", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&activity).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "activity", err))
 			continue
 		}
 		if err := tx.Model(&activity).Association("Contacts").Replace(&contacts); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "activity.attendees", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			report.appendIssue(writeFailureIssue(record, "activity.attendees", err))
 		}
 		if err := recordSourceLink(tx, userID, plan.System, a.Ref.ExternalID,
 			models.ImportSourceLinkKindActivity, activity.UUID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
@@ -1327,7 +1332,7 @@ func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 }
 
 func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	refToID map[string]uint, skipImported func(string, SourceRef) bool, report *ImportReport,
+	refToID map[string]uint, ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, r := range plan.Reminders {
 		record := r.Ref.String()
@@ -1351,10 +1356,14 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 		}
 		var lifeEventID, occasionID *string
 		if r.LifeEventID != "" {
-			lifeEventID = &r.LifeEventID
+			if id := ids.resolveOrReport(report, record, "reminder.life_event_id", sourceKindLifeEvent, r.LifeEventID); id != "" {
+				lifeEventID = &id
+			}
 		}
 		if r.OccasionObligationID != "" {
-			occasionID = &r.OccasionObligationID
+			if id := ids.resolveOrReport(report, record, "reminder.occasion_obligation_id", sourceKindOccasion, r.OccasionObligationID); id != "" {
+				occasionID = &id
+			}
 		}
 		reminder := models.Reminder{
 			UUID:                  r.UUID,
@@ -1370,8 +1379,8 @@ func importReminders(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 			OccasionObligationID:  occasionID,
 			ContactID:             &contactID,
 		}
-		if err := tx.Create(&reminder).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			report.appendIssue(ImportIssue{Record: record, Field: "reminder", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&reminder).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "reminder", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, r.Ref.ExternalID,

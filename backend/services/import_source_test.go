@@ -434,6 +434,7 @@ func TestImportRelationships_DatabaseErrorReportsInvalidIssue(t *testing.T) {
 	report := &ImportReport{}
 	err := importRelationships(db, 1, plan, map[string]bool{},
 		func(string, SourceRef) (string, bool) { return "uid-src", true },
+		importIDMap{},
 		func(string, SourceRef) bool { return false },
 		report,
 	)

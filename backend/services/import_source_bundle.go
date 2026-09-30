@@ -127,7 +127,7 @@ type MappedOccasionAttendee struct {
 // reference it. Existing sources have no definitions here (the old importer
 // created one implicitly per value), so this is bundle-only.
 func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	fieldDefRemap map[string]string, skipImported func(string, SourceRef) bool, report *ImportReport,
+	ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, d := range plan.FieldDefinitions {
 		record := d.Ref.String()
@@ -135,7 +135,6 @@ func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, im
 			continue
 		}
 		def := models.FieldDefinition{
-			ID:          d.ID,
 			UserID:      userID,
 			Label:       d.Label,
 			Key:         d.Key,
@@ -155,23 +154,19 @@ func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, im
 						models.ImportSourceLinkKindFieldDefinition, existing.ID); err != nil { // # pragma: no cover — defensive
 						return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 					}
-					if d.ID != "" {
-						fieldDefRemap[d.ID] = existing.ID
-					}
+					ids.remember(d.Ref, existing.ID)
 					imported[d.Ref.ExternalID] = true
 					continue
 				}
 			}
-			report.appendIssue(ImportIssue{Record: record, Field: "field_definition", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			report.appendIssue(writeFailureIssue(record, "field_definition", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, d.Ref.ExternalID,
 			models.ImportSourceLinkKindFieldDefinition, def.ID); err != nil { // # pragma: no cover — defensive
 			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
-		if d.ID != "" {
-			fieldDefRemap[d.ID] = def.ID
-		}
+		ids.remember(d.Ref, def.ID)
 		imported[d.Ref.ExternalID] = true
 	}
 	return nil
@@ -210,8 +205,8 @@ func importReminderCompletions(tx *gorm.DB, userID uint, plan *ImportSourcePlan,
 			Message:     c.Message,
 			CompletedAt: completedAt,
 		}
-		if err := tx.Create(&completion).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "reminder_completion", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&completion).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "reminder_completion", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, c.Ref.ExternalID,
@@ -224,7 +219,7 @@ func importReminderCompletions(tx *gorm.DB, userID uint, plan *ImportSourcePlan,
 }
 
 func importLifeEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), refToUID map[string]string, ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, le := range plan.LifeEvents {
 		record := le.Ref.String()
@@ -235,8 +230,8 @@ func importLifeEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 		if !ok {
 			continue
 		}
+		relatedUIDs := remapRelatedEntityIDs(report, record, le.RelatedEntityIDs, refToUID)
 		event := models.LifeEvent{
-			ID:               le.ID,
 			UserID:           userID,
 			EntityID:         entityUID,
 			Type:             le.Type,
@@ -245,24 +240,25 @@ func importLifeEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			EndDate:          le.EndDate,
 			Description:      le.Description,
 			Source:           le.Source,
-			RelatedEntityIDs: le.RelatedEntityIDs,
+			RelatedEntityIDs: relatedUIDs,
 			Remind:           le.Remind,
 		}
-		if err := tx.Create(&event).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "life_event", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&event).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "life_event", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, le.Ref.ExternalID,
 			models.ImportSourceLinkKindLifeEvent, event.ID); err != nil { // # pragma: no cover — defensive
 			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
+		ids.remember(le.Ref, event.ID)
 		imported[le.Ref.ExternalID] = true
 	}
 	return nil
 }
 
 func importConversationAgenda(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, it := range plan.ConversationAgenda {
 		record := it.Ref.String()
@@ -274,7 +270,6 @@ func importConversationAgenda(tx *gorm.DB, userID uint, plan *ImportSourcePlan, 
 			continue
 		}
 		item := models.ConversationAgenda{
-			ID:           it.ID,
 			UserID:       userID,
 			EntityID:     entityUID,
 			Content:      it.Content,
@@ -282,8 +277,8 @@ func importConversationAgenda(tx *gorm.DB, userID uint, plan *ImportSourcePlan, 
 			DiscussedAt:  it.DiscussedAt,
 			ActivityID:   activityIDByUUID(tx, userID, it.ActivityUUID),
 		}
-		if err := tx.Create(&item).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "conversation_agenda", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&item).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "conversation_agenda", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, it.Ref.ExternalID,
@@ -296,7 +291,7 @@ func importConversationAgenda(tx *gorm.DB, userID uint, plan *ImportSourcePlan, 
 }
 
 func importCadencePolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, p := range plan.CadencePolicies {
 		record := p.Ref.String()
@@ -308,14 +303,13 @@ func importCadencePolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imp
 			continue
 		}
 		policy := models.CadencePolicy{
-			ID:                 p.ID,
 			UserID:             userID,
 			EntityID:           entityUID,
 			TargetIntervalDays: p.TargetIntervalDays,
 			QualifyingTypes:    p.QualifyingTypes,
 		}
-		if err := tx.Create(&policy).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "cadence_policy", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&policy).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "cadence_policy", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, p.Ref.ExternalID,
@@ -328,7 +322,7 @@ func importCadencePolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imp
 }
 
 func importDataDecayPolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, p := range plan.DataDecayPolicies {
 		record := p.Ref.String()
@@ -340,15 +334,14 @@ func importDataDecayPolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, i
 			continue
 		}
 		policy := models.DataDecayPolicy{
-			ID:             p.ID,
 			UserID:         userID,
 			EntityID:       entityUID,
 			IntervalDays:   p.IntervalDays,
 			LastVerifiedAt: p.LastVerifiedAt,
 			Active:         p.Active,
 		}
-		if err := tx.Create(&policy).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "data_decay_policy", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&policy).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "data_decay_policy", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, p.Ref.ExternalID,
@@ -361,7 +354,7 @@ func importDataDecayPolicies(tx *gorm.DB, userID uint, plan *ImportSourcePlan, i
 }
 
 func importOccasions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, o := range plan.Occasions {
 		record := o.Ref.String()
@@ -372,35 +365,39 @@ func importOccasions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported 
 		if !ok {
 			continue
 		}
+		linkedLifeEventID := ""
+		if o.LinkedLifeEventID != "" {
+			linkedLifeEventID = ids.resolveOrReport(report, record, "occasion.linked_life_event_id", sourceKindLifeEvent, o.LinkedLifeEventID)
+		}
 		occasion := models.OccasionObligation{
-			ID:                o.ID,
 			UserID:            userID,
 			EntityID:          entityUID,
 			Kind:              o.Kind,
 			Label:             o.Label,
 			AnchorMonth:       o.AnchorMonth,
 			AnchorDay:         o.AnchorDay,
-			LinkedLifeEventID: o.LinkedLifeEventID,
+			LinkedLifeEventID: linkedLifeEventID,
 			LeadTimeDays:      o.LeadTimeDays,
 			Active:            o.Active,
 			Sensitivity:       o.Sensitivity,
 			Notes:             o.Notes,
 		}
-		if err := tx.Create(&occasion).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "occasion", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&occasion).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "occasion", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, o.Ref.ExternalID,
 			models.ImportSourceLinkKindOccasion, occasion.ID); err != nil { // # pragma: no cover — defensive
 			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
+		ids.remember(o.Ref, occasion.ID)
 		imported[o.Ref.ExternalID] = true
 	}
 	return nil
 }
 
 func importOccasionEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
-	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
+	uidOf func(string, SourceRef) (string, bool), ids importIDMap, skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
 	for _, e := range plan.OccasionEvents {
 		record := e.Ref.String()
@@ -413,7 +410,6 @@ func importOccasionEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impo
 			continue
 		}
 		event := models.OccasionEvent{
-			ID:          e.ID,
 			UserID:      userID,
 			Title:       e.Title,
 			StartsAt:    startsAt,
@@ -422,8 +418,8 @@ func importOccasionEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impo
 			Sensitivity: e.Sensitivity,
 			Notes:       e.Notes,
 		}
-		if err := tx.Create(&event).Error; err != nil { // # pragma: no cover — defensive
-			report.appendIssue(ImportIssue{Record: record, Field: "occasion_event", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+		if err := tx.Create(&event).Error; err != nil {
+			report.appendIssue(writeFailureIssue(record, "occasion_event", err))
 			continue
 		}
 		for _, a := range e.Attendees {
@@ -436,8 +432,8 @@ func importOccasionEvents(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impo
 				EventID:  event.ID,
 				EntityID: uid,
 				RSVP:     a.RSVP,
-			}).Error; err != nil { // # pragma: no cover — defensive
-				report.appendIssue(ImportIssue{Record: record, Field: "occasion_event.attendee", Category: ImportIssueCategoryInvalid, Message: err.Error()})
+			}).Error; err != nil {
+				report.appendIssue(writeFailureIssue(record, "occasion_event.attendee", err))
 			}
 		}
 		if err := recordSourceLink(tx, userID, plan.System, e.Ref.ExternalID,
