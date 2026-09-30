@@ -93,12 +93,7 @@ class ShareToCrmE2eTest : E2eBaseTest() {
     @Test
     fun appLockShowsTheLockScreenBeforeThePicker() {
         val activity = compose.activity as MainActivity
-        runBlocking {
-            activity.localAuthSettings.setAutoLockDelay(AutoLockDelay.IMMEDIATELY)
-            activity.localAuthSettings.setRequireLocalAuth(true)
-        }
-        activity.appLockController.onAppBackgrounded()
-        activity.appLockController.onAppForegrounded()
+        armAppLock()
         waitForText("Your data is locked")
 
         share("locked share")
