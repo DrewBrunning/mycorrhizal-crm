@@ -7806,7 +7806,7 @@
       "method": "POST",
       "path": "/users/2fa/recovery-codes/regenerate",
       "parameters": null,
-      "request_body": "ref:TwoFactorCodeInput",
+      "request_body": "ref:SecondFactorProofInput",
       "responses": [
         {
           "status": "200",
@@ -7823,6 +7823,10 @@
         {
           "status": "409",
           "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": ""
         }
       ]
     },
