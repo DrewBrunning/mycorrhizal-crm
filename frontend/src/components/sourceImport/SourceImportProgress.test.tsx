@@ -40,3 +40,10 @@ test('falls back to an indeterminate bar and interpolates the source name', () =
   expect(screen.getByText('Connecting to Monica…')).toBeInTheDocument();
   expect(screen.queryByText(/ of /)).not.toBeInTheDocument();
 });
+
+test('before the first status arrives it shows the connecting phase, indeterminate', () => {
+  render(<SourceImportProgress status={null} sourceLabel="Monica" />);
+  expect(screen.getByText('Connecting to Monica…')).toBeInTheDocument();
+  expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow');
+  expect(screen.queryByText(/ of /)).not.toBeInTheDocument();
+});
