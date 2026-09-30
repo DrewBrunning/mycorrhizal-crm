@@ -186,6 +186,27 @@ abstract class E2eBaseTest {
         compose.runOnUiThread { activity.intent = original }
     }
 
+    /**
+     * Arms the app-lock gate with a zero grace period and drives it to Locked.
+     *
+     * The controller collects the preference flows asynchronously, so a background →
+     * foreground cycle issued right after the `set*` calls can still see the old (non-zero)
+     * grace period and not lock — an intermittent failure on a fast device (#1372). Cycle
+     * until the gate reports Locked instead of assuming the settings have propagated.
+     */
+    protected fun armAppLock() {
+        val activity = compose.activity as MainActivity
+        runBlocking {
+            activity.localAuthSettings.setAutoLockDelay(com.mycorrhizal.crm.domain.repository.AutoLockDelay.IMMEDIATELY)
+            activity.localAuthSettings.setRequireLocalAuth(true)
+        }
+        compose.waitUntil(DEFAULT_TIMEOUT_MS) {
+            activity.appLockController.onAppBackgrounded()
+            activity.appLockController.onAppForegrounded()
+            activity.appLockController.state.value == com.mycorrhizal.crm.data.session.AppLockState.Locked
+        }
+    }
+
     // --- app-state helpers ---------------------------------------------------
 
     /** Drops the app's persisted session via the real SessionManager; the app

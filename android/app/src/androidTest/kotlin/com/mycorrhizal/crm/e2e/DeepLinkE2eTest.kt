@@ -78,13 +78,7 @@ class DeepLinkE2eTest : E2eBaseTest() {
     @Test
     fun appLockShowsTheLockScreenFirstThenTheContactAfterUnlock() {
         val activity = compose.activity as MainActivity
-        runBlocking {
-            activity.localAuthSettings.setAutoLockDelay(AutoLockDelay.IMMEDIATELY)
-            activity.localAuthSettings.setRequireLocalAuth(true)
-        }
-        // Background → foreground past a zero grace period re-arms the gate.
-        activity.appLockController.onAppBackgrounded()
-        activity.appLockController.onAppForegrounded()
+        armAppLock()
         waitForText("Your data is locked")
 
         deliver("mycorrhizal://contacts/$contactId")
