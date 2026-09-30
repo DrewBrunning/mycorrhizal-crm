@@ -2,7 +2,8 @@ package com.mycorrhizal.crm.e2e
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
@@ -59,7 +60,8 @@ class DeepLinkE2eTest : E2eBaseTest() {
     fun searchLinkOpensTheListFilteredToTheQuery() {
         deliver("mycorrhizal://search?q=$given")
         waitForText(displayName)
-        compose.onNodeWithText(given) // the prefilled search field
+        // The prefilled search field: an editable node holding exactly the query.
+        compose.onNode(hasSetTextAction() and hasText(given))
     }
 
     @Test
