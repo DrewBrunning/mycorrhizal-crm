@@ -6,14 +6,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.data.local.LocalServerAvailability
 import com.mycorrhizal.crm.data.local.LocalServerEndpoint
 import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.di.LocalServerHostEntryPoint
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.ProfileAwareDns
 import com.mycorrhizal.crm.network.ProfileAwareSocketFactory
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -44,15 +42,9 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 class LocalBundleRoundTripE2eTest {
 
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface LocalHostEntryPoint {
-        fun localServerHost(): LocalServerHost
-    }
-
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val host: LocalServerHost
-        get() = EntryPointAccessors.fromApplication(context, LocalHostEntryPoint::class.java)
+        get() = EntryPointAccessors.fromApplication(context, LocalServerHostEntryPoint::class.java)
             .localServerHost()
 
     private fun clientFor(endpoint: LocalServerEndpoint): OkHttpClient {
@@ -104,6 +96,15 @@ class LocalBundleRoundTripE2eTest {
         }
     }
 
+    /** The contact the user's "Me" pointer names (`users/me` -> `self_contact_vcard_uid`), if any. */
+    private fun selfContactUid(client: OkHttpClient, endpoint: LocalServerEndpoint): String? =
+        JSONObject(client.getJson(endpoint, "/users/me")).optString("self_contact_vcard_uid").ifBlank { null }
+
+    private fun contactUids(client: OkHttpClient, endpoint: LocalServerEndpoint): Set<String> {
+        val contacts = JSONObject(client.getJson(endpoint, "/contacts?limit=50")).getJSONArray("contacts")
+        return (0 until contacts.length()).map { contacts.getJSONObject(it).optString("uid") }.toSet()
+    }
+
     @Test
     fun exportDeleteLocalDataAndRestoreBringsTheDataBack() = runBlocking {
         assumeTrue(
@@ -112,9 +113,12 @@ class LocalBundleRoundTripE2eTest {
         )
         host.deleteLocalData()
 
-        // 1. Create data on the first Local store.
+        // 1. Create data on the first Local store. A fresh store is not empty: the
+        // embedded server provisions its single user with a "Me" self contact
+        // (EnsureSelfContact), so every assertion below is relative to that baseline.
         val first = host.ensureStarted().getOrThrow()
         val firstClient = clientFor(first)
+        val baseline = contactNames(firstClient, first).sorted()
         val components = JSONArray()
             .put(JSONObject().put("kind", "given").put("value", "Ada"))
             .put(JSONObject().put("kind", "surname").put("value", "Lovelace"))
@@ -123,7 +127,7 @@ class LocalBundleRoundTripE2eTest {
             "/contacts",
             JSONObject().put("card", JSONObject().put("name", JSONObject().put("components", components))).toString(),
         )
-        assertEquals(listOf("Ada Lovelace"), contactNames(firstClient, first))
+        assertEquals((baseline + "Ada Lovelace").sorted(), contactNames(firstClient, first).sorted())
 
         // 2. Export the account bundle (what Settings -> Data -> "Account bundle" writes to the SAF file).
         val bundle = firstClient.getJson(first, "/export/account")
@@ -133,7 +137,11 @@ class LocalBundleRoundTripE2eTest {
         host.deleteLocalData()
         val second = host.ensureStarted().getOrThrow()
         val secondClient = clientFor(second)
-        assertTrue("the fresh local profile must be empty", contactNames(secondClient, second).isEmpty())
+        assertEquals(
+            "the fresh local profile must hold only its own self contact",
+            baseline,
+            contactNames(secondClient, second).sorted(),
+        )
 
         // 4. Restore: upload -> fetch -> ready -> confirm (suggested actions) -> done.
         val upload = secondClient.newCall(
@@ -169,8 +177,16 @@ class LocalBundleRoundTripE2eTest {
         )
         secondClient.awaitPhase(second, sessionId, "done")
 
-        // 5. The data is back.
-        assertEquals(listOf("Ada Lovelace"), contactNames(secondClient, second))
+        // 5. The data is back, and the restore did not add a second self contact
+        // next to the one the fresh store already provisioned.
+        assertEquals((baseline + "Ada Lovelace").sorted(), contactNames(secondClient, second).sorted())
+        val self = selfContactUid(secondClient, second)
+        if (self != null) {
+            assertTrue(
+                "the restored profile's Me pointer must name a contact that exists",
+                self in contactUids(secondClient, second),
+            )
+        }
 
         host.deleteLocalData()
     }

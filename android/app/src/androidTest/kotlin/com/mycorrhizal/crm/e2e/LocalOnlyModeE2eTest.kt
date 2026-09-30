@@ -5,14 +5,12 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.data.local.LocalServerAvailability
 import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.di.LocalServerHostEntryPoint
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.ProfileAwareDns
 import com.mycorrhizal.crm.network.ProfileAwareSocketFactory
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,15 +42,9 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 class LocalOnlyModeE2eTest {
 
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface LocalHostEntryPoint {
-        fun localServerHost(): LocalServerHost
-    }
-
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val host: LocalServerHost
-        get() = EntryPointAccessors.fromApplication(context, LocalHostEntryPoint::class.java)
+        get() = EntryPointAccessors.fromApplication(context, LocalServerHostEntryPoint::class.java)
             .localServerHost()
 
     private fun healthOverSocket(socketPath: String): JSONObject {
