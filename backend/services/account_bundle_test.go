@@ -398,7 +398,9 @@ func TestAccountBundle_RoundTrip(t *testing.T) {
 	reexported, _, err := BuildAccountBundle(targetDB, target.ID, targetPhotoDir)
 	require.NoError(t, err)
 
-	require.JSONEq(t, bundlePlanJSON(t, exported), bundlePlanJSON(t, reexported),
+	// UUID primary keys are re-minted on import (issue #1355), so compare
+	// ID-agnostically: equivalent rows with equivalent, resolving references.
+	require.Equal(t, canonicalPlanJSON(t, exported), canonicalPlanJSON(t, reexported),
 		"the re-exported bundle must equal the original plan")
 
 	// Issue #1308: the embedded photo must land in the destination's own photo
