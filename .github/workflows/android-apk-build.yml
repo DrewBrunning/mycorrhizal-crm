@@ -75,6 +75,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Issue #1390 / ADR 0028 Decision 2: the release APK/AAB must embed the Go
+      # server (lib/arm64-v8a/libmycorrhizal.so). android/app/build.gradle.kts
+      # cross-compiles it with the `go` on PATH, using the toolchain backend/go.mod
+      # pins; with -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true a missing Go fails the
+      # build, and the assertion step below re-checks the finished artifact.
+      - name: Set up Go (embedded server)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
@@ -128,7 +139,7 @@ jobs:
         working-directory: android
         env:
           DIST: ${{ inputs.distribution }}
-        run: ./gradlew ":app:assemble${DIST^}Debug"
+        run: ./gradlew ":app:assemble${DIST^}Debug" -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
 
       # REL-03 / issue #527: stamp the tester build too. Without any
       # -PMYCORRHIZAL_VERSION_* the plugin falls back to versionCode = 1 /
@@ -160,8 +171,26 @@ jobs:
           MYCORRHIZAL_VERSION_CODE: ${{ steps.tester-version.outputs.code }}
         run: |
           ./gradlew ":app:assemble${DIST^}Release" \
+            -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
+
+      # Issue #1390: fail the build, not the tester, if local mode was not packaged.
+      - name: Assert the APK embeds the local server binary
+        env:
+          DIST: ${{ inputs.distribution }}
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          set -eu
+          found=0
+          for apk in android/app/build/outputs/apk/"$DIST"/"$VARIANT"/*.apk; do
+            [ -e "$apk" ] || continue
+            found=1
+            unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+              || { echo "::error::$apk does not contain lib/arm64-v8a/libmycorrhizal.so (issue #1390)."; exit 1; }
+            echo "ok: $apk contains lib/arm64-v8a/libmycorrhizal.so"
+          done
+          [ "$found" = 1 ] || { echo "::error::No APK found to check."; exit 1; }
 
       # Artifact names cannot contain '/', so sanitize the ref in a shell step
       # (GitHub's expression language has no replace() function).
