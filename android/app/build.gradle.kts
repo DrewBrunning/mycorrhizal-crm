@@ -356,6 +356,12 @@ val exportedSurfaceAllowlist = layout.projectDirectory.file("exported-surface-al
 tasks.withType<Test>().configureEach {
     inputs.file(exportedSurfaceAllowlist)
     inputs.files(provider { mergedManifestsForSurfaceCheck.values.toList() })
+    // Issue #1374: every module's src/androidTest tree, scanned by AndroidTestHiltDeclarationsTest.
+    val androidTestRoots = rootProject.subprojects.map { it.projectDir.resolve("src/androidTest") }
+    inputs.files(androidTestRoots.filter { it.isDirectory })
+    jvmArgumentProviders += CommandLineArgumentProvider {
+        listOf("-DandroidTestHilt.roots=" + androidTestRoots.joinToString(";") { it.absolutePath })
+    }
     jvmArgumentProviders += CommandLineArgumentProvider {
         listOf(
             "-DexportedSurface.allowlist=${exportedSurfaceAllowlist.asFile.absolutePath}",
