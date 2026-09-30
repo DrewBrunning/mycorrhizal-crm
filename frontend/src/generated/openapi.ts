@@ -20,6 +20,7 @@ export type AccountBundle = {
   format: 'mycorrhizal-account';
   omitted: AccountBundleOmissions;
   plan: AccountBundlePlan;
+  self_contact_uid?: string;
   version: 1;
 };
 

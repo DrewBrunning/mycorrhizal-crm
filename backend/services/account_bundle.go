@@ -60,6 +60,7 @@ func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.Acco
 	}
 	bundle.Plan.Contacts = contacts
 	stats.Contacts = len(contacts)
+	bundle.SelfContactUID = bundleSelfContactUID(db, userID, uidByContactID)
 
 	var uuidByActivityID, uuidByReminderID map[uint]string
 	bundle.Plan.Relationships, err = loadBundleRelationships(db, userID)
@@ -655,4 +656,21 @@ func nonNilAttendees(in []models.AccountBundleAttendee) []models.AccountBundleAt
 		return []models.AccountBundleAttendee{}
 	}
 	return in
+}
+
+// bundleSelfContactUID returns the user's "Me" vcard_uid (issue #1375) when it
+// names a contact that is actually in the bundle, else "" — a dangling or
+// soft-deleted pointer must not produce a bundle naming a contact the file
+// does not carry.
+func bundleSelfContactUID(db *gorm.DB, userID uint, uidByContactID map[uint]string) string {
+	var user models.User
+	if err := db.Select("id", "self_contact_vcard_uid").First(&user, userID).Error; err != nil || user.SelfContactVCardUID == nil {
+		return ""
+	}
+	for _, uid := range uidByContactID {
+		if uid == *user.SelfContactVCardUID {
+			return uid
+		}
+	}
+	return ""
 }

@@ -219,3 +219,7 @@ The import is a one-time move, never a live sync, and re-running it does not dup
 already arrived. For moving an Android local-only profile to a server, see
 [Android app](android-app.md).
 
+Your own "Me" contact is not duplicated: the bundle records which contact is you, and the import merges
+it into the "Me" contact the destination account already has (it appears in the review step as a merge
+into that contact). If the destination has no "Me" yet, the bundle's one becomes it.
+

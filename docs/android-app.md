@@ -139,6 +139,12 @@ server's import ledger keys on the bundle's stable IDs, so contacts already
 moved are not created twice. Nothing ever flows from the remote back to the
 local profile.
 
+The profile's own "Me" contact is merged into the "Me" contact the destination
+already has (restoring a backup into a fresh local profile, or attaching to a
+server that has its own Me) rather than creating a second "Me"; the bundle
+records which contact is Me (`self_contact_uid`), and a bundle without it
+imports every contact as new.
+
 The entry point ("Use on this device only", on the sign-in screen and in
 **Settings → Servers**) is present in every distribution variant but stays
 behind a build flag until the account-bundle backup UI ships — a local profile

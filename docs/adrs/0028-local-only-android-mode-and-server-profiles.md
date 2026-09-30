@@ -264,6 +264,15 @@ A `Local` user who later wants a server **moves** their data; the two stores are
   event / occasion / field-definition links) to the new IDs. This is what lets a bundle be imported into a
   second account on the same instance (issue #1355); the ledger, not the primary key, is what makes a
   re-run idempotent.
+  The bundle also names the account's **"Me" self contact** (`self_contact_uid`, top level, optional;
+  issue #1375). Every account already has a self contact (the embedded server provisions one, server
+  accounts get one lazily), so the importer lands the bundle's Me **onto the destination's own self
+  contact** through the source-import merge path rather than creating a second "Me"; the destination's
+  pointer is unchanged and everything keyed to the source's Me (notes, relationships, ...) is remapped
+  onto it. With no destination self contact the bundle's Me is created and becomes the Me. A bundle
+  without the field imports as before. The preview shows the row as an `update` into the existing Me,
+  and the engine does this whatever action a client sends for that row (only an explicit skip is
+  honoured).
 - **The Android flow:** add and log into a `Remote` profile → the `Local` server exports the bundle →
   the app uploads it to the remote import endpoint → the user reviews the preview → confirm → the
   `Local` profile is marked **read-only archive** (still browsable, no writes) until the user deletes
