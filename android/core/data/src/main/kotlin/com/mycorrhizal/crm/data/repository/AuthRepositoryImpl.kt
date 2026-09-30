@@ -181,8 +181,11 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(body.value)
     }
 
-    override suspend fun regenerateRecoveryCodes(code: String): Result<TwoFactorConfirmResponse> {
-        val result = apiClient.regenerateRecoveryCodes(code.trim())
+    override suspend fun regenerateRecoveryCodes(proof: SecondFactorProof): Result<TwoFactorConfirmResponse> {
+        val result = apiClient.regenerateRecoveryCodes(
+            code = (proof as? SecondFactorProof.Code)?.code?.trim(),
+            assertionJson = (proof as? SecondFactorProof.Assertion)?.json,
+        )
         val body = result.getOrElse { return Result.failure(it.toApiError()) }
         body.reissuedToken?.let { sessionManager.setToken(it) }
         return Result.success(body.value)

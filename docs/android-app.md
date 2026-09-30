@@ -195,6 +195,8 @@ passkey prompt is silent. Removing a passkey needs a live second-factor proof â€
 recovery code, or an assertion from a *different* passkey (offered only when you have another).
 Accounts that sign in through an identity provider (OIDC) cannot add passkeys, same as the web app.
 When your first passkey is your account's first second factor, the app shows your recovery codes once.
+Regenerating recovery codes (Settings > Two-factor authentication) works with a code or, when a passkey
+can answer on this device, **Verify with a passkey instead** â€” so a passkey-only account can rotate its set.
 
 ## TLS
 

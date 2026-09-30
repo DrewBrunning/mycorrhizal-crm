@@ -102,6 +102,7 @@ fun TwoFactorScreen(
             onSetupProofWithPasskey = { viewModel.submitSetupProofWithPasskey(context) },
             onDismissSetupProof = viewModel::dismissSetupProof,
             onSubmitPromptCode = viewModel::submitPromptCode,
+            onPromptWithPasskey = { viewModel.submitRegenerateWithPasskey(context) },
             onDismissPrompt = viewModel::dismissPrompt,
             onDismissRecoveryCodes = viewModel::dismissRecoveryCodes,
             modifier = Modifier.padding(padding),
@@ -121,6 +122,7 @@ fun TwoFactorContent(
     onSetupProofWithPasskey: () -> Unit,
     onDismissSetupProof: () -> Unit,
     onSubmitPromptCode: (String) -> Unit,
+    onPromptWithPasskey: () -> Unit,
     onDismissPrompt: () -> Unit,
     onDismissRecoveryCodes: () -> Unit,
     modifier: Modifier = Modifier,
@@ -164,6 +166,13 @@ fun TwoFactorContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // Issue #1354: a passkey-only account holds a second factor and can
+                // rotate its recovery codes (proof: a code or a passkey assertion).
+                if (state.hasPasskey) {
+                    OutlinedButton(onClick = onRegenerate, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.settings_two_factor_regenerate_button))
+                    }
+                }
                 val enablingLabel = stringResource(R.string.a11y_state_saving)
                 Button(
                     onClick = onEnable,
@@ -224,7 +233,9 @@ fun TwoFactorContent(
             busy = state.busy,
             error = state.error,
             errorRes = state.errorRes,
+            canProveWithPasskey = state.canProveWithPasskey,
             onConfirm = onSubmitPromptCode,
+            onUsePasskey = onPromptWithPasskey,
             onDismiss = onDismissPrompt,
         )
     }
@@ -375,13 +386,19 @@ internal fun CodePromptDialog(
     errorRes: Int?,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
+    canProveWithPasskey: Boolean = false,
+    onUsePasskey: () -> Unit = {},
 ) {
     var code by remember { mutableStateOf("") }
+    // Regenerate offers a passkey proof (issue #1354) only when one can answer.
+    val passkeyOffered = prompt == TwoFactorPrompt.REGENERATE && canProveWithPasskey
     val (title, description) = when (prompt) {
         TwoFactorPrompt.DISABLE ->
             R.string.settings_two_factor_disable_title to R.string.settings_two_factor_disable_description
         TwoFactorPrompt.REGENERATE ->
-            R.string.settings_two_factor_regenerate_title to R.string.settings_two_factor_regenerate_description
+            R.string.settings_two_factor_regenerate_title to
+                if (passkeyOffered) R.string.settings_two_factor_regenerate_proof_description
+                else R.string.settings_two_factor_regenerate_description
     }
 
     AlertDialog(
@@ -399,11 +416,16 @@ internal fun CodePromptDialog(
                     onValueChange = { code = it },
                     singleLine = true,
                     label = { Text(stringResource(R.string.settings_two_factor_code_prompt_label)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (passkeyOffered) KeyboardType.Ascii else KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 val message = errorRes?.let { stringResource(it) } ?: error
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (passkeyOffered) {
+                    OutlinedButton(onClick = onUsePasskey, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.settings_two_factor_proof_use_passkey))
+                    }
+                }
             }
         },
         confirmButton = {

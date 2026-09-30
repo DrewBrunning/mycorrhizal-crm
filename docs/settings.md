@@ -60,9 +60,16 @@ works a single time and takes the place of the second step — use one if you lo
 app or device. They are not shown again, so copy them (**Copy all codes**) and store them somewhere
 safe, such as a password manager.
 
-To replace them, choose **Regenerate recovery codes** and confirm with a current code. The old set
-stops working immediately and the new set is shown once. Adding a passkey to an account that already
-has recovery codes keeps the existing set; it does not mint new ones.
+To replace them, choose **Regenerate recovery codes** (offered whenever any second factor is set
+up, including a passkey-only account) and confirm with a current authenticator code, an unused
+recovery code, or — if you have a passkey — **Verify with a passkey instead**. The old set stops
+working immediately and the new set is shown once. Adding a passkey to an account that already has
+recovery codes keeps the existing set; it does not mint new ones.
+
+Every proof asked for while you are signed in (regenerating, removing a factor, adding another,
+deleting your account) shares one attempt limit: after 5 wrong codes or passkeys in a row those
+actions are refused for a while, even with the right code, with "Too many failed verification
+attempts". It never blocks signing in.
 
 ### Turning it off
 

@@ -204,9 +204,10 @@ interface AuthRepository {
 
     /**
      * POST /users/2fa/recovery-codes/regenerate — replaces unused codes with a
-     * fresh set, returned plaintext exactly once (gated on a live TOTP code).
+     * fresh set, returned plaintext exactly once. Gated on a live [proof]: a TOTP or
+     * recovery code, or (issue #1354) an assertion from a passkey.
      */
-    suspend fun regenerateRecoveryCodes(code: String): Result<TwoFactorConfirmResponse>
+    suspend fun regenerateRecoveryCodes(proof: SecondFactorProof): Result<TwoFactorConfirmResponse>
 
     /** Clear the stored session (token + cached prefs). */
     suspend fun logout()

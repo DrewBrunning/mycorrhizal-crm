@@ -84,7 +84,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 		boundFieldsOverride: []string{"code"}, // two_factor_controller.go DisableTwoFactor
 	},
 	"POST /users/2fa/recovery-codes/regenerate": {
-		boundFieldsOverride: []string{"code"}, // two_factor_controller.go RegenerateRecoveryCodes
+		boundFieldsOverride: []string{"code", "assertion"}, // two_factor_controller.go RegenerateRecoveryCodes (secondFactorProofInput, issue #1354)
 	},
 
 	// --- Contacts ---

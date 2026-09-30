@@ -304,9 +304,9 @@
     },
     "src/api/errorHandling.ts": {
       "lines": 100,
-      "linesTotal": 47,
-      "branches": 94.44,
-      "branchesTotal": 54
+      "linesTotal": 50,
+      "branches": 94.91,
+      "branchesTotal": 59
     },
     "src/api/export.ts": {
       "lines": 100,
@@ -533,8 +533,8 @@
     "src/api/users.ts": {
       "lines": 57.14,
       "linesTotal": 28,
-      "branches": 16.66,
-      "branchesTotal": 12
+      "branches": 37.5,
+      "branchesTotal": 16
     },
     "src/api/webauthn.ts": {
       "lines": 100,
@@ -1287,10 +1287,10 @@
       "branchesTotal": 14
     },
     "src/components/TwoFactorSettings.tsx": {
-      "lines": 89.24,
-      "linesTotal": 93,
-      "branches": 66.66,
-      "branchesTotal": 45
+      "lines": 93,
+      "linesTotal": 143,
+      "branches": 76.81,
+      "branchesTotal": 69
     },
     "src/components/UpcomingOccasionsWidget.tsx": {
       "lines": 100,
@@ -1927,6 +1927,12 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 5
+    },
+    "src/components/SecondFactorProofDialog.tsx": {
+      "lines": 88.88,
+      "linesTotal": 9,
+      "branches": 87.5,
+      "branchesTotal": 16
     }
   }
 }

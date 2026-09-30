@@ -401,6 +401,7 @@
     <string name="settings_two_factor_disable_description">Inserisci un codice attuale dalla tua app di autenticazione per confermare. Tutte le altre sessioni verranno chiuse.</string>
     <string name="settings_two_factor_regenerate_title">Rigenera i codici di recupero</string>
     <string name="settings_two_factor_regenerate_description">Inserisci un codice attuale dalla tua app di autenticazione. I vecchi codici di recupero smetteranno immediatamente di funzionare.</string>
+    <string name="settings_two_factor_regenerate_proof_description">Inserisci un codice di recupero o un codice attuale dalla tua app di autenticazione, oppure verifica con una passkey. I vecchi codici di recupero smetteranno immediatamente di funzionare.</string>
     <string name="settings_two_factor_code_prompt_label">Codice di verifica</string>
     <string name="settings_two_factor_confirm">Conferma</string>
     <string name="settings_two_factor_submitting">Attendere prego...</string>

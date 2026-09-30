@@ -40,6 +40,7 @@ class TwoFactorScreenTest {
         onSetupProofWithPasskey: () -> Unit = {},
         onDismissSetupProof: () -> Unit = {},
         onSubmitPromptCode: (String) -> Unit = {},
+        onPromptWithPasskey: () -> Unit = {},
         onDismissPrompt: () -> Unit = {},
         onDismissRecoveryCodes: () -> Unit = {},
     ) {
@@ -56,6 +57,7 @@ class TwoFactorScreenTest {
                     onSetupProofWithPasskey = onSetupProofWithPasskey,
                     onDismissSetupProof = onDismissSetupProof,
                     onSubmitPromptCode = onSubmitPromptCode,
+                    onPromptWithPasskey = onPromptWithPasskey,
                     onDismissPrompt = onDismissPrompt,
                     onDismissRecoveryCodes = onDismissRecoveryCodes,
                 )
@@ -137,6 +139,54 @@ class TwoFactorScreenTest {
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals("654321", submitted)
+    }
+
+    @Test
+    fun `a passkey-only account is offered regenerate recovery codes`() {
+        var regenerate = false
+        setContent(
+            state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true),
+            onRegenerate = { regenerate = true },
+        )
+        composeTestRule.onNodeWithText("Regenerate recovery codes").performScrollTo().performClick()
+        assertTrue(regenerate)
+    }
+
+    @Test
+    fun `an account with no second factor is not offered regenerate`() {
+        setContent(state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = false))
+        composeTestRule.onAllNodesWithText("Regenerate recovery codes").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the regenerate prompt offers a passkey proof when one can answer`() {
+        var passkey = false
+        setContent(
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = false,
+                hasPasskey = true,
+                passkeysAvailable = true,
+                prompt = TwoFactorPrompt.REGENERATE,
+            ),
+            onPromptWithPasskey = { passkey = true },
+        )
+        composeTestRule.onNodeWithText("Verify with a passkey instead").performClick()
+        assertTrue(passkey)
+    }
+
+    @Test
+    fun `the disable prompt never offers a passkey proof`() {
+        setContent(
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = true,
+                hasPasskey = true,
+                passkeysAvailable = true,
+                prompt = TwoFactorPrompt.DISABLE,
+            ),
+        )
+        composeTestRule.onAllNodesWithText("Verify with a passkey instead").assertCountEquals(0)
     }
 
     @Test

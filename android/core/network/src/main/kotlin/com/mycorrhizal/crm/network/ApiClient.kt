@@ -557,9 +557,19 @@ class ApiClient(
             }
         }
 
-    /** POST /api/v1/users/2fa/recovery-codes/regenerate — new codes shown plaintext exactly once. */
-    suspend fun regenerateRecoveryCodes(code: String): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> =
-        executePost("$TWO_FACTOR_PATH/recovery-codes/regenerate", TwoFactorCodeInput(code)) { response, body ->
+    /**
+     * POST /api/v1/users/2fa/recovery-codes/regenerate — new codes shown plaintext exactly once.
+     * The proof is a live [code] (TOTP or recovery) or, issue #1354, [assertionJson] from
+     * [webauthnProofBegin]'s options (the only proof a passkey-only account can give). 400 =
+     * missing/wrong proof, 429 = locked out by the shared proof limiter (issue #1352).
+     */
+    suspend fun regenerateRecoveryCodes(
+        code: String? = null,
+        assertionJson: String? = null,
+    ): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> {
+        val json = enrollmentProofBody(null, code, assertionJson)
+            ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        return executeRawPost("$TWO_FACTOR_PATH/recovery-codes/regenerate", json) { response, body ->
             val parsed = moshi.adapter(TwoFactorConfirmResponse::class.java).fromJson(body)
             if (parsed == null) {
                 null
@@ -567,6 +577,7 @@ class ApiClient(
                 ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
             }
         }
+    }
 
     /** GET /api/v1/users/me. */
     suspend fun currentUser(): Result<UserProfile> =

@@ -408,6 +408,7 @@
     <string name="settings_two_factor_disable_description">Enter a current code from your authenticator app to confirm. All other sessions will be signed out.</string>
     <string name="settings_two_factor_regenerate_title">Regenerate recovery codes</string>
     <string name="settings_two_factor_regenerate_description">Enter a current code from your authenticator app. The old recovery codes will stop working immediately.</string>
+    <string name="settings_two_factor_regenerate_proof_description">Enter a recovery code or a current code from your authenticator app, or verify with a passkey. The old recovery codes will stop working immediately.</string>
     <string name="settings_two_factor_code_prompt_label">Verification code</string>
     <string name="settings_two_factor_confirm">Confirm</string>
     <string name="settings_two_factor_submitting">Please wait...</string>

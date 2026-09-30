@@ -709,7 +709,7 @@ class AuthRepositoryImplTest {
             ReissuedTokenResult(value = TwoFactorConfirmResponse(recoveryCodes = listOf("NEW-A")), reissuedToken = null),
         )
 
-        val result = h.repository.regenerateRecoveryCodes("123456")
+        val result = h.repository.regenerateRecoveryCodes(SecondFactorProof.Code("123456"))
 
         assertTrue(result.isSuccess)
         assertEquals(listOf("NEW-A"), result.getOrThrow().recoveryCodes)
