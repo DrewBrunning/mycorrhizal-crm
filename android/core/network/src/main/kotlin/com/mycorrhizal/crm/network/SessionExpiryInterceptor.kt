@@ -33,7 +33,13 @@ class SessionExpiryInterceptor(
         val response = chain.proceed(request)
         val base = baseUrlProvider.baseUrl().toHttpUrlOrNull()
         if (response.code == 401 && base != null && request.url.host == base.host) {
-            notifier.onSessionExpired()
+            // response.request is the request as finally sent (after every
+            // inner interceptor, incl. the Local wake re-stamp), so this is the
+            // token the server actually rejected (issue #1353).
+            val bearer = response.request.header("Authorization")
+                ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+                ?.substring("Bearer ".length)
+            notifier.onSessionExpired(bearer)
         }
         return response
     }

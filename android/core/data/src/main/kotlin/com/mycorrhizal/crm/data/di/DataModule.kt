@@ -358,8 +358,9 @@ object DataModule {
             refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() },
             // Issue #1312: a Local profile re-mints (restart the embedded server,
             // adopt its fresh token) instead of clearing to a login it doesn't have.
-            localRemint = {
-                com.mycorrhizal.crm.data.local.LocalSessionReminter(localServerHost.get(), manager).remint()
+            localRemint = { rejectedBearer ->
+                com.mycorrhizal.crm.data.local.LocalSessionReminter(localServerHost.get(), manager)
+                    .remint(rejectedBearer)
             },
         ).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a

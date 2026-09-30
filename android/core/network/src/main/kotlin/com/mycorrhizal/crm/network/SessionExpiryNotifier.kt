@@ -17,14 +17,20 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class SessionExpiryNotifier {
 
-    private val listeners = CopyOnWriteArrayList<() -> Unit>()
+    private val listeners = CopyOnWriteArrayList<(String?) -> Unit>()
 
-    /** Registers a listener to be invoked on every 401. */
-    fun register(listener: () -> Unit) {
+    /**
+     * Registers a listener to be invoked on every 401. The argument is the
+     * bearer token the rejected request actually carried (null when it carried
+     * none, or when the signaller doesn't know) — issue #1353: a Local profile
+     * must only restart its embedded server when the token the server rejected
+     * is the one it is currently running with.
+     */
+    fun register(listener: (String?) -> Unit) {
         listeners.add(listener)
     }
 
-    fun onSessionExpired() {
-        listeners.forEach { it.invoke() }
+    fun onSessionExpired(rejectedBearer: String? = null) {
+        listeners.forEach { it.invoke(rejectedBearer) }
     }
 }

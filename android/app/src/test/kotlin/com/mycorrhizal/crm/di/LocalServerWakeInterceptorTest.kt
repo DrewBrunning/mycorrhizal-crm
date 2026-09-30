@@ -13,6 +13,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.IOException
@@ -51,6 +52,79 @@ class LocalServerWakeInterceptorTest {
 
         assertEquals(200, response.code)
         coVerify(exactly = 1) { host.ensureStarted() }
+    }
+
+    private fun capturingChain(url: String, authorization: String?): Pair<Interceptor.Chain, MutableList<Request>> {
+        val request = Request.Builder().url(url).apply {
+            if (authorization != null) header("Authorization", authorization)
+        }.build()
+        val sent = mutableListOf<Request>()
+        val chain = mockk<Interceptor.Chain> {
+            every { this@mockk.request() } returns request
+            every { proceed(any()) } answers {
+                val r = firstArg<Request>()
+                sent += r
+                Response.Builder().request(r).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                    .body("{}".toResponseBody()).build()
+            }
+        }
+        return chain to sent
+    }
+
+    // Issue #1353: a request queued across a start carries the previous token;
+    // the wake step re-stamps it with the token of the server that answers.
+    @Test
+    fun `a stale bearer is re-stamped with the running server's token`() {
+        coEvery { host.ensureStarted() } returns
+            Result.success(LocalServerEndpoint(socketPath = "/sock", sessionToken = "t2"))
+        val (chain, sent) = capturingChain("$LOCAL_SERVER_SENTINEL_URL/contacts", "Bearer t1")
+
+        LocalServerWakeInterceptor(host).intercept(chain)
+
+        assertEquals("Bearer t2", sent.single().header("Authorization"))
+    }
+
+    @Test
+    fun `a bearer already matching the running token is left untouched`() {
+        coEvery { host.ensureStarted() } returns
+            Result.success(LocalServerEndpoint(socketPath = "/sock", sessionToken = "t2"))
+        val (chain, sent) = capturingChain("$LOCAL_SERVER_SENTINEL_URL/contacts", "Bearer t2")
+
+        LocalServerWakeInterceptor(host).intercept(chain)
+
+        assertEquals("Bearer t2", sent.single().header("Authorization"))
+    }
+
+    @Test
+    fun `an unauthenticated sentinel request is never given a bearer`() {
+        coEvery { host.ensureStarted() } returns
+            Result.success(LocalServerEndpoint(socketPath = "/sock", sessionToken = "t2"))
+        val (chain, sent) = capturingChain("$LOCAL_SERVER_SENTINEL_URL/health", null)
+
+        LocalServerWakeInterceptor(host).intercept(chain)
+
+        assertNull(sent.single().header("Authorization"))
+    }
+
+    @Test
+    fun `a non-bearer Authorization header is not rewritten`() {
+        coEvery { host.ensureStarted() } returns
+            Result.success(LocalServerEndpoint(socketPath = "/sock", sessionToken = "t2"))
+        val (chain, sent) = capturingChain("$LOCAL_SERVER_SENTINEL_URL/x", "Basic abc")
+
+        LocalServerWakeInterceptor(host).intercept(chain)
+
+        assertEquals("Basic abc", sent.single().header("Authorization"))
+    }
+
+    @Test
+    fun `a remote request keeps its own bearer and never touches the embedded server`() {
+        val (chain, sent) = capturingChain("https://crm.example.com/x", "Bearer remote")
+
+        LocalServerWakeInterceptor(host).intercept(chain)
+
+        assertEquals("Bearer remote", sent.single().header("Authorization"))
+        coVerify(exactly = 0) { host.ensureStarted() }
     }
 
     @Test

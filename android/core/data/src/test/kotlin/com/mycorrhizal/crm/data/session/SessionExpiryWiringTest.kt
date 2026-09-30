@@ -331,4 +331,132 @@ class SessionExpiryWiringTest {
 
         assertEquals("a second, later 401 must start its own refresh", 2, refreshStarts)
     }
+
+    // Issue #1353: the rejected bearer reaches the Local re-mint hook.
+    @Test
+    fun `the rejected bearer is passed to the local re-mint hook`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        val seen = mutableListOf<String?>()
+
+        SessionExpiryWiring(notifier, manager, localRemint = { seen += it; true }).start(this)
+        notifier.onSessionExpired("stale-token")
+        advanceUntilIdle()
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertEquals(listOf("stale-token", null), seen)
+    }
+
+    // Issue #1353 end to end through the real reminter: a burst of stale-token
+    // 401s after adoption, and serial ones after the burst, never restart.
+    @Test
+    fun `a burst of stale-token 401s produces zero restarts`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.activateLocalProfile("t2")
+        val host = CountingHost(runningToken = "t2")
+        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+
+        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
+        repeat(5) { notifier.onSessionExpired("t1") }
+        advanceUntilIdle()
+        repeat(3) {
+            notifier.onSessionExpired("t1")
+            advanceUntilIdle()
+        }
+
+        assertEquals("stale 401s must never stop the server", 0, host.stops)
+        assertEquals("stale 401s must never start the server", 0, host.starts)
+        assertEquals("t2", manager.bearerToken())
+        assertTrue("the session must survive", manager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `a 401 carrying the running token restarts once even in a burst`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.activateLocalProfile("t2")
+        val host = CountingHost(runningToken = "t2", mintsOnStart = "t3")
+        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+
+        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
+        repeat(4) { notifier.onSessionExpired("t2") }
+        advanceUntilIdle()
+
+        assertEquals(1, host.stops)
+        assertEquals(1, host.starts)
+        assertEquals("t3", manager.bearerToken())
+        // Later 401s for the old token are now stale -> no further restart.
+        notifier.onSessionExpired("t2")
+        advanceUntilIdle()
+        assertEquals(1, host.starts)
+    }
+
+    // Cold start: stored T1, the freshly started server minted T2. A 401 for T1
+    // adopts T2 with no restart.
+    @Test
+    fun `cold start with a stale stored token adopts the running token without a restart`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.activateLocalProfile("t1")
+        val host = CountingHost(runningToken = "t2")
+        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+
+        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
+        notifier.onSessionExpired("t1")
+        advanceUntilIdle()
+
+        assertEquals(0, host.stops)
+        assertEquals(0, host.starts)
+        assertEquals("t2", manager.bearerToken())
+    }
+
+    // Remote profile: the bearer plumbing changes nothing -- the grant refresh
+    // still runs and a failed refresh still clears.
+    @Test
+    fun `a remote profile still refreshes then clears regardless of the rejected bearer`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var refreshes = 0
+        val host = CountingHost(runningToken = null)
+        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            refresher = { refreshes++; false },
+            localRemint = { reminter.remint(it) },
+        ).start(this)
+        notifier.onSessionExpired("jwt-1")
+        advanceUntilIdle()
+
+        assertEquals(1, refreshes)
+        assertEquals(0, host.starts + host.stops)
+        assertNull(manager.bearerToken())
+    }
+
+    private class CountingHost(
+        private val runningToken: String?,
+        private val mintsOnStart: String = "minted",
+    ) : com.mycorrhizal.crm.data.local.LocalServerHost {
+        var starts = 0
+        var stops = 0
+
+        override suspend fun ensureStarted() = Result.success(
+            com.mycorrhizal.crm.data.local.LocalServerEndpoint("/sock", mintsOnStart).also { starts++ },
+        )
+
+        override suspend fun stop() {
+            stops++
+        }
+
+        override suspend fun deleteLocalData() = Unit
+
+        override fun socketPathIfRunning(): String? = null
+
+        override fun sessionTokenIfRunning(): String? = runningToken
+    }
 }

@@ -21,7 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Issue #1312: a Local profile's 401 (the embedded server's session idled out or
  * expired) re-mints via [localRemint] instead of clearing; the session is only
- * cleared if that restart fails.
+ * cleared if that restart fails. Issue #1353: the rejected request's bearer is
+ * passed along so a 401 for a token older than the running server (a request
+ * queued across a start) adopts/ignores instead of restarting.
  *
  * Issue #957/#967 — two guards on the naive "every 401 launches a refresh"
  * design, both real bugs found by the same adversarial review pass:
@@ -46,17 +48,17 @@ class SessionExpiryWiring(
      * through to [refresher]); otherwise whether the embedded server restarted
      * and a fresh session was adopted.
      */
-    private val localRemint: suspend () -> Boolean? = { null },
+    private val localRemint: suspend (rejectedBearer: String?) -> Boolean? = { null },
 ) {
     private val refreshInFlight = AtomicBoolean(false)
 
     fun start(scope: CoroutineScope) {
-        sessionExpiryNotifier.register {
+        sessionExpiryNotifier.register { rejectedBearer ->
             if (sessionManager.isClearingSession()) return@register
             if (!refreshInFlight.compareAndSet(false, true)) return@register
             scope.launch {
                 try {
-                    val refreshed = localRemint() ?: refresher()
+                    val refreshed = localRemint(rejectedBearer) ?: refresher()
                     if (!refreshed) sessionManager.clearSession()
                 } finally {
                     refreshInFlight.set(false)

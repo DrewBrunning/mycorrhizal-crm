@@ -48,8 +48,9 @@ class SessionExpiryWiringGuardTest {
         // Issue #1312: a Local profile re-mints instead of clearing.
         assertTrue(
             "the 401 path must wire the Local re-mint before clearing",
-            dataModuleSource.contains("localRemint = {") &&
-                dataModuleSource.contains("LocalSessionReminter(localServerHost.get(), manager).remint()"),
+            dataModuleSource.contains("localRemint = { rejectedBearer ->") &&
+                dataModuleSource.contains("LocalSessionReminter(localServerHost.get(), manager)") &&
+                dataModuleSource.contains(".remint(rejectedBearer)"),
         )
         // Issue #957: DefaultSessionManager must actually receive the
         // Hilt-bound SessionTeardown, not silently fall back to the Noop
