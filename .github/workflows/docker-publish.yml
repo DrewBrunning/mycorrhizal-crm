@@ -312,7 +312,12 @@ jobs:
     if: ${{ always() && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
     # #508: same protected `release` environment as create-release / build-and-push.
     environment: release
-    timeout-minutes: 45
+    # 90 min, doubled from 45 after v1.3.0-rc.1's APK job hit the old limit
+    # mid-assemble (cancelled at exactly 45:16). Measured whole-job times: v1.1.0
+    # 44.1 min (1 min under the old limit), v1.2.0-rc.2 32.2 min; #1390 then added
+    # the uncached embedded-server Go cross-compile (~3.5 min). Runner variance alone
+    # has moved unit tests + lint by ~6 min between runs, so keep generous headroom.
+    timeout-minutes: 90
     permissions:
       contents: write
       # id-token + attestations let actions/attest-build-provenance mint a
