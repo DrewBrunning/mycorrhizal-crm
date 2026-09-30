@@ -8412,6 +8412,11 @@
           "required": true
         },
         {
+          "name": "self_contact_uid",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "version",
           "type": "integer",
           "required": true,

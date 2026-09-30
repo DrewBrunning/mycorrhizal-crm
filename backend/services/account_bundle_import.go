@@ -35,6 +35,16 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 		})
 	}
 
+	// Only honour a self uid that names a contact the bundle actually carries.
+	if bundle.SelfContactUID != "" {
+		for _, c := range bundle.Plan.Contacts {
+			if c.UID == bundle.SelfContactUID {
+				plan.SelfContact = bundleContactRef(c.UID)
+				break
+			}
+		}
+	}
+
 	for _, r := range bundle.Plan.Relationships {
 		plan.Relationships = append(plan.Relationships, MappedRelationship{
 			Ref:         bundleRef("relationship", r.ID),

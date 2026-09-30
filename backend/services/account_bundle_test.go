@@ -283,6 +283,11 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		UserID: user.ID, EventID: event.ID, EntityID: ada.VCardUID, RSVP: models.OccasionEventRSVPAccepted,
 	}).Error)
 
+	// Ada is also the account's "Me" (issue #1375): the bundle must name her, so
+	// the round-trip covers the self-contact pointer.
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", user.ID).
+		Update("self_contact_vcard_uid", ada.VCardUID).Error)
+
 	return bundleSeed{Contacts: []models.Contact{ada, bob, cy}, PhotoDir: photoDir}
 }
 
@@ -402,6 +407,16 @@ func TestAccountBundle_RoundTrip(t *testing.T) {
 	// ID-agnostically: equivalent rows with equivalent, resolving references.
 	require.Equal(t, canonicalPlanJSON(t, exported), canonicalPlanJSON(t, reexported),
 		"the re-exported bundle must equal the original plan")
+
+	// Issue #1375: the self contact travels and lands as the destination's "Me".
+	ada0 := seed.Contacts[0]
+	require.Equal(t, ada0.VCardUID, exported.SelfContactUID)
+	require.Equal(t, exported.SelfContactUID, reexported.SelfContactUID,
+		"the re-exported bundle must name the same self contact")
+	var targetUser models.User
+	require.NoError(t, targetDB.First(&targetUser, target.ID).Error)
+	require.NotNil(t, targetUser.SelfContactVCardUID)
+	assert.Equal(t, ada0.VCardUID, *targetUser.SelfContactVCardUID)
 
 	// Issue #1308: the embedded photo must land in the destination's own photo
 	// directory and flat columns, not only as a data: entry in the stored Card.

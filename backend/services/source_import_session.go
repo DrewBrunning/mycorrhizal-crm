@@ -58,6 +58,9 @@ func buildSourceImportPreview(db *gorm.DB, userID uint, plan *ImportSourcePlan) 
 		models.ApplyRecordToContact(contact, plan.Contacts[i].Record, "")
 		row := BuildImportRowPreview(db, userID, contact, i, batch, nil, &stats)
 		batch = append(batch, contact)
+		if plan.SelfContact.ExternalID != "" && plan.Contacts[i].Ref.ExternalID == plan.SelfContact.ExternalID {
+			markSelfContactRow(db, userID, contact, &row)
+		}
 		previews = append(previews, models.SourceImportRowPreview{
 			ImportRowPreview: row,
 			Related:          related[i],
@@ -65,6 +68,37 @@ func buildSourceImportPreview(db *gorm.DB, userID uint, plan *ImportSourcePlan) 
 		})
 	}
 	return previews
+}
+
+// markSelfContactRow rewrites the preview row of the bundle's "Me" (issue
+// #1375) so it reads as what the engine will do: merge onto the destination's
+// own self contact. Whatever the generic duplicate detection found (nothing, a
+// same-named ordinary contact, a within-batch twin) is replaced, because the
+// engine lands this row on the destination's "Me" regardless of the action
+// sent. A row that failed validation stays "skip". With no destination self
+// contact the row is left as a plain "add" (it becomes the new "Me").
+func markSelfContactRow(db *gorm.DB, userID uint, incoming *models.Contact, row *models.ImportRowPreview) {
+	if len(row.ValidationErrors) > 0 {
+		return
+	}
+	dest := loadDestinationSelfContact(db, userID)
+	if dest == nil {
+		return
+	}
+	row.BatchDuplicateOf = nil
+	row.DuplicateMatch = &models.DuplicateMatch{
+		ExistingContactID: dest.ID,
+		ExistingFirstname: dest.Firstname,
+		ExistingLastname:  dest.Lastname,
+		ExistingEmail:     dest.Email,
+		ExistingPhone:     dest.Phone,
+		// "name": the wire enum is email|name|phone and every client renders an
+		// unknown value as "name", so the same-person reason reuses it.
+		MatchReason: "name",
+	}
+	diff := ComputeImportMergeDiff(dest, incoming)
+	row.MergeDiff = &diff
+	row.SuggestedAction = "update"
 }
 
 // previewTotals sums a preview's rows for the review-step summary numbers.

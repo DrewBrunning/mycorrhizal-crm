@@ -15795,6 +15795,14 @@ components:
         format: { type: string, enum: ["mycorrhizal-account"] }
         version: { type: integer, enum: [1] }
         exported_at: { type: string, format: date-time }
+        self_contact_uid:
+          type: string
+          description: >
+            The vcard_uid of the account's "Me" self contact (issue #1375), one
+            of plan.contacts. Absent when the account has no self contact.
+            Importing lands that contact onto the destination's own self
+            contact instead of creating a second one; an importer must
+            tolerate its absence.
         plan: { $ref: "#/components/schemas/AccountBundlePlan" }
         attachments:
           type: array
