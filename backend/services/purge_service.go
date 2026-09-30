@@ -6,6 +6,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -50,6 +51,69 @@ var purgedSoftDeleteModels = []any{
 	// its signing secret; its deliveries go with it via the FK cascade.
 	&models.Webhook{},
 	&models.ReminderCompletion{},
+}
+
+// contactUIDCleanup names a table whose rows point at a contact by
+// Contact.VCardUID (not an FK) in one or more columns, and every such column.
+type contactUIDCleanup struct {
+	Table string
+	Cols  []string
+}
+
+// purgeContactUIDCleanups is the single list of VCardUID-keyed cleanups the
+// purge runs for contacts past retention (issue #1351). The #1351 scoping
+// guard (purge_user_scope_test.go) iterates THIS slice, and separately scans
+// the schema for tables that carry a VCardUID-shaped column, so a new
+// cleanup cannot skip the owner-scoping test.
+//
+// vcard_uid is unique only per (user_id) and only among LIVE contacts (the
+// partial idx_contacts_vcard_uid_user), so a bare `IN (SELECT vcard_uid ...)`
+// also matched another user's same-UID contact and the same user's
+// re-created one — see colPredicate for the predicate that prevents that.
+var purgeContactUIDCleanups = []contactUIDCleanup{
+	{"occasion_event_attendees", []string{"entity_id"}},
+	{"circle_members", []string{"member_vcard_uid"}},
+	{"contact_tags", []string{"contact_vcard_uid"}},
+	{"household_members", []string{"member_vcard_uid"}},
+	{"field_values", []string{"entity_id"}},
+	{"preferences", []string{"entity_id"}},
+	{"conversation_agenda", []string{"entity_id"}},
+	{"gifts", []string{"entity_id"}},
+	{"cadence_policies", []string{"entity_id"}},
+	{"data_decay_policies", []string{"entity_id"}},
+	{"relationship_edges", []string{"source_id", "target_id"}},
+	{"external_identities", []string{"entity_id"}},
+	{"external_activities", []string{"entity_id"}},
+	{"occasion_obligations", []string{"entity_id"}},
+}
+
+// colPredicate is true for a row whose <col> names a contact that is
+// purge-eligible for THE ROW'S OWN USER and that has no other claim on the
+// UID: no live contact of that user, and no still-in-retention soft-deleted
+// one (its undo window is still open, so its rows are still someone's undo).
+// Both subqueries correlate on <table>.user_id, so another user's same-UID
+// contact can neither trigger nor block the delete.
+func (c contactUIDCleanup) colPredicate(col string) string {
+	return fmt.Sprintf(
+		"(EXISTS (SELECT 1 FROM contacts d WHERE d.user_id = %[1]s.user_id AND d.vcard_uid = %[1]s.%[2]s AND d.deleted_at IS NOT NULL AND d.deleted_at < ?)"+
+			" AND NOT EXISTS (SELECT 1 FROM contacts l WHERE l.user_id = %[1]s.user_id AND l.vcard_uid = %[1]s.%[2]s AND (l.deleted_at IS NULL OR l.deleted_at >= ?)))",
+		c.Table, col)
+}
+
+func (c contactUIDCleanup) query() string {
+	preds := make([]string, len(c.Cols))
+	for i, col := range c.Cols {
+		preds[i] = c.colPredicate(col)
+	}
+	return "DELETE FROM " + c.Table + " WHERE " + strings.Join(preds, " OR ")
+}
+
+func (c contactUIDCleanup) args(cutoff time.Time) []interface{} {
+	out := make([]interface{}, 0, 2*len(c.Cols))
+	for range c.Cols {
+		out = append(out, cutoff, cutoff)
+	}
+	return out
 }
 
 // PurgeSoftDeletedRows hard-deletes soft-deleted rows older than the
@@ -100,9 +164,8 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 	// occasion_event_attendees are hard-delete join rows (no deleted_at), so
 	// they never age out on their own. Remove those hanging off an event
 	// about to be purged BEFORE the event loop below (the FK is ON DELETE
-	// CASCADE; this makes the order explicit rather than constraint-reliant),
-	// and those naming a contact about to be purged (entity_id is a
-	// Contact.VCardUID, not an FK, so nothing else would ever clean them).
+	// CASCADE; this makes the order explicit rather than constraint-reliant).
+	// Attendees naming a purged contact are in purgeContactUIDCleanups.
 	for _, c := range []struct {
 		query string
 		desc  string
@@ -110,10 +173,6 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		{
 			"DELETE FROM occasion_event_attendees WHERE event_id IN (SELECT id FROM occasion_events WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			"occasion_event_attendees (purged events)",
-		},
-		{
-			"DELETE FROM occasion_event_attendees WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			"occasion_event_attendees (purged contacts)",
 		},
 	} {
 		if err := db.Exec(c.query, cutoff).Error; err != nil {
@@ -147,58 +206,6 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 	}
 	cleanups := []cleanup{
 		{
-			"DELETE FROM circle_members WHERE member_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "circle_members",
-		},
-		{
-			"DELETE FROM contact_tags WHERE contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "contact_tags",
-		},
-		{
-			"DELETE FROM household_members WHERE member_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "household_members",
-		},
-		{
-			"DELETE FROM field_values WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "field_values",
-		},
-		{
-			"DELETE FROM preferences WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "preferences",
-		},
-		{
-			"DELETE FROM conversation_agenda WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "conversation_agenda",
-		},
-		{
-			"DELETE FROM gifts WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "gifts",
-		},
-		{
-			"DELETE FROM cadence_policies WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "cadence_policies",
-		},
-		{
-			"DELETE FROM data_decay_policies WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "data_decay_policies",
-		},
-		{
-			"DELETE FROM relationship_edges WHERE source_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?) OR target_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff, cutoff}, "relationship_edges",
-		},
-		{
-			"DELETE FROM external_identities WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "external_identities",
-		},
-		{
-			"DELETE FROM external_activities WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "external_activities",
-		},
-		{
-			"DELETE FROM occasion_obligations WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "occasion_obligations",
-		},
-		{
 			"DELETE FROM contact_sync_links WHERE contact_id IN (SELECT id FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "contact_sync_links",
 		},
@@ -206,6 +213,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 			"DELETE FROM calendar_event_links WHERE activity_id IN (SELECT id FROM activities WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "calendar_event_links",
 		},
+	}
+	// VCardUID-keyed rows: owner-scoped, see purgeContactUIDCleanups (#1351).
+	for _, spec := range purgeContactUIDCleanups {
+		cleanups = append(cleanups, cleanup{spec.query(), spec.args(cutoff), spec.Table})
 	}
 	for _, c := range cleanups {
 		if err := db.Exec(c.query, c.args...).Error; err != nil {
