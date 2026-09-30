@@ -272,6 +272,28 @@ test('a fetch failure during beginFetch surfaces the error', async () => {
   expect(result.current.step).toBe('connect');
 });
 
+test('a failing status poll surfaces the error and stops polling', async () => {
+  vi.useFakeTimers();
+  statusMock.mockRejectedValue(new Error('status unavailable'));
+
+  const { result } = renderHook(() =>
+    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
+  );
+  await act(async () => {
+    await result.current.beginFetch('s1');
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(result.current.error).toBe('status unavailable');
+  expect(result.current.step).toBe('fetching');
+  expect(statusMock).toHaveBeenCalledTimes(1);
+
+  // The interval was cleared: later ticks never poll again.
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(4500);
+  });
+  expect(statusMock).toHaveBeenCalledTimes(1);
+});
+
 test('resolveRowAction prefers an explicit choice, then the suggestion, then add', () => {
   const chosen = new Map<number, 'add' | 'skip' | 'update'>([[1, 'skip']]);
   expect(resolveRowAction(chosen, { row_index: 1, suggested_action: 'update' })).toBe('skip');

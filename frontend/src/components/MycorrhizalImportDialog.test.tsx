@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { startMycorrhizalFetch, uploadMycorrhizalBundle } from '../api/mycorrhizalImport';
+import { getSourceImportStatus } from '../api/sourceImport';
 import MycorrhizalImportDialog from './MycorrhizalImportDialog';
 
 afterEach(cleanup);
@@ -15,11 +16,30 @@ vi.mock('../api/mycorrhizalImport', async (importOriginal) => {
   };
 });
 
+// Starting the fetch kicks off the wizard's status poll. Without this mock the
+// poll makes a real request that fails some time after the test has already
+// finished, which made the hook's poll-error lines count as covered on some
+// runs only (a flaky coverage ratchet).
+vi.mock('../api/sourceImport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/sourceImport')>();
+  return {
+    ...actual,
+    getSourceImportStatus: vi.fn().mockResolvedValue({
+      session_id: 's1',
+      phase: 'fetching_contacts',
+      phase_done: 0,
+      phase_total: 1,
+    }),
+  };
+});
+
 const uploadMock = vi.mocked(uploadMycorrhizalBundle);
 const fetchMock = vi.mocked(startMycorrhizalFetch);
+const statusMock = vi.mocked(getSourceImportStatus);
 beforeEach(() => {
   uploadMock.mockReset();
   fetchMock.mockClear();
+  statusMock.mockClear();
 });
 
 function renderOpen() {
@@ -122,6 +142,7 @@ test('shows the uploading state, then starts the fetch on Start', async () => {
 
   fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('s1'));
+  await waitFor(() => expect(statusMock).toHaveBeenCalled());
 });
 
 test('Escape closes the dialog and resets it', async () => {
