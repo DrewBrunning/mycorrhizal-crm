@@ -40,6 +40,13 @@ class SessionExpiryInterceptorTest {
     private fun get(client: OkHttpClient) =
         client.newCall(Request.Builder().url(server.url("/x")).build()).execute()
 
+    private fun recordingNotifier(): Pair<SessionExpiryNotifier, MutableList<String?>> {
+        val notifier = SessionExpiryNotifier()
+        val seen = mutableListOf<String?>()
+        notifier.register { seen += it }
+        return notifier to seen
+    }
+
     private fun notifier(): Pair<SessionExpiryNotifier, java.util.concurrent.atomic.AtomicInteger> {
         val notifier = SessionExpiryNotifier()
         val signals = java.util.concurrent.atomic.AtomicInteger(0)
@@ -140,5 +147,59 @@ class SessionExpiryInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(1, signals.get())
+    }
+
+    // Issue #1353: the rejected request's bearer is forwarded to listeners.
+    @Test
+    fun `a 401 forwards the bearer the rejected request carried`() {
+        val (notifier, seen) = recordingNotifier()
+        server.enqueue(MockResponse().setResponseCode(401))
+        val client = client(notifier)
+
+        client.newCall(
+            Request.Builder().url(server.url("/x")).header("Authorization", "Bearer t1").build(),
+        ).execute()
+
+        assertEquals(listOf<String?>("t1"), seen)
+    }
+
+    @Test
+    fun `a 401 with no bearer forwards null`() {
+        val (notifier, seen) = recordingNotifier()
+        server.enqueue(MockResponse().setResponseCode(401))
+
+        get(client(notifier))
+
+        assertEquals(listOf<String?>(null), seen)
+    }
+
+    @Test
+    fun `a non-bearer Authorization scheme forwards null`() {
+        val (notifier, seen) = recordingNotifier()
+        server.enqueue(MockResponse().setResponseCode(401))
+
+        client(notifier).newCall(
+            Request.Builder().url(server.url("/x")).header("Authorization", "Basic abc").build(),
+        ).execute()
+
+        assertEquals(listOf<String?>(null), seen)
+    }
+
+    @Test
+    fun `the forwarded bearer is the one an inner interceptor finally sent`() {
+        val (notifier, seen) = recordingNotifier()
+        server.enqueue(MockResponse().setResponseCode(401))
+        val client = OkHttpClient.Builder()
+            .addInterceptor(SessionExpiryInterceptor(notifier, BaseUrlProvider { server.url("/").toString() }))
+            .addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().header("Authorization", "Bearer restamped").build())
+            }
+            .build()
+
+        client.newCall(
+            Request.Builder().url(server.url("/x")).header("Authorization", "Bearer original").build(),
+        ).execute()
+
+        assertEquals(listOf<String?>("restamped"), seen)
     }
 }

@@ -21,6 +21,10 @@ import java.io.IOException
  * main thread — every `ApiClient` call is on `Dispatchers.IO`), so it cannot
  * block a frame. It is a fast no-op once the server is running.
  *
+ * Issue #1353: after the start it also re-stamps the bearer with the running
+ * server's own token so a request queued across a restart is never rejected for
+ * carrying a token older than the server answering it.
+ *
  * A failure to start becomes an [IOException] on the request, i.e. an ordinary
  * network-shaped failure: the same path a dropped socket takes (ADR 0028,
  * "process death mid-write ... the client must treat a dropped socket like a
@@ -31,10 +35,23 @@ class LocalServerWakeInterceptor(
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        if (request.url.host == LOCAL_SERVER_SENTINEL_HOST) {
-            runBlocking { localServerHost.ensureStarted() }.getOrElse { error ->
-                throw IOException("embedded local server is unavailable", error)
-            }
+        if (request.url.host != LOCAL_SERVER_SENTINEL_HOST) return chain.proceed(request)
+        val endpoint = runBlocking { localServerHost.ensureStarted() }.getOrElse { error ->
+            throw IOException("embedded local server is unavailable", error)
+        }
+        // Issue #1353: AuthInterceptor stamped the stored bearer *before* this
+        // blocked on the start; a start revokes every earlier session (#1340),
+        // so a request queued across one would carry a token the server that
+        // answers it has already revoked. Re-stamp an already-authenticated
+        // request with the token of the server actually answering. Requests
+        // with no bearer (login/health) stay unauthenticated.
+        val stamped = request.header("Authorization")
+        if (stamped != null && stamped.startsWith("Bearer ", ignoreCase = true) &&
+            stamped.substring("Bearer ".length) != endpoint.sessionToken
+        ) {
+            return chain.proceed(
+                request.newBuilder().header("Authorization", "Bearer ${endpoint.sessionToken}").build(),
+            )
         }
         return chain.proceed(request)
     }
