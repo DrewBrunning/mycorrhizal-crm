@@ -1139,7 +1139,8 @@
       },
       "regenerate": {
         "title": "Régénérer les codes de récupération",
-        "description": "Saisissez un code actuel de votre application d'authentification. Les anciens codes de récupération cesseront immédiatement de fonctionner."
+        "description": "Saisissez un code actuel de votre application d'authentification. Les anciens codes de récupération cesseront immédiatement de fonctionner.",
+        "proofDescription": "Saisis un code de récupération ou un code actuel de ton application d'authentification, ou vérifie avec une clé d'accès. Les anciens codes de récupération cesseront de fonctionner immédiatement."
       },
       "recovery": {
         "title": "Codes de récupération",

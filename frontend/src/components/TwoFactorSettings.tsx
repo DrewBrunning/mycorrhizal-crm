@@ -65,6 +65,12 @@ export default function TwoFactorSettings() {
   const [proofBusy, setProofBusy] = useState(false);
   const [proofError, setProofError] = useState('');
 
+  // Recovery-code regeneration with a passkey available (issue #1354): the
+  // proof dialog offers a code or a passkey assertion.
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [regenBusy, setRegenBusy] = useState(false);
+  const [regenError, setRegenError] = useState('');
+
   // Code-prompt dialog (disable / regenerate).
   const [action, setAction] = useState<'disable' | 'regenerate' | null>(null);
   const [actionCode, setActionCode] = useState('');
@@ -206,6 +212,40 @@ export default function TwoFactorSettings() {
     }
   };
 
+  // Regenerate is offered whenever ANY second factor is enrolled. With a
+  // passkey on the account the proof dialog lets the user pick a code or a
+  // passkey; a TOTP-only account keeps the plain code prompt.
+  const startRegenerate = () => {
+    if (hasPasskey) {
+      setRegenError('');
+      setRegenOpen(true);
+      return;
+    }
+    openAction('regenerate');
+  };
+
+  const submitRegenerate = async (getProof: () => Promise<SecondFactorProof>) => {
+    setRegenBusy(true);
+    setRegenError('');
+    try {
+      const result = await regenerateRecoveryCodes(await getProof());
+      setRecoveryCodes(result.recovery_codes);
+      setCopied(false);
+      setRegenOpen(false);
+      showSuccess(t('settings.twoFactor.regenerateSuccess'));
+    } catch (err) {
+      setRegenError(
+        isCeremonyCancelled(err)
+          ? t('settings.passkeys.cancelled')
+          : err instanceof Error && err.message
+            ? err.message
+            : t('settings.passkeys.invalidProof'),
+      );
+    } finally {
+      setRegenBusy(false);
+    }
+  };
+
   const closeRecoveryDialog = () => {
     setRecoveryCodes(null);
     setCopied(false);
@@ -241,6 +281,13 @@ export default function TwoFactorSettings() {
                   : t('settings.twoFactor.enableButton')}
               </Button>
             </Box>
+            {hasPasskey && (
+              <Box>
+                <Button size="small" variant="outlined" onClick={startRegenerate}>
+                  {t('settings.twoFactor.regenerateButton')}
+                </Button>
+              </Box>
+            )}
             {/* Only shown when the setup dialog is closed — while it is open the
                 same error renders inside the dialog. */}
             {setupError && !setupOpen && (
@@ -263,7 +310,7 @@ export default function TwoFactorSettings() {
               {t('settings.twoFactor.enabledDescription')}
             </Typography>
             <Stack direction="row" spacing={1}>
-              <Button size="small" variant="outlined" onClick={() => openAction('regenerate')}>
+              <Button size="small" variant="outlined" onClick={startRegenerate}>
                 {t('settings.twoFactor.regenerateButton')}
               </Button>
               <Button
@@ -288,6 +335,19 @@ export default function TwoFactorSettings() {
         onSubmitCode={(code) => void submitProof(async () => ({ code }))}
         onUsePasskey={() => void submitProof(proveWithAnyPasskey)}
         onClose={() => setProofOpen(false)}
+      />
+
+      {/* Live proof (code or passkey) before regenerating recovery codes */}
+      <SecondFactorProofDialog
+        open={regenOpen}
+        busy={regenBusy}
+        error={regenError}
+        canUsePasskey={hasPasskey && isWebAuthnSupported()}
+        title={t('settings.twoFactor.regenerate.title')}
+        description={t('settings.twoFactor.regenerate.proofDescription')}
+        onSubmitCode={(code) => void submitRegenerate(async () => ({ code }))}
+        onUsePasskey={() => void submitRegenerate(proveWithAnyPasskey)}
+        onClose={() => setRegenOpen(false)}
       />
 
       {/* Enrollment wizard: QR + manual key + confirm code */}

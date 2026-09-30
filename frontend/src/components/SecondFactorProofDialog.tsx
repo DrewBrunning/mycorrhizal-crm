@@ -22,6 +22,10 @@ interface SecondFactorProofDialogProps {
   onSubmitCode: (code: string) => void;
   onUsePasskey: () => void;
   onClose: () => void;
+  // Override the enrollment wording for another proof-gated action (issue #1354,
+  // recovery-code regeneration).
+  title?: string;
+  description?: string;
 }
 
 // SecondFactorProofDialog asks for a live proof before an ADDITIONAL second
@@ -36,6 +40,8 @@ export default function SecondFactorProofDialog({
   onSubmitCode,
   onUsePasskey,
   onClose,
+  title,
+  description,
 }: SecondFactorProofDialogProps) {
   const { t } = useTranslation();
   const [code, setCode] = useState('');
@@ -46,7 +52,7 @@ export default function SecondFactorProofDialog({
 
   return (
     <AppDialog open={open} onClose={() => !busy && onClose()} maxWidth="xs" fullWidth>
-      <DialogTitle>{t('settings.secondFactorProof.title')}</DialogTitle>
+      <DialogTitle>{title ?? t('settings.secondFactorProof.title')}</DialogTitle>
       <DialogContent>
         <form
           onSubmit={(e) => {
@@ -56,7 +62,7 @@ export default function SecondFactorProofDialog({
         >
           <Stack spacing={1.5}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('settings.secondFactorProof.description')}
+              {description ?? t('settings.secondFactorProof.description')}
             </Typography>
             <TextField
               label={t('settings.secondFactorProof.codeLabel')}

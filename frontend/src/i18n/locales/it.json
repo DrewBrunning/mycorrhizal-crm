@@ -1139,7 +1139,8 @@
       },
       "regenerate": {
         "title": "Rigenera i codici di recupero",
-        "description": "Inserisci un codice attuale dalla tua app di autenticazione. I vecchi codici di recupero smetteranno immediatamente di funzionare."
+        "description": "Inserisci un codice attuale dalla tua app di autenticazione. I vecchi codici di recupero smetteranno immediatamente di funzionare.",
+        "proofDescription": "Inserisci un codice di recupero o un codice attuale della tua app di autenticazione, oppure verifica con una passkey. I vecchi codici di recupero smetteranno di funzionare immediatamente."
       },
       "recovery": {
         "title": "Codici di recupero",
