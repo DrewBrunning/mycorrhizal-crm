@@ -298,10 +298,17 @@ dependencies {
 // syscalls are blocked by Android's seccomp filter. The app hides the Local
 // profile on any other ABI (LocalServerAvailability).
 //
-// The task is skipped when the Go toolchain is absent, so an ordinary Gradle
-// build without Go still succeeds (it just ships no local mode). Set the
-// MYCORRHIZAL_BUILD_EMBEDDED_SERVER=true property to make the packaging tasks
-// build it automatically.
+// Without the property the task is skipped when the Go toolchain is absent, so
+// an ordinary Gradle build without Go still succeeds (it just ships no local
+// mode). Setting MYCORRHIZAL_BUILD_EMBEDDED_SERVER=true makes the packaging
+// tasks build it automatically AND turns "no Go on PATH" into a hard build
+// failure (issue #1390): the property is the explicit statement "this build must
+// contain the server", so it may never silently degrade into a build that hides
+// local mode. Every release/distribution CI path passes it; the flag-less default
+// keeps contributor builds without Go working.
+val embeddedServerRequired: Boolean =
+    providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true"
+
 val goAvailable: Boolean = runCatching {
     val probe = ProcessBuilder("go", "version").redirectErrorStream(true).start()
     probe.waitFor()
@@ -329,11 +336,23 @@ val buildEmbeddedServer by tasks.registering(Exec::class) {
         "-o", embeddedServerOutput.get().absolutePath,
         ".",
     )
-    onlyIf { goAvailable }
-    doFirst { embeddedServerOutput.get().parentFile.mkdirs() }
+    // Required (flag set) + no Go -> fail in doFirst, below; only the flag-less
+    // contributor build is allowed to skip.
+    onlyIf { goAvailable || embeddedServerRequired }
+    doFirst {
+        if (!goAvailable) {
+            throw GradleException(
+                "MYCORRHIZAL_BUILD_EMBEDDED_SERVER=true but no `go` toolchain is on PATH. " +
+                    "Refusing to build an APK/AAB without lib/arm64-v8a/libmycorrhizal.so " +
+                    "(it would silently hide the local on-device mode). Install Go (see " +
+                    "backend/go.mod) or drop the property for a build that ships no local mode.",
+            )
+        }
+        embeddedServerOutput.get().parentFile.mkdirs()
+    }
 }
 
-if (providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true") {
+if (embeddedServerRequired) {
     tasks.named("preBuild").configure { dependsOn(buildEmbeddedServer) }
 }
 

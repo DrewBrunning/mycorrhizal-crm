@@ -125,6 +125,14 @@ green check says nothing about local mode. Two things cover it instead:
   the no-arg exec fails, and pins the Kotlin `EMBEDDED_HOST_ARG` to the Go `embeddedHostArg`. This
   is the `Backend (Go)` job, so it is merge-blocking. It proves the binary's contract, not the
   Android host or seccomp behaviour.
+- **Automated, per release build (issue #1390):** the embedded server is only packaged when
+  Gradle gets `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` with Go on the builder, and a build
+  without it silently hides local mode. So `docker-publish.yml` (signed release APK),
+  `android-apk-build.yml` and `android-aab-build.yml` each run `actions/setup-go`, pass the flag
+  (a missing Go then fails the Gradle build instead of skipping), and hard-assert that the
+  finished artifact contains `lib/arm64-v8a/libmycorrhizal.so` (`base/lib/arm64-v8a/…` in the
+  AAB); `verify-release-assets` re-checks the APK attached to the GitHub Release. The F-Droid
+  FOSS build does not carry it yet (see [`fdroid.md`](fdroid.md)).
 - **Manual, per release candidate:** before dispatching `release.yml`, run
   `./gradlew :app:connectedObtainiumDebugAndroidTest --tests '*LocalOnlyModeE2eTest'` on a real
   **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) with
@@ -132,6 +140,10 @@ green check says nothing about local mode. Two things cover it instead:
   test skips) and confirm the test *ran* (not "skipped"). Do not install over the production package
   `com.mycorrhizal.crm`; use a suffixed debug appId (e.g. a temporary `applicationIdSuffix`), because
   `connectedAndroidTest` uninstalls the app it installed.
+
+  Separately confirm the **release-built** APK contains the binary:
+  `unzip -Z1 app-obtainium-release.apk | grep -x lib/arm64-v8a/libmycorrhizal.so` (the release
+  workflow asserts this, so on a tagged build this is a re-check of the attached asset).
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.

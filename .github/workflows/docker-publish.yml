@@ -341,6 +341,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Issue #1390 / ADR 0028 Decision 2: the release APK/AAB must embed the Go
+      # server (lib/arm64-v8a/libmycorrhizal.so). android/app/build.gradle.kts
+      # cross-compiles it with the `go` on PATH, using the toolchain backend/go.mod
+      # pins; with -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true a missing Go fails the
+      # build, and the assertion step below re-checks the finished artifact.
+      - name: Set up Go (embedded server)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         # zizmor cache-poisoning (issue #358): this job builds the release APK
@@ -419,6 +430,7 @@ jobs:
         # template-injection).
         run: |
           ./gradlew :app:assembleObtainiumRelease \
+            -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
 
@@ -461,6 +473,18 @@ jobs:
           else
             echo "::warning::ANDROID_SIGNING_CERT_SHA256 repo variable is not set; the APK is signature-verified but the certificate is not pinned. See docs/development/release-gates.md."
           fi
+
+      # Issue #1390: a release APK with no embedded server silently hides
+      # "Use on this device only" on every device (LocalServerAvailability), and
+      # nothing else looks inside the APK. Hard-fail the release instead of
+      # shipping that. Runs on the SIGNED output, after signature verification.
+      - name: Assert the release APK embeds the local server binary
+        run: |
+          set -eu
+          apk="android/app/build/outputs/apk/obtainium/release/app-obtainium-release.apk"
+          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$apk does not contain lib/arm64-v8a/libmycorrhizal.so -- the release would ship without local (on-device) mode (issue #1390)."; exit 1; }
+          echo "ok: $apk contains lib/arm64-v8a/libmycorrhizal.so"
 
       # REL-03 / #527: the built APK's versionCode must equal the workflow's
       # computed value and be > 1 (the plugin's static placeholder), or an
@@ -1075,6 +1099,17 @@ jobs:
               *) echo "::error::Release $RELEASE_TAG is missing asset '$want'."; fail=1 ;;
             esac
           done
+
+          # Issue #1390: the attached APK (the asset users actually install)
+          # must still carry the embedded server binary.
+          apkdir="$(mktemp -d)"
+          if gh release download "$RELEASE_TAG" --pattern app-obtainium-release.apk --dir "$apkdir" --clobber \
+            && unzip -Z1 "$apkdir/app-obtainium-release.apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so'; then
+            echo "  ok: attached APK contains lib/arm64-v8a/libmycorrhizal.so"
+          else
+            echo "::error::Attached app-obtainium-release.apk is missing or does not contain lib/arm64-v8a/libmycorrhizal.so (issue #1390)."
+            fail=1
+          fi
 
           repo="${GITHUB_REPOSITORY,,}"
           tag="${RELEASE_TAG#v}"

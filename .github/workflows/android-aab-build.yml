@@ -80,6 +80,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Issue #1390 / ADR 0028 Decision 2: the release APK/AAB must embed the Go
+      # server (lib/arm64-v8a/libmycorrhizal.so). android/app/build.gradle.kts
+      # cross-compiles it with the `go` on PATH, using the toolchain backend/go.mod
+      # pins; with -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true a missing Go fails the
+      # build, and the assertion step below re-checks the finished artifact.
+      - name: Set up Go (embedded server)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
@@ -146,7 +157,7 @@ jobs:
         working-directory: android
         env:
           DIST: ${{ inputs.distribution }}
-        run: ./gradlew ":app:bundle${DIST^}Debug"
+        run: ./gradlew ":app:bundle${DIST^}Debug" -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
 
       - name: Bundle release AAB
         if: inputs.variant == 'release'
@@ -161,6 +172,7 @@ jobs:
           MYCORRHIZAL_VERSION_CODE: ${{ steps.tester-version.outputs.code }}
         run: |
           ./gradlew ":app:bundle${DIST^}Release" \
+            -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
 
@@ -211,6 +223,18 @@ jobs:
             exit 1
           fi
           echo "$AAB is validly signed (upload key)."
+
+      # Issue #1390: bundletool puts the base module's native libs under
+      # base/lib/<abi>/. A bundle without the server binary would hide local
+      # mode on every device, so fail before upload.
+      - name: Assert the AAB embeds the local server binary
+        env:
+          AAB: ${{ steps.locate.outputs.path }}
+        run: |
+          set -eu
+          unzip -Z1 "$AAB" | grep -qx 'base/lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$AAB does not contain base/lib/arm64-v8a/libmycorrhizal.so (issue #1390)."; exit 1; }
+          echo "ok: $AAB contains base/lib/arm64-v8a/libmycorrhizal.so"
 
       - name: Compute artifact name
         id: artifact-name

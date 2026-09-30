@@ -23,6 +23,15 @@ source set binds a permanently-unavailable no-op instead. Reminder
 notifications on the FOSS build come solely from the WorkManager polling
 workers, which are already the fallback everywhere else.
 
+**Local (on-device) mode is not yet in the F-Droid build (issue #1390).** The embedded Go
+server (`lib/arm64-v8a/libmycorrhizal.so`, ADR 0028) is packaged only when Gradle gets
+`-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` and a Go toolchain matching `backend/go.mod` is on
+`PATH`. The obtainium/play CI builds do both; the F-Droid recipe
+([`com.mycorrhizal.crm.yml`](../fdroid/com.mycorrhizal.crm.yml)) does not, so the FOSS APK hides
+"Use on this device only". Provisioning a pinned Go toolchain on the F-Droid build server is a
+decision for the fdroiddata merge request (see the TODO block in the recipe); the recipe must not
+enable the flag without it, because the flag makes a Go-less build fail.
+
 Verify the exclusion locally before submitting:
 
 ```bash
