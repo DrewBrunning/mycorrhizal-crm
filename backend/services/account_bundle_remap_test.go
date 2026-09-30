@@ -301,3 +301,13 @@ func TestAccountBundle_WriteFailuresUseStableMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestImportIDMap_ResolveEmptySourceID(t *testing.T) {
+	m := importIDMap{}
+	m.remember(bundleRef(sourceKindLifeEvent, "x"), "local-x")
+	id, ok := m.resolve(sourceKindLifeEvent, "x")
+	assert.True(t, ok)
+	assert.Equal(t, "local-x", id)
+	_, ok = m.resolve(sourceKindLifeEvent, "")
+	assert.False(t, ok, "an empty source ID never resolves")
+}
