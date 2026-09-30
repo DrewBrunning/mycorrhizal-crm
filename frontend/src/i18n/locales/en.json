@@ -1166,7 +1166,8 @@
       },
       "regenerate": {
         "title": "Regenerate recovery codes",
-        "description": "Enter a current code from your authenticator app. The old recovery codes will stop working immediately."
+        "description": "Enter a current code from your authenticator app. The old recovery codes will stop working immediately.",
+        "proofDescription": "Enter a recovery code or a current code from your authenticator app, or verify with a passkey. The old recovery codes will stop working immediately."
       },
       "recovery": {
         "title": "Recovery codes",

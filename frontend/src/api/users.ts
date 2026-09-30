@@ -121,11 +121,15 @@ export async function disableTwoFactor(code: string): Promise<void> {
   await handleResponse(response, 'Unable to disable two-factor authentication.');
 }
 
-export async function regenerateRecoveryCodes(code: string): Promise<RecoveryCodesResult> {
+// Issue #1354: the proof is a code string, or `{assertion}` from a passkey
+// (the only proof a passkey-only account with spent recovery codes can give).
+export async function regenerateRecoveryCodes(
+  proof: string | SecondFactorProof,
+): Promise<RecoveryCodesResult> {
   const response = await apiFetch(`${API_BASE_URL}/users/2fa/recovery-codes/regenerate`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ code }),
+    body: JSON.stringify(typeof proof === 'string' ? { code: proof } : proof),
   });
 
   const data = await handleResponse(response, 'Unable to regenerate recovery codes.');

@@ -147,6 +147,14 @@ describe('two-factor API', () => {
     expect(JSON.parse(init.body)).toEqual({ code: '654321' });
   });
 
+  test('regenerateRecoveryCodes sends a passkey assertion as-is (issue #1354)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(responseBody({ recovery_codes: ['A'] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await regenerateRecoveryCodes({ assertion: { id: 'cred' } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ assertion: { id: 'cred' } });
+  });
+
   test('a failed 2FA call surfaces the backend message', async () => {
     const body = {
       error: {

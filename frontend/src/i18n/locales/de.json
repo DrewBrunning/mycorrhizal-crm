@@ -1139,7 +1139,8 @@
       },
       "regenerate": {
         "title": "Wiederherstellungscodes neu generieren",
-        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr."
+        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr.",
+        "proofDescription": "Gib einen Wiederherstellungscode oder einen aktuellen Code deiner Authentifizierungs-App ein oder bestätige mit einem Passkey. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr."
       },
       "recovery": {
         "title": "Wiederherstellungscodes",
