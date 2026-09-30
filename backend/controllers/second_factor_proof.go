@@ -53,7 +53,7 @@ func requireSecondFactorProof(c *gin.Context, db *gorm.DB, cfg *config.Config, u
 	limiter := middleware.GetAccountRateLimiter()
 	key := secondFactorProofLockKey(user.ID)
 	if locked, secs := limiter.IsLocked(key); locked {
-		abortLoginLocked(c, secs)
+		abortLocked(c, secs, "Too many failed verification attempts. Please try again later.")
 		return false
 	}
 	var proved, sameCredential bool
@@ -68,7 +68,7 @@ func requireSecondFactorProof(c *gin.Context, db *gorm.DB, cfg *config.Config, u
 	}
 	if !proved {
 		if locked, secs := limiter.RecordFailedAttempt(key); locked {
-			abortLoginLocked(c, secs)
+			abortLocked(c, secs, "Too many failed verification attempts. Please try again later.")
 			return false
 		}
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(opts.field, "Invalid code. Please try again."))

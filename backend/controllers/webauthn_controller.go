@@ -367,9 +367,14 @@ func pendingChallengeUser(c *gin.Context, db *gorm.DB, cfg *config.Config) (mode
 }
 
 func abortLoginLocked(c *gin.Context, secs int) {
+	abortLocked(c, secs, "Too many failed login attempts. Please try again later.")
+}
+
+// abortLocked is the shared 429 lockout body; only the human message varies.
+func abortLocked(c *gin.Context, secs int, message string) {
 	c.JSON(http.StatusTooManyRequests, gin.H{
 		"error":          "Account temporarily locked",
-		"message":        "Too many failed login attempts. Please try again later.",
+		"message":        message,
 		"retry_after":    secs,
 		"retry_after_at": time.Now().Add(time.Duration(secs) * time.Second).Format(time.RFC3339),
 	})

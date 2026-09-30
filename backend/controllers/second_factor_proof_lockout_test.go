@@ -142,6 +142,13 @@ func TestSecondFactorProof_BucketIsSharedAcrossRoutes(t *testing.T) {
 	for _, r := range routes {
 		assert.Equal(t, http.StatusTooManyRequests, r.do(e, tok, id, e.codes[0]), r.name)
 	}
+
+	// The lockout body keeps the login-lock shape but says "verification".
+	w, _ := e.do("POST", "/users/2fa/disable", map[string]string{"code": e.codes[0]}, tok)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+	assert.Contains(t, w.Body.String(), "Account temporarily locked")
+	assert.Contains(t, w.Body.String(), "verification attempts")
+	assert.Contains(t, w.Body.String(), "retry_after")
 }
 
 // TestProofSitesGoThroughHelper is the completeness guard: valid2FAProof and
