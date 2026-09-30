@@ -184,7 +184,7 @@ class TwoFactorViewModelTest {
     fun `regenerating recovery codes shows the fresh set exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = enabledVm(true)
         advanceUntilIdle()
-        coEvery { authRepository.regenerateRecoveryCodes("123456") } returns Result.success(
+        coEvery { authRepository.regenerateRecoveryCodes(SecondFactorProof.Code("123456")) } returns Result.success(
             TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC")),
         )
 
@@ -196,6 +196,84 @@ class TwoFactorViewModelTest {
         assertEquals(listOf("NEWAA-BBBBB-CCCCC"), state.recoveryCodes)
         assertNull(state.prompt)
         assertFalse(state.busy)
+    }
+
+    @Test
+    fun `a passkey-only account regenerates recovery codes with a passkey assertion`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = enabledVm(false, passkeys = listOf(phone))
+        advanceUntilIdle()
+        coEvery { passkeyRepository.beginProof(null) } returns Result.success("""{"publicKey":{}}""")
+        passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
+        coEvery {
+            authRepository.regenerateRecoveryCodes(SecondFactorProof.Assertion("""{"id":"asserted"}"""))
+        } returns Result.success(TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC")))
+
+        vm.requestRegenerate()
+        vm.submitRegenerateWithPasskey(context)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(listOf("NEWAA-BBBBB-CCCCC"), state.recoveryCodes)
+        assertNull(state.prompt)
+        assertFalse(state.busy)
+    }
+
+    @Test
+    fun `a locked-out regenerate proof surfaces the server message and keeps the prompt`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = enabledVm(false, passkeys = listOf(phone))
+        advanceUntilIdle()
+        coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
+        passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
+        coEvery { authRepository.regenerateRecoveryCodes(any()) } returns
+            Result.failure(ApiError.Client(429, "Too many failed verification attempts."))
+
+        vm.requestRegenerate()
+        vm.submitRegenerateWithPasskey(context)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(TwoFactorPrompt.REGENERATE, state.prompt)
+        assertNull(state.errorRes)
+        assertNotNull(state.error)
+        assertFalse(state.busy)
+    }
+
+    @Test
+    fun `regenerate with a passkey is ignored without a passkey, without the prompt, or when unavailable`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val noPasskey = enabledVm(true)
+            advanceUntilIdle()
+            noPasskey.requestRegenerate()
+            noPasskey.submitRegenerateWithPasskey(context)
+
+            val closed = enabledVm(false, passkeys = listOf(phone))
+            advanceUntilIdle()
+            closed.submitRegenerateWithPasskey(context) // prompt not open
+
+            val unavailable = enabledVm(false, passkeys = listOf(phone), available = false)
+            advanceUntilIdle()
+            unavailable.requestRegenerate()
+            unavailable.submitRegenerateWithPasskey(context)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { passkeyRepository.beginProof(any()) }
+            coVerify(exactly = 0) { authRepository.regenerateRecoveryCodes(any()) }
+        }
+
+    @Test
+    fun `a cancelled passkey prompt during regenerate keeps the prompt without an error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = enabledVm(false, passkeys = listOf(phone))
+        advanceUntilIdle()
+        coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
+        passkeyClient.getResult = PasskeyResult.Cancelled
+
+        vm.requestRegenerate()
+        vm.submitRegenerateWithPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(TwoFactorPrompt.REGENERATE, vm.uiState.value.prompt)
+        assertNull(vm.uiState.value.errorRes)
+        coVerify(exactly = 0) { authRepository.regenerateRecoveryCodes(any()) }
     }
 
     @Test

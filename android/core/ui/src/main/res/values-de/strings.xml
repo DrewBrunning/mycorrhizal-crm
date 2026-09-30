@@ -401,6 +401,7 @@
     <string name="settings_two_factor_disable_description">Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Alle anderen Sitzungen werden abgemeldet.</string>
     <string name="settings_two_factor_regenerate_title">Wiederherstellungscodes neu generieren</string>
     <string name="settings_two_factor_regenerate_description">Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr.</string>
+    <string name="settings_two_factor_regenerate_proof_description">Geben Sie einen Wiederherstellungscode oder einen aktuellen Code aus Ihrer Authentifizierungs-App ein oder bestätigen Sie mit einem Passkey. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr.</string>
     <string name="settings_two_factor_code_prompt_label">Verifizierungscode</string>
     <string name="settings_two_factor_confirm">Bestätigen</string>
     <string name="settings_two_factor_submitting">Bitte warten...</string>

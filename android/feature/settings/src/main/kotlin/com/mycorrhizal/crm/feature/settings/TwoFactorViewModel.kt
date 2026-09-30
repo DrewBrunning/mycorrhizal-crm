@@ -112,6 +112,21 @@ class TwoFactorViewModel @Inject constructor(
     fun submitSetupProofWithPasskey(context: Context) {
         val state = _uiState.value
         if (state.busy || !state.proofPrompt || !state.canProveWithPasskey) return
+        proveWithPasskey(context) { runSetup(it) }
+    }
+
+    /**
+     * Regenerate proven by an assertion from a passkey (issue #1354) — the proof
+     * a passkey-only account can give once its recovery codes are spent.
+     */
+    fun submitRegenerateWithPasskey(context: Context) {
+        val state = _uiState.value
+        if (state.busy || state.prompt != TwoFactorPrompt.REGENERATE || !state.canProveWithPasskey) return
+        proveWithPasskey(context) { runRegenerate(it) }
+    }
+
+    /** Runs the proof ceremony and hands the assertion to [onProof]; failures map to localized copy. */
+    private fun proveWithPasskey(context: Context, onProof: (SecondFactorProof) -> Unit) {
         _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
         viewModelScope.launch {
             val options = passkeyRepository.beginProof().getOrElse { e ->
@@ -121,7 +136,7 @@ class TwoFactorViewModel @Inject constructor(
             when (val ceremony = passkeyClient.getPasskey(context, options)) {
                 is PasskeyResult.Success -> {
                     _uiState.update { it.copy(busy = false) }
-                    runSetup(SecondFactorProof.Assertion(ceremony.json))
+                    onProof(SecondFactorProof.Assertion(ceremony.json))
                 }
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(busy = false) }
                 PasskeyResult.NoMatchingPasskey ->
@@ -133,6 +148,25 @@ class TwoFactorViewModel @Inject constructor(
                 PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
                     _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
             }
+        }
+    }
+
+    private fun runRegenerate(proof: SecondFactorProof) {
+        _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
+        viewModelScope.launch {
+            authRepository.regenerateRecoveryCodes(proof)
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            prompt = null,
+                            recoveryCodes = result.recoveryCodes.takeIf { codes -> codes.isNotEmpty() },
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(busy = false).withCodeError(e) }
+                }
         }
     }
 
@@ -207,32 +241,19 @@ class TwoFactorViewModel @Inject constructor(
     fun submitPromptCode(code: String) {
         val prompt = _uiState.value.prompt ?: return
         if (_uiState.value.busy || code.isBlank()) return
+        if (prompt == TwoFactorPrompt.REGENERATE) {
+            runRegenerate(SecondFactorProof.Code(code.trim()))
+            return
+        }
         _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
         viewModelScope.launch {
-            when (prompt) {
-                TwoFactorPrompt.DISABLE ->
-                    authRepository.disableTwoFactor(code.trim())
-                        .onSuccess {
-                            _uiState.update { it.copy(busy = false, prompt = null, enabled = false) }
-                        }
-                        .onFailure { e ->
-                            _uiState.update { it.copy(busy = false).withCodeError(e) }
-                        }
-                TwoFactorPrompt.REGENERATE ->
-                    authRepository.regenerateRecoveryCodes(code.trim())
-                        .onSuccess { result ->
-                            _uiState.update {
-                                it.copy(
-                                    busy = false,
-                                    prompt = null,
-                                    recoveryCodes = result.recoveryCodes.takeIf { codes -> codes.isNotEmpty() },
-                                )
-                            }
-                        }
-                        .onFailure { e ->
-                            _uiState.update { it.copy(busy = false).withCodeError(e) }
-                        }
-            }
+            authRepository.disableTwoFactor(code.trim())
+                .onSuccess {
+                    _uiState.update { it.copy(busy = false, prompt = null, enabled = false) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(busy = false).withCodeError(e) }
+                }
         }
     }
 

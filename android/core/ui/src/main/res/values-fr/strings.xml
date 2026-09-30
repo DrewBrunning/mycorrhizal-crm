@@ -401,6 +401,7 @@
     <string name="settings_two_factor_disable_description">Saisissez un code actuel de votre application d\'authentification pour confirmer. Toutes les autres sessions seront déconnectées.</string>
     <string name="settings_two_factor_regenerate_title">Régénérer les codes de récupération</string>
     <string name="settings_two_factor_regenerate_description">Saisissez un code actuel de votre application d\'authentification. Les anciens codes de récupération cesseront immédiatement de fonctionner.</string>
+    <string name="settings_two_factor_regenerate_proof_description">Saisissez un code de récupération ou un code actuel de votre application d\'authentification, ou vérifiez avec une clé d\'accès. Les anciens codes de récupération cesseront immédiatement de fonctionner.</string>
     <string name="settings_two_factor_code_prompt_label">Code de vérification</string>
     <string name="settings_two_factor_confirm">Confirmer</string>
     <string name="settings_two_factor_submitting">Veuillez patienter...</string>

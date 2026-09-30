@@ -5573,4 +5573,47 @@ class ApiClientTest {
         assertTrue(error is ApiError.Client)
         assertEquals(400, (error as ApiError.Client).code)
     }
+
+    // --- issue #1354: recovery-code regeneration with a code or a passkey assertion ---
+
+    private val regenBody = """{"recovery_codes":["AAAAA-BBBBB-CCCCC"]}"""
+
+    @Test
+    fun `regenerate recovery codes sends a code proof`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(regenBody))
+
+        val result = client.regenerateRecoveryCodes(code = "123456").getOrThrow()
+
+        assertEquals(listOf("AAAAA-BBBBB-CCCCC"), result.value.recoveryCodes)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/users/2fa/recovery-codes/regenerate", request.path)
+        assertEquals("""{"code":"123456"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `regenerate recovery codes embeds an assertion proof verbatim`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(regenBody))
+        val assertion = """{"id":"AAA","response":{"signature":"sig"}}"""
+
+        client.regenerateRecoveryCodes(assertionJson = assertion).getOrThrow()
+
+        assertEquals("""{"assertion":$assertion}""", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    fun `regenerate recovery codes rejects a non-object assertion without a request`() = runBlocking {
+        val error = client.regenerateRecoveryCodes(assertionJson = "[1]").exceptionOrNull()
+        assertTrue(error is ApiError.Parse)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `regenerate recovery codes maps a lockout to Client 429`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"Account temporarily locked","message":"Too many failed verification attempts."}"""))
+
+        val error = client.regenerateRecoveryCodes(code = "0").exceptionOrNull()
+
+        assertTrue(error is ApiError.Client)
+        assertEquals(429, (error as ApiError.Client).code)
+    }
 }
