@@ -127,9 +127,11 @@ green check says nothing about local mode. Two things cover it instead:
   Android host or seccomp behaviour.
 - **Manual, per release candidate:** before dispatching `release.yml`, run
   `./gradlew :app:connectedObtainiumDebugAndroidTest --tests '*LocalOnlyModeE2eTest'` on a real
-  **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) and
-  confirm the test *ran* (not "skipped"). Do not install over the production package
-  `com.mycorrhizal.crm`; use a suffixed debug appId.
+  **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) with
+  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the
+  test skips) and confirm the test *ran* (not "skipped"). Do not install over the production package
+  `com.mycorrhizal.crm`; use a suffixed debug appId (e.g. a temporary `applicationIdSuffix`), because
+  `connectedAndroidTest` uninstalls the app it installed.
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.
