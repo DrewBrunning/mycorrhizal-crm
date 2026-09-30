@@ -10,9 +10,7 @@
     "graph",
     "search",
     "import",
-    "export",
-    "calendar",
-    "notifications"
+    "export"
   ],
   "database": {
     "response_time_ms": 0.3,

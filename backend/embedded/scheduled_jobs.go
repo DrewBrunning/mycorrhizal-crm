@@ -46,17 +46,23 @@ var manualJobReasons = map[string]string{
 //   - webhook_retries / webhook_delivery_purge only serve the webhook surface,
 //     which embedded mode does not register;
 //   - storage_sample tracks a storage-growth trend against operator threshold
-//     alerts, which do not exist on-device.
+//     alerts, which do not exist on-device;
+//   - calendar_sync, immich_sync and daily_reminders are outbound (remote
+//     calendars, an Immich server, notification channels); the embedded server
+//     is storage only (ADR 0028 Decision 2 amendment, issue #1367) and
+//     registers none of the routes that configure them.
 //
-// Everything else — reminders, cadence, reach-out, the data purges, the
-// integrity check, and calendar/Immich sync when the user configured them — is
-// registered in both deployments.
+// Everything else — cadence, reach-out, the data purges, the integrity check —
+// is registered in both deployments.
 var embeddedDisabledJobs = map[string]bool{
 	models.JobNameRestoreDrill:         true,
 	models.JobNameAlertEval:            true,
 	models.JobNameWebhookRetries:       true,
 	models.JobNameWebhookDeliveryPurge: true,
 	models.JobNameStorageSample:        true,
+	models.JobNameCalendarSync:         true,
+	models.JobNameImmichSync:           true,
+	models.JobNameDailyReminders:       true,
 }
 
 // reminderTask builds the daily reminder digest + push-style channel send.

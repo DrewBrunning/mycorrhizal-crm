@@ -75,9 +75,16 @@ A **local profile** runs the real Mycorrhizal backend *inside the app* — no
 server at all ([ADR 0028](adrs/0028-local-only-android-mode-and-server-profiles.md)
 Decision 2). The app starts the embedded server lazily on the first request,
 stores its data under its own app-private directory (`filesDir/local-server/`),
-and talks to it over a private Unix socket. The whole product is the same code
-the server runs, so a local profile has the same dashboard, cadence, duplicates
-and exports a remote one does.
+and talks to it over a private Unix socket. The CRM data product is the same
+code the server runs, so a local profile has the same dashboard, cadence,
+duplicates and exports a remote one does.
+
+A local profile is **storage only** (ADR 0028 Decision 2, amended 2026-09-29):
+it has no network or multi-user surface. Immich, Paperless, Seafile, Nextcloud,
+calendar and contact subscriptions, the Monica import and live Meerkat fetch,
+notification channels, admin/user management, webhooks, API tokens and DAV are
+not available on-device, and their Settings entries are hidden. Reminders are
+not pushed to external channels. File-based imports and exports work as usual.
 
 Constraints:
 

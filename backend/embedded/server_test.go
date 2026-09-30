@@ -174,6 +174,14 @@ func TestEmbedded_SingleUserRoutesJobsHealth(t *testing.T) {
 		{http.MethodGet, "/api/v1/notifications/push-subscriptions"},
 		{http.MethodGet, "/carddav/"},
 		{http.MethodGet, "/caldav/"},
+		// Storage-only (ADR 0028 amendment, issue #1367).
+		{http.MethodGet, "/api/v1/immich/config"},
+		{http.MethodGet, "/api/v1/calendars"},
+		{http.MethodGet, "/api/v1/notifications/config"},
+		{http.MethodGet, "/api/v1/proxy/image"},
+		{http.MethodGet, "/api/v1/admin/users"},
+		{http.MethodGet, "/api/v1/users/directory"},
+		{http.MethodPost, "/api/v1/check-password-strength"},
 	}
 	for _, d := range disabled {
 		req, err := http.NewRequest(d.method, "http://unix"+d.path, nil)
@@ -203,15 +211,15 @@ func TestEmbedded_SingleUserRoutesJobsHealth(t *testing.T) {
 		models.JobNameWebhookRetries,
 		models.JobNameWebhookDeliveryPurge,
 		models.JobNameStorageSample,
+		models.JobNameCalendarSync,
+		models.JobNameImmichSync,
+		models.JobNameDailyReminders,
 	} {
 		require.Falsef(t, registered[job], "embedded must not register the %q job", job)
 	}
 	for _, job := range []string{
-		models.JobNameDailyReminders,
 		models.JobNamePurgeDeleted,
 		models.JobNameDBIntegrityCheck,
-		models.JobNameCalendarSync,
-		models.JobNameImmichSync,
 	} {
 		require.Truef(t, registered[job], "embedded must keep the %q job", job)
 	}
@@ -230,6 +238,8 @@ func TestEmbedded_SingleUserRoutesJobsHealth(t *testing.T) {
 	require.True(t, capSet[config.CapabilityContacts], "capabilities must include contacts")
 	require.False(t, capSet[config.CapabilityRegistration], "capabilities must omit registration")
 	require.False(t, capSet[config.CapabilityCardDAV], "capabilities must omit carddav")
+	require.False(t, capSet[config.CapabilityCalendar], "capabilities must omit calendar (storage only, #1367)")
+	require.False(t, capSet[config.CapabilityNotifications], "capabilities must omit notifications (storage only, #1367)")
 
 	require.NoError(t, srv.Stop(context.Background()))
 

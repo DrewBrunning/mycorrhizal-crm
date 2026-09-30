@@ -59,8 +59,6 @@ class ServerCapabilityGatingTest {
             ServerCapability.SEARCH,
             ServerCapability.IMPORT,
             ServerCapability.EXPORT,
-            ServerCapability.CALENDAR,
-            ServerCapability.NOTIFICATIONS,
         ),
     )
 
@@ -75,16 +73,18 @@ class ServerCapabilityGatingTest {
         composeTestRule.onNodeWithText("User management").assertDoesNotExist()
         composeTestRule.onNodeWithText("System events").assertDoesNotExist()
         composeTestRule.onNodeWithText("Set up biometric sign-in").assertDoesNotExist()
+        // Issue #1367: storage only — no outbound integrations, no calendar sync.
+        composeTestRule.onNodeWithText("Calendar Sync").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Immich").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Paperless-ngx").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Seafile").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Nextcloud / ownCloud").assertDoesNotExist()
     }
 
     @Test
     fun `settings keeps the core product rows on an embedded deployment`() {
         setSettingsContent(embeddedCapabilities)
 
-        // Calendar sync is a client-side calendars surface that embedded mode
-        // does keep (`calendar` is not a disabled capability); only DAV
-        // *serving* is disabled, and Android has no client surface for that.
-        composeTestRule.onNodeWithText("Calendar Sync").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Data suggestions").performScrollTo().assertIsDisplayed()
     }
 
@@ -96,5 +96,7 @@ class ServerCapabilityGatingTest {
         composeTestRule.onNodeWithText("Two-factor authentication").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Webhooks").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("API Tokens").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Calendar Sync").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Immich").performScrollTo().assertIsDisplayed()
     }
 }

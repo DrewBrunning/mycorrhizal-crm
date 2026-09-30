@@ -199,7 +199,8 @@ class ContractFixtureTest {
         val capabilities = checkNotNull(health.capabilities) { "capabilities must parse" }
         // Core product surfaces survive; the network-only ones are absent.
         assertTrue(capabilities.contains("contacts"))
-        assertTrue(capabilities.contains("calendar"))
+        assertFalse("calendar is not registered in embedded mode (storage only, #1367)", capabilities.contains("calendar"))
+        assertFalse("notifications is not registered in embedded mode (storage only, #1367)", capabilities.contains("notifications"))
         assertFalse("login is not registered in embedded mode", capabilities.contains("login"))
         assertFalse("push is not registered in embedded mode", capabilities.contains("push"))
         assertFalse("carddav is not registered in embedded mode", capabilities.contains("carddav"))
