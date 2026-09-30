@@ -259,8 +259,8 @@ func DisableTwoFactor(c *gin.Context) {
 		return
 	}
 
-	if !valid2FAProof(db, &user, input.Code, currentConfig(c).JWTSecretKey) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
+	cfg := currentConfig(c)
+	if !requireSecondFactorProof(c, db, &cfg, &user, nil, secondFactorProofInput{Code: input.Code}, proofOptions{field: "code"}) {
 		return
 	}
 
@@ -354,8 +354,8 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 		return
 	}
 
-	if !valid2FAProof(db, &user, input.Code, currentConfig(c).JWTSecretKey) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
+	cfg := currentConfig(c)
+	if !requireSecondFactorProof(c, db, &cfg, &user, nil, secondFactorProofInput{Code: input.Code}, proofOptions{field: "code"}) {
 		return
 	}
 

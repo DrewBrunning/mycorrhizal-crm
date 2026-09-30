@@ -89,6 +89,22 @@ describe('handleResponse', () => {
     ).rejects.toThrow('Too many requests');
   });
 
+  test('a 429 lockout surfaces the message, not the terse error label (issue #1352)', async () => {
+    await expect(
+      handleResponse(
+        jsonResponse(
+          {
+            error: 'Account temporarily locked',
+            message: 'Too many failed verification attempts. Please try again later.',
+            retry_after: 60,
+          },
+          429,
+        ),
+        'fallback',
+      ),
+    ).rejects.toThrow('Too many failed verification attempts. Please try again later.');
+  });
+
   test('uses a plain-text error body as the message', async () => {
     await expect(
       handleResponse(new Response('Bad Gateway', { status: 502 }), 'fallback'),

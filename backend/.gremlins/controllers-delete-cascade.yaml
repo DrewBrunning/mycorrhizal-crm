@@ -67,6 +67,7 @@ unleash:
         - ^reminder_controller\.go$
         - ^seafile_controller\.go$
         - ^search_controller\.go$
+        - ^second_factor_proof\.go$
         - ^session_controller\.go$
         - ^subsystem_health_controller\.go$
         - ^sync_conflict_controller\.go$

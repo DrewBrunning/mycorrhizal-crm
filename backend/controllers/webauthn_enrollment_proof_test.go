@@ -21,7 +21,7 @@ import (
 // cannot leak into another test sharing the process-wide limiter.
 func resetEnrollLock(t *testing.T, e *waEnv) {
 	t.Helper()
-	t.Cleanup(func() { middleware.GetAccountRateLimiter().RecordSuccessfulLogin(enrollProofLockKey(e.user.ID)) })
+	t.Cleanup(func() { middleware.GetAccountRateLimiter().RecordSuccessfulLogin(secondFactorProofLockKey(e.user.ID)) })
 }
 
 func TestEnrollmentProof_FirstFactorNeedsNoProof(t *testing.T) {

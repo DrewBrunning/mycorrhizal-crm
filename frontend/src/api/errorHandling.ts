@@ -65,7 +65,13 @@ export async function handleResponse(
 
   if (data && typeof data === 'object') {
     const errorDetail = (data as { error?: Record<string, unknown> | string }).error;
-    if (errorDetail && typeof errorDetail === 'object') {
+    const lockoutMessage = (data as { message?: unknown }).message;
+    if (response.status === 429 && typeof lockoutMessage === 'string' && lockoutMessage.trim()) {
+      // The account lockout body is {error: "Account temporarily locked",
+      // message: "Too many failed ... Please try again later."} — the message is
+      // the one that tells a locked-out user what to do (issue #1352).
+      message = lockoutMessage.trim();
+    } else if (errorDetail && typeof errorDetail === 'object') {
       const details = (errorDetail as { details?: ErrorDetails }).details;
       const specificMessage = extractDetailMessage(details);
       if (specificMessage) {
