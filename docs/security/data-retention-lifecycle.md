@@ -632,7 +632,9 @@ design is ADR-0010 / CON-04, issue #479).
   `GET /export/account` (the account bundle), and #1260 the `mycorrhizal` import source that consumes it.
 - **Retention**: nothing server-side to retain. An uploaded bundle is held only in the import session's
   memory for the wizard's lifetime (60-minute idle expiry, 6-hour hard cap; `services/mycorrhizal_import_session.go`)
-  and is never written to disk.
+  and is never written to disk. Import never reuses the bundle's UUID primary keys (issue #1355): each created
+  row gets a fresh ID in the destination account, so importing never references or collides with another
+  account's rows.
 - **Deletion / propagation**: nothing to delete — there is no export artifact that outlives the request.
   CSV-formula-injection payloads are neutralized on every CSV path *before* the export leaves the server.
   Sensitivity filtering, however, is **not** uniform across the six exports, and the split is deliberate

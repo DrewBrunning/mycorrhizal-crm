@@ -243,6 +243,11 @@ A `Local` user who later wants a server **moves** their data; the two stores are
 - **A `mycorrhizal` import source.** The bundle is imported through the existing source-import
   upload → preview → confirm flow with per-contact add/skip/merge, and the `import_source_links`
   ledger keyed on the bundle's stable IDs, so an interrupted attach is simply re-run.
+  The bundle's UUID primary keys identify rows *within the bundle only*: they are globally unique, so the
+  import mints a fresh ID for every UUID-PK row it creates and rewrites intra-bundle references (life
+  event / occasion / field-definition links) to the new IDs. This is what lets a bundle be imported into a
+  second account on the same instance (issue #1355); the ledger, not the primary key, is what makes a
+  re-run idempotent.
 - **The Android flow:** add and log into a `Remote` profile → the `Local` server exports the bundle →
   the app uploads it to the remote import endpoint → the user reviews the preview → confirm → the
   `Local` profile is marked **read-only archive** (still browsable, no writes) until the user deletes
