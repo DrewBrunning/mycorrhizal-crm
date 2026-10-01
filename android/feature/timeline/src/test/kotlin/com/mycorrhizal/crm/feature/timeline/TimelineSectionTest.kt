@@ -207,4 +207,44 @@ class TimelineSectionTest {
         }
         composeTestRule.onNodeWithText("External event: media-watched").assertIsDisplayed()
     }
+
+    // --- Issue #1401: bounded preview ---
+
+    @Test
+    fun `the preview renders only the five most recent items`() {
+        val items = (1..8).map { TimelineItem.NoteItem(Note(id = it, content = "note $it")) }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                )
+            }
+        }
+        // The list arrives newest-first, so the first five are the preview; the rest sit behind "View all".
+        (1..5).forEach { composeTestRule.onNodeWithText("note $it").assertIsDisplayed() }
+        (6..8).forEach { composeTestRule.onNodeWithText("note $it").assertDoesNotExist() }
+    }
+
+    @Test
+    fun `a custom preview limit is honored`() {
+        val items = (1..4).map { TimelineItem.NoteItem(Note(id = it, content = "note $it")) }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                    previewLimit = 2,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("note 2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("note 3").assertDoesNotExist()
+    }
 }
