@@ -46,6 +46,8 @@ class ServersScreenTest {
 
     private var attachClicks = 0
 
+    private var localOnlyClicks = 0
+
     private fun setScreen(localModeEnabled: Boolean = false) {
         val viewModel = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
         composeTestRule.setContent {
@@ -53,6 +55,7 @@ class ServersScreenTest {
                 ServersScreen(
                     onBack = {},
                     localModeEnabled = localModeEnabled,
+                    onUseLocalOnly = { localOnlyClicks++ },
                     onAttachToServer = { attachClicks++ },
                     viewModel = viewModel,
                 )
@@ -111,6 +114,53 @@ class ServersScreenTest {
     @Test
     fun `the local-only entry is shown when the build flag is on`() {
         setScreen(localModeEnabled = true)
+        composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed()
+    }
+
+    // Issue #1398: a zero-height node still passes assertExists(), so these assert
+    // assertIsDisplayed() — a full-height LazyColumn above the button hid it.
+    @Test
+    fun `the local-only entry is displayed and clickable below one profile`() {
+        profiles.value = listOf(profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen(localModeEnabled = true)
+
+        composeTestRule.onNodeWithText("Home").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed().performClick()
+        assert(localOnlyClicks == 1)
+    }
+
+    @Test
+    fun `the local-only entry is displayed and clickable below several profiles`() {
+        profiles.value = listOf(profile("p1", "Home"), profile("p2", "Work"), profile("p3", "Lab"))
+        active.value = profile("p1", "Home")
+        setScreen(localModeEnabled = true)
+
+        composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed().performClick()
+        assert(localOnlyClicks == 1)
+    }
+
+    @Test
+    fun `the local-only entry is absent with profiles when the flag is off`() {
+        profiles.value = listOf(profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen(localModeEnabled = false)
+
+        composeTestRule.onAllNodesWithText("Use on this device only").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the local-only entry stays displayed with an error banner and a profile`() {
+        profiles.value = listOf(profile("p1", "Home"))
+        active.value = profile("p1", "Home")
+        setScreen(localModeEnabled = true)
+
+        composeTestRule.onNodeWithContentDescription("Add server").performClick()
+        composeTestRule.onNodeWithTag("servers-add-label").performTextInput("Bad")
+        composeTestRule.onNodeWithTag("servers-add-url").performTextInput("not a url")
+        composeTestRule.onNodeWithTag("servers-add-confirm").performClick()
+        composeTestRule.waitForIdle()
+
         composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed()
     }
 
