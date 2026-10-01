@@ -250,12 +250,20 @@ private fun localModeAvailable(): Boolean {
  * never to a stale intermediate screen or a blank stack (issue #679).
  * Extracted so the back-stack behavior is unit-testable against a real
  * [NavHostController].
+ *
+ * Issue #1399: a route that carries a query argument (`contacts?search=X`) must NOT
+ * restore saved state. `restoreState` resurrects the previously saved back-stack entry
+ * with its OLD arguments (and its ViewModel), so a `mycorrhizal://search?q=X` link
+ * delivered while Contacts was already open (or visited earlier) landed on the stale,
+ * unfiltered entry. Skipping the restore makes the link create a fresh entry that
+ * carries the new argument; plain destinations keep save/restore.
  */
 internal fun NavHostController.navigateToRoot(route: String) {
+    val carriesArgs = route.contains('?')
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
-        restoreState = true
+        restoreState = !carriesArgs
     }
 }
 

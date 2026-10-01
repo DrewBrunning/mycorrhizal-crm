@@ -2,6 +2,16 @@ package com.mycorrhizal.crm
 
 import android.app.Application
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.navigation.NavType
 import androidx.navigation.compose.ComposeNavigator
@@ -134,5 +144,80 @@ class NavigationGraphTest {
         if (route != null) navController.navigateToRoot(route)
 
         assertEquals("home", currentRoute())
+    }
+
+    // Issue #1399: mirrors the real `contacts?search={search}` destination — the
+    // "field" is entry-scoped state seeded once from the argument (exactly what
+    // ContactListViewModel does at construction), cleared by tapping "clear".
+    private fun searchHost(): TestNavHostController {
+        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                navController.navigatorProvider.addNavigator(ComposeNavigator())
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") { Text("Home") }
+                    composable(
+                        "contacts?search={search}",
+                        arguments = listOf(
+                            navArgument("search") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                        ),
+                    ) { entry ->
+                        var field by remember { mutableStateOf(entry.arguments?.getString("search").orEmpty()) }
+                        Text(field, Modifier.testTag("field"))
+                        Text("clear", Modifier.testTag("clear").clickable { field = "" })
+                    }
+                }
+            }
+        }
+        return navController
+    }
+
+    @Test
+    fun `a search link delivered while already on contacts applies the new query`() {
+        val navController = searchHost()
+
+        navController.navigateToRoot("contacts")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("field").assertTextEquals("")
+
+        navController.navigateToRoot("contacts?search=Ann")
+        composeTestRule.waitForIdle()
+
+        assertEquals("Ann", navController.currentBackStackEntry?.arguments?.getString("search"))
+        composeTestRule.onNodeWithTag("field").assertTextEquals("Ann")
+        // #679 contract holds: back still returns to the dashboard.
+        navController.popBackStack()
+        assertEquals("home", navController.currentBackStackEntry?.destination?.route)
+    }
+
+    @Test
+    fun `a search link applies after contacts was visited earlier and left`() {
+        val navController = searchHost()
+
+        navController.navigateToRoot("contacts")
+        navController.navigateToRoot("home")
+        navController.navigateToRoot("contacts?search=Bob")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("field").assertTextEquals("Bob")
+    }
+
+    @Test
+    fun `a delivered search is consumed once and not re-applied on recomposition`() {
+        val navController = searchHost()
+
+        navController.navigateToRoot("contacts")
+        navController.navigateToRoot("contacts?search=Ann")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("field").assertTextEquals("Ann")
+
+        composeTestRule.onNodeWithTag("clear").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("field").assertTextEquals("")
     }
 }
