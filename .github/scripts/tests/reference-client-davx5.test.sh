@@ -81,6 +81,36 @@ assert_case "non-ANR title -> empty" \
 	"" \
 	"Pixel Launcher" 1 1
 
+# --- wait_for: wall-clock budget + recovery nudge -------------------------
+# Extracted the same way; adb-touching helpers are stubbed. The target
+# appears only after the nudge has fired, proving a stuck (not merely slow)
+# UI is recovered, and a never-appearing target fails within the budget.
+eval "$(sed -n '/^wait_for() {/,/^}/p' "$SCRIPT")"
+log() { :; }
+dump_ui() { :; }
+dismiss_anr_if_present() { :; }
+capture_failure_diagnostics() { :; }
+NUDGED=0
+# shellcheck disable=SC2329 # invoked from the eval-extracted wait_for
+find_center() { [ "$NUDGED" -ge 1 ] && echo "1 1"; return 0; }
+nudge_stub() { NUDGED=$((NUDGED + 1)); }
+
+SECONDS=0
+if wait_for "row" 10 nudge_stub 1 && [ "$NUDGED" -ge 1 ]; then
+	pass=$((pass + 1)); echo "PASS: wait_for recovers via nudge"
+else
+	fail=$((fail + 1)); echo "FAIL: wait_for did not recover via nudge (nudged=$NUDGED)"
+fi
+
+# shellcheck disable=SC2329 # invoked from the eval-extracted wait_for
+find_center() { return 0; }
+SECONDS=0
+if ! wait_for "row" 2 && [ "$SECONDS" -le 4 ]; then
+	pass=$((pass + 1)); echo "PASS: wait_for fails within wall-clock budget"
+else
+	fail=$((fail + 1)); echo "FAIL: wait_for did not fail within budget"
+fi
+
 echo
 echo "reference-client-davx5.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
