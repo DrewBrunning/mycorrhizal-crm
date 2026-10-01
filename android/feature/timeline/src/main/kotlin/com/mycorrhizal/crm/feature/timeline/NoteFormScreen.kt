@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.FormScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,33 +59,14 @@ fun NoteFormScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(
-                        text = if (state.isEdit) {
-                            stringResource(R.string.note_edit)
-                        } else {
-                            stringResource(R.string.note_new)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    FormScaffold(
+        title = if (state.isEdit) stringResource(R.string.note_edit) else stringResource(R.string.note_new),
+        onBack = onBack,
+        saveLabel = if (state.isEdit) stringResource(R.string.note_save) else stringResource(R.string.note_create),
+        isSaving = state.isSaving,
+        onSave = viewModel::save,
+        snackbarHostState = snackbarHostState,
+        showSaveBar = !state.isLoading,
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding))
@@ -95,7 +77,6 @@ fun NoteFormScreen(
                 onContactSearchChange = viewModel::searchContacts,
                 onPickContact = viewModel::selectContact,
                 onClearContact = viewModel::clearContact,
-                onSave = viewModel::save,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -118,7 +99,6 @@ fun NoteFormContent(
     onContactSearchChange: (String) -> Unit,
     onPickContact: (com.mycorrhizal.crm.model.network.ContactSummary) -> Unit,
     onClearContact: () -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -173,19 +153,5 @@ fun NoteFormContent(
             onPick = onPickContact,
             labelRes = R.string.note_search_contact,
         )
-
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSaving) stateDescription = savingLabel },
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(if (state.isEdit) stringResource(R.string.note_save) else stringResource(R.string.note_create))
-        }
     }
 }

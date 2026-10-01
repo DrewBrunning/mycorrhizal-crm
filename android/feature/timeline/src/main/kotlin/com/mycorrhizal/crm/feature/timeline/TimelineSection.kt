@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Notifications
@@ -23,6 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ExternalActivity
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftStatuses
+import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -41,6 +46,7 @@ fun TimelineSection(
     onCompleteReminder: (Int) -> Unit,
     onUndoCompletion: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
+    previewLimit: Int = TIMELINE_PREVIEW_LIMIT,
 ) {
     Column(modifier = modifier) {
         if (items.isEmpty()) {
@@ -52,32 +58,88 @@ fun TimelineSection(
             )
             return
         }
-        items.forEach { item ->
-            when (item) {
-                is TimelineItem.ActivityItem -> TimelineActivityRow(
-                    item.activity.title.orEmpty(),
-                    item.activity.type.orEmpty(),
-                    onClick = { onEditActivity(item.activity.id) },
-                )
-                is TimelineItem.NoteItem -> TimelineNoteRow(
-                    item.note.content.orEmpty(),
-                    onClick = { onEditNote(item.note.id) },
-                )
-                is TimelineItem.ReminderItem -> TimelineReminderRow(
-                    message = item.reminder.message.orEmpty(),
-                    recurrence = item.reminder.recurrence,
-                    completed = item.reminder.completed,
-                    onClick = { onEditReminder(item.reminder.id) },
-                    onComplete = { onCompleteReminder(item.reminder.id) },
-                )
-                is TimelineItem.CompletionItem -> TimelineCompletionRow(
-                    message = item.completion.message.orEmpty(),
-                    onUndo = { onUndoCompletion(item.completion.id) },
-                )
-                is TimelineItem.ExternalActivityItem -> TimelineExternalActivityRow(item.activity)
-            }
+        // Issue #1401 (web T78 parity): only the most recent few render here — a bounded
+        // preview, so a contact with hundreds of events (e.g. Immich photo appearances)
+        // can't bury the profile. The rest is behind the explorer's "View all".
+        items.take(previewLimit).forEach { item ->
+            TimelineItemRow(
+                item = item,
+                onEditActivity = onEditActivity,
+                onEditNote = onEditNote,
+                onEditReminder = onEditReminder,
+                onCompleteReminder = onCompleteReminder,
+                onUndoCompletion = onUndoCompletion,
+            )
         }
     }
+}
+
+/**
+ * One timeline row with its tap/complete/undo actions — shared by the contact page's bounded
+ * [TimelineSection] preview and the explorer's lazy list, so both offer identical actions.
+ */
+@Composable
+fun TimelineItemRow(
+    item: TimelineItem,
+    onEditActivity: (Int) -> Unit,
+    onEditNote: (Int) -> Unit,
+    onEditReminder: (Int) -> Unit = {},
+    onCompleteReminder: (Int) -> Unit = {},
+    onUndoCompletion: (Int) -> Unit = {},
+) {
+    when (item) {
+        is TimelineItem.ActivityItem -> TimelineActivityRow(
+            item.activity.title.orEmpty(),
+            item.activity.type.orEmpty(),
+            onClick = { onEditActivity(item.activity.id) },
+        )
+        is TimelineItem.NoteItem -> TimelineNoteRow(
+            item.note.content.orEmpty(),
+            onClick = { onEditNote(item.note.id) },
+        )
+        is TimelineItem.ReminderItem -> TimelineReminderRow(
+            message = item.reminder.message.orEmpty(),
+            recurrence = item.reminder.recurrence,
+            completed = item.reminder.completed,
+            onClick = { onEditReminder(item.reminder.id) },
+            onComplete = { onCompleteReminder(item.reminder.id) },
+        )
+        is TimelineItem.CompletionItem -> TimelineCompletionRow(
+            message = item.completion.message.orEmpty(),
+            onUndo = { onUndoCompletion(item.completion.id) },
+        )
+        is TimelineItem.ExternalActivityItem -> TimelineExternalActivityRow(item.activity)
+        is TimelineItem.LifeEventItem -> TimelineLifeEventRow(item.lifeEvent)
+        is TimelineItem.GiftItem -> TimelineGiftRow(item.gift)
+    }
+}
+
+/** Issue #1401: a life event row (explorer only); not editable from the timeline, like web. */
+@Composable
+private fun TimelineLifeEventRow(lifeEvent: LifeEvent) {
+    TimelineRowBase(
+        icon = { Icon(Icons.Outlined.Event, contentDescription = null) },
+        title = lifeEvent.description?.takeIf { it.isNotBlank() } ?: lifeEvent.type.orEmpty(),
+        subtitle = lifeEvent.type.orEmpty(),
+        onClick = {},
+    )
+}
+
+/** Issue #1401: a gift row (explorer only); not editable from the timeline, like web. */
+@Composable
+private fun TimelineGiftRow(gift: Gift) {
+    val status = when (gift.status) {
+        GiftStatuses.PURCHASED -> stringResource(R.string.gifts_status_purchased)
+        GiftStatuses.GIVEN -> stringResource(R.string.gifts_status_given)
+        GiftStatuses.RECEIVED -> stringResource(R.string.gifts_status_received)
+        else -> stringResource(R.string.gifts_status_idea)
+    }
+    TimelineRowBase(
+        icon = { Icon(Icons.Outlined.CardGiftcard, contentDescription = null) },
+        title = gift.description,
+        subtitle = status,
+        onClick = {},
+    )
 }
 
 @Composable

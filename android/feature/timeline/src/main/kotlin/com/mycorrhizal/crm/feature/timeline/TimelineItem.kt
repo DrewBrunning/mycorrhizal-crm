@@ -3,7 +3,10 @@ package com.mycorrhizal.crm.feature.timeline
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ExternalActivity
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.TimelineEvent
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompletion
 
@@ -54,6 +57,20 @@ sealed interface TimelineItem {
         override val date: String get() = activity.occurredAt ?: activity.createdAt.orEmpty()
         override val id: String get() = activity.id
     }
+
+    /**
+     * Issue #1401: a life event, only ever present in the explorer (the server's merged
+     * timeline carries it; the contact page's detail-derived preview does not). [date] is the
+     * server-resolved event date (a PartialDate has no single instant of its own).
+     */
+    data class LifeEventItem(val lifeEvent: LifeEvent, override val date: String) : TimelineItem {
+        override val id: String get() = lifeEvent.id
+    }
+
+    /** Issue #1401: a gift, explorer-only like [LifeEventItem]. */
+    data class GiftItem(val gift: Gift, override val date: String) : TimelineItem {
+        override val id: String get() = gift.id
+    }
 }
 
 /**
@@ -83,6 +100,36 @@ fun ContactRecordResponse.toTimelineItems(
     return (activities + notes + reminders + completionItems + externalActivityItems).sortedWith(
         compareByDescending<TimelineItem> { it.date }.thenByDescending { it.id },
     )
+}
+
+/**
+ * Issue #1401 (web T78 parity): the contact page's timeline is a bounded preview of
+ * this many most-recent merged events; the full, paged history lives in the
+ * timeline explorer ("View all").
+ */
+const val TIMELINE_PREVIEW_LIMIT = 5
+
+/**
+ * Maps a decoded `GET /contacts/{id}/timeline` event onto the UI row model, or null when the
+ * entity the event's `type` promises is absent from `data` (a defensive guard — the server
+ * always sends it).
+ */
+fun TimelineEvent.toTimelineItem(): TimelineItem? {
+    val n = note
+    val a = activity
+    val c = completion
+    val l = lifeEvent
+    val x = externalActivity
+    val g = gift
+    return when {
+        n != null -> TimelineItem.NoteItem(n)
+        a != null -> TimelineItem.ActivityItem(a)
+        c != null -> TimelineItem.CompletionItem(c)
+        l != null -> TimelineItem.LifeEventItem(l, date)
+        x != null -> TimelineItem.ExternalActivityItem(x)
+        g != null -> TimelineItem.GiftItem(g, date)
+        else -> null
+    }
 }
 
 /** A stable per-item key for LazyColumn, e.g. "activity:7". */

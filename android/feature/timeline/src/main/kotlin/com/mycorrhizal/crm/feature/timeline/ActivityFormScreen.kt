@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.FormScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,33 +61,14 @@ fun ActivityFormScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(
-                        text = if (state.isEdit) {
-                            stringResource(R.string.activity_edit)
-                        } else {
-                            stringResource(R.string.activity_new)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    FormScaffold(
+        title = if (state.isEdit) stringResource(R.string.activity_edit) else stringResource(R.string.activity_new),
+        onBack = onBack,
+        saveLabel = if (state.isEdit) stringResource(R.string.activity_save) else stringResource(R.string.activity_create),
+        isSaving = state.isSaving,
+        onSave = viewModel::save,
+        snackbarHostState = snackbarHostState,
+        showSaveBar = true,
     ) { padding ->
         ActivityFormContent(
             state = state,
@@ -98,7 +80,6 @@ fun ActivityFormScreen(
             onContactSearchChange = viewModel::searchContacts,
             onAddParticipant = viewModel::onAddParticipant,
             onRemoveParticipant = viewModel::onRemoveParticipant,
-            onSave = viewModel::save,
             modifier = Modifier.padding(padding),
         )
     }
@@ -123,7 +104,6 @@ fun ActivityFormContent(
     onContactSearchChange: (String) -> Unit,
     onAddParticipant: (ContactSummary) -> Unit,
     onRemoveParticipant: (Int) -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -208,19 +188,5 @@ fun ActivityFormContent(
             onPick = onAddParticipant,
             labelRes = R.string.activity_search_contact,
         )
-
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSaving) stateDescription = savingLabel },
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(if (state.isEdit) stringResource(R.string.activity_save) else stringResource(R.string.activity_create))
-        }
     }
 }

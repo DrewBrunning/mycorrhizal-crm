@@ -914,6 +914,24 @@
 
     <!-- Zeitleiste -->
     <string name="timeline_empty">Noch keine Zeitleisten-Einträge</string>
+    <!-- Issue #1401: contact timeline explorer (web T78 parity) -->
+    <string name="timeline_view_all">Alle anzeigen</string>
+    <string name="timeline_explorer_title">Zeitachse</string>
+    <string name="timeline_filter_type">Ereignistyp</string>
+    <string name="timeline_filter_bucket">Wie lange her</string>
+    <string name="timeline_all_types">Alle Typen</string>
+    <string name="timeline_explorer_empty">Keine Ereignisse in der Zeitachse</string>
+    <string name="timeline_type_note">Notiz</string>
+    <string name="timeline_type_activity">Aktivität</string>
+    <string name="timeline_type_completion">Erinnerung erledigt</string>
+    <string name="timeline_type_life_event">Lebensereignis</string>
+    <string name="timeline_type_external_activity">Externes Ereignis</string>
+    <string name="timeline_type_gift">Geschenk</string>
+    <string name="timeline_bucket_all">Alle Zeit</string>
+    <string name="timeline_bucket_last_7_days">Letzte 7 Tage</string>
+    <string name="timeline_bucket_last_30_days">Letzte 30 Tage</string>
+    <string name="timeline_bucket_last_90_days">Letzte 90 Tage</string>
+    <string name="timeline_bucket_this_year">Dieses Jahr</string>
     <string name="cd_activity">Aktivität</string>
     <string name="cd_note">Notiz</string>
     <string name="cd_reminder">Erinnerung</string>

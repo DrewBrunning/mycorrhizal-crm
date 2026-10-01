@@ -167,6 +167,7 @@ import com.mycorrhizal.crm.feature.timeline.NotesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
+import com.mycorrhizal.crm.feature.timeline.TimelineExplorerScreen
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
@@ -250,12 +251,21 @@ private fun localModeAvailable(): Boolean {
  * never to a stale intermediate screen or a blank stack (issue #679).
  * Extracted so the back-stack behavior is unit-testable against a real
  * [NavHostController].
+ *
+ * Issue #1399: a route that carries arguments — a query arg (`contacts?search=X`) or a
+ * path arg (`contacts/8`) — must NOT restore saved state. `restoreState` resurrects the
+ * previously saved back-stack entry with its OLD arguments (and ViewModel), so a
+ * `mycorrhizal://search?q=X` link landed on the stale unfiltered Contacts, and
+ * `mycorrhizal://contacts/8` after contact 7 showed contact 7. Skipping the restore makes
+ * the link create a fresh entry carrying the new argument. Only the argument-free
+ * top-level (drawer/rail) routes — single segments such as `notes` — keep save/restore.
  */
 internal fun NavHostController.navigateToRoot(route: String) {
+    val carriesArgs = route.contains('?') || route.contains('/')
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
-        restoreState = true
+        restoreState = !carriesArgs
     }
 }
 
@@ -794,9 +804,15 @@ private fun RailDestinationItem(
     )
 }
 
-/** The phone/compact-width navigation drawer — unchanged destination content. */
+/**
+ * The phone/compact-width navigation drawer. Issue #1402: the destinations sit
+ * in a scrolling column under the fixed app-name header. Directly in the sheet's
+ * non-scrolling Column, 15 entries overflowed a phone screen and the trailing
+ * ones (Settings first) were squeezed below 48dp or collapsed to zero height.
+ * Internal so host-level tests can render it at a short height / large font scale.
+ */
 @Composable
-private fun DrawerContent(
+internal fun DrawerContent(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
 ) {
@@ -812,42 +828,49 @@ private fun DrawerContent(
                 .semantics { heading() },
         )
         HorizontalDivider()
-        primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-            NavigationDrawerItem(
-                // T100: labelLarge is 14sp -- Material's chip/button
-                // size, too small for the app's only global nav. Bumped
-                // here rather than in Theme.kt because labelLarge is
-                // also the M3 default for Button and Snackbar, so a
-                // global change would resize every button in the app.
-                // (T99 removed the serif family this override also
-                // used to carry.)
-                label = {
-                    Text(
-                        stringResource(item.labelRes),
-                        style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
-                    )
-                },
-                selected = isSelected(currentRoute, item),
-                onClick = { onDestinationClick(item.route) },
-                icon = { Icon(item.icon, contentDescription = null) },
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-        }
-        secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-            NavigationDrawerItem(
-                // T100/T99: see the primaryDestinations loop's
-                // matching comment above.
-                label = {
-                    Text(
-                        stringResource(item.labelRes),
-                        style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
-                    )
-                },
-                selected = isSelected(currentRoute, item),
-                onClick = { onDestinationClick(item.route) },
-                icon = { Icon(item.icon, contentDescription = null) },
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .testTag("drawer-list"),
+        ) {
+            primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
+                NavigationDrawerItem(
+                    // T100: labelLarge is 14sp -- Material's chip/button
+                    // size, too small for the app's only global nav. Bumped
+                    // here rather than in Theme.kt because labelLarge is
+                    // also the M3 default for Button and Snackbar, so a
+                    // global change would resize every button in the app.
+                    // (T99 removed the serif family this override also
+                    // used to carry.)
+                    label = {
+                        Text(
+                            stringResource(item.labelRes),
+                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                        )
+                    },
+                    selected = isSelected(currentRoute, item),
+                    onClick = { onDestinationClick(item.route) },
+                    icon = { Icon(item.icon, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
+                )
+            }
+            secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
+                NavigationDrawerItem(
+                    // T100/T99: see the primaryDestinations loop's
+                    // matching comment above.
+                    label = {
+                        Text(
+                            stringResource(item.labelRes),
+                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                        )
+                    },
+                    selected = isSelected(currentRoute, item),
+                    onClick = { onDestinationClick(item.route) },
+                    icon = { Icon(item.icon, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
+                )
+            }
         }
     }
 }
@@ -1067,6 +1090,7 @@ private fun AppNavGraph(
                 onMerge = { id -> navController.navigate("merge/$id") },
                 onViewLifeEvents = { id -> navController.navigate("contacts/$id/life-events") },
                 onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
+                onViewTimeline = { id -> navController.navigate("contacts/$id/timeline") },
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                 onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                 onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
@@ -1133,6 +1157,18 @@ private fun AppNavGraph(
             ActivityFormScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #1401: the full, paged contact timeline behind the contact page's "View all".
+        composable(
+            route = "contacts/{contactId}/timeline",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+        ) { entry ->
+            val contactId = entry.arguments?.getInt("contactId") ?: 0
+            TimelineExplorerScreen(
+                onBack = { navController.popBackStack() },
+                onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
+                onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
             )
         }
         composable(

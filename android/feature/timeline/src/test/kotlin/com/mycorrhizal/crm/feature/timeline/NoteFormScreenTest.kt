@@ -1,9 +1,18 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -36,15 +45,24 @@ class NoteFormScreenTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                NoteFormContent(
-                    state = state,
-                    onContentChange = {},
-                    onDateChange = {},
-                    onContactSearchChange = onSearchChange,
-                    onPickContact = onPickContact,
-                    onClearContact = onClearContact,
+                FormScaffold(
+                    title = "Form",
+                    onBack = {},
+                    saveLabel = if (state.isEdit) "Save changes" else "Create note",
+                    isSaving = state.isSaving,
                     onSave = onSave,
-                )
+                    snackbarHostState = remember { SnackbarHostState() },
+                ) { padding ->
+                    NoteFormContent(
+                        state = state,
+                        onContentChange = {},
+                        onDateChange = {},
+                        onContactSearchChange = onSearchChange,
+                        onPickContact = onPickContact,
+                        onClearContact = onClearContact,
+                        modifier = Modifier.padding(padding),
+                    )
+                }
             }
         }
     }
@@ -94,7 +112,24 @@ class NoteFormScreenTest {
             NoteFormState(contactId = 5, content = "Loves climbing"),
             onSave = { saved = true },
         )
-        composeTestRule.onNodeWithText("Create note").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create note").performClick()
+        assertEquals(true, saved)
+    }
+
+    // Issue #1404: the primary action is pinned in the Scaffold's bottomBar, so it
+    // is on screen without scrolling and stays there as the form scrolls.
+    @Test
+    @Config(qualifiers = "w360dp-h400dp")
+    fun `save button stays displayed without scrolling and while the form scrolls`() {
+        var saved = false
+        setContent(NoteFormState(contactId = 5, content = "Loves climbing"), onSave = { saved = true })
+
+        composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
+        composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create note").performClick()
         assertEquals(true, saved)
     }
 }

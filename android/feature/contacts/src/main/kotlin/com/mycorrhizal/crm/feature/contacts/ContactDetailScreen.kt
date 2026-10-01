@@ -200,6 +200,7 @@ fun ContactDetailScreen(
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
+    onViewTimeline: (Int) -> Unit = {},
     // M11: the N2 prep-view briefing (replaces the "coming soon" stub).
     onViewPrep: (Int) -> Unit = {},
     // M15: the "Share this contact" flow (replaces the "coming soon" stub).
@@ -640,6 +641,7 @@ fun ContactDetailScreen(
                     onViewGifts = onViewGifts,
                     onViewPreferences = onViewPreferences,
                     onViewAgenda = onViewAgenda,
+                    onViewTimeline = onViewTimeline,
                     onEditActivity = onEditActivity,
                     onEditNote = onEditNote,
                     onEditReminder = onEditReminder,
@@ -1006,6 +1008,7 @@ fun ContactDetailContent(
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
+    onViewTimeline: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -1430,7 +1433,22 @@ fun ContactDetailContent(
         item {
             // Unified timeline: the contact's activities/notes/reminders merged
             // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
-            SectionTitle(stringResource(R.string.contact_timeline))
+            // Issue #1401 (web T78 parity): a bounded preview of the most recent events
+            // (TimelineSection caps it) with "View all" opening the paged explorer —
+            // shown regardless of how many events exist, like web.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SectionTitle(stringResource(R.string.contact_timeline))
+                TextButton(
+                    onClick = { onViewTimeline(contact.id) },
+                    modifier = Modifier.padding(end = 8.dp),
+                ) {
+                    Text(stringResource(R.string.timeline_view_all))
+                }
+            }
             TimelineSection(
                 items = contact.toTimelineItems(completions, externalActivities),
                 onEditActivity = onEditActivity,

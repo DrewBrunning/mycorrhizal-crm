@@ -1,11 +1,20 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsToggleable
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -35,15 +44,24 @@ class ReminderFormScreenTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ReminderFormContent(
-                    state = state,
-                    onMessageChange = {},
-                    onRemindAtChange = onRemindAtChange,
-                    onRecurrenceChange = onRecurrenceChange,
-                    onByMailChange = {},
-                    onReoccurFromCompletionChange = onReoccurFromCompletionChange,
+                FormScaffold(
+                    title = "Form",
+                    onBack = {},
+                    saveLabel = if (state.isEdit) "Save changes" else "Create reminder",
+                    isSaving = state.isSaving,
                     onSave = onSave,
-                )
+                    snackbarHostState = remember { SnackbarHostState() },
+                ) { padding ->
+                    ReminderFormContent(
+                        state = state,
+                        onMessageChange = {},
+                        onRemindAtChange = onRemindAtChange,
+                        onRecurrenceChange = onRecurrenceChange,
+                        onByMailChange = {},
+                        onReoccurFromCompletionChange = onReoccurFromCompletionChange,
+                        modifier = Modifier.padding(padding),
+                    )
+                }
             }
         }
     }
@@ -111,7 +129,24 @@ class ReminderFormScreenTest {
             ),
             onSave = { saved = true },
         )
-        composeTestRule.onNodeWithText("Create reminder").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create reminder").performClick()
+        assertEquals(true, saved)
+    }
+
+    // Issue #1404: the primary action is pinned in the Scaffold's bottomBar, so it
+    // is on screen without scrolling and stays there as the form scrolls.
+    @Test
+    @Config(qualifiers = "w360dp-h400dp")
+    fun `save button stays displayed without scrolling and while the form scrolls`() {
+        var saved = false
+        setContent(ReminderFormState(contactId = 5, remindAt = "${LocalDate.now()}T00:00:00Z"), onSave = { saved = true })
+
+        composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
+        composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create reminder").performClick()
         assertEquals(true, saved)
     }
 }

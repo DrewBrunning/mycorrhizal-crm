@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.FIELD_TYPES
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 
@@ -74,33 +75,14 @@ fun FieldDefinitionFormScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(
-                        text = if (state.isEdit) {
-                            stringResource(R.string.settings_custom_fields_edit_title)
-                        } else {
-                            stringResource(R.string.settings_custom_fields_new_title)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    FormScaffold(
+        title = if (state.isEdit) stringResource(R.string.settings_custom_fields_edit_title) else stringResource(R.string.settings_custom_fields_new_title),
+        onBack = onBack,
+        saveLabel = if (state.isEdit) stringResource(R.string.action_save) else stringResource(R.string.action_create),
+        isSaving = state.isSaving,
+        onSave = viewModel::save,
+        snackbarHostState = snackbarHostState,
+        showSaveBar = true,
     ) { padding ->
         FieldDefinitionFormContent(
             state = state,
@@ -118,7 +100,6 @@ fun FieldDefinitionFormScreen(
             onProjectionModeChange = viewModel::onProjectionModeChange,
             onVcardNameChange = viewModel::onVcardNameChange,
             onSensitivityChange = viewModel::onSensitivityChange,
-            onSave = viewModel::save,
             modifier = Modifier.padding(padding),
         )
     }
@@ -150,7 +131,6 @@ fun FieldDefinitionFormContent(
     onProjectionModeChange: (String) -> Unit,
     onVcardNameChange: (String) -> Unit,
     onSensitivityChange: (String) -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (state.isLoading) {
@@ -333,19 +313,6 @@ fun FieldDefinitionFormContent(
                     )
                 }
             }
-        }
-
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(
-                if (state.isEdit) stringResource(R.string.action_save) else stringResource(R.string.action_create),
-            )
         }
     }
 }
