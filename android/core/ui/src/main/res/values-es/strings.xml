@@ -914,6 +914,24 @@
 
     <!-- Cronología -->
     <string name="timeline_empty">Aún no hay entradas en la cronología</string>
+    <!-- Issue #1401: contact timeline explorer (web T78 parity) -->
+    <string name="timeline_view_all">Ver todo</string>
+    <string name="timeline_explorer_title">Línea de tiempo</string>
+    <string name="timeline_filter_type">Tipo de evento</string>
+    <string name="timeline_filter_bucket">Hace cuánto tiempo</string>
+    <string name="timeline_all_types">Todos los tipos</string>
+    <string name="timeline_explorer_empty">No hay eventos en la línea de tiempo</string>
+    <string name="timeline_type_note">Nota</string>
+    <string name="timeline_type_activity">Actividad</string>
+    <string name="timeline_type_completion">Recordatorio completado</string>
+    <string name="timeline_type_life_event">Evento de vida</string>
+    <string name="timeline_type_external_activity">Actividad externa</string>
+    <string name="timeline_type_gift">Regalo</string>
+    <string name="timeline_bucket_all">Todo el tiempo</string>
+    <string name="timeline_bucket_last_7_days">Últimos 7 días</string>
+    <string name="timeline_bucket_last_30_days">Últimos 30 días</string>
+    <string name="timeline_bucket_last_90_days">Últimos 90 días</string>
+    <string name="timeline_bucket_this_year">Este año</string>
     <string name="cd_activity">Actividad</string>
     <string name="cd_note">Nota</string>
     <string name="cd_reminder">Recordatorio</string>

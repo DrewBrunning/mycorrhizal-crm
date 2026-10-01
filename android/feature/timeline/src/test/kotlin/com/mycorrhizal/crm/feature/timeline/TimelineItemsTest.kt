@@ -191,4 +191,34 @@ class TimelineItemsTest {
 
         assertEquals(2, keys.distinct().size)
     }
+
+    // --- Issue #1401: explorer events -> UI rows ---
+
+    private fun event(type: String, block: com.mycorrhizal.crm.model.network.TimelineEvent.() -> com.mycorrhizal.crm.model.network.TimelineEvent) =
+        com.mycorrhizal.crm.model.network.TimelineEvent(type, "1", "2026-09-01T10:00:00Z").block()
+
+    @Test
+    fun `every event type maps to its row model`() {
+        assertTrue(event("note") { copy(note = Note(id = 1)) }.toTimelineItem() is TimelineItem.NoteItem)
+        assertTrue(event("activity") { copy(activity = Activity(id = 1)) }.toTimelineItem() is TimelineItem.ActivityItem)
+        assertTrue(
+            event("completion") { copy(completion = ReminderCompletion(id = 1)) }.toTimelineItem() is TimelineItem.CompletionItem,
+        )
+        assertTrue(
+            event("life_event") { copy(lifeEvent = com.mycorrhizal.crm.model.network.LifeEvent(id = "l")) }.toTimelineItem()
+                is TimelineItem.LifeEventItem,
+        )
+        assertTrue(
+            event("external_activity") { copy(externalActivity = ExternalActivity(id = "e")) }.toTimelineItem()
+                is TimelineItem.ExternalActivityItem,
+        )
+        val gift = event("gift") { copy(gift = com.mycorrhizal.crm.model.network.Gift(id = "g")) }.toTimelineItem()
+        assertTrue(gift is TimelineItem.GiftItem)
+        assertEquals("2026-09-01T10:00:00Z", gift?.date)
+    }
+
+    @Test
+    fun `an event whose entity is missing maps to null`() {
+        assertEquals(null, event("note") { this }.toTimelineItem())
+    }
 }

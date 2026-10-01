@@ -36,6 +36,7 @@ import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
@@ -95,6 +96,7 @@ import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
+import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
@@ -538,6 +540,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindExternalActivityRepository(impl: ExternalActivityRepositoryImpl): ExternalActivityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContactTimelineRepository(impl: ContactTimelineRepositoryImpl): ContactTimelineRepository
 
     @Binds
     @Singleton
