@@ -3,7 +3,6 @@ package com.mycorrhizal.crm.e2e
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Before
 import org.junit.Test
@@ -52,7 +51,7 @@ class LoginListDetailEditTest : E2eBaseTest() {
         // --- edit ---
         clickContentDescription("Edit contact")
         replaceTextInField("Given name", renamedGiven)
-        compose.onNodeWithText("Save changes").performScrollTo().performClick()
+        compose.onNodeWithText("Save changes").performClick()
 
         // Back on the detail page, now showing the renamed contact (the detail
         // reloads on resume).
