@@ -1568,4 +1568,102 @@ class ContactDetailScreenTest {
         composeTestRule.onNode(hasText("Dana White").and(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)))
             .assertIsDisplayed()
     }
+
+    // --- Issue #1401: the timeline is a bounded preview + "View all" (web T78 parity) ---
+
+    private fun photoAppearances(count: Int) = (1..count).map { i ->
+        ExternalActivity(
+            id = "a$i",
+            entityId = "u5",
+            sourceSystem = "immich",
+            externalId = "asset-$i",
+            type = "photo-appearance",
+            occurredAt = "2026-08-01T10:%02d:00Z".format(i % 60),
+            payload = mapOf("person_name" to "Bob"),
+        )
+    }
+
+    @Test
+    fun `the timeline preview is capped at five events however many exist`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, externalActivities = photoAppearances(100))
+            }
+        }
+
+        scrollTo("Photo appearance")
+        assertEquals(5, composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `the preview shows the five most recent events across notes activities and external activities`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White")),
+            notes = listOf(
+                com.mycorrhizal.crm.model.network.Note(id = 1, content = "ancient note", date = "2020-01-01T00:00:00Z"),
+                com.mycorrhizal.crm.model.network.Note(id = 2, content = "newest note", date = "2026-09-20T00:00:00Z"),
+            ),
+            activities = listOf(
+                com.mycorrhizal.crm.model.network.Activity(id = 3, title = "newest activity", date = "2026-09-19T00:00:00Z"),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, externalActivities = photoAppearances(5))
+            }
+        }
+
+        scrollTo("newest note")
+        composeTestRule.onNodeWithText("newest note").assertExists()
+        composeTestRule.onNodeWithText("newest activity").assertExists()
+        // 3 + 5 = 8 merged events; only the 5 newest remain: 2 recent notes/activities + 3 photos.
+        composeTestRule.onNodeWithText("ancient note").assertDoesNotExist()
+        assertEquals(3, composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `profile sections render above a large timeline without scrolling past it`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(
+                name = Name(full = "Dana White"),
+                phones = listOf(Phone(number = "+1-555-0100")),
+                emails = listOf(Email(address = "dana@example.com", label = "Work")),
+            ),
+            crm = CRMEnvelope(circles = listOf("friends")),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, externalActivities = photoAppearances(100))
+            }
+        }
+
+        // No scrolling: the profile data is on the first screen, not buried under 100 timeline rows.
+        composeTestRule.onNodeWithText("+1-555-0100").assertIsDisplayed()
+        composeTestRule.onNodeWithText("dana@example.com", substring = true).assertIsDisplayed()
+        // And the management rows below the timeline are one short scroll away, not 100 rows away.
+        composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText("Reminders"))
+        composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
+        assertTrue(composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size <= 5)
+    }
+
+    @Test
+    fun `view all is shown even with no events and opens the explorer for this contact`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        var opened: Int? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, onViewTimeline = { opened = it })
+            }
+        }
+
+        scrollTo("View all")
+        composeTestRule.onNodeWithText("View all").assertIsDisplayed().performClick()
+
+        assertEquals(5, opened)
+    }
 }

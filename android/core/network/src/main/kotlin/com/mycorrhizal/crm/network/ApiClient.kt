@@ -43,6 +43,7 @@ import com.mycorrhizal.crm.model.network.CalendarSubscriptionInput
 import com.mycorrhizal.crm.model.network.CalendarSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.CalendarSyncResult
 import com.mycorrhizal.crm.model.network.ContactSubscription
+import com.mycorrhizal.crm.model.network.ContactTimelinePage
 import com.mycorrhizal.crm.model.network.ContactSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.ChangePasswordRequest
 import com.mycorrhizal.crm.model.network.CheckPasswordStrengthRequest
@@ -115,6 +116,7 @@ import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
@@ -194,6 +196,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.model.network.ServerHealth
@@ -203,6 +206,11 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TagDetailResponse
 import com.mycorrhizal.crm.model.network.TagInput
 import com.mycorrhizal.crm.model.network.TagsPage
+import com.mycorrhizal.crm.model.network.TimelineBuckets
+import com.mycorrhizal.crm.model.network.TimelineEvent
+import com.mycorrhizal.crm.model.network.TimelineTypes
+import com.mycorrhizal.crm.model.network.TimelineWireItem
+import com.mycorrhizal.crm.model.network.TimelineWirePage
 import com.mycorrhizal.crm.model.network.TwoFactorCodeInput
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
@@ -1525,6 +1533,57 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/reminder-completions") { _, body ->
             moshi.adapter(CompletionsResponse::class.java).fromJson(body)
         }
+
+    /**
+     * GET /api/v1/contacts/{id}/timeline — issue #1401 (web T78 parity): a cursor page of the
+     * contact's merged timeline across the six event types. [types] (a subset of
+     * [TimelineTypes.ALL]) is sent comma-joined only when it is a proper, non-empty subset —
+     * empty or all six is the same query as no filter; [bucket] is sent unless it is null/`all`;
+     * [cursor] is the previous page's `next_cursor`. Events whose `type` this client doesn't
+     * know are skipped (forward compatibility), never a parse failure.
+     */
+    suspend fun getContactTimeline(
+        contactId: Int,
+        types: Collection<String> = emptyList(),
+        bucket: String? = null,
+        cursor: String? = null,
+        limit: Int = 25,
+    ): Result<ContactTimelinePage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/timeline".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        val selectedTypes = TimelineTypes.ALL.filter { it in types }
+        if (selectedTypes.isNotEmpty() && selectedTypes.size < TimelineTypes.ALL.size) {
+            urlBuilder.addQueryParameter("type", selectedTypes.joinToString(","))
+        }
+        if (!bucket.isNullOrEmpty() && bucket != TimelineBuckets.ALL) {
+            urlBuilder.addQueryParameter("bucket", bucket)
+        }
+        if (!cursor.isNullOrEmpty()) {
+            urlBuilder.addQueryParameter("cursor", cursor)
+        }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(TimelineWirePage::class.java).fromJson(body)?.let(::decodeTimelinePage)
+        }
+    }
+
+    private fun decodeTimelinePage(wire: TimelineWirePage): ContactTimelinePage {
+        fun <T : Any> entity(item: TimelineWireItem, cls: Class<T>): T? =
+            item.data?.let { moshi.adapter(cls).fromJsonValue(it) }
+        val events = wire.items.orEmpty().mapNotNull { item ->
+            val base = TimelineEvent(item.type, item.id, item.date)
+            when (item.type) {
+                TimelineTypes.NOTE -> base.copy(note = entity(item, Note::class.java))
+                TimelineTypes.ACTIVITY -> base.copy(activity = entity(item, Activity::class.java))
+                TimelineTypes.COMPLETION -> base.copy(completion = entity(item, ReminderCompletion::class.java))
+                TimelineTypes.LIFE_EVENT -> base.copy(lifeEvent = entity(item, LifeEvent::class.java))
+                TimelineTypes.EXTERNAL_ACTIVITY ->
+                    base.copy(externalActivity = entity(item, ExternalActivity::class.java))
+                TimelineTypes.GIFT -> base.copy(gift = entity(item, Gift::class.java))
+                else -> null
+            }
+        }
+        return ContactTimelinePage(events, wire.nextCursor?.ifEmpty { null }, wire.limit)
+    }
 
     /** DELETE /api/v1/reminder-completions/{id} — remove a completion (undo). */
     suspend fun deleteReminderCompletion(id: Int): Result<Unit> =
