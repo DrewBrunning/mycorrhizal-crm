@@ -1,12 +1,21 @@
 package com.mycorrhizal.crm.feature.settings
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
@@ -35,27 +44,40 @@ class FieldDefinitionFormScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun setContent(state: FieldDefinitionFormState, onTypeChange: (String) -> Unit = {}) {
+    private fun setContent(
+        state: FieldDefinitionFormState,
+        onTypeChange: (String) -> Unit = {},
+        onSave: () -> Unit = {},
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                FieldDefinitionFormContent(
-                    state = state,
-                    onLabelChange = {},
-                    onKeyChange = {},
-                    onTypeChange = onTypeChange,
-                    onMultiChange = {},
-                    onMinChange = {},
-                    onMaxChange = {},
-                    onMaxLengthChange = {},
-                    onPatternChange = {},
-                    onAddEnumValue = {},
-                    onUpdateEnumValue = { _, _ -> },
-                    onRemoveEnumValue = {},
-                    onProjectionModeChange = {},
-                    onVcardNameChange = {},
-                    onSensitivityChange = {},
-                    onSave = {},
-                )
+                FormScaffold(
+                    title = "Form",
+                    onBack = {},
+                    saveLabel = if (state.isEdit) "Save" else "Create",
+                    isSaving = state.isSaving,
+                    onSave = onSave,
+                    snackbarHostState = remember { SnackbarHostState() },
+                ) { padding ->
+                    FieldDefinitionFormContent(
+                        state = state,
+                        onLabelChange = {},
+                        onKeyChange = {},
+                        onTypeChange = onTypeChange,
+                        onMultiChange = {},
+                        onMinChange = {},
+                        onMaxChange = {},
+                        onMaxLengthChange = {},
+                        onPatternChange = {},
+                        onAddEnumValue = {},
+                        onUpdateEnumValue = { _, _ -> },
+                        onRemoveEnumValue = {},
+                        onProjectionModeChange = {},
+                        onVcardNameChange = {},
+                        onSensitivityChange = {},
+                        modifier = Modifier.padding(padding),
+                    )
+                }
             }
         }
     }
@@ -116,20 +138,37 @@ class FieldDefinitionFormScreenTest {
     @Test
     fun `save button shows Create in create mode`() {
         setContent(FieldDefinitionFormState(fieldDefinitionId = null))
-        composeTestRule.onNodeWithText("Create").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
     }
 
     @Test
     fun `save button shows Save in edit mode`() {
         setContent(FieldDefinitionFormState(fieldDefinitionId = "d1"))
-        composeTestRule.onNodeWithText("Save").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Save").assertIsDisplayed()
+    }
+
+    // Issue #1404: the primary action is pinned in the Scaffold's bottomBar, so it
+    // is on screen without scrolling and stays there as the form scrolls.
+    @Test
+    @Config(qualifiers = "w360dp-h400dp")
+    fun `save button stays displayed without scrolling and while the form scrolls`() {
+        var saved = false
+        setContent(FieldDefinitionFormState(type = "string"), onSave = { saved = true })
+
+        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
+        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
+        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create").performClick()
+        assertEquals(true, saved)
     }
 
     @Test
     fun `save button is disabled while saving`() {
         setContent(FieldDefinitionFormState(isSaving = true))
 
-        composeTestRule.onNodeWithText("Create").performScrollTo().assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
     }
 
     @Test
@@ -205,7 +244,7 @@ class FieldDefinitionFormScreenTest {
 
         composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
         composeTestRule.onNodeWithText("Key").performScrollTo().performTextInput("coffee_order")
-        composeTestRule.onNodeWithText("Create").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(true, savedCalled)
@@ -219,7 +258,7 @@ class FieldDefinitionFormScreenTest {
 
         composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
         composeTestRule.onNodeWithText("Key").performScrollTo().performTextInput("coffee_order")
-        composeTestRule.onNodeWithText("Create").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
 
         composeTestRule.onNodeWithText("already exists").assertIsDisplayed()
         assertEquals(false, savedCalled)

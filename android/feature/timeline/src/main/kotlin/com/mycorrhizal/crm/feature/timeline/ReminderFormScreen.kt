@@ -52,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -74,33 +75,14 @@ fun ReminderFormScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(
-                        text = if (state.isEdit) {
-                            stringResource(R.string.reminder_edit)
-                        } else {
-                            stringResource(R.string.reminder_new)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    FormScaffold(
+        title = if (state.isEdit) stringResource(R.string.reminder_edit) else stringResource(R.string.reminder_new),
+        onBack = onBack,
+        saveLabel = if (state.isEdit) stringResource(R.string.reminder_save) else stringResource(R.string.reminder_create),
+        isSaving = state.isSaving,
+        onSave = viewModel::save,
+        snackbarHostState = snackbarHostState,
+        showSaveBar = !state.isLoading,
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding))
@@ -111,7 +93,6 @@ fun ReminderFormScreen(
                 onRecurrenceChange = viewModel::onRecurrenceChange,
                 onByMailChange = viewModel::onByMailChange,
                 onReoccurFromCompletionChange = viewModel::onReoccurFromCompletionChange,
-                onSave = viewModel::save,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -135,7 +116,6 @@ fun ReminderFormContent(
     onRecurrenceChange: (String) -> Unit,
     onByMailChange: (Boolean) -> Unit,
     onReoccurFromCompletionChange: (Boolean) -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var recurrenceExpanded by remember { mutableStateOf(false) }
@@ -229,19 +209,6 @@ fun ReminderFormContent(
                 Switch(checked = state.byMail, onCheckedChange = null)
             },
         )
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSaving) stateDescription = savingLabel },
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(if (state.isEdit) stringResource(R.string.reminder_save) else stringResource(R.string.reminder_create))
-        }
     }
 
     if (showDatePicker) {
