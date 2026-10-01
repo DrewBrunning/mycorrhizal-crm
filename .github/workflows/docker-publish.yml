@@ -8,6 +8,16 @@ on:
   # webhook-delivery outage, as happened 2026-08-06) -- the only other recovery
   # is deleting and re-pushing the tag. Takes the tag as an INPUT rather than
   # the dispatch ref, so it can rebuild a tag whose commit predates this change.
+  #
+  # Issue #1396 -- what the fallback does NOT produce: apk-provenance (SLSA,
+  # push-only: the generator records the triggering ref, and a dispatch from a
+  # branch is a branch ref slsa-verifier --source-tag rejects) and
+  # create-release (the Release already exists). verify-release-assets and
+  # post-publish-smoke DO run on dispatch; with no SLSA provenance the
+  # completeness assertion fails, so a fallback-only release concludes RED and
+  # is reported as not promotable (promote-rc.yml also refuses it up front).
+  # Recovery: cut the next release candidate, or re-push the tag once the
+  # workflow at the tag's commit is fixed. See docs/development/release-gates.md.
   workflow_dispatch:
     inputs:
       tag:
@@ -1040,12 +1050,26 @@ jobs:
   # REL-03 / #527: the final "the artifacts actually landed" gate -- upload
   # is a separate operation that can fail even after a green build. Mandatory
   # gate (docs/development/release-gates.md).
+  #
+  # Issue #1396: this job also runs on the workflow_dispatch fallback. There,
+  # create-release and apk-provenance are SKIPPED by design (the release
+  # already exists; the SLSA generator cannot attest a branch-ref dispatch), so
+  # the condition accepts `skipped` for those two ONLY on dispatch -- a push
+  # still requires both to succeed. With no provenance the completeness
+  # assertion below fails, so a fallback-only release concludes RED and says
+  # it is not promotable, instead of silently going green.
   verify-release-assets:
     name: Verify release assets
     runs-on: ubuntu-latest
     needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan]
     # issue #1184: explicit guard against the skipped release-gate-override job.
-    if: ${{ always() && github.event_name == 'push' && needs.create-release.result == 'success' && needs.build-and-push.result == 'success' && needs.build-android-apk.result == 'success' && needs.apk-provenance.result == 'success' && needs.scan.result == 'success' }}
+    if: >-
+      ${{ always()
+      && (needs.create-release.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.create-release.result == 'skipped'))
+      && needs.build-and-push.result == 'success'
+      && needs.build-android-apk.result == 'success'
+      && (needs.apk-provenance.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.apk-provenance.result == 'skipped'))
+      && needs.scan.result == 'success' }}
     permissions:
       # contents: write to attach the two assets this job owns: the SLSA
       # provenance (#355) and a SHA256SUMS over every asset (#499).
@@ -1061,7 +1085,9 @@ jobs:
 
       # apk-provenance ran the slsa-github-generator with upload-assets: false,
       # so the *.intoto.jsonl lives only as a workflow artifact until here.
+      # Issue #1396: absent on the dispatch fallback (apk-provenance skipped).
       - name: Download the SLSA provenance artifact
+        if: ${{ needs.apk-provenance.result == 'success' }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: mycorrhizal-apk.intoto.jsonl
@@ -1080,7 +1106,13 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -eu
-          gh release upload "$RELEASE_TAG" release-assets/*.intoto.jsonl --clobber
+          # Issue #1396: on the dispatch fallback there is no provenance to
+          # attach; SHA256SUMS is still (re)built over whatever is published.
+          if compgen -G 'release-assets/*.intoto.jsonl' >/dev/null; then
+            gh release upload "$RELEASE_TAG" release-assets/*.intoto.jsonl --clobber
+          else
+            echo "No SLSA provenance artifact in this run (apk-provenance did not run) -- not attaching one."
+          fi
           work="$(mktemp -d)"
           gh release download "$RELEASE_TAG" --dir "$work" --clobber
           ( cd "$work" && rm -f SHA256SUMS && sha256sum -- * | sort -k2 > SHA256SUMS && cat SHA256SUMS )
@@ -1092,6 +1124,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # See the previous step's comment -- same missing-checkout gap.
           GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -eu
           fail=0
@@ -1104,6 +1137,24 @@ jobs:
               *) echo "::error::Release $RELEASE_TAG is missing asset '$want'."; fail=1 ;;
             esac
           done
+
+          # Issue #1396: the workflow_dispatch fallback cannot produce SLSA
+          # provenance (apk-provenance is push-only -- the generator records the
+          # triggering ref, and slsa-verifier --source-tag rejects a branch ref).
+          # Say so explicitly, so a fallback-only release fails loudly instead of
+          # being discovered at promotion time (promote-rc.yml needs it).
+          case " $assets " in
+            *" mycorrhizal-apk.intoto.jsonl "*) ;;
+            *)
+              if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+                msg="Release $RELEASE_TAG was published via the workflow_dispatch fallback without SLSA provenance (mycorrhizal-apk.intoto.jsonl). It is NOT promotable. Recover by cutting the next release candidate, or -- once the workflow at the tag's commit is fixed -- by deleting and re-pushing the tag so a push-triggered run produces the provenance (issue #1396)."
+                echo "::error::$msg"
+                echo "### :x: Not promotable" >> "$GITHUB_STEP_SUMMARY"
+                echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              fail=1
+              ;;
+          esac
 
           # Issue #1390: the attached APK (the asset users actually install)
           # must still carry the embedded server binary.
@@ -1138,14 +1189,20 @@ jobs:
   # image BY DIGEST (never the mutable tag) and runs the same end-to-end
   # workflow against the real artifact.
   #
-  # `if: github.event_name == 'push'` mirrors verify-release-assets: skips
-  # the manual-recovery dispatch, which doesn't need its own smoke pass.
+  # Issue #1396: this runs on the workflow_dispatch fallback too -- it only
+  # needs the published image, so a dispatch-published release is smoke-tested
+  # even when verify-release-assets fails on the (unavoidable) missing SLSA
+  # provenance. On a push it still waits for verify-release-assets to pass.
   post-publish-smoke:
     name: Post-publish smoke (published image)
     runs-on: ubuntu-latest
-    needs: verify-release-assets
+    needs: [build-and-push, verify-release-assets]
     # issue #1184: explicit guard against the skipped release-gate-override job.
-    if: ${{ always() && github.event_name == 'push' && needs.verify-release-assets.result == 'success' }}
+    if: >-
+      ${{ always()
+      && needs.build-and-push.result == 'success'
+      && (needs.verify-release-assets.result == 'success'
+          || (github.event_name == 'workflow_dispatch' && needs.verify-release-assets.result != 'skipped' && needs.verify-release-assets.result != 'cancelled')) }}
     timeout-minutes: 20
     permissions:
       contents: read

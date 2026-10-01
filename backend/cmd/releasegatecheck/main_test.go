@@ -171,6 +171,33 @@ func TestRunAtFailsOnMissingPromoteWorkflow(t *testing.T) {
 	assert.Equal(t, 2, code)
 }
 
+// TestRunAtFailsOnMissingDockerPublish: docker-publish.yml is read for the
+// dispatch-path check (#1396); missing is a checker failure.
+func TestRunAtFailsOnMissingDockerPublish(t *testing.T) {
+	dst := copyRepoTree(t)
+	require.NoError(t, os.Remove(filepath.Join(dst, workflowsDir, "docker-publish.yml")))
+
+	var out bytes.Buffer
+	assert.Equal(t, 2, runAt(&out, dst))
+}
+
+// TestRunAtFailsOnPushOnlyMandatoryGate is the #1396 regression gate end to
+// end: a new push-only guard on the mandatory `build-and-push` job fails the check.
+func TestRunAtFailsOnPushOnlyMandatoryGate(t *testing.T) {
+	dst := copyRepoTree(t)
+	p := filepath.Join(dst, workflowsDir, "docker-publish.yml")
+	b, err := os.ReadFile(p) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	old := "if: ${{ always() && needs.schema-fixture-gate.result == 'success' && needs.build-android-apk.result == 'success' }}"
+	require.Contains(t, string(b), old)
+	mutated := strings.Replace(string(b), old, "if: ${{ always() && github.event_name == 'push' && needs.schema-fixture-gate.result == 'success' && needs.build-android-apk.result == 'success' }}", 1)
+	require.NoError(t, os.WriteFile(p, []byte(mutated), 0o644))
+
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), `mandatory gate "build-and-push"`)
+}
+
 // TestRunFailsOnMissingRegistryFile and TestRunFailsOnMissingDocFile exercise
 // run()'s own read-failure branches (registryFile/docFile missing) via a
 // copied tree, since run() always calls findRepoRoot() against the real
