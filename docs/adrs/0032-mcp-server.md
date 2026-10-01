@@ -77,9 +77,34 @@ that token would.
 
 ### 5. Dependency
 
-An MCP Go SDK is required to implement the server. This ADR deliberately does not pin a specific
-package: the MCP tooling ecosystem moves fast enough that the implementer should confirm the current
-canonical Go SDK at build time rather than trust a name written down now.
+Use the **official** Go SDK, `github.com/modelcontextprotocol/go-sdk` (maintained by the MCP project
+with Google). Decided 2026-10-01 by the maintainer; pin the version in `go.mod` at implementation
+time and note it in the PR. Reasons: it tracks the spec as it moves, and it derives each tool's JSON
+schema from Go input/output structs, so the struct *is* the testable contract. The leading
+community alternative, `github.com/mark3labs/mcp-go` (MIT), is more mature and lower-boilerplate and
+is the fallback if the official SDK proves too unstable; the handlers below are thin wrappers over
+existing service functions, so swapping SDKs touches only the registration layer. Licence note: the
+official SDK is mid-transition from MIT to Apache-2.0 (mixed per contribution); both are permissive
+and compatible with this repo's MIT licence.
+
+### 6. Tool contracts (v1)
+
+Each tool calls the exact function its REST endpoint calls — never a hand-rolled query — and returns
+the same JSON shape as that endpoint, so `openapi.yaml`'s examples remain the contract. Limits are
+clamped **server-side**; a value over the max is clamped, not rejected. `include_sensitive`
+(boolean, default `false`) is accepted by every tool and threaded into the underlying
+`includeSensitive` parameter.
+
+| Tool | Backed by | Inputs | Limits |
+|---|---|---|---|
+| `search_contacts` | `GET /search` | `query` (required), `limit`, `offset` | limit default 20, max 50 |
+| `get_contact` | `GET /contacts/:id/detail` | `id` (required) | — |
+| `list_timeline` | `GET /contacts/:id/timeline` | `contact_id` (required), `limit`, `offset`, `since`, `until` (ISO-8601 dates) | limit default 25, max 100; `since`..`until` span capped at 366 days |
+| `run_cadence_report` | `GET /cadence-policies/overdue` | `limit`, `offset` | limit default 25, max 100 |
+
+`run_cadence_report` takes no date range: "overdue" is evaluated as of now. Each tool's real-DB test
+(`dbtest.New(t)`) covers ownership scoping (another user's id returns not-found), the clamp, and
+with/without `include_sensitive`.
 
 ## Consequences
 
