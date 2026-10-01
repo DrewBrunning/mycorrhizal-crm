@@ -5,16 +5,22 @@
 // themselves: "take any Vx.y.z from ASVS 4.0.3 or API# from the 2023 Top 10,
 // grep for it below, and get a status + citation. No row is left `satisfied`
 // without a citation." That promise decays silently — not when someone edits
-// the doc, but when someone *moves code*: a renamed file or a shifted function
-// turns a `file:line` citation into a dangling pointer, and nothing fails.
-// A checklist whose citations no longer resolve is worse than no checklist,
-// because it still reads as evidence.
+// the doc, but when someone *moves code*: a renamed file or function turns a
+// citation into a dangling pointer, and nothing fails. A checklist whose
+// citations no longer resolve is worse than no checklist, because it still
+// reads as evidence.
+//
+// Citations are symbol-anchored — `path#Anchor` (see anchor.go) — never
+// `path:line`: a line number shifts on any edit above it, so release branches
+// and main drift apart and a docs-only merge conflicts for no real reason. An
+// anchor names the thing and survives edits elsewhere in the file.
 //
 // This command re-verifies the mechanical half of the verification pass, so a
 // re-verification is a diff rather than a rewrite:
 //
-//  1. Every backticked `path[:line[-line]]` citation resolves to a real file in
-//     the tree, and any line range is inside that file.
+//  1. Every backticked `path[#anchor]` citation resolves to a real file in the
+//     tree, and its anchor (a declaration, CI step/job, or quoted literal)
+//     still exists in that file. A `path:line` citation is itself a failure.
 //  2. Every cited test identifier (Go `TestXxx`, Kotlin `SomeTest.method`)
 //     still exists somewhere in the tree.
 //  3. Every control row carries a status drawn from the file's own legend and a
@@ -49,20 +55,11 @@ var securityDocs = []string{
 	"docs/security/threat-model.md",
 }
 
-// driftBaselineFile records the drift candidates that have been reviewed and
-// accepted — the heuristic's known false positives (negative claims and
-// pure-structure citations legitimately share no vocabulary with their
-// target). Same ignore-list-with-justification shape as .trivyignore,
-// .grype.yml, zap/dast.ignore and schemathesis/schemathesis.ignore: an entry
-// is a decision someone wrote down, not a mute button.
-const driftBaselineFile = "docs/security/citation-drift.ignore"
-
 // cryptoSurfaceIgnoreFile is the justified-exception list for the
 // cryptographic call-site inventory (issue #612): every non-test Go file that
 // imports crypto/*, golang.org/x/crypto/*, or a JWT/signing library must be
 // accounted for either by a V6 row in asvs-l2.md or by an entry here. Same
-// ignore-list-with-justification convention as .trivyignore and
-// citation-drift.ignore: an unlisted importer fails, and a listed file that no
+// ignore-list-with-justification convention as .trivyignore: an unlisted importer fails, and a listed file that no
 // longer imports crypto also fails, so dead suppressions cannot accumulate.
 const cryptoSurfaceIgnoreFile = "docs/security/crypto-surface.ignore"
 
@@ -91,7 +88,7 @@ var skipDirs = map[string]bool{
 	"_site": true, ".venv": true, "__pycache__": true,
 	// .claude holds local worktrees and scratch state; it is gitignored and
 	// never part of the reviewed tree, so its copies of backend files must not
-	// show up as crypto importers or drift candidates.
+	// show up as crypto importers.
 	".claude": true,
 }
 
@@ -128,9 +125,10 @@ var (
 	backtickRe = regexp.MustCompile("`([^`]+)`")
 
 	// pathRe matches a whole backtick span that is a path, optionally with a
-	// line or line range. The `...` form is the elision the Android rows use
+	// `#anchor` (the supported form) or a `:line[-line][,line…]` list (matched only so
+	// it can be rejected with a pointer to the anchor form). The `...` form is the elision the Android rows use
 	// for deep package paths (`core/data/.../DataModule.kt`).
-	pathRe = regexp.MustCompile(`^([A-Za-z0-9_./-]*(?:\.\.\./)?[A-Za-z0-9_./-]+?\.(?:` + citableExts + `)|[A-Za-z0-9_./-]*Dockerfile[A-Za-z0-9_.-]*|\.[a-z]+ignore)(?::(\d+)(?:-(\d+))?)?$`)
+	pathRe = regexp.MustCompile(`^([A-Za-z0-9_./-]*(?:\.\.\./)?[A-Za-z0-9_./-]+?\.(?:` + citableExts + `)|[A-Za-z0-9_./-]*Dockerfile[A-Za-z0-9_.-]*|\.[a-z]+ignore)(?::(\d+)(?:-(\d+))?(?:,\d+(?:-\d+)?)*|#(.+))?$`)
 
 	// goTestRe matches a Go test function name cited as evidence. A trailing
 	// `*` is the "whole family" citation form (`TestResetUserTwoFactor_*`),
@@ -165,21 +163,13 @@ type treeIndex struct {
 	byBase map[string][]string
 	paths  []string
 
-	lineCounts map[string]int
-	symbols    map[string]bool
+	symbols map[string]bool
 }
 
 func main() {
-	drift := flag.Bool("drift", false, "advisory pass: list line-range citations whose cited lines no longer look like what the row claims (heuristic, never gating)")
+	// No flags; parsing still rejects a stale `-drift` (removed with the line-range
+	// citations it policed) instead of silently ignoring it.
 	flag.Parse()
-
-	if *drift {
-		if err := runDrift(os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, "citecheck:", err)
-			os.Exit(2)
-		}
-		os.Exit(0)
-	}
 
 	code, err := run(os.Stdout)
 	if err != nil {
@@ -215,40 +205,7 @@ func run(w io.Writer) (int, error) {
 	if cryptoCode != 0 {
 		code = cryptoCode
 	}
-	driftCode, err := reportDrift(w, root, idx, securityDocs)
-	if err != nil {
-		return 0, err
-	}
-	if driftCode != 0 {
-		code = driftCode
-	}
 	return code, nil
-}
-
-// reportDrift is the second gate: drift candidates measured against the
-// accepted-drift baseline. Reported separately from check's output because the
-// two fail for different reasons and are fixed differently — a citation that
-// does not resolve is always wrong, whereas a drift candidate is either a
-// moved target (correct the range) or a false positive (accept it in the
-// baseline, with a reason).
-func reportDrift(w io.Writer, root string, idx *treeIndex, docs []string) (int, error) {
-	found, err := checkDrift(root, idx, docs)
-	if err != nil {
-		return 0, err
-	}
-	if len(found) == 0 {
-		fmt.Fprintln(w, "No new citation drift.")
-		return 0, nil
-	}
-	fmt.Fprintf(w, "\n%d drift problem(s) — see %s:\n", len(found), driftBaselineFile)
-	for _, f := range found {
-		if f.line == 0 {
-			fmt.Fprintf(w, "  %s  %s\n", f.doc, f.msg)
-			continue
-		}
-		fmt.Fprintf(w, "  %s:%d  %s\n", f.doc, f.line, f.msg)
-	}
-	return 1, nil
 }
 
 // check runs every check over docs and writes the summary to w.
@@ -526,10 +483,9 @@ func readRepoFile(root, rel string) ([]byte, error) {
 // buildIndex walks the tree once and records every citable file.
 func buildIndex(root string) (*treeIndex, error) {
 	idx := &treeIndex{
-		root:       root,
-		files:      map[string]bool{},
-		byBase:     map[string][]string{},
-		lineCounts: map[string]int{},
+		root:   root,
+		files:  map[string]bool{},
+		byBase: map[string][]string{},
 	}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -562,7 +518,10 @@ type citation struct {
 	line int
 	span string // the whole backtick span, for the error message
 	path string
-	from int // 0 when no line was cited
+	// anchor is the text after `#` ("" for a whole-file citation).
+	anchor string
+	// from/to are set only for a `:line` citation, which the gate rejects.
+	from int
 	to   int
 }
 
@@ -582,7 +541,7 @@ func extractCitations(lines []string) ([]citation, []testCitation) {
 			span := strings.TrimSpace(m[1])
 
 			if p := pathRe.FindStringSubmatch(span); p != nil {
-				c := citation{line: i + 1, span: span, path: p[1]}
+				c := citation{line: i + 1, span: span, path: p[1], anchor: p[4]}
 				if p[2] != "" {
 					c.from, _ = strconv.Atoi(p[2])
 					c.to = c.from
@@ -608,7 +567,8 @@ func extractCitations(lines []string) ([]citation, []testCitation) {
 	return cites, ids
 }
 
-// checkPaths resolves every path citation and validates its line range.
+// checkPaths resolves every path citation and its anchor. A `path:line`
+// citation is rejected outright: see the package comment.
 func checkPaths(idx *treeIndex, doc string, cites []citation) []finding {
 	var out []finding
 	for _, c := range cites {
@@ -620,29 +580,34 @@ func checkPaths(idx *treeIndex, doc string, cites []citation) []finding {
 			out = append(out, finding{doc, c.line, fmt.Sprintf("citation `%s` does not resolve to any file", c.span)})
 			continue
 		}
-		if c.from == 0 {
+		if c.from != 0 {
+			out = append(out, finding{doc, c.line, fmt.Sprintf(
+				"line-number citation `%s` is not allowed: it goes stale on any edit above it. Cite what the line is — `%s#Name` (Go/Kotlin/TS declaration, CI step or job name) or `%s#\"literal text\"`",
+				c.span, c.path, c.path)})
+			continue
+		}
+		if c.anchor == "" {
 			continue
 		}
 		// A basename citation can match more than one file (`auth.go` is both
 		// middleware/auth.go and carddav/auth.go); the surrounding row is what
-		// disambiguates for a human, so the range only has to be valid for one
-		// of the candidates.
-		inRange := false
-		var sizes []string
+		// disambiguates for a human, so the anchor only has to exist in one of
+		// the candidates.
+		found := false
 		for _, cand := range cands {
-			n, err := idx.lineCount(cand)
+			ok, err := resolveAnchor(idx, cand, c.anchor)
 			if err != nil {
-				return append(out, finding{doc, c.line, fmt.Sprintf("cannot read %s: %v", cand, err)})
+				return append(out, finding{doc, c.line, fmt.Sprintf("cannot check anchor of `%s`: %v", c.span, err)})
 			}
-			sizes = append(sizes, fmt.Sprintf("%s has %d lines", cand, n))
-			if c.to <= n {
-				inRange = true
+			if ok {
+				found = true
 				break
 			}
 		}
-		if !inRange {
-			out = append(out, finding{doc, c.line,
-				fmt.Sprintf("citation `%s` names line %d but %s", c.span, c.to, strings.Join(sizes, "; "))})
+		if !found {
+			out = append(out, finding{doc, c.line, fmt.Sprintf(
+				"anchor `%s` not found in %s — it was renamed or removed; update the citation to what the row now relies on",
+				c.anchor, strings.Join(cands, ", "))})
 		}
 	}
 	return out
@@ -724,23 +689,6 @@ func (idx *treeIndex) resolve(path string) []string {
 		return suffix
 	}
 	return idx.byBase[base]
-}
-
-// lineCount returns the number of lines in a file, memoized.
-func (idx *treeIndex) lineCount(rel string) (int, error) {
-	if n, ok := idx.lineCounts[rel]; ok {
-		return n, nil
-	}
-	body, err := readRepoFile(idx.root, rel)
-	if err != nil {
-		return 0, err
-	}
-	n := strings.Count(string(body), "\n")
-	if len(body) > 0 && !strings.HasSuffix(string(body), "\n") {
-		n++
-	}
-	idx.lineCounts[rel] = n
-	return n, nil
 }
 
 // symbolSet is every identifier appearing in the source trees, built once.
@@ -898,188 +846,6 @@ func censusLines(rows []controlRow) []string {
 	return out
 }
 
-// driftStopWords are too generic to tell a reviewer anything about whether a
-// cited range still says what the row claims.
-var driftStopWords = map[string]bool{
-	"the": true, "and": true, "for": true, "with": true, "via": true, "see": true,
-	"per": true, "its": true, "this": true, "that": true, "which": true, "only": true,
-	"every": true, "all": true, "any": true, "not": true, "never": true, "both": true,
-	"same": true, "real": true, "code": true, "line": true, "lines": true, "file": true,
-	"files": true, "test": true, "tests": true, "row": true, "rows": true, "doc": true,
-	"docs": true, "data": true, "user": true, "users": true, "app": true, "own": true,
-	"new": true, "old": true, "one": true, "two": true, "three": true, "full": true,
-	"issue": true, "issues": true, "incl": true, "plus": true, "also": true, "but": true,
-}
-
-var (
-	driftCiteRe = regexp.MustCompile("`([A-Za-z0-9_./-]*(?:\\.\\.\\./)?[A-Za-z0-9_./-]+?\\.(?:" + citableExts + ")):(\\d+)(?:-(\\d+))?`")
-	driftWordRe = regexp.MustCompile(`[A-Za-z][A-Za-z0-9_]{2,}`)
-)
-
-// runDrift is the advisory half of the verification pass. citecheck's gate can
-// prove a citation points *somewhere real*; it cannot prove it still points at
-// what the row claims, and that is the failure mode that actually accumulated
-// here — the ASVS L2 pass of 2026-08-26 found 74 line ranges that resolved
-// cleanly while naming code that had moved out from under them (a CORS row
-// citing the scheduler, a govulncheck row citing the fuzz step).
-//
-// The heuristic: take the prose immediately before a line-range citation — the
-// words the row uses to say what it is pointing at — and check whether any of
-// them still appears in the cited lines. A miss is a candidate for review, not
-// a failure: negative claims and pure-structure citations legitimately share no
-// vocabulary with their target. It is deliberately not part of the gate.
-func runDrift(w io.Writer) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	root, err := findRepoRoot(cwd)
-	if err != nil {
-		return err
-	}
-	idx, err := buildIndex(root)
-	if err != nil {
-		return err
-	}
-	return driftReport(w, root, idx, securityDocs)
-}
-
-// driftReport is runDrift's body, with the root and document list injected so
-// tests can drive it against a fixture tree.
-// driftHit is one line-range citation whose cited lines no longer share any
-// vocabulary with the prose introducing them.
-type driftHit struct {
-	doc    string
-	line   int
-	span   string
-	target string
-	words  []string
-}
-
-// key identifies a drift candidate for baseline matching. Deliberately built
-// from the document, the citation text and the resolved target — never the
-// line number in the doc, so ordinary editing above a suppressed citation does
-// not churn the baseline, and *changing the citation itself* correctly stops
-// matching and re-surfaces it for review.
-func (h driftHit) key() string {
-	return fmt.Sprintf("%s | %s | %s", h.doc, h.span, h.target)
-}
-
-// driftCandidates finds every line-range citation whose cited lines no longer
-// look like what the row claims. total is the number of line-range citations
-// examined.
-func driftCandidates(root string, idx *treeIndex, docs []string) (hits []driftHit, total int, err error) {
-	for _, doc := range docs {
-		body, err := readRepoFile(root, doc)
-		if err != nil {
-			return nil, 0, fmt.Errorf("reading %s: %w", doc, err)
-		}
-		for i, line := range strings.Split(string(body), "\n") {
-			for _, m := range driftCiteRe.FindAllStringSubmatchIndex(line, -1) {
-				total++
-				span := line[m[0]:m[1]]
-				path := line[m[2]:m[3]]
-				from, _ := strconv.Atoi(line[m[4]:m[5]])
-				to := from
-				if m[6] >= 0 {
-					to, _ = strconv.Atoi(line[m[6]:m[7]])
-				}
-				words := driftKeywords(line[:m[0]], path)
-				if len(words) == 0 {
-					continue // nothing to judge against
-				}
-				cands := idx.resolve(path)
-				if len(cands) == 0 {
-					continue // the gate already reports this
-				}
-				hit := false
-				for _, cand := range cands {
-					ok, err := citedRangeMentions(idx, cand, from, to, words)
-					if err != nil {
-						return nil, 0, err
-					}
-					if ok {
-						hit = true
-						break
-					}
-				}
-				if !hit {
-					hits = append(hits, driftHit{doc: doc, line: i + 1, span: span, target: cands[0], words: words})
-				}
-			}
-		}
-	}
-	return hits, total, nil
-}
-
-// driftReport is the advisory listing: every candidate, baseline ignored,
-// always exit 0. This is the view a human wants during a verification pass —
-// including the already-accepted ones, since a pass is exactly when an
-// accepted suppression should be re-examined.
-func driftReport(w io.Writer, root string, idx *treeIndex, docs []string) error {
-	hits, total, err := driftCandidates(root, idx, docs)
-	if err != nil {
-		return err
-	}
-	for _, h := range hits {
-		fmt.Fprintf(w, "%s:%d  %s -> %s  (looked for: %s)\n",
-			h.doc, h.line, h.span, h.target, strings.Join(h.words, ", "))
-	}
-	fmt.Fprintf(w, "\n%d line-range citations, %d for review.\n", total, len(hits))
-	fmt.Fprintln(w, "Advisory listing (baseline ignored, never gating): confirm each by eye.")
-	return nil
-}
-
-// driftKeywords pulls the last few meaningful words of the prose leading up to
-// a citation, dropping the cited file's own stem (which would otherwise match
-// its contents trivially).
-func driftKeywords(before, path string) []string {
-	if i := strings.LastIndex(before, "|"); i >= 0 {
-		before = before[i+1:] // stay inside this table cell
-	}
-	if len(before) > 140 {
-		before = before[len(before)-140:]
-	}
-	stem := strings.ToLower(strings.SplitN(filepath.Base(path), ".", 2)[0])
-	var out []string
-	for _, w := range driftWordRe.FindAllString(before, -1) {
-		lw := strings.ToLower(w)
-		if driftStopWords[lw] || lw == stem || lw == strings.ReplaceAll(stem, "_", "") {
-			continue
-		}
-		out = append(out, w)
-	}
-	if len(out) > 8 {
-		out = out[len(out)-8:]
-	}
-	return out
-}
-
-// citedRangeMentions reports whether the cited lines contain any of words.
-func citedRangeMentions(idx *treeIndex, rel string, from, to int, words []string) (bool, error) {
-	body, err := readRepoFile(idx.root, rel)
-	if err != nil {
-		return false, err
-	}
-	lines := strings.Split(string(body), "\n")
-	if from < 1 {
-		from = 1
-	}
-	if to > len(lines) {
-		to = len(lines)
-	}
-	if from > to {
-		return false, nil
-	}
-	snippet := strings.ToLower(strings.Join(lines[from-1:to], "\n"))
-	for _, w := range words {
-		if strings.Contains(snippet, strings.ToLower(w)) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // extractPathCitations returns just the path citations in a set of lines.
 func extractPathCitations(lines []string) []citation {
 	cites, _ := extractCitations(lines)
@@ -1087,8 +853,7 @@ func extractPathCitations(lines []string) []citation {
 }
 
 // loadIgnoreSet reads a file of "path  # justification" entries into a set of
-// paths. Same shape as loadDriftBaseline: comments and blank lines are
-// ignored, an entry is one path per line. A missing file is an empty set (no
+// paths. Comments and blank lines are ignored, an entry is one path per line. A missing file is an empty set (no
 // suppressions accepted yet), never an error.
 func loadIgnoreSet(root, rel string) (map[string]bool, error) {
 	body, err := readRepoFile(root, rel)
@@ -1105,65 +870,6 @@ func loadIgnoreSet(root, rel string) (map[string]bool, error) {
 		}
 		if line = strings.TrimSpace(line); line != "" {
 			out[line] = true
-		}
-	}
-	return out, nil
-}
-
-// loadDriftBaseline reads the accepted-drift file into a set of keys. A
-// missing file is not an error — it means nothing has been accepted yet.
-func loadDriftBaseline(root string) (map[string]bool, error) {
-	body, err := readRepoFile(root, driftBaselineFile)
-	if os.IsNotExist(err) {
-		return map[string]bool{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]bool{}
-	for _, line := range strings.Split(string(body), "\n") {
-		if i := strings.Index(line, "#"); i >= 0 {
-			line = line[:i] // trailing justification
-		}
-		if line = strings.TrimSpace(line); line != "" {
-			out[line] = true
-		}
-	}
-	return out, nil
-}
-
-// checkDrift gates on drift *relative to the baseline*: a candidate nobody has
-// accepted is a finding, and so is a baseline entry that no longer matches
-// anything. The second direction is what keeps the file from silently
-// accumulating dead suppressions — the same discipline the checklists apply to
-// their own not-applicable rows.
-func checkDrift(root string, idx *treeIndex, docs []string) ([]finding, error) {
-	hits, _, err := driftCandidates(root, idx, docs)
-	if err != nil {
-		return nil, err
-	}
-	baseline, err := loadDriftBaseline(root)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []finding
-	matched := map[string]bool{}
-	for _, h := range hits {
-		key := h.key()
-		if baseline[key] {
-			matched[key] = true
-			continue
-		}
-		out = append(out, finding{h.doc, h.line, fmt.Sprintf(
-			"citation %s resolves, but %s no longer mentions anything the row says it shows (looked for: %s). "+
-				"Correct the range, or accept it by adding this line to %s:\n      %s  # why this is a false positive",
-			h.span, h.target, strings.Join(h.words, ", "), driftBaselineFile, key)})
-	}
-	for key := range baseline {
-		if !matched[key] {
-			out = append(out, finding{driftBaselineFile, 0, fmt.Sprintf(
-				"accepted-drift entry no longer matches any citation — delete it:\n      %s", key)})
 		}
 	}
 	return out, nil

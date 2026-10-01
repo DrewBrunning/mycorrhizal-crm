@@ -26,7 +26,6 @@ func fixtureRepo(t *testing.T) string {
 		"schemathesis/schemathesis.ignore":           "# comment\n",
 		"docker/cis-hardening.ignore":                "# comment\n",
 		"android/.mobsf":                             "ignore-rules:\n  - one\n",
-		"docs/security/citation-drift.ignore":        "# comment\n",
 		"docs/security/crypto-surface.ignore":        "# comment\n",
 		"docs/security/governance-drift.ignore":      "# comment\n",
 		"docs/security/dependency-exceptions.ignore": "# comment\n",

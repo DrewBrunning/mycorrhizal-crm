@@ -8,8 +8,7 @@
 //   - the open accept-with-reason items across every justified ignore list
 //     (.trivyignore, zap/dast.ignore, schemathesis/schemathesis.ignore,
 //     docker/cis-hardening.ignore, android/.mobsf, .grype.yml,
-//     docs/security/citation-drift.ignore, docs/security/crypto-surface.ignore,
-//     docs/security/governance-drift.ignore);
+//     docs/security/crypto-surface.ignore, docs/security/governance-drift.ignore);
 //   - the open dependency-advisory exceptions, with their expiry and how soon
 //     each is due;
 //   - the current ASVS and MASVS documented-exception counts.
@@ -112,7 +111,6 @@ var acceptSources = []acceptSource{
 	{Path: "schemathesis/schemathesis.ignore", Kind: countLines},
 	{Path: "docker/cis-hardening.ignore", Kind: countLines},
 	{Path: "android/.mobsf", Kind: countMobsfRules},
-	{Path: "docs/security/citation-drift.ignore", Kind: countLines},
 	{Path: "docs/security/crypto-surface.ignore", Kind: countLines},
 	{Path: "docs/security/governance-drift.ignore", Kind: countLines},
 }

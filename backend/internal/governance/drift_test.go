@@ -88,7 +88,7 @@ func TestEvaluateGovernanceDrift_IgnoredDriftAccepted(t *testing.T) {
 
 // TestEvaluateGovernanceDrift_StaleIgnoreEntryFails is the bidirectional
 // half of the ignore-list-with-justification convention (matching
-// citation-drift.ignore / crypto-surface.ignore): an accepted entry for a
+// crypto-surface.ignore): an accepted entry for a
 // ruleset that is now back in sync must fail, not just sit there.
 func TestEvaluateGovernanceDrift_StaleIgnoreEntryFails(t *testing.T) {
 	statuses := []RulesetStatus{{Name: "main-protection", Applied: true, Drifted: false}}

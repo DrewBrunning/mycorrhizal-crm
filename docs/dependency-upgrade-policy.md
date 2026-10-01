@@ -211,8 +211,7 @@ trip over it.
 This is deliberately a different shape from this repo's existing permanent
 ignore lists (`.trivyignore`, `.grype.yml`, `zap/dast.ignore`,
 `schemathesis/schemathesis.ignore`, `docker/cis-hardening.ignore`,
-`android/.mobsf`, `docs/security/citation-drift.ignore`,
-`docs/security/crypto-surface.ignore`). Those record "the scanner is right
+`android/.mobsf`, `docs/security/crypto-surface.ignore`). Those record "the scanner is right
 that this pattern exists, but it does not apply to how we use this
 dependency" — a decision that can stand forever once written down. The
 dependency-exceptions ledger records the opposite situation: a real,

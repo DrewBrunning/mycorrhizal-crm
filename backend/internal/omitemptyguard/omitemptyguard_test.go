@@ -274,7 +274,7 @@ func TestRealModelsAndControllersPackages(t *testing.T) {
 // TestAllowlistHasNoStaleEntries fails if an allowlist entry no longer
 // matches any real field in models/controllers — the field was fixed,
 // renamed, or removed, and the entry should have been deleted with it
-// (mirroring docs/security/citation-drift.ignore's own drift check).
+// (mirroring docs/security/crypto-surface.ignore's own bidirectional check).
 func TestAllowlistHasNoStaleEntries(t *testing.T) {
 	observed := map[string]bool{}
 	for _, dir := range []string{"../../models", "../../controllers"} {

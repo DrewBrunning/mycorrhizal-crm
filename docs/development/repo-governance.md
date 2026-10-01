@@ -200,6 +200,6 @@ same as a normalized-JSON mismatch — both are drift. A maintainer who is delib
 setting mid-reconciliation records that in
 [`docs/security/governance-drift.ignore`](../security/governance-drift.ignore) (one
 `<ruleset name>  # <reason>` line) rather than by reintroducing `continue-on-error`; the ignore
-file is bidirectional the same way `citation-drift.ignore` and `crypto-surface.ignore` are — an
+file is bidirectional the same way `crypto-surface.ignore` is — an
 entry for a ruleset that is back in sync, or that names no committed ruleset, fails the job too, so
 it cannot accumulate dead suppressions.
