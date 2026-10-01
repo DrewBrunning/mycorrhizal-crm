@@ -1,5 +1,18 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.mycorrhizal.crm.ui.components.FormScaffold
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -14,6 +27,7 @@ import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,33 +60,42 @@ class ContactFormScreenTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactFormContent(
-                    state = state,
-                    onGivenNameChange = onGivenNameChange,
-                    onSurnameChange = {},
-                    onNicknameChange = {},
-                    onEmailsChange = {},
-                    onPhonesChange = {},
-                    onAddressesChange = {},
-                    onTitlesChange = {},
-                    onImppChange = {},
-                    onSocialChange = {},
-                    onOtherServicesChange = {},
-                    onLinksChange = {},
-                    onPersonalInfoChange = {},
-                    onBirthdayChange = {},
-                    onCardNotesChange = onCardNotesChange,
-                    onCardKindChange = onCardKindChange,
-                    onGenderChange = onGenderChange,
-                    onPreferredLanguagesChange = onPreferredLanguagesChange,
-                    onPronounsChange = onPronounsChange,
-                    onGrammaticalGendersChange = onGrammaticalGendersChange,
-                    onKeywordsChange = onKeywordsChange,
-                    onAnniversariesChange = onAnniversariesChange,
-                    onCircleToggle = onCircleToggle,
-                    onTagToggle = onTagToggle,
+                FormScaffold(
+                    title = "Form",
+                    onBack = {},
+                    saveLabel = if (state.isEdit) "Save changes" else "Create contact",
+                    isSaving = state.isSaving,
                     onSave = onSave,
-                )
+                    snackbarHostState = remember { SnackbarHostState() },
+                ) { padding ->
+                    ContactFormContent(
+                        state = state,
+                        onGivenNameChange = onGivenNameChange,
+                        onSurnameChange = {},
+                        onNicknameChange = {},
+                        onEmailsChange = {},
+                        onPhonesChange = {},
+                        onAddressesChange = {},
+                        onTitlesChange = {},
+                        onImppChange = {},
+                        onSocialChange = {},
+                        onOtherServicesChange = {},
+                        onLinksChange = {},
+                        onPersonalInfoChange = {},
+                        onBirthdayChange = {},
+                        onCardNotesChange = onCardNotesChange,
+                        onCardKindChange = onCardKindChange,
+                        onGenderChange = onGenderChange,
+                        onPreferredLanguagesChange = onPreferredLanguagesChange,
+                        onPronounsChange = onPronounsChange,
+                        onGrammaticalGendersChange = onGrammaticalGendersChange,
+                        onKeywordsChange = onKeywordsChange,
+                        onAnniversariesChange = onAnniversariesChange,
+                        onCircleToggle = onCircleToggle,
+                        onTagToggle = onTagToggle,
+                        modifier = Modifier.padding(padding),
+                    )
+                }
             }
         }
     }
@@ -119,7 +142,7 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("No circles yet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("No tags yet").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Create contact").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
     }
 
     @Test
@@ -141,15 +164,44 @@ class ContactFormScreenTest {
     @Test
     fun `edit mode shows the save label`() {
         setContent(state = ContactFormState(contactId = 5))
-        composeTestRule.onNodeWithText("Save changes").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Save changes").assertIsDisplayed()
     }
 
     @Test
     fun `save button invokes the callback`() {
         var saved = false
         setContent(onSave = { saved = true })
-        composeTestRule.onNodeWithText("Create contact").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create contact").performClick()
         assertEquals(true, saved)
+    }
+
+    // Issue #1404: Save/Create is pinned in the Scaffold's bottomBar, not the last
+    // child of the scroll column, so it never needs scrolling to.
+    @Test
+    @Config(qualifiers = "w360dp-h400dp")
+    fun `save button is displayed without scrolling and stays displayed at the top and bottom of the form`() {
+        setContent()
+        val form = composeTestRule.onNode(hasScrollAction())
+
+        composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
+
+        form.performScrollToNode(hasText("No tags yet"))
+        composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
+        // The last field is not hidden behind the pinned bar.
+        val lastFieldBottom = composeTestRule.onNodeWithText("No tags yet").getBoundsInRoot().bottom
+        val barTop = composeTestRule.onNodeWithText("Create contact").getBoundsInRoot().top
+        assertTrue("last field ($lastFieldBottom) overlaps the save bar ($barTop)", lastFieldBottom <= barTop)
+
+        form.performScrollToNode(hasText("Given name"))
+        composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
+    }
+
+    @Test
+    fun `save button is disabled while saving and announces the saving state`() {
+        setContent(state = ContactFormState(isSaving = true))
+        composeTestRule.onNodeWithText("Create contact")
+            .assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
     }
 
     @Test
