@@ -146,7 +146,8 @@ records which contact is Me (`self_contact_uid`), and a bundle without it
 imports every contact as new.
 
 The entry point ("Use on this device only", on the sign-in screen and in
-**Settings → Servers**) is offered in every distribution variant. A local profile
+**Settings → Servers**, below the profile list so it stays reachable however many
+profiles exist) is offered in every distribution variant. A local profile
 holds the only copy of its data, so the app pairs it with the user-initiated
 account-bundle backup described above.
 
@@ -175,11 +176,23 @@ The complete set of routes (ADR 0029 §2):
 | Tag | `mycorrhizal://tags/{id}` | that tag |
 | Household | `mycorrhizal://households/{id}` | that household |
 
+A link always opens the screen it names with the argument it carries: a search link filters the
+contact list even if Contacts is already open, and a contact link opens that contact, never the
+one you looked at before.
+
 Anything else — an unknown route, a malformed or out-of-range id, an extra path segment — opens
 nothing: the app shows whatever it would have shown without the link. The same routes also work as
 paths on your own server (`/contacts/{id}`, `/search?q=…`, …), which is the form a Web Push
 notification taps into; where the web has no matching screen it opens the route's nearest parent (a
 tag opens `/circles?tab=tags`, a circle opens `/circles`).
+
+## Contact timeline
+
+A contact's page shows the **5 most recent** events of its merged timeline (activities, notes,
+reminders, life events, gifts and external activities such as Immich photos). **View all** opens a
+full-screen timeline explorer that pages through the contact's timeline with the same type and
+recency filters as the web app and a **Load more** button. The explorer needs a connection to the
+server (it is not kept in the offline mirror); on a local profile it reads the on-device server.
 
 ## Passkeys
 
