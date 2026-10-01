@@ -12,7 +12,7 @@
 # leaving the job red with no explanation.
 #
 # Same ignore-list-with-justification shape as .trivyignore, .grype.yml,
-# docs/security/citation-drift.ignore and docs/security/crypto-surface.ignore:
+# and docs/security/crypto-surface.ignore:
 # an entry is a written-down decision, not a mute button. A ruleset that has
 # drifted (or was never applied) and is NOT listed here FAILS the job, and an
 # entry here for a ruleset that is back in sync with its committed JSON ALSO

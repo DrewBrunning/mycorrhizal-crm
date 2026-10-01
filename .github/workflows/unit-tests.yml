@@ -121,12 +121,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # Two gates: (1) every citation resolves and every cited row has one;
-      # (2) no line-range citation has drifted past what
-      # docs/security/citation-drift.ignore accepts (74 accumulated before
-      # #378). `go run ./cmd/citecheck -drift` (not a CI step) lists every
-      # candidate including accepted ones, for a verification pass.
-      - name: Verify security-doc citations (resolution + drift)
+      # Every citation resolves (file + the `#anchor` thing still exists; a
+      # `path:line` citation is itself a failure) and every `satisfied` row
+      # cites something. Citations name a declaration/step/literal, not a
+      # line, so release-branch merges stop conflicting (v1.3.0-rc.4).
+      - name: Verify security-doc citations (resolution + anchors)
         working-directory: backend
         run: go run ./cmd/citecheck
 

@@ -3,8 +3,7 @@
 # This is NOT another copy of the permanent, no-expiry ignore lists this repo
 # already has (.trivyignore, .grype.yml, zap/dast.ignore,
 # schemathesis/schemathesis.ignore, docker/cis-hardening.ignore,
-# android/.mobsf, docs/security/citation-drift.ignore,
-# docs/security/crypto-surface.ignore). Those exist for "the scanner is
+# android/.mobsf, docs/security/crypto-surface.ignore). Those exist for "the scanner is
 # right that this pattern exists, but it does not apply to how we use this
 # dependency" — a decision that can stand forever once written down.
 #

@@ -164,7 +164,7 @@ func ExtractDocPatchStatusBlock(doc string) (string, []string) {
 // alone" shape from issue #979 -- this file does not, in general, come with
 // a diff a reviewer reads line by line the way most code does. Every entry
 // in codecov.yml as of #979 was reformatted to a one-entry-one-comment shape
-// (matching .trivyignore / citation-drift.ignore's established convention)
+// (matching .trivyignore / crypto-surface.ignore's established convention)
 // specifically so this rule holds with no false positives.
 func CheckIgnoreEntriesJustified(data []byte) []string {
 	var root yaml.Node

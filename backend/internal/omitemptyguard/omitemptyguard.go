@@ -176,7 +176,7 @@ func ScanDir(dir string, allowlist map[string]string) ([]Finding, error) {
 // fixed, renamed, or removed. Pass the allowlist and the struct keys
 // actually observed while scanning (independent of whether they were
 // allowlisted) so a drift test can fail on dead entries the same way
-// docs/security/citation-drift.ignore's checker does.
+// docs/security/crypto-surface.ignore's checker does.
 func UnusedAllowlistEntries(allowlist map[string]string, observed map[string]bool) []string {
 	var unused []string
 	for key := range allowlist {

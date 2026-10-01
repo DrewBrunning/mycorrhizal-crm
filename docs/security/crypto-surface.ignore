@@ -6,8 +6,7 @@
 # an entry here. A file that imports crypto with no V6 row and no entry here
 # FAILS the gate, and an entry here whose file no longer imports crypto ALSO
 # fails — so this file cannot quietly accumulate dead suppressions, the same
-# bidirectional convention as .trivyignore, .grype.yml and
-# citation-drift.ignore.
+# bidirectional convention as .trivyignore and .grype.yml.
 #
 # These are NOT crypto-decision call sites: they import a crypto package for a
 # reason other than choosing a cryptographic primitive, so no ASVS V6 row

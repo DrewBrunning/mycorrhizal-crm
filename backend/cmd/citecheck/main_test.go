@@ -76,85 +76,236 @@ func TestCheck(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "resolving citation with an in-range line passes",
-			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go:2` |\n",
-			extra: map[string]string{"backend/thing.go": "a\nb\nc\n"},
+			name:  "a bare path to an existing file passes",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n"},
 		},
 		{
 			name: "citation to a file that does not exist fails",
-			doc:  header + "| 1.1.1 | Gone | satisfied | `backend/missing.go:2` |\n",
+			doc:  header + "| 1.1.1 | Gone | satisfied | `backend/missing.go#Thing` |\n",
 			fail: true,
 			want: "does not resolve to any file",
 		},
 		{
-			name:  "line past the end of the file fails",
-			doc:   header + "| 1.1.1 | Drifted | satisfied | `backend/thing.go:9` |\n",
-			extra: map[string]string{"backend/thing.go": "a\nb\n"},
+			name:  "a line-number citation is rejected with the anchor form named",
+			doc:   header + "| 1.1.1 | Stale | satisfied | `backend/thing.go:2` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc Thing() {}\n"},
 			fail:  true,
-			want:  "names line 9 but",
+			want:  "line-number citation `backend/thing.go:2` is not allowed",
 		},
 		{
-			name:  "line range past the end of the file fails",
-			doc:   header + "| 1.1.1 | Drifted | satisfied | `backend/thing.go:1-9` |\n",
-			extra: map[string]string{"backend/thing.go": "a\nb\n"},
+			name:  "a line-range citation is rejected too",
+			doc:   header + "| 1.1.1 | Stale | satisfied | `backend/thing.go:1-3` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc Thing() {}\n"},
 			fail:  true,
-			want:  "names line 9 but",
+			want:  "is not allowed",
 		},
 		{
-			name:  "a file with no trailing newline still counts its last line",
-			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go:3` |\n",
-			extra: map[string]string{"backend/thing.go": "a\nb\nc"},
+			name:  "a comma-separated line list is rejected too",
+			doc:   header + "| 1.1.1 | Stale | satisfied | `backend/thing.go:1,3-4` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc Thing() {}\n"},
+			fail:  true,
+			want:  "is not allowed",
+		},
+		{
+			name:  "a Go function anchor resolves",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go#Thing` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc Thing() {}\n"},
+		},
+		{
+			name:  "a Go anchor survives edits above the declaration",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go#Thing` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\n// a\n// b\n// c\nvar filler = 1\n\nfunc Thing() {}\n"},
+		},
+		{
+			name:  "a Go anchor for a removed declaration fails",
+			doc:   header + "| 1.1.1 | Gone | satisfied | `backend/thing.go#Thing` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc Other() {}\n"},
+			fail:  true,
+			want:  "anchor `Thing` not found in backend/thing.go",
+		},
+		{
+			name: "Go type, method, pointer-receiver method, field, var and const anchors resolve",
+			doc: header +
+				"| 1.1.1 | T | satisfied | `backend/thing.go#Server` |\n" +
+				"| 1.1.2 | M | satisfied | `backend/thing.go#Server.Handle` |\n" +
+				"| 1.1.3 | P | satisfied | `backend/thing.go#Server.Close` |\n" +
+				"| 1.1.4 | F | satisfied | `backend/thing.go#Server.Addr` |\n" +
+				"| 1.1.5 | V | satisfied | `backend/thing.go#Limit` |\n" +
+				"| 1.1.6 | C | satisfied | `backend/thing.go#Mode` |\n" +
+				"| 1.1.7 | G | satisfied | `backend/thing.go#Cache.Get` |\n" +
+				"| 1.1.8 | I | satisfied | `backend/thing.go#Store.Save` |\n",
+			extra: map[string]string{"backend/thing.go": `package thing
+
+type Server struct{ Addr string }
+
+func (Server) Handle() {}
+
+func (s *Server) Close() {}
+
+type Cache[K comparable, V any] struct{}
+
+func (c *Cache[K, V]) Get() {}
+
+type Store interface{ Save() }
+
+var Limit = 1
+
+const Mode = "x"
+`},
+		},
+		{
+			name:  "a single-type-parameter generic receiver and a trailing-dot anchor",
+			doc:   header + "| 1.1.1 | G | satisfied | `backend/thing.go#Box.Get` |\n| 1.1.2 | Bad | satisfied | `android/Screen.kt#Screen.` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\ntype Box[T any] struct{}\n\nfunc (b *Box[T]) Get() {}\n", "android/Screen.kt": "class Screen\n"},
+			fail:  true,
+			want:  "anchor `Screen.` not found",
+		},
+		{
+			name:  "a method anchor naming the wrong type fails",
+			doc:   header + "| 1.1.1 | Wrong | satisfied | `backend/thing.go#Client.Handle` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\ntype Server struct{}\n\nfunc (Server) Handle() {}\n"},
+			fail:  true,
+			want:  "anchor `Client.Handle` not found",
+		},
+		{
+			name:  "a Go file that does not parse is a finding, not a crash",
+			doc:   header + "| 1.1.1 | Broken | satisfied | `backend/thing.go#Thing` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\nfunc ( {\n"},
+			fail:  true,
+			want:  "cannot check anchor",
+		},
+		{
+			name:  "a quoted literal anchor resolves in a Go file",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go#\"protected := \"` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n\nfunc f() { protected := 1 }\n"},
+		},
+		{
+			name:  "a quoted literal that is gone fails",
+			doc:   header + "| 1.1.1 | Gone | satisfied | `backend/thing.go#\"protected := \"` |\n",
+			extra: map[string]string{"backend/thing.go": "package thing\n"},
+			fail:  true,
+			want:  "not found",
+		},
+		{
+			name:  "a workflow step name anchor resolves",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `.github/workflows/ci.yml#Run Trivy scanner` |\n",
+			extra: map[string]string{".github/workflows/ci.yml": "jobs:\n  scan:\n    steps:\n      - name: Run Trivy scanner\n        uses: x@v1\n"},
+		},
+		{
+			name:  "a quoted workflow step name resolves",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `.github/workflows/ci.yml#Run Trivy scanner` |\n",
+			extra: map[string]string{".github/workflows/ci.yml": "jobs:\n  scan:\n    steps:\n      - name: \"Run Trivy scanner\"\n"},
+		},
+		{
+			name:  "a workflow job key anchor resolves",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `.github/workflows/ci.yml#apk-provenance` |\n",
+			extra: map[string]string{".github/workflows/ci.yml": "jobs:\n  apk-provenance:\n    runs-on: x\n"},
+		},
+		{
+			name:  "a workflow step that was renamed fails",
+			doc:   header + "| 1.1.1 | Gone | satisfied | `.github/workflows/ci.yml#Run Trivy scanner` |\n",
+			extra: map[string]string{".github/workflows/ci.yml": "jobs:\n  scan:\n    steps:\n      - name: Run Grype scanner\n"},
+			fail:  true,
+			want:  "anchor `Run Trivy scanner` not found",
+		},
+		{
+			name:  "a workflow anchor must be a whole step name, not a substring of one",
+			doc:   header + "| 1.1.1 | Partial | satisfied | `.github/workflows/ci.yml#Run Trivy` |\n",
+			extra: map[string]string{".github/workflows/ci.yml": "steps:\n  - name: Run Trivy scanner\n"},
+			fail:  true,
+			want:  "anchor `Run Trivy` not found",
+		},
+		{
+			name: "Kotlin and TypeScript declaration anchors resolve",
+			doc: header +
+				"| 1.1.1 | K | satisfied | `android/Screen.kt#Screen` |\n" +
+				"| 1.1.2 | F | satisfied | `android/Screen.kt#secureWindow` |\n" +
+				"| 1.1.3 | X | satisfied | `android/Screen.kt#Screen.render` |\n" +
+				"| 1.1.4 | T | satisfied | `frontend/src/api.ts#fetchUser` |\n" +
+				"| 1.1.5 | E | satisfied | `android/Screen.kt#clearWhenLoggedOut` |\n",
+			extra: map[string]string{
+				"android/Screen.kt":   "class Screen {\n    fun render() {}\n}\n\nprivate fun secureWindow() {}\n\ninternal suspend fun <T : Any> MutableStateFlow<T?>.clearWhenLoggedOut() {}\n",
+				"frontend/src/api.ts": "export async function fetchUser() {}\n",
+			},
+		},
+		{
+			name:  "a Kotlin declaration that was removed fails",
+			doc:   header + "| 1.1.1 | Gone | satisfied | `android/Screen.kt#secureWindow` |\n",
+			extra: map[string]string{"android/Screen.kt": "class Screen\n"},
+			fail:  true,
+			want:  "anchor `secureWindow` not found",
+		},
+		{
+			name:  "a Kotlin member anchor whose owner is absent fails",
+			doc:   header + "| 1.1.1 | Wrong | satisfied | `android/Screen.kt#Other.render` |\n",
+			extra: map[string]string{"android/Screen.kt": "fun render() {}\n"},
+			fail:  true,
+			want:  "anchor `Other.render` not found",
+		},
+		{
+			name:  "an unquoted anchor in a config file is a literal substring",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `docker/nginx.conf#X-Frame-Options` |\n",
+			extra: map[string]string{"docker/nginx.conf": "add_header X-Frame-Options DENY;\n"},
+		},
+		{
+			name:  "a literal missing from a config file fails",
+			doc:   header + "| 1.1.1 | Gone | satisfied | `docker/nginx.conf#X-Frame-Options` |\n",
+			extra: map[string]string{"docker/nginx.conf": "server {}\n"},
+			fail:  true,
+			want:  "anchor `X-Frame-Options` not found",
 		},
 		{
 			name:  "backend-relative citation resolves via the prefix list",
-			doc:   header + "| 1.1.1 | Fine | satisfied | `config/config.go:1` |\n",
-			extra: map[string]string{"backend/config/config.go": "package config\n"},
+			doc:   header + "| 1.1.1 | Fine | satisfied | `config/config.go#Load` |\n",
+			extra: map[string]string{"backend/config/config.go": "package config\n\nfunc Load() {}\n"},
 		},
 		{
 			name:  "bare basename resolves",
-			doc:   header + "| 1.1.1 | Fine | satisfied | `mailer.go:1` |\n",
-			extra: map[string]string{"backend/services/mailer.go": "package services\n"},
+			doc:   header + "| 1.1.1 | Fine | satisfied | `mailer.go#Send` |\n",
+			extra: map[string]string{"backend/services/mailer.go": "package services\n\nfunc Send() {}\n"},
 		},
 		{
-			name: "an ambiguous basename passes when one candidate has the line",
-			doc:  header + "| 1.1.1 | Fine | satisfied | `auth.go:5` |\n",
+			name: "an ambiguous basename passes when one candidate has the anchor",
+			doc:  header + "| 1.1.1 | Fine | satisfied | `auth.go#Middleware` |\n",
 			extra: map[string]string{
-				"backend/carddav/auth.go":    "1\n",
-				"backend/middleware/auth.go": "1\n2\n3\n4\n5\n",
+				"backend/carddav/auth.go":    "package carddav\n",
+				"backend/middleware/auth.go": "package middleware\n\nfunc Middleware() {}\n",
 			},
 		},
 		{
-			name: "an ambiguous basename fails when no candidate has the line",
-			doc:  header + "| 1.1.1 | Drifted | satisfied | `auth.go:5` |\n",
+			name: "an ambiguous basename fails when no candidate has the anchor",
+			doc:  header + "| 1.1.1 | Gone | satisfied | `auth.go#Middleware` |\n",
 			extra: map[string]string{
-				"backend/carddav/auth.go":    "1\n",
-				"backend/middleware/auth.go": "1\n2\n",
+				"backend/carddav/auth.go":    "package carddav\n",
+				"backend/middleware/auth.go": "package middleware\n",
 			},
 			fail: true,
-			want: "names line 5 but",
+			want: "anchor `Middleware` not found",
 		},
 		{
 			name: "an elided Android path must match on a segment boundary",
-			doc:  header + "| 1.1.1 | Drifted | satisfied | `feature/settings/.../SettingsScreen.kt:9` |\n",
+			doc:  header + "| 1.1.1 | Drifted | satisfied | `feature/settings/.../SettingsScreen.kt#Settings` |\n",
 			extra: map[string]string{
-				// The near-miss sibling is long enough to contain the cited
-				// line; only the segment-boundary rule keeps it from matching.
-				"android/feature/settings/src/ImmichSettingsScreen.kt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n",
-				"android/feature/settings/src/SettingsScreen.kt":       "1\n2\n",
+				// Only the near-miss sibling declares the anchor; the
+				// segment-boundary rule must keep it from standing in for
+				// SettingsScreen.kt, which does not.
+				"android/feature/settings/src/ImmichSettingsScreen.kt": "class Settings\n",
+				"android/feature/settings/src/SettingsScreen.kt":       "class Other\n",
 			},
 			fail: true,
-			want: "names line 9 but",
+			want: "anchor `Settings` not found in android/feature/settings/src/SettingsScreen.kt",
 		},
 		{
 			name: "an allowlisted non-file is not a finding",
-			doc:  header + "| 1.1.1 | Firebase | satisfied | `google-services.json` and `app/build.gradle.kts:1` |\n",
+			doc:  header + "| 1.1.1 | Firebase | satisfied | `google-services.json` and `app/build.gradle.kts#\"plugins {\"` |\n",
 			extra: map[string]string{
 				"android/app/build.gradle.kts": "plugins {}\n",
 			},
 		},
 		{
 			name:  "a status outside the legend fails",
-			doc:   header + "| 1.1.1 | Typo | done | `backend/thing.go:1` |\n",
+			doc:   header + "| 1.1.1 | Typo | done | `backend/thing.go` |\n",
 			extra: map[string]string{"backend/thing.go": "a\n"},
 			fail:  true,
 			want:  `has status "done"`,
@@ -215,12 +366,12 @@ func TestCheck(t *testing.T) {
 		},
 		{
 			name:  "an escaped pipe stays inside its evidence cell",
-			doc:   header + "| 1.5.1 | Sensitivity | satisfied | `normal\\|private\\|secret` — `backend/thing.go:1` |\n",
+			doc:   header + "| 1.5.1 | Sensitivity | satisfied | `normal\\|private\\|secret` — `backend/thing.go` |\n",
 			extra: map[string]string{"backend/thing.go": "a\n"},
 		},
 		{
 			name:  "rows outside a control table are not checked",
-			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go:1` |\n\n| Operation | Bound | Where | Test |\n|---|---|---|---|\n| Import | 500 | `backend/thing.go:1` | none |\n",
+			doc:   header + "| 1.1.1 | Fine | satisfied | `backend/thing.go` |\n\n| Operation | Bound | Where | Test |\n|---|---|---|---|\n| Import | 500 | `backend/thing.go` | none |\n",
 			extra: map[string]string{"backend/thing.go": "a\n"},
 		},
 	}
@@ -295,158 +446,6 @@ func TestFindRepoRootWalksUp(t *testing.T) {
 	}
 	if _, err := findRepoRoot(t.TempDir()); err == nil {
 		t.Fatal("expected an error when no repository root is above the start directory")
-	}
-}
-
-func TestDriftFlagsAMovedTargetAndNotAMatchingOne(t *testing.T) {
-	// The drift heuristic is advisory, but it is the check that actually found
-	// the 74 moved line ranges in the 2026-08-26 pass, so both directions are
-	// pinned: prose that still matches the cited lines stays quiet, prose that
-	// no longer matches is surfaced.
-	drift := func(doc, src string) string {
-		t.Helper()
-		root := fixtureRoot(t, doc, map[string]string{"backend/main.go": src})
-		idx, err := buildIndex(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out strings.Builder
-		if err := driftReport(&out, root, idx, []string{"docs/security/asvs-l2.md"}); err != nil {
-			t.Fatalf("driftReport: %v", err)
-		}
-		return out.String()
-	}
-
-	moved := drift(
-		header+"| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:2-3` |\n",
-		"corsConfig := cors.Config{}\n// scheduler\ns.Every(24).Hours()\n",
-	)
-	if !strings.Contains(moved, "backend/main.go:2-3") {
-		t.Fatalf("expected the moved citation to be surfaced, got:\n%s", moved)
-	}
-
-	matching := drift(
-		header+"| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:1` |\n",
-		"corsConfig := cors.Config{}\n// scheduler\n",
-	)
-	if strings.Contains(matching, "1 for review") {
-		t.Fatalf("expected a matching citation to stay quiet, got:\n%s", matching)
-	}
-}
-
-// baselineFixture writes a fixture repo whose asvs-l2.md cites backend/main.go
-// with a range that no longer mentions the row's own words, optionally with a
-// drift baseline, and returns the gate's exit code and output.
-func baselineFixture(t *testing.T, doc, baseline string) (int, string) {
-	t.Helper()
-	extra := map[string]string{"backend/main.go": "corsConfig := cors.Config{}\n// scheduler\ns.Every(24).Hours()\n"}
-	if baseline != "" {
-		extra["docs/security/citation-drift.ignore"] = baseline
-	}
-	root := fixtureRoot(t, doc, extra)
-	idx, err := buildIndex(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out strings.Builder
-	docs := []string{"docs/security/asvs-l2.md"}
-	code, err := check(&out, root, idx, docs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	driftCode, err := reportDrift(&out, root, idx, docs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if driftCode != 0 {
-		code = driftCode
-	}
-	return code, out.String()
-}
-
-const driftRow = "| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:2-3` |\n"
-
-// driftKey is the baseline key for driftRow's citation.
-const driftKey = "docs/security/asvs-l2.md | `backend/main.go:2-3` | backend/main.go"
-
-func TestDriftIsGatedAgainstTheBaseline(t *testing.T) {
-	t.Run("an unlisted drift candidate fails the gate", func(t *testing.T) {
-		code, out := baselineFixture(t, header+driftRow, "")
-		if code == 0 {
-			t.Fatalf("expected the gate to fail on unaccepted drift, got a clean pass:\n%s", out)
-		}
-		if !strings.Contains(out, "no longer mentions anything the row says it shows") {
-			t.Fatalf("expected the drift explanation, got:\n%s", out)
-		}
-		// The message must hand the reader the exact line to paste.
-		if !strings.Contains(out, driftKey) {
-			t.Fatalf("expected the baseline key %q in the output, got:\n%s", driftKey, out)
-		}
-	})
-
-	t.Run("a listed candidate is suppressed", func(t *testing.T) {
-		code, out := baselineFixture(t, header+driftRow, driftKey+"  # reviewed, cites the right code\n")
-		if code != 0 {
-			t.Fatalf("expected the baseline to suppress the candidate, got:\n%s", out)
-		}
-	})
-
-	t.Run("comments and blank lines in the baseline are ignored", func(t *testing.T) {
-		bl := "# a header comment\n\n   \n" + driftKey + "  # why\n"
-		if code, out := baselineFixture(t, header+driftRow, bl); code != 0 {
-			t.Fatalf("expected comments/blanks to parse away, got:\n%s", out)
-		}
-	})
-
-	t.Run("a baseline entry matching nothing fails, so dead suppressions cannot accumulate", func(t *testing.T) {
-		bl := "docs/security/asvs-l2.md | `backend/gone.go:1-2` | backend/gone.go  # stale\n"
-		code, out := baselineFixture(t, header+driftRow, bl)
-		if code == 0 {
-			t.Fatalf("expected a stale baseline entry to fail, got a clean pass:\n%s", out)
-		}
-		if !strings.Contains(out, "no longer matches any citation — delete it") {
-			t.Fatalf("expected the stale-entry message, got:\n%s", out)
-		}
-	})
-
-	t.Run("the key ignores the citation's line number inside the doc", func(t *testing.T) {
-		// Prose added above the row must not invalidate its suppression:
-		// the key is (doc, citation, target), never the doc's own line number.
-		moved := header + "| 0.0.1 | Filler | partial | pushes the row down |\n" + driftRow
-		if code, out := baselineFixture(t, moved, driftKey+"  # why\n"); code != 0 {
-			t.Fatalf("expected the suppression to survive the row moving, got:\n%s", out)
-		}
-	})
-
-	t.Run("changing the citation re-surfaces it for review", func(t *testing.T) {
-		// The inverse property: an edited citation is a new decision, so the
-		// old suppression must stop applying rather than silently covering it.
-		edited := header + "| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:2-2` |\n"
-		code, out := baselineFixture(t, edited, driftKey+"  # why\n")
-		if code == 0 {
-			t.Fatalf("expected an edited citation to escape its old suppression, got a clean pass:\n%s", out)
-		}
-	})
-}
-
-func TestRealDriftBaselineIsCurrent(t *testing.T) {
-	// The real baseline must exactly cover the real candidate set: no
-	// unaccepted drift, and no dead entries. TestRealSecurityDocs asserts the
-	// same thing via run(); this names the reason so a failure is legible.
-	root, err := findRepoRoot(mustGetwd(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	idx, err := buildIndex(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	found, err := checkDrift(root, idx, securityDocs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range found {
-		t.Errorf("%s:%d  %s", f.doc, f.line, f.msg)
 	}
 }
 
