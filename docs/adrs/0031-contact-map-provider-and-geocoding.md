@@ -80,9 +80,11 @@ requests work.
 ### 4. Documentation obligations
 
 - `docs/security/data-retention-lifecycle.md`: a new numbered subsection for the map feature —
-  tile requests are stateless/no retention; the geocode cache is a new retained copy and needs its
-  own retention/deletion note, in the doc's existing Where/who–Retention–Deletion/propagation–
-  Backups–Verification shape (see its §13 for the pattern).
+  tile requests are stateless/no retention; the geocode cache is **in-memory only** (see the
+  2026-10-01 amendment) so it is not a persisted copy, but the subsection still records that
+  address text is sent to the configured geocoder and that the cache vanishes on restart, in the
+  doc's existing Where/who–Retention–Deletion/propagation–Backups–Verification shape (see its §13
+  for the pattern).
 - `docs/security/asvs-l2.md`: a new row under the SSRF section (5.2.6, alongside the existing
   Immich/Seafile per-service opt-in guard rows) covering the geocoder as a new outbound integration.
 - `docs/int-01-integration-classification-matrix.md`: a `Registry()` entry for the geocoder client
@@ -102,6 +104,30 @@ requests work.
   (`mycorrhizal.android.library` + `mycorrhizal.android.hilt` + Compose plugin, depending on
   `:core:data`/`:core:domain`/`:core:ui`, per e.g. `android/feature/network/build.gradle.kts`), with
   `maplibre-android` added to `android/gradle/libs.versions.toml`.
+
+## Amendment, 2026-10-01 (maintainer decisions from the pre-implementation review of #694)
+
+The post-ADR review of #694/#1286/#1287 found the original text under-specified in five places.
+Settled:
+
+- **Stable address identifier.** `ContactAddress` gains an `ID` (migration with backfill for existing
+  rows — real data exists, CLAUDE.md "Orientation"), threaded through `AddressFromContactAddress` /
+  `contactAddressFromNeutral` into `contactmodel.Address.ID` and added to the schema-parity registry.
+  `:addressId` in the geocode route is this ID. Array index was rejected: it shifts on reorder/delete.
+- **`Coordinates` column shape.** A `geo:` URI string, matching `contactmodel.Address.Coordinates`
+  exactly (no lossy lat/lng conversion on the exporter path); the editor validates lat/lng ranges.
+- **Geocode cache is in-memory** (bounded size + TTL, lost on restart). No table, no migration, no new
+  persisted copy of address text. Supersedes the "retained copy" wording in §4 above and in #694.
+- **Route.** `POST /contacts/:id/addresses/:addressId/geocode` is final (the "e.g." is dropped).
+- **Tile-style delivery.** A new unauthenticated bootstrap endpoint, `GET /api/v1/config/map`,
+  mirroring `GET /api/v1/auth/oidc/config` (`routes/routes.go`), returns only
+  `{"tile_style_url": "<MAP_TILE_STYLE_URL or the OpenFreeMap default>"}`. It is public because the
+  value is not secret (the client fetches tiles from it directly) and it must be readable before the
+  map view needs a session-scoped call. It stays deliberately narrow — no other instance setting is
+  added to it — and needs a `classPublic` row in `routes/authorization_matrix_test.go`, a
+  `routes/embedded_mode_test.go` entry if the embedded-mode route list requires it, and an OpenAPI
+  schema + example (which regenerates the contract fixtures and TS types). The web (#1286) and
+  Android (#1287) tracks both read the style from this endpoint.
 
 ## Consequences
 
