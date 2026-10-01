@@ -46,10 +46,10 @@ class MainViewModelProfileHydrationTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private class Tokens : TokenStorage {
-        val tokens = mutableMapOf<String, String>()
-        override suspend fun save(profileId: String, token: String) { tokens[profileId] = token }
-        override suspend fun load(profileId: String): String? = tokens[profileId]
-        override suspend fun clear(profileId: String) { tokens.remove(profileId) }
+        val saved = mutableMapOf<String, String>()
+        override suspend fun save(profileId: String, token: String) { saved[profileId] = token }
+        override suspend fun load(profileId: String): String? = saved[profileId]
+        override suspend fun clear(profileId: String) { saved.remove(profileId) }
         override suspend fun loadLegacy(): String? = null
         override suspend fun clearLegacy() = Unit
     }
@@ -71,7 +71,7 @@ class MainViewModelProfileHydrationTest {
 
     /** Two stored, signed-in profiles; "a" is active -> a restored session. */
     private suspend fun restoredManager(): DefaultSessionManager {
-        val tokens = Tokens().apply { this.tokens["a"] = "jwt-a"; this.tokens["b"] = "jwt-b" }
+        val tokens = Tokens().apply { this.saved["a"] = "jwt-a"; this.saved["b"] = "jwt-b" }
         val prefs = Prefs().apply {
             snapshot = ProfilesSnapshot(
                 profiles = listOf(
