@@ -128,6 +128,12 @@ class MainViewModel @Inject constructor(
     private var checkedServerUrl: String? = null
     private var wasLoggedIn = false
 
+    // Issue #1400: profile id the current/last /users/me hydration was started
+    // for, so a restored session is hydrated once per profile (not once per
+    // emission) and a failed (offline) fetch is not retried in a loop.
+    private var hydratedProfileId: String? = null
+    private var profileHydration: Job? = null
+
     init {
         // Issues #528 + #692: resolve the server contract against whatever
         // server URL the session knows, re-checking when the URL changes or a
@@ -138,6 +144,12 @@ class MainViewModel @Inject constructor(
                 val loginEdge = state.isLoggedIn && !wasLoggedIn
                 val logoutEdge = !state.isLoggedIn && wasLoggedIn
                 wasLoggedIn = state.isLoggedIn
+                if (logoutEdge || !state.isLoggedIn) {
+                    profileHydration?.cancel()
+                    hydratedProfileId = null
+                } else if (state.username == null) {
+                    hydrateProfileIfNeeded()
+                }
 
                 when {
                     serverUrl.isEmpty() -> {
@@ -165,6 +177,44 @@ class MainViewModel @Inject constructor(
                     // Idle emissions on the same URL/state: nothing to do.
                 }
             }
+        }
+    }
+
+    /**
+     * Issue #1400: [SessionState]'s username / isAdmin / language / dateFormat
+     * are in-memory only and only the sign-in paths fill them, so a RESTORED
+     * session (app start, profile switch) had them blank. Fetch `/users/me`
+     * once per active profile and merge it in. Non-blocking (own coroutine),
+     * and failure-tolerant: an offline/erroring fetch leaves the session as it
+     * is (the existing 401 handling alone decides logout). A profile switch
+     * clears the previous profile's fields in the session manager first, and
+     * a response that lands after the active profile changed again is dropped.
+     */
+    private suspend fun hydrateProfileIfNeeded() {
+        val profileId = sessionManager.activeProfile()?.id ?: return
+        if (profileId == hydratedProfileId) return
+        hydratedProfileId = profileId
+        profileHydration?.cancel()
+        profileHydration = viewModelScope.launch {
+            val user = try {
+                authRepository.fetchCurrentUser().getOrNull()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            } ?: return@launch
+            if (sessionManager.activeProfile()?.id != profileId) return@launch
+            sessionManager.setProfile(
+                SessionState(
+                    userId = user.id.takeIf { it != 0 },
+                    username = user.username,
+                    isAdmin = user.isAdmin,
+                    language = user.language,
+                    dateFormat = user.dateFormat,
+                    enabledContactFields = user.enabledContactFields,
+                ),
+            )
+            sessionManager.setSelfContactVCardUid(user.selfContactVCardUid)
         }
     }
 
