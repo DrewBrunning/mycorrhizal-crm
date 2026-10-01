@@ -113,6 +113,18 @@ class CrossTaskIntentE2eTest {
         waitFor(hasSetTextAction() and hasText(given))
     }
 
+    // Issue #1399: the app is ALREADY on Contacts (empty search) when the link arrives —
+    // the reused/restored Contacts entry used to keep its old, empty query.
+    @Test
+    fun warmSearchLinkWhileAlreadyOnContactsFiltersTheList() {
+        viewCrossTask("mycorrhizal://search") // empty q -> plain Contacts, empty search field
+        waitForText(displayName)
+        shell("input keyevent KEYCODE_HOME") // backgrounds the app, leaving it on Contacts
+        viewCrossTask("mycorrhizal://search?q=${given.replace(" ", "%20")}")
+        waitFor(hasSetTextAction() and hasText(given))
+        waitForText(displayName)
+    }
+
     @Test
     fun warmRejectedLinkFromOutsideTheTaskLeavesTheStartScreenAlone() {
         viewCrossTask("mycorrhizal://settings", mustStart = false) // matches no filter at all

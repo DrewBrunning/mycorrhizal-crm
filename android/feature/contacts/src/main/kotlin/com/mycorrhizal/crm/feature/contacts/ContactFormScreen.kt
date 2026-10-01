@@ -65,6 +65,7 @@ import com.mycorrhizal.crm.ui.components.PhoneSpec
 import com.mycorrhizal.crm.ui.components.TitleSpec
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,33 +86,14 @@ fun ContactFormScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(
-                        text = if (state.isEdit) {
-                            stringResource(R.string.contact_edit_title)
-                        } else {
-                            stringResource(R.string.contact_new)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    FormScaffold(
+        title = if (state.isEdit) stringResource(R.string.contact_edit_title) else stringResource(R.string.contact_new),
+        onBack = onBack,
+        saveLabel = if (state.isEdit) stringResource(R.string.contact_save) else stringResource(R.string.contact_create),
+        isSaving = state.isSaving,
+        onSave = viewModel::save,
+        snackbarHostState = snackbarHostState,
+        showSaveBar = !state.isLoading,
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton()
@@ -156,7 +138,6 @@ fun ContactFormScreen(
                 onAnniversariesChange = viewModel::onAnniversariesChange,
                 onCircleToggle = viewModel::onCircleToggle,
                 onTagToggle = viewModel::onTagToggle,
-                onSave = viewModel::save,
             )
         }
     }
@@ -214,7 +195,6 @@ fun ContactFormContent(
     onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
     onCircleToggle: (String) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -610,26 +590,6 @@ fun ContactFormContent(
             emptyText = stringResource(R.string.contact_tags_empty),
             onToggle = onTagToggle,
         )
-
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSaving) stateDescription = savingLabel },
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(
-                if (state.isEdit) {
-                    stringResource(R.string.contact_save)
-                } else {
-                    stringResource(R.string.contact_create)
-                },
-            )
-        }
     }
 }
 
