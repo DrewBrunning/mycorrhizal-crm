@@ -220,4 +220,70 @@ class NavigationGraphTest {
 
         composeTestRule.onNodeWithTag("field").assertTextEquals("")
     }
+
+    // Issue #1399 follow-up: path-arg links (`contacts/<id>`) share the save/restore path.
+    private fun detailHost(): TestNavHostController {
+        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                navController.navigatorProvider.addNavigator(ComposeNavigator())
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") { Text("Home") }
+                    composable(
+                        "contacts/{contactId}",
+                        arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+                    ) { Text("Contact ${it.arguments?.getInt("contactId")}", Modifier.testTag("detail")) }
+                    composable("tags") {
+                        var count by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+                        Text("count $count", Modifier.testTag("count").clickable { count++ })
+                    }
+                }
+            }
+        }
+        return navController
+    }
+
+    @Test
+    fun `a contact link delivered while another contact is open shows the new contact`() {
+        val navController = detailHost()
+
+        navController.navigateToRoot("contacts/7")
+        navController.navigateToRoot("contacts/8")
+        composeTestRule.waitForIdle()
+
+        assertEquals(8, navController.currentBackStackEntry?.arguments?.getInt("contactId"))
+        composeTestRule.onNodeWithTag("detail").assertTextEquals("Contact 8")
+        // #679: back from the deep-linked detail returns to the dashboard.
+        navController.popBackStack()
+        assertEquals("home", navController.currentBackStackEntry?.destination?.route)
+    }
+
+    @Test
+    fun `a contact link after another contact was visited and left shows the new contact`() {
+        val navController = detailHost()
+
+        navController.navigateToRoot("contacts/7")
+        navController.navigateToRoot("home")
+        navController.navigateToRoot("contacts/8")
+        composeTestRule.waitForIdle()
+
+        assertEquals(8, navController.currentBackStackEntry?.arguments?.getInt("contactId"))
+        composeTestRule.onNodeWithTag("detail").assertTextEquals("Contact 8")
+        navController.popBackStack()
+        assertEquals("home", navController.currentBackStackEntry?.destination?.route)
+    }
+
+    @Test
+    fun `an argument-free destination still restores its saved state`() {
+        val navController = detailHost()
+
+        navController.navigateToRoot("tags")
+        composeTestRule.onNodeWithTag("count").performClick()
+        composeTestRule.onNodeWithTag("count").assertTextEquals("count 1")
+        navController.navigateToRoot("home")
+        navController.navigateToRoot("tags")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("count").assertTextEquals("count 1")
+    }
 }

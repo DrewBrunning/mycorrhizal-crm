@@ -251,15 +251,16 @@ private fun localModeAvailable(): Boolean {
  * Extracted so the back-stack behavior is unit-testable against a real
  * [NavHostController].
  *
- * Issue #1399: a route that carries a query argument (`contacts?search=X`) must NOT
- * restore saved state. `restoreState` resurrects the previously saved back-stack entry
- * with its OLD arguments (and its ViewModel), so a `mycorrhizal://search?q=X` link
- * delivered while Contacts was already open (or visited earlier) landed on the stale,
- * unfiltered entry. Skipping the restore makes the link create a fresh entry that
- * carries the new argument; plain destinations keep save/restore.
+ * Issue #1399: a route that carries arguments — a query arg (`contacts?search=X`) or a
+ * path arg (`contacts/8`) — must NOT restore saved state. `restoreState` resurrects the
+ * previously saved back-stack entry with its OLD arguments (and ViewModel), so a
+ * `mycorrhizal://search?q=X` link landed on the stale unfiltered Contacts, and
+ * `mycorrhizal://contacts/8` after contact 7 showed contact 7. Skipping the restore makes
+ * the link create a fresh entry carrying the new argument. Only the argument-free
+ * top-level (drawer/rail) routes — single segments such as `notes` — keep save/restore.
  */
 internal fun NavHostController.navigateToRoot(route: String) {
-    val carriesArgs = route.contains('?')
+    val carriesArgs = route.contains('?') || route.contains('/')
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
