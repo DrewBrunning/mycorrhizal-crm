@@ -126,7 +126,9 @@ fun ServersScreen(
             if (state.profiles.isEmpty()) {
                 EmptyState(message = stringResource(R.string.settings_servers_empty))
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().testTag("servers-list")) {
+                // Issue #1398: weight(1f), not fillMaxSize() — a full-height list leaves the
+                // "Use on this device only" button below it with zero height.
+                LazyColumn(modifier = Modifier.weight(1f).testTag("servers-list")) {
                     items(state.profiles, key = { it.id }) { profile ->
                         ServerProfileRow(
                             profile = profile,
