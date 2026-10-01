@@ -99,6 +99,23 @@ jobs:
             echo "::error::GitHub Release for ${RC_TAG} is missing or not marked pre-release (got: ${ispre})."
             exit 1
           fi
+          # Issue #1396: an RC published only via docker-publish.yml's
+          # workflow_dispatch fallback has no SLSA provenance and may have no
+          # SHA256SUMS -- promotion re-uploads every asset verified against
+          # SHA256SUMS, so it would fail midway. Refuse up front, before any
+          # mutating step, and name the recovery.
+          rc_assets="$(gh release view "$RC_TAG" --json assets --jq '[.assets[].name] | join(" ")')"
+          missing=""
+          for want in app-obtainium-release.apk mycorrhizal-apk.sigstore.json mycorrhizal-apk.intoto.jsonl SHA256SUMS; do
+            case " $rc_assets " in
+              *" $want "*) ;;
+              *) missing="${missing} ${want}" ;;
+            esac
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::${RC_TAG}'s Release is missing:${missing}. It cannot be promoted (a release published only via the docker-publish workflow_dispatch fallback has no SLSA provenance -- issue #1396). Cut the next release candidate from ${RC_TAG%-rc.*}'s release branch and promote that instead."
+            exit 1
+          fi
           rc_sha="$(git rev-list -n1 "refs/tags/${RC_TAG}")"
           git fetch --quiet origin "${series}:${series}" || {
             echo "::error::Branch ${series} not found -- an RC series is cut from a release branch (docs/release-candidate-process.md)."

@@ -9,17 +9,26 @@
 //  1. The JSON parses and every gate obeys the registry's structural rules
 //     (known tier / check_kind, unique name, non-empty criterion, and the
 //     release_gate:true invariants).
+//
 //  2. Every gate names a workflow file that actually exists under
 //     .github/workflows/.
+//
 //  3. The human-readable table in docs/development/release-gates.md has exactly
 //     one row per registry gate, with a matching tier and mandatory flag — so a
 //     gate cannot be added to one without the other, and a listed gate can
 //     never lack a real job.
+//
 //  4. Every workflow the release composer must call (each release_gate:true
 //     gate and each release-tier suite) declares a top-level `workflow_call`
 //     trigger, so ADR 0021's composition is possible and a new mandatory gate
 //     cannot silently reintroduce the dispatch-and-poll path; and the composer
 //     (`release-validate.yml`) calls exactly that set — no omission, no extra.
+//
+//  5. No mandatory release-internal gate of docker-publish.yml is push-only
+//     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
+//     workflow_dispatch fallback while the run still concludes success, unless
+//     the gate is allowlisted with a reason and a defined failing check on the
+//     dispatch path.
 //
 // Exit 0: everything lines up. Exit 1: at least one finding. Exit 2: the check
 // itself could not run.
@@ -109,6 +118,13 @@ func runAt(w io.Writer, root string) int {
 		return 2
 	}
 	findings = append(findings, releaseworkflow.CheckPromote(string(promoteBytes))...)
+	// #nosec G304 -- constant leaf under the repository root
+	publishBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, "docker-publish.yml"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read docker-publish.yml", err)
+		return 2
+	}
+	findings = append(findings, releasegates.CheckDispatchPath(reg, string(publishBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

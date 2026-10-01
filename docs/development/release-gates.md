@@ -77,6 +77,30 @@ Four mechanisms, in order of when they fire:
 re-dispatches, and `needs:`-gated fan-in jobs) with `workflow_call` composition. See
 [ADR 0021](../adrs/0021-release-validation-composition.md) for why.
 
+### The manual-dispatch fallback (issue #1396)
+
+`docker-publish.yml` can also be run by hand (`workflow_dispatch` with the `tag` input) for a tag whose
+push event never produced a run. That path runs `main`'s copy of the workflow against the tag's code. It
+**cannot** produce everything a tag push does:
+
+| Job | On the fallback | Why |
+|---|---|---|
+| `apk-provenance` | **skipped** | the SLSA generator records the triggering ref; a dispatch from a branch is a branch ref that `slsa-verifier --source-tag` rejects, so no verifiable provenance can be made |
+| `create-release` | skipped | the Release already exists; re-uploads use `--clobber` |
+| `verify-release-assets` | **runs** | rebuilds `SHA256SUMS`, checks every asset (incl. the attached APK's `libmycorrhizal.so`) and the images. With no `mycorrhizal-apk.intoto.jsonl` it **fails** and says the release is not promotable |
+| `post-publish-smoke` | runs | it only needs the published image |
+
+So a release published **only** via the fallback concludes **red**, not green, and `promote-rc.yml` refuses
+to promote an RC whose Release lacks the provenance or `SHA256SUMS`. Recover by cutting the next release
+candidate, or — once the workflow at the tag's commit is fixed — by deleting and re-pushing the tag so a
+push-triggered run produces the provenance.
+
+`go run ./cmd/releasegatecheck` enforces the rule: a **mandatory** release-internal gate in
+`docker-publish.yml` may not carry a `github.event_name == 'push'` guard unless it is listed in
+`releasegates.PushOnlyAllowlist` with a reason **and** a compensating job that runs on dispatch and
+asserts its absence with an `::error::` (`backend/internal/releasegates/dispatchpath.go`). Today only
+`apk-provenance` is allowlisted, compensated by `verify-release-assets`.
+
 ## The Android decision (issue #527)
 
 **A release hard-blocks on a green, keystore-signed, `apksigner`-verified APK that lands on the
