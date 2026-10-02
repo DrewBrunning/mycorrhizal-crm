@@ -3,7 +3,10 @@ package com.mycorrhizal.crm.feature.settings
 import android.content.Context
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
+import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
@@ -49,6 +52,8 @@ class SettingsViewModelTest {
     private val deviceGrantManager = mockk<DeviceGrantManager>()
     private val callSmsTrackingCapability = mockk<CallSmsTrackingCapability>()
     private val appContext = mockk<Context>(relaxed = true)
+    private val serverCompatibility = mockk<ServerCompatibilityRepository>()
+    private val buildInfo = AppBuildInfo("1.3.0", 1042, "release", "obtainium", "com.mycorrhizal.crm")
 
     /** A factory defaulting to "no tracking permissions granted, nothing stored". */
     private fun viewModel(
@@ -61,7 +66,14 @@ class SettingsViewModelTest {
         includeUnknown: Boolean = false,
         filteredCount: Int = 0,
         callSmsAvailable: Boolean = true,
+        health: Result<ServerHealth> = Result.success(ServerHealth(version = "1.3.0")),
+        healthThrows: Throwable? = null,
     ): SettingsViewModel {
+        if (healthThrows != null) {
+            coEvery { serverCompatibility.getServerHealth() } throws healthThrows
+        } else {
+            coEvery { serverCompatibility.getServerHealth() } returns health
+        }
         coEvery { trackingSettings.callTrackingEnabled() } returns callStored
         coEvery { trackingSettings.smsTrackingEnabled() } returns smsStored
         coEvery { trackingSettings.notificationsEnabled() } returns true
@@ -101,8 +113,43 @@ class SettingsViewModelTest {
             catchUpScheduler,
             callSmsTrackingCapability,
             PasskeyAvailability { false },
+            buildInfo,
+            serverCompatibility,
             appContext,
         )
+    }
+
+    @Test
+    fun `exposes the build info and the server health for About`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel(health = Result.success(ServerHealth(version = "1.3.0", commit = "abc1234")))
+        advanceUntilIdle()
+
+        assertEquals(buildInfo, vm.uiState.value.buildInfo)
+        assertEquals("abc1234", vm.uiState.value.serverHealth?.commit)
+        assertFalse(vm.uiState.value.serverLookupFailed)
+    }
+
+    @Test
+    fun `a failed server lookup is flagged and does not break the rest of the state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(
+                session = SessionState(username = "alice"),
+                health = Result.failure(java.io.IOException("offline")),
+            )
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.serverLookupFailed)
+            assertNull(vm.uiState.value.serverHealth)
+            assertEquals("alice", vm.uiState.value.session.username)
+        }
+
+    @Test
+    fun `a throwing server lookup is treated as a failed lookup`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel(healthThrows = IllegalStateException("boom"))
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.serverLookupFailed)
+        assertEquals(buildInfo, vm.uiState.value.buildInfo)
     }
 
     @Test

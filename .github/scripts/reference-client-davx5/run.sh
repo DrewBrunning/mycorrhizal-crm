@@ -188,23 +188,44 @@ tap_until_visible() {
 	return 1
 }
 
-# Polls (no tapping) until $1 is found on screen, bounded by $2 attempts, 1s
-# apart — for waiting out async work (service detection, sync) with no
-# button to press in the meantime.
+# Polls (no tapping) until $1 is found on screen, bounded by $2 SECONDS of
+# wall clock, for waiting out async work (service detection, sync) with no
+# button to press in the meantime. The budget is wall-clock, not an attempt
+# count: each attempt's own dump_ui (two adb round trips) balloons under the
+# emulator contention documented throughout this file, so an attempt-counted
+# "80" was really anywhere from 80s to 130s+ and the failure mode was
+# unpredictable (see the collection-row comment near the end of this file).
+# $3, if set, is a command run once every $4 seconds (default 20) while
+# waiting — a nudge (re-tap a tab, refresh the list) for UI that can get
+# stuck rather than merely slow. The nudge's own failure is ignored.
 wait_for() {
-	local wait_for="$1" max_attempts="${2:-20}" attempts=0
-	while [ "$attempts" -lt "$max_attempts" ]; do
+	local wait_for="$1" budget="${2:-20}" nudge="${3:-}" nudge_every="${4:-20}"
+	local deadline=$((SECONDS + budget)) next_nudge=$((SECONDS + nudge_every))
+	while [ "$SECONDS" -lt "$deadline" ]; do
 		dump_ui
 		dismiss_anr_if_present
 		if [ -n "$(find_center "$wait_for")" ]; then
 			return 0
 		fi
+		if [ -n "$nudge" ] && [ "$SECONDS" -ge "$next_nudge" ]; then
+			log "'$wait_for' not on screen yet, nudging: $nudge"
+			"$nudge" || true
+			next_nudge=$((SECONDS + nudge_every))
+		fi
 		sleep 1
-		attempts=$((attempts + 1))
 	done
-	log "ERROR: '$wait_for' never appeared after ${max_attempts}s"
+	log "ERROR: '$wait_for' never appeared after ${budget}s"
 	capture_failure_diagnostics "wait-for-$wait_for"
 	return 1
+}
+
+# tap() for a target that can be briefly absent right after a transition
+# (a dump taken just after the previous tap can still show the old screen, or
+# an ANR dialog can have covered it). Waits up to $2 seconds (default 30) for
+# the element before tapping, instead of failing on the first miss.
+tap_when_visible() {
+	wait_for "$1" "${2:-30}"
+	tap "$1"
 }
 
 # Prints one "x y" line per android.widget.EditText node in $DUMP_XML, in
@@ -369,7 +390,7 @@ log "Walking the intro carousel to the account list"
 tap_until_visible "Next" "Add account" 30
 
 log "Starting 'Add account'"
-tap "Add account"
+tap_when_visible "Add account"
 
 log "Selecting 'Login with URL and user name' and continuing"
 # The tap above only fires the transition; under CI resource contention
@@ -387,7 +408,7 @@ log "Selecting 'Login with URL and user name' and continuing"
 # polling, so the extra headroom is free on a healthy run.
 wait_for "Login with URL and user name" 60
 tap "Login with URL and user name"
-tap "Continue"
+tap_when_visible "Continue"
 
 log "Filling in server URL / username / password"
 # The three EditText fields are located by their bounds order (Base URL,
@@ -401,7 +422,7 @@ fill_login_form 8
 log "Dismissing keyboard and logging in"
 adb shell input keyevent KEYCODE_BACK
 sleep 1
-tap "Login"
+tap_when_visible "Login"
 
 log "Waiting for service detection to finish"
 wait_for "Finish" 30
@@ -436,12 +457,31 @@ log "Account created. Enabling CardDAV + CalDAV collection sync"
 # returns the "Contacts" address book correctly every time, so this is not a
 # server regression -- the client/emulator side is still the bottleneck.
 # Doubled again to 80.
-tap "CardDAV"
-wait_for "synchronize this collection" 80
-tap "synchronize this collection"
-tap "CalDAV"
-wait_for "synchronize this collection" 80
-tap "synchronize this collection"
+# Wall-clock budget with a recovery nudge: if the row hasn't rendered after
+# 20s the tab is most likely stuck on a discovery that already finished
+# server-side (the server log showed every PROPFIND 207 well before the
+# client rendered anything), so bounce to the other tab and back and tap
+# "Refresh list" if it's on screen, then keep waiting. Replaces blind budget
+# doubling (20 -> 40 -> 80) that never addressed a stuck, as opposed to slow,
+# UI. 240s overall; a healthy run returns on the first poll.
+COLLECTION_WAIT_SECONDS=240
+current_tab=""
+nudge_collection_list() {
+	local other="CalDAV"
+	[ "$current_tab" = "CalDAV" ] && other="CardDAV"
+	tap "$other" || true
+	tap "$current_tab" || true
+	dump_ui
+	local refresh
+	refresh="$(find_center "Refresh list")"
+	# shellcheck disable=SC2086
+	[ -z "$refresh" ] || adb shell input tap $refresh
+}
+for current_tab in CardDAV CalDAV; do
+	tap_when_visible "$current_tab"
+	wait_for "synchronize this collection" "$COLLECTION_WAIT_SECONDS" nudge_collection_list 20
+	tap "synchronize this collection"
+done
 
 log "Triggering a manual sync"
 tap "Synchronize now"

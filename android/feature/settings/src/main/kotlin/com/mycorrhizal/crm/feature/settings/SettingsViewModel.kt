@@ -8,18 +8,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
+import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
+import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability
 import com.mycorrhizal.crm.feature.tracking.PermissionChecker
 import com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
+import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -95,6 +98,12 @@ data class SettingsUiState(
     val pendingPermissionRequest: TrackingPermissionRequest? = null,
     /** Issue #721: a tracking-permission denial dialog to render (or null). */
     val permissionDialog: TrackingPermissionDialog? = null,
+    /** Issue #1420: this build's identity; null hides the About section. */
+    val buildInfo: AppBuildInfo? = null,
+    /** Issue #1420: the active server's /health, once looked up (null while loading or on failure). */
+    val serverHealth: ServerHealth? = null,
+    /** Issue #1420: the /health lookup failed — About shows a dash. Never blocks the screen. */
+    val serverLookupFailed: Boolean = false,
 )
 
 sealed interface SettingsEvent {
@@ -123,10 +132,13 @@ class SettingsViewModel @Inject constructor(
     private val callSmsTrackingCapability: CallSmsTrackingCapability,
     // Issue #1293 / ADR 0034: gates the Passkeys entry point (server capability + device support).
     private val passkeyAvailability: PasskeyAvailability,
+    // Issue #1420: the About section — build identity + the server's own /health.
+    buildInfo: AppBuildInfo,
+    private val serverCompatibility: ServerCompatibilityRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(SettingsUiState(buildInfo = buildInfo))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private val _events = MutableStateFlow<SettingsEvent?>(null)
@@ -143,6 +155,14 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(passkeysAvailable = available) }
         }
         refreshPermissionState()
+        // Issue #1420: informational only — a failing (or throwing) lookup renders
+        // a dash and must never block the rest of Settings.
+        viewModelScope.launch {
+            val result = runCatching { serverCompatibility.getServerHealth() }.getOrElse { Result.failure(it) }
+            result
+                .onSuccess { health -> _uiState.update { it.copy(serverHealth = health) } }
+                .onFailure { _uiState.update { it.copy(serverLookupFailed = true) } }
+        }
         viewModelScope.launch {
             appSettings.themePreference().collect { pref ->
                 _uiState.update { it.copy(themePreference = pref) }

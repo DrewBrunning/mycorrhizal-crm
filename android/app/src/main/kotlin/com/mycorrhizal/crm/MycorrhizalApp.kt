@@ -53,6 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
@@ -572,7 +573,7 @@ private fun MainScaffold(
     // The drawer is never opened at Expanded, so drawerState.isOpen stays false
     // there and every screen below reads the tablet-side default.
     val windowSizeClass = calculateWindowSizeClass(activity)
-    val isTwoPane = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+    val isTwoPane = usesPermanentNavigation(windowSizeClass)
 
     // M5 §6.6 (issue #152): consume notification deep links as they arrive and
     // drive the NavHost. The session-flow guard means a tap that lands while the
@@ -699,7 +700,20 @@ private fun MainScaffold(
 }
 
 /**
- * Issue #150: the app frame. Below [WindowWidthSizeClass.Expanded] this is the
+ * Issue #1419: the rail / two-pane frame needs room in both axes. A phone in
+ * landscape is Expanded wide (~914dp) but Compact tall (~411dp); giving it the
+ * tablet frame left an 80dp rail whose primary block could not scroll. So the
+ * permanent navigation applies only at Expanded width *and* at least Medium
+ * height; otherwise the modal drawer (one scrolling list) is kept. The two-pane
+ * contacts layout shares this predicate so the content is never squeezed beside
+ * a drawer-framed screen.
+ */
+internal fun usesPermanentNavigation(windowSizeClass: WindowSizeClass): Boolean =
+    windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded &&
+        windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact
+
+/**
+ * Issue #150: the app frame. Unless [usesPermanentNavigation] this is the
  * existing modal drawer wrapping [content]; at Expanded the drawer is replaced
  * by a [NavigationRail]. Stateless so host-level width-class tests can drive it
  * with a fake [WindowSizeClass] and slot content.
@@ -712,7 +726,7 @@ internal fun MainNavScaffold(
     onDestinationClick: (String) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) {
+    if (usesPermanentNavigation(windowSizeClass)) {
         Row(Modifier.fillMaxSize()) {
             MycorrhizalNavigationRail(
                 currentRoute = currentRoute,
@@ -738,9 +752,9 @@ internal fun MainNavScaffold(
 
 /**
  * Issue #150: the tablet/desktop-width app navigation — the same destination set
- * as the drawer, as a [NavigationRail]. The primary destinations stay pinned at
- * the top; the secondary set scrolls (twelve labeled items rarely fit a tablet
- * viewport), which keeps every drawer destination reachable at Expanded. Labels
+ * as the drawer, as a [NavigationRail]. The whole list scrolls as one column
+ * (twelve+ labeled items rarely fit a viewport), which keeps every drawer
+ * destination reachable. Labels
  * are always shown: the rail only appears where there is room for them.
  *
  * The width is pinned to M3's [NavigationRail] container width: the rail's inner
@@ -761,20 +775,22 @@ private fun MycorrhizalNavigationRail(
         modifier = Modifier.width(NavigationRailWidth).testTag("navigation-rail"),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-            RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
-        }
-        Spacer(Modifier.height(8.dp))
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-        Spacer(Modifier.height(8.dp))
+        // Issue #1419: one scroll for the whole rail (primary + secondary), the
+        // same shape as the drawer's, so no block is pinned and squeezed.
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
+            primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
+                RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
+            }
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Spacer(Modifier.height(8.dp))
             secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
                 RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
             }

@@ -806,6 +806,15 @@
     <string name="settings_permission_open_settings">Einstellungen öffnen</string>
     <string name="settings_permission_not_now">Jetzt nicht</string>
     <string name="settings_value_placeholder">—</string>
+    <string name="settings_about">Info</string>
+    <string name="settings_about_version">Version</string>
+    <string name="settings_about_version_code">Versionscode</string>
+    <string name="settings_about_build_type">Build-Typ</string>
+    <string name="settings_about_commit">Commit</string>
+    <string name="settings_about_built">Erstellt</string>
+    <string name="settings_about_server_version">Serverversion</string>
+    <string name="settings_about_server_built">Server erstellt am</string>
+    <string name="settings_about_copy">Build-Details kopieren</string>
     <string name="settings_cancel">Abbrechen</string>
 
     <!-- Aktivitäten -->
