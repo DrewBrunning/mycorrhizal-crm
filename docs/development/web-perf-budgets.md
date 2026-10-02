@@ -43,7 +43,7 @@ current / Δ / status); in CI it is also written to the job summary so a jump is
 attributable to a chunk, and from there to a dependency.
 
 The chunk names come from `vite.config.ts`'s `VENDOR_CHUNKS` split
-(`react-vendor`, `mui-core`, `mui-icons`, `mdi`, `i18n-vendor`, `graph-vendor`)
+(`react-vendor`, `mui-core`, `mui-icons`, `mdi`, `i18n-vendor`, `graph-vendor`, `map-vendor`)
 plus the `index` entry chunk and `index.css`.
 
 **Updating the baseline** is deliberate and reviewable: after an intentional

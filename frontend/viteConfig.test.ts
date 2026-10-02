@@ -59,6 +59,10 @@ describe('Vite configuration (T48)', () => {
     expect(fn('/app/node_modules/@mui/material/index.js')).toBe('mui-core');
     expect(fn('/app/node_modules/react-dom/index.js')).toBe('react-vendor');
     expect(fn('/app/node_modules/@mdi/js/index.js')).toBe('mdi');
+    // ADR 0031: MapLibre and its runtime deps share one lazily-loaded chunk.
+    expect(fn('/app/node_modules/maplibre-gl/dist/maplibre-gl.js')).toBe('map-vendor');
+    expect(fn('/app/node_modules/@maplibre/vt-pbf/index.js')).toBe('map-vendor');
+    expect(fn('/app/node_modules/pbf/index.js')).toBe('map-vendor');
     expect(fn('/app/node_modules/not-a-vendor-pkg/index.js')).toBeUndefined();
     expect(fn('/app/src/App.tsx')).toBeUndefined();
   });

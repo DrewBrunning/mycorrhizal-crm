@@ -44,6 +44,7 @@
     "activities": "Aktivitäten",
     "notes": "Notizen",
     "network": "Netzwerk",
+    "map": "Karte",
     "occasions": "Anlässe",
     "households": "Haushalte",
     "circlesTags": "Kreise & Tags",
@@ -417,7 +418,14 @@
       "floor": "Etage",
       "periodFrom": "Hier gewohnt ab (Jahr)",
       "periodTo": "Bis (Jahr)",
-      "additionalFields": "Weitere Felder"
+      "additionalFields": "Weitere Felder",
+      "coordinates": "Koordinaten (Breitengrad, Längengrad)",
+      "coordinatesHelp": "Zum Beispiel 51.5007, -0.1246",
+      "coordinatesInvalid": "Gib Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.",
+      "findCoordinates": "Koordinaten suchen",
+      "findCoordinatesSaveFirst": "Speichere diese Adresse zuerst. Die Koordinaten werden für die gespeicherte Adresse gesucht.",
+      "findCoordinatesSensitive": "Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Gib die Koordinaten stattdessen von Hand ein.",
+      "findCoordinatesFailed": "Für diese Adresse konnten keine Koordinaten gefunden werden."
     },
     "anniversaries": "Jahrestage",
     "socialProfiles": "Soziale Profile",
@@ -1713,6 +1721,15 @@
     "panDown": "Nach unten verschieben",
     "panLeft": "Nach links verschieben",
     "panRight": "Nach rechts verschieben"
+  },
+  "map": {
+    "title": "Kontaktkarte",
+    "empty": "Noch haben keine Kontakte Koordinaten. Füge auf der Kontaktseite einer Adresse Koordinaten hinzu, damit sie hier erscheint.",
+    "count_one": "{{count}} Adresse auf der Karte",
+    "count_other": "{{count}} Adressen auf der Karte",
+    "openContact": "Kontakt öffnen",
+    "unavailable": "Die Karte konnte nicht angezeigt werden. Dein Browser unterstützt möglicherweise kein WebGL.",
+    "truncated": "Es werden nur die ersten {{count}} Adressen angezeigt; die Karte ist auf diese Anzahl von Punkten begrenzt."
   },
   "contactScore": {
     "badge": {

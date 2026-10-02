@@ -44,6 +44,7 @@
     "activities": "Actividades",
     "notes": "Notas",
     "network": "Red",
+    "map": "Mapa",
     "occasions": "Ocasiones",
     "households": "Hogares",
     "circlesTags": "Círculos y etiquetas",
@@ -417,7 +418,14 @@
       "floor": "Piso",
       "periodFrom": "Vivió aquí desde (año)",
       "periodTo": "Hasta (año)",
-      "additionalFields": "Campos adicionales"
+      "additionalFields": "Campos adicionales",
+      "coordinates": "Coordenadas (latitud, longitud)",
+      "coordinatesHelp": "Por ejemplo 51.5007, -0.1246",
+      "coordinatesInvalid": "Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.",
+      "findCoordinates": "Buscar coordenadas",
+      "findCoordinatesSaveFirst": "Guarda primero esta dirección. Las coordenadas se buscan para la dirección guardada.",
+      "findCoordinatesSensitive": "Esta dirección está marcada como privada o secreta, por lo que nunca se envía al geocodificador. Introduce las coordenadas a mano.",
+      "findCoordinatesFailed": "No se pudieron encontrar coordenadas para esta dirección."
     },
     "anniversaries": "Aniversarios",
     "socialProfiles": "Perfiles sociales",
@@ -1713,6 +1721,15 @@
     "panDown": "Desplazar hacia abajo",
     "panLeft": "Desplazar hacia la izquierda",
     "panRight": "Desplazar hacia la derecha"
+  },
+  "map": {
+    "title": "Mapa de contactos",
+    "empty": "Ningún contacto tiene coordenadas todavía. Añade coordenadas a una dirección en la página de un contacto para verla aquí.",
+    "count_one": "{{count}} dirección en el mapa",
+    "count_other": "{{count}} direcciones en el mapa",
+    "openContact": "Abrir contacto",
+    "unavailable": "No se pudo mostrar el mapa. Es posible que tu navegador no admita WebGL.",
+    "truncated": "Se muestran solo las primeras {{count}} direcciones; el mapa está limitado a esta cantidad de puntos."
   },
   "contactScore": {
     "badge": {

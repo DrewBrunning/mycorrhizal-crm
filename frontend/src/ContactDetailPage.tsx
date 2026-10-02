@@ -1004,6 +1004,7 @@ export default function ContactDetailPage() {
       {/* Overview — General Information, custom fields, Preferences */}
       <SectionGroup id="overview">
         <ContactInformation
+          contactId={record.id}
           card={record.card}
           crm={record.crm}
           gender={record.gender}

@@ -158,6 +158,25 @@ describe('address conversion', () => {
     expect(valuesToCardAddresses(values)).toEqual(card);
   });
 
+  test('round-trips coordinates, sensitivity and the entry id through the flat editor shape (ADR 0031)', () => {
+    const card: CardAddress[] = [
+      {
+        id: 'addr-1',
+        components: [{ kind: 'name', value: '1 Main St' }],
+        contexts: ['home'],
+        coordinates: 'geo:51.5,-0.12',
+        sensitivity: 'secret',
+      },
+    ];
+    const values = cardAddressesToValues(card);
+    expect(values[0]).toMatchObject({
+      id: 'addr-1',
+      coordinates: 'geo:51.5,-0.12',
+      sensitivity: 'secret',
+    });
+    expect(valuesToCardAddresses(values)).toEqual(card);
+  });
+
   test('translates neutral address contexts to the flat type vocabulary (T91)', () => {
     // The importer stores a vCard ADR;TYPE=home as contexts:["private"] --
     // correct for RFC 9553, but "private" has no contacts.types.* i18n key, so

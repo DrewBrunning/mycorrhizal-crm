@@ -44,6 +44,7 @@
     "activities": "Activities",
     "notes": "Notes",
     "network": "Network",
+    "map": "Map",
     "occasions": "Occasions",
     "households": "Households",
     "circlesTags": "Circles & Tags",
@@ -517,7 +518,14 @@
       "floor": "Floor",
       "periodFrom": "Lived here from (year)",
       "periodTo": "Until (year)",
-      "additionalFields": "Additional fields"
+      "additionalFields": "Additional fields",
+      "coordinates": "Coordinates (latitude, longitude)",
+      "coordinatesHelp": "For example 51.5007, -0.1246",
+      "coordinatesInvalid": "Enter latitude (-90 to 90) and longitude (-180 to 180), separated by a comma.",
+      "findCoordinates": "Find coordinates",
+      "findCoordinatesSaveFirst": "Save this address first. Coordinates are looked up for the saved address.",
+      "findCoordinatesSensitive": "This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.",
+      "findCoordinatesFailed": "Could not find coordinates for this address."
     },
     "reviewDuplicates": "Review duplicates"
   },
@@ -1740,6 +1748,15 @@
     "panDown": "Pan down",
     "panLeft": "Pan left",
     "panRight": "Pan right"
+  },
+  "map": {
+    "title": "Contact map",
+    "empty": "No contacts have coordinates yet. Add coordinates to an address on a contact's page to see it here.",
+    "count_one": "{{count}} address on the map",
+    "count_other": "{{count}} addresses on the map",
+    "openContact": "Open contact",
+    "unavailable": "The map could not be displayed. Your browser may not support WebGL.",
+    "truncated": "Showing the first {{count}} addresses only; the map is limited to this many points."
   },
   "contactScore": {
     "badge": {

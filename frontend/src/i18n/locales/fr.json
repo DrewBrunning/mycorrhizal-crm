@@ -44,6 +44,7 @@
     "activities": "Activités",
     "notes": "Notes",
     "network": "Réseau",
+    "map": "Carte",
     "occasions": "Occasions",
     "households": "Foyers",
     "circlesTags": "Cercles et étiquettes",
@@ -417,7 +418,14 @@
       "floor": "Étage",
       "periodFrom": "A vécu ici à partir de (année)",
       "periodTo": "Jusqu'en (année)",
-      "additionalFields": "Champs supplémentaires"
+      "additionalFields": "Champs supplémentaires",
+      "coordinates": "Coordonnées (latitude, longitude)",
+      "coordinatesHelp": "Par exemple 51.5007, -0.1246",
+      "coordinatesInvalid": "Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.",
+      "findCoordinates": "Trouver les coordonnées",
+      "findCoordinatesSaveFirst": "Enregistrez d'abord cette adresse. Les coordonnées sont recherchées pour l'adresse enregistrée.",
+      "findCoordinatesSensitive": "Cette adresse est marquée comme privée ou secrète ; elle n'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.",
+      "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse."
     },
     "anniversaries": "Anniversaires",
     "socialProfiles": "Profils sociaux",
@@ -1713,6 +1721,15 @@
     "panDown": "Déplacer vers le bas",
     "panLeft": "Déplacer vers la gauche",
     "panRight": "Déplacer vers la droite"
+  },
+  "map": {
+    "title": "Carte des contacts",
+    "empty": "Aucun contact n'a encore de coordonnées. Ajoutez des coordonnées à une adresse sur la page d'un contact pour la voir ici.",
+    "count_one": "{{count}} adresse sur la carte",
+    "count_other": "{{count}} adresses sur la carte",
+    "openContact": "Ouvrir le contact",
+    "unavailable": "La carte n'a pas pu être affichée. Votre navigateur ne prend peut-être pas en charge WebGL.",
+    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points."
   },
   "contactScore": {
     "badge": {

@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ContactAddress } from '../api/contacts';
 import AddressFields from './AddressFields';
@@ -149,4 +149,164 @@ test('typing a custom type label stores it verbatim; picking a standard one trim
   const picked = last()?.[0].type;
   expect(picked).toBeTruthy();
   expect(picked).toBe(picked?.trim());
+});
+
+// --- ADR 0031 / issue #1286: coordinates + "find coordinates" ---------------
+
+const geocodeMock = vi.hoisted(() => vi.fn());
+beforeEach(() => geocodeMock.mockReset());
+vi.mock('../api/map', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api/map')>()),
+  geocodeAddress: geocodeMock,
+}));
+
+function renderWithContact(
+  initial: ContactAddress[],
+  { contactId }: { contactId?: number } = { contactId: 7 },
+) {
+  const onChange = vi.fn<(next: ContactAddress[]) => void>();
+  function H() {
+    const [value, setValue] = useState(initial);
+    return (
+      <AddressFields
+        label="Addresses"
+        value={value}
+        contactId={contactId}
+        onChange={(next) => {
+          onChange(next);
+          setValue(next);
+        }}
+      />
+    );
+  }
+  render(<H />);
+  return { last: () => onChange.mock.calls.at(-1)?.[0] };
+}
+
+const findButton = () => screen.getByRole('button', { name: 'Find coordinates' });
+const coordField = () => screen.getByLabelText('Coordinates (latitude, longitude)');
+
+test('shows stored coordinates as a readable "lat, lng" pair', () => {
+  renderWithContact([addr({ id: 'a', coordinates: 'geo:51.5007,-0.1246' })]);
+  expect(coordField()).toHaveValue('51.5007, -0.1246');
+});
+
+test('shows an unparseable stored value verbatim rather than hiding it', () => {
+  renderWithContact([addr({ id: 'a', coordinates: 'geo:nonsense' })]);
+  expect(coordField()).toHaveValue('geo:nonsense');
+  expect(screen.getByText(/Enter latitude/)).toBeInTheDocument();
+});
+
+test('a valid typed pair is committed as a geo: URI', () => {
+  const { last } = renderWithContact([addr({ id: 'a' })]);
+  fireEvent.change(coordField(), { target: { value: '12.5, -45.25' } });
+  expect(last()?.[0].coordinates).toBe('geo:12.5,-45.25');
+  expect(coordField()).toHaveValue('12.5, -45.25');
+});
+
+test('an invalid or out-of-range pair is flagged and not committed', () => {
+  const { last } = renderWithContact([addr({ id: 'a', coordinates: 'geo:1,2' })]);
+  fireEvent.change(coordField(), { target: { value: '95, 10' } });
+  expect(screen.getByText(/Enter latitude/)).toBeInTheDocument();
+  expect(coordField()).toHaveValue('95, 10');
+  // nothing committed for the bad text: the previous value stays
+  expect(last()).toBeUndefined();
+});
+
+test('clearing the field removes the coordinates', () => {
+  const { last } = renderWithContact([addr({ id: 'a', coordinates: 'geo:1,2' })]);
+  fireEvent.change(coordField(), { target: { value: '' } });
+  expect(last()?.[0].coordinates).toBeUndefined();
+  expect(screen.queryByText(/Enter latitude/)).not.toBeInTheDocument();
+});
+
+test('find coordinates geocodes the saved address and fills the field', async () => {
+  geocodeMock.mockResolvedValueOnce({
+    address_id: 'a',
+    coordinates: 'geo:48.85,2.35',
+    cached: false,
+  });
+  const { last } = renderWithContact([addr({ id: 'a', street: '1 Rue' })]);
+  fireEvent.click(findButton());
+  await waitFor(() => expect(last()?.[0].coordinates).toBe('geo:48.85,2.35'));
+  expect(geocodeMock).toHaveBeenCalledWith(7, 'a');
+  expect(coordField()).toHaveValue('48.85, 2.35');
+});
+
+test('find coordinates overrides a half-typed draft with the result', async () => {
+  geocodeMock.mockResolvedValueOnce({ address_id: 'a', coordinates: 'geo:1,2', cached: true });
+  renderWithContact([addr({ id: 'a' })]);
+  fireEvent.change(coordField(), { target: { value: '9,' } });
+  fireEvent.click(findButton());
+  await waitFor(() => expect(coordField()).toHaveValue('1, 2'));
+});
+
+test('is disabled while a lookup is in flight', async () => {
+  let resolve!: (v: unknown) => void;
+  geocodeMock.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+  renderWithContact([addr({ id: 'a' })]);
+  fireEvent.click(findButton());
+  await waitFor(() => expect(findButton()).toBeDisabled());
+  resolve({ address_id: 'a', coordinates: 'geo:1,2', cached: false });
+  await waitFor(() => expect(findButton()).toBeEnabled());
+});
+
+test('a failed lookup shows the error and leaves coordinates alone, then clears on retry', async () => {
+  geocodeMock.mockRejectedValueOnce(new Error('the provider could not be reached'));
+  const { last } = renderWithContact([addr({ id: 'a' })]);
+  fireEvent.click(findButton());
+  expect(await screen.findByRole('alert')).toHaveTextContent('the provider could not be reached');
+  expect(last()).toBeUndefined();
+  expect(findButton()).toBeEnabled();
+
+  geocodeMock.mockResolvedValueOnce({ address_id: 'a', coordinates: 'geo:1,2', cached: false });
+  fireEvent.click(findButton());
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+});
+
+test('a failure with no message falls back to a generic one', async () => {
+  geocodeMock.mockRejectedValueOnce(new Error(''));
+  renderWithContact([addr({ id: 'a' })]);
+  fireEvent.click(findButton());
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not find coordinates for this address.',
+  );
+});
+
+test.each(['private', 'secret'] as const)(
+  'blocks find coordinates for a %s address with a visible reason',
+  (sensitivity) => {
+    renderWithContact([addr({ id: 'a', sensitivity })]);
+    expect(findButton()).toBeDisabled();
+    expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
+    fireEvent.click(findButton());
+    expect(geocodeMock).not.toHaveBeenCalled();
+    // manual entry still works for a sensitive address
+    fireEvent.change(coordField(), { target: { value: '1, 2' } });
+    expect(coordField()).toHaveValue('1, 2');
+  },
+);
+
+test('a normal-sensitivity address is not blocked', () => {
+  renderWithContact([addr({ id: 'a', sensitivity: 'normal' })]);
+  expect(findButton()).toBeEnabled();
+  expect(screen.queryByText(/never sent to the geocoder/)).not.toBeInTheDocument();
+});
+
+test('an unsaved address (no id) asks to save first', () => {
+  renderWithContact([addr()]);
+  expect(findButton()).toBeDisabled();
+  expect(screen.getByText(/Save this address first/)).toBeInTheDocument();
+});
+
+test('without a contact id (creating) the action is disabled with the save-first reason', () => {
+  renderWithContact([addr({ id: 'a' })], {});
+  expect(findButton()).toBeDisabled();
+  expect(screen.getByText(/Save this address first/)).toBeInTheDocument();
+});
+
+test('sensitivity reason takes precedence over save-first', () => {
+  renderWithContact([addr({ sensitivity: 'private' })]);
+  expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
+  expect(screen.queryByText(/Save this address first/)).not.toBeInTheDocument();
 });
