@@ -17,6 +17,8 @@ import com.squareup.moshi.JsonClass
  *  - [apiContractVersion] is the API contract generation the server speaks
  *    ("v1" while the API is on /api/v1); announced before any client has to
  *    react to it, so it is parsed and retained but not yet acted on.
+ *  - [commit] / [buildDate] are the server's stamped build identity (issue
+ *    #1420, Settings > About); absent on an unstamped or older server.
  *  - [deployment] is "server" or "embedded" (ADR 0028 Decision 2, issue
  *    #1263); absent on an older server.
  *  - [capabilities] is the surface-token list the deployment exposes. Absent on
@@ -30,6 +32,8 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class ServerHealth(
     val version: String? = null,
+    val commit: String? = null,
+    @Json(name = "build_date") val buildDate: String? = null,
     @Json(name = "api_contract_version") val apiContractVersion: String? = null,
     @Json(name = "min_client_version") val minClientVersion: String? = null,
     val deployment: String? = null,

@@ -697,6 +697,8 @@ fun SettingsContent(
             Text(stringResource(R.string.custom_links_title))
         }
 
+        state.buildInfo?.let { AboutSection(it, state) }
+
         val loggingOutLabel = stringResource(R.string.a11y_state_saving)
         Button(
             onClick = { confirmLogout = true },
@@ -778,6 +780,50 @@ fun SettingsContent(
                 }
             },
         )
+    }
+}
+
+/**
+ * Issue #1420: which build is running — version name, version code (the only
+ * thing that tells release candidates apart), build type/flavor (a debug or
+ * `.localtest` build is visibly not the release), optional commit/build date,
+ * and the active server's version. The server lookup is informational: a
+ * failure (or the wait) shows a dash and the rest of Settings is unaffected.
+ */
+@Composable
+private fun AboutSection(info: com.mycorrhizal.crm.domain.about.AppBuildInfo, state: SettingsUiState) {
+    val context = LocalContext.current
+    val dash = stringResource(R.string.settings_value_placeholder)
+    Text(
+        stringResource(R.string.settings_about),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.semantics { heading() },
+    )
+    InfoRow(stringResource(R.string.settings_about_version), info.versionName)
+    InfoRow(stringResource(R.string.settings_about_version_code), info.versionCode.toString())
+    InfoRow(stringResource(R.string.settings_about_build_type), AboutDetails.buildLabel(info))
+    info.commit?.let { InfoRow(stringResource(R.string.settings_about_commit), it) }
+    info.buildDate?.let { InfoRow(stringResource(R.string.settings_about_built), it) }
+    val serverVersion = state.serverHealth?.version?.takeIf { it.isNotBlank() }
+    InfoRow(
+        stringResource(R.string.settings_about_server_version),
+        serverVersion?.let { AboutDetails.versionWithCommit(it, state.serverHealth?.commit) } ?: dash,
+    )
+    state.serverHealth?.buildDate?.takeIf { it.isNotBlank() }?.let {
+        InfoRow(stringResource(R.string.settings_about_server_built), it)
+    }
+    val label = stringResource(R.string.settings_about_copy)
+    OutlinedButton(
+        onClick = {
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+            clipboard.setPrimaryClip(
+                android.content.ClipData.newPlainText(label, AboutDetails.format(info, state.serverHealth)),
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(label)
     }
 }
 

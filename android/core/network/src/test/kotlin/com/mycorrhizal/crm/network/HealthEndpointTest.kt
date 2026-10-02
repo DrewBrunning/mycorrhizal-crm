@@ -61,7 +61,7 @@ class HealthEndpointTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"status":"healthy","version":"0.6.10","commit":"abc1234",
+                    """{"status":"healthy","version":"0.6.10","commit":"abc1234","build_date":"2026-10-02T10:00:00Z",
                         "api_contract_version":"v1","min_client_version":"0.6.0"}""",
                 ),
         )
@@ -71,6 +71,9 @@ class HealthEndpointTest {
         assertEquals("0.6.10", health.version)
         assertEquals("v1", health.apiContractVersion)
         assertEquals("0.6.0", health.minClientVersion)
+        // Issue #1420: build identity for Settings > About.
+        assertEquals("abc1234", health.commit)
+        assertEquals("2026-10-02T10:00:00Z", health.buildDate)
     }
 
     @Test
@@ -88,6 +91,8 @@ class HealthEndpointTest {
         assertEquals("0.5.0", health.version)
         assertNull(health.minClientVersion)
         assertNull(health.apiContractVersion)
+        assertNull(health.commit)
+        assertNull(health.buildDate)
     }
 
     @Test
