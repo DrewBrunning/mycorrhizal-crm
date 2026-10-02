@@ -127,11 +127,15 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"DELETE /api/v1/reminders/:id":   enforced("/api/v1/reminders/"+s.reminder, nil),
 
 		// === Toggles on revision-bearing entities (ADR 0008 exclusion) ===
-		"POST /api/v1/contacts/:id/archive":    exempt(reasonToggle),
-		"POST /api/v1/contacts/:id/unarchive":  exempt(reasonToggle),
-		"POST /api/v1/contacts/:id/favorite":   exempt(reasonToggle),
-		"POST /api/v1/contacts/:id/unfavorite": exempt(reasonToggle),
-		"POST /api/v1/reminders/:id/complete":  exempt(reasonToggle),
+		"POST /api/v1/contacts/:id/archive":   exempt(reasonToggle),
+		"POST /api/v1/contacts/:id/unarchive": exempt(reasonToggle),
+		"POST /api/v1/contacts/:id/favorite":  exempt(reasonToggle),
+		// ADR 0031: an explicit lookup action with no request body to conflict
+		// over; it persists through the contact's own revision CAS, so a
+		// concurrent edit surfaces as a 412 rather than a lost write.
+		"POST /api/v1/contacts/:id/addresses/:addressId/geocode": exempt(reasonAction),
+		"POST /api/v1/contacts/:id/unfavorite":                   exempt(reasonToggle),
+		"POST /api/v1/reminders/:id/complete":                    exempt(reasonToggle),
 		// Issue #352: "confirm still current" is the same shape as completing
 		// a reminder — a toggle-like action on a non-revision-bearing entity.
 		"POST /api/v1/data-decay-policies/:id/verify": exempt(reasonToggle),

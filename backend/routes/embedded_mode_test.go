@@ -53,6 +53,7 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"POST /api/v1/password-reset/request",
 		"POST /api/v1/password-reset/confirm",
 		"GET /api/v1/auth/oidc/config",
+		"POST /api/v1/contacts/:id/addresses/:addressId/geocode", // ADR 0031: outbound geocoder, absent like Immich/Paperless
 		"GET /api/v1/users/2fa/status",
 		"POST /api/v1/users/2fa/setup",
 		"GET /api/v1/api-tokens",
@@ -86,6 +87,7 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"GET /api/v1/export",
 		"GET /api/v1/search",
 		"POST /api/v1/logout",
+		"GET /api/v1/config/map", // ADR 0031: the Android map needs the tile style, and it touches no integration
 	}
 	for _, route := range enabled {
 		require.Truef(t, got[route], "%s must stay registered in embedded mode", route)
@@ -111,7 +113,25 @@ func TestRegisterRoutes_ServerKeepsNetworkSurfaces(t *testing.T) {
 		"POST /api/v1/login",
 		"GET /api/v1/api-tokens",
 		"GET /api/v1/webhooks",
+		"GET /api/v1/config/map",
+		"POST /api/v1/contacts/:id/addresses/:addressId/geocode",
 	} {
 		require.Truef(t, got[route], "server mode must keep %s", route)
 	}
+}
+
+// A hand-built Config that slipped past Validate with a keyless maptiler
+// provider must not take route registration down: the geocode route is still
+// registered, with geocoding disabled (NewGeocoder refuses, the handler answers
+// 422 "not enabled").
+func TestRegisterRoutes_MisconfiguredGeocoderStillRegistersDisabledRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	cfg := testConfig()
+	cfg.GeocoderProvider = config.GeocoderProviderMapTiler // no GeocoderAPIKey
+	require.NotPanics(t, func() { RegisterRoutes(router, cfg, db, nil) })
+	require.True(t, routeSet(t, router)["POST /api/v1/contacts/:id/addresses/:addressId/geocode"])
 }

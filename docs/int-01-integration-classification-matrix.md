@@ -94,6 +94,7 @@ decided in one place.
 | [CardDAV contact sync](#carddav) | optional | bidirectional | interactive | shared | silent-staleness | 60s | guarded-when-enabled | No in-call retry. |
 | [CalDAV calendar sync](#caldav) | optional | bidirectional | scheduled | shared | silent-staleness | 60s | guarded-when-enabled | No in-call retry. |
 | [Immich photo enrichment](#immich) | optional | outbound | scheduled | enrichment | degraded-feature | 30s | guarded-always | No in-call retry. |
+| [Address geocoding (contact map)](#geocoder) | optional | outbound | interactive | enrichment | blocked-workflow | 15s | guarded-always | No in-call retry — the lookup is inline in a user request. |
 | [Paperless-ngx document links](#paperless) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — the call is inline in a user request. |
 | [Seafile file storage](#seafile) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; the request fails with a mapped error and the user retries. |
 | [Generic WebDAV storage](#webdav) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; fails with a mapped error and the user retries. |
@@ -118,7 +119,7 @@ claiming a guarded posture actually references `SafeDialContext` in its source.
 
 | Posture | Meaning | Integrations |
 |---|---|---|
-| `guarded-always` | every connection through `SafeDialContext`, unconditionally | `immich`, `paperless`, `seafile`, `webdav`, `update-check` |
+| `guarded-always` | every connection through `SafeDialContext`, unconditionally | `immich`, `geocoder`, `paperless`, `seafile`, `webdav`, `update-check` |
 | `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc` |
 | `fixed-endpoint` | no user-supplied URL — compiled-in vendor/operator host, no SSRF surface | `email-resend`, `email-smtp`, `hibp` |
 
@@ -229,6 +230,33 @@ Matches contacts to Immich people and pulls a face thumbnail as a profile photo.
 | `malformed-response` | transient | Unparseable/oversized body → that person is skipped with a logged warning; enrichment already applied is not rolled back and nothing new is written from a bad body. |
 | `rate-limited` | transient | 429/503 → back off honoring Retry-After; the run ends and resumes next interval. |
 | `remote-resource-deleted` | permanent-until-human | A person/asset now 404 → drop the stale match link and, if the photo came from it, mark the photo for refresh; never delete the contact. |
+
+### Address geocoding (contact map)
+
+<a id="geocoder"></a>
+
+Resolves ONE explicitly-chosen postal address to a coordinate via the operator-selected provider (Nominatim or MapTiler) for the contact map (ADR 0031).
+
+- **Criticality** — optional. Default off (GEOCODER_PROVIDER=none). Coordinates can always be entered by hand or arrive with an imported card; the map plots whatever already has one.
+- **Direction** — outbound. Address text (street, city, region, postcode, country — never PO box/apartment/floor) goes out; a coordinate comes back. Map tiles are fetched by the client straight from MAP_TILE_STYLE_URL's host and never carry an address.
+- **Cadence** — interactive. Only when a user presses 'find coordinates' on one address (POST /contacts/:id/addresses/:addressId/geocode). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.
+- **Data authority** — enrichment. The geocoder adds a derived coordinate to an address we own and keeps no state we depend on. Removing it leaves every stored coordinate in place; an in-memory cache (lost on restart) bounds repeat lookups.
+- **Failure impact** — blocked-workflow. The user presses 'find coordinates' and gets an error; they can retry later or enter coordinates by hand. Nothing else depends on it.
+- **Timeout** — 15s. services.geocoderRequestTimeout on the http.Client (also TLSHandshakeTimeout 10s / ResponseHeaderTimeout 10s on the transport); the nominatim 1 req/s throttle wait is additionally bounded by the request context.
+- **Retry budget** — No in-call retry — the lookup is inline in a user request. The request fails with a mapped error and the user retries; a failed lookup is never cached. Nominatim lookups are self-throttled to its 1 req/s policy so a retry cannot breach it.
+- **SSRF** — guarded-always. geocoderPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport, unconditionally: the provider hosts are fixed public endpoints, so there is no private-address use case to preserve. Redirects are not followed.
+- **Source** — `backend/services/geocoder_client.go`, `backend/services/geocoder.go`
+- **Failure behavior verified by** — #465 (INT-02) shared client suite (integration_failure_behavior_test.go); geocoder_client_test.go; geocoder_test.go; controllers/contact_address_controller_test.go.
+
+| Failure mode | Class | Required behavior |
+|---|---|---|
+| `unreachable-host` | transient | The request returns a mapped 503 'Geocoder could not be reached'; the address and its stored coordinate are untouched and nothing is cached. |
+| `timeout` | transient | The 15s deadline fires; the request returns the same mapped 503; no coordinate is written. |
+| `auth-expiry` | permanent-until-human | 401 (MapTiler key revoked or wrong) → mapped 503 naming GEOCODER_API_KEY; stored coordinates are kept; an operator must fix the key (#467). |
+| `authz-revoked` | permanent-until-human | 403 → same mapped state as auth expiry (key not permitted for geocoding). |
+| `malformed-response` | transient | Unparseable body, or a coordinate outside lat -90..90 / lon -180..180 → mapped 503 'unusable response'; nothing is stored from a partial parse. |
+| `rate-limited` | transient | 429 → mapped 503 asking the user to retry shortly; the nominatim throttle already keeps this instance under its 1 req/s ceiling, so a 429 means the shared public instance is busy. |
+| `remote-resource-deleted` | permanent-until-human | 404/410 from the provider endpoint → mapped 503; a 200 with no match is a distinct 422 'no match' and leaves any existing coordinate untouched. |
 
 ### Paperless-ngx document links
 

@@ -162,6 +162,11 @@ type Address struct {
 	DefaultSeparator string             `json:"defaultSeparator,omitempty"`
 	PhoneticSystem   string             `json:"phoneticSystem,omitempty"`
 	PhoneticScript   string             `json:"phoneticScript,omitempty"`
+	// Sensitivity (normal|private|secret; empty means normal) is a CRM-side
+	// classification with no RFC 9553/6350 home: no exporter carries it. It
+	// gates the explicit per-address geocode lookup (ADR 0031) — an address
+	// above normal is never sent to the geocoder without an explicit opt-in.
+	Sensitivity string `json:"sensitivity,omitempty"`
 }
 
 // AddressComponent is one labeled piece of an Address (e.g. "locality" ->

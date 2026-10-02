@@ -5,6 +5,7 @@ import (
 	"mycorrhizal/carddav"
 	"mycorrhizal/config"
 	"mycorrhizal/controllers"
+	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -114,6 +115,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		v1.POST("/logout", func(c *gin.Context) {
 			controllers.LogoutUser(c, cfg, oidcProvider)
 		})
+		// Contact map bootstrap (ADR 0031 amendment, issue #694): the MapLibre
+		// style URL, readable before a session exists. Public because the
+		// value is not secret (clients fetch tiles from it directly); kept to
+		// that single field. Registered for the embedded deployment too — the
+		// Android map needs it and it touches no network integration.
+		v1.GET("/config/map", controllers.MapConfigHandler(cfg))
 		// Storage-only embedded server (ADR 0028 amendment, issue #1367): public password-strength check; local mode has no password surface.
 		if !cfg.IsEmbedded() {
 			v1.POST("/check-password-strength", middleware.AuthRateLimitMiddleware(), controllers.CheckPasswordStrength)
@@ -232,6 +239,20 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// resolving one is the POST /life-event-suggestions/resolve route.
 			protected.GET("/contacts/:id/life-event-suggestions", controllers.GetLifeEventSuggestions)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
+			// ADR 0031 (issue #694): the one explicit per-address geocode
+			// lookup — the only path that ever sends address text to the
+			// geocoder. An outbound integration, so absent in the embedded
+			// deployment like Immich/Paperless/etc.
+			if !cfg.IsEmbedded() {
+				geocoder, err := services.NewGeocoder(cfg)
+				if err != nil {
+					// Config validation already rejects a provider with a missing
+					// key at boot; this is a belt for a hand-built Config.
+					logger.Error().Err(err).Msg("geocoder misconfigured; geocoding disabled")
+					geocoder = &services.Geocoder{}
+				}
+				protected.POST("/contacts/:id/addresses/:addressId/geocode", controllers.GeocodeContactAddress(geocoder))
+			}
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
 			protected.POST("/contacts/:id/unarchive", controllers.UnarchiveContact)

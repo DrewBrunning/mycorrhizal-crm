@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/config"
 	"mycorrhizal/internal/faults"
 
 	"github.com/stretchr/testify/assert"
@@ -79,6 +81,21 @@ type clientSentinels struct {
 
 func integrationClientCases() []integrationClientCase {
 	return []integrationClientCase{
+		{
+			name:    "geocoder",
+			seam:    faultGeocoderRequest,
+			timeout: &geocoderRequestTimeout,
+			build: func(t *testing.T, baseURL string) func() error {
+				c := newGeocoderClient(config.GeocoderProviderNominatim, "", baseURL, http.DefaultTransport, nil)
+				return func() error {
+					_, err := c.Geocode(context.Background(), "1 Main St")
+					return err
+				}
+			},
+			// 404/410 → ErrGeocoderNotFound (the provider endpoint is gone). The
+			// 200-with-no-match case is ErrGeocoderNoResult, covered separately.
+			sentinels: clientSentinels{ErrGeocoderUnreachable, ErrGeocoderUnauthorized, ErrGeocoderNotFound},
+		},
 		{
 			name:    "paperless",
 			seam:    faultPaperlessRequest,
