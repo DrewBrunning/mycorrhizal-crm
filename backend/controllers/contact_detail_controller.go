@@ -52,8 +52,19 @@ func GetContactDetail(c *gin.Context) {
 // (see the inline comment on the notes query for the reasoning); the
 // remaining blocks stay unpaginated by design (M4 design decision 6).
 func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config) (*models.ContactDetailResponse, error) {
+	return buildContactDetailScoped(db, userID, contact, cfg, false,
+		[]string{models.RelationshipSensitivitySecret})
+}
+
+// buildContactDetailScoped is buildContactDetail with the sensitivity scope
+// supplied by the caller: includeSensitive is threaded into the contact
+// record's projections, and excludedEdgeSensitivities is the set of
+// relationship-edge tiers left out of relationship_edges. The REST handler
+// passes (false, [secret]); the MCP get_contact tool passes a stricter scope
+// by default (ADR 0032 §4).
+func buildContactDetailScoped(db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config, includeSensitive bool, excludedEdgeSensitivities []string) (*models.ContactDetailResponse, error) {
 	detail := &models.ContactDetailResponse{
-		Contact: models.NewContactRecordResponse(contact, cfg.ProfilePhotoDir, db),
+		Contact: models.NewContactRecordResponseFiltered(contact, cfg.ProfilePhotoDir, db, includeSensitive),
 	}
 
 	var user models.User
@@ -95,7 +106,7 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 		return nil, err
 	}
 
-	rels, err := resolveConfirmedRelationships(db, userID, contact)
+	rels, err := resolveConfirmedRelationshipsExcluding(db, userID, contact, excludedEdgeSensitivities)
 	if err != nil {
 		return nil, err
 	}

@@ -79,6 +79,7 @@ const (
 	reasonAction       = "per-row action endpoint on a non-revisioned surface (undo / rotate / test / sync / discuss / accept / dismiss / restore)"
 	reasonAuth         = "authentication / account endpoint — no domain row with a revision"
 	reasonAdmin        = "admin endpoint — operates on users/system, not a revision-bearing domain row"
+	reasonMCPReadOnly  = "MCP JSON-RPC endpoint (ADR 0032) — v1 exposes read-only tools, so no row is ever replaced"
 	reasonDavProtocol  = "CardDAV/CalDAV protocol handler — keeps its own If-Match path (carddav/backend.go), covered by carddav tests"
 )
 
@@ -349,6 +350,9 @@ func buildCWTable(s seeded) map[string]cwRow {
 		// === Uploads (multipart, not a JSON row replace) ===
 		"POST /api/v1/contacts/:id/attachments":     exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/:id/profile_picture": exempt(reasonCollectionOp),
+
+		// === MCP (issue #176): read-only tools, no row writes ===
+		"POST /mcp": exempt(reasonMCPReadOnly),
 
 		// === DAV protocol ===
 		"PUT /carddav/*path":    exempt(reasonDavProtocol),

@@ -319,7 +319,9 @@ func TestOpenAPIRouteCoverage(t *testing.T) {
 // these routes never register here anyway; the guard is belt-and-suspenders
 // in case the config changes.
 func isCardDAVRoute(path string) bool {
-	return path == "/.well-known/carddav" || path == "/carddav/*path"
+	// /mcp (issue #176, ADR 0032) is likewise a separate protocol (JSON-RPC
+	// over MCP streamable-HTTP), not a REST operation.
+	return path == "/.well-known/carddav" || path == "/carddav/*path" || path == "/mcp"
 }
 
 type routeKeyParts struct {

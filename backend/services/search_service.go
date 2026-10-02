@@ -199,6 +199,16 @@ func ContactFTSMatch(term string) (expr string, ok bool) {
 // half) — the caller is responsible for verifying the household belongs to
 // the user.
 func Search(db *gorm.DB, userID uint, term string, limit int, householdID *string) (*SearchResult, error) {
+	return SearchPage(db, userID, term, limit, 0, householdID)
+}
+
+// SearchPage is Search with an offset applied to each of the three result
+// sections (the MCP search_contacts tool's pagination); offset 0 is exactly
+// Search. A negative offset is treated as 0.
+func SearchPage(db *gorm.DB, userID uint, term string, limit, offset int, householdID *string) (*SearchResult, error) {
+	if offset < 0 {
+		offset = 0
+	}
 	result := &SearchResult{
 		Query:      strings.TrimSpace(term),
 		Contacts:   []SearchContactHit{},
@@ -266,7 +276,7 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 		Snippet string
 	}
 	contactArgs := append([]interface{}{contactMatch, userID, userID}, householdArgs...)
-	contactArgs = append(contactArgs, limit)
+	contactArgs = append(contactArgs, limit, offset)
 	err := db.Raw(`
 		SELECT c.*, snippet(contacts_fts, 0, '…', '…', '…', 20) AS snippet
 		FROM contacts_fts
@@ -276,7 +286,7 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 		  AND c.user_id = ?
 		  AND c.deleted_at IS NULL`+householdClause+`
 		ORDER BY contacts_fts.rank
-		LIMIT ?`,
+		LIMIT ? OFFSET ?`,
 		contactArgs...,
 	).Scan(&contactHits).Error
 	if err != nil {
@@ -307,8 +317,8 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 		  AND n.user_id = ?
 		  AND n.deleted_at IS NULL
 		ORDER BY notes_fts.rank
-		LIMIT ?`,
-		match, userID, userID, limit,
+		LIMIT ? OFFSET ?`,
+		match, userID, userID, limit, offset,
 	).Scan(&noteHits).Error
 	if err != nil {
 		return nil, fmt.Errorf("search notes: %w", err)
@@ -336,8 +346,8 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 		  AND a.user_id = ?
 		  AND a.deleted_at IS NULL
 		ORDER BY activities_fts.rank
-		LIMIT ?`,
-		match, userID, userID, limit,
+		LIMIT ? OFFSET ?`,
+		match, userID, userID, limit, offset,
 	).Scan(&activityHits).Error
 	if err != nil {
 		return nil, fmt.Errorf("search activities: %w", err)

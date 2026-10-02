@@ -559,6 +559,9 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/graph":             {class: classProtected},
 		"GET /api/v1/graph/connections": {class: classProtected},
 		"GET /api/v1/search":            {class: classProtected},
+		// Issue #176 (ADR 0032): MCP streamable-HTTP endpoint behind the same
+		// AuthMiddleware; tools run as the authenticated user.
+		"POST /mcp": {class: classProtected},
 
 		// --- api tokens -----------------------------------------------------
 		"GET /api/v1/api-tokens":             {class: classProtected},
