@@ -63,16 +63,26 @@ type ContactIMPP struct {
 // Floor (RFC 9554). The remaining nine RFC 9553 kinds (room, building, block,
 // number, district, subdistrict, direction, landmark, separator) stay
 // nested-only — no editor demand, and they would make the form unusable.
+//
+// ID, Coordinates and Sensitivity were added for the contact map (ADR 0031,
+// issue #694). ID is the stable per-address key the geocode route uses; it is
+// minted server-side (deriveDenormalized) when absent, so clients may omit it
+// on create. Coordinates is a geo: URI exactly as contactmodel.Address
+// carries it (no lat/lng conversion). Sensitivity is normal|private|secret;
+// empty means normal.
 type ContactAddress struct {
-	Type      string `json:"type" validate:"max=30"`
-	Street    string `json:"street" validate:"max=500"`
-	City      string `json:"city" validate:"max=200"`
-	Region    string `json:"region" validate:"max=200"`
-	Postal    string `json:"postal" validate:"max=30"`
-	Country   string `json:"country" validate:"max=100"`
-	POBox     string `json:"pobox" validate:"max=200"`
-	Apartment string `json:"apartment" validate:"max=200"`
-	Floor     string `json:"floor" validate:"max=100"`
+	ID          string `json:"id,omitempty" validate:"max=128"`
+	Coordinates string `json:"coordinates,omitempty" validate:"omitempty,max=100,geouri"`
+	Sensitivity string `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+	Type        string `json:"type" validate:"max=30"`
+	Street      string `json:"street" validate:"max=500"`
+	City        string `json:"city" validate:"max=200"`
+	Region      string `json:"region" validate:"max=200"`
+	Postal      string `json:"postal" validate:"max=30"`
+	Country     string `json:"country" validate:"max=100"`
+	POBox       string `json:"pobox" validate:"max=200"`
+	Apartment   string `json:"apartment" validate:"max=200"`
+	Floor       string `json:"floor" validate:"max=100"`
 }
 
 type Contact struct {
@@ -390,6 +400,7 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 // assignment here replaces a field wholesale rather than mutating a shared
 // backing array.
 func (c *Contact) deriveDenormalized() {
+	c.ensureAddressIDs(c.cardSetDirectly)
 	if len(c.Emails) > 0 {
 		c.Email = c.Emails[0].Value
 	}

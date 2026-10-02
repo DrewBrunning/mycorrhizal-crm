@@ -43,6 +43,7 @@ func TestPopulate_CreatesContactsAndRoundTrips(t *testing.T) {
 
 		want := canonicalize(t, recs[i])
 		gotRec := canonicalize(t, got)
+		adoptMintedAddressIDs(t, &want.Card, &gotRec.Card)
 		assert.Equal(t, want.Card, gotRec.Card, "contact %d: card did not round-trip", i)
 		assert.Equal(t, want.Envelope, gotRec.Envelope, "contact %d: crm envelope did not round-trip", i)
 		assert.Equal(t, want.Passthrough, gotRec.Passthrough, "contact %d: passthrough did not round-trip", i)
@@ -132,4 +133,20 @@ func canonicalize(t *testing.T, rec *contactmodel.Record) *contactmodel.Record {
 	var out contactmodel.Record
 	require.NoError(t, json.Unmarshal(data, &out))
 	return &out
+}
+
+// adoptMintedAddressIDs copies the server-minted address IDs (ADR 0031: every
+// stored address gets a stable ID when its writer supplied none) from got onto
+// the matching want addresses that declared no ID of their own, after
+// asserting a non-empty ID was minted. Everything else about each address must
+// still match field for field.
+func adoptMintedAddressIDs(t *testing.T, want, got *contactmodel.Card) {
+	t.Helper()
+	require.Equal(t, len(want.Addresses), len(got.Addresses), "address count must round-trip")
+	for i := range want.Addresses {
+		require.NotEmpty(t, got.Addresses[i].ID, "address %d: no ID was minted", i)
+		if want.Addresses[i].ID == "" {
+			want.Addresses[i].ID = got.Addresses[i].ID
+		}
+	}
 }

@@ -98,6 +98,9 @@ func CreateContact(c *gin.Context) {
 	if rejectInvalidPeriods(c, input.Card, input.CRM) {
 		return
 	}
+	if rejectInvalidAddressMapFields(c, input.Card) {
+		return
+	}
 
 	contact := models.Contact{UserID: userID, Gender: input.Gender}
 	models.ApplyRecordToContact(&contact, input.ToRecord(), currentConfig(c).ProfilePhotoDir)
@@ -701,6 +704,9 @@ func UpdateContact(c *gin.Context) {
 	}
 
 	if rejectInvalidPeriods(c, input.Card, input.CRM) {
+		return
+	}
+	if rejectInvalidAddressMapFields(c, input.Card) {
 		return
 	}
 

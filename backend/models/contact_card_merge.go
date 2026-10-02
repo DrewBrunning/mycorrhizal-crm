@@ -137,7 +137,7 @@ func mergeCardWithFlat(loaded, fresh contactmodel.Card) contactmodel.Card {
 	merged.Emails = mergeProjectedArray(loaded.Emails, fresh.Emails, projectEmail)
 	merged.Phones = mergeProjectedArray(loaded.Phones, fresh.Phones, projectPhone)
 	merged.ImppAddresses = mergeProjectedArray(loaded.ImppAddresses, fresh.ImppAddresses, projectImpp)
-	merged.Addresses = mergeProjectedArray(loaded.Addresses, fresh.Addresses, projectAddress)
+	merged.Addresses = mergeAddresses(loaded.Addresses, fresh.Addresses)
 	merged.Anniversaries = mergeAnniversaries(loaded.Anniversaries, fresh.Anniversaries)
 	merged.Links = mergeProjectedArray(loaded.Links, fresh.Links, projectLink)
 	merged.Media = mergeMedia(loaded.Media, fresh.Media)
@@ -165,6 +165,32 @@ func mergeProjectedArray[T, F any](loaded, fresh []T, proj func(T) F) []T {
 			result[i] = loaded[i]
 		} else {
 			result[i] = fresh[i]
+		}
+	}
+	return result
+}
+
+// mergeAddresses is mergeProjectedArray for addresses, with one difference:
+// an entry ID on only ONE side does not make the projections differ. The
+// flat shape gained an ID only for the contact map (ADR 0031), so a fresh
+// derivation from a flat entry that has none (a writer that predates it) must
+// not read as "the caller edited this address" and discard the loaded entry's
+// ID, its address Period (CRMEnvelope.Periods keys on it) and its unprojected
+// components. When both sides carry an ID they must agree, like any other
+// projected field.
+func mergeAddresses(loaded, fresh []contactmodel.Address) []contactmodel.Address {
+	result := make([]contactmodel.Address, len(fresh))
+	for i := range fresh {
+		result[i] = fresh[i]
+		if i >= len(loaded) {
+			continue
+		}
+		l, f := projectAddress(loaded[i]), projectAddress(fresh[i])
+		if l.ID == "" || f.ID == "" {
+			l.ID, f.ID = "", ""
+		}
+		if reflect.DeepEqual(l, f) {
+			result[i] = loaded[i]
 		}
 	}
 	return result

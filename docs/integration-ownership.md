@@ -73,6 +73,7 @@ integration in the classification registry to its <a id> on this page. -->
 | [CardDAV sync](integration-ownership.html#carddav) | User (Settings) | Local contacts + remote address book | Sync failure / terminal alert in Settings → Data |
 | [CalDAV sync](integration-ownership.html#caldav) | User (Settings) | Local activities + remote calendar | Sync failure / terminal alert in Settings → Data |
 | [Immich](integration-ownership.html#immich) | User (Settings) | Remote; links + timeline locally | Missing enrichment / dead photo links |
+| [Address geocoding](integration-ownership.html#geocoder) | Operator (`.env`) | None (cache in memory only; off by default) | "Find coordinates" fails; the map still plots stored coordinates |
 | [Paperless](integration-ownership.html#paperless) | User (Settings) | Remote; links + cached titles locally | Links stop resolving |
 | [Seafile](integration-ownership.html#seafile) | User (Settings) | Remote; links locally | Links stop resolving |
 | [WebDAV/Nextcloud](integration-ownership.html#webdav) | User (Settings) | Remote; links locally | Links stop resolving |
@@ -188,6 +189,43 @@ integration in the classification registry to its <a id> on this page. -->
   never modified.
 - **Tested versions.** No real Immich server is exercised in CI (in-process
   fakes only). Treat as expected-to-work against current stable Immich.
+
+### Address geocoding (contact map)
+
+<a id="geocoder"></a>
+
+- **What it does.** Resolves **one** postal address to a coordinate when a user
+  presses "find coordinates" on it (ADR 0031). Only that address's street, city,
+  region, postcode and country go out — never the PO box/apartment/floor, the
+  contact's name, or any other field. It is never automatic and never bulk, and
+  an address marked `private` or `secret` is refused unless the request carries
+  `include_sensitive=true`. The stored result is a normal `geo:` coordinate on
+  the address. (Map *tiles* are a separate flow: the browser/app fetches them
+  from the `MAP_TILE_STYLE_URL` host and the requests carry only the viewport.)
+- **Optional.** Yes, and **off by default** (`GEOCODER_PROVIDER=none`): until an
+  operator turns it on, no address text leaves the instance.
+- **Configured by.** The **operator** (`.env`): `GEOCODER_PROVIDER` =
+  `nominatim` (the public OpenStreetMap instance; no key; this server throttles
+  itself to its 1 request/second policy) or `maptiler` (`GEOCODER_API_KEY`
+  required). One provider per instance, shared by all users. SSRF posture:
+  `guarded-always` — see [The SSRF boundary](#the-ssrf-boundary); there is no
+  `*_BLOCK_PRIVATE_URLS` flag because the provider hosts are fixed public ones.
+- **Ownership.** The provider owns its own copy of the text it was sent and its
+  own retention of it; this app keeps no persisted copy (only an in-memory cache
+  of the returned coordinate, keyed by a hash, bounded and lost on restart).
+  Choose a provider whose policy you accept for your users' addresses.
+- **If it is unavailable.** "Find coordinates" returns an error (503, or 422
+  when geocoding is off or the provider has no match); coordinates already
+  stored — and the map — are unaffected. Nothing is retried automatically.
+- **Diagnosing it.** The error text names the class of failure (unreachable,
+  credentials rejected — check `GEOCODER_API_KEY` —, rate limited, unusable
+  response); the detail goes to the server log, never to the browser, and the
+  MapTiler key is stripped from it.
+- **Removing it.** Set `GEOCODER_PROVIDER=none`. Stored coordinates stay; the
+  provider's copy of previously-sent text is outside this app's reach.
+- **Tested versions.** No real provider is called in CI (in-process fakes).
+  Nominatim's `jsonv2` search and MapTiler's v1 geocoding response shapes are the
+  ones parsed.
 
 ### Paperless document links
 

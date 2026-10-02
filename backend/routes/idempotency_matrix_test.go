@@ -139,6 +139,9 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/relationship-edges/suggest",
 		"POST /api/v1/contacts/bulk",
 		"POST /api/v1/contacts/merge",
+		// ADR 0031: a repeat resolves the same address to the same stored
+		// coordinate, and the in-memory cache absorbs the repeat lookup.
+		"POST /api/v1/contacts/:id/addresses/:addressId/geocode",
 	} {
 		t[k] = exempt(idemReasonQuery)
 	}

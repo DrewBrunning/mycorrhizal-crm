@@ -144,12 +144,18 @@ type Config struct {
 	AuthSprayIdentifierThreshold int  `cfgreg:"env=AUTH_SPRAY_IDENTIFIER_THRESHOLD;type=int;range=>=1, invalid/low values clamped to 15 with a WARN;default=15;required=false;restart=true;desc=Distinct identifiers within the window that arm the signal"`  // Distinct identifiers within the window that arm the signal
 	AuthSprayThrottleSeconds     int  `cfgreg:"env=AUTH_SPRAY_THROTTLE_SECONDS;type=int;range=>=1, invalid/low values clamped to 300 with a WARN;default=300;required=false;restart=true;desc=How long a tripped signal refuses unknown sources, in seconds"` // How long a tripped signal refuses unknown sources
 
-	ImmichSyncIntervalHours       int    `cfgreg:"env=IMMICH_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled Immich enrichment sync, in hours"`
-	ImmichBlockPrivateURLs        bool   `cfgreg:"env=IMMICH_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Immich fetches to private/loopback addresses"`
-	PaperlessBlockPrivateURLs     bool   `cfgreg:"env=PAPERLESS_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Paperless-ngx fetches to private/loopback addresses"`
-	SeafileBlockPrivateURLs       bool   `cfgreg:"env=SEAFILE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Seafile fetches to private/loopback addresses"`
-	WebDAVBlockPrivateURLs        bool   `cfgreg:"env=WEBDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses"`
-	MonicaBlockPrivateURLs        bool   `cfgreg:"env=MONICA_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Monica import-assistant fetches to private/loopback addresses"`
+	ImmichSyncIntervalHours   int  `cfgreg:"env=IMMICH_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled Immich enrichment sync, in hours"`
+	ImmichBlockPrivateURLs    bool `cfgreg:"env=IMMICH_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Immich fetches to private/loopback addresses"`
+	PaperlessBlockPrivateURLs bool `cfgreg:"env=PAPERLESS_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Paperless-ngx fetches to private/loopback addresses"`
+	SeafileBlockPrivateURLs   bool `cfgreg:"env=SEAFILE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Seafile fetches to private/loopback addresses"`
+	WebDAVBlockPrivateURLs    bool `cfgreg:"env=WEBDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses"`
+	MonicaBlockPrivateURLs    bool `cfgreg:"env=MONICA_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Monica import-assistant fetches to private/loopback addresses"`
+	// Contact map (ADR 0031, issue #694). Instance-level, not per-user: every
+	// user on an instance looks at the same tiles, and a household instance has
+	// one operator holding one geocoding budget/key.
+	MapTileStyleURL               string `cfgreg:"env=MAP_TILE_STYLE_URL;type=string;range=absolute http(s) MapLibre style JSON URL;default=https://tiles.openfreemap.org/styles/liberty;required=false;restart=true;desc=MapLibre style JSON URL the web and Android contact map load tiles from (served to clients by GET /api/v1/config/map)"`
+	GeocoderProvider              string `cfgreg:"env=GEOCODER_PROVIDER;type=string;range=none, nominatim or maptiler;default=none;required=false;restart=true;desc=Geocoding provider for the explicit per-address find-coordinates action; none disables geocoding entirely, otherwise the address text of that one address is sent to the provider"`
+	GeocoderAPIKey                string `cfgreg:"env=GEOCODER_API_KEY;type=string;range=required when GEOCODER_PROVIDER=maptiler;default=;required=false;restart=true;desc=API key for the maptiler geocoder (unused for nominatim, which takes no key)"`
 	FCMServiceAccountFile         string `cfgreg:"env=FCM_SERVICE_ACCOUNT_FILE;type=string;range=path to an existing file;default=;required=false;restart=true;desc=Path to the Firebase service-account JSON for FCM mobile push"`
 	DBIntegrityCheckEnabled       bool   `cfgreg:"env=DB_INTEGRITY_CHECK_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the scheduled live-DB PRAGMA integrity_check job"`
 	DBIntegrityCheckIntervalHours int    `cfgreg:"env=DB_INTEGRITY_CHECK_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=24;required=false;restart=true;desc=Interval for the scheduled DB integrity check, in hours"`
@@ -449,6 +455,8 @@ func baseConfig() *Config {
 		AuthSprayIdentifierThreshold:  15,
 		AuthSprayThrottleSeconds:      300,
 		ImmichSyncIntervalHours:       6,
+		MapTileStyleURL:               DefaultMapTileStyleURL,
+		GeocoderProvider:              GeocoderProviderNone,
 		DBIntegrityCheckEnabled:       true,
 		DBIntegrityCheckIntervalHours: 24,
 		DBRestoreDrillEnabled:         true,
@@ -473,6 +481,36 @@ func baseConfig() *Config {
 			Scopes: []string{"openid", "email", "profile"},
 		},
 	}
+}
+
+// Geocoder providers accepted by GEOCODER_PROVIDER (ADR 0031). "none" is the
+// default: no address text ever leaves the instance for geocoding.
+const (
+	GeocoderProviderNone      = "none"
+	GeocoderProviderNominatim = "nominatim"
+	GeocoderProviderMapTiler  = "maptiler"
+)
+
+// DefaultMapTileStyleURL is the OpenFreeMap style the contact map uses when
+// MAP_TILE_STYLE_URL is unset: free hosted vector tiles, no API key.
+const DefaultMapTileStyleURL = "https://tiles.openfreemap.org/styles/liberty"
+
+// EffectiveMapTileStyleURL is the style URL clients should load: the
+// configured MAP_TILE_STYLE_URL, or the OpenFreeMap default when unset.
+func (c *Config) EffectiveMapTileStyleURL() string {
+	if v := strings.TrimSpace(c.MapTileStyleURL); v != "" {
+		return v
+	}
+	return DefaultMapTileStyleURL
+}
+
+// EffectiveGeocoderProvider is GeocoderProvider with the unset value read as
+// GeocoderProviderNone.
+func (c *Config) EffectiveGeocoderProvider() string {
+	if c.GeocoderProvider == "" {
+		return GeocoderProviderNone
+	}
+	return c.GeocoderProvider
 }
 
 // New builds a validated Config from programmatic defaults plus the caller's
@@ -603,6 +641,9 @@ func LoadConfig() *Config {
 	cfg.SeafileBlockPrivateURLs = getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", cfg.SeafileBlockPrivateURLs)
 	cfg.WebDAVBlockPrivateURLs = getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", cfg.WebDAVBlockPrivateURLs)
 	cfg.MonicaBlockPrivateURLs = getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", cfg.MonicaBlockPrivateURLs)
+	cfg.MapTileStyleURL = getEnv("MAP_TILE_STYLE_URL", cfg.MapTileStyleURL)
+	cfg.GeocoderProvider = strings.ToLower(strings.TrimSpace(getEnv("GEOCODER_PROVIDER", cfg.GeocoderProvider)))
+	cfg.GeocoderAPIKey = getEnv("GEOCODER_API_KEY", cfg.GeocoderAPIKey)
 	cfg.FCMServiceAccountFile = getEnv("FCM_SERVICE_ACCOUNT_FILE", cfg.FCMServiceAccountFile)
 	cfg.DBIntegrityCheckEnabled = getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", cfg.DBIntegrityCheckEnabled)
 	cfg.DBIntegrityCheckIntervalHours = checkedInt("DB_INTEGRITY_CHECK_INTERVAL_HOURS", cfg.DBIntegrityCheckIntervalHours)
@@ -1220,6 +1261,34 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "MIN_CLIENT_VERSION",
 			Message: fmt.Sprintf("Invalid minimum client version %q. Must look like a client versionName: major, major.minor, or major.minor.patch, optionally with a -prerelease or +build suffix (e.g. \"0.6.0\" or \"0.6.0-rc.1\").", c.MinClientVersion),
+		})
+	}
+
+	// Contact map (ADR 0031). The tile style URL is handed verbatim to every
+	// client's MapLibre loader, so a garbled one breaks the map for everybody
+	// with no server-side signal; an unknown geocoder provider would otherwise
+	// silently behave as "off" while the operator believes it is on.
+	// An empty value (a hand-built Config that never set the field) means
+	// "use the default" and is accepted, like an empty GEOCODER_PROVIDER.
+	if u, err := url.Parse(strings.TrimSpace(c.MapTileStyleURL)); c.MapTileStyleURL != "" && (err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "") {
+		errors = append(errors, ValidationError{
+			Field:   "MAP_TILE_STYLE_URL",
+			Message: fmt.Sprintf("MAP_TILE_STYLE_URL %q must be an absolute http(s) MapLibre style JSON URL, e.g. %s.", c.MapTileStyleURL, DefaultMapTileStyleURL),
+		})
+	}
+	switch c.GeocoderProvider {
+	case "", GeocoderProviderNone, GeocoderProviderNominatim:
+	case GeocoderProviderMapTiler:
+		if strings.TrimSpace(c.GeocoderAPIKey) == "" {
+			errors = append(errors, ValidationError{
+				Field:   "GEOCODER_API_KEY",
+				Message: "GEOCODER_API_KEY is required when GEOCODER_PROVIDER=maptiler.",
+			})
+		}
+	default:
+		errors = append(errors, ValidationError{
+			Field:   "GEOCODER_PROVIDER",
+			Message: fmt.Sprintf("Invalid GEOCODER_PROVIDER %q. Must be one of: none, nominatim, maptiler.", c.GeocoderProvider),
 		})
 	}
 

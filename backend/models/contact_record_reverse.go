@@ -309,7 +309,7 @@ func applyAddresses(c *Contact, card contactmodel.Card) {
 }
 
 func contactAddressFromNeutral(a contactmodel.Address) ContactAddress {
-	var out ContactAddress
+	out := ContactAddress{ID: a.ID, Coordinates: a.Coordinates, Sensitivity: a.Sensitivity}
 	for _, comp := range a.Components {
 		switch comp.Kind {
 		case "name":

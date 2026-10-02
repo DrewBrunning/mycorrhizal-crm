@@ -722,8 +722,11 @@ func AddressFromContactAddress(a ContactAddress) contactmodel.Address {
 	addComp("country", a.Country)
 
 	addr := contactmodel.Address{
-		Components: components,
-		Full:       FormatAddress(a),
+		ID:          a.ID,
+		Components:  components,
+		Full:        FormatAddress(a),
+		Coordinates: a.Coordinates,
+		Sensitivity: a.Sensitivity,
 	}
 	// Address has no Label field (unlike Email/Phone/Link), so the legacy
 	// free-text Type — which isn't guaranteed to be one of the
