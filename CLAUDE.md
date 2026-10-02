@@ -643,7 +643,7 @@ TOTP 2FA shipped 2026-08-17 (issue #158, PR #179) — recovery codes, rate-limit
 touch CardDAV/API-token or OIDC auth. Not a gap anymore.
 
 **The security checklist is `docs/security/asvs-l2.md`** — OWASP ASVS 4.0.3 L2 (V1–V14) plus the
-API Security Top 10 (2023), each control mapped to `file:line` or a test with a
+API Security Top 10 (2023), each control mapped to `path#anchor` or a test with a
 `satisfied`/`partial`/`not-applicable` status. It is the review anchor: a security-sensitive PR
 **updates the row(s) it touches** (status + citation) in the same commit; if the change can't
 point at a row, it doesn't know what it is changing. N/A rows are written-down decisions (single
@@ -680,14 +680,16 @@ fixed retroactively by pass 1.27 / PR #1110. If commits land between gate-closur
 release dispatch, redo the diff-review for just those before dispatching.
 
 Citations in those docs are gated, not trusted: `cd backend && go run ./cmd/citecheck` proves every
-`file:line` and test-name citation in `asvs-l2.md`/`masvs-l1.md`/`threat-model.md` still resolves and
-that no row is `satisfied` citing nothing. It runs on every PR (unfiltered by path — moving code is
-what orphans a citation). It also gates the harder class — a citation whose line range is still in
-bounds but whose target moved (74 of those before #378) — against `docs/security/citation-drift.ignore`,
-an ignore-list-with-justification like `.trivyignore`: an unlisted candidate fails the build, and so
-does a listed one that no longer matches anything, so dead suppressions can't pile up. Accepting a
-candidate means writing down *why* it is a false positive. `go run ./cmd/citecheck -drift` prints the
-unfiltered listing (accepted entries included) — that's the view a verification pass wants.
+`path#anchor` and test-name citation in `asvs-l2.md`/`masvs-l1.md`/`threat-model.md` still resolves —
+the file exists **and the named thing still exists in it** — and that no row is `satisfied` citing
+nothing. It runs on every PR (unfiltered by path — moving code is what orphans a citation).
+**Cite a thing, never a line:** `path#AuthMiddleware` (Go declaration, `Type.Method`, `Type.Field`),
+`path#Run Trivy vulnerability scanner` (CI step name or job id), a Kotlin/TS declaration, or
+`path#"literal text"` for config/manifests/SQL or a spot inside a function. A `path:line` citation is
+a gate failure — line numbers shift on any edit above them, which made release-branch merge-backs
+conflict (v1.3.0-rc.4) for no real disagreement. One anchor names one thing; cite two declarations as
+two citations. `citecheck` proves the anchor exists, not that it still does what the row claims — a
+verification pass re-reads that. (Anchor resolution: `backend/cmd/citecheck/anchor.go`.)
 
 **Every data type's retention/deletion lifecycle is `docs/security/data-retention-lifecycle.md`**
 (issue #414) — where each copy of a piece of data lives, how long it survives, how deletion

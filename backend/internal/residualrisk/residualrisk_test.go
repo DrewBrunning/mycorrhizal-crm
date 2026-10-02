@@ -24,9 +24,6 @@ func writeFixtureTree(t *testing.T) string {
 		"schemathesis/schemathesis.ignore": "# no entries at present\n",
 		"docker/cis-hardening.ignore":      "# comment\n4.1 WARN\n",
 		"android/.mobsf":                   "ignore-paths:\n  - build\nignore-rules:\n  - android_certificate_pinning\n  - android_ssl_pinning\n  - android_task_hijacking1\n",
-		"docs/security/citation-drift.ignore": "# comment\n" +
-			"docs/security/asvs-l2.md | `a.go:1` | a.go  # false positive\n" +
-			"docs/security/asvs-l2.md | `b.go:2` | b.go  # false positive\n",
 		"docs/security/crypto-surface.ignore": "# comment\n" +
 			"backend/services/x.go  # comparison helper\n",
 		"docs/security/governance-drift.ignore": "# no entries\n",
@@ -50,8 +47,8 @@ func TestSummarize(t *testing.T) {
 	got, err := Summarize(root, now)
 	require.NoError(t, err)
 
-	// 1 trivy + 0 grype + 2 zap + 0 schemathesis + 1 cis + 3 mobsf + 2 drift + 1 crypto + 0 governance
-	assert.Equal(t, 10, got.AcceptItems.Total)
+	// 1 trivy + 0 grype + 2 zap + 0 schemathesis + 1 cis + 3 mobsf + 1 crypto + 0 governance
+	assert.Equal(t, 8, got.AcceptItems.Total)
 	bySource := map[string]int{}
 	for _, s := range got.AcceptItems.BySource {
 		bySource[s.Source] = s.Entries
@@ -60,7 +57,6 @@ func TestSummarize(t *testing.T) {
 	assert.Equal(t, 0, bySource[".grype.yml"])
 	assert.Equal(t, 2, bySource["zap/dast.ignore"])
 	assert.Equal(t, 3, bySource["android/.mobsf"])
-	assert.Equal(t, 2, bySource["docs/security/citation-drift.ignore"])
 	assert.Equal(t, 1, bySource["docs/security/crypto-surface.ignore"])
 
 	assert.Equal(t, 2, got.DependencyExceptions.Open)

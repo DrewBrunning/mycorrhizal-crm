@@ -83,7 +83,7 @@ func ParseGovernanceDriftIgnore(body string) (map[string]IgnoreEntry, []string) 
 // which are accepted. It also flags ignore entries that no longer apply --
 // the ruleset is back in sync, or the entry names no committed ruleset -- so
 // the ignore file cannot quietly accumulate dead suppressions, the same rule
-// citation-drift.ignore and crypto-surface.ignore already enforce.
+// crypto-surface.ignore already enforces.
 //
 // This is the #916 fix's core: before it, a mismatched status with no
 // ignore entry produced no finding at all -- the workflow only ever warned.

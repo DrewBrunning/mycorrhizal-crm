@@ -83,6 +83,21 @@ A new per-user `GeoPulseConfig` model (`UserID`, `BaseURL`, `APIKeyEncrypted` vi
 external account — each user (or household member) may run/connect their own GeoPulse instance — so
 the per-user pattern is the right one here, not an instance-level flag.
 
+**Amendment, 2026-10-01 (maintainer decisions from the pre-implementation review of #160):**
+
+- **GeoPulse `{userId}`.** If the API token alone does not let Mycorrhizal discover the GeoPulse user
+  id (check for a self/profile endpoint at implementation time; none is confirmed), `GeoPulseConfig`
+  gains a `GeoPulseUserID` field the user fills in on the Settings page. The config carries
+  everything the client needs; nothing is guessed.
+- **Duplicate prevention.** Confirming a suggestion does a lookup-before-create on
+  `ExternalRef = geopulse:stay:<id>` scoped to `user_id`; if an Activity already carries it, the
+  confirm returns the existing one rather than creating a second. No schema change to `Activity`.
+- **Photos are display-only.** They appear in the ephemeral suggestion and are never written to the
+  `Activity`.
+- **Default `radiusMeters` = 200**, a named constant passed to the photo-search call (a stay is a
+  clustered place; photos land within a building or yard of its centroid, GPS error is tens of
+  metres, and past ~500 m neighbouring stays bleed in).
+
 ### 5. Integration classification
 
 Needs a `docs/int-01-integration-classification-matrix.md` `Registry()` entry and `Dispositions()`

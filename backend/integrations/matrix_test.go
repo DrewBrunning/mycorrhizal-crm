@@ -249,7 +249,7 @@ func TestEveryOutboundClientIsClassified(t *testing.T) {
 
 // TestNonIntegrationAllowlistIsLive fails on a dead allowlist entry — a file in
 // nonIntegrationClients that no longer trips the signal — so suppressions
-// cannot pile up (same discipline as the citation-drift ignore file).
+// cannot pile up (same discipline as the crypto-surface ignore file).
 func TestNonIntegrationAllowlistIsLive(t *testing.T) {
 	got := servicesWithOutboundClient(t)
 	for name, reason := range nonIntegrationClients {
