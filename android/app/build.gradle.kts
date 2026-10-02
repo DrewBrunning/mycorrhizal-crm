@@ -58,6 +58,11 @@ android {
         // bundle export/backup (issue #1264) both shipped — a local profile holds
         // the only copy of its data. Both have, so it is on (issue #1108).
         buildConfigField("boolean", "LOCAL_MODE_ENABLED", "true")
+        // Issue #1420: build identity shown in Settings > About. Stamped by CI via
+        // -PMYCORRHIZAL_GIT_COMMIT / -PMYCORRHIZAL_BUILD_DATE; empty (shown as
+        // nothing) for a local build.
+        buildConfigField("String", "GIT_COMMIT", "\"${providers.gradleProperty("MYCORRHIZAL_GIT_COMMIT").orNull.orEmpty()}\"")
+        buildConfigField("String", "BUILD_DATE", "\"${providers.gradleProperty("MYCORRHIZAL_BUILD_DATE").orNull.orEmpty()}\"")
     }
 
     // Issue #1133: three distribution flavors, one per release channel. The

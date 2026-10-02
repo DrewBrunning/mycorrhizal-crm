@@ -806,6 +806,15 @@
     <string name="settings_permission_open_settings">Apri impostazioni</string>
     <string name="settings_permission_not_now">Non ora</string>
     <string name="settings_value_placeholder">—</string>
+    <string name="settings_about">Informazioni</string>
+    <string name="settings_about_version">Versione</string>
+    <string name="settings_about_version_code">Codice versione</string>
+    <string name="settings_about_build_type">Tipo di build</string>
+    <string name="settings_about_commit">Commit</string>
+    <string name="settings_about_built">Compilata</string>
+    <string name="settings_about_server_version">Versione del server</string>
+    <string name="settings_about_server_built">Server compilato</string>
+    <string name="settings_about_copy">Copia dettagli build</string>
     <string name="settings_cancel">Annulla</string>
 
     <!-- Activities -->

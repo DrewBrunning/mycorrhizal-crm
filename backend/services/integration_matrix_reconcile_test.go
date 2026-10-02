@@ -20,6 +20,7 @@ func TestIntegrationMatrixTimeoutsMatchCode(t *testing.T) {
 		"carddav":      contactSyncRequestTimeout,
 		"caldav":       calendarRequestTimeout,
 		"immich":       immichRequestTimeout,
+		"geocoder":     geocoderRequestTimeout,
 		"paperless":    paperlessRequestTimeout,
 		"geopulse":     geopulseRequestTimeout,
 		"seafile":      seafileRequestTimeout,

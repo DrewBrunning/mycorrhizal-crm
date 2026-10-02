@@ -1639,6 +1639,17 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/config/map",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MapConfigResponse"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/contact-shares",
       "parameters": null,
@@ -2826,6 +2837,53 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/{id}/addresses/{addressId}/geocode",
+      "parameters": [
+        {
+          "name": "addressId",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeocodeAddressResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "503",
           "schema": "ref:Error"
         }
       ]
@@ -8841,6 +8899,16 @@
           "required": false
         },
         {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
           "name": "timeZone",
           "type": "string",
           "required": false
@@ -10226,12 +10294,22 @@
           "required": false
         },
         {
+          "name": "coordinates",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "country",
           "type": "string",
           "required": false
         },
         {
           "name": "floor",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
           "type": "string",
           "required": false
         },
@@ -10249,6 +10327,16 @@
           "name": "region",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
         },
         {
           "name": "street",
@@ -13653,6 +13741,26 @@
       ]
     },
     {
+      "name": "GeocodeAddressResponse",
+      "properties": [
+        {
+          "name": "address_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cached",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "coordinates",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "Gift",
       "properties": [
         {
@@ -15557,6 +15665,16 @@
           "name": "vcard_uid",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "MapConfigResponse",
+      "properties": [
+        {
+          "name": "tile_style_url",
+          "type": "string",
+          "required": true
         }
       ]
     },

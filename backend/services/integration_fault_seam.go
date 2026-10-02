@@ -17,6 +17,7 @@ const (
 	faultGeoPulseRequest      = "services.geopulse.request"
 	faultSeafileRequest       = "services.seafile.request"
 	faultWebDAVRequest        = "services.webdav.request"
+	faultGeocoderRequest      = "services.geocoder.request"
 	faultContactSyncRequest   = "services.contactsync.request"
 	faultCalendarSyncRequest  = "services.calendarsync.request"
 	faultWebhookDelivery      = "services.webhook.delivery"

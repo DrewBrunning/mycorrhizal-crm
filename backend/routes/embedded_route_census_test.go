@@ -106,6 +106,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"GET /api/v1/cadence-policies/overdue",
 		"GET /api/v1/circles",
 		"GET /api/v1/circles/:id",
+		"GET /api/v1/config/map",
 		"GET /api/v1/contacts",
 		"GET /api/v1/contacts/:id",
 		"GET /api/v1/contacts/:id/activities",

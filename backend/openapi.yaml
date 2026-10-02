@@ -258,6 +258,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
+  # --- Contact map bootstrap (public) ---
+  /config/map:
+    get:
+      summary: Contact map tile style
+      operationId: getMapConfig
+      security: []
+      description: >
+        Unauthenticated bootstrap for the web and Android contact map (ADR 0031,
+        issue #694): the MapLibre style JSON URL, which is MAP_TILE_STYLE_URL or
+        the OpenFreeMap default. Public because the value is not secret (clients
+        fetch tiles from it directly) and it must be readable before the map
+        view needs a session-scoped call. Deliberately narrow: no other instance
+        setting is added to this response. Also registered in the embedded
+        deployment.
+      responses:
+        "200":
+          description: The MapLibre style URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapConfigResponse"
+              example:
+                tile_style_url: "https://tiles.openfreemap.org/styles/liberty"
+
   # --- OIDC (public) ---
   /auth/oidc/config:
     get:
@@ -2837,6 +2861,79 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /contacts/{id}/addresses/{addressId}/geocode:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: addressId
+        in: path
+        required: true
+        description: The stable per-address id (card.addresses[].id) from the contact detail response.
+        schema: { type: string }
+      - name: include_sensitive
+        in: query
+        required: false
+        description: >
+          Required (true or 1) to geocode an address whose sensitivity is
+          private or secret; without it such an address is refused with 400 and
+          nothing is sent to the geocoder.
+        schema: { type: boolean }
+    post:
+      summary: Find coordinates for one address (explicit geocode lookup)
+      operationId: geocodeContactAddress
+      description: >
+        ADR 0031 (issue #694). Triggers exactly ONE lookup for ONE address at the
+        instance's configured geocoder (GEOCODER_PROVIDER) and stores the
+        resulting geo: URI as that address's coordinates, overwriting any
+        existing value. This is the only way address text ever leaves the
+        instance for geocoding: it is never automatic and never bulk. Only the
+        address's postal fields (street, city, region, postcode, country) are
+        sent. Repeat lookups for the same address text are answered from a
+        bounded in-memory cache (cached=true) without contacting the provider.
+        Not available in the embedded deployment (404).
+      responses:
+        "200":
+          description: The resolved and stored coordinates.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodeAddressResponse"
+              example:
+                address_id: "5f0c1a6e-3c52-4a7e-9a40-6c1f7a2d9b11"
+                coordinates: "geo:51.5007,-0.1246"
+                cached: false
+        "400":
+          description: The address is private or secret and include_sensitive was not sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact or address not found (or the endpoint is absent, as in the embedded deployment).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: The contact was edited concurrently while the lookup ran; retry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Geocoding is not enabled on this server (GEOCODER_PROVIDER=none), or the geocoder found no match.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: The geocoder could not be reached, rejected the server's credentials, or is rate limiting.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   # Issue #173: favorite toggle. CRM-local flags with no neutral-model home,
   # toggled by dedicated endpoints — same standing as archive/unarchive.
   /contacts/{id}/favorite:
@@ -12440,6 +12537,18 @@ components:
         min_entropy: { type: number }
         char_set_size: { type: integer }
         length: { type: integer }
+    MapConfigResponse:
+      type: object
+      required: [tile_style_url]
+      properties:
+        tile_style_url: { type: string, format: uri, description: "MapLibre style JSON URL (MAP_TILE_STYLE_URL or the OpenFreeMap default)." }
+    GeocodeAddressResponse:
+      type: object
+      required: [address_id, coordinates, cached]
+      properties:
+        address_id: { type: string }
+        coordinates: { type: string, description: "geo: URI now stored on the address." }
+        cached: { type: boolean, description: "True when answered from the in-memory cache (no request left the instance)." }
     OIDCConfigResponse:
       type: object
       required: [enabled]
@@ -13054,6 +13163,9 @@ components:
         region: { type: string, maxLength: 200 }
         postal: { type: string, maxLength: 30 }
         country: { type: string, maxLength: 100 }
+        id: { type: string, maxLength: 128, description: "Stable per-address id (ADR 0031); server-minted when absent." }
+        coordinates: { type: string, maxLength: 100, description: "geo: URI (latitude -90..90, longitude -180..180)." }
+        sensitivity: { type: string, enum: [normal, private, secret], description: "Empty means normal." }
     Birthday:
       type: object
       description: One upcoming contact birthday.
@@ -16322,7 +16434,8 @@ components:
           items:
             $ref: "#/components/schemas/AddressComponent"
         countryCode: { type: string }
-        coordinates: { type: string, description: "geo: URI" }
+        coordinates: { type: string, description: "geo: URI; latitude -90..90 and longitude -180..180 are validated on write (ADR 0031)." }
+        sensitivity: { type: string, enum: [normal, private, secret], description: "CRM-side classification (ADR 0031); empty means normal. Gates the explicit geocode lookup. Carried by no exporter." }
         timeZone: { type: string }
         contexts:
           type: array

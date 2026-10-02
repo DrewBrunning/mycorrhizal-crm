@@ -13,7 +13,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -67,6 +69,107 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Yes").assertIsDisplayed()
         composeTestRule.onNodeWithText("Log out").performScrollTo().assertIsDisplayed()
+    }
+
+    private val release = AppBuildInfo("1.3.0", 1042, "release", "obtainium", "com.mycorrhizal.crm")
+
+    @Test
+    fun `About shows version name and version code`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(state = SettingsUiState(buildInfo = release), onLogout = {})
+            }
+        }
+        composeTestRule.onNodeWithText("About").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1.3.0").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1042").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("release / obtainium").performScrollTo().assertIsDisplayed()
+        // Unstamped build: no commit / built rows rather than placeholders.
+        composeTestRule.onNodeWithText("Commit").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Built").assertDoesNotExist()
+    }
+
+    @Test
+    fun `About shows commit, build date and server details when known`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(
+                        buildInfo = release.copy(commit = "abc1234", buildDate = "2026-10-02T10:00:00Z"),
+                        serverHealth = ServerHealth(version = "1.3.1", commit = "def5678", buildDate = "2026-09-30"),
+                    ),
+                    onLogout = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("abc1234").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("2026-10-02T10:00:00Z").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1.3.1 (def5678)").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("2026-09-30").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a debug build shows the debug build type and applicationId suffix`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(
+                        buildInfo = release.copy(buildType = "debug", applicationId = "com.mycorrhizal.crm.localtest"),
+                    ),
+                    onLogout = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("debug / obtainium .localtest").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed server lookup shows a dash and the rest of Settings still renders`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(
+                        session = SessionState(serverUrl = "https://crm.example.com", username = "alice"),
+                        buildInfo = release,
+                        serverLookupFailed = true,
+                    ),
+                    onLogout = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Server version").performScrollTo().assertIsDisplayed()
+        // The dash appears for the failed lookup (other placeholders may exist too).
+        assertTrue(composeTestRule.onAllNodesWithText("—").fetchSemanticsNodes().isNotEmpty())
+        composeTestRule.onNodeWithText("alice").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Log out").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `copy details puts the build details on the clipboard`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(buildInfo = release.copy(commit = "abc1234")),
+                    onLogout = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Copy build details").performScrollTo().performClick()
+
+        val clipboard = androidx.test.core.app.ApplicationProvider.getApplicationContext<Context>()
+            .getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        assertEquals(
+            "version: 1.3.0\ncode: 1042\nbuild: release / obtainium\ncommit: abc1234",
+            clipboard.primaryClip?.getItemAt(0)?.text?.toString(),
+        )
+    }
+
+    @Test
+    fun `no About section without build info`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme { SettingsContent(state = SettingsUiState(), onLogout = {}) }
+        }
+        composeTestRule.onNodeWithText("About").assertDoesNotExist()
     }
 
     @Test
@@ -429,6 +532,8 @@ class SettingsScreenTest {
             SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
         )
         coEvery { appSettings.themePreference() } returns flowOf(AppSettingsRepository.THEME_SYSTEM)
+        val serverCompatibility = mockk<com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository>()
+        coEvery { serverCompatibility.getServerHealth() } returns Result.success(ServerHealth(version = "1.3.0"))
         val viewModel = SettingsViewModel(
             authRepository,
             trackingSettings,
@@ -440,6 +545,8 @@ class SettingsScreenTest {
             catchUpScheduler,
             callSmsTrackingCapability,
             PasskeyAvailability { false },
+            release,
+            serverCompatibility,
             appContext,
         )
 

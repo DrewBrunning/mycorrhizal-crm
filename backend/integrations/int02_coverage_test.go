@@ -30,6 +30,13 @@ var int02Coverage = map[string][]string{
 		"TestImmichInjectedRequestFaultCrossesBoundaryUnchanged", // pre-existing #434 seam suite
 		"TestImmichInjectedFaultReachesServiceDiagnostics",
 	},
+	"geocoder": {
+		"TestIntegrationClient_InjectedFaultCrossesBoundaryUnchanged",
+		"TestIntegrationClient_StatusMappingIsStable",
+		"TestIntegrationClient_BlackHoleHostIsBounded",
+		"TestGeocoderClient_MalformedBodiesAreInvalidData",
+		"TestGeocoderClient_RateLimitedIsDistinct",
+	},
 	"paperless": {
 		"TestIntegrationClient_InjectedFaultCrossesBoundaryUnchanged",
 		"TestIntegrationClient_StatusMappingIsStable",

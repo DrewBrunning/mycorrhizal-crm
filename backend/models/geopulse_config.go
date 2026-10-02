@@ -15,7 +15,7 @@ import (
 // UserID carries only `index` here, NOT a GORM uniqueIndex tag: the model
 // soft-deletes, and a plain GORM unique index would be a non-partial one that
 // a soft-deleted row keeps occupying (the T26 trap). The real uniqueness is the
-// migration's PARTIAL index (000071_geopulse_configs.up.sql:
+// migration's PARTIAL index (000072_geopulse_configs.up.sql:
 // `WHERE deleted_at IS NULL`).
 //
 // GeoPulse's own user id is deliberately not a column: the client discovers it

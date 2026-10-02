@@ -139,6 +139,50 @@ func immichIntegration() Integration {
 	}
 }
 
+func geocoderIntegration() Integration {
+	return Integration{
+		ID:   "geocoder",
+		Name: "Address geocoding (contact map)",
+		What: "Resolves ONE explicitly-chosen postal address to a coordinate via the operator-selected provider (Nominatim or MapTiler) for the contact map (ADR 0031).",
+
+		Criticality:     CriticalityOptional,
+		CriticalityNote: "Default off (GEOCODER_PROVIDER=none). Coordinates can always be entered by hand or arrive with an imported card; the map plots whatever already has one.",
+
+		Direction:     DirectionOutbound,
+		DirectionNote: "Address text (street, city, region, postcode, country — never PO box/apartment/floor) goes out; a coordinate comes back. Map tiles are fetched by the client straight from MAP_TILE_STYLE_URL's host and never carry an address.",
+
+		Cadence:     CadenceInteractive,
+		CadenceNote: "Only when a user presses 'find coordinates' on one address (POST /contacts/:id/addresses/:addressId/geocode). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.",
+
+		DataAuthority:     AuthorityEnrichment,
+		DataAuthorityNote: "The geocoder adds a derived coordinate to an address we own and keeps no state we depend on. Removing it leaves every stored coordinate in place; an in-memory cache (lost on restart) bounds repeat lookups.",
+
+		FailureImpact:     ImpactBlockedWorkflow,
+		FailureImpactNote: "The user presses 'find coordinates' and gets an error; they can retry later or enter coordinates by hand. Nothing else depends on it.",
+
+		Timeout:     15 * time.Second,
+		TimeoutNote: "services.geocoderRequestTimeout on the http.Client (also TLSHandshakeTimeout 10s / ResponseHeaderTimeout 10s on the transport); the nominatim 1 req/s throttle wait is additionally bounded by the request context.",
+
+		RetryBudget: "No in-call retry — the lookup is inline in a user request. The request fails with a mapped error and the user retries; a failed lookup is never cached. Nominatim lookups are self-throttled to its 1 req/s policy so a retry cannot breach it.",
+
+		SSRF:     SSRFGuardedAlways,
+		SSRFNote: "geocoderPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport, unconditionally: the provider hosts are fixed public endpoints, so there is no private-address use case to preserve. Redirects are not followed.",
+
+		Behavior: map[FailureMode]string{
+			FailureUnreachableHost:       "The request returns a mapped 503 'Geocoder could not be reached'; the address and its stored coordinate are untouched and nothing is cached.",
+			FailureTimeout:               "The 15s deadline fires; the request returns the same mapped 503; no coordinate is written.",
+			FailureAuthExpiry:            "401 (MapTiler key revoked or wrong) → mapped 503 naming GEOCODER_API_KEY; stored coordinates are kept; an operator must fix the key (#467).",
+			FailureAuthzRevoked:          "403 → same mapped state as auth expiry (key not permitted for geocoding).",
+			FailureMalformedResponse:     "Unparseable body, or a coordinate outside lat -90..90 / lon -180..180 → mapped 503 'unusable response'; nothing is stored from a partial parse.",
+			FailureRateLimited:           "429 → mapped 503 asking the user to retry shortly; the nominatim throttle already keeps this instance under its 1 req/s ceiling, so a 429 means the shared public instance is busy.",
+			FailureRemoteResourceDeleted: "404/410 from the provider endpoint → mapped 503; a 200 with no match is a distinct 422 'no match' and leaves any existing coordinate untouched.",
+		},
+
+		SourceFiles: []string{"services/geocoder_client.go", "services/geocoder.go"},
+		Verify:      "#465 (INT-02) shared client suite (integration_failure_behavior_test.go); geocoder_client_test.go; geocoder_test.go; controllers/contact_address_controller_test.go.",
+	}
+}
+
 func paperlessIntegration() Integration {
 	return Integration{
 		ID:   "paperless",

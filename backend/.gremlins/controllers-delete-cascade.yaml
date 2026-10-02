@@ -15,6 +15,7 @@ unleash:
         - ^cadence_controller\.go$
         - ^calendar_controller\.go$
         - ^circle_controller\.go$
+        - ^contact_address_controller\.go$
         - ^contact_detail_controller\.go$
         - ^contact_merge_controller\.go$
         - ^contact_score_controller\.go$
@@ -48,6 +49,7 @@ unleash:
         - ^life_event_controller\.go$
         - ^life_event_suggestion_controller\.go$
         - ^link_field_type_controller\.go$
+        - ^mcp_controller\.go$
         - ^meerkat_import_controller\.go$
         - ^metrics_controller\.go$
         - ^monica_import_controller\.go$

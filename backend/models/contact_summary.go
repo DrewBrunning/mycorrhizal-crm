@@ -298,7 +298,23 @@ type ContactRecordResponse struct {
 // Photo/PhotoThumbnail fields below. db is forwarded to RecordForContact for
 // relationship-graph projection; pass nil to skip it.
 func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactRecordResponse {
-	record := RecordForContact(c, photoDir, db)
+	return NewContactRecordResponseFiltered(c, photoDir, db, false)
+}
+
+// NewContactRecordResponseFiltered is NewContactRecordResponse with the T9
+// sensitivity opt-in threaded into the projections (relationship edges,
+// preferences, custom fields). includeSensitive=false is exactly
+// NewContactRecordResponse; the MCP get_contact tool (ADR 0032 §4) is the
+// caller that passes true.
+func NewContactRecordResponseFiltered(c *Contact, photoDir string, db *gorm.DB, includeSensitive bool) ContactRecordResponse {
+	var record *contactmodel.Record
+	if includeSensitive {
+		sel := FieldSelectionAll()
+		sel.IncludeSensitive = true
+		record = RecordForContactFiltered(c, photoDir, db, sel)
+	} else {
+		record = RecordForContact(c, photoDir, db)
+	}
 	resp := ContactRecordResponse{
 		ID:             c.ID,
 		UID:            record.UID,

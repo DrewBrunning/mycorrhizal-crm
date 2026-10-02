@@ -99,6 +99,7 @@ export type Address = {
   phoneticScript?: string;
   phoneticSystem?: string;
   pref?: number | null;
+  sensitivity?: 'normal' | 'private' | 'secret';
   timeZone?: string;
 };
 
@@ -426,11 +427,14 @@ export type ColumnMapping = {
 export type ContactAddress = {
   apartment?: string;
   city?: string;
+  coordinates?: string;
   country?: string;
   floor?: string;
+  id?: string;
   pobox?: string;
   postal?: string;
   region?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
   street?: string;
   type?: string;
 };
@@ -1158,6 +1162,12 @@ export type GeoPulseSuggestionsResponse = {
   suggestions: GeoPulseStaySuggestion[];
 };
 
+export type GeocodeAddressResponse = {
+  address_id: string;
+  cached: boolean;
+  coordinates: string;
+};
+
 export type Gift = {
   activity_id?: number;
   created_at: string;
@@ -1609,6 +1619,10 @@ export type LossReport = {
   reason?: string;
   severity?: 'warn';
   vcard_uid?: string;
+};
+
+export type MapConfigResponse = {
+  tile_style_url: string;
 };
 
 export type MeerkatEntityCounts = {

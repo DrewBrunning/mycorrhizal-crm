@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-09-12 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353), [#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549), [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505), [#721](https://github.com/DrewBrunning/mycorrhizal-crm/issues/721), [#722](https://github.com/DrewBrunning/mycorrhizal-crm/issues/722), [#723](https://github.com/DrewBrunning/mycorrhizal-crm/issues/723), [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978)) |
+| **Last updated** | 2026-10-02 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353), [#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549), [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505), [#721](https://github.com/DrewBrunning/mycorrhizal-crm/issues/721), [#722](https://github.com/DrewBrunning/mycorrhizal-crm/issues/722), [#723](https://github.com/DrewBrunning/mycorrhizal-crm/issues/723), [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978), [#694](https://github.com/DrewBrunning/mycorrhizal-crm/issues/694)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -1077,6 +1077,49 @@ design is ADR-0010 / CON-04, issue #479).
   subscription the user already removed elsewhere; the next send to it self-heals per the retention
   rule above.
 
+## 26. Contact map: tile requests & address geocoding (`MAP_TILE_STYLE_URL`, `GEOCODER_PROVIDER`) — outbound, nothing persisted
+
+ADR 0031, issue #694. Two distinct outbound flows with opposite sensitivity; neither adds a persisted
+copy of anything.
+
+- **Where / who**:
+  - **Tiles** — the web/Android *client* (not this server) fetches vector tiles straight from the host
+    in the MapLibre style served by the unauthenticated `GET /api/v1/config/map`
+    (`MAP_TILE_STYLE_URL`, default OpenFreeMap). A tile request is inherently a viewport bounding box:
+    it carries no marker, contact or address data. That host sees the client's IP and the areas viewed.
+  - **Geocoding** — default **off** (`GEOCODER_PROVIDER=none`). When an operator enables `nominatim`
+    (public OpenStreetMap instance) or `maptiler` (needs `GEOCODER_API_KEY`), one explicit user action
+    (`POST /contacts/:id/addresses/:addressId/geocode`, `backend/controllers/contact_address_controller.go`
+    `GeocodeContactAddress`) sends **the address text of that one address** — street, city, region,
+    postcode, country; never the PO box/apartment/floor, the contact's name, or any other field — to the
+    configured provider from this server (`backend/services/geocoder_client.go`), through the SSRF-guarded
+    dialer. It is never automatic and never bulk, and an address with `sensitivity` above `normal` is
+    refused (400) unless the request carries `include_sensitive=true`. The provider sees this server's
+    egress IP, the address text, and (for `maptiler`) the API key.
+  - **The resulting coordinate** is ordinary contact data: a `geo:` URI stored on the address (flat
+    `contacts.addresses` JSON and the Card entry), covered by §1 and exported by the same paths as any
+    other address (vCard/JSContact carry it; the CSV and account bundle follow §11).
+- **Retention**:
+  - Tiles — no server-side state.
+  - Geocode lookups — an **in-memory** cache (`backend/services/geocoder.go` `geocodeCache`) keyed by a
+    SHA-256 digest of provider + normalized address text (the cache holds no readable address, only the
+    returned coordinate), bounded to 512 entries with a 24h TTL. It is **lost on restart**; there is no
+    table, no file, no migration. Failed and no-match lookups are not cached. The provider's own
+    retention of the text it received is outside this app's control — see the provider's policy
+    (Nominatim's usage policy; MapTiler's terms).
+- **Deletion / propagation**: nothing to delete server-side beyond §1 for the stored coordinate. Clearing
+  the coordinate (editing the address) is an ordinary contact edit; the cache entry is unreachable once
+  the address text changes and expires on its own. **Deleting a contact does not recall address text
+  already sent to a geocoder** — same boundary as §13: this app has no authority over a third party's
+  copy.
+- **Backups**: the stored coordinate rides every backup like any address field; the in-memory cache and
+  the tile traffic are not in any snapshot.
+- **Verification**: `backend/services/geocoder_test.go` (`TestGeocodeCache_KeysAreProviderScopedAndOpaque`,
+  `TestGeocodeCache_LRUEviction`, `TestGeocodeCache_TTLExpiry`, `TestGeocoder_FailuresAreNotCached`,
+  `TestGeocodeQueryText`), `backend/services/geocoder_client_test.go`
+  (`TestGeocoderClient_ProductionTransportIsSSRFGuarded`), `backend/controllers/contact_address_controller_test.go`
+  (`TestGeocodeContactAddress_SensitivityGate`, `TestMapConfigHandler`).
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -1103,6 +1146,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Import source links: one row per imported source entity, idempotency ledger, swept on account delete | `backend/services/import_source_test.go`, `backend/services/monica_import_test.go`, `backend/services/meerkat_import_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Storage-growth history: one sample per run, pruned past retention | `backend/services/storage_sample_service_test.go`, `backend/database/migrate_storage_samples_test.go` |
+| Geocode cache is in-memory only, hashed keys, bounded + TTL, failures uncached | `backend/services/geocoder_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |
