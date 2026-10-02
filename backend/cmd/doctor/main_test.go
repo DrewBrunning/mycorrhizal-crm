@@ -12,6 +12,7 @@ import (
 	"mycorrhizal/database"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -217,7 +218,7 @@ func doctorProbePageReportsFindings(t *testing.T, path string, target int64) boo
 	doctorWritePage(t, path, target, bytes.Repeat([]byte{0xFF}, doctorCorruptPageSize))
 
 	result, err := database.IntegrityCheck(path)
-	if err == nil && result != "" && !strings.EqualFold(result, "ok") {
+	if err == nil && result != "" && !strings.EqualFold(result, "ok") && doctorStorageCheckRunsButFails(path) {
 		return true
 	}
 	doctorWritePage(t, path, target, original)
@@ -230,6 +231,26 @@ func doctorProbePageReportsFindings(t *testing.T, path string, target int64) boo
 func corruptFilePage(t *testing.T, path string, n int64) {
 	t.Helper()
 	doctorWritePage(t, path, n, bytes.Repeat([]byte{0xFF}, doctorCorruptPageSize))
+}
+
+// doctorStorageCheckRunsButFails mirrors what the doctor does before repairing: it
+// must be able to open the file and run the storage pass to completion, and that
+// pass must report NOT OK. A page whose corruption makes the open or the pass
+// itself error is the other refusal branch ("could not run"), covered separately —
+// without this check a schema change (any new table) can shift the probed page
+// into that branch and leave the "not OK" branch silently untested.
+func doctorStorageCheckRunsButFails(path string) bool {
+	db, err := database.OpenMigratedFile(path)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		if sqlDB, e := db.DB(); e == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+	report, err := services.RunStorageIntegrityChecks(db)
+	return err == nil && !report.OK
 }
 
 func doctorReadPage(t *testing.T, path string, target int64) []byte {
@@ -283,7 +304,7 @@ func TestDoctor_RepairRefusesCorruptDatabase(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(out), &refusal))
 		assert.True(t, refusal.Refused)
 		assert.False(t, refusal.OK)
-		assert.Contains(t, refusal.Reason, "storage integrity")
+		assert.Contains(t, refusal.Reason, "storage integrity is not OK")
 	})
 }
 
@@ -293,11 +314,29 @@ func TestDoctor_RepairRefusesCorruptDatabase(t *testing.T) {
 // with the "could not run" message.
 func TestDoctor_RepairRefusesWhenStorageProbeCannotRun(t *testing.T) {
 	path := migratedDBFile(t, nil)
-	corruptFilePage(t, path, 2)
+	orig, err := os.ReadFile(path)
+	require.NoError(t, err)
 
-	code, _, errOut := run(t, "-db", path, "-repair", "-confirm")
-	assert.Equal(t, 3, code)
-	assert.Contains(t, errOut, "storage integrity check could not run")
+	// Which page is "structural" (corruption aborts integrity_check itself) shifts
+	// whenever a migration adds a table, so a hard-coded page number silently
+	// stops exercising this branch (it did when the geopulse_configs table was
+	// added). Probe candidate pages on throwaway copies instead, and assert the
+	// real run on the first one that produces the "could not run" refusal.
+	pageCount := int64(len(orig)) / doctorCorruptPageSize
+	require.Greater(t, pageCount, int64(2))
+	for n := int64(2); n <= pageCount; n++ {
+		probe := filepath.Join(t.TempDir(), "probe.db")
+		require.NoError(t, os.WriteFile(probe, orig, 0o600))
+		corruptFilePage(t, probe, n)
+
+		code, _, errOut := run(t, "-db", probe, "-repair", "-confirm")
+		if code == 3 && strings.Contains(errOut, "storage integrity check could not run") {
+			assert.Equal(t, 3, code)
+			assert.Contains(t, errOut, "storage integrity check could not run")
+			return
+		}
+	}
+	t.Fatal("no page of a freshly migrated database produced the 'storage probe could not run' refusal; the structural-page assumption no longer holds")
 }
 
 func TestDoctor_UsageErrors(t *testing.T) {
