@@ -163,6 +163,24 @@ func Registry() []Operation {
 			},
 		},
 
+		// --- contact map (issue #1427) -------------------------------------
+		{
+			Name: "contact_map", Category: "read", ExpectedGrowth: GrowthConstant,
+			Run: func(e *Env) (int, error) {
+				body, err := e.expect(e.get("/contacts/map"), http.StatusOK)
+				if err != nil { // # pragma: no cover — the map endpoint always returns 200 for these fixtures
+					return 0, err
+				}
+				var parsed struct {
+					Points []json.RawMessage `json:"points"`
+				}
+				if err := json.Unmarshal(body, &parsed); err != nil { // # pragma: no cover — always a JSON object
+					return 0, err
+				}
+				return len(parsed.Points), nil
+			},
+		},
+
 		// --- dashboard + aggregates -------------------------------------
 		{
 			Name: "dashboard", Category: "read", ExpectedGrowth: GrowthConstant,

@@ -2646,6 +2646,21 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/contacts/map",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactMapResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/contacts/merge",
       "parameters": null,
@@ -10792,6 +10807,56 @@
           "name": "value",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactMapPoint",
+      "properties": [
+        {
+          "name": "address_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "contact_uid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "coordinates",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactMapResponse",
+      "properties": [
+        {
+          "name": "points",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "truncated",
+          "type": "boolean",
+          "required": true
         }
       ]
     },
