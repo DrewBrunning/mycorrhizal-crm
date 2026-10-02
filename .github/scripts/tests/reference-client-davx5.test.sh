@@ -91,7 +91,7 @@ dump_ui() { :; }
 dismiss_anr_if_present() { :; }
 capture_failure_diagnostics() { :; }
 NUDGED=0
-# shellcheck disable=SC2329 # invoked from the eval-extracted wait_for
+# shellcheck disable=SC2317,SC2329 # invoked from the eval-extracted wait_for
 find_center() { [ "$NUDGED" -ge 1 ] && echo "1 1"; return 0; }
 nudge_stub() { NUDGED=$((NUDGED + 1)); }
 
@@ -102,7 +102,7 @@ else
 	fail=$((fail + 1)); echo "FAIL: wait_for did not recover via nudge (nudged=$NUDGED)"
 fi
 
-# shellcheck disable=SC2329 # invoked from the eval-extracted wait_for
+# shellcheck disable=SC2317,SC2329 # invoked from the eval-extracted wait_for
 find_center() { return 0; }
 SECONDS=0
 if ! wait_for "row" 2 && [ "$SECONDS" -le 4 ]; then
