@@ -27,6 +27,7 @@
     <string name="nav_tags">Tags</string>
     <string name="nav_circles">Kreise</string>
     <string name="nav_network">Netzwerk</string>
+    <string name="nav_map">Karte</string>
     <string name="nav_shares">Freigaben</string>
     <string name="nav_households">Haushalte</string>
     <string name="cd_menu">Menü</string>
@@ -341,6 +342,19 @@
     <string name="contact_address_apartment">Wohnung / Suite</string>
     <string name="contact_address_floor">Etage</string>
     <string name="contact_address_additional">Weitere Felder</string>
+    <string name="map_show_list">Als Liste anzeigen</string>
+    <string name="map_show_map">Karte anzeigen</string>
+    <string name="map_open_contact">Kontakt öffnen</string>
+    <string name="map_truncated">Es werden nur die ersten %1$d Adressen angezeigt; die Karte ist auf diese Anzahl von Punkten begrenzt.</string>
+    <string name="map_empty">Noch haben keine Kontakte Koordinaten. Füge einer Adresse bei einem Kontakt Koordinaten hinzu, damit sie hier erscheint.</string>
+    <string name="contact_address_coordinates">Koordinaten (Breitengrad, Längengrad)</string>
+    <string name="contact_address_coordinates_hint">Zum Beispiel 51.5007, -0.1246</string>
+    <string name="contact_address_coordinates_invalid">Gib Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.</string>
+    <string name="contact_address_find_coordinates">Koordinaten suchen</string>
+    <string name="contact_address_find_coordinates_save_first">Speichere diese Adresse zuerst. Die Koordinaten werden für die gespeicherte Adresse gesucht.</string>
+    <string name="contact_address_find_coordinates_sensitive">Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Gib die Koordinaten stattdessen von Hand ein.</string>
+    <string name="contact_address_find_coordinates_failed">Für diese Adresse konnten keine Koordinaten gefunden werden.</string>
+    <string name="contact_address_find_coordinates_loading">Koordinaten werden gesucht…</string>
     <string name="contact_period">Zeitraum</string>
     <string name="contact_period_from">Von (Jahr)</string>
     <string name="contact_period_to">Bis (Jahr)</string>

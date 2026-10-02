@@ -12,9 +12,12 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,11 +31,28 @@ import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.EntryPeriod
+import com.mycorrhizal.crm.model.network.formatGeoUri
+import com.mycorrhizal.crm.model.network.isGeocodable
+import com.mycorrhizal.crm.model.network.parseCoordinateInput
+import com.mycorrhizal.crm.model.network.parseGeoUri
 import com.mycorrhizal.crm.model.network.entryPeriodOf
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
 import com.mycorrhizal.crm.ui.R
 import java.util.UUID
+
+/**
+ * ADR 0031 / issue #1287: the per-address "find coordinates" lookup, owned by
+ * the screen's view model. [canGeocode] is false until the contact exists (the
+ * backend geocodes a *saved* address by contact id + address id).
+ */
+data class AddressGeocodeState(
+    val canGeocode: Boolean = false,
+    /** Address ids with a lookup in flight. */
+    val inFlight: Set<String> = emptySet(),
+    /** Address id -> message for a failed lookup. */
+    val errors: Map<String, String> = emptyMap(),
+)
 
 /**
  * Edits `card.addresses[]` (the nested model, `components[]` not a scalar).
@@ -55,6 +75,10 @@ fun AddressEditor(
     // row can display/edit its own start/end year period keyed by element ID.
     periods: List<EntryPeriod> = emptyList(),
     onPeriodsChange: (List<EntryPeriod>) -> Unit = {},
+    // ADR 0031: coordinates + the explicit geocode lookup. `null` onFindCoordinates
+    // (callers without a saved contact) shows the action disabled with a reason.
+    geocode: AddressGeocodeState = AddressGeocodeState(),
+    onFindCoordinates: ((addressId: String) -> Unit)? = null,
 ) {
     // Per-row reveal keys for the hidden additional fields. Only ever grows
     // (web's useRowKeys semantics); loaded rows key off their stable `id`,
@@ -87,12 +111,28 @@ fun AddressEditor(
                     onPeriodsChange(upsertEntryPeriod(periods, "address", id, yearTemporalRange(start, end)))
                 },
                 onRevealAdditional = { revealedKeys = revealedKeys + key },
+                findReason = findCoordinatesReason(address, geocode.canGeocode && onFindCoordinates != null),
+                finding = address.id in geocode.inFlight,
+                findError = address.id?.let { geocode.errors[it] },
+                onFindCoordinates = { address.id?.let { id -> onFindCoordinates?.invoke(id) } },
             )
         }
         IconButton(onClick = { onChange(addresses + Address(contexts = listOf("home"))) }) {
             Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
         }
     }
+}
+
+/**
+ * Why the find-coordinates action is unavailable, or null when it is. A
+ * private/secret address is never sent to the geocoder (the backend answers
+ * 400); mirror that up front with the reason rather than a dead button.
+ */
+@Composable
+private fun findCoordinatesReason(address: Address, canGeocode: Boolean): String? = when {
+    !address.isGeocodable -> stringResource(R.string.contact_address_find_coordinates_sensitive)
+    !canGeocode || address.id == null -> stringResource(R.string.contact_address_find_coordinates_save_first)
+    else -> null
 }
 
 /** The subset of an Address the editor surfaces, plus preserved passthrough. */
@@ -163,6 +203,7 @@ private fun Address.withDraft(draft: AddressDraft): Address {
     return copy(
         components = components.ifEmpty { null },
         contexts = contexts,
+        coordinates = draft.coordinates?.ifBlank { null },
     )
 }
 
@@ -177,6 +218,10 @@ private fun AddressRow(
     onRemove: () -> Unit,
     onPeriodChange: (String, String) -> Unit,
     onRevealAdditional: () -> Unit,
+    findReason: String?,
+    finding: Boolean,
+    findError: String?,
+    onFindCoordinates: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
         Row(
@@ -263,6 +308,14 @@ private fun AddressRow(
                 modifier = Modifier.weight(1f),
             )
         }
+        CoordinatesField(
+            coordinates = draft.coordinates,
+            onCoordinatesChange = { onDraftChange(draft.copy(coordinates = it)) },
+            findReason = findReason,
+            finding = finding,
+            findError = findError,
+            onFind = onFindCoordinates,
+        )
         // ADR 0025 (#1233): the period this address was lived at — whole years,
         // either side blank (open-ended). The wire carries the full PartialDate.
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -283,5 +336,75 @@ private fun AddressRow(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+/**
+ * ADR 0031: the manual "lat, lng" entry plus the explicit geocode action. Only
+ * a valid in-range pair is committed (as the `geo:` URI the backend stores); the
+ * local text keeps a half-typed value visible instead of snapping back, and is
+ * re-synced when the stored value changes from outside (a geocode result).
+ */
+@Composable
+private fun CoordinatesField(
+    coordinates: String?,
+    onCoordinatesChange: (String?) -> Unit,
+    findReason: String?,
+    finding: Boolean,
+    findError: String?,
+    onFind: () -> Unit,
+) {
+    fun display(stored: String?): String =
+        parseGeoUri(stored)?.let { "${it.latitude}, ${it.longitude}" } ?: stored.orEmpty()
+
+    var text by remember { mutableStateOf(display(coordinates)) }
+    LaunchedEffect(coordinates) {
+        // Re-sync only when the stored value no longer matches what is typed, so
+        // typing "-0.10" is not reformatted to "-0.1" under the cursor.
+        val typed = parseCoordinateInput(text)?.let { formatGeoUri(it.latitude, it.longitude) }
+        if (typed != coordinates && !(text.isBlank() && coordinates == null)) text = display(coordinates)
+    }
+    val invalid = text.isNotBlank() && parseCoordinateInput(text) == null
+
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Top) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { input ->
+                text = input
+                when {
+                    input.isBlank() -> onCoordinatesChange(null)
+                    else -> parseCoordinateInput(input)?.let { onCoordinatesChange(formatGeoUri(it.latitude, it.longitude)) }
+                }
+            },
+            label = { Text(stringResource(R.string.contact_address_coordinates)) },
+            placeholder = { Text("51.5007, -0.1246") },
+            supportingText = {
+                Text(
+                    stringResource(
+                        if (invalid) R.string.contact_address_coordinates_invalid else R.string.contact_address_coordinates_hint,
+                    ),
+                )
+            },
+            isError = invalid,
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedButton(
+            onClick = onFind,
+            enabled = findReason == null && !finding,
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            Text(
+                stringResource(
+                    if (finding) R.string.contact_address_find_coordinates_loading else R.string.contact_address_find_coordinates,
+                ),
+            )
+        }
+    }
+    findReason?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    findError?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
     }
 }

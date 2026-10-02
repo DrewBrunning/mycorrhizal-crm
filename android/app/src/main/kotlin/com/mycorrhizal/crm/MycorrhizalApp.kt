@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DrawerState
@@ -129,6 +130,7 @@ import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
+import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.ContactFieldSettingsScreen
@@ -196,6 +198,7 @@ private val primaryDestinations = listOf(
 /** Secondary destinations, below the primary set in the drawer/rail. */
 private val secondaryDestinations = listOf(
     DrawerDestination("network", R.string.nav_network, Icons.Outlined.Share),
+    DrawerDestination("map", R.string.nav_map, Icons.Outlined.Map),
     DrawerDestination("shares", R.string.nav_shares, Icons.Outlined.IosShare),
     DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
     DrawerDestination("occasions", R.string.occasions_title, Icons.Outlined.Event),
@@ -1669,6 +1672,13 @@ private fun AppNavGraph(
             NetworkScreen(
                 showMenu = false,
                 onBack = { navController.popBackStack() },
+                onOpenContact = { id -> navController.navigate("contacts/$id") },
+            )
+        }
+        // ADR 0031 / issue #1287: the contact map (drawer entry).
+        composable("map") {
+            MapScreen(
+                onMenuClick = menu,
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
             )
         }

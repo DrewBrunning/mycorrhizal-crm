@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.components.AddressEditor
+import com.mycorrhizal.crm.ui.components.AddressGeocodeState
 import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 import com.mycorrhizal.crm.ui.components.EmailSpec
 import com.mycorrhizal.crm.ui.components.LinkSpec
@@ -112,6 +113,7 @@ fun ContactFormScreen(
                 onEmailsChange = viewModel::onEmailsChange,
                 onPhonesChange = viewModel::onPhonesChange,
                 onAddressesChange = viewModel::onAddressesChange,
+                onFindCoordinates = viewModel::onFindCoordinates,
                 onTitlesChange = viewModel::onTitlesChange,
                 onImppChange = viewModel::onImppChange,
                 onSocialChange = viewModel::onSocialChange,
@@ -167,6 +169,8 @@ fun ContactFormContent(
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
     onAddressesChange: (List<com.mycorrhizal.crm.model.network.Address>) -> Unit,
+    // ADR 0031: the explicit geocode lookup for one saved address (null = unavailable).
+    onFindCoordinates: ((addressId: String) -> Unit)? = null,
     onTitlesChange: (List<com.mycorrhizal.crm.model.network.Title>) -> Unit,
     onImppChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onSocialChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
@@ -368,6 +372,12 @@ fun ContactFormContent(
                 onChange = onAddressesChange,
                 periods = state.periods,
                 onPeriodsChange = onPeriodsChange,
+                geocode = AddressGeocodeState(
+                    canGeocode = state.contactId != null,
+                    inFlight = state.geocodeInFlight,
+                    errors = state.geocodeErrors,
+                ),
+                onFindCoordinates = onFindCoordinates,
             )
         }
 

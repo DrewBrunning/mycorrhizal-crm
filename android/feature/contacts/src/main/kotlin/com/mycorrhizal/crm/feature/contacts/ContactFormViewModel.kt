@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.model.network.NameComponent
 import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.isGeocodable
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.model.network.OrgUnit
@@ -104,6 +106,10 @@ data class ContactFormState(
     // + department are surfaced as plain strings and mapped to `organizations[0]` on
     // save (extra organizations are preserved untouched).
     val addresses: List<Address> = emptyList(),
+    // ADR 0031 / issue #1287: address ids with a geocode lookup in flight, and the
+    // failure message for the ones whose lookup failed.
+    val geocodeInFlight: Set<String> = emptySet(),
+    val geocodeErrors: Map<String, String> = emptyMap(),
     val organizationName: String = "",
     val department: String = "",
     val titles: List<Title> = emptyList(),
@@ -477,6 +483,8 @@ class ContactFormViewModel @Inject constructor(
     // Issue #832: the enabled-contact-fields toggle set, same session-observing pattern
     // as ContactDetailViewModel.
     private val authRepository: AuthRepository,
+    // ADR 0031 / issue #1287: the explicit per-address "find coordinates" lookup.
+    private val mapRepository: MapRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -584,6 +592,44 @@ class ContactFormViewModel @Inject constructor(
     fun onEmailsChange(value: List<Email>) = _uiState.update { it.copy(emails = value) }
     fun onPhonesChange(value: List<Phone>) = _uiState.update { it.copy(phones = value) }
     fun onAddressesChange(value: List<Address>) = _uiState.update { it.copy(addresses = value) }
+    /**
+     * ADR 0031: one explicit geocode lookup for one *saved* address of this
+     * contact. The result is written onto the form's copy of the address (the
+     * server has already stored it too, so Save re-sends the same value). A
+     * private/secret address is refused here without a request, matching the
+     * backend's 400; the editor shows the reason up front.
+     */
+    fun onFindCoordinates(addressId: String) {
+        val id = contactId ?: return
+        val address = _uiState.value.addresses.firstOrNull { it.id == addressId } ?: return
+        if (!address.isGeocodable || addressId in _uiState.value.geocodeInFlight) return
+        _uiState.update {
+            it.copy(geocodeInFlight = it.geocodeInFlight + addressId, geocodeErrors = it.geocodeErrors - addressId)
+        }
+        viewModelScope.launch {
+            mapRepository.geocodeAddress(id, addressId).foldApiError(
+                onSuccess = { result ->
+                    _uiState.update { state ->
+                        state.copy(
+                            addresses = state.addresses.map { a ->
+                                if (a.id == addressId) a.copy(coordinates = result.coordinates) else a
+                            },
+                            geocodeInFlight = state.geocodeInFlight - addressId,
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            geocodeInFlight = it.geocodeInFlight - addressId,
+                            geocodeErrors = it.geocodeErrors + (addressId to error.displayMessage),
+                        )
+                    }
+                },
+            )
+        }
+    }
+
     fun onTitlesChange(value: List<Title>) = _uiState.update { it.copy(titles = value) }
     fun onImppChange(value: List<OnlineService>) = _uiState.update { it.copy(imppAddresses = value) }
     fun onSocialChange(value: List<OnlineService>) = _uiState.update { it.copy(socialProfiles = value) }

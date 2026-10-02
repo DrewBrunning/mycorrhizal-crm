@@ -1094,6 +1094,12 @@ copy of anything.
     other address (vCard/JSContact carry it; the CSV and account bundle follow §11).
 - **Retention**:
   - Tiles — no server-side state.
+  - Tiles on Android — MapLibre Native keeps its own on-device *ambient tile cache* (the SDK's
+    default SQLite file in the app's private storage) of the tiles it fetched. It holds tile bytes
+    keyed by tile URL — map imagery for the areas viewed, never a contact, address or marker — and is
+    bounded by the SDK's default size limit. It is **not** part of the Room mirror (§8), so
+    `LocalDataCleaner.clear()` does not touch it; it disappears with the app's data (uninstall / "clear
+    storage"). Contact pins are drawn client-side from `GET /api/v1/contacts/map` and are not cached.
   - Geocode lookups — an **in-memory** cache (`backend/services/geocoder.go` `geocodeCache`) keyed by a
     SHA-256 digest of provider + normalized address text (the cache holds no readable address, only the
     returned coordinate), bounded to 512 entries with a 24h TTL. It is **lost on restart**; there is no

@@ -27,6 +27,7 @@
     <string name="nav_tags">Etiquetas</string>
     <string name="nav_circles">Círculos</string>
     <string name="nav_network">Red</string>
+    <string name="nav_map">Mapa</string>
     <string name="nav_shares">Compartidos</string>
     <string name="nav_households">Hogares</string>
     <string name="cd_menu">Menú</string>
@@ -341,6 +342,19 @@
     <string name="contact_address_apartment">Apartamento / Suite</string>
     <string name="contact_address_floor">Planta</string>
     <string name="contact_address_additional">Campos adicionales</string>
+    <string name="map_show_list">Mostrar como lista</string>
+    <string name="map_show_map">Mostrar mapa</string>
+    <string name="map_open_contact">Abrir contacto</string>
+    <string name="map_truncated">Se muestran solo las primeras %1$d direcciones; el mapa está limitado a esta cantidad de puntos.</string>
+    <string name="map_empty">Ningún contacto tiene coordenadas todavía. Añade coordenadas a una dirección de un contacto para verla aquí.</string>
+    <string name="contact_address_coordinates">Coordenadas (latitud, longitud)</string>
+    <string name="contact_address_coordinates_hint">Por ejemplo 51.5007, -0.1246</string>
+    <string name="contact_address_coordinates_invalid">Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.</string>
+    <string name="contact_address_find_coordinates">Buscar coordenadas</string>
+    <string name="contact_address_find_coordinates_save_first">Guarda primero esta dirección. Las coordenadas se buscan para la dirección guardada.</string>
+    <string name="contact_address_find_coordinates_sensitive">Esta dirección está marcada como privada o secreta, por lo que nunca se envía al geocodificador. Introduce las coordenadas a mano.</string>
+    <string name="contact_address_find_coordinates_failed">No se pudieron encontrar coordenadas para esta dirección.</string>
+    <string name="contact_address_find_coordinates_loading">Buscando coordenadas…</string>
     <string name="contact_period">Período</string>
     <string name="contact_period_from">Desde (año)</string>
     <string name="contact_period_to">Hasta (año)</string>

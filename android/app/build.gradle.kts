@@ -193,6 +193,7 @@ dependencies {
     implementation(project(":feature:audit"))
     implementation(project(":feature:sysevents"))
     implementation(project(":feature:network"))
+    implementation(project(":feature:map"))
     implementation(project(":feature:users"))
 
     // M5 §3.1: Coil's image loader is wired to the authenticated OkHttp stack

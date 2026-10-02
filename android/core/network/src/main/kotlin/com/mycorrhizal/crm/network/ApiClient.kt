@@ -152,7 +152,10 @@ import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
+import com.mycorrhizal.crm.model.network.GeocodeAddressResponse
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.ContactMapResponse
+import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
 import com.mycorrhizal.crm.model.network.HouseholdInput
@@ -2740,6 +2743,39 @@ class ApiClient(
         }
     }
 
+    // ADR 0031 / issue #1287: the contact map.
+
+    /**
+     * GET /api/v1/config/map — public, unauthenticated: the MapLibre style JSON
+     * URL (`MAP_TILE_STYLE_URL`, defaulting to OpenFreeMap).
+     */
+    suspend fun getMapConfig(): Result<MapConfig> =
+        executeGet("$PLACEHOLDER_ORIGIN$MAP_CONFIG_PATH") { _, body ->
+            moshi.adapter(MapConfig::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/contacts/map — every plottable address of the caller's own
+     * non-archived contacts. Not sensitivity-gated (ADR 0031 section 3).
+     */
+    suspend fun getContactMap(): Result<ContactMapResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACT_MAP_PATH") { _, body ->
+            moshi.adapter(ContactMapResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/contacts/{id}/addresses/{addressId}/geocode — one explicit
+     * lookup for one saved address (never bulk). A private/secret address is
+     * refused with 400 by the server; the UI blocks it before it gets here.
+     * 404 when the instance runs without a geocoder (e.g. embedded).
+     */
+    suspend fun geocodeAddress(contactId: Int, addressId: String): Result<GeocodeAddressResponse> =
+        executePostEmpty(
+            "$API_V1/contacts/$contactId/addresses/${java.net.URLEncoder.encode(addressId, "UTF-8")}/geocode",
+        ) { _, body ->
+            moshi.adapter(GeocodeAddressResponse::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -3026,6 +3062,8 @@ class ApiClient(
         private const val ADMIN_JOB_RUNS_PATH = "$API_V1/admin/job-runs"
         private const val ADMIN_JOB_RUNS_HEALTH_PATH = "$API_V1/admin/job-runs/health"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
+        private const val MAP_CONFIG_PATH = "$API_V1/config/map"
+        private const val CONTACT_MAP_PATH = "$API_V1/contacts/map"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val EXTERNAL_ACTIVITIES_PATH = "$API_V1/external-activities"
         private const val IMMICH_PATH = "$API_V1/immich"

@@ -25,6 +25,7 @@
     <string name="dashboard_unknown_contact">Unknown contact</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
+    <string name="nav_map">Map</string>
     <string name="nav_shares">Shares</string>
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
@@ -347,6 +348,19 @@
     <string name="contact_address_apartment">Apartment / Suite</string>
     <string name="contact_address_floor">Floor</string>
     <string name="contact_address_additional">Additional fields</string>
+    <string name="map_show_list">Show as list</string>
+    <string name="map_show_map">Show map</string>
+    <string name="map_open_contact">Open contact</string>
+    <string name="map_truncated">Showing the first %1$d addresses only; the map is limited to this many points.</string>
+    <string name="map_empty">No contacts have coordinates yet. Add coordinates to an address on a contact to see it here.</string>
+    <string name="contact_address_coordinates">Coordinates (latitude, longitude)</string>
+    <string name="contact_address_coordinates_hint">For example 51.5007, -0.1246</string>
+    <string name="contact_address_coordinates_invalid">Enter latitude (-90 to 90) and longitude (-180 to 180), separated by a comma.</string>
+    <string name="contact_address_find_coordinates">Find coordinates</string>
+    <string name="contact_address_find_coordinates_save_first">Save this address first. Coordinates are looked up for the saved address.</string>
+    <string name="contact_address_find_coordinates_sensitive">This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.</string>
+    <string name="contact_address_find_coordinates_failed">Could not find coordinates for this address.</string>
+    <string name="contact_address_find_coordinates_loading">Looking up coordinates…</string>
     <string name="contact_period">Period</string>
     <string name="contact_period_from">From (year)</string>
     <string name="contact_period_to">To (year)</string>

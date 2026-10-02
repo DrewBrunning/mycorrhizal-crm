@@ -27,6 +27,7 @@
     <string name="nav_tags">Étiquettes</string>
     <string name="nav_circles">Cercles</string>
     <string name="nav_network">Réseau</string>
+    <string name="nav_map">Carte</string>
     <string name="nav_shares">Partages</string>
     <string name="nav_households">Foyers</string>
     <string name="cd_menu">Menu</string>
@@ -341,6 +342,19 @@
     <string name="contact_address_apartment">Appartement / Suite</string>
     <string name="contact_address_floor">Étage</string>
     <string name="contact_address_additional">Champs supplémentaires</string>
+    <string name="map_show_list">Afficher en liste</string>
+    <string name="map_show_map">Afficher la carte</string>
+    <string name="map_open_contact">Ouvrir le contact</string>
+    <string name="map_truncated">Seules les %1$d premières adresses sont affichées ; la carte est limitée à ce nombre de points.</string>
+    <string name="map_empty">Aucun contact n\'a encore de coordonnées. Ajoutez des coordonnées à l\'adresse d\'un contact pour la voir ici.</string>
+    <string name="contact_address_coordinates">Coordonnées (latitude, longitude)</string>
+    <string name="contact_address_coordinates_hint">Par exemple 51.5007, -0.1246</string>
+    <string name="contact_address_coordinates_invalid">Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.</string>
+    <string name="contact_address_find_coordinates">Trouver les coordonnées</string>
+    <string name="contact_address_find_coordinates_save_first">Enregistrez d\'abord cette adresse. Les coordonnées sont recherchées pour l\'adresse enregistrée.</string>
+    <string name="contact_address_find_coordinates_sensitive">Cette adresse est marquée comme privée ou secrète ; elle n\'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.</string>
+    <string name="contact_address_find_coordinates_failed">Impossible de trouver les coordonnées de cette adresse.</string>
+    <string name="contact_address_find_coordinates_loading">Recherche des coordonnées…</string>
     <string name="contact_period">Période</string>
     <string name="contact_period_from">De (année)</string>
     <string name="contact_period_to">À (année)</string>

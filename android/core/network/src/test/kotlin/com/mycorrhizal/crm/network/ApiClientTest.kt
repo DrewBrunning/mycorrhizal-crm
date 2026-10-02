@@ -5616,4 +5616,69 @@ class ApiClientTest {
         assertTrue(error is ApiError.Client)
         assertEquals(429, (error as ApiError.Client).code)
     }
+
+    // --- ADR 0031 / issue #1287: the contact map ---
+
+    @Test
+    fun `getMapConfig GETs the public config endpoint and parses the style url`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"tile_style_url":"https://tiles.example/style"}"""),
+        )
+
+        val result = client.getMapConfig()
+
+        assertEquals("https://tiles.example/style", result.getOrThrow().tileStyleUrl)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/config/map", request.path)
+    }
+
+    @Test
+    fun `getContactMap GETs the bulk endpoint and parses points and truncation`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"points":[{"contact_id":2,"contact_uid":"u","contact_name":"Ada","address_id":"a1","label":"10 Downing St","coordinates":"geo:51.5034,-0.1276"}],"truncated":true}""",
+            ),
+        )
+
+        val response = client.getContactMap().getOrThrow()
+
+        assertTrue(response.truncated)
+        assertEquals(1, response.pointsOrEmpty.size)
+        assertEquals("Ada", response.pointsOrEmpty[0].contactName)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/map", request.path)
+    }
+
+    @Test
+    fun `geocodeAddress POSTs to the per-address geocode route with the id encoded`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"address_id":"a/1","coordinates":"geo:48.85,2.35","cached":false}"""),
+        )
+
+        val result = client.geocodeAddress(contactId = 7, addressId = "a/1")
+
+        assertEquals("geo:48.85,2.35", result.getOrThrow().coordinates)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/7/addresses/a%2F1/geocode", request.path)
+        // No include_sensitive: Android never opts a private/secret address in.
+        assertFalse(request.path.orEmpty().contains("include_sensitive"))
+    }
+
+    @Test
+    fun `geocodeAddress maps the server's refusal to a Client error carrying its message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(422)
+                .setBody("""{"error":{"code":"BUSINESS_LOGIC_ERROR","message":"geocoding is not enabled on this server"}}"""),
+        )
+
+        val result = client.geocodeAddress(contactId = 7, addressId = "a")
+
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals("geocoding is not enabled on this server", error.displayMessage)
+    }
 }
