@@ -94,6 +94,13 @@ data class Address(
     val components: List<AddressComponent>? = null,
     val countryCode: String? = null,
     val coordinates: String? = null,
+    /**
+     * ADR 0031: `normal` | `private` | `secret` (null = normal). A CRM-side
+     * classification with no RFC 9553 home. Never shown or edited here, but it
+     * MUST round-trip: Moshi drops unknown keys, so omitting it would erase it
+     * on the next save. It gates the geocode lookup ([isGeocodable]).
+     */
+    val sensitivity: String? = null,
     val timeZone: String? = null,
     val contexts: List<String>? = null,
     val pref: Int? = null,
@@ -103,6 +110,14 @@ data class Address(
     val phoneticSystem: String? = null,
     val phoneticScript: String? = null,
 )
+
+/**
+ * True unless the address is `private`/`secret`: those are never sent to the
+ * geocoder (the backend answers 400), so the client blocks the action up front
+ * and says why instead of letting it fail (ADR 0031).
+ */
+val Address.isGeocodable: Boolean
+    get() = sensitivity.isNullOrBlank() || sensitivity == "normal"
 
 @JsonClass(generateAdapter = true)
 data class GrammaticalGender(

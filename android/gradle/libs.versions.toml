@@ -30,6 +30,9 @@ robolectric = "4.16.1"
 androidxTest = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 mockwebserver = "4.12.0"
+# ADR 0031 / issue #1287: the contact map renderer (the Android counterpart of the
+# web's maplibre-gl).
+maplibre = "13.6.1"
 espresso = "3.7.0"
 # Issue #263: the :macrobenchmark module — androidx.benchmark.macro
 # (MacrobenchmarkRule) for cold/warm/hot startup + dashboard frame timing,
@@ -134,6 +137,8 @@ zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "mockwebserver" }
+
+maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
 
 moshi = { group = "com.squareup.moshi", name = "moshi", version.ref = "moshi" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }

@@ -157,6 +157,13 @@ ignore:
   # a real ProcessBuilder/child pipe, a real Unix-socket HTTP probe, and the
   # AndroidKeyStore. Each is pinned by LocalServerSecurityGuardTest and/or the
   # arm64 on-device LocalOnlyModeE2eTest.
+  # Issue #1287 / ADR 0031: the MapLibre canvas. MapView needs the native
+  # renderer (libmaplibre.so + an OpenGL ES context), which Robolectric cannot
+  # load, so its changed lines can never be covered by a JVM unit test. All the
+  # decision logic is factored out and covered: viewportFor (camera framing) and
+  # MapViewModel/MapScreenContent (which take the canvas as a replaceable
+  # parameter). The canvas itself is verified on a device/emulator against a real backend.
+  - "android/feature/map/src/main/kotlin/com/mycorrhizal/crm/feature/map/ContactMapView.kt"
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/AndroidLocalServerProcess.kt"  # real ProcessBuilder + child stdout/stderr drain; guarded by LocalServerSecurityGuardTest
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/AndroidLocalServerHealthProbe.kt"  # real /health request over the Unix socket; guarded by the Go-side host test + LocalOnlyModeE2eTest
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/KeystoreLocalServerSecretCipher.kt"  # AndroidKeyStore AES-GCM wrapping; guarded by LocalServerSecurityGuardTest

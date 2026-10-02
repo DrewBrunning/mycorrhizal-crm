@@ -57,6 +57,7 @@ class ContactFormViewModelTest {
     private val circleRepository = mockk<CircleRepository>()
     private val tagRepository = mockk<TagRepository>()
     private val authRepository = mockk<com.mycorrhizal.crm.domain.repository.AuthRepository>()
+    private val mapRepository = mockk<com.mycorrhizal.crm.domain.repository.MapRepository>()
 
     private fun createViewModel(id: Int? = null): ContactFormViewModel {
         // Default stubs so the init option-loader / membership-derivation coroutines never
@@ -77,6 +78,7 @@ class ContactFormViewModelTest {
             circleRepository,
             tagRepository,
             authRepository,
+            mapRepository,
             if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id)),
         )
     }
@@ -1529,5 +1531,137 @@ class ContactFormViewModelTest {
         assertEquals(EmailSpec.typeOptions, PhoneSpec.typeOptions)
         assertEquals(PhoneSpec.typeOptions, LinkSpec.typeOptions)
         assertEquals(CONTEXT_OPTIONS, OnlineServiceSpec.typeOptions)
+    }
+
+    // --- ADR 0031 / issue #1287: the explicit per-address geocode lookup ---
+
+    private fun recordWithAddresses(vararg addresses: Address) = ContactRecordResponse(
+        id = 5,
+        uid = "u5",
+        card = Card(
+            name = Name(components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+            addresses = addresses.toList(),
+        ),
+        crm = CRMEnvelope(),
+    )
+
+    private suspend fun kotlinx.coroutines.test.TestScope.editVm(vararg addresses: Address): ContactFormViewModel {
+        coEvery { contactRepository.getContact(5) } returns Result.success(recordWithAddresses(*addresses))
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        return vm
+    }
+
+    @Test
+    fun `find coordinates geocodes the saved address and writes the result onto the form`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = editVm(Address(id = "a1", sensitivity = "normal"), Address(id = "a2"))
+            coEvery { mapRepository.geocodeAddress(5, "a1") } returns Result.success(
+                com.mycorrhizal.crm.model.network.GeocodeAddressResponse("a1", "geo:48.85,2.35", false),
+            )
+
+            vm.onFindCoordinates("a1")
+            assertEquals(setOf("a1"), vm.uiState.value.geocodeInFlight)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals("geo:48.85,2.35", state.addresses.first { it.id == "a1" }.coordinates)
+            assertNull(state.addresses.first { it.id == "a2" }.coordinates)
+            assertTrue(state.geocodeInFlight.isEmpty())
+            assertTrue(state.geocodeErrors.isEmpty())
+            coVerify(exactly = 1) { mapRepository.geocodeAddress(5, "a1") }
+        }
+
+    @Test
+    fun `a failed lookup records the message and leaves coordinates alone`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = editVm(Address(id = "a1", coordinates = "geo:1,2"))
+            coEvery { mapRepository.geocodeAddress(5, "a1") } returns Result.failure(
+                ApiError.Client(422, "geocoding is not enabled on this server"),
+            )
+
+            vm.onFindCoordinates("a1")
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals("geocoding is not enabled on this server", state.geocodeErrors["a1"])
+            assertEquals("geo:1,2", state.addresses.single().coordinates)
+            assertTrue(state.geocodeInFlight.isEmpty())
+        }
+
+    @Test
+    fun `retrying clears the previous error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = editVm(Address(id = "a1"))
+        coEvery { mapRepository.geocodeAddress(5, "a1") } returns Result.failure(ApiError.Client(422, "nope"))
+        vm.onFindCoordinates("a1")
+        advanceUntilIdle()
+        assertEquals("nope", vm.uiState.value.geocodeErrors["a1"])
+
+        coEvery { mapRepository.geocodeAddress(5, "a1") } returns Result.success(
+            com.mycorrhizal.crm.model.network.GeocodeAddressResponse("a1", "geo:1,2", false),
+        )
+        vm.onFindCoordinates("a1")
+        assertTrue(vm.uiState.value.geocodeErrors.isEmpty())
+        advanceUntilIdle()
+        assertEquals("geo:1,2", vm.uiState.value.addresses.single().coordinates)
+    }
+
+    @Test
+    fun `private and secret addresses are never sent to the geocoder`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = editVm(Address(id = "p", sensitivity = "private"), Address(id = "s", sensitivity = "secret"))
+
+            vm.onFindCoordinates("p")
+            vm.onFindCoordinates("s")
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { mapRepository.geocodeAddress(any(), any()) }
+            assertTrue(vm.uiState.value.geocodeInFlight.isEmpty())
+        }
+
+    @Test
+    fun `a second tap while a lookup is in flight does not send another request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = editVm(Address(id = "a1"))
+            coEvery { mapRepository.geocodeAddress(5, "a1") } returns Result.success(
+                com.mycorrhizal.crm.model.network.GeocodeAddressResponse("a1", "geo:1,2", false),
+            )
+
+            vm.onFindCoordinates("a1")
+            vm.onFindCoordinates("a1")
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { mapRepository.geocodeAddress(5, "a1") }
+        }
+
+    @Test
+    fun `an unknown address id or an unsaved contact does nothing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val edit = editVm(Address(id = "a1"))
+            edit.onFindCoordinates("missing")
+
+            val create = createViewModel()
+            create.onAddressesChange(listOf(Address(id = "a1")))
+            create.onFindCoordinates("a1")
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { mapRepository.geocodeAddress(any(), any()) }
+        }
+
+    @Test
+    fun `sensitivity survives loading and saving the form`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = editVm(
+            Address(
+                id = "a1",
+                sensitivity = "secret",
+                coordinates = "geo:1,2",
+                components = listOf(AddressComponent(kind = "name", value = "1 Secret Way")),
+            ),
+        )
+
+        val saved = vm.uiState.value.toInput(null).card?.addresses?.single()
+
+        assertEquals("secret", saved?.sensitivity)
+        assertEquals("geo:1,2", saved?.coordinates)
     }
 }

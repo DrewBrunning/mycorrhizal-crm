@@ -4,14 +4,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.ui.components.AddressEditor
+import com.mycorrhizal.crm.ui.components.AddressGeocodeState
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -94,5 +102,175 @@ class AddressEditorTest {
             }
         }
         composeTestRule.onNodeWithText("PO box").assertIsDisplayed()
+    }
+
+    // --- ADR 0031 / issue #1287: coordinates + find coordinates ---
+
+    private fun setEditor(
+        initial: List<Address>,
+        geocode: AddressGeocodeState = AddressGeocodeState(canGeocode = true),
+        onFind: ((String) -> Unit)? = {},
+        onFound: (String) -> Unit = {},
+    ): () -> List<Address> {
+        var addresses by mutableStateOf(initial)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AddressEditor(
+                    addresses = addresses,
+                    onChange = { addresses = it },
+                    geocode = geocode,
+                    onFindCoordinates = onFind?.let { f -> { id: String -> f(id); onFound(id) } },
+                )
+            }
+        }
+        return { addresses }
+    }
+
+    private val coordinatesLabel = "Coordinates (latitude, longitude)"
+
+    @Test
+    fun `stored coordinates display as a readable lat, lng pair`() {
+        setEditor(listOf(Address(id = "a", coordinates = "geo:51.5007,-0.1246")))
+
+        composeTestRule.onNodeWithText("51.5007, -0.1246").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unparseable stored value is shown verbatim and flagged`() {
+        setEditor(listOf(Address(id = "a", coordinates = "geo:nonsense")))
+
+        composeTestRule.onNodeWithText("geo:nonsense").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Enter latitude", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a valid typed pair is committed as a geo URI`() {
+        val current = setEditor(listOf(Address(id = "a")))
+
+        composeTestRule.onNodeWithText(coordinatesLabel).performTextInput("12.5, -45.25")
+
+        assertEquals("geo:12.5,-45.25", current().single().coordinates)
+    }
+
+    @Test
+    fun `an out-of-range pair is flagged and not committed`() {
+        val current = setEditor(listOf(Address(id = "a", coordinates = "geo:1,2")))
+
+        composeTestRule.onNodeWithText("1.0, 2.0").performTextReplacement("95, 10")
+
+        composeTestRule.onNodeWithText("Enter latitude", substring = true).assertIsDisplayed()
+        assertEquals("geo:1,2", current().single().coordinates)
+    }
+
+    @Test
+    fun `clearing the field removes the coordinates`() {
+        val current = setEditor(listOf(Address(id = "a", coordinates = "geo:1,2")))
+
+        composeTestRule.onNodeWithText("1.0, 2.0").performTextClearance()
+
+        assertNull(current().single().coordinates)
+    }
+
+    @Test
+    fun `find coordinates fires for the saved address`() {
+        val found = mutableListOf<String>()
+        setEditor(listOf(Address(id = "a1")), onFound = { found += it })
+
+        composeTestRule.onNodeWithText("Find coordinates").assertIsEnabled().performClick()
+
+        assertEquals(listOf("a1"), found)
+    }
+
+    @Test
+    fun `a geocode result written onto the address replaces the typed text`() {
+        var addresses by mutableStateOf(listOf(Address(id = "a1")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { AddressEditor(addresses = addresses, onChange = { addresses = it }) }
+        }
+        composeTestRule.onNodeWithText(coordinatesLabel).performTextInput("9,")
+
+        addresses = listOf(Address(id = "a1", coordinates = "geo:48.85,2.35"))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("48.85, 2.35").assertIsDisplayed()
+    }
+
+    @Test
+    fun `typing a trailing zero is not reformatted under the cursor`() {
+        val current = setEditor(listOf(Address(id = "a")))
+
+        composeTestRule.onNodeWithText(coordinatesLabel).performTextInput("1, -0.10")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("1, -0.10").assertIsDisplayed()
+        assertEquals("geo:1.0,-0.1", current().single().coordinates)
+    }
+
+    private fun assertSensitiveBlocked(sensitivity: String) {
+        val found = mutableListOf<String>()
+        setEditor(listOf(Address(id = "a1", sensitivity = sensitivity)), onFound = { found += it })
+
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("never sent to the geocoder", substring = true).assertExists()
+        assertTrue(found.isEmpty())
+        // Manual entry still works for a sensitive address.
+        composeTestRule.onNodeWithText(coordinatesLabel).assertIsEnabled()
+    }
+
+    @Test
+    fun `find coordinates is disabled with a reason for a private address`() = assertSensitiveBlocked("private")
+
+    @Test
+    fun `find coordinates is disabled with a reason for a secret address`() = assertSensitiveBlocked("secret")
+
+    @Test
+    fun `find coordinates is disabled with a save-first reason without a contact or id`() {
+        setEditor(listOf(Address()), geocode = AddressGeocodeState(canGeocode = true))
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Save this address first", substring = true).assertExists()
+    }
+
+    @Test
+    fun `no contact id or no callback means save first`() {
+        setEditor(listOf(Address(id = "a1")), geocode = AddressGeocodeState(canGeocode = false))
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `without a find callback the action is unavailable`() {
+        setEditor(listOf(Address(id = "a1")), onFind = null)
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `an in-flight lookup disables the button and says so`() {
+        setEditor(
+            listOf(Address(id = "a1")),
+            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("a1")),
+        )
+
+        composeTestRule.onNodeWithText("Looking up coordinates…").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a failed lookup shows its error under the row`() {
+        setEditor(
+            listOf(Address(id = "a1")),
+            geocode = AddressGeocodeState(canGeocode = true, errors = mapOf("a1" to "geocoding is not enabled on this server")),
+        )
+
+        composeTestRule.onNodeWithText("geocoding is not enabled on this server").assertExists()
+    }
+
+    @Test
+    fun `editing the street keeps coordinates and sensitivity`() {
+        val current = setEditor(
+            listOf(Address(id = "a", sensitivity = "secret", coordinates = "geo:1,2")),
+        )
+
+        composeTestRule.onNodeWithText("City").performTextInput("Metropolis")
+
+        assertEquals("secret", current().single().sensitivity)
+        assertEquals("geo:1,2", current().single().coordinates)
     }
 }
