@@ -246,6 +246,7 @@ func (e *Env) Router() *gin.Engine {
 	r.POST("/contacts", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.CreateContact)
 	r.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 	r.DELETE("/contacts/:id", controllers.DeleteContact)
+	r.GET("/contacts/map", controllers.GetContactMap)
 	r.GET("/dashboard", controllers.GetDashboard)
 	r.GET("/search", controllers.SearchAll)
 	r.GET("/graph/connections", controllers.GetGraphConnections)

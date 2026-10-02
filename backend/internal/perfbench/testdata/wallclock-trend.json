@@ -3,122 +3,126 @@
   "generated_on": "linux/amd64",
   "core": {
     "cadence.list_overdue": {
-      "smoke": 1797393,
-      "typical": 38838840
+      "smoke": 1837348,
+      "typical": 37995684
     },
     "contact_create": {
-      "smoke": 641723,
-      "typical": 813483
+      "smoke": 628168,
+      "typical": 992055
     },
     "contact_detail": {
-      "smoke": 1743713,
-      "typical": 3274420
+      "smoke": 1756087,
+      "typical": 3429540
     },
     "contact_detail.pathological": {
-      "smoke": 919720,
-      "typical": 1256157
+      "smoke": 766866,
+      "typical": 1274090
     },
     "contact_list.filtered_sorted": {
-      "smoke": 533433,
-      "typical": 8136524
+      "smoke": 514537,
+      "typical": 8114596
     },
     "contact_list.plain": {
-      "smoke": 644018,
-      "typical": 352525
+      "smoke": 464775,
+      "typical": 357074
+    },
+    "contact_map": {
+      "smoke": 204380,
+      "typical": 800539
     },
     "contact_merge": {
-      "smoke": 8702707,
-      "typical": 11997515
+      "smoke": 8898554,
+      "typical": 13276578
     },
     "contact_update": {
-      "smoke": 852014,
-      "typical": 983118
+      "smoke": 854600,
+      "typical": 1159767
     },
     "dashboard": {
-      "smoke": 2800679,
-      "typical": 41920692
+      "smoke": 3037401,
+      "typical": 42507758
     },
     "delete_cascade": {
-      "smoke": 4173713,
-      "typical": 6018324
+      "smoke": 4427617,
+      "typical": 6550976
     },
     "duplicates.find_pairs": {
-      "smoke": 2504999,
-      "typical": 17341355
+      "smoke": 2469735,
+      "typical": 19178047
     },
     "feed.aggregate": {
-      "smoke": 2230850,
-      "typical": 6693189
+      "smoke": 2063959,
+      "typical": 6547721
     },
     "feed.contact": {
-      "smoke": 527922,
-      "typical": 779410
+      "smoke": 539254,
+      "typical": 800870
     },
     "fts.contact_list_search": {
-      "smoke": 666751,
-      "typical": 2070822
+      "smoke": 668293,
+      "typical": 2035136
     },
     "fts.search_all": {
-      "smoke": 794939,
-      "typical": 717715
+      "smoke": 817931,
+      "typical": 707326
     },
     "graph.traverse_deep": {
-      "smoke": 2225429,
-      "typical": 384757176
+      "smoke": 2309637,
+      "typical": 397174674
     },
     "graph.traverse_hub": {
-      "smoke": 1213226,
-      "typical": 32094726
+      "smoke": 1162854,
+      "typical": 34072506
     },
     "graph.traverse_shallow": {
-      "smoke": 235197,
-      "typical": 468872
+      "smoke": 230279,
+      "typical": 392170
     },
     "reachout.detect": {
-      "smoke": 244274,
-      "typical": 241559
+      "smoke": 252520,
+      "typical": 240638
     }
   },
   "data_movement": {
     "backup.vacuum_into": {
-      "smoke": 41472869,
-      "typical": 61036738
+      "smoke": 43089971,
+      "typical": 64006343
     },
     "delete_cascade.hub": {
-      "smoke": 7392019,
-      "typical": 9283808
+      "smoke": 7303667,
+      "typical": 9286266
     },
     "duplicates.find_pairs": {
-      "smoke": 4379626,
-      "typical": 24611898
+      "smoke": 4902500,
+      "typical": 24653143
     },
     "export.account_bundle": {
-      "smoke": 44438104,
-      "typical": 266709738
+      "smoke": 44742445,
+      "typical": 277344391
     },
     "export.bundle": {
-      "smoke": 11819034,
-      "typical": 59802512
+      "smoke": 12214823,
+      "typical": 62294648
     },
     "export.jscontact": {
-      "smoke": 37708438,
-      "typical": 280390505
+      "smoke": 39901770,
+      "typical": 280817983
     },
     "export.vcard4": {
-      "smoke": 42024665,
-      "typical": 296237590
+      "smoke": 42489334,
+      "typical": 297991993
     },
     "fts.rebuild": {
-      "smoke": 7848388,
-      "typical": 19264492
+      "smoke": 8138631,
+      "typical": 19866037
     },
     "import.vcf": {
-      "smoke": 556530363,
-      "typical": 14574611719
+      "smoke": 583597642,
+      "typical": 14792165129
     },
     "restore.snapshot": {
-      "smoke": 18798235,
-      "typical": 33916735
+      "smoke": 20332185,
+      "typical": 33774622
     }
   }
 }

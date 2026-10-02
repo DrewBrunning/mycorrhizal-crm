@@ -101,6 +101,22 @@
         }
       }
     },
+    "contact_map": {
+      "category": "read",
+      "expected_growth": "constant",
+      "profiles": {
+        "smoke": {
+          "queries": 1,
+          "result_size": 0,
+          "row_scale": 350
+        },
+        "typical": {
+          "queries": 1,
+          "result_size": 0,
+          "row_scale": 945
+        }
+      }
+    },
     "contact_merge": {
       "category": "write",
       "expected_growth": "constant",

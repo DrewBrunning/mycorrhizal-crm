@@ -34,6 +34,10 @@
       "max_wall_ms": 500,
       "reason": "Interactive: the contact form's save on an existing record. 11 queries is the gate; 500ms is ~300x the 1.7ms median, matching contact_create's save-latency ceiling."
     },
+    "contact_map": {
+      "max_wall_ms": 500,
+      "reason": "Interactive: the contact map's single bulk read. One query, bounded by MaxContactMapPoints (5000); the SQL pre-filter plus ParseGeoURI keep it a single pass. 500ms is generous over a sub-10ms median so only a scan-per-contact (N+1) regression trips it."
+    },
     "dashboard": {
       "max_wall_ms": 300,
       "reason": "Interactive: the home screen. 8 fixed aggregate queries is the gate. 300ms is ~230x the 1.3ms median; a dashboard tile that started iterating contacts would trip it."

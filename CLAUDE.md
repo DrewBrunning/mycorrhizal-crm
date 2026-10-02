@@ -562,6 +562,12 @@ These are real bugs that shipped, not hypotheticals.
     silent data loss on the user's own migration. It rides the `mycorrhizal` import source
     (issue #1260) through the shared source-import engine. Pinned by
     `services/account_bundle_test.go` (scoping + full-fidelity + round-trip).
+  - **The contact map read (`GET /api/v1/contacts/map`, issue #1427, ADR 0031 §3) is the third
+    exception, for the same reason.** It is the owner's own in-app view of their own addresses —
+    not an export, sync or share — so `private`/`secret` addresses are returned with no
+    `include_sensitive` parameter. It is scoped to the caller, excludes archived/soft-deleted
+    contacts, and is bounded at `MaxContactMapPoints` (`truncated: true` past it). Pinned by
+    `controllers/contact_map_controller_test.go`.
 
 ## Frontend traps
 
