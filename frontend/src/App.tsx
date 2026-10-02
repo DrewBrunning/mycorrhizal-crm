@@ -47,6 +47,7 @@ import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import HistoryIcon from '@mui/icons-material/History';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import LogoutIcon from '@mui/icons-material/Logout';
+import MapIcon from '@mui/icons-material/Map';
 import MenuIcon from '@mui/icons-material/Menu';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PeopleIcon from '@mui/icons-material/People';
@@ -77,7 +78,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createBrowserRouter,
@@ -130,6 +131,10 @@ import { AuthContext, useAuth } from './context/AuthContext';
 // clears it by only 1.5px. 256 gives a 152px slot: every locale fits with real
 // headroom rather than sitting on the rounding boundary, where a font-rendering
 // difference between platforms would flip it back to wrapping.
+// The first React.lazy route in the app (ADR 0031): MapLibre GL JS is heavy, so the
+// map page (and the `map-vendor` chunk it pulls in) loads only when /map is opened.
+const MapPage = lazy(() => import('./MapPage'));
+
 const drawerWidth = 256;
 
 // T33 nav classification: which destinations are "primary" (kept as icons in
@@ -264,6 +269,7 @@ function AppContent({
         ),
         path: '/network',
       },
+      { text: t('nav.map'), icon: <MapIcon />, path: '/map' },
       { text: t('nav.occasions'), icon: <CelebrationIcon />, path: '/occasions' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
@@ -735,6 +741,14 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <NetworkPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/map"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <MapPage />
                 </Suspense>
               }
             />

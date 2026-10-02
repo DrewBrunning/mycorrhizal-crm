@@ -44,6 +44,7 @@ export interface ContactAddress {
   // Rich-field passthrough (T29): coordinates/timeZone/pref/full etc.
   // are carried alongside and re-emitted on save rather than dropped.
   coordinates?: string;
+  sensitivity?: AddressSensitivity;
   timeZone?: string;
   pref?: number | null;
   full?: string;
@@ -199,6 +200,10 @@ export interface CardResource {
   listAs?: number | null;
 }
 
+// Mirrors backend contactmodel.Address.Sensitivity's oneof (normal|private|secret).
+// Keep in sync by hand (frontend trap #4).
+export type AddressSensitivity = 'normal' | 'private' | 'secret';
+
 export interface CardAddressComponent {
   kind: string;
   value: string;
@@ -210,6 +215,8 @@ export interface CardAddress {
   components?: CardAddressComponent[];
   countryCode?: string;
   coordinates?: string;
+  // ADR 0031: normal|private|secret (absent = normal). Gates the geocode lookup.
+  sensitivity?: AddressSensitivity;
   timeZone?: string;
   contexts?: string[];
   pref?: number | null;
@@ -684,6 +691,7 @@ export function cardAddressesToValues(
       floor: find('floor') || undefined,
       passthrough: passthrough.length > 0 ? passthrough : undefined,
       coordinates: a.coordinates,
+      sensitivity: a.sensitivity,
       timeZone: a.timeZone,
       pref: a.pref,
       full: a.full,
@@ -786,6 +794,7 @@ function cardAddressFromFlat(a: ContactAddress): CardAddress {
     components,
     contexts: a.type ? [a.type] : undefined,
     coordinates: a.coordinates,
+    sensitivity: a.sensitivity,
     timeZone: a.timeZone,
     pref: a.pref,
     full: a.full,

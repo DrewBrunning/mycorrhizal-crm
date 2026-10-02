@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ContactAddress } from '../api/contacts';
+import { formatGeoUri, geocodeAddress, parseCoordinateInput, parseGeoUri } from '../api/map';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
 
@@ -21,6 +22,10 @@ interface AddressFieldsProps {
   label: string;
   value: ContactAddress[];
   onChange: (next: ContactAddress[]) => void;
+  // The saved contact's id. Needed by the "find coordinates" action (the
+  // backend geocodes a *saved* address by contact id + address id); absent
+  // while creating a contact, where the action is shown disabled.
+  contactId?: number | string;
 }
 
 const EMPTY_ADDRESS: ContactAddress = {
@@ -43,7 +48,13 @@ function hasAdditionalParts(addr: ContactAddress): boolean {
   return Boolean(addr.pobox?.trim() || addr.apartment?.trim() || addr.floor?.trim());
 }
 
-export default function AddressFields({ label, value, onChange }: AddressFieldsProps) {
+function omitKey<T>(record: Record<number, T>, key: number): Record<number, T> {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
+export default function AddressFields({ label, value, onChange, contactId }: AddressFieldsProps) {
   const { t } = useTranslation();
   const rowKeys = useRowKeys(value.length);
   // Per-address, not per-form (T80) -- keyed by the stable row key from
@@ -52,6 +63,13 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
   // it stays for the rest of the editing session, even if the fields are
   // cleared back to empty -- this set only ever grows.
   const [revealedKeys, setRevealedKeys] = useState<Set<number>>(new Set());
+
+  // Raw text of a coordinate field being typed, keyed like revealedKeys. Only
+  // a valid in-range pair is committed to the address (as a geo: URI); the
+  // draft lets a half-typed value stay visible instead of snapping back.
+  const [coordDrafts, setCoordDrafts] = useState<Record<number, string>>({});
+  const [geocoding, setGeocoding] = useState<Set<number>>(new Set());
+  const [geocodeErrors, setGeocodeErrors] = useState<Record<number, string>>({});
 
   const updateAddr = (index: number, patch: Partial<ContactAddress>) => {
     onChange(value.map((a, i) => (i === index ? { ...a, ...patch } : a)));
@@ -65,6 +83,42 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
   const addAddr = () => {
     rowKeys.onAdd();
     onChange([...value, { ...EMPTY_ADDRESS }]);
+  };
+
+  const setCoordinateText = (index: number, rowKey: number, text: string) => {
+    setCoordDrafts((prev) => ({ ...prev, [rowKey]: text }));
+    if (text.trim() === '') {
+      updateAddr(index, { coordinates: undefined });
+      return;
+    }
+    const parsed = parseCoordinateInput(text);
+    if (parsed) updateAddr(index, { coordinates: formatGeoUri(parsed.lat, parsed.lng) });
+  };
+
+  const findCoordinates = async (
+    index: number,
+    rowKey: number,
+    saved: { contactId: number | string; addressId: string },
+  ) => {
+    setGeocodeErrors((prev) => omitKey(prev, rowKey));
+    setGeocoding((prev) => new Set(prev).add(rowKey));
+    try {
+      const result = await geocodeAddress(saved.contactId, saved.addressId);
+      setCoordDrafts((prev) => omitKey(prev, rowKey));
+      updateAddr(index, { coordinates: result.coordinates });
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : '';
+      setGeocodeErrors((prev) => ({
+        ...prev,
+        [rowKey]: message || t('contacts.addressFields.findCoordinatesFailed'),
+      }));
+    } finally {
+      setGeocoding((prev) => {
+        const next = new Set(prev);
+        next.delete(rowKey);
+        return next;
+      });
+    }
   };
 
   const revealAdditional = (key: number) => {
@@ -84,6 +138,22 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
         {value.map((addr, index) => {
           const rowKey = rowKeys.keyAt(index);
           const showAdditional = revealedKeys.has(rowKey) || hasAdditionalParts(addr);
+          const coordText =
+            coordDrafts[rowKey] ??
+            (() => {
+              const p = parseGeoUri(addr.coordinates);
+              return p ? `${p.lat}, ${p.lng}` : (addr.coordinates ?? '');
+            })();
+          const coordInvalid = coordText.trim() !== '' && parseCoordinateInput(coordText) === null;
+          // A private/secret address must never be sent to the geocoder
+          // (ADR 0031) -- mirror the backend's 400 up front, with the reason
+          // shown rather than a silently dead button.
+          const sensitive = Boolean(addr.sensitivity && addr.sensitivity !== 'normal');
+          const unsaved = contactId == null || !addr.id;
+          let findReason = '';
+          if (sensitive) findReason = t('contacts.addressFields.findCoordinatesSensitive');
+          else if (unsaved) findReason = t('contacts.addressFields.findCoordinatesSaveFirst');
+          const geocodeError = geocodeErrors[rowKey];
           return (
             <Paper key={rowKey} variant="outlined" sx={{ p: 1.5 }}>
               <Stack spacing={1}>
@@ -218,6 +288,47 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
                     slotProps={{ htmlInput: { min: 1900, max: 2100 } }}
                   />
                 </Stack>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+                  <TextField
+                    label={t('contacts.addressFields.coordinates')}
+                    size="small"
+                    fullWidth
+                    value={coordText}
+                    onChange={(e) => setCoordinateText(index, rowKey, e.target.value)}
+                    error={coordInvalid}
+                    placeholder="51.5007, -0.1246"
+                    helperText={
+                      coordInvalid
+                        ? t('contacts.addressFields.coordinatesInvalid')
+                        : t('contacts.addressFields.coordinatesHelp')
+                    }
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={findReason !== '' || geocoding.has(rowKey)}
+                    onClick={() =>
+                      void findCoordinates(index, rowKey, {
+                        // Only reachable when enabled, i.e. saved (see findReason).
+                        contactId: contactId as number | string,
+                        addressId: addr.id as string,
+                      })
+                    }
+                    sx={{ textTransform: 'none', whiteSpace: 'nowrap', mt: 0.5 }}
+                  >
+                    {t('contacts.addressFields.findCoordinates')}
+                  </Button>
+                </Stack>
+                {findReason && (
+                  <Typography variant="caption" color="text.secondary">
+                    {findReason}
+                  </Typography>
+                )}
+                {geocodeError && (
+                  <Typography variant="caption" color="error" role="alert">
+                    {geocodeError}
+                  </Typography>
+                )}
               </Stack>
             </Paper>
           );

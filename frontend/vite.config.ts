@@ -125,4 +125,29 @@ const VENDOR_CHUNKS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['mdi', ['@mdi/react', '@mdi/js']],
   ['i18n-vendor', ['i18next', 'react-i18next', 'i18next-browser-languagedetector']],
   ['graph-vendor', ['react-force-graph-2d', 'd3-force']],
+  // ADR 0031: MapLibre GL JS and its runtime dependencies, loaded only via the
+  // lazy /map route (the first React.lazy in the app).
+  [
+    'map-vendor',
+    [
+      'maplibre-gl',
+      '@mapbox/point-geometry',
+      '@mapbox/tiny-sdf',
+      '@mapbox/unitbezier',
+      '@mapbox/vector-tile',
+      '@maplibre/geojson-vt',
+      '@maplibre/maplibre-gl-style-spec',
+      '@maplibre/mlt',
+      '@maplibre/vt-pbf',
+      'bidi-js',
+      'earcut',
+      'gl-matrix',
+      'kdbush',
+      'murmurhash-js',
+      'pbf',
+      'potpack',
+      'quickselect',
+      'tinyqueue',
+    ],
+  ],
 ];

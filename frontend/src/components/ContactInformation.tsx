@@ -92,6 +92,8 @@ import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembe
 import SpeakToAsEditor from './SpeakToAsEditor';
 
 interface ContactInformationProps {
+  // The saved contact's id -- the address editor's geocode action needs it.
+  contactId?: number;
   card: CardModel;
   crm: CRMEnvelope;
   gender?: string;
@@ -155,6 +157,7 @@ const FullSpanField = ({ children, active = true }: { children: ReactNode; activ
 );
 
 export default function ContactInformation({
+  contactId,
   card,
   crm,
   gender = '',
@@ -1026,7 +1029,12 @@ export default function ContactInformation({
               cloneValue={cloneValues}
               renderDisplay={renderAddressList}
               renderEditor={(draft, setDraft) => (
-                <AddressFields label={t('contacts.address')} value={draft} onChange={setDraft} />
+                <AddressFields
+                  label={t('contacts.address')}
+                  value={draft}
+                  onChange={setDraft}
+                  contactId={contactId}
+                />
               )}
               onSave={(draft) => {
                 const { addresses, periods } = addressesToCardAndPeriods(draft);
