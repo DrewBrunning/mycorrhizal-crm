@@ -1,4 +1,4 @@
-import { mdiCalendarPlus } from '@mdi/js';
+import { mdiCalendarPlus, mdiMapMarkerOutline } from '@mdi/js';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -29,6 +29,7 @@ import { type Activity, createActivity, deleteActivity, updateActivity } from '.
 import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
+import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -69,6 +70,7 @@ const ActivitiesPage: React.FC = () => {
     if (!loading) announce(t('common.resultsCount', { count: activities.length }));
   }, [loading, activities.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editValues, setEditValues] = useState<{
     activityTitle?: string;
@@ -219,18 +221,31 @@ const ActivitiesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={
-            <SvgIcon>
-              <path d={mdiCalendarPlus} />
-            </SvgIcon>
-          }
-          onClick={handleAddActivity}
-        >
-          {t('activities.addActivity')}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            startIcon={
+              <SvgIcon>
+                <path d={mdiMapMarkerOutline} />
+              </SvgIcon>
+            }
+            onClick={() => setLocationDialogOpen(true)}
+          >
+            {t('activities.logFromLocation')}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={
+              <SvgIcon>
+                <path d={mdiCalendarPlus} />
+              </SvgIcon>
+            }
+            onClick={handleAddActivity}
+          >
+            {t('activities.addActivity')}
+          </Button>
+        </Box>
       </Box>
 
       <Popover
@@ -439,6 +454,12 @@ const ActivitiesPage: React.FC = () => {
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
         onSave={handleActivitySave}
+      />
+
+      <GeoPulseSuggestionsDialog
+        open={locationDialogOpen}
+        onClose={() => setLocationDialogOpen(false)}
+        onLogged={() => void refetch()}
       />
 
       {editingActivity && (

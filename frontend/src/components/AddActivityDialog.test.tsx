@@ -210,6 +210,115 @@ test('a successful save clears the draft', async () => {
   expect(screen.getByLabelText('Title *')).toHaveValue('');
 });
 
+// Issue #160 (GeoPulse): the dialog can be opened pre-filled from outside.
+test('a prefill fills the location and date, and passes external_ref through to onSave', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    onSave,
+    prefill: { location: 'Cafe Nero', date: '2026-09-20', externalRef: 'geopulse:stay:7' },
+  });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  expect(screen.getByLabelText('Location')).toHaveValue('Cafe Nero');
+  expect(screen.getByLabelText('Date *')).toHaveValue('2026-09-20');
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith({
+      title: 'Coffee',
+      description: '',
+      location: 'Cafe Nero',
+      date: '2026-09-20',
+      contact_ids: [],
+      external_ref: 'geopulse:stay:7',
+    }),
+  );
+});
+
+test('without a prefill external_ref is never sent', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).not.toHaveProperty('external_ref');
+});
+
+test('a prefill without an externalRef sends none either', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave, prefill: { location: 'Somewhere' } });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).not.toHaveProperty('external_ref');
+  expect(onSave.mock.calls[0][0].location).toBe('Somewhere');
+});
+
+test('the user can still edit a prefilled location, and a re-render does not re-apply the prefill', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  const view = renderDialog({
+    onSave,
+    prefill: { location: 'Cafe Nero', date: '2026-09-20', externalRef: 'geopulse:stay:7' },
+  });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Cafe Nero, Leeds' } });
+  // A parent re-rendering with a structurally-identical (but new) prefill object.
+  view.rerender(
+    <AddActivityDialog
+      open
+      onClose={vi.fn()}
+      onSave={onSave}
+      prefill={{ location: 'Cafe Nero', date: '2026-09-20', externalRef: 'geopulse:stay:7' }}
+    />,
+  );
+
+  expect(screen.getByLabelText('Location')).toHaveValue('Cafe Nero, Leeds');
+});
+
+test('a prefilled location alone is not "unsaved work": Cancel closes without a confirmation', async () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose, prefill: { location: 'Cafe Nero', date: '2026-09-20' } });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
+});
+
+test('but a typed title in a prefilled dialog still asks before discarding', async () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose, prefill: { location: 'Cafe Nero', date: '2026-09-20' } });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Half typed' } });
+  fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+  expect(onClose).not.toHaveBeenCalled();
+  expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+});
+
+test('a prefilled dialog never writes a session draft', async () => {
+  const { unmount } = renderDialog({ prefill: { location: 'Cafe Nero', date: '2026-09-20' } });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Half typed' } });
+  unmount();
+
+  expect(sessionStorage.length).toBe(0);
+  renderDialog();
+  await waitFor(() => expect(screen.getByLabelText('Title *')).toBeInTheDocument());
+  expect(screen.getByLabelText('Title *')).toHaveValue('');
+});
+
 // Issue #805: with the app on a data router, a dirty activity also guards
 // *in-app route navigation* -- the blocker intercepts a drawer link /
 // programmatic navigate / browser Back and asks before discarding, mirroring

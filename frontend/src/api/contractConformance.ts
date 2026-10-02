@@ -57,6 +57,13 @@ import type { DataDecayHealth, DataDecayPolicy, OverdueDataDecayPolicy } from '.
 import type { ExternalActivity, ExternalIdentity } from './externalLinks';
 import type { FEED_DETAILS, FEED_KINDS, Feed, FeedCreateResponse } from './feeds';
 import type { FieldDefinition, FieldValue } from './fieldDefinitions';
+import type {
+  GeoPulseConfigResponse,
+  GeoPulseConnectionTestResult,
+  GeoPulsePhotoSuggestion,
+  GeoPulseStaySuggestion,
+  GeoPulseSuggestionsResponse,
+} from './geopulse';
 import type { GIFT_STATUSES, Gift } from './gifts';
 import type { HOUSEHOLD_TYPES, Household, HouseholdMember } from './households';
 import type { LIFE_EVENT_CATEGORIES, LifeEvent, LifeEventSuggestion } from './lifeEvents';
@@ -216,6 +223,11 @@ export type Conformance = [
   NoDrift<ResponseDrift<CardAnniversary, S.Anniversary>>,
   NoDrift<ResponseDrift<Feed, S.Feed>>,
   NoDrift<ResponseDrift<FeedCreateResponse, S.FeedCreateResponse>>,
+  NoDrift<ResponseDrift<GeoPulseConfigResponse, S.GeoPulseConfigResponse>>,
+  NoDrift<ResponseDrift<GeoPulseConnectionTestResult, S.GeoPulseConnectionTestResult>>,
+  NoDrift<ResponseDrift<GeoPulsePhotoSuggestion, S.GeoPulsePhotoSuggestion>>,
+  NoDrift<ResponseDrift<GeoPulseStaySuggestion, S.GeoPulseStaySuggestion>>,
+  NoDrift<ResponseDrift<GeoPulseSuggestionsResponse, S.GeoPulseSuggestionsResponse>>,
 ];
 
 // ---------------------------------------------------------------- enums

@@ -17,6 +17,17 @@ import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
+// ActivityPrefill pre-fills the dialog from outside — e.g. confirming a GeoPulse
+// location-history suggestion (issue #160). `externalRef` rides through to onSave
+// untouched (it is not an editable field). A prefilled dialog never reads or
+// writes a session draft: the prefill, not a half-typed draft, is its start state.
+export interface ActivityPrefill {
+  location?: string;
+  // YYYY-MM-DD, the value a date input takes.
+  date?: string;
+  externalRef?: string;
+}
+
 interface AddActivityDialogProps {
   open: boolean;
   onClose: () => void;
@@ -26,8 +37,10 @@ interface AddActivityDialogProps {
     location: string;
     date: string;
     contact_ids: number[];
+    external_ref?: string;
   }) => Promise<void>;
   preselectedContactId?: number;
+  prefill?: ActivityPrefill;
 }
 
 interface ActivityDraft {
@@ -42,6 +55,7 @@ export default function AddActivityDialog({
   onClose,
   onSave,
   preselectedContactId,
+  prefill,
 }: AddActivityDialogProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
@@ -63,21 +77,35 @@ export default function AddActivityDialog({
   // loss cost anyway.
   const draftKey = `activity-dialog:${preselectedContactId ?? 'unassigned'}`;
 
+  // Primitives, not the prefill object, drive the effect: a parent that builds a
+  // fresh object each render must not re-apply the prefill over the user's edits.
+  const hasPrefill = prefill !== undefined;
+  const prefillLocation = prefill?.location;
+  const prefillDate = prefill?.date;
   useEffect(() => {
     if (!open) return;
+    if (hasPrefill) {
+      if (prefillLocation !== undefined) setLocation(prefillLocation);
+      if (prefillDate) setDate(prefillDate);
+      return;
+    }
     const draft = readSessionDraft<ActivityDraft>(draftKey);
     if (!draft) return;
     setTitle(draft.title);
     setDescription(draft.description);
     setLocation(draft.location);
     setDate(draft.date);
-  }, [open, draftKey]);
+  }, [open, draftKey, hasPrefill, prefillLocation, prefillDate]);
 
-  const isDirty = Boolean(title.trim() || description.trim() || location.trim());
+  // With a prefill the location is already filled in, so it alone is not "work
+  // the user would lose" — only what they typed themselves is.
+  const isDirty = hasPrefill
+    ? Boolean(title.trim() || description.trim())
+    : Boolean(title.trim() || description.trim() || location.trim());
   const { clearDraft } = useSessionDraft(
     draftKey,
     { title, description, location, date },
-    open && isDirty,
+    open && isDirty && !hasPrefill,
   );
   // Clears the draft too -- reached after a successful save and after a
   // confirmed discard (a Cancel/Escape close or a blocked in-app navigation),
@@ -160,6 +188,7 @@ export default function AddActivityDialog({
         location,
         date,
         contact_ids: selectedContacts.map((c) => c.ID),
+        ...(prefill?.externalRef ? { external_ref: prefill.externalRef } : {}),
       });
       handleClose();
     } catch {

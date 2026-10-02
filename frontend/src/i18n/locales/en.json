@@ -674,7 +674,8 @@
     "noResults": "No activities match your filters",
     "fromDate": "From",
     "toDate": "To",
-    "allContactsInfo": "This page lists every activity from every contact."
+    "allContactsInfo": "This page lists every activity from every contact.",
+    "logFromLocation": "Log from location history"
   },
   "notes": {
     "title": "Notes",
@@ -1002,6 +1003,43 @@
       "linkFailed": "Could not link this document.",
       "noMatches": "No documents match. Try a different search, or check that Paperless has finished OCR.",
       "untitled": "(untitled document)"
+    }
+  },
+  "geopulse": {
+    "settings": {
+      "title": "GeoPulse",
+      "description": "Connect a self-hosted GeoPulse instance so you can turn a day of location history into activity suggestions. Nothing is imported automatically: you pick a date, review the places, and choose who you were with. The API token is stored encrypted and only used to read from your own server.",
+      "baseUrl": "Base URL",
+      "apiKey": "API Token",
+      "apiKeyHintNew": "Create a token in GeoPulse (Profile → Security) and paste it here.",
+      "apiKeyHintExisting": "A token is already stored. Leave the field empty to keep it.",
+      "saveButton": "Save connection",
+      "removeButton": "Remove connection",
+      "testConnectionButton": "Test connection",
+      "testingConnection": "Testing…",
+      "removeConfirm": "Remove the GeoPulse connection? Activities you already logged from location history are kept.",
+      "baseUrlRequired": "Base URL is required.",
+      "invalidBaseUrl": "Base URL must be an http:// or https:// URL.",
+      "saved": "GeoPulse connection saved",
+      "removed": "GeoPulse connection removed",
+      "saveFailed": "Failed to save the GeoPulse connection"
+    },
+    "dialog": {
+      "title": "Log activity from location history",
+      "description": "Pick a date to see the places GeoPulse recorded. Nothing is saved until you log one, and you choose who you were with.",
+      "date": "Date",
+      "lookUp": "Look up",
+      "lookingUp": "Looking up…",
+      "openSettings": "Open settings",
+      "noStays": "GeoPulse has no recorded stays for this date.",
+      "unnamedPlace": "Unnamed place",
+      "alreadyLogged": "Already logged",
+      "logActivity": "Log activity",
+      "photos": "Photos nearby ({{count}})",
+      "photosUnavailable": "Photos could not be checked.",
+      "durationMinutes": "{{count}} min",
+      "durationHours": "{{count}} h",
+      "durationHoursMinutes": "{{hours}} h {{minutes}} min"
     }
   },
   "seafile": {

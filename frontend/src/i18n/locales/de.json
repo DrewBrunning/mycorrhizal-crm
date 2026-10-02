@@ -674,7 +674,8 @@
     "noResults": "Keine Aktivitäten entsprechen Ihren Filtern",
     "fromDate": "Von",
     "toDate": "Bis",
-    "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten."
+    "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten.",
+    "logFromLocation": "Aus Standortverlauf erfassen"
   },
   "notes": {
     "title": "Notes",
@@ -975,6 +976,43 @@
       "linkFailed": "Dieses Dokument konnte nicht verknüpft werden.",
       "noMatches": "Keine passenden Dokumente. Versuchen Sie eine andere Suche oder prüfen Sie, ob Paperless die OCR abgeschlossen hat.",
       "untitled": "(Dokument ohne Titel)"
+    }
+  },
+  "geopulse": {
+    "settings": {
+      "title": "GeoPulse",
+      "description": "Verbinde eine selbst gehostete GeoPulse-Instanz, um aus dem Standortverlauf eines Tages Aktivitätsvorschläge zu erstellen. Es wird nichts automatisch importiert: Du wählst ein Datum, prüfst die Orte und entscheidest, mit wem du dort warst. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.",
+      "baseUrl": "Basis-URL",
+      "apiKey": "API-Token",
+      "apiKeyHintNew": "Erstelle in GeoPulse ein Token (Profil → Sicherheit) und füge es hier ein.",
+      "apiKeyHintExisting": "Es ist bereits ein Token gespeichert. Lass das Feld leer, um es zu behalten.",
+      "saveButton": "Verbindung speichern",
+      "removeButton": "Verbindung entfernen",
+      "testConnectionButton": "Verbindung testen",
+      "testingConnection": "Teste…",
+      "removeConfirm": "GeoPulse-Verbindung entfernen? Bereits aus dem Standortverlauf erfasste Aktivitäten bleiben erhalten.",
+      "baseUrlRequired": "Basis-URL ist erforderlich.",
+      "invalidBaseUrl": "Die Basis-URL muss eine http://- oder https://-URL sein.",
+      "saved": "GeoPulse-Verbindung gespeichert",
+      "removed": "GeoPulse-Verbindung entfernt",
+      "saveFailed": "GeoPulse-Verbindung konnte nicht gespeichert werden"
+    },
+    "dialog": {
+      "title": "Aktivität aus Standortverlauf erfassen",
+      "description": "Wähle ein Datum, um die von GeoPulse erfassten Orte zu sehen. Es wird nichts gespeichert, bis du einen erfasst, und du entscheidest, mit wem du dort warst.",
+      "date": "Datum",
+      "lookUp": "Abrufen",
+      "lookingUp": "Rufe ab…",
+      "openSettings": "Einstellungen öffnen",
+      "noStays": "GeoPulse hat für dieses Datum keine Aufenthalte aufgezeichnet.",
+      "unnamedPlace": "Unbenannter Ort",
+      "alreadyLogged": "Bereits erfasst",
+      "logActivity": "Aktivität erfassen",
+      "photos": "Fotos in der Nähe ({{count}})",
+      "photosUnavailable": "Fotos konnten nicht abgefragt werden.",
+      "durationMinutes": "{{count}} Min.",
+      "durationHours": "{{count}} Std.",
+      "durationHoursMinutes": "{{hours}} Std. {{minutes}} Min."
     }
   },
   "seafile": {

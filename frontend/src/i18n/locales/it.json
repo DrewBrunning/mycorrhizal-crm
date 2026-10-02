@@ -674,7 +674,8 @@
     "noResults": "Nessuna attività corrisponde ai filtri",
     "fromDate": "Dal",
     "toDate": "Al",
-    "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti."
+    "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti.",
+    "logFromLocation": "Registra dalla cronologia delle posizioni"
   },
   "notes": {
     "title": "Notes",
@@ -975,6 +976,43 @@
       "linkFailed": "Impossibile collegare questo documento.",
       "noMatches": "Nessun documento corrispondente. Prova un'altra ricerca o verifica che Paperless abbia completato l'OCR.",
       "untitled": "(documento senza titolo)"
+    }
+  },
+  "geopulse": {
+    "settings": {
+      "title": "GeoPulse",
+      "description": "Collega un'istanza GeoPulse self-hosted per trasformare una giornata di cronologia delle posizioni in suggerimenti di attività. Nulla viene importato automaticamente: scegli una data, controlli i luoghi e decidi con chi eri. Il token API viene salvato cifrato e usato solo per leggere dal tuo server.",
+      "baseUrl": "URL di base",
+      "apiKey": "Token API",
+      "apiKeyHintNew": "Crea un token in GeoPulse (Profilo → Sicurezza) e incollalo qui.",
+      "apiKeyHintExisting": "Un token è già salvato. Lascia il campo vuoto per mantenerlo.",
+      "saveButton": "Salva connessione",
+      "removeButton": "Rimuovi connessione",
+      "testConnectionButton": "Prova connessione",
+      "testingConnection": "Verifica in corso…",
+      "removeConfirm": "Rimuovere la connessione a GeoPulse? Le attività già registrate dalla cronologia delle posizioni vengono mantenute.",
+      "baseUrlRequired": "L'URL di base è obbligatorio.",
+      "invalidBaseUrl": "L'URL di base deve essere un URL http:// o https://.",
+      "saved": "Connessione a GeoPulse salvata",
+      "removed": "Connessione a GeoPulse rimossa",
+      "saveFailed": "Impossibile salvare la connessione a GeoPulse"
+    },
+    "dialog": {
+      "title": "Registra un'attività dalla cronologia delle posizioni",
+      "description": "Scegli una data per vedere i luoghi registrati da GeoPulse. Nulla viene salvato finché non ne registri uno, e sei tu a scegliere con chi eri.",
+      "date": "Data",
+      "lookUp": "Cerca",
+      "lookingUp": "Ricerca…",
+      "openSettings": "Apri impostazioni",
+      "noStays": "GeoPulse non ha soggiorni registrati per questa data.",
+      "unnamedPlace": "Luogo senza nome",
+      "alreadyLogged": "Già registrata",
+      "logActivity": "Registra attività",
+      "photos": "Foto nelle vicinanze ({{count}})",
+      "photosUnavailable": "Non è stato possibile controllare le foto.",
+      "durationMinutes": "{{count}} min",
+      "durationHours": "{{count}} h",
+      "durationHoursMinutes": "{{hours}} h {{minutes}} min"
     }
   },
   "seafile": {
