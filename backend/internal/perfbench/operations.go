@@ -167,17 +167,7 @@ func Registry() []Operation {
 		{
 			Name: "contact_map", Category: "read", ExpectedGrowth: GrowthConstant,
 			Run: func(e *Env) (int, error) {
-				body, err := e.expect(e.get("/contacts/map"), http.StatusOK)
-				if err != nil { // # pragma: no cover — the map endpoint always returns 200 for these fixtures
-					return 0, err
-				}
-				var parsed struct {
-					Points []json.RawMessage `json:"points"`
-				}
-				if err := json.Unmarshal(body, &parsed); err != nil { // # pragma: no cover — always a JSON object
-					return 0, err
-				}
-				return len(parsed.Points), nil
+				return e.arrayLen(e.get("/contacts/map"), "points")
 			},
 		},
 
@@ -355,18 +345,24 @@ func (e *Env) expect(r httpResult, want int) ([]byte, error) {
 }
 
 // listLen decodes a {"contacts":[...]} list response and returns the page size.
-func (e *Env) listLen(r httpResult) (int, error) {
+func (e *Env) listLen(r httpResult) (int, error) { return e.arrayLen(r, "contacts") }
+
+// arrayLen decodes a 200 JSON object and returns the length of its array
+// under key.
+func (e *Env) arrayLen(r httpResult, key string) (int, error) {
 	body, err := e.expect(r, http.StatusOK)
-	if err != nil { // # pragma: no cover — the list endpoint always returns 200 for these fixtures
+	if err != nil { // # pragma: no cover — these endpoints always return 200 for the fixtures
 		return 0, err
 	}
-	var parsed struct {
-		Contacts []json.RawMessage `json:"contacts"`
-	}
-	if err := json.Unmarshal(body, &parsed); err != nil { // # pragma: no cover — GetContacts always returns a JSON object with a contacts array
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal(body, &parsed); err != nil { // # pragma: no cover — always a JSON object
 		return 0, err
 	}
-	return len(parsed.Contacts), nil
+	var items []json.RawMessage
+	if err := json.Unmarshal(parsed[key], &items); err != nil { // # pragma: no cover — the key always holds an array
+		return 0, err
+	}
+	return len(items), nil
 }
 
 func truncate(b []byte, n int) string {
