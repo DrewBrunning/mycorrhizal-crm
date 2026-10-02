@@ -315,6 +315,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/contacts":                            {class: classProtected},
 		"GET /api/v1/contacts/circles":                    {class: classProtected},
 		"GET /api/v1/contacts/random":                     {class: classProtected},
+		"GET /api/v1/contacts/map":                        {class: classProtected},
 		"GET /api/v1/contacts/birthdays":                  {class: classProtected},
 		"POST /api/v1/contacts/merge/preview":             {class: classProtected},
 		"POST /api/v1/contacts/merge":                     {class: classProtected},

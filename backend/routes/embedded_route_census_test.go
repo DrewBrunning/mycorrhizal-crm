@@ -128,6 +128,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"GET /api/v1/contacts/import/meerkat/preview",
 		"GET /api/v1/contacts/import/meerkat/status",
 		"GET /api/v1/contacts/random",
+		"GET /api/v1/contacts/map",
 		"GET /api/v1/conversation-agenda",
 		"GET /api/v1/conversation-agenda/:id",
 		"GET /api/v1/dashboard",

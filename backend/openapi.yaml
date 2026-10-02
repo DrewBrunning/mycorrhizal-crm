@@ -1884,6 +1884,39 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ContactResponse"
+  /contacts/map:
+    get:
+      summary: List every plottable address of the caller's contacts
+      operationId: getContactMap
+      description: |
+        One item per address with a valid, range-checked `geo:` coordinate across
+        the caller's own non-archived, non-deleted contacts (issue #1427, ADR 0031).
+        Malformed stored coordinates are skipped. NOT sensitivity-gated: `private`
+        and `secret` addresses are included, with no `include_sensitive` parameter —
+        this is the owner's own view, not an export, sync or share. Bounded at 5000
+        points in contact-ID order; past that, `truncated` is true.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Plottable addresses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactMapResponse"
+              example:
+                points:
+                  - contact_id: 2
+                    contact_uid: "5f6c1c9e-2b0a-4a39-9c1e-7a3b6f1d2e10"
+                    contact_name: Ada Lovelace
+                    address_id: "0b8f3c52-6a1d-4f0e-9d57-3c2a8e4b1f90"
+                    label: 10 Downing St, London
+                    coordinates: "geo:51.5034,-0.1276"
+                truncated: false
   /contacts/birthdays:
     get:
       summary: List upcoming birthdays
@@ -12090,6 +12123,27 @@ components:
         type: string
         example: "0.6.10"
   schemas:
+    ContactMapResponse:
+      type: object
+      required: [points, truncated]
+      properties:
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContactMapPoint"
+        truncated:
+          type: boolean
+          description: True when more than 5000 plottable addresses exist and the list was cut at the ceiling.
+    ContactMapPoint:
+      type: object
+      required: [contact_id, contact_uid, contact_name, address_id, label, coordinates]
+      properties:
+        contact_id: { type: integer }
+        contact_uid: { type: string }
+        contact_name: { type: string }
+        address_id: { type: string }
+        label: { type: string, description: The formatted postal address. }
+        coordinates: { type: string, description: "RFC 5870 geo: URI, e.g. geo:51.5034,-0.1276." }
     # --- Common ---
     Error:
       type: object

@@ -213,6 +213,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// contact ID.
 			protected.POST("/contacts/address-suggestions", controllers.SuggestContactAddresses)
 			protected.POST("/contacts/address-suggestions/apply", middleware.ValidateJSONMiddleware(&models.ApplyContactAddressSuggestionInput{}), controllers.ApplyContactAddressSuggestion)
+			// Contact map (issue #1427): literal path, registered before /contacts/:id.
+			protected.GET("/contacts/map", controllers.GetContactMap)
 			protected.GET("/contacts/:id", controllers.GetContact)
 			// N2 prep view: read-only aggregation of everything the user
 			// wants to remember before seeing this contact. Registered after

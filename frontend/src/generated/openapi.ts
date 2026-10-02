@@ -549,6 +549,20 @@ export type ContactIMPP = {
   value?: string;
 };
 
+export type ContactMapPoint = {
+  address_id: string;
+  contact_id: number;
+  contact_name: string;
+  contact_uid: string;
+  coordinates: string;
+  label: string;
+};
+
+export type ContactMapResponse = {
+  points: ContactMapPoint[];
+  truncated: boolean;
+};
+
 export type ContactMergeAssociationCounts = {
   activities?: number;
   attachments?: number;
