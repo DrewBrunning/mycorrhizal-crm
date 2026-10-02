@@ -163,7 +163,7 @@ func writeSSRFSection(b *strings.Builder) {
 	b.WriteString("legitimately target private hosts. On a deployment reachable from the internet, or\n")
 	b.WriteString("one hosting accounts the operator does not vet, that set must be switched on —\n")
 	b.WriteString("`WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`,\n")
-	b.WriteString("`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`,\n")
+	b.WriteString("`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `GEOPULSE_BLOCK_PRIVATE_URLS`,\n")
 	b.WriteString("`SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`,\n")
 	b.WriteString("`MONICA_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` all `true`. With them off,\n")
 	b.WriteString("the app-layer guard is inactive and only a network egress policy stands between an\n")

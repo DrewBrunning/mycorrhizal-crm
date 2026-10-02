@@ -109,6 +109,9 @@ export async function createActivity(data: {
   location: string;
   date: string;
   contact_ids: number[];
+  // Opaque reference to the subsystem the activity came from. A repeat create of
+  // a `geopulse:stay:<id>` ref returns the existing activity instead of a second.
+  external_ref?: string;
 }): Promise<Activity> {
   const response = await apiFetch(`${API_BASE_URL}/activities`, {
     method: 'POST',

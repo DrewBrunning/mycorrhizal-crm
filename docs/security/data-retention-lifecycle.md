@@ -30,7 +30,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `DataDecayPolicy` (issue #352 — same opt-in, per-contact, soft-deleting shape as `CadencePolicy`),
 `ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
 `CalendarSubscription`/`ContactSubscription`,
-`ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
+`ImmichConfig`/`PaperlessConfig`/`GeoPulseConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
 `Attachment` (metadata row only — see [§5](#5-attachments--profile-photos-files-on-disk)).
 
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (CLAUDE.md trap #5). Reachable
@@ -735,7 +735,7 @@ design is ADR-0010 / CON-04, issue #479).
 - **Backups**: never — the temp file lives outside any backed-up path and is deleted with the
   session.
 
-## 13. External integration configs & credentials (WebDAV / Paperless / Immich / Seafile, CardDAV/CalDAV subscriptions, link field types)
+## 13. External integration configs & credentials (WebDAV / Paperless / GeoPulse / Immich / Seafile, CardDAV/CalDAV subscriptions, link field types)
 
 - **Where / who**: one config row per user per integration, app-password/API-key encrypted at rest
   (`services/credential_crypto.go`); the plaintext credential is never returned by the read endpoint.
@@ -754,6 +754,13 @@ design is ADR-0010 / CON-04, issue #479).
   account on their own external service; this app only ever stores a reference/credential, never a
   durable mirror of that content. That boundary is deliberate, not a gap: this app has no authority to
   delete data the user manages in a separate product.
+- **GeoPulse location data is never stored (issue #160, ADR 0033).** The "log activity from location
+  history" flow reads one day of stays and nearby photo metadata live, returns them as an ephemeral
+  suggestion list, and persists nothing — coordinates, durations and photos are not written anywhere,
+  and not logged (the client's debug log omits the query string). Only a suggestion the user confirms
+  becomes data: an ordinary `Activity` (place label, time, user-chosen contacts, opaque
+  `geopulse:stay:<id>` `external_ref`), which follows the Activity lifecycle in §1. Removing the
+  `GeoPulseConfig` keeps those activities.
 - **Backups**: only the encrypted credential row (until purged); the external content is that service's
   own backup story.
 - **Verification**: `backend/services/purge_service_test.go`

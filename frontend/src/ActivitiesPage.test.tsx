@@ -256,6 +256,90 @@ test('handleAddActivity creates the activity, closes the dialog, and refetches',
   expect(fetchCountAfterCreate).toBeGreaterThan(fetchCountBeforeCreate);
 });
 
+test('Log from location history opens the GeoPulse dialog and a confirmed stay refreshes the list', async () => {
+  const calls = mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+    {
+      pattern: '/geopulse/suggestions',
+      handler: {
+        body: {
+          date: '2026-09-20',
+          suggestions: [
+            {
+              stay_id: 7,
+              external_ref: 'geopulse:stay:7',
+              location: 'Cafe Nero',
+              city: 'Leeds',
+              country: 'UK',
+              latitude: 53.8,
+              longitude: -1.55,
+              timestamp: '2026-09-20T14:00:00Z',
+              duration_seconds: 1800,
+              photos: [],
+              photos_unavailable: false,
+            },
+          ],
+        },
+      },
+    },
+    {
+      pattern: '/activities',
+      handler: {
+        method: 'POST',
+        body: { message: 'Activity created successfully', activity: activity({ ID: 9 }) },
+      },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No activities found')).toBeDefined());
+  const getsBefore = calls.filter(
+    (c) => c.method === 'GET' && c.url.includes('/activities?'),
+  ).length;
+
+  fireEvent.click(screen.getByRole('button', { name: 'Log from location history' }));
+  expect(await screen.findByText('Log activity from location history')).toBeDefined();
+
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-20' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+
+  fireEvent.change(await screen.findByLabelText('Title *'), { target: { value: 'Coffee' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
+  expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+    title: 'Coffee',
+    location: 'Cafe Nero',
+    external_ref: 'geopulse:stay:7',
+  });
+  // The page list was refetched after the confirm.
+  await waitFor(() =>
+    expect(
+      calls.filter((c) => c.method === 'GET' && c.url.includes('/activities?')).length,
+    ).toBeGreaterThan(getsBefore),
+  );
+
+  // Closing the location dialog hides it.
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByText('Log activity from location history')).toBeNull());
+});
+
+test('the ordinary Add Activity button does not open the location dialog', async () => {
+  mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No activities found')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Add Activity' }));
+
+  await waitFor(() => expect(screen.getByLabelText('Title *')).toBeDefined());
+  expect(screen.queryByText('Log activity from location history')).toBeNull();
+});
+
 test('editing an activity prefills the dialog, fetches all contacts once, and saves the update', async () => {
   const calls = mockFetchRoutes([
     {

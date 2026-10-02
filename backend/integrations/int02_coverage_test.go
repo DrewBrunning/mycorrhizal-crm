@@ -43,6 +43,12 @@ var int02Coverage = map[string][]string{
 		"TestIntegrationClient_BlackHoleHostIsBounded",
 		"TestIntegrationClient_ConnectionRefusedIsFast",
 	},
+	"geopulse": {
+		"TestIntegrationClient_InjectedFaultCrossesBoundaryUnchanged",
+		"TestIntegrationClient_StatusMappingIsStable",
+		"TestIntegrationClient_BlackHoleHostIsBounded",
+		"TestGeoPulseSuggestions_PhotoFailureDegradesNotFails", // request-scoped: a failed photo call degrades, a failed timeline call fails
+	},
 	"seafile": {
 		"TestIntegrationClient_InjectedFaultCrossesBoundaryUnchanged",
 		"TestIntegrationClient_StatusMappingIsStable",

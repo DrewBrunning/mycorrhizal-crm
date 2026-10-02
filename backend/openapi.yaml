@@ -4713,7 +4713,13 @@ paths:
     post:
       summary: Create an activity
       operationId: createActivity
-      description: All contact_ids must belong to the caller (else 404).
+      description: >
+        All contact_ids must belong to the caller (else 404). An external_ref
+        in the `geopulse:stay:<id>` namespace (confirming a GeoPulse location
+        suggestion, ADR 0033) is idempotent: if the caller already has a live
+        Activity carrying that external_ref, it is returned unchanged
+        (message "Activity already exists") instead of creating a second one.
+        No other external_ref is deduplicated.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -4724,13 +4730,15 @@ paths:
               $ref: "#/components/schemas/ActivityInput"
       responses:
         "200":
-          description: Activity created (200, not 201).
+          description: >
+            Activity created (200, not 201) — or, for a repeat confirm of a
+            `geopulse:stay:<id>` external_ref, the existing Activity.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message: { type: string, example: "Activity created successfully" }
+                  message: { type: string, example: "Activity created successfully", description: 'Either "Activity created successfully" or "Activity already exists".' }
                   activity:
                     $ref: "#/components/schemas/Activity"
         "400":
@@ -10768,6 +10776,140 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /geopulse/config:
+    get:
+      summary: Get the current user's GeoPulse connection config
+      operationId: getGeoPulseConfig
+      description: >
+        Returns an empty default when not configured (200, not 404). The API
+        token is never returned — only whether one is stored (has_api_key).
+      responses:
+        "200":
+          description: The config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoPulseConfigResponse"
+    put:
+      summary: Create or update the current user's GeoPulse connection
+      operationId: saveGeoPulseConfig
+      description: >
+        The API token is encrypted at rest (derived from JWT_SECRET_KEY). An
+        empty api_key on update keeps the stored token; a first-time connect
+        requires one. GeoPulse's own user id is not configured — it is
+        discovered from GeoPulse (GET /api/users/me) when needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoPulseConfigInput"
+      responses:
+        "200":
+          description: The updated config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoPulseConfigResponse"
+        "400":
+          description: Validation failed, or a first-time connect omitted the API token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove the current user's GeoPulse connection
+      operationId: deleteGeoPulseConfig
+      description: Activities already confirmed from GeoPulse stays are ordinary Activities and are kept.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /geopulse/test-connection:
+    post:
+      summary: Test the current user's saved GeoPulse connection
+      operationId: testGeoPulseConnection
+      description: >
+        Calls GeoPulse's GET /api/users/me with the saved connection (which
+        checks reachability and token validity at once), reporting which stage
+        failed rather than a generic error. Always 200 when the check itself
+        could run — ok:false is a successful diagnosis, not a failure of this
+        endpoint.
+      responses:
+        "200":
+          description: The diagnosis (ok may be true or false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoPulseConnectionTestResult"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: >
+            No GeoPulse connection configured, or the stored API token is
+            invalid or can no longer be decrypted (the caller's own setup, not
+            a server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /geopulse/suggestions:
+    get:
+      summary: Suggest activities from one day of GeoPulse location history
+      operationId: getGeoPulseSuggestions
+      description: >
+        On-demand and read-only (ADR 0033): one synchronous GeoPulse timeline
+        call for the date, then one photo search per stay (radius 200 m). The
+        result is ephemeral — nothing is written. Confirming a suggestion is an
+        ordinary POST /activities pre-filled from location/timestamp/external_ref,
+        with the contacts chosen by the user; a contact is never inferred from
+        location. Photos are display-only and never persisted. A failed photo
+        lookup does not fail the request: the affected stays carry
+        photos_unavailable=true. A failed timeline call does.
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: The calendar day to look up (YYYY-MM-DD).
+        - name: timezone
+          in: query
+          schema: { type: string, example: "Europe/London" }
+          description: IANA timezone that defines the day's boundaries. Defaults to UTC.
+      responses:
+        "200":
+          description: The suggestions for the date (an empty array when GeoPulse recorded no stays).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoPulseSuggestionsResponse"
+        "400":
+          description: >
+            Missing/invalid date or timezone, no GeoPulse connection configured,
+            or the stored API token is invalid/expired/undecryptable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: GeoPulse is unreachable, returned an error status, or returned an unparseable response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /paperless/contacts/{vcard_uid}/link:
     parameters:
       - name: vcard_uid
@@ -14275,6 +14417,73 @@ components:
         file_name: { type: string }
         created: { type: string, description: "Document creation date (RFC 3339)." }
         added: { type: string, description: "Date the document entered the archive (RFC 3339)." }
+
+    # --- GeoPulse (issue #160, ADR 0033) ---
+    GeoPulseConfigResponse:
+      type: object
+      description: The API-visible shape of a user's GeoPulse connection. The API token is never exposed.
+      required: [base_url, has_api_key]
+      properties:
+        base_url: { type: string }
+        has_api_key: { type: boolean }
+    GeoPulseConfigInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string, example: "https://geopulse.example.com" }
+        api_key: { type: string, description: "Write-only GeoPulse API token: empty on update keeps the stored one; required on first connect." }
+    GeoPulseConnectionTestResult:
+      type: object
+      description: >
+        Stage-by-stage diagnosis of a "Test connection" check — reachability
+        then auth (API token). ok:false is a successful diagnosis of an
+        upstream problem, not an application error, so this is always returned
+        with HTTP 200.
+      required: [ok, stage, message]
+      properties:
+        ok: { type: boolean }
+        stage: { type: string, enum: [reachability, auth, ok] }
+        message: { type: string }
+    GeoPulsePhotoSuggestion:
+      type: object
+      description: A photo GeoPulse found near a stay. Display-only; never persisted.
+      required: [id, file_name, taken_at]
+      properties:
+        id: { type: string }
+        file_name: { type: string }
+        taken_at: { type: string, description: "When the photo was taken (RFC 3339), as GeoPulse reports it." }
+    GeoPulseStaySuggestion:
+      type: object
+      description: >
+        One ephemeral, unpersisted "you were here" suggestion. To confirm it,
+        POST /activities with location, date=timestamp, external_ref and the
+        contact_ids the user picks.
+      required: [stay_id, external_ref, location, city, country, latitude, longitude, timestamp, duration_seconds, photos, photos_unavailable]
+      properties:
+        stay_id: { type: integer, format: int64 }
+        external_ref: { type: string, example: "geopulse:stay:42" }
+        location: { type: string, description: "The stay's place name, or its city when GeoPulse has no place name." }
+        city: { type: string }
+        country: { type: string }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        timestamp: { type: string, format: date-time, description: "When the stay began." }
+        duration_seconds: { type: integer, format: int64 }
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeoPulsePhotoSuggestion"
+        photos_unavailable: { type: boolean, description: "True when the photo lookup failed or was skipped, so an empty photos array means 'could not check' rather than 'none'." }
+        existing_activity_id: { type: integer, description: "Present when an Activity already carries this stay's external_ref (already logged)." }
+    GeoPulseSuggestionsResponse:
+      type: object
+      required: [date, suggestions]
+      properties:
+        date: { type: string, format: date }
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeoPulseStaySuggestion"
 
     # --- Seafile (P2b) ---
     SeafileConfigResponse:

@@ -75,6 +75,7 @@ integration in the classification registry to its <a id> on this page. -->
 | [Immich](integration-ownership.html#immich) | User (Settings) | Remote; links + timeline locally | Missing enrichment / dead photo links |
 | [Address geocoding](integration-ownership.html#geocoder) | Operator (`.env`) | None (cache in memory only; off by default) | "Find coordinates" fails; the map still plots stored coordinates |
 | [Paperless](integration-ownership.html#paperless) | User (Settings) | Remote; links + cached titles locally | Links stop resolving |
+| [GeoPulse](integration-ownership.html#geopulse) | User (Settings) | Remote; only confirmed activities locally | "Log from location history" cannot load a day |
 | [Seafile](integration-ownership.html#seafile) | User (Settings) | Remote; links locally | Links stop resolving |
 | [WebDAV/Nextcloud](integration-ownership.html#webdav) | User (Settings) | Remote; links locally | Links stop resolving |
 | [Webhooks](integration-ownership.html#webhooks) | User (Settings) | Delivery rows locally (bounded) | "Will not retry" delivery badge |
@@ -250,6 +251,43 @@ integration in the classification registry to its <a id> on this page. -->
   removes its links. Remote documents are never touched.
 - **Tested versions.** No real Paperless instance in CI (in-process fakes).
   Expected-to-work against current stable Paperless-ngx.
+
+### GeoPulse location history
+
+<a id="geopulse"></a>
+
+- **What it does.** Offers human-confirmed activity suggestions from your
+  [GeoPulse](https://github.com/tess1o/geopulse) location history. You pick a
+  date; the app makes one live call for that day's stays (and, per stay, a
+  photo search that GeoPulse proxies to its own Immich), and lists them. Nothing
+  is stored until you confirm one, which creates an ordinary activity (place and
+  time pre-filled, contacts chosen by you — never inferred from location).
+  Photos are shown, never saved. It is on-demand only: there is no background
+  sync and no scheduled job.
+- **Optional.** Yes.
+- **Configured by.** The **user** (Settings): base URL + a GeoPulse API token
+  (GeoPulse → Profile → Security), stored encrypted. GeoPulse's own user id is
+  discovered from GeoPulse, not configured. SSRF posture: `guarded-when-enabled`
+  — set `GEOPULSE_BLOCK_PRIVATE_URLS=true` for cloud/multi-tenant deployments;
+  see [The SSRF boundary](#the-ssrf-boundary).
+- **Ownership.** GeoPulse remains the system of record for location history;
+  nothing is ever written or deleted there. A confirmed activity carries only an
+  opaque `geopulse:stay:<id>` reference, and confirming the same stay twice
+  returns the first activity instead of creating a second.
+- **If it is unavailable.** The lookup returns an error and you can still log the
+  activity by hand; stored activities are unaffected. If only the photo lookup
+  fails (for example Immich is not configured inside GeoPulse) the stays are
+  still suggested, marked "photos unavailable".
+- **Diagnosing it.** Settings → **Test connection** (reachability vs. token),
+  `GET /admin/diagnostics` (`integration_geopulse`).
+- **Removing it.** Deleting the config keeps every activity you confirmed.
+  Remote location history is never touched.
+- **Tested versions.** No real GeoPulse instance in CI (in-process fakes that
+  serve the same wire shapes). Written against GeoPulse **v1.39.0**. GeoPulse
+  states no API-versioning commitment and its development branch has already
+  moved these endpoints under `/api/v1`, so expect a compatibility update when
+  that ships; a changed response surfaces as "could not be parsed — the API may
+  have changed", never as wrong data.
 
 ### Seafile file links
 
@@ -476,7 +514,7 @@ off means an authenticated user's webhook or integration URL can reach
 loopback, other LAN hosts, and the cloud-metadata endpoint
 (`169.254.169.254`); a network egress policy is a second layer, not a
 substitute. Set `WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`,
-`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`,
+`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `GEOPULSE_BLOCK_PRIVATE_URLS`,
 `SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`,
 `MONICA_BLOCK_PRIVATE_URLS`, and `OIDC_BLOCK_PRIVATE_URLS` to `true` — the
 operator checklist is the "SSRF hardening" row in

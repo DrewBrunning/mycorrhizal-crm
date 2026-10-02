@@ -674,7 +674,8 @@
     "noResults": "Aucune activité ne correspond à vos filtres",
     "fromDate": "Du",
     "toDate": "Au",
-    "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts."
+    "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts.",
+    "logFromLocation": "Enregistrer depuis l'historique de position"
   },
   "notes": {
     "title": "Notes",
@@ -975,6 +976,43 @@
       "linkFailed": "Impossible de lier ce document.",
       "noMatches": "Aucun document correspondant. Essayez une autre recherche ou vérifiez que Paperless a terminé l'OCR.",
       "untitled": "(document sans titre)"
+    }
+  },
+  "geopulse": {
+    "settings": {
+      "title": "GeoPulse",
+      "description": "Connectez une instance GeoPulse auto-hébergée pour transformer une journée d'historique de position en suggestions d'activités. Rien n'est importé automatiquement : vous choisissez une date, examinez les lieux et décidez avec qui vous étiez. Le jeton d'API est stocké chiffré et utilisé uniquement pour lire depuis votre propre serveur.",
+      "baseUrl": "URL de base",
+      "apiKey": "Jeton d'API",
+      "apiKeyHintNew": "Créez un jeton dans GeoPulse (Profil → Sécurité) et collez-le ici.",
+      "apiKeyHintExisting": "Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.",
+      "saveButton": "Enregistrer la connexion",
+      "removeButton": "Supprimer la connexion",
+      "testConnectionButton": "Tester la connexion",
+      "testingConnection": "Test en cours…",
+      "removeConfirm": "Supprimer la connexion GeoPulse ? Les activités déjà enregistrées depuis l'historique de position sont conservées.",
+      "baseUrlRequired": "L'URL de base est obligatoire.",
+      "invalidBaseUrl": "L'URL de base doit être une URL http:// ou https://.",
+      "saved": "Connexion GeoPulse enregistrée",
+      "removed": "Connexion GeoPulse supprimée",
+      "saveFailed": "Échec de l'enregistrement de la connexion GeoPulse"
+    },
+    "dialog": {
+      "title": "Enregistrer une activité depuis l'historique de position",
+      "description": "Choisissez une date pour voir les lieux enregistrés par GeoPulse. Rien n'est sauvegardé tant que vous n'en enregistrez pas un, et vous choisissez avec qui vous étiez.",
+      "date": "Date",
+      "lookUp": "Rechercher",
+      "lookingUp": "Recherche…",
+      "openSettings": "Ouvrir les réglages",
+      "noStays": "GeoPulse n'a enregistré aucun séjour pour cette date.",
+      "unnamedPlace": "Lieu sans nom",
+      "alreadyLogged": "Déjà enregistrée",
+      "logActivity": "Enregistrer l'activité",
+      "photos": "Photos à proximité ({{count}})",
+      "photosUnavailable": "Les photos n'ont pas pu être vérifiées.",
+      "durationMinutes": "{{count}} min",
+      "durationHours": "{{count}} h",
+      "durationHoursMinutes": "{{hours}} h {{minutes}} min"
     }
   },
   "seafile": {

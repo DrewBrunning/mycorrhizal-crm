@@ -14,6 +14,7 @@ import (
 // job can arm the same names against a live process.
 const (
 	faultPaperlessRequest     = "services.paperless.request"
+	faultGeoPulseRequest      = "services.geopulse.request"
 	faultSeafileRequest       = "services.seafile.request"
 	faultWebDAVRequest        = "services.webdav.request"
 	faultGeocoderRequest      = "services.geocoder.request"

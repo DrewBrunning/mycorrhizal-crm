@@ -147,6 +147,7 @@ type Config struct {
 	ImmichSyncIntervalHours   int  `cfgreg:"env=IMMICH_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled Immich enrichment sync, in hours"`
 	ImmichBlockPrivateURLs    bool `cfgreg:"env=IMMICH_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Immich fetches to private/loopback addresses"`
 	PaperlessBlockPrivateURLs bool `cfgreg:"env=PAPERLESS_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Paperless-ngx fetches to private/loopback addresses"`
+	GeoPulseBlockPrivateURLs  bool `cfgreg:"env=GEOPULSE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block GeoPulse fetches to private/loopback addresses"`
 	SeafileBlockPrivateURLs   bool `cfgreg:"env=SEAFILE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Seafile fetches to private/loopback addresses"`
 	WebDAVBlockPrivateURLs    bool `cfgreg:"env=WEBDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses"`
 	MonicaBlockPrivateURLs    bool `cfgreg:"env=MONICA_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Monica import-assistant fetches to private/loopback addresses"`
@@ -638,6 +639,7 @@ func LoadConfig() *Config {
 	cfg.ImmichSyncIntervalHours = checkedInt("IMMICH_SYNC_INTERVAL_HOURS", cfg.ImmichSyncIntervalHours)
 	cfg.ImmichBlockPrivateURLs = getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", cfg.ImmichBlockPrivateURLs)
 	cfg.PaperlessBlockPrivateURLs = getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", cfg.PaperlessBlockPrivateURLs)
+	cfg.GeoPulseBlockPrivateURLs = getBoolEnv("GEOPULSE_BLOCK_PRIVATE_URLS", cfg.GeoPulseBlockPrivateURLs)
 	cfg.SeafileBlockPrivateURLs = getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", cfg.SeafileBlockPrivateURLs)
 	cfg.WebDAVBlockPrivateURLs = getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", cfg.WebDAVBlockPrivateURLs)
 	cfg.MonicaBlockPrivateURLs = getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", cfg.MonicaBlockPrivateURLs)
@@ -1659,6 +1661,7 @@ func (c *Config) blockPrivateURLsFlags() []blockPrivateURLsFlag {
 		{"CALDAV_BLOCK_PRIVATE_URLS", c.CalDAVBlockPrivateURLs},
 		{"IMMICH_BLOCK_PRIVATE_URLS", c.ImmichBlockPrivateURLs},
 		{"PAPERLESS_BLOCK_PRIVATE_URLS", c.PaperlessBlockPrivateURLs},
+		{"GEOPULSE_BLOCK_PRIVATE_URLS", c.GeoPulseBlockPrivateURLs},
 		{"SEAFILE_BLOCK_PRIVATE_URLS", c.SeafileBlockPrivateURLs},
 		{"WEBDAV_BLOCK_PRIVATE_URLS", c.WebDAVBlockPrivateURLs},
 		{"MONICA_BLOCK_PRIVATE_URLS", c.MonicaBlockPrivateURLs},

@@ -670,6 +670,13 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/immich/contacts/:vcard_uid/assets":                 {class: classItem, probe: "/api/v1/immich/contacts/" + uid + "/assets"},
 		"GET /api/v1/immich/contacts/:vcard_uid/assets/:asset_id/image": {class: classItem, probe: "/api/v1/immich/contacts/" + uid + "/assets/" + fabricatedUUID + "/image"},
 
+		// --- geopulse (integration; per-user config + on-demand lookup) -----
+		"GET /api/v1/geopulse/config":           {class: classProtected},
+		"PUT /api/v1/geopulse/config":           {class: classProtected},
+		"DELETE /api/v1/geopulse/config":        {class: classProtected},
+		"POST /api/v1/geopulse/test-connection": {class: classProtected},
+		"GET /api/v1/geopulse/suggestions":      {class: classProtected},
+
 		// --- paperless (integration; contact-scoped) ------------------------
 		"GET /api/v1/paperless/config":                                    {class: classProtected},
 		"PUT /api/v1/paperless/config":                                    {class: classProtected},

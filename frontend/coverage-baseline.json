@@ -3,8 +3,8 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 89.02,
-      "linesTotal": 82,
+      "lines": 89.53,
+      "linesTotal": 86,
       "branches": 78.12,
       "branchesTotal": 64
     },
@@ -332,6 +332,12 @@
       "branches": 76.56,
       "branchesTotal": 64
     },
+    "src/api/geopulse.ts": {
+      "lines": 100,
+      "linesTotal": 16,
+      "branches": 100,
+      "branchesTotal": 12
+    },
     "src/api/gifts.ts": {
       "lines": 100,
       "linesTotal": 17,
@@ -561,10 +567,10 @@
       "branchesTotal": 28
     },
     "src/components/AddActivityDialog.tsx": {
-      "lines": 96.55,
-      "linesTotal": 87,
-      "branches": 91.17,
-      "branchesTotal": 34
+      "lines": 96.8,
+      "linesTotal": 94,
+      "branches": 91.48,
+      "branchesTotal": 47
     },
     "src/components/AddContactDialog.tsx": {
       "lines": 87.5,
@@ -882,6 +888,18 @@
       "lines": 70.88,
       "linesTotal": 79,
       "branches": 71.42,
+      "branchesTotal": 42
+    },
+    "src/components/GeoPulseSettings.tsx": {
+      "lines": 100,
+      "linesTotal": 47,
+      "branches": 92.1,
+      "branchesTotal": 38
+    },
+    "src/components/GeoPulseSuggestionsDialog.tsx": {
+      "lines": 95.65,
+      "linesTotal": 46,
+      "branches": 92.85,
       "branchesTotal": 42
     },
     "src/components/GiftDialog.tsx": {
@@ -1226,6 +1244,12 @@
       "branches": 78.57,
       "branchesTotal": 28
     },
+    "src/components/SecondFactorProofDialog.tsx": {
+      "lines": 88.88,
+      "linesTotal": 9,
+      "branches": 87.5,
+      "branchesTotal": 16
+    },
     "src/components/ServerStartingGate.tsx": {
       "lines": 100,
       "linesTotal": 25,
@@ -1555,6 +1579,12 @@
       "linesTotal": 68,
       "branches": 57.14,
       "branchesTotal": 14
+    },
+    "src/hooks/useGeoPulse.ts": {
+      "lines": 100,
+      "linesTotal": 56,
+      "branches": 100,
+      "branchesTotal": 6
     },
     "src/hooks/useGifts.ts": {
       "lines": 100,
@@ -1927,12 +1957,6 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 5
-    },
-    "src/components/SecondFactorProofDialog.tsx": {
-      "lines": 88.88,
-      "linesTotal": 9,
-      "branches": 87.5,
-      "branchesTotal": 16
     }
   }
 }

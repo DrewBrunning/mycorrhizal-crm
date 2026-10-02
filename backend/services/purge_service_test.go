@@ -234,6 +234,11 @@ func TestPurgeSoftDeletedRows_PurgesSoftDeletedConfigsAndSubscriptions(t *testin
 			require.NoError(t, db.Create(&c).Error)
 			return c.ID
 		}},
+		{"geopulse_configs", &models.GeoPulseConfig{}, func() any {
+			c := models.GeoPulseConfig{UserID: userID, BaseURL: "https://geopulse.example"}
+			require.NoError(t, db.Create(&c).Error)
+			return c.ID
+		}},
 		{"seafile_configs", &models.SeafileConfig{}, func() any {
 			c := models.SeafileConfig{UserID: userID, BaseURL: "https://seafile.example"}
 			require.NoError(t, db.Create(&c).Error)

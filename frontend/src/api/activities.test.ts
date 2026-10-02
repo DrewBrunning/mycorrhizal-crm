@@ -147,6 +147,24 @@ describe('createActivity', () => {
     expect(result).toEqual(activity);
   });
 
+  test('sends external_ref when given (idempotent GeoPulse confirm)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => activity });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createActivity({
+      title: 'Coffee',
+      description: '',
+      location: 'Cafe',
+      date: '2026-08-01T10:00:00Z',
+      contact_ids: [],
+      external_ref: 'geopulse:stay:7',
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      external_ref: 'geopulse:stay:7',
+    });
+  });
+
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(

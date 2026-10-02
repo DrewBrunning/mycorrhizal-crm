@@ -285,6 +285,10 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PaperlessConfig{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
+	// GeoPulse location-history connection config (issue #160, ADR 0033)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.GeoPulseConfig{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.SeafileConfig{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}

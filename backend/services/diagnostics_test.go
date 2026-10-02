@@ -88,10 +88,10 @@ func TestRunDiagnosticsHealthyInstall(t *testing.T) {
 	assert.Zero(t, d.Summary.Errors)
 	assert.Zero(t, d.Summary.Warnings)
 	// 5 config/db/migrations/filesystem/backup + data_integrity + at_rest_key
-	// (2) + 4 notifications + 6 integrations + 4 disk/background-jobs/
-	// search-index/version = 21 rows, all ok.
-	assert.Equal(t, 21, d.Summary.OK)
-	assert.Len(t, d.Checks, 21)
+	// (2) + 4 notifications + 7 integrations + 4 disk/background-jobs/
+	// search-index/version = 22 rows, all ok.
+	assert.Equal(t, 22, d.Summary.OK)
+	assert.Len(t, d.Checks, 22)
 	assert.Equal(t, DiagStatusOK, findCheck(t, d, "data_integrity").Status)
 
 	for _, c := range d.Checks {
@@ -399,6 +399,9 @@ func TestRunDiagnosticsIntegrationReachability(t *testing.T) {
 	require.NoError(t, db.Create(&models.PaperlessConfig{
 		UserID: user.ID, BaseURL: down.URL, APITokenEncrypted: "enc",
 	}).Error)
+	require.NoError(t, db.Create(&models.GeoPulseConfig{
+		UserID: user.ID, BaseURL: up.URL, APIKeyEncrypted: "enc",
+	}).Error)
 
 	d := RunDiagnostics(context.Background(), db, cfg)
 
@@ -406,6 +409,8 @@ func TestRunDiagnosticsIntegrationReachability(t *testing.T) {
 	assert.Equal(t, DiagStatusOK, immich.Status)
 	paperless := findCheck(t, d, "integration_paperless")
 	assert.Equal(t, DiagStatusWarning, paperless.Status)
+	geopulse := findCheck(t, d, "integration_geopulse")
+	assert.Equal(t, DiagStatusOK, geopulse.Status, "a reachable GeoPulse base URL is probed like the other integrations")
 	assert.Equal(t, "warning", d.Summary.Status)
 
 	carddav := findCheck(t, d, "integration_carddav")

@@ -87,6 +87,7 @@ var registeredModels = []any{
 	&OccasionEventAttendee{},
 	&OccasionObligation{},
 	&OperationalCheckResult{},
+	&GeoPulseConfig{},
 	&PaperlessConfig{},
 	&Preference{},
 	&PushSubscription{},

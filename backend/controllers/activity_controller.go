@@ -44,6 +44,22 @@ func CreateActivity(c *gin.Context) {
 		}
 	}
 
+	// Confirming a GeoPulse stay (ADR 0033) is idempotent: a repeat confirm of
+	// the same stay returns the Activity it already created instead of a second
+	// one. Application-level lookup-before-create scoped to user_id — no unique
+	// index, no schema change to Activity.
+	if strings.HasPrefix(activityInput.ExternalRef, services.GeoPulseStayRefPrefix) {
+		existing, err := services.FindActivityByExternalRef(db, userID, activityInput.ExternalRef)
+		if err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to check for an existing activity").WithError(err))
+			return
+		}
+		if existing != nil {
+			c.JSON(http.StatusOK, gin.H{"message": "Activity already exists", "activity": existing})
+			return
+		}
+	}
+
 	// Create a new activity without the associations initially
 	activity := models.Activity{
 		UserID:      userID,

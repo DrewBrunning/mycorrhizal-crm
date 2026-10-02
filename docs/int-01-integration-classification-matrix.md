@@ -96,6 +96,7 @@ decided in one place.
 | [Immich photo enrichment](#immich) | optional | outbound | scheduled | enrichment | degraded-feature | 30s | guarded-always | No in-call retry. |
 | [Address geocoding (contact map)](#geocoder) | optional | outbound | interactive | enrichment | blocked-workflow | 15s | guarded-always | No in-call retry — the lookup is inline in a user request. |
 | [Paperless-ngx document links](#paperless) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — the call is inline in a user request. |
+| [GeoPulse location history](#geopulse) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-when-enabled | No retry — every call is synchronous and user-initiated. |
 | [Seafile file storage](#seafile) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; the request fails with a mapped error and the user retries. |
 | [Generic WebDAV storage](#webdav) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; fails with a mapped error and the user retries. |
 | [Outbound webhook delivery](#webhooks) | optional | outbound | event-driven | none | degraded-feature | 15s | guarded-when-enabled | webhookRetryPolicy: maxDeliveryAttempts = 3, exponential backoff base 5m ×3 with ±20% jitter capped at 6h (integrations. |
@@ -120,7 +121,7 @@ claiming a guarded posture actually references `SafeDialContext` in its source.
 | Posture | Meaning | Integrations |
 |---|---|---|
 | `guarded-always` | every connection through `SafeDialContext`, unconditionally | `immich`, `geocoder`, `paperless`, `seafile`, `webdav`, `update-check` |
-| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc` |
+| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `geopulse`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc` |
 | `fixed-endpoint` | no user-supplied URL — compiled-in vendor/operator host, no SSRF surface | `email-resend`, `email-smtp`, `hibp` |
 
 `fixed-endpoint` rows (Resend, SMTP, HIBP) are recorded rather than omitted: they
@@ -135,7 +136,7 @@ default (off) assumes a **trusted LAN** where webhooks and integrations
 legitimately target private hosts. On a deployment reachable from the internet, or
 one hosting accounts the operator does not vet, that set must be switched on —
 `WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`,
-`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`,
+`IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `GEOPULSE_BLOCK_PRIVATE_URLS`,
 `SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`,
 `MONICA_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` all `true`. With them off,
 the app-layer guard is inactive and only a network egress policy stands between an
@@ -284,6 +285,33 @@ Links contacts to documents in a Paperless-ngx instance and fetches titles/previ
 | `malformed-response` | transient | Unparseable body → mapped 'unexpected Paperless response' error; nothing is inferred from a partial parse. |
 | `rate-limited` | transient | 429/503 → mapped 'Paperless busy, try again' error surfacing Retry-After to the user where present. |
 | `remote-resource-deleted` | permanent-until-human | 404 on a previously-valid document ID → surface 'this document no longer exists in Paperless' and offer to remove the dangling link; do not silently drop it. |
+
+### GeoPulse location history
+
+<a id="geopulse"></a>
+
+On demand, reads one day of stays (and nearby photos, which GeoPulse proxies from its own Immich) from a GeoPulse instance to offer human-confirmed Activity suggestions (ADR 0033).
+
+- **Criticality** — optional. Only the 'log activity from location history' flow depends on it.
+- **Direction** — outbound.
+- **Cadence** — interactive. Called inline, only when the user picks a date in the 'log activity from location history' flow. There is no scheduler entry and no standing poll — deliberately (ADR 0033 §2), so no scheduled-job catch-up semantics apply.
+- **Data authority** — remote-authoritative. GeoPulse is the system of record for location history. Nothing from it is stored except what the user confirms: an ordinary Activity carrying an opaque 'geopulse:stay:<id>' external_ref. Suggestions and photos are ephemeral.
+- **Failure impact** — blocked-workflow. The user cannot load suggestions for a date and can still log the activity by hand; no stored data is affected.
+- **Timeout** — 30s. services.geopulseRequestTimeout on the http.Client, per request (one timeline call, one identity call, then up to 50 photo searches, each bounded separately); transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.
+- **Retry budget** — No retry — every call is synchronous and user-initiated. The request fails with a mapped error and the user retries. A failed photo lookup does not fail the request: it ends further photo lookups for that request and the suggestions are returned flagged photos_unavailable.
+- **SSRF** — guarded-when-enabled. geopulsePrivateBlockingDialContext → httputil.SafeDialContext, applied only when GEOPULSE_BLOCK_PRIVATE_URLS is set. Default off so a LAN GeoPulse works; the base URL is user-supplied and typically private.
+- **Source** — `backend/services/geopulse_client.go`, `backend/services/geopulse_service.go`
+- **Failure behavior verified by** — #465 (INT-02); services/integration_failure_behavior_test.go (geopulse case); geopulse_fake_test.go; controllers/geopulse_real_db_test.go.
+
+| Failure mode | Class | Required behavior |
+|---|---|---|
+| `unreachable-host` | transient | The request returns a mapped 503 'Could not reach GeoPulse' error; nothing is written; the user can still log the activity by hand. |
+| `timeout` | transient | 30s per-request deadline → the same mapped error to the caller; no partial suggestion list is returned and nothing is persisted. |
+| `auth-expiry` | permanent-until-human | 401 → mapped 400 'GeoPulse API token is invalid, expired, or not configured' pointing at the settings page; Test connection reports stage 'auth'. Already-confirmed Activities are ordinary rows and are unaffected (#467). |
+| `authz-revoked` | permanent-until-human | 403 → mapped like auth expiry (the client collapses 401 and 403 to one unauthorized sentinel). |
+| `malformed-response` | transient | Unparseable body, wrong envelope status, or missing data → mapped 503 'could not be parsed — the API may have changed'; nothing is inferred from a partial parse. GeoPulse documents no API-versioning commitment, so this is the expected shape of a breaking upstream change. |
+| `rate-limited` | transient | 429/503 → mapped 503 'GeoPulse returned an error (<status>)'. There is no retry loop to hammer it: the next attempt is the user's. |
+| `remote-resource-deleted` | permanent-until-human | 404/410 → mapped 404 'GeoPulse resource'. A stay that disappears from GeoPulse after being confirmed leaves the Activity untouched; remote deletion never deletes local data. |
 
 ### Seafile file storage
 

@@ -226,6 +226,49 @@ func paperlessIntegration() Integration {
 	}
 }
 
+func geopulseIntegration() Integration {
+	return Integration{
+		ID:   "geopulse",
+		Name: "GeoPulse location history",
+		What: "On demand, reads one day of stays (and nearby photos, which GeoPulse proxies from its own Immich) from a GeoPulse instance to offer human-confirmed Activity suggestions (ADR 0033).",
+
+		Criticality:     CriticalityOptional,
+		CriticalityNote: "Only the 'log activity from location history' flow depends on it.",
+
+		Direction: DirectionOutbound,
+
+		Cadence:     CadenceInteractive,
+		CadenceNote: "Called inline, only when the user picks a date in the 'log activity from location history' flow. There is no scheduler entry and no standing poll — deliberately (ADR 0033 §2), so no scheduled-job catch-up semantics apply.",
+
+		DataAuthority:     AuthorityRemote,
+		DataAuthorityNote: "GeoPulse is the system of record for location history. Nothing from it is stored except what the user confirms: an ordinary Activity carrying an opaque 'geopulse:stay:<id>' external_ref. Suggestions and photos are ephemeral.",
+
+		FailureImpact:     ImpactBlockedWorkflow,
+		FailureImpactNote: "The user cannot load suggestions for a date and can still log the activity by hand; no stored data is affected.",
+
+		Timeout:     30 * time.Second,
+		TimeoutNote: "services.geopulseRequestTimeout on the http.Client, per request (one timeline call, one identity call, then up to 50 photo searches, each bounded separately); transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.",
+
+		RetryBudget: "No retry — every call is synchronous and user-initiated. The request fails with a mapped error and the user retries. A failed photo lookup does not fail the request: it ends further photo lookups for that request and the suggestions are returned flagged photos_unavailable.",
+
+		SSRF:     SSRFGuardedWhenEnabled,
+		SSRFNote: "geopulsePrivateBlockingDialContext → httputil.SafeDialContext, applied only when GEOPULSE_BLOCK_PRIVATE_URLS is set. Default off so a LAN GeoPulse works; the base URL is user-supplied and typically private.",
+
+		Behavior: map[FailureMode]string{
+			FailureUnreachableHost:       "The request returns a mapped 503 'Could not reach GeoPulse' error; nothing is written; the user can still log the activity by hand.",
+			FailureTimeout:               "30s per-request deadline → the same mapped error to the caller; no partial suggestion list is returned and nothing is persisted.",
+			FailureAuthExpiry:            "401 → mapped 400 'GeoPulse API token is invalid, expired, or not configured' pointing at the settings page; Test connection reports stage 'auth'. Already-confirmed Activities are ordinary rows and are unaffected (#467).",
+			FailureAuthzRevoked:          "403 → mapped like auth expiry (the client collapses 401 and 403 to one unauthorized sentinel).",
+			FailureMalformedResponse:     "Unparseable body, wrong envelope status, or missing data → mapped 503 'could not be parsed — the API may have changed'; nothing is inferred from a partial parse. GeoPulse documents no API-versioning commitment, so this is the expected shape of a breaking upstream change.",
+			FailureRateLimited:           "429/503 → mapped 503 'GeoPulse returned an error (<status>)'. There is no retry loop to hammer it: the next attempt is the user's.",
+			FailureRemoteResourceDeleted: "404/410 → mapped 404 'GeoPulse resource'. A stay that disappears from GeoPulse after being confirmed leaves the Activity untouched; remote deletion never deletes local data.",
+		},
+
+		SourceFiles: []string{"services/geopulse_client.go", "services/geopulse_service.go"},
+		Verify:      "#465 (INT-02); services/integration_failure_behavior_test.go (geopulse case); geopulse_fake_test.go; controllers/geopulse_real_db_test.go.",
+	}
+}
+
 func seafileIntegration() Integration {
 	return Integration{
 		ID:   "seafile",

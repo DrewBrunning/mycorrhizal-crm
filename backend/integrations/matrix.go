@@ -233,6 +233,7 @@ func Registry() []Integration {
 		immichIntegration(),
 		geocoderIntegration(),
 		paperlessIntegration(),
+		geopulseIntegration(),
 		seafileIntegration(),
 		webdavIntegration(),
 		webhooksIntegration(),

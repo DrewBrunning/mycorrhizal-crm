@@ -448,6 +448,7 @@ func diagnosticsIntegrations(ctx context.Context, db *gorm.DB, cfg config.Config
 	}{
 		{"integration_immich", &models.ImmichConfig{}, cfg.ImmichBlockPrivateURLs},
 		{"integration_paperless", &models.PaperlessConfig{}, cfg.PaperlessBlockPrivateURLs},
+		{"integration_geopulse", &models.GeoPulseConfig{}, cfg.GeoPulseBlockPrivateURLs},
 		{"integration_seafile", &models.SeafileConfig{}, cfg.SeafileBlockPrivateURLs},
 		{"integration_nextcloud", &models.WebDAVConfig{}, cfg.WebDAVBlockPrivateURLs},
 	}

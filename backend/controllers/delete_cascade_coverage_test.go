@@ -102,6 +102,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"feeds":                  goCascadeUser,
 	"field_definitions":      goCascadeUser,
 	"households":             goCascadeUser,
+	"geopulse_configs":       goCascadeUser,
 	"idempotency_keys":       goCascadeUser,
 	"immich_configs":         goCascadeUser,
 	"import_runs":            goCascadeUser,
@@ -574,6 +575,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.DeviceRegistration{UserID: target.ID, Token: "tok", Client: "fcm"}).Error)
 	require.NoError(t, db.Create(&models.DismissedHouseholdSuggestion{UserID: target.ID, AddressHash: "ah", MemberHash: "mh"}).Error)
 	require.NoError(t, db.Create(&models.IdempotencyKey{UserID: target.ID, Key: "sweep-key", Method: "POST", Path: "/api/v1/contacts", RequestFingerprint: "fp", State: models.IdempotencyStateCompleted, ResponseStatus: 201, CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error)
+	require.NoError(t, db.Create(&models.GeoPulseConfig{UserID: target.ID, BaseURL: "https://geopulse.example"}).Error)
 	require.NoError(t, db.Create(&models.ImmichConfig{UserID: target.ID, BaseURL: "https://immich.example"}).Error)
 	require.NoError(t, db.Create(&models.ImportRun{UserID: target.ID, Format: models.ImportFormatCSV, TotalProcessed: 3, Created: 2, Skipped: 1}).Error)
 	require.NoError(t, db.Create(&models.LinkFieldType{UserID: target.ID, Name: "x", Protocol: "https://x/{value}", Category: "other"}).Error)
@@ -630,6 +632,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("occasion_obligations", &models.OccasionObligation{}, "user_id = ?", target.ID),
 		scopedCount("occasion_events", &models.OccasionEvent{}, "user_id = ?", target.ID),
 		scopedCount("occasion_event_attendees", &models.OccasionEventAttendee{}, "user_id = ?", target.ID),
+		scopedCount("geopulse_configs", &models.GeoPulseConfig{}, "user_id = ?", target.ID),
 		scopedCount("paperless_configs", &models.PaperlessConfig{}, "user_id = ?", target.ID),
 		scopedCount("preferences", &models.Preference{}, "user_id = ?", target.ID),
 		scopedCount("push_subscriptions", &models.PushSubscription{}, "user_id = ?", target.ID),
