@@ -429,6 +429,8 @@ jobs:
           {
             echo "name=${v%%-*}"
             echo "code=$((1000 + GITHUB_RUN_NUMBER))"
+            echo "commit=$(git rev-parse --short=7 HEAD)"
+            echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Assemble release APK
@@ -440,6 +442,8 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           MYCORRHIZAL_VERSION_NAME: ${{ steps.version.outputs.name }}
           MYCORRHIZAL_VERSION_CODE: ${{ steps.version.outputs.code }}
+          MYCORRHIZAL_GIT_COMMIT: ${{ steps.version.outputs.commit }}
+          MYCORRHIZAL_BUILD_DATE: ${{ steps.version.outputs.date }}
         # Version values via env, not inline ${{ }}: the tag name is the only
         # non-computed input here, and it is maintainer-chosen (zizmor
         # template-injection).
@@ -447,7 +451,9 @@ jobs:
           ./gradlew :app:assembleObtainiumRelease \
             -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
-            -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
+            -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE" \
+            -PMYCORRHIZAL_GIT_COMMIT="$MYCORRHIZAL_GIT_COMMIT" \
+            -PMYCORRHIZAL_BUILD_DATE="$MYCORRHIZAL_BUILD_DATE"
 
       # REL-03 / #527: "Materialize release keystore" only checks the signing
       # secrets are present -- a misconfigured signing block still produces an
