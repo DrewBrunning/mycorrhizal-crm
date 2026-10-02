@@ -1717,7 +1717,8 @@
     "count_one": "{{count}} address on the map",
     "count_other": "{{count}} addresses on the map",
     "openContact": "Open contact",
-    "unavailable": "The map could not be displayed. Your browser may not support WebGL."
+    "unavailable": "The map could not be displayed. Your browser may not support WebGL.",
+    "truncated": "Showing the first {{count}} addresses only; the map is limited to this many points."
   },
   "contactScore": {
     "badge": {

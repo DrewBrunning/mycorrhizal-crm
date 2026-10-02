@@ -1,7 +1,7 @@
 // Contact Map API (ADR 0031, issue #1286): the tile-style bootstrap, the
 // single-address geocode trigger, and the plottable-points loader.
+import type { ContactMapResponse } from '../generated/openapi';
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
-import { type Contact, getAllContacts } from './contacts';
 
 // GET /config/map -- public; the MapLibre style JSON URL.
 export interface MapConfig {
@@ -20,8 +20,7 @@ export interface LatLng {
   lng: number;
 }
 
-// One plottable address. `sensitivity` is carried for display only: the map
-// is the owner's own view, so it is never used to filter.
+// One plottable address.
 export interface MapPoint {
   contactId: number;
   contactName: string;
@@ -98,72 +97,34 @@ export async function geocodeAddress(
   return response.json();
 }
 
-interface JSContactAddress {
-  components?: { kind: string; value: string }[];
-  coordinates?: string;
-  contexts?: Record<string, boolean>;
-  full?: string;
+// GET /contacts/map (issue #1427): one item per plottable address of the
+// caller's own non-archived contacts. Not sensitivity-gated (ADR 0031 section
+// 3): the map is the owner's own view of their own data. The server already
+// validated each coordinate; the client re-parses so a bad value can never be
+// plotted at a nonsense position.
+export interface MapPointsResult {
+  points: MapPoint[];
+  // True when the server hit its point ceiling and the list is partial.
+  truncated: boolean;
 }
 
-interface JSContactCard {
-  uid?: string;
-  addresses?: Record<string, JSContactAddress>;
-}
-
-function displayName(c: Contact): string {
-  return [c.firstname, c.lastname].filter(Boolean).join(' ') || c.nickname || '';
-}
-
-function addressLabel(a: JSContactAddress): string {
-  if (a.full) return a.full;
-  const find = (kind: string) => a.components?.find((c) => c.kind === kind)?.value;
-  return [find('name') ?? find('number'), find('locality'), find('region'), find('country')]
-    .filter(Boolean)
-    .join(', ');
-}
-
-// Loads every plottable address of the caller's own (non-archived) contacts.
-//
-// There is no bulk "addresses with coordinates" endpoint, and the contact list
-// is a slim projection without addresses. The JSContact export with
-// sections=addresses is the one existing bulk read that carries each address's
-// geo: URI. It is requested with include_sensitive=true on purpose: the map is
-// the owner's own view of their own data, not an export/sync/share, so it is
-// not sensitivity-gated (ADR 0031 section 3, the same rule as the CSV export).
-// Cards are joined to the contact list by vCard UID for the numeric id (needed
-// to link to the contact page) and the display name.
-export async function getMapPoints(): Promise<MapPoint[]> {
-  const [contacts, response] = await Promise.all([
-    getAllContacts({ limit: 100 }),
-    apiFetch(`${API_BASE_URL}/export/jscontact?sections=addresses&include_sensitive=true`, {
-      headers: getAuthHeaders(),
-    }),
-  ]);
+export async function getMapPoints(): Promise<MapPointsResult> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/map`, { headers: getAuthHeaders() });
   if (!response.ok) {
     throw await parseErrorResponse(response);
   }
-  const cards: JSContactCard[] = await response.json();
-
-  const byUid = new Map<string, Contact>();
-  for (const c of contacts) {
-    if (c.uid && c.ID != null) byUid.set(c.uid, c);
-  }
-
+  const data: ContactMapResponse = await response.json();
   const points: MapPoint[] = [];
-  for (const card of cards) {
-    const contact = card.uid ? byUid.get(card.uid) : undefined;
-    if (!contact || contact.ID == null) continue;
-    for (const [addressId, addr] of Object.entries(card.addresses ?? {})) {
-      const pos = parseGeoUri(addr.coordinates);
-      if (!pos) continue;
-      points.push({
-        contactId: contact.ID,
-        contactName: displayName(contact),
-        addressId,
-        label: addressLabel(addr),
-        ...pos,
-      });
-    }
+  for (const p of data.points) {
+    const pos = parseGeoUri(p.coordinates);
+    if (!pos) continue;
+    points.push({
+      contactId: p.contact_id,
+      contactName: p.contact_name,
+      addressId: p.address_id,
+      label: p.label,
+      ...pos,
+    });
   }
-  return points;
+  return { points, truncated: data.truncated };
 }

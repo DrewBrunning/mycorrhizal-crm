@@ -16,6 +16,7 @@ export default function MapPage() {
   const navigate = useNavigate();
   const [styleUrl, setStyleUrl] = useState<string | null>(null);
   const [points, setPoints] = useState<MapPoint[] | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,7 +26,8 @@ export default function MapPage() {
         const [config, pts] = await Promise.all([getMapConfig(), getMapPoints()]);
         if (cancelled) return;
         setStyleUrl(config.tile_style_url);
-        setPoints(pts);
+        setPoints(pts.points);
+        setTruncated(pts.truncated);
       } catch (err) {
         if (cancelled) return;
         setError(handleFetchError(err, 'loading the contact map'));
@@ -57,6 +59,11 @@ export default function MapPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               {t('map.count', { count: points.length })}
             </Typography>
+          )}
+          {truncated && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {t('map.truncated', { count: points.length })}
+            </Alert>
           )}
           <ContactMap
             styleUrl={styleUrl}

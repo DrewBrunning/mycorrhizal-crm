@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock('./contacts', () => ({ getAllContacts: vi.fn() }));
-
-import { getAllContacts } from './contacts';
 import {
   formatGeoUri,
   geocodeAddress,
@@ -14,7 +11,6 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.mocked(getAllContacts).mockReset();
 });
 
 const errorResponse = () => ({
@@ -127,88 +123,76 @@ describe('geocodeAddress', () => {
 });
 
 describe('getMapPoints', () => {
-  const contacts = [
-    { ID: 1, uid: 'u1', firstname: 'Ada', lastname: 'Lovelace' },
-    { ID: 2, uid: 'u2', firstname: '', lastname: '', nickname: 'Bobby' },
-    { ID: 3, uid: 'u3', firstname: 'No', lastname: 'Coords' },
-    { ID: 4, uid: 'u4', firstname: '', lastname: '' },
-    { ID: 5, firstname: 'No', lastname: 'Uid' },
-  ];
+  const wire = (patch: object = {}) => ({
+    contact_id: 1,
+    contact_uid: 'u1',
+    contact_name: 'Ada Lovelace',
+    address_id: 'a1',
+    label: '10 Downing St, London',
+    coordinates: 'geo:51.5034,-0.1276',
+    ...patch,
+  });
 
-  test('joins export cards to contacts and skips unplottable addresses', async () => {
-    vi.mocked(getAllContacts).mockResolvedValueOnce(contacts as never);
-    const cards = [
-      {
-        uid: 'u1',
-        addresses: {
-          h: {
-            coordinates: 'geo:51.5,-0.12',
-            components: [
-              { kind: 'name', value: '1 Main St' },
-              { kind: 'locality', value: 'London' },
-              { kind: 'country', value: 'UK' },
-            ],
-          },
-          bad: { coordinates: 'geo:999,0' },
-          none: {},
-        },
-      },
-      { uid: 'u2', addresses: { w: { coordinates: 'geo:1,2', full: 'Somewhere full' } } },
-      { uid: 'u3' },
-      { uid: 'u4', addresses: { n: { coordinates: 'geo:3,4' } } },
-      { addresses: { z: { coordinates: 'geo:5,6' } } },
-      { uid: 'unknown', addresses: { x: { coordinates: 'geo:1,1' } } },
-      { addresses: { y: { coordinates: 'geo:1,1' } } },
-    ];
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => cards });
+  test('GETs /contacts/map and maps points to lat/lng', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        points: [wire(), wire({ contact_id: 2, address_id: 'a2', coordinates: 'geo:1,2' })],
+        truncated: false,
+      }),
+    });
     vi.stubGlobal('fetch', fetchMock);
 
-    const points = await getMapPoints();
+    const result = await getMapPoints();
 
-    expect(points).toEqual([
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/contacts\/map$/);
+    expect(result.truncated).toBe(false);
+    expect(result.points).toEqual([
       {
         contactId: 1,
         contactName: 'Ada Lovelace',
-        addressId: 'h',
-        label: '1 Main St, London, UK',
-        lat: 51.5,
-        lng: -0.12,
+        addressId: 'a1',
+        label: '10 Downing St, London',
+        lat: 51.5034,
+        lng: -0.1276,
       },
       {
         contactId: 2,
-        contactName: 'Bobby',
-        addressId: 'w',
-        label: 'Somewhere full',
+        contactName: 'Ada Lovelace',
+        addressId: 'a2',
+        label: '10 Downing St, London',
         lat: 1,
         lng: 2,
       },
-      { contactId: 4, contactName: '', addressId: 'n', label: '', lat: 3, lng: 4 },
     ]);
-    // The map is the owner's own view: sensitive addresses must be included.
-    expect(fetchMock.mock.calls[0][0]).toMatch(/sections=addresses&include_sensitive=true$/);
   });
 
-  test('uses the number component when there is no street name', async () => {
-    vi.mocked(getAllContacts).mockResolvedValueOnce(contacts as never);
+  test('skips a point whose coordinates the client cannot parse', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => [
-          {
-            uid: 'u1',
-            addresses: {
-              a: { coordinates: 'geo:1,2', components: [{ kind: 'number', value: '12' }] },
-            },
-          },
-        ],
+        json: async () => ({
+          points: [wire({ coordinates: 'geo:999,0' }), wire({ address_id: 'ok' })],
+          truncated: false,
+        }),
       }),
     );
-    expect((await getMapPoints())[0].label).toBe('12');
+    const { points } = await getMapPoints();
+    expect(points.map((p) => p.addressId)).toEqual(['ok']);
   });
 
-  test('throws the parsed error when the export fails', async () => {
-    vi.mocked(getAllContacts).mockResolvedValueOnce([]);
+  test('passes through the truncated flag', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ points: [], truncated: true }) }),
+    );
+    expect(await getMapPoints()).toEqual({ points: [], truncated: true });
+  });
+
+  test('throws the parsed error on failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(getMapPoints()).rejects.toThrow('nope');
   });

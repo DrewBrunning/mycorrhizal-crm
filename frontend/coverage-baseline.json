@@ -88,9 +88,9 @@
     },
     "src/MapPage.tsx": {
       "lines": 100,
-      "linesTotal": 20,
+      "linesTotal": 22,
       "branches": 100,
-      "branchesTotal": 16
+      "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
       "lines": 81.11,
@@ -394,9 +394,9 @@
     },
     "src/api/map.ts": {
       "lines": 100,
-      "linesTotal": 45,
+      "linesTotal": 35,
       "branches": 100,
-      "branchesTotal": 58
+      "branchesTotal": 39
     },
     "src/api/meerkatImport.ts": {
       "lines": 93.75,

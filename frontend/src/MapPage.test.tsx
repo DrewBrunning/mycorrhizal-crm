@@ -60,7 +60,7 @@ const pt: MapPoint = {
 
 test('shows a loading status, then the map with the configured style', async () => {
   h.getMapConfig.mockResolvedValue({ tile_style_url: 'https://tiles.example/s' });
-  h.getMapPoints.mockResolvedValue([pt, { ...pt, contactId: 2 }]);
+  h.getMapPoints.mockResolvedValue({ points: [pt, { ...pt, contactId: 2 }], truncated: false });
   renderPage();
   expect(screen.getByRole('status', { name: 'Loading…' })).toBeInTheDocument();
   const stub = await screen.findByTestId('map-stub');
@@ -73,14 +73,14 @@ test('shows a loading status, then the map with the configured style', async () 
 
 test('uses the singular count for one address', async () => {
   h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
-  h.getMapPoints.mockResolvedValue([pt]);
+  h.getMapPoints.mockResolvedValue({ points: [pt], truncated: false });
   renderPage();
   expect(await screen.findByText('1 address on the map')).toBeInTheDocument();
 });
 
 test('explains how to get contacts onto the map when none have coordinates', async () => {
   h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
-  h.getMapPoints.mockResolvedValue([]);
+  h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
   renderPage();
   expect(await screen.findByText(/No contacts have coordinates yet/)).toBeInTheDocument();
   expect(screen.getByTestId('map-stub')).toHaveAttribute('data-count', '0');
@@ -88,7 +88,7 @@ test('explains how to get contacts onto the map when none have coordinates', asy
 
 test('shows an error and no map when loading fails', async () => {
   h.getMapConfig.mockRejectedValue(new Error('boom'));
-  h.getMapPoints.mockResolvedValue([]);
+  h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
   renderPage();
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   expect(screen.queryByTestId('map-stub')).not.toBeInTheDocument();
@@ -97,7 +97,7 @@ test('shows an error and no map when loading fails', async () => {
 
 test('opening a contact from the map navigates to its page', async () => {
   h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
-  h.getMapPoints.mockResolvedValue([pt]);
+  h.getMapPoints.mockResolvedValue({ points: [pt], truncated: false });
   renderPage();
   (await screen.findByText('open-42')).click();
   await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/contacts/42'));
@@ -106,7 +106,7 @@ test('opening a contact from the map navigates to its page', async () => {
 test('does not update state after unmount', async () => {
   let resolve!: (v: { tile_style_url: string }) => void;
   h.getMapConfig.mockReturnValue(new Promise((r) => (resolve = r)));
-  h.getMapPoints.mockResolvedValue([]);
+  h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   const { unmount } = renderPage();
   unmount();
@@ -119,7 +119,7 @@ test('does not update state after unmount', async () => {
 test('ignores a failure that arrives after unmount', async () => {
   let reject!: (e: Error) => void;
   h.getMapConfig.mockReturnValue(new Promise((_, r) => (reject = r)));
-  h.getMapPoints.mockResolvedValue([]);
+  h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   const { unmount } = renderPage();
   unmount();
@@ -128,4 +128,20 @@ test('ignores a failure that arrives after unmount', async () => {
   await Promise.resolve();
   expect(errorSpy).not.toHaveBeenCalled();
   errorSpy.mockRestore();
+});
+
+test('warns when the server truncated the point list', async () => {
+  h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
+  h.getMapPoints.mockResolvedValue({ points: [pt], truncated: true });
+  renderPage();
+  expect(await screen.findByText(/Showing the first 1 addresses only/)).toBeInTheDocument();
+  expect(screen.getByTestId('map-stub')).toBeInTheDocument();
+});
+
+test('shows no truncation warning for a complete list', async () => {
+  h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
+  h.getMapPoints.mockResolvedValue({ points: [pt], truncated: false });
+  renderPage();
+  await screen.findByTestId('map-stub');
+  expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
 });

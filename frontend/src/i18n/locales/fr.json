@@ -1690,7 +1690,8 @@
     "count_one": "{{count}} adresse sur la carte",
     "count_other": "{{count}} adresses sur la carte",
     "openContact": "Ouvrir le contact",
-    "unavailable": "La carte n'a pas pu être affichée. Votre navigateur ne prend peut-être pas en charge WebGL."
+    "unavailable": "La carte n'a pas pu être affichée. Votre navigateur ne prend peut-être pas en charge WebGL.",
+    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points."
   },
   "contactScore": {
     "badge": {
