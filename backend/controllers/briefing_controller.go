@@ -237,12 +237,22 @@ func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Conta
 // fact. Sensitivity: only `secret` edges are excluded — see
 // attachBriefingRelationships' doc comment for the full reasoning.
 func resolveConfirmedRelationships(db *gorm.DB, userID uint, contact *models.Contact) ([]models.BriefingRelationship, error) {
+	return resolveConfirmedRelationshipsExcluding(db, userID, contact, []string{models.RelationshipSensitivitySecret})
+}
+
+// resolveConfirmedRelationshipsExcluding is resolveConfirmedRelationships
+// with the excluded sensitivity tiers supplied by the caller: the REST
+// surfaces exclude only `secret`, the MCP get_contact tool excludes
+// `private` and `secret` unless include_sensitive is set (ADR 0032 §4). An
+// empty list excludes nothing.
+func resolveConfirmedRelationshipsExcluding(db *gorm.DB, userID uint, contact *models.Contact, excluded []string) ([]models.BriefingRelationship, error) {
 	var edges []models.RelationshipEdge
-	if err := db.Where(
-		"user_id = ? AND status = ? AND sensitivity != ? AND (source_id = ? OR target_id = ?)",
-		userID, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret,
-		contact.VCardUID, contact.VCardUID,
-	).Find(&edges).Error; err != nil {
+	q := db.Where("user_id = ? AND status = ? AND (source_id = ? OR target_id = ?)",
+		userID, models.RelationshipStatusConfirmed, contact.VCardUID, contact.VCardUID)
+	if len(excluded) > 0 {
+		q = q.Where("sensitivity NOT IN ?", excluded)
+	}
+	if err := q.Find(&edges).Error; err != nil {
 		return nil, err
 	}
 	if len(edges) == 0 {

@@ -64,6 +64,7 @@ const (
 	idemReasonDedup      = "POST is already de-duplicated by its own key (job lock / natural key / delivery key)"
 	idemReasonAuth       = "authentication / account endpoint — no domain row minted; its own anti-replay applies"
 	idemReasonAdmin      = "admin trigger/management endpoint — operator-driven, re-runnable by design"
+	idemReasonMCP        = "MCP JSON-RPC endpoint (ADR 0032) — v1 tools are read-only, so a retried call has no side effect to deduplicate"
 	idemReasonDav        = "CardDAV/CalDAV protocol handler — its own If-Match / UID semantics, outside the REST idempotency middleware"
 	idemReasonMembership = "membership add guarded by a natural-key unique index — a duplicate is a checked 409 ErrAlreadyExists, never a second row"
 )
@@ -256,6 +257,7 @@ func buildIdemTable() map[string]idemRow {
 	} {
 		t[k] = keyed(idemReasonCreate)
 	}
+	t["POST /mcp"] = exempt(idemReasonMCP)
 	for _, k := range []string{"POST /carddav/*path", "POST /caldav/*path"} {
 		t[k] = exempt(idemReasonDav)
 	}

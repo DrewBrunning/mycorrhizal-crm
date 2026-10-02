@@ -39,6 +39,18 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		router.GET("/metrics", controllers.MetricsHandler(cfg, db))
 	}
 
+	// MCP server (issue #176, ADR 0032): read-only streamable-HTTP tools over
+	// the REST read surface. Same AuthMiddleware as /api/v1 (session or
+	// mycorrhizal_ API token), same rate limit. Not a REST/JSON operation, so
+	// it is outside /api/v1 and openapi.yaml, like /metrics. Absent in
+	// embedded mode (no network access surface, ADR 0028).
+	if !cfg.IsEmbedded() {
+		mcpGroup := router.Group("/mcp")
+		mcpGroup.Use(middleware.APIRateLimitMiddleware())
+		mcpGroup.Use(middleware.AuthMiddleware(cfg))
+		mcpGroup.POST("", controllers.MCPHandler())
+	}
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{

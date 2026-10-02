@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbtest"
 
 	"gorm.io/gorm"
 )
@@ -290,5 +291,41 @@ func TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays(t *
 		if string(raw) != "[]" {
 			t.Errorf("%q = %s, want []", field, raw)
 		}
+	}
+}
+
+// TestNewContactRecordResponseFiltered_SensitivityOptIn pins the MCP
+// get_contact opt-in: a private relationship edge projects into
+// Card.RelatedTo only when includeSensitive is true, and false is exactly
+// NewContactRecordResponse.
+func TestNewContactRecordResponseFiltered_SensitivityOptIn(t *testing.T) {
+	db := dbtest.New(t)
+	user := User{Username: "u", Password: "password123", Email: "u@example.com"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	a := Contact{UserID: user.ID, Firstname: "A"}
+	b := Contact{UserID: user.ID, Firstname: "B"}
+	if err := db.Create(&a).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&b).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&RelationshipEdge{
+		UserID: user.ID, SourceID: a.VCardUID, TargetID: b.VCardUID, Type: "parent_of",
+		Status: RelationshipStatusConfirmed, Sensitivity: RelationshipSensitivityPrivate,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if got := NewContactRecordResponseFiltered(&a, "", db, false).Card.RelatedTo; len(got) != 0 {
+		t.Errorf("private edge leaked without opt-in: %v", got)
+	}
+	if got := NewContactRecordResponse(&a, "", db).Card.RelatedTo; len(got) != 0 {
+		t.Errorf("NewContactRecordResponse must stay non-sensitive: %v", got)
+	}
+	if got := NewContactRecordResponseFiltered(&a, "", db, true).Card.RelatedTo; len(got) == 0 {
+		t.Error("include_sensitive must project the private edge")
 	}
 }
