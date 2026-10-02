@@ -32,6 +32,7 @@ var purgedSoftDeleteModels = []any{
 	&models.Gift{},
 	&models.ImmichConfig{},
 	&models.PaperlessConfig{},
+	&models.GeoPulseConfig{},
 	&models.SeafileConfig{},
 	&models.WebDAVConfig{},
 	&models.LinkFieldType{},

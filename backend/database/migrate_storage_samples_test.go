@@ -50,6 +50,7 @@ func TestMigrationsAddStorageSamples(t *testing.T) {
 	// Down drops the table. 000043 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000043's own down
 	// migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000071_geopulse_configs
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000070_webauthn_credentials
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000069_feeds
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000068_import_runs_mycorrhizal_format

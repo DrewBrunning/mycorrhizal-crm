@@ -4364,6 +4364,97 @@
     },
     {
       "method": "GET",
+      "path": "/geopulse/config",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeoPulseConfigResponse"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/geopulse/config",
+      "parameters": null,
+      "request_body": "ref:GeoPulseConfigInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeoPulseConfigResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/geopulse/config",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/geopulse/suggestions",
+      "parameters": [
+        {
+          "name": "date",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "timezone",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeoPulseSuggestionsResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "503",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/geopulse/test-connection",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeoPulseConnectionTestResult"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/gifts",
       "parameters": [
         {
@@ -13402,6 +13493,161 @@
         {
           "name": "value",
           "type": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeoPulseConfigInput",
+      "properties": [
+        {
+          "name": "api_key",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "base_url",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeoPulseConfigResponse",
+      "properties": [
+        {
+          "name": "base_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "has_api_key",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeoPulseConnectionTestResult",
+      "properties": [
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ok",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "stage",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "reachability",
+            "auth",
+            "ok"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GeoPulsePhotoSuggestion",
+      "properties": [
+        {
+          "name": "file_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "taken_at",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeoPulseStaySuggestion",
+      "properties": [
+        {
+          "name": "city",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "country",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "duration_seconds",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "existing_activity_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "external_ref",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "latitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "longitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "photos",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "photos_unavailable",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "stay_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeoPulseSuggestionsResponse",
+      "properties": [
+        {
+          "name": "date",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "suggestions",
+          "type": "array\u003cobject\u003e",
           "required": true
         }
       ]

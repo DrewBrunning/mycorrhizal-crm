@@ -33,6 +33,8 @@ unleash:
         - ^error_aggregation\.go$
         - ^feed_atom\.go$
         - ^feed_service\.go$
+        - ^geopulse_client\.go$
+        - ^geopulse_service\.go$
         - ^graph_suggestion_service\.go$
         - ^graph_traversal\.go$
         - ^hibp_service\.go$

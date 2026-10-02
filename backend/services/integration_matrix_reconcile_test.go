@@ -21,6 +21,7 @@ func TestIntegrationMatrixTimeoutsMatchCode(t *testing.T) {
 		"caldav":       calendarRequestTimeout,
 		"immich":       immichRequestTimeout,
 		"paperless":    paperlessRequestTimeout,
+		"geopulse":     geopulseRequestTimeout,
 		"seafile":      seafileRequestTimeout,
 		"webdav":       webdavRequestTimeout,
 		"webhooks":     deliveryClient.Timeout,

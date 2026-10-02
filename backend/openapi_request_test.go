@@ -198,6 +198,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PUT /external-activities/{id}": bindingFor(models.ExternalActivityInput{}),
 	"PUT /immich/config":            bindingFor(models.ImmichConfigInput{}),
 	"PUT /paperless/config":         bindingFor(models.PaperlessConfigInput{}),
+	"PUT /geopulse/config":          bindingFor(models.GeoPulseConfigInput{}),
 	"PUT /seafile/config":           bindingFor(models.SeafileConfigInput{}),
 	"PUT /nextcloud/config":         bindingFor(models.WebDAVConfigInput{}),
 	"POST /immich/contacts/{vcard_uid}/link": {
@@ -287,6 +288,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /immich/test-connection":                true,
 	"POST /immich/sync":                           true,
 	"POST /paperless/test-connection":             true,
+	"POST /geopulse/test-connection":              true,
 	"POST /seafile/test-connection":               true,
 	"POST /nextcloud/test-connection":             true,
 	"POST /admin/users/{id}/reset-2fa":            true,

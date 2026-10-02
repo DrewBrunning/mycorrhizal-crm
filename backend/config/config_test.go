@@ -1532,6 +1532,7 @@ func TestPublicExposureWarnings_AllGuardsOnIsQuiet(t *testing.T) {
 		CalDAVBlockPrivateURLs:    true,
 		ImmichBlockPrivateURLs:    true,
 		PaperlessBlockPrivateURLs: true,
+		GeoPulseBlockPrivateURLs:  true,
 		SeafileBlockPrivateURLs:   true,
 		WebDAVBlockPrivateURLs:    true,
 		MonicaBlockPrivateURLs:    true,
@@ -1552,6 +1553,7 @@ func TestPublicExposureWarnings_NamesOnlyTheFlagsThatAreOff(t *testing.T) {
 	assert.Contains(t, warnings[0], "CALDAV_BLOCK_PRIVATE_URLS")
 	assert.Contains(t, warnings[0], "IMMICH_BLOCK_PRIVATE_URLS")
 	assert.Contains(t, warnings[0], "PAPERLESS_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "GEOPULSE_BLOCK_PRIVATE_URLS")
 	assert.Contains(t, warnings[0], "SEAFILE_BLOCK_PRIVATE_URLS")
 	assert.Contains(t, warnings[0], "WEBDAV_BLOCK_PRIVATE_URLS")
 	assert.Contains(t, warnings[0], "MONICA_BLOCK_PRIVATE_URLS")

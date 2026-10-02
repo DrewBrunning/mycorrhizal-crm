@@ -91,6 +91,17 @@ func integrationClientCases() []integrationClientCase {
 			sentinels: clientSentinels{ErrPaperlessUnreachable, ErrPaperlessUnauthorized, ErrPaperlessNotFound},
 		},
 		{
+			name:    "geopulse",
+			seam:    faultGeoPulseRequest,
+			timeout: &geopulseRequestTimeout,
+			build: func(t *testing.T, baseURL string) func() error {
+				c, err := NewGeoPulseClient(baseURL, "tok", false)
+				require.NoError(t, err)
+				return c.Ping
+			},
+			sentinels: clientSentinels{ErrGeoPulseUnreachable, ErrGeoPulseUnauthorized, ErrGeoPulseNotFound},
+		},
+		{
 			name:    "seafile",
 			seam:    faultSeafileRequest,
 			timeout: &seafileRequestTimeout,

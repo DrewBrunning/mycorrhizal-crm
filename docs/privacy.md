@@ -33,7 +33,7 @@ Concretely, an instance stores:
   investigating problems), a full-text search index, delivery records for reminders and webhooks,
   and sync bookkeeping for CardDAV/CalDAV.
 - **Anything you connect**: credentials for external services (Nextcloud/WebDAV, Paperless,
-  Immich, Seafile, ntfy, Gotify), stored encrypted; calendar and address-book subscriptions.
+  GeoPulse, Immich, Seafile, ntfy, Gotify), stored encrypted; calendar and address-book subscriptions.
 
 ## What does *not* happen
 

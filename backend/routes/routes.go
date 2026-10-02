@@ -689,7 +689,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// ExternalActivity. /contacts/:vcard_uid/thumbnail is the hardened
 			// person-thumbnail proxy (same SVG rejection + Content-Disposition
 			// as /proxy/image).
-			// Storage-only embedded server (ADR 0028 amendment, issue #1367): Immich, Paperless, Seafile and Nextcloud are outbound integrations.
+			// Storage-only embedded server (ADR 0028 amendment, issue #1367): Immich, Paperless, Seafile, Nextcloud and GeoPulse are outbound integrations.
 			if !cfg.IsEmbedded() {
 				protected.GET("/immich/config", controllers.GetImmichConfig)
 				protected.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), controllers.SaveImmichConfig)
@@ -715,6 +715,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.GET("/paperless/documents", controllers.ListPaperlessDocuments)
 				protected.POST("/paperless/contacts/:vcard_uid/link", controllers.LinkPaperlessContact)
 				protected.DELETE("/paperless/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkPaperlessContact)
+
+				// GeoPulse location-history routes (issue #160, ADR 0033): an
+				// on-demand, user-initiated lookup that returns an ephemeral list of
+				// activity suggestions for one date. Nothing is persisted here —
+				// confirming a suggestion is a normal POST /activities.
+				protected.GET("/geopulse/config", controllers.GetGeoPulseConfig)
+				protected.PUT("/geopulse/config", middleware.ValidateJSONMiddleware(&models.GeoPulseConfigInput{}), controllers.SaveGeoPulseConfig)
+				protected.DELETE("/geopulse/config", controllers.DeleteGeoPulseConfig)
+				protected.POST("/geopulse/test-connection", controllers.TestGeoPulseConnection)
+				protected.GET("/geopulse/suggestions", controllers.GetGeoPulseSuggestions)
 
 				// Seafile routes (issue #156): link contacts to files/folders in a
 				// self-hosted Seafile library. Config is per-user-global; links are

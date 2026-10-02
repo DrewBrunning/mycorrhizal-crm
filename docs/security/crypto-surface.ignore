@@ -20,6 +20,7 @@ backend/services/household_service.go       # crypto/sha256 over address/member 
 backend/services/immich_client.go           # crypto/tls for the outbound Immich transport (TLS config, not a primitive choice) — same class as the other file-integration clients
 backend/services/mailer.go                  # crypto/tls for SMTP transport (TLS config, not a primitive choice)
 backend/services/paperless_client.go        # crypto/tls for the outbound Paperless-ngx transport (TLS config, not a primitive choice)
+backend/services/geopulse_client.go         # crypto/tls for the outbound GeoPulse transport (TLS config, not a primitive choice)
 backend/services/seafile_client.go          # crypto/tls for the outbound Seafile transport (TLS config, not a primitive choice)
 backend/services/webdav_client.go           # crypto/tls for the outbound Nextcloud/WebDAV transport (TLS config, not a primitive choice)
 backend/controllers/oidc_controller.go      # crypto/subtle constant-time comparison of OIDC state/nonce cookies — a comparison helper, not a primitive selection; 6.2.8 (constant-time) is out-of-scope L3

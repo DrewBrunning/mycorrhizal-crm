@@ -175,6 +175,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/audit/:id/undo",
 		"POST /api/v1/immich/test-connection",
 		"POST /api/v1/paperless/test-connection",
+		"POST /api/v1/geopulse/test-connection",
 		"POST /api/v1/seafile/test-connection",
 		"POST /api/v1/nextcloud/test-connection",
 		// ADR 0025 infer-and-suggest: resolving a candidate is idempotent by

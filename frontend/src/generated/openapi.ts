@@ -1116,6 +1116,48 @@ export type FieldValueInput = {
   value: unknown;
 };
 
+export type GeoPulseConfigInput = {
+  api_key?: string;
+  base_url: string;
+};
+
+export type GeoPulseConfigResponse = {
+  base_url: string;
+  has_api_key: boolean;
+};
+
+export type GeoPulseConnectionTestResult = {
+  message: string;
+  ok: boolean;
+  stage: 'reachability' | 'auth' | 'ok';
+};
+
+export type GeoPulsePhotoSuggestion = {
+  file_name: string;
+  id: string;
+  taken_at: string;
+};
+
+export type GeoPulseStaySuggestion = {
+  city: string;
+  country: string;
+  duration_seconds: number;
+  existing_activity_id?: number;
+  external_ref: string;
+  latitude: number;
+  location: string;
+  longitude: number;
+  photos: GeoPulsePhotoSuggestion[];
+  photos_unavailable: boolean;
+  stay_id: number;
+  timestamp: string;
+};
+
+export type GeoPulseSuggestionsResponse = {
+  date: string;
+  suggestions: GeoPulseStaySuggestion[];
+};
+
 export type Gift = {
   activity_id?: number;
   created_at: string;

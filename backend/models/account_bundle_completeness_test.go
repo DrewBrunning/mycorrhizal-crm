@@ -69,6 +69,7 @@ var bundleExcluded = map[string]string{
 	"ExternalIdentity":              "external integration identity mapping; re-derived",
 	"Feed":                          "credential material (hashed feed token); never exported",
 	"IdempotencyKey":                "request idempotency cache; not portable data",
+	"GeoPulseConfig":                "per-instance integration configuration/credential",
 	"ImmichConfig":                  "per-instance integration configuration/credential",
 	"ImportRun":                     "import history bookkeeping, not user-authored data",
 	"ImportSourceLink":              "import idempotency ledger, destination-specific",
