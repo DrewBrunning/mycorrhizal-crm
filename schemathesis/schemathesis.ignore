@@ -29,3 +29,19 @@
 # 500s the first fuzz pass surfaced (issue #524) are fixed — see that issue's
 # closing commit(s) for the fix and the local Schemathesis re-run that
 # confirmed a clean gate before the rules below were removed.
+#
+# --- External-service 5xx on the calendar sync endpoint (issue #1431) -------
+# `POST /calendars/{id}/sync` answers 503 EXTERNAL_SERVICE_ERROR when the
+# calendar URL the *caller* configured returns 200 with a body that is not a
+# valid iCalendar feed (services.ErrCalendarInvalidData -> ErrExternal). That is
+# the documented external-service path (openapi.yaml's 503), and INT-01's
+# `malformed-response` row classes it transient — it is the caller's chosen
+# remote misbehaving, not this API malfunctioning, which is exactly the
+# "a real response from a configured, reachable instance" branch #524
+# deliberately left at 5xx. Schemathesis reaches it by creating a subscription
+# with a generated URL and syncing it: the remote's *contents*, not the API,
+# decide the status, so the nightly deep pass (SCHEMA_MAX_EXAMPLES=100) hits it
+# intermittently while the PR smoke (3 examples) never does. Only server_error
+# on this one operation is accepted; every other operation stays gated.
+server_error POST /calendars/\{id\}/sync   # caller-configured remote: unparseable iCal -> documented 503 (INT-01 malformed-response), not an API fault
+
