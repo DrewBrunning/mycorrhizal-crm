@@ -72,15 +72,17 @@ func TestFieldSections(t *testing.T) {
 	}
 }
 
-// Only the three sensitivity-bearing sections may be marked sensitive — the
+// Only the sensitivity-bearing sections may be marked sensitive — the
 // frontend gates these behind the reveal action, and the backend threads the
-// IncludeSensitive override through exactly these projection steps.
+// IncludeSensitive override through exactly these filters. Addresses joined
+// the set with ADR 0031 (a ContactAddress can carry Sensitivity, and with it a
+// geo: coordinate).
 func TestIsSensitiveSection(t *testing.T) {
 	t.Parallel()
 	for token, want := range map[string]bool{
 		SectionEmails:         false,
 		SectionPhones:         false,
-		SectionAddresses:      false,
+		SectionAddresses:      true,
 		SectionOrganizations:  false,
 		SectionAnniversaries:  false,
 		SectionMedia:          false,
@@ -134,6 +136,42 @@ func TestApplyFieldSelection_AllSectionsKeepsEverything(t *testing.T) {
 	assert.Equal(t, record.Envelope, got.Envelope)
 	assert.Equal(t, record.UID, got.UID)
 	assert.Equal(t, record.ETag, got.ETag)
+}
+
+// Addresses above normal sensitivity are default-denied (ADR 0031): a secret
+// or private address, and its geo: coordinate, must not survive
+// ApplyFieldSelection without the explicit opt-in. The normal control stays,
+// and the caller's slice is never mutated.
+func TestApplyFieldSelection_AddressSensitivity(t *testing.T) {
+	t.Parallel()
+
+	record := buildFullRecord()
+	record.Card.Addresses = []contactmodel.Address{
+		{Full: "1 Normal St", Coordinates: "geo:1,1"},
+		{Full: "2 Secret St", Coordinates: "geo:2,2", Sensitivity: RelationshipSensitivitySecret},
+		{Full: "3 Private Ave", Coordinates: "geo:3,3", Sensitivity: RelationshipSensitivityPrivate},
+	}
+	normalOnly := []contactmodel.Address{{Full: "1 Normal St", Coordinates: "geo:1,1"}}
+
+	t.Run("default denies above-normal, keeps the control", func(t *testing.T) {
+		got := ApplyFieldSelection(record, FieldSelectionAll())
+		assert.Equal(t, normalOnly, got.Card.Addresses)
+		assert.Len(t, record.Card.Addresses, 3, "the caller's slice must not be mutated")
+	})
+
+	t.Run("opt-in keeps every address", func(t *testing.T) {
+		sel := FieldSelectionAll()
+		sel.IncludeSensitive = true
+		got := ApplyFieldSelection(record, sel)
+		assert.Equal(t, record.Card.Addresses, got.Card.Addresses)
+	})
+
+	t.Run("deselected section clears even normal addresses", func(t *testing.T) {
+		sel := NewFieldSelection()
+		require.NoError(t, sel.Enable(SectionEmails))
+		got := ApplyFieldSelection(record, sel)
+		assert.Empty(t, got.Card.Addresses)
+	})
 }
 
 // The core filter contract: selecting a subset keeps only those sections

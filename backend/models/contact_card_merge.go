@@ -2,6 +2,7 @@ package models
 
 import (
 	"reflect"
+	"strings"
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/photostore"
@@ -194,6 +195,134 @@ func mergeAddresses(loaded, fresh []contactmodel.Address) []contactmodel.Address
 		}
 	}
 	return result
+}
+
+// PreserveSensitiveAddresses returns the addresses a CardDAV/WebDAV client
+// just PUT (incoming) with every above-normal address the server already held
+// (existing) re-attached. It is the write half of the CardDAV
+// address-sensitivity gate: the read half (RecordForContactForSync) withholds
+// a private/secret address, so the client could not have seen it, and a WebDAV
+// PUT replaces the whole resource — without this, a routine client edit would
+// silently delete the address (and its geo: coordinate).
+//
+// Matching, in order:
+//  1. Stable ID (vCard 4 PROP-ID, minted by ADR 0031 and round-tripped by the
+//     exporters).
+//  2. A normalized rendering of the address line, because vCard 3.0 has no
+//     PROP-ID and a client there echoes the ADR back without one.
+//
+// On a match the existing (server) entry wins verbatim: the client cannot see
+// the address, so its copy is stale by definition and the server state —
+// including Sensitivity, Coordinates and any unprojected components — is
+// authoritative. An existing entry with no match is appended. Entries at
+// normal/empty sensitivity are ignored: the client may add, edit and delete
+// those freely. Neither input slice is mutated; incoming is returned unchanged
+// when there is nothing to preserve.
+//
+// existing is the persisted neutral Card slice (Contact.Card.Addresses), not
+// the flat fields: a LABEL-only address has no flat representation, so
+// reconstructing it from flat would drop its Full line. The caller must pass
+// the Card copy (models trap #3: prefer the persisted record over the flat
+// derivation).
+func PreserveSensitiveAddresses(existing []contactmodel.Address, incoming []contactmodel.Address) []contactmodel.Address {
+	hasSensitive := false
+	for i := range existing {
+		if isSensitiveAddressSensitivity(existing[i].Sensitivity) {
+			hasSensitive = true
+			break
+		}
+	}
+	if !hasSensitive {
+		return incoming
+	}
+
+	out := append([]contactmodel.Address(nil), incoming...)
+	for i := range existing {
+		e := existing[i]
+		if !isSensitiveAddressSensitivity(e.Sensitivity) {
+			continue
+		}
+		if idx := matchAddressIndex(out, e); idx >= 0 {
+			out[idx] = e
+		} else {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// CarryForwardAddressSensitivity returns incoming with the Sensitivity of any
+// matching local (existing) above-normal address applied. It is the inbound
+// counterpart to PreserveSensitiveAddresses, for the contact-subscription
+// reconcile: the remote CardDAV server is the source of truth for address
+// *content*, so an address it deleted is not resurrected — but `Sensitivity`
+// is a local-only classification with no RFC home, so a remote update must not
+// silently downgrade a locally-marked private/secret address to normal (which
+// would re-enable an export/sync leak on the next read). Matching by ID, then
+// normalized line, exactly as PreserveSensitiveAddresses. If the remote
+// changed the content enough not to match, the classification is treated as
+// no longer attached. existing is the persisted neutral Card slice
+// (Contact.Card.Addresses), as in PreserveSensitiveAddresses. Neither input
+// slice is mutated.
+func CarryForwardAddressSensitivity(existing []contactmodel.Address, incoming []contactmodel.Address) []contactmodel.Address {
+	changed := false
+	var out []contactmodel.Address
+	for i := range existing {
+		e := existing[i]
+		if !isSensitiveAddressSensitivity(e.Sensitivity) {
+			continue
+		}
+		if out == nil {
+			out = append([]contactmodel.Address(nil), incoming...)
+		}
+		if idx := matchAddressIndex(out, e); idx >= 0 && out[idx].Sensitivity != e.Sensitivity {
+			out[idx].Sensitivity = e.Sensitivity
+			changed = true
+		}
+	}
+	if !changed {
+		return incoming
+	}
+	return out
+}
+
+// isSensitiveAddressSensitivity reports whether an address classification is
+// above the always-shareable "normal" (an empty value means normal, per the
+// flat/neutral model that treats "" and "normal" identically).
+func isSensitiveAddressSensitivity(sensitivity string) bool {
+	return sensitivity != "" && sensitivity != RelationshipSensitivityNormal
+}
+
+// matchAddressIndex returns the index in addresses that corresponds to the
+// existing neutral entry: by stable ID when both sides carry one, else by the
+// normalized display line. -1 when there is no match.
+func matchAddressIndex(addresses []contactmodel.Address, existing contactmodel.Address) int {
+	if existing.ID != "" {
+		for i := range addresses {
+			if addresses[i].ID == existing.ID {
+				return i
+			}
+		}
+	}
+	key := normalizedAddressLine(contactAddressFromNeutral(existing))
+	if key == "" {
+		return -1
+	}
+	for i := range addresses {
+		if normalizedAddressLine(contactAddressFromNeutral(addresses[i])) == key {
+			return i
+		}
+	}
+	return -1
+}
+
+// normalizedAddressLine renders a flat address to a case- and
+// whitespace-insensitive line, so the same address echoed back by a DAV client
+// (which may differ only in casing or spacing) matches. FormatAddress already
+// carries the T79 sub-street parts, so an address edited to a different
+// apartment does not match — which is correct: that is a different address.
+func normalizedAddressLine(a ContactAddress) string {
+	return strings.Join(strings.Fields(strings.ToLower(FormatAddress(a))), " ")
 }
 
 // mergeName keeps the loaded Name whole when the flat name scalars still

@@ -44,7 +44,9 @@ type ContactMapResponse struct {
 // included with no include_sensitive parameter. This is the owner's own view of
 // their own data, not an export, sync or share — the same rule as the CSV and
 // account-bundle exports (see CLAUDE.md "Sensitivity"). The vCard/JSContact
-// exports still exclude them.
+// exports and contact shares still exclude them, via
+// models.ApplyFieldSelection's address filter (models/field_selection.go) —
+// not by gating this owner-facing read.
 func GetContactMap(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)

@@ -70,6 +70,7 @@ describe('EXPORT_FIELD_SECTIONS', () => {
     expect(tokens).toContain('related_to');
     expect(EXPORT_FIELD_SECTIONS.find((s) => s.token === 'related_to')?.sensitive).toBe(true);
     expect(EXPORT_FIELD_SECTIONS.find((s) => s.token === 'custom_fields')?.sensitive).toBe(true);
+    expect(EXPORT_FIELD_SECTIONS.find((s) => s.token === 'addresses')?.sensitive).toBe(true);
     expect(EXPORT_FIELD_SECTIONS.find((s) => s.token === 'emails')?.sensitive).toBe(false);
   });
 });

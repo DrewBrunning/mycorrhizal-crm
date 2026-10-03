@@ -271,6 +271,58 @@ func TestReconcileContactSync_SensitiveFieldValueAndRelationshipEdgeSurviveHosti
 	assert.Equal(t, models.RelationshipStatusConfirmed, reloadedEdge.Status)
 }
 
+// --- Address sensitivity: FieldValue/RelationshipEdge sensitivity survives
+// because it lives in a side table the reconcile never touches. A postal
+// address is inline on the contact, so the reconcile's full-replace would
+// silently downgrade a locally-classified private/secret address to normal,
+// re-enabling the export/sync leak (issue #1433). This pins that the local
+// classification is carried forward.
+
+// addressTestCard is hostileTestCard plus one ADR
+// (PO;Extended;Street;Locality;Region;PostalCode;Country).
+func addressTestCard(uid, fn, street string) vcard.Card {
+	card := hostileTestCard(uid, fn, "St", "Ada", "")
+	card["ADR"] = []*vcard.Field{{Value: ";;" + street + ";;;;", Params: vcard.Params{"LABEL": []string{street}}}}
+	return card
+}
+
+func TestReconcileContactSync_SensitiveAddressClassificationSurvivesRemoteUpdate(t *testing.T) {
+	db := realMigratedContactSyncDB(t, "sync-address-sensitivity.db")
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	href := "/addressbooks/test/secret-address.vcf"
+	original := addressTestCard("secret-address-uid", "Grace Hopper", "1 Secret St")
+	_, err := reconcileContactSync(db, sub, []carddav.AddressObject{{Path: href, ETag: "\"e1\"", Card: original}}, nil, false, "")
+	require.NoError(t, err)
+
+	var link models.ContactSyncLink
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, href).First(&link).Error)
+	var contact models.Contact
+	require.NoError(t, db.First(&contact, link.ContactID).Error)
+	require.Len(t, contact.Addresses, 1)
+
+	// The user classifies the synced address secret locally (there is no
+	// remote field for this; it is a CRM-only classification).
+	contact.Addresses[0].Sensitivity = models.RelationshipSensitivitySecret
+	contact.Card.Addresses[0].Sensitivity = models.RelationshipSensitivitySecret
+	require.NoError(t, db.Save(&contact).Error)
+
+	// A remote update to an unrelated field, carrying the same address content.
+	updated := addressTestCard("secret-address-uid", "Grace M. Hopper", "1 Secret St")
+	stats, err := reconcileContactSync(db, sub, []carddav.AddressObject{{Path: href, ETag: "\"e2\"", Card: updated}}, nil, false, "")
+	require.NoError(t, err)
+	assert.Equal(t, ContactSyncStats{Updated: 1}, stats)
+
+	var reloaded models.Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+	require.Len(t, reloaded.Addresses, 1)
+	assert.Equal(t, "Grace M. Hopper", reloaded.FN, "the remote update itself applied")
+	assert.Equal(t, models.RelationshipSensitivitySecret, reloaded.Addresses[0].Sensitivity,
+		"a remote update must not downgrade a locally-classified secret address to normal")
+}
+
 // --- Size limit: pin that maxContactResponseBytes (contact_sync_service.go)
 // is actually wired into the live HTTP path, not just present as a constant.
 // A CardDAV response far larger than any legitimate address book is

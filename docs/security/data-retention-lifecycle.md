@@ -309,6 +309,14 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 
 - **Where / who**: served straight from the live `contacts`/`activities`/`life_events` tables — no
   separate DAV-side copy exists.
+- **Sensitivity (issue #1433)**: the DAV projection applies the same default-deny as the
+  neutral-`Card` exports. An address above `normal`, and with it its `geo:` coordinate, is withheld
+  from the served card (`backend/models/contact_record.go#RecordForContactForSync`). Because a
+  WebDAV PUT replaces the whole resource and the client was never shown the address, the write path
+  re-attaches every above-normal address the server already holds
+  (`backend/models/contact_card_merge.go#PreserveSensitiveAddresses`) so a client edit cannot
+  silently delete it; deleting such an address is only possible where it is visible to the owner
+  (the REST/Android editor).
 - **Retention**: matches §1 exactly — a DAV client sees whatever the primary table currently shows.
 - **Deletion / propagation**: `go-webdav` v0.7.0 (this project's DAV library) has **no RFC 6578
   sync-collection REPORT support** — there is no incremental delta protocol to push a tombstone through.
@@ -1097,8 +1105,14 @@ copy of anything.
     refused (400) unless the request carries `include_sensitive=true`. The provider sees this server's
     egress IP, the address text, and (for `maptiler`) the API key.
   - **The resulting coordinate** is ordinary contact data: a `geo:` URI stored on the address (flat
-    `contacts.addresses` JSON and the Card entry), covered by §1 and exported by the same paths as any
-    other address (vCard/JSContact carry it; the CSV and account bundle follow §11).
+    `contacts.addresses` JSON and the Card entry) and covered by §1. It follows its address's
+    sensitivity: a coordinate on an address above `normal` is excluded from the neutral-Card
+    exports/shares (vCard/JSContact, via `backend/models/field_selection.go#ApplyFieldSelection`)
+    and from the CardDAV served card (§7, via `backend/models/contact_record.go#RecordForContactForSync`)
+    unless the request carries `include_sensitive=true` — the same default-deny the rest of the
+    sensitivity model uses (ASVS 1.5.1, issue #1433). It is still shown on the owner's own map
+    (§3 of ADR 0031), in the REST detail, and in the full-fidelity CSV/account-bundle backups
+    (§11), which are not copies that leave the instance.
 - **Retention**:
   - Tiles — no server-side state.
   - Tiles on Android — MapLibre Native keeps its own on-device *ambient tile cache* (the SDK's

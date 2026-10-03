@@ -526,6 +526,15 @@ func reconcileContactSyncWithBaselines(db *gorm.DB, sub *models.ContactSubscript
 				// baseline and every overwritten local edit is recorded as a
 				// ContactSyncConflict the UI can surface and restore.
 				localSnapshot := syncConflictFieldSnapshot(&contact)
+				// Address Sensitivity is local-only (no RFC home, so the
+				// remote never carries it). Carry the local classification
+				// forward onto the incoming addresses the remote still has, or
+				// a routine remote update would silently downgrade a
+				// private/secret address to normal and re-enable the export/
+				// sync leak (issue #1433; mirrors PreserveSensitiveAddresses
+				// on the CardDAV-server write path). The remote stays
+				// authoritative for content and deletion.
+				record.Card.Addresses = models.CarryForwardAddressSensitivity(contact.Card.Addresses, record.Card.Addresses)
 				models.ApplyRecordToContact(&contact, record, photoDir)
 				// Issue #512: same fix-up as the create branch above -- clean
 				// before the remote snapshot is taken, so both the conflict

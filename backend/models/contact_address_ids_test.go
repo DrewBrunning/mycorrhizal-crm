@@ -219,6 +219,141 @@ func TestMergeAddresses(t *testing.T) {
 	})
 }
 
+// TestPreserveSensitiveAddresses is the CardDAV PUT half of the
+// address-sensitivity gate (issue #1433): a client's full-overwrite PUT must
+// not delete an address it was never shown. The GET half
+// (RecordForContactForSync) withholds above-normal addresses, so this
+// re-attaches the server's copy on write.
+func TestPreserveSensitiveAddresses(t *testing.T) {
+	na := func(id, street, sensitivity, coords string) contactmodel.Address {
+		return contactmodel.Address{
+			ID:          id,
+			Components:  []contactmodel.AddressComponent{{Kind: "name", Value: street}},
+			Full:        street,
+			Sensitivity: sensitivity,
+			Coordinates: coords,
+		}
+	}
+
+	t.Run("no sensitive existing is a no-op that returns the input", func(t *testing.T) {
+		incoming := []contactmodel.Address{na("n", "1 Main St", "normal", "")}
+		got := PreserveSensitiveAddresses([]contactmodel.Address{na("n", "1 Main St", "normal", "")}, incoming)
+		assert.Equal(t, incoming, got)
+	})
+
+	t.Run("an omitted secret address is re-attached", func(t *testing.T) {
+		secret := na("s", "2 Secret St", "secret", "geo:2,2")
+		got := PreserveSensitiveAddresses([]contactmodel.Address{secret}, nil)
+		require.Len(t, got, 1)
+		assert.Equal(t, secret, got[0], "the whole server entry survives, geo: included")
+	})
+
+	t.Run("an ID match keeps the server entry verbatim", func(t *testing.T) {
+		secret := na("s", "2 Secret St", "secret", "geo:2,2")
+		// A stale client copy edited the street but kept PROP-ID.
+		incoming := []contactmodel.Address{na("s", "9 Other Rd", "", "")}
+		got := PreserveSensitiveAddresses([]contactmodel.Address{secret}, incoming)
+		require.Len(t, got, 1, "no duplicate: the match replaces in place")
+		assert.Equal(t, secret, got[0], "server state wins over the untrusted copy")
+	})
+
+	t.Run("a content match without an ID (vCard 3.0) keeps the server entry and does not duplicate", func(t *testing.T) {
+		secret := na("s", "2 Secret St", "secret", "geo:2,2")
+		// vCard 3.0 drops PROP-ID, and the client may differ only in casing/spacing.
+		incoming := []contactmodel.Address{na("", "2 secret  st", "", "")}
+		got := PreserveSensitiveAddresses([]contactmodel.Address{secret}, incoming)
+		require.Len(t, got, 1, "the content match must not append a duplicate")
+		assert.Equal(t, secret, got[0], "server sensitivity and coordinates survive")
+	})
+
+	t.Run("a LABEL-only secret address keeps its Full line (neutral, not flat)", func(t *testing.T) {
+		// A flat round trip would blank this one out: the label lives only on
+		// the Card entry, which is why the helper takes Contact.Card.Addresses.
+		secret := contactmodel.Address{ID: "s", Full: "Somewhere secret", Sensitivity: "secret"}
+		got := PreserveSensitiveAddresses([]contactmodel.Address{secret}, nil)
+		require.Len(t, got, 1)
+		assert.Equal(t, "Somewhere secret", got[0].Full)
+	})
+
+	t.Run("incoming normal addresses are left alone", func(t *testing.T) {
+		incoming := []contactmodel.Address{na("", "3 New Ave", "", "")}
+		got := PreserveSensitiveAddresses([]contactmodel.Address{na("s", "2 Secret St", "secret", "geo:2,2")}, incoming)
+		require.Len(t, got, 2)
+		assert.Equal(t, incoming[0], got[0], "a client-added address is kept")
+		assert.Equal(t, na("s", "2 Secret St", "secret", "geo:2,2"), got[1])
+	})
+
+	t.Run("an omitted normal address is NOT preserved (the client deleted it)", func(t *testing.T) {
+		got := PreserveSensitiveAddresses([]contactmodel.Address{na("n", "1 Main St", "normal", "")}, nil)
+		assert.Empty(t, got)
+	})
+
+	t.Run("private and secret are both preserved, normal is not", func(t *testing.T) {
+		existing := []contactmodel.Address{
+			na("n", "1 Main St", "normal", ""),
+			na("p", "2 Private Ave", "private", "geo:3,3"),
+			na("s", "3 Secret Rd", "secret", "geo:4,4"),
+		}
+		got := PreserveSensitiveAddresses(existing, nil)
+		require.Len(t, got, 2)
+		assert.Equal(t, existing[1], got[0])
+		assert.Equal(t, existing[2], got[1])
+	})
+
+	t.Run("neither input slice is mutated", func(t *testing.T) {
+		existing := []contactmodel.Address{na("s", "2 Secret St", "secret", "geo:2,2")}
+		incoming := []contactmodel.Address{na("n", "1 Main St", "normal", "")}
+		got := PreserveSensitiveAddresses(existing, incoming)
+		require.Len(t, got, 2)
+		assert.Len(t, incoming, 1, "the caller's incoming slice keeps its length")
+		assert.Equal(t, "secret", existing[0].Sensitivity, "the caller's existing entry is untouched")
+	})
+}
+
+// TestCarryForwardAddressSensitivity is the subscription-reconcile half: the
+// remote is authoritative for content and deletion, but must not downgrade a
+// locally-classified private/secret address (issue #1433).
+func TestCarryForwardAddressSensitivity(t *testing.T) {
+	na := func(id, street, sensitivity string) contactmodel.Address {
+		return contactmodel.Address{
+			ID:          id,
+			Components:  []contactmodel.AddressComponent{{Kind: "name", Value: street}},
+			Full:        street,
+			Sensitivity: sensitivity,
+		}
+	}
+
+	t.Run("carries the local classification onto a matching incoming address", func(t *testing.T) {
+		local := []contactmodel.Address{na("s", "2 Secret St", "secret")}
+		incoming := []contactmodel.Address{na("", "2 Secret St", "")}
+		got := CarryForwardAddressSensitivity(local, incoming)
+		require.Len(t, got, 1)
+		assert.Equal(t, "secret", got[0].Sensitivity)
+		assert.Empty(t, incoming[0].Sensitivity, "the caller's incoming slice is untouched")
+	})
+
+	t.Run("does not resurrect a remote-deleted address", func(t *testing.T) {
+		local := []contactmodel.Address{na("s", "2 Secret St", "secret")}
+		got := CarryForwardAddressSensitivity(local, nil)
+		assert.Empty(t, got, "the remote removed it; there is no copy left to leak")
+	})
+
+	t.Run("a remote content change is a new address and loses the classification", func(t *testing.T) {
+		local := []contactmodel.Address{na("s", "2 Secret St", "secret")}
+		incoming := []contactmodel.Address{na("", "9 Other Rd", "")}
+		got := CarryForwardAddressSensitivity(local, incoming)
+		require.Len(t, got, 1)
+		assert.Empty(t, got[0].Sensitivity, "different content is a different address")
+	})
+
+	t.Run("a normal local address is not carried", func(t *testing.T) {
+		local := []contactmodel.Address{na("n", "1 Main St", "normal")}
+		incoming := []contactmodel.Address{na("", "1 Main St", "")}
+		got := CarryForwardAddressSensitivity(local, incoming)
+		assert.Equal(t, incoming, got)
+	})
+}
+
 // --- real migrated schema ---------------------------------------------------
 
 func TestAddressMapFields_PersistThroughRealDB(t *testing.T) {

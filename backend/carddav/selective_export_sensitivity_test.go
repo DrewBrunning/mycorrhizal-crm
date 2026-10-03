@@ -6,10 +6,11 @@ package carddav
 // not go through the export controller, has no `include_sensitive` query
 // parameter, and serves contact cards over a protocol whose whole point is
 // pushing the data to another party's device. The rule to pin: CardDAV has NO
-// opt-in at all — contactToAddressObject goes through models.RecordForContact
-// (the nil-selection default), so the sensitivity filter is applied in the
-// projection queries, and a private/secret edge, hobby preference, or
-// vcard-projected custom field must never leave through this surface.
+// opt-in at all — contactToAddressObject goes through
+// models.RecordForContactForSync, so the sensitivity filter is applied in the
+// projection queries (and, since issue #1433, to postal addresses too), and a
+// private/secret edge, hobby preference, vcard-projected custom field, or
+// address must never leave through this surface.
 //
 // This is also the structural "exclusion in the projection, not per-caller"
 // proof: if the filter were moved into the export handlers (the per-caller

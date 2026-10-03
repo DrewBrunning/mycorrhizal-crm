@@ -108,6 +108,25 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	return record
 }
 
+// RecordForContactForSync returns the outward "sync view" of a contact for the
+// DAV surfaces (this app as a CardDAV/CalDAV server). It is the same
+// default-deny the export/share surfaces apply — every field section is
+// present, but above-normal sensitivity is filtered — with one addition over
+// RecordForContact: the postal-address filter runs too.
+//
+// RecordForContact uses a nil FieldSelection (all sections, no override) but
+// that nil selection also skips ApplyFieldSelection's address filter, which is
+// deliberate: the owner-facing REST read must keep the whole card so a
+// full-overwrite save cannot drop an address the editor never saw. The DAV
+// sync surfaces have no such editor and instead preserve server-side sensitive
+// addresses on write (models.PreserveSensitiveAddresses), so they take the
+// filtered view here. Routing CardDAV through RecordForContact would leak the
+// private/secret address and its geo: coordinate; routing it through this
+// alone would delete it on the client's next PUT. The two are a pair.
+func RecordForContactForSync(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Record {
+	return RecordForContactFiltered(c, photoDir, db, FieldSelectionAll())
+}
+
 // projectRelationshipEdges is "Card.RelatedTo projection wiring": it
 // synthesizes graph-derived contactmodel.Relation entries for every
 // confirmed, normal-sensitivity RelationshipEdge touching vcardUID, and

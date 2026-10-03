@@ -9,11 +9,13 @@ package controllers
 // stored Payload column directly (decodeSharePayloadCard, from
 // contact_share_controller_test.go), never the API response shape.
 //
-// Three surfaces carry a sensitivity dimension above "normal"
+// Four surfaces carry a sensitivity dimension above "normal"
 // (models.IsSensitiveSection / models.sensitiveSections): RelationshipEdge
 // (-> Card.RelatedTo), Preference of category hobby (-> Card.PersonalInfo),
-// and a FieldDefinition/FieldValue projected via "vcard:X-..." (->
-// Passthrough.VCard, exported as vCardProps in JSContact). Each is exercised
+// a FieldDefinition/FieldValue projected via "vcard:X-..." (->
+// Passthrough.VCard, exported as vCardProps in JSContact), and a
+// ContactAddress carrying ADR 0031's Sensitivity (-> Card.Addresses, which
+// also carries its geo: coordinate). Each is exercised
 // at sensitivity private and secret, with IncludeSensitive off and on, with
 // its own section selected -- the same shape as export_controller_test.go's
 // TestExportContactsAsVCF_SecretCustomField_ExcludedByDefault_IncludedWithOptIn,
@@ -24,6 +26,7 @@ import (
 	"net/http"
 	"testing"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +34,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// sensitiveSurfaceFixture seeds one of the three sensitivity-bearing
+// sensitiveSurfaceFixture seeds one of the four sensitivity-bearing
 // surfaces at the given sensitivity, touching contact (the contact being
 // shared) and, where the surface needs a second party, other. Returns the
 // JSContact key the payload carries the data under, so the caller can
@@ -84,6 +87,23 @@ var sensitiveSurfaceFixtures = []sensitiveSurfaceFixture{
 				FieldDefinitionID: def.ID, UserID: userID, EntityID: contact.VCardUID,
 				Value: json.RawMessage(`"top secret value"`),
 			}).Error)
+		},
+	},
+	{
+		name:         "sensitive_address",
+		section:      models.SectionAddresses,
+		jscontactKey: "addresses",
+		seed: func(t *testing.T, db *gorm.DB, userID uint, contact, other models.Contact, sensitivity string) {
+			t.Helper()
+			// Update through the canonical ApplyRecordToContact path (traps
+			// #2/#3) so the flat Addresses and the Card entry both carry the
+			// sensitivity and the geo: coordinate.
+			record := models.RecordForContact(&contact, "", nil)
+			record.Card.Addresses = []contactmodel.Address{{
+				Full: "1 Secret St", Coordinates: "geo:1,2", Sensitivity: sensitivity,
+			}}
+			models.ApplyRecordToContact(&contact, record, "")
+			require.NoError(t, db.Save(&contact).Error)
 		},
 	},
 }
@@ -166,7 +186,7 @@ func TestCreateContactShare_NormalSensitivityAlwaysCrossesWithoutOptIn(t *testin
 
 // TestCreateContactShare_SectionSelectionAloneCannotImplyOptIn is the
 // foot-gun guard #444 built for single-user export, asserted here across
-// all three sensitive surfaces at once: selecting a section that CAN carry
+// all four sensitive surfaces at once: selecting a section that CAN carry
 // sensitive data is not the same act as opting into IncludeSensitive, and
 // nothing about section selection can imply it. Matters more for sharing
 // than for export because the data leaves the account entirely.

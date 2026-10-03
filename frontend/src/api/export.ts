@@ -151,7 +151,7 @@ export interface ExportFieldSection {
 export const EXPORT_FIELD_SECTIONS: ExportFieldSection[] = [
   { token: 'emails', sensitive: false },
   { token: 'phones', sensitive: false },
-  { token: 'addresses', sensitive: false },
+  { token: 'addresses', sensitive: true },
   { token: 'organizations', sensitive: false },
   { token: 'anniversaries', sensitive: false },
   { token: 'media', sensitive: false },
