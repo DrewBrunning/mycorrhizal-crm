@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -243,13 +244,21 @@ abstract class E2eBaseTest {
     }
 
     /** Opens the app drawer from the current screen and navigates to a
-     *  destination by its drawer label. */
+     *  destination by its drawer label.
+     *
+     *  performScrollTo (issue #1430): the drawer is a fixed-height scrolling
+     *  column (#1402/#1419), so a trailing destination — Settings is the last —
+     *  can sit below the visible sheet on a phone. A click on an off-screen
+     *  node lands on the scrim and merely dismisses the drawer, which reads as
+     *  "navigation happened" to the caller and then times out on the
+     *  destination's content. Scrolling first makes every entry reachable
+     *  regardless of how many the drawer holds. */
     protected fun navigateViaDrawer(label: String) {
         clickContentDescription("Menu")
         waitForText(label)
         // The drawer renders on top, so its item is the last match when the
         // label also appears in the screen behind it.
-        onLastText(label).performClick()
+        onLastText(label).performScrollTo().performClick()
         compose.waitForIdle()
     }
 

@@ -42,19 +42,6 @@ import com.mycorrhizal.crm.ui.R
 import java.util.UUID
 
 /**
- * ADR 0031 / issue #1287: the per-address "find coordinates" lookup, owned by
- * the screen's view model. [canGeocode] is false until the contact exists (the
- * backend geocodes a *saved* address by contact id + address id).
- */
-data class AddressGeocodeState(
-    val canGeocode: Boolean = false,
-    /** Address ids with a lookup in flight. */
-    val inFlight: Set<String> = emptySet(),
-    /** Address id -> message for a failed lookup. */
-    val errors: Map<String, String> = emptyMap(),
-)
-
-/**
  * Edits `card.addresses[]` (the nested model, `components[]` not a scalar).
  * Each row is a flat set of the editable component kinds, mapped onto the
  * loaded `Address` via `.copy()` so `id`/`contexts`/`pref`/`coordinates`/

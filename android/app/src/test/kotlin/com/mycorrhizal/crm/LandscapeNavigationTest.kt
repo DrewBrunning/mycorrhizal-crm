@@ -13,7 +13,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -35,11 +34,10 @@ class LandscapeNavigationTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val allRoutes = listOf(
-        "home", "contacts", "activities", "notes",
-        "network", "shares", "circles", "occasions", "tags", "households",
-        "audit", "data", "import", "settings",
-    )
+    // Derived from the real registry, not a hand-maintained copy (issue #1430:
+    // "map" was added to the drawer while this list wasn't, so the landscape/
+    // rail reachability checks silently skipped it).
+    private val allRoutes = allDrawerRoutes
 
     private fun size(w: Int, h: Int) = WindowSizeClass.calculateFromSize(DpSize(w.dp, h.dp))
 
@@ -107,6 +105,5 @@ class LandscapeNavigationTest {
         composeTestRule.onNodeWithTag("rail-home").performScrollTo()
         composeTestRule.onNodeWithTag("rail-home").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         composeTestRule.onNodeWithTag("rail-settings").performScrollTo().assertIsDisplayed()
-        assertEquals(14, allRoutes.size)
     }
 }
