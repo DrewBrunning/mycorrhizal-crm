@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -294,6 +295,49 @@ func TestMCP_GetContact_SensitiveRecordProjection(t *testing.T) {
 	}
 	assert.Zero(t, relatedCount(false), "private edge must not project into card.related_to by default")
 	assert.Positive(t, relatedCount(true), "include_sensitive must thread into the record projection")
+}
+
+// TestMCP_GetContact_SensitiveAddressProjection is the address half of the
+// include_sensitive contract (issue #1433): MCP sends the record to the
+// caller's model, so an above-normal address (and its geo: coordinate) must be
+// withheld by default and returned only with include_sensitive=true. Before
+// the fix the flag gated edges/preferences/custom fields but silently served
+// every address.
+func TestMCP_GetContact_SensitiveAddressProjection(t *testing.T) {
+	f := newMCPFixture(t)
+	subject := seedMCPContacts(t, f.db, f.alice.ID, 1, "Subject")[0]
+
+	record := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Subject"}}},
+		Addresses: []contactmodel.Address{
+			{ID: "addr-normal", Components: []contactmodel.AddressComponent{{Kind: "name", Value: "1 Normal St"}}, Full: "1 Normal St", Coordinates: "geo:1,1"},
+			{ID: "addr-secret", Components: []contactmodel.AddressComponent{{Kind: "name", Value: "2 Secret St"}}, Full: "2 Secret St", Coordinates: "geo:2,2", Sensitivity: models.RelationshipSensitivitySecret},
+		},
+	}}
+	models.ApplyRecordToContact(&subject, record, "")
+	require.NoError(t, f.db.Save(&subject).Error)
+
+	addresses := func(include bool) []any {
+		r := f.call(t, f.alice.ID, "get_contact", map[string]any{"id": subject.ID, "include_sensitive": include})
+		require.False(t, r.isError, r.text)
+		card := r.structured["contact"].(map[string]any)["card"].(map[string]any)
+		out, _ := card["addresses"].([]any)
+		return out
+	}
+
+	def := addresses(false)
+	require.Len(t, def, 1, "the secret address must not project into card.addresses by default")
+	assert.Equal(t, "1 Normal St", def[0].(map[string]any)["full"])
+
+	opt := addresses(true)
+	require.Len(t, opt, 2, "include_sensitive=true must include the secret address")
+	full := map[string]bool{}
+	for _, raw := range opt {
+		if s, ok := raw.(map[string]any)["full"].(string); ok {
+			full[s] = true
+		}
+	}
+	assert.True(t, full["2 Secret St"], "the secret address must be present with the opt-in")
 }
 
 func TestMCP_ListTimeline(t *testing.T) {

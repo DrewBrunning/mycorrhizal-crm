@@ -48,7 +48,16 @@ const (
 // the opt-in override that lets one export include private/secret items just
 // this once. Tags (SectionKeywords) and every other section have no
 // sensitivity dimension today.
+//
+// SectionAddresses is here because ADR 0031 gave ContactAddress a Sensitivity
+// (and, with it, a geo: coordinate): an above-normal address must not leave the
+// instance through the neutral-Card exports/shares any more than an
+// above-normal relationship edge, hobby preference, or vCard custom field may.
+// The filtering itself happens in ApplyFieldSelection below; the map view, the
+// flat CSV backup and the account bundle are the documented owner-facing
+// exceptions and never pass a FieldSelection.
 var sensitiveSections = map[string]bool{
+	SectionAddresses:    true,
 	SectionRelatedTo:    true,
 	SectionPersonalInfo: true,
 	SectionCustomFields: true,
@@ -87,10 +96,11 @@ var validFieldSections = func() map[string]bool {
 //
 // IncludeSensitive is the explicit opt-in override: when true,
 // projection steps that normally filter to sensitivity='normal' (relationship
-// edges, hobby preferences, vCard-projected custom fields) also include their
-// private/secret items. This is the backend half of the foot-gun guard — it
-// is a separate, intentional flag that no amount of ordinary section-checking
-// can imply.
+// edges, hobby preferences, vCard-projected custom fields, and — via
+// ApplyFieldSelection — private/secret postal addresses with their geo:
+// coordinates) also include their private/secret items. This is the backend
+// half of the foot-gun guard — it is a separate, intentional flag that no
+// amount of ordinary section-checking can imply.
 type FieldSelection struct {
 	Sections         map[string]bool
 	IncludeSensitive bool
@@ -129,9 +139,15 @@ func (f *FieldSelection) Has(token string) bool {
 
 // ApplyFieldSelection returns a COPY of record with every section not
 // selected in sel cleared from Card (and, for the custom_fields section, from
-// Passthrough). It never mutates record or its nested slices, matching the
+// Passthrough). It also default-denies private/secret postal addresses (and
+// their geo: coordinates) when IncludeSensitive is false — the address half of
+// the same rule the relationship-edge / hobby / custom-field projections
+// already enforce. It never mutates record or its nested slices, matching the
 // projection functions' "returns a new slice rather than mutating existing"
-// discipline. A nil selection returns record unchanged.
+// discipline. A nil selection returns record unchanged, which is what keeps
+// the owner-facing read paths (REST detail, map) and the full-fidelity
+// backups (flat CSV, account bundle) unfiltered — none of them passes a
+// FieldSelection.
 //
 // This is the single filter point the whole ticket is built around: it runs
 // BEFORE any exporter, and because vcard3/vcard4/jscontact all consume the
@@ -153,6 +169,8 @@ func ApplyFieldSelection(record *contactmodel.Record, sel *FieldSelection) *cont
 	}
 	if !sel.Has(SectionAddresses) {
 		card.Addresses = nil
+	} else if !sel.IncludeSensitive {
+		card.Addresses = filterSensitiveAddresses(card.Addresses)
 	}
 	if !sel.Has(SectionOrganizations) {
 		card.Organizations = nil
@@ -206,4 +224,44 @@ func ApplyFieldSelection(record *contactmodel.Record, sel *FieldSelection) *cont
 		UID:         record.UID,
 		ETag:        record.ETag,
 	}
+}
+
+// FilterSensitiveAddresses returns addrs with every above-normal entry
+// removed. It is the address-only half of ApplyFieldSelection, exported for
+// callers that build an owner-facing record but still need this one
+// outward-copy guarantee — currently the MCP get_contact tool with
+// include_sensitive=false (the record it builds is otherwise the owner's own
+// view, which keeps addresses so a full-overwrite edit cannot drop them).
+func FilterSensitiveAddresses(addrs []contactmodel.Address) []contactmodel.Address {
+	return filterSensitiveAddresses(addrs)
+}
+
+// filterSensitiveAddresses returns a copy of addrs with every entry whose
+// Sensitivity is above "normal" removed. It backs the address half of
+// ApplyFieldSelection's default-deny: an ADR 0031 private/secret address —
+// including its geo: coordinate — must not leave the instance through the
+// neutral-Card exports/shares unless the caller passed
+// ?include_sensitive=true, exactly like the relationship-edge, hobby and
+// custom-field filters. Returns the input unchanged (never a fresh slice) when
+// there is nothing to drop, so the common case stays allocation-free. The
+// caller's slice is never mutated (CLAUDE.md trap #3: read projections do not
+// write back into Contact.Card).
+func filterSensitiveAddresses(addrs []contactmodel.Address) []contactmodel.Address {
+	drop := 0
+	for _, a := range addrs {
+		if a.Sensitivity != "" && a.Sensitivity != RelationshipSensitivityNormal {
+			drop++
+		}
+	}
+	if drop == 0 {
+		return addrs
+	}
+	out := make([]contactmodel.Address, 0, len(addrs)-drop)
+	for _, a := range addrs {
+		if a.Sensitivity != "" && a.Sensitivity != RelationshipSensitivityNormal {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }

@@ -163,9 +163,20 @@ type Address struct {
 	PhoneticSystem   string             `json:"phoneticSystem,omitempty"`
 	PhoneticScript   string             `json:"phoneticScript,omitempty"`
 	// Sensitivity (normal|private|secret; empty means normal) is a CRM-side
-	// classification with no RFC 9553/6350 home: no exporter carries it. It
-	// gates the explicit per-address geocode lookup (ADR 0031) — an address
-	// above normal is never sent to the geocoder without an explicit opt-in.
+	// classification with no RFC 9553/6350 home: no exporter carries the
+	// field itself. It has two effects (ADR 0031): it gates the explicit
+	// per-address geocode lookup — an address above normal is never sent to
+	// the geocoder without an explicit opt-in — and it default-denies the
+	// whole entry (including its geo: coordinate) from copies that leave the
+	// instance. That covers the neutral-Card exports/shares (via
+	// models.ApplyFieldSelection), the CardDAV served card (via
+	// models.RecordForContactForSync, paired with PreserveSensitiveAddresses
+	// on the write side so a client PUT cannot delete what it never saw), and
+	// the MCP get_contact default; the contact-subscription reconcile carries
+	// the local classification forward rather than let a remote update
+	// downgrade it (models.CarryForwardAddressSensitivity). The owner's own
+	// map, REST detail, flat CSV backup and account bundle are the documented
+	// exceptions and keep it.
 	Sensitivity string `json:"sensitivity,omitempty"`
 }
 

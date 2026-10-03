@@ -26,12 +26,16 @@ test('ordinary sections are checked by default; sensitive sections start locked'
   // Ordinary, opt-out sections: on by default.
   expect(checkbox('Emails')).toBeChecked();
   expect(checkbox('Phones')).toBeChecked();
-  expect(checkbox('Addresses')).toBeChecked();
 
   // Sensitivity-marked sections: locked AND disabled — not merely unchecked.
+  // Addresses joined this group with ADR 0031 (a private/secret address, and
+  // its geo: coordinate, is default-denied from an export like a relationship
+  // edge or custom field).
   const relationships = checkbox('Relationships');
   expect(relationships).toBeDisabled();
   expect(relationships).not.toBeChecked();
+  expect(checkbox('Addresses')).toBeDisabled();
+  expect(checkbox('Addresses')).not.toBeChecked();
   expect(checkbox('Personal info')).toBeDisabled();
   expect(checkbox('Custom fields')).toBeDisabled();
 });
@@ -149,8 +153,8 @@ test('the chosen format flows through to the export call', async () => {
   expect(onExport.mock.calls[0][0]).toBe('jscontact');
 });
 
-// This test deselects every one of the 13 ordinary sections through the UI,
-// so it fires 13 act-wrapped clicks that each re-render the whole MUI dialog.
+// This test deselects every one of the 12 ordinary sections through the UI,
+// so it fires 12 act-wrapped clicks that each re-render the whole MUI dialog.
 // Under v8 coverage instrumentation on a loaded CI runner that routinely
 // exceeds vitest's default 5s test timeout, so give it explicit headroom.
 test('export button is disabled when no sections are selected', () => {

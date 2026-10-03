@@ -390,6 +390,13 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
 	}
 
+	// A WebDAV PUT replaces the whole resource, but contactToAddressObject
+	// withholds above-normal addresses (RecordForContactForSync), so the
+	// client never received them. Re-attach every such address the server
+	// already holds before the full-overwrite apply, or this PUT would
+	// silently delete it. Normal addresses are left entirely to the client.
+	record.Card.Addresses = models.PreserveSensitiveAddresses(contact.Card.Addresses, record.Card.Addresses)
+
 	// ApplyRecordToContact populates the flat legacy fields (for every other
 	// reader that isn't adapter-aware yet) and the neutral Card/CRM/
 	// Passthrough columns, and — given a real photoDir — persists an
@@ -454,8 +461,8 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 
 // contactToAddressObject converts a Contact to a CardDAV AddressObject.
 //
-// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this now builds the
-// card via RecordFromContact + the vcard4/vcard3 adapters (chosen by
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this builds the
+// card via RecordForContactForSync + the vcard4/vcard3 adapters (chosen by
 // requestedVCardVersion's content negotiation) instead of the legacy
 // carddav.ContactToVCard mapper. The adapter's Export returns serialized
 // vCard bytes; since carddav.AddressObject.Card is a parsed vcard.Card (the
@@ -473,7 +480,11 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 	}
 
 	version := requestedVCardVersion(ctx)
-	record := models.RecordForContact(contact, b.getPhotoDir(ctx), b.db)
+	// RecordForContactForSync (not RecordForContact): CardDAV is an outward
+	// copy, so an above-normal address and its geo: coordinate must not be
+	// served. PutAddressObject pairs this with PreserveSensitiveAddresses so a
+	// later client PUT cannot delete what it was never shown.
+	record := models.RecordForContactForSync(contact, b.getPhotoDir(ctx), b.db)
 	data, diags, err := exporterForVersion(version).Export(record)
 
 	card := make(vcard.Card)

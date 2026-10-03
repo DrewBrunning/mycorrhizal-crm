@@ -214,6 +214,15 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config) *mcp.Server {
 		if err != nil {
 			return mcpToolError("failed to compose contact detail")
 		}
+		// buildContactDetailScoped builds the owner-facing record, which keeps
+		// postal addresses (the REST detail needs them so a full-overwrite
+		// edit cannot drop them). MCP is a copy out to the caller's model, so
+		// the default include_sensitive=false must withhold an above-normal
+		// address and its geo: coordinate just as the export/sync surfaces do,
+		// and opt in to them with the same flag (issue #1433).
+		if !in.IncludeSensitive {
+			detail.Contact.Card.Addresses = models.FilterSensitiveAddresses(detail.Contact.Card.Addresses)
+		}
 		return mcpJSONResult(detail)
 	})
 
