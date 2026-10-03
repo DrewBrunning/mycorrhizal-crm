@@ -213,6 +213,16 @@ private val secondaryDestinations = listOf(
     DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
 )
 
+/**
+ * Every drawer/rail destination route, in order. Exposed to host-level tests
+ * (DrawerScrollTest, LandscapeNavigationTest) so their scroll/reachability
+ * coverage derives from the real registry rather than a hand-maintained copy.
+ * Issue #1430: "map" was added to the drawer while those hardcoded lists
+ * weren't, so the guarantee silently missed the new entry.
+ */
+internal val allDrawerRoutes: List<String> =
+    (primaryDestinations + secondaryDestinations).map { it.route }
+
 /** True when the current destination is inside a [DrawerDestination]'s route. */
 private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean {
     val route = currentRoute ?: return false

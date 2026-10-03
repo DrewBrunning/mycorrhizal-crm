@@ -152,6 +152,45 @@ func TestRun_ReadsMultipleReports(t *testing.T) {
 	}
 }
 
+// calendarSyncServerError reproduces the nightly finding from issue #1431:
+// the calendar sync endpoint 503s because the caller-configured remote returned
+// a non-iCalendar body.
+const calendarSyncServerError = `<?xml version="1.0" encoding="utf-8"?>
+<testsuites errors="0" failures="1" skipped="0" tests="1" time="1.0">
+  <testsuite name="schemathesis" errors="0" failures="1" skipped="0" tests="1" time="1.0">
+    <testcase name="POST /calendars/{id}/sync" time="0.4">
+      <failure type="failure">1. Test Case ID: KqKedh
+
+- Server error
+
+[503] Service Unavailable:
+
+    ` + "`" + `{"error":{"code":"EXTERNAL_SERVICE_ERROR","message":"Calendar service error: calendar returned data that could not be parsed"}}` + "`" + `</failure>
+    </testcase>
+  </testsuite>
+</testsuites>`
+
+// TestRealIgnoreList_AcceptsCalendarSyncExternalError pins issue #1431 against
+// the *committed* ignore-list: the calendar-sync external-service 503 that the
+// nightly authenticated pass reproduces is accepted, while a 5xx on any other
+// operation (or a 5xx on a different method of this path) is still gated. If
+// the rule is dropped or its operation regex is widened, this fails.
+func TestRealIgnoreList_AcceptsCalendarSyncExternalError(t *testing.T) {
+	const realIgnore = "../../../schemathesis/schemathesis.ignore"
+
+	report := writeTemp(t, "report.xml", calendarSyncServerError)
+	if err := run(gateEnv([]string{report}, realIgnore)); err != nil {
+		t.Fatalf("run() with the committed ignore list = %v, want nil (calendar sync 503 accepted)", err)
+	}
+
+	// Sanity: the same rule must not become a blanket acceptance for the API.
+	other := writeTemp(t, "other.xml", strings.Replace(
+		calendarSyncServerError, "POST /calendars/{id}/sync", "POST /circles", 1))
+	if err := run(gateEnv([]string{other}, realIgnore)); err == nil {
+		t.Fatal("run() = nil, want a 5xx on an unrelated operation to stay gated")
+	}
+}
+
 func TestClassifyFailure(t *testing.T) {
 	cases := []struct {
 		text     string

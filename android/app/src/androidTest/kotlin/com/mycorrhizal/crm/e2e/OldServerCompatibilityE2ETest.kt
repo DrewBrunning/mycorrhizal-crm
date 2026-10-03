@@ -100,7 +100,10 @@ class OldServerCompatibilityE2ETest {
         // floor server must serve.
         clickContentDescription("Menu")
         waitForText("Settings")
-        onLastText("Settings").performClick()
+        // Scroll first (issue #1430): Settings is the drawer's last entry and
+        // sits below the visible sheet on a phone, so a plain click would land
+        // on the scrim and dismiss the drawer instead of navigating.
+        onLastText("Settings").performScrollTo().performClick()
         waitForText("API Tokens")
         compose.onNodeWithText("API Tokens").performScrollTo().performClick()
 

@@ -34,12 +34,12 @@ class DrawerScrollTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    // Every route the real drawer/rail registers, not a hand-maintained copy:
+    // issue #1430, "map" was added to the drawer while this list wasn't, so the
+    // reachability guarantee silently skipped the new entry. Deriving it here
+    // means a new DrawerDestination is covered automatically.
     // Capabilities are Unknown (fail-open) here, so every destination is offered.
-    private val allRoutes = listOf(
-        "home", "contacts", "activities", "notes",
-        "network", "shares", "circles", "occasions", "tags", "households",
-        "audit", "data", "import", "settings",
-    )
+    private val allRoutes = allDrawerRoutes
 
     private fun setDrawer(fontScale: Float? = null, onClick: (String) -> Unit = {}) {
         composeTestRule.setContent {
@@ -88,14 +88,22 @@ class DrawerScrollTest {
 
     @Test
     @Config(qualifiers = "w360dp-h480dp")
-    fun `tapping the last entry after scrolling reports its route`() {
-        var clicked: String? = null
-        setDrawer(onClick = { clicked = it })
+    fun `every entry is reachable by scrolling and reports its route on tap`() {
+        val clicked = mutableListOf<String>()
+        setDrawer(onClick = { clicked += it })
 
-        composeTestRule.onNodeWithTag("drawer-settings").performScrollTo()
-        composeTestRule.onNodeWithTag("drawer-settings").performClick()
+        // Issue #1430: the E2E helper clicked a drawer label without scrolling
+        // first, which silently dismissed the drawer for the trailing entries
+        // (Settings). Scrolling before the tap is what makes a destination
+        // reachable, so this pins it for *every* registered route.
+        allRoutes.forEach { route ->
+            val node = composeTestRule.onNodeWithTag("drawer-$route")
+            node.performScrollTo()
+            node.assertIsDisplayed()
+            node.performClick()
+        }
 
-        assertEquals("settings", clicked)
+        assertEquals("every drawer route is tappable in order", allRoutes, clicked)
     }
 
     // The expanded-width rail pins the primary set and scrolls the secondary set;
