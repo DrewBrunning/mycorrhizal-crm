@@ -24,6 +24,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Supported versions — what this runs on, "supported" tiers, and the multi-user deployment shape](supported-versions.md)
 - [Android app — install channels, signing keys, and channel switching](android-app.md)
 - [Integrations — ownership, diagnostics, and what breaks if one is down](integration-ownership.md)
+- [MCP server — endpoint, token, and read-only tools](mcp.md)
 - [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
 - [Service-worker updates & the recovery page](service-worker-updates.md)
 - [Field compatibility matrix (DATA-01)](data-01-field-compatibility-matrix.md)
