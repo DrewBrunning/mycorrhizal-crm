@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -136,6 +138,44 @@ func TestMCP_UnauthenticatedIsRejected(t *testing.T) {
 	f := newMCPFixture(t)
 	status, _ := f.rpc(t, 0, "tools/list", map[string]any{})
 	assert.Equal(t, http.StatusUnauthorized, status, "no user in context must never reach a tool")
+}
+
+// TestMCP_ProxiedNonLocalhostHostIsNotForbiddenBySDKHostCheck pins issue #1441.
+// The shipped topology terminates at nginx, which proxies to the backend over
+// loopback while forwarding the client's public Host. The go-sdk's
+// DNS-rebinding guard (streamable.go) 403s exactly that combination --
+// loopback local address, non-localhost Host -- so every remote assistant was
+// rejected through the shipped image. httptest.NewRequest never sets
+// http.LocalAddrContextKey, which is why the rest of this suite missed it; this
+// test sets it to the nginx->backend loopback address and the Host to a public
+// hostname, then asserts the request reaches the MCP layer.
+func TestMCP_ProxiedNonLocalhostHostIsNotForbiddenBySDKHostCheck(t *testing.T) {
+	f := newMCPFixture(t)
+
+	body, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": map[string]any{}})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("X-Test-User", strconv.FormatUint(uint64(f.alice.ID), 10))
+	// The local address is the backend's loopback listener (nginx -> backend);
+	// the Host is the public name the client asked for.
+	req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey,
+		&net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 54321}))
+	req.Host = "crm.example.com"
+
+	w := httptest.NewRecorder()
+	f.router.ServeHTTP(w, req)
+
+	require.NotEqual(t, http.StatusForbidden, w.Code,
+		"a proxied non-localhost Host must not hit the go-sdk DNS-rebinding guard (issue #1441): %s", w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var out map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+	result, ok := out["result"].(map[string]any)
+	require.True(t, ok, "tools/list must reach the MCP layer: %s", w.Body.String())
+	require.Len(t, result["tools"].([]any), 4)
 }
 
 func TestMCP_SearchContacts(t *testing.T) {

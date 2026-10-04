@@ -186,6 +186,8 @@ func (s *stubServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.wellKnown(w, "/caldav/")
 	case r.Method == http.MethodGet && p == "/.well-known/assetlinks.json":
 		s.assetLinks(w)
+	case r.Method == http.MethodPost && p == "/mcp":
+		s.mcp(w)
 	default:
 		s.t.Errorf("stub: unexpected request %s %s", r.Method, p)
 		w.WriteHeader(http.StatusNotFound)
@@ -431,6 +433,31 @@ func (s *stubServer) assetLinks(w http.ResponseWriter) {
 	}
 }
 
+// mcp models POST /mcp behind the shipped nginx (issue #1441). The default is a
+// healthy MCP tools/list result; the faults model the misconfigurations the
+// step must catch (the SPA answering instead of the backend, the go-sdk
+// loopback Host guard's 403, and malformed tool lists).
+func (s *stubServer) mcp(w http.ResponseWriter) {
+	switch s.fault {
+	case "mcp-spa-html":
+		// nginx has no /mcp location: the SPA fallback answered with index.html.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<!doctype html><html></html>"))
+	case "mcp-forbidden":
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`Forbidden: invalid Host header "crm.example.com"`))
+	case "mcp-nonjson":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{not json"))
+	case "mcp-missing-tool":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"result":{"tools":[{"name":"search_contacts"}]}}`))
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"search_contacts"},{"name":"get_contact"},{"name":"list_timeline"},{"name":"run_cadence_report"}]}}`))
+	}
+}
+
 // wellKnown models an nginx .well-known discovery 301 (issue #865). The happy
 // path emits a relative Location; the faults model the internal-port leak and
 // a non-redirect response.
@@ -582,6 +609,10 @@ func TestRun_StepFailures(t *testing.T) {
 		{"assetlinks-notjson", "assetlinks-not-spa"},
 		{"assetlinks-empty", "assetlinks-not-spa"},
 		{"assetlinks-wrongshape", "assetlinks-not-spa"},
+		{"mcp-spa-html", "mcp-endpoint"},
+		{"mcp-forbidden", "mcp-endpoint"},
+		{"mcp-nonjson", "mcp-endpoint"},
+		{"mcp-missing-tool", "mcp-endpoint"},
 		{"refetch-code", "refetch-fields"},
 		{"refetch-garbage", "refetch-fields"},
 		{"refetch-noname", "refetch-fields"},
@@ -641,6 +672,7 @@ func TestNginxSteps_TransportError(t *testing.T) {
 		{"import-body-limit", (*smokeRun).importBodyLimitOwnedByApp},
 		{"wellknown-discovery", (*smokeRun).wellKnownDiscoveryRelative},
 		{"assetlinks-not-spa", (*smokeRun).assetLinksReachesBackend},
+		{"mcp-endpoint", (*smokeRun).mcpReachesBackend},
 	}
 	for _, s := range steps {
 		if err := s.fn(r); err == nil {
