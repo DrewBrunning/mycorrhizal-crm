@@ -8,7 +8,7 @@ longer than we need?* — and records the answer.
 
 | | |
 |---|---|
-| **Last updated** | 2026-09-29 (issues [#510](https://github.com/DrewBrunning/mycorrhizal-crm/issues/510), [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621), [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978), [#1316](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1316)) |
+| **Last updated** | 2026-10-04 (issues [#510](https://github.com/DrewBrunning/mycorrhizal-crm/issues/510), [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621), [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978), [#1316](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1316); v1.4.0 contact-map coordinates and geocoding, issue [#1118](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1118)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV server role, structured + access logs, operator backups, Android offline mirror, browser storage. |
 | **Companion docs** | `data-retention-lifecycle.md` (retention/deletion, cited here rather than repeated), `asvs-l2.md` V7 (logging) / V8 (data protection), `deployment-baseline.md` (operator boundary), `../privacy.md` (the plain-language operator/adopter summary), `../supported-versions.md` "The deployment shape" (the multi-user isolation guarantee and admin-capability statement, issue [#558](https://github.com/DrewBrunning/mycorrhizal-crm/issues/558)). |
 | **Method** | Schema walked table-by-table from `backend/database/migrations/*.up.sql`; logs checked against **real captured output**, not by reading the logging code (see [How this was verified](#how-this-was-verified)). |
@@ -61,7 +61,7 @@ authenticated owner.
 
 | Store | Personal data | Subject | Necessity | Retention → lifecycle doc |
 |---|---|---|---|---|
-| `contacts` (+ nested `card`/`crm`/`passthrough` JSON) | Names, nicknames, emails, phones, addresses, birthdays, org/title, photos, free-text `how_we_met` / `work_information` / `contact_information`, gender, IM handles, URLs | The contact (a third party) | `necessary` — this is the product | Soft-delete + `DELETE_RETENTION_DAYS` (30) purge — §1 |
+| `contacts` (+ nested `card`/`crm`/`passthrough` JSON) | Names, nicknames, emails, phones, addresses (each possibly carrying a `geo:` coordinate), birthdays, org/title, photos, free-text `how_we_met` / `work_information` / `contact_information`, gender, IM handles, URLs | The contact (a third party) | `necessary` — this is the product | Soft-delete + `DELETE_RETENTION_DAYS` (30) purge — §1 |
 | `notes` | Free-text notes about a contact — the highest-sensitivity field in the system; written about someone who cannot see it | Third party | `necessary` | §1 |
 | `activities` (+ `activity_contacts`) | `title` / `description` / `location` of meetings, calls, events; which contacts were present | Third party + user | `necessary` | §1 |
 | `reminders`, `reminder_completions` | `message` free text, cadence, which contact | Third party + user | `necessary` | §1 |
@@ -92,6 +92,19 @@ CardDAV. It governs copies that leave the instance or reach another party — it
 access-control tier against the owning user, so the flat CSV backup (`GET /export`) deliberately
 carries every sensitivity, labelled by column; see `data-retention-lifecycle.md` §11 and issue
 [#861](https://github.com/DrewBrunning/mycorrhizal-crm/issues/861).
+
+**Precise coordinates.** An address may carry a `geo:` coordinate
+(`ContactAddress.Coordinates`, ADR 0031) — entered by hand or returned by the operator-configured
+geocoder. Precise location is more identifying than the address text alone, so it is treated as part
+of its address: it follows the address's `sensitivity` for every copy that leaves the instance
+(neutral-`Card` exports, CardDAV/CalDAV, contact shares — `backend/models/field_selection.go#ApplyFieldSelection`
+and `backend/models/contact_record.go#RecordForContactForSync`), and is shown only on the owner's own
+map and in the owner's own full-fidelity CSV/account-bundle backups. The one path by which address
+data leaves the instance is **geocoding**: when the operator sets `GEOCODER_PROVIDER` (default `none`)
+and a user explicitly asks for it, the text of that **one** address (street, city, region, postcode,
+country — never the contact's name or any other field) is sent to the configured provider. The
+returned coordinate is cached **in memory only** (no table, no file), and text already sent to a
+provider is outside this app's control — see `data-retention-lifecycle.md` §26.
 
 **At-rest encryption (protection note, not minimization).** Contact free-text, `preferences`,
 `conversation_agenda`, `gifts`, `reminders.message`, `life_events.description`, and the audit
@@ -344,6 +357,7 @@ Everything not listed here was walked and judged `necessary`.
 
 | Date | Change |
 |---|---|
+| 2026-10-04 | v1.4.0 contact-map review (issue #1118): §1 records precise address coordinates (`ContactAddress.Coordinates`, a `geo:` URI) as a PII category that follows its address's `sensitivity` on every copy out, and the opt-in geocode egress (one address's text to the configured provider, in-memory cache only, `data-retention-lifecycle.md` §26). |
 | 2026-09-29 | Inventory brought back in line with the schema (issue #1316): rows added for `webauthn_credentials`, `sessions`, `device_grants`, `push_subscriptions`, `device_registrations`, `attachments`, `occasion_obligations` / `occasion_events` / `occasion_event_attendees`, `cadence_policies`, `data_decay_policies`, `life_event_suggestion_resolutions`, `link_field_types`, `idempotency_keys`, `import_runs`, `import_source_links`, `system_events`, `job_runs`, `alert_states`, `operational_check_results`, `storage_samples`, `data_backfills`, `data_encryption_keys`; §8 updated for the purge-coverage guarantee (#1310). `docscheck` now fails when a migrated table is missing from the inventory. |
 | 2026-08-27 | GORM SQL echo leak (F4) closed (issue #621): every connection through `database/migrate.go` uses `newGormLogger` — `ParameterizedQueries: true` logs `?` placeholders instead of interpolated values, `IgnoreRecordNotFoundError: true` drops benign not-found SELECTs. Pinned by `database/migrate_test.go::TestGormLoggerDoesNotInterpolatePII` (hand-verified to fail against the pre-fix default logger). §3.3 / §4 / §9 dispositions updated from "pending/filed" to fixed. |
 | 2026-08-27 | `webhook_deliveries` retention gap closed (issue #622): `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30) + daily purge job + admin trigger, and successful deliveries now store only the event envelope (never the entity body). Disposition updated `kept-longer-than-necessary → deliberate, documented`. |

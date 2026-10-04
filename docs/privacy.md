@@ -39,7 +39,13 @@ Concretely, an instance stores:
 
 - **No telemetry.** No analytics, no crash reporting, no usage statistics, no "call home". The
   only data that leaves an instance is what the operator explicitly turns on: CardDAV/CalDAV sync,
-  outbound email, push notifications, webhooks, and the optional integrations above.
+  outbound email, push notifications, webhooks, and the optional integrations above. Three further
+  paths are worth naming because each carries a little data to a third party: enabling **geocoding**
+  (`GEOCODER_PROVIDER`, off by default) sends the text of the one address you explicitly ask about
+  to the provider the operator configured; the **map view** fetches map tiles directly from the
+  tile host the operator configured (`MAP_TILE_STYLE_URL`) — the viewport you are looking at, never
+  a contact or an address; and an **MCP client** you give one of your API tokens can read the same
+  data that token already reaches through the normal API, over the `POST /mcp` endpoint.
 - **No third-party trackers** in the web app or the Android app.
 - **No advertising or profiling.**
 

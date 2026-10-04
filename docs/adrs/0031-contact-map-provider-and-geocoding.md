@@ -1,7 +1,7 @@
 # ADR 0031: Contact Map — provider-agnostic engine, tile-source configuration, and in-scope geocoding
 
-- **Status:** proposed
-- **Date:** 2026-09-28
+- **Status:** accepted — shipped in v1.4.0 (backend #694/PR #1424, the `GET /contacts/map` bulk read #1427/PR #1428, web #1286/PR #1426, Android #1287/PR #1429, plus the address-sensitivity and `geo:` fixes #1433/#1434).
+- **Date:** 2026-09-28 (proposed); 2026-10-04 (accepted)
 - **Implements:** issue #694 ("Contact Map — map contacts' addresses (web + Android,
   provider-agnostic)"). This ADR settles #694's open questions; #694 itself becomes the backend
   track, with new sibling issues for the web and Android tracks.
@@ -175,3 +175,11 @@ Filed as three issues, all milestone v1.4.0 (#28):
 
 Out of scope, unchanged from the original ticket: routing/directions, bulk/batch geocoding of the
 whole address book, full offline maps on device.
+
+**Shipped in v1.4.0.** All three tracks landed: the backend migration (`Sensitivity` + `Coordinates`
+on `ContactAddress`), the SSRF-guarded geocoder, the geocode-trigger endpoint and
+`GET /api/v1/config/map` (#694 / PR #1424); the bulk `GET /api/v1/contacts/map` read
+(#1427 / PR #1428); the web map (#1286 / PR #1426) and Android map (#1287 / PR #1429). The
+implementation review found and fixed two follow-ups: an above-`normal` address (and its `geo:`
+coordinate) was not excluded from the neutral-`Card` outward copies (#1433), and the CardDAV card
+carried the coordinate as a `GEO=` parameter that go-webdav re-encoded corruptly (#1434).
