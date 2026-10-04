@@ -50,9 +50,37 @@ describe('parseGeoUri', () => {
   });
 });
 
-test('formatGeoUri round-trips through parseGeoUri', () => {
-  expect(formatGeoUri(51.5, -0.12)).toBe('geo:51.5,-0.12');
-  expect(parseGeoUri(formatGeoUri(51.5, -0.12))).toEqual({ lat: 51.5, lng: -0.12 });
+describe('formatGeoUri', () => {
+  test('round-trips ordinary values through parseGeoUri', () => {
+    expect(formatGeoUri(51.5, -0.12)).toBe('geo:51.5,-0.12');
+    expect(parseGeoUri(formatGeoUri(51.5, -0.12))).toEqual({ lat: 51.5, lng: -0.12 });
+  });
+
+  // Regression for #1447: Number#toString switches to scientific notation below
+  // 1e-3 (e.g. 1e-7 -> "1e-7"), which decimal()'s /^[-0-9.]+$/ rejects, so a
+  // small coordinate written by the editor failed to reload. The fixed-point
+  // formatter must always emit a plain decimal.
+  test.each([
+    [0.0001, -0.0004, { lat: 0.0001, lng: -0.0004 }],
+    [-0.0004, 0.0001, { lat: -0.0004, lng: 0.0001 }],
+    [0.001, -0.001, { lat: 0.001, lng: -0.001 }],
+    // 1e-7 is below the shared six-decimal precision, so it rounds to zero.
+    [1e-7, 0, { lat: 0, lng: 0 }],
+    [0, 0, { lat: 0, lng: 0 }],
+    [-33.8688, 151.2093, { lat: -33.8688, lng: 151.2093 }],
+    [90, 180, { lat: 90, lng: 180 }],
+  ])('round-trips %s,%s without scientific notation', (lat, lng, expected) => {
+    const uri = formatGeoUri(lat, lng);
+    // The `geo:` scheme itself contains an `e`; the coordinates must not.
+    expect(uri.slice(4)).not.toMatch(/[eE]/);
+    expect(parseGeoUri(uri)).toEqual(expected);
+  });
+
+  test('emits the fixed-point form the backend stores', () => {
+    expect(formatGeoUri(0.0001, -0.0004)).toBe('geo:0.0001,-0.0004');
+    expect(formatGeoUri(1e-7, 0)).toBe('geo:0,0');
+    expect(formatGeoUri(0, -0)).toBe('geo:0,0');
+  });
 });
 
 describe('parseCoordinateInput', () => {
