@@ -805,28 +805,6 @@ func Card(t *rapid.T) contactmodel.Card {
 	c.SocialProfiles = sliceOfN(t, "card.social", rapid.Custom(OnlineService), 2)
 	c.OtherOnlineServices = sliceOfN(t, "card.other", rapid.Custom(OnlineService), 2)
 	c.Addresses = sliceOfN(t, "card.addresses", rapid.Custom(Address), 3)
-	// vCard 3.0 emits Full/TZ/GEO as separate LABEL/TZ/GEO properties paired
-	// back to ADRs by TYPE or position. Both pairings misassign on multi-
-	// address cards: the LABEL import attaches one LABEL to EVERY ADR with a
-	// matching TYPE, and TZ/GEO pair by position, so values on a later
-	// address land on an earlier one (TEST-07 found both). Keep TZ/GEO on
-	// address 0 only, and Full only when there is a single address.
-	for i := 1; i < len(c.Addresses); i++ {
-		c.Addresses[i].TimeZone = ""
-		c.Addresses[i].Coordinates = ""
-	}
-	if len(c.Addresses) > 1 {
-		for i := range c.Addresses {
-			c.Addresses[i].Full = ""
-		}
-	}
-	for i := 1; i < len(c.Addresses); i++ {
-		// Clearing can leave a genuinely-empty address (the original may have
-		// carried only those fields), which the exporters skip; give it content.
-		if len(c.Addresses[i].Components) == 0 && c.Addresses[i].CountryCode == "" {
-			c.Addresses[i].Components = []contactmodel.AddressComponent{{Kind: "locality", Value: "Cleared"}}
-		}
-	}
 	c.Anniversaries = Anniversaries(t)
 	c.SpeakToAs = SpeakToAs(t)
 	c.PersonalInfo = sliceOfN(t, "card.personalInfo", rapid.Custom(PersonalInfo), 3)

@@ -223,7 +223,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	}
 
 	// --- Addresses (adr / adr.geo / adr.tz / LABEL) ---
-	exportAddresses(card, r.Card.Addresses, &diags)
+	exportAddresses(card, r.Card.Addresses, &diags, nextGroup)
 
 	// --- Anniversaries ---
 	for _, ann := range r.Card.Anniversaries {
@@ -527,7 +527,16 @@ func exportName(card vcard.Card, name *contactmodel.Name, diags *[]contactmodel.
 // exportAddresses handles the Card.Addresses -> ADR/LABEL/GEO/TZ mapping,
 // including the extra-component-kind degradation (part "extra ADR
 // component kinds" bullet, folded into the `adr` concept).
-func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[]contactmodel.Diagnostic) {
+//
+// vCard 3.0 has no ADR parameters for the formatted label, coordinates or time
+// zone (they are standalone LABEL/GEO/TZ properties), and a reader cannot pair
+// a standalone property to an address by TYPE alone (two same-TYPE ADRs) or by
+// position (the JSON/bag representation loses the original line order). The
+// address and its companions are therefore emitted under a shared property
+// group — the same grouping idiom the online-service IMPP/X-SERVICE-TYPE pair
+// uses above — so the association survives a round trip unambiguously
+// (issue #1442). nextGroup supplies per-card unique group names.
+func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[]contactmodel.Diagnostic, nextGroup func() string) {
 	for _, a := range addresses {
 		var comps AdrComponents
 		extraKind := false
@@ -584,20 +593,33 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 		if isPreferred(a.Pref) {
 			tokens = append(tokens, "PREF")
 		}
-		card.Add(PropAdr, newTypedField(assembleAdr(comps), tokens))
+		// Only group when a companion property will actually be emitted, so a
+		// plain address keeps its long-standing ungrouped wire form.
+		var geo string
+		var hasGeo bool
+		if a.Coordinates != "" {
+			geo, hasGeo = geoURIToLatLon(a.Coordinates)
+		}
+		var grp string
+		if a.Full != "" || hasGeo || a.TimeZone != "" {
+			grp = nextGroup()
+		}
+		adrField := newTypedField(assembleAdr(comps), tokens)
+		adrField.Group = grp
+		card.Add(PropAdr, adrField)
 		if extraKind {
 			warn(diags, "adr", "extra RFC 9553/9554 address component kind(s) have no vCard 3.0 ADR position; dropped")
 		}
 		if a.Full != "" {
-			card.Add(PropLabel, newTypedField(a.Full, tokens))
+			labelField := newTypedField(a.Full, tokens)
+			labelField.Group = grp
+			card.Add(PropLabel, labelField)
 		}
-		if a.Coordinates != "" {
-			if geo, ok := geoURIToLatLon(a.Coordinates); ok {
-				card.Add(PropGeo, &vcard.Field{Value: geo})
-			}
+		if hasGeo {
+			card.Add(PropGeo, &vcard.Field{Group: grp, Value: geo})
 		}
 		if a.TimeZone != "" {
-			card.Add(PropTz, &vcard.Field{Value: a.TimeZone})
+			card.Add(PropTz, &vcard.Field{Group: grp, Value: a.TimeZone})
 		}
 	}
 }
@@ -639,7 +661,7 @@ func (Adapter) Import(raw []byte) (*contactmodel.Record, []contactmodel.Diagnost
 	importEmails(card, rec)
 	importPhones(card, rec)
 	importOnlineServices(card, rec)
-	importAddresses(card, rec)
+	importAddresses(card, rec, &diags)
 	importAnniversaries(card, rec)
 	importNotes(card, rec)
 	importKeywords(card, rec)
@@ -804,12 +826,36 @@ func importOnlineServices(card vcard.Card, rec *contactmodel.Record) {
 	}
 }
 
-func importAddresses(card vcard.Card, rec *contactmodel.Record) {
+// importAddresses reconstructs Card.Addresses from ADR plus its standalone
+// companion properties (LABEL, GEO, TZ).
+//
+// vCard 3.0 carries those companions as card-level properties, not as ADR
+// parameters, so the address they belong to has to be re-established on read.
+// This adapter's export pins an address to its companions with a shared
+// property group (see exportAddresses), and that group is the primary,
+// unambiguous association. A card from any other client has no such group, so
+// the fallback below attaches a companion only when the card makes it
+// unambiguous — a LABEL whose TYPE identifies exactly one ADR, or a GEO/TZ on a
+// card with a single ADR, since vCard 3.0 has no per-address GEO/TZ at all.
+// Anything genuinely ambiguous is dropped with a warn rather than silently
+// attached to the wrong address (issue #1442); the previous index/TYPE-broadcast
+// pairing moved a later address's coordinate onto address 0.
+func importAddresses(card vcard.Card, rec *contactmodel.Record, diags *[]contactmodel.Diagnostic) {
 	adrFields := card[PropAdr]
 	labelFields := card[PropLabel]
 	geoFields := card[PropGeo]
 	tzFields := card[PropTz]
-	for i, f := range adrFields {
+
+	// byGroup indexes grouped companion fields by their property group.
+	groupedLabels := groupFields(labelFields)
+	groupedGeos := groupFields(geoFields)
+	groupedTzs := groupFields(tzFields)
+
+	// ungrouped pairs each ungrouped ADR's index in rec.Card.Addresses with its
+	// field, so the fallback can match a companion by TYPE.
+	var ungrouped []ungroupedAdrRef
+
+	for _, f := range adrFields {
 		c := disassembleAdr(f.Value)
 		var comps []contactmodel.AddressComponent
 		add := func(kind, v string) {
@@ -826,19 +872,124 @@ func importAddresses(card vcard.Card, rec *contactmodel.Record) {
 
 		ctx, pref := contextsAndPrefFromTokens(typeTokens(f))
 		addr := contactmodel.Address{Components: comps, Contexts: ctx, Pref: pref}
-		if full, ok := matchLabelByType(labelFields, typeTokens(f)); ok {
-			addr.Full = full
-		}
-		if i < len(geoFields) {
-			if uri, ok := latLonToGeoURI(geoFields[i].Value); ok {
-				addr.Coordinates = uri
+		if f.Group != "" {
+			if lf, ok := groupedLabels[f.Group]; ok {
+				addr.Full = lf.Value
+			}
+			if gf, ok := groupedGeos[f.Group]; ok {
+				if uri, ok := latLonToGeoURI(gf.Value); ok {
+					addr.Coordinates = uri
+				}
+			}
+			if tf, ok := groupedTzs[f.Group]; ok {
+				addr.TimeZone = tf.Value
 			}
 		}
-		if i < len(tzFields) {
-			addr.TimeZone = tzFields[i].Value
-		}
 		rec.Card.Addresses = append(rec.Card.Addresses, addr)
+		if f.Group == "" {
+			ungrouped = append(ungrouped, ungroupedAdrRef{idx: len(rec.Card.Addresses) - 1, f: f})
+		}
 	}
+
+	importUngroupedAddressCompanions(rec, ungrouped, labelFields, geoFields, tzFields, diags)
+}
+
+// ungroupedAdrRef pairs an ADR's index in Card.Addresses with its field for the
+// ungrouped companion fallback.
+type ungroupedAdrRef struct {
+	idx int
+	f   *vcard.Field
+}
+
+// importUngroupedAddressCompanions is the ambiguity-aware fallback for cards
+// that do not use property groups. It attaches a standalone companion only
+// when the card uniquely identifies the target address; otherwise the
+// companion is reported and dropped (issue #1442).
+func importUngroupedAddressCompanions(rec *contactmodel.Record, ungrouped []ungroupedAdrRef, labelFields, geoFields, tzFields []*vcard.Field, diags *[]contactmodel.Diagnostic) {
+	// LABEL: a standalone LABEL is associable only when its TYPE (the RFC 2426
+	// pairing key) identifies exactly one ungrouped ADR and exactly one
+	// ungrouped LABEL. Two same-TYPE ADRs each with their own LABEL are
+	// ambiguous by TYPE, so those labels are dropped rather than broadcast to
+	// every address sharing the TYPE (the previous behavior).
+	adrTypeCounts := map[string]int{}
+	for _, u := range ungrouped {
+		adrTypeCounts[typeKey(typeTokens(u.f))]++
+	}
+	labelTypeCounts := map[string]int{}
+	for _, lf := range ungroupedFields(labelFields) {
+		labelTypeCounts[typeKey(typeTokens(lf))]++
+	}
+	for _, lf := range ungroupedFields(labelFields) {
+		k := typeKey(typeTokens(lf))
+		if adrTypeCounts[k] == 1 && labelTypeCounts[k] == 1 {
+			for _, u := range ungrouped {
+				if typeKey(typeTokens(u.f)) == k {
+					rec.Card.Addresses[u.idx].Full = lf.Value
+					break
+				}
+			}
+			continue
+		}
+		warn(diags, "adr.full", "standalone LABEL does not uniquely identify an ADR; dropped rather than misassigned")
+	}
+
+	// GEO/TZ: vCard 3.0 has no per-address coordinate or time-zone property, so
+	// a standalone one can be placed only when there is a single ADR to belong
+	// to. With several ADRs the decoded bag gives no reliable position, so the
+	// value is dropped with a warn rather than attached to an arbitrary address.
+	ungroupedGeos := ungroupedFields(geoFields)
+	ungroupedTzs := ungroupedFields(tzFields)
+	if len(rec.Card.Addresses) == 1 {
+		if len(ungroupedGeos) > 0 && rec.Card.Addresses[0].Coordinates == "" {
+			if uri, ok := latLonToGeoURI(ungroupedGeos[0].Value); ok {
+				rec.Card.Addresses[0].Coordinates = uri
+			} else {
+				warn(diags, "adr.geo", "standalone GEO is not a lat;lon pair; dropped")
+			}
+			if len(ungroupedGeos) > 1 {
+				warn(diags, "adr.geo", "multiple standalone GEO properties for a single ADR; extra dropped")
+			}
+		}
+		if len(ungroupedTzs) > 0 && rec.Card.Addresses[0].TimeZone == "" {
+			rec.Card.Addresses[0].TimeZone = ungroupedTzs[0].Value
+			if len(ungroupedTzs) > 1 {
+				warn(diags, "adr.tz", "multiple standalone TZ properties for a single ADR; extra dropped")
+			}
+		}
+		return
+	}
+	if len(ungroupedGeos) > 0 {
+		warn(diags, "adr.geo", "standalone GEO with multiple ADRs is ambiguous; dropped rather than misassigned")
+	}
+	if len(ungroupedTzs) > 0 {
+		warn(diags, "adr.tz", "standalone TZ with multiple ADRs is ambiguous; dropped rather than misassigned")
+	}
+}
+
+// groupFields indexes non-nil, grouped companion fields by property group,
+// keeping the first field seen for a group. Ungrouped fields are omitted.
+func groupFields(fields []*vcard.Field) map[string]*vcard.Field {
+	m := make(map[string]*vcard.Field)
+	for _, f := range fields {
+		if f == nil || f.Group == "" {
+			continue
+		}
+		if _, seen := m[f.Group]; !seen {
+			m[f.Group] = f
+		}
+	}
+	return m
+}
+
+// ungroupedFields returns the non-nil companion fields with no property group.
+func ungroupedFields(fields []*vcard.Field) []*vcard.Field {
+	var out []*vcard.Field
+	for _, f := range fields {
+		if f != nil && f.Group == "" {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 func importAnniversaries(card vcard.Card, rec *contactmodel.Record) {
@@ -1113,16 +1264,6 @@ func typeKey(tokens []string) string {
 	}
 	sort.Strings(up)
 	return strings.Join(up, ",")
-}
-
-func matchLabelByType(labelFields []*vcard.Field, wantTokens []string) (string, bool) {
-	want := typeKey(wantTokens)
-	for _, f := range labelFields {
-		if typeKey(typeTokens(f)) == want {
-			return f.Value, true
-		}
-	}
-	return "", false
 }
 
 func labelFromGroup(fields []*vcard.Field, group string) string {
