@@ -212,6 +212,18 @@ func TestMergeAddresses(t *testing.T) {
 		g.Sensitivity = "secret"
 		assert.Equal(t, g, mergeAddresses([]contactmodel.Address{mk("a", "1 Main St")}, []contactmodel.Address{g})[0])
 	})
+	t.Run("a coordinate or sensitivity on only the loaded side is not an edit", func(t *testing.T) {
+		// #1440: a pre-000071 GEO contact has its coordinate (and sensitivity)
+		// on the loaded Card entry only; the fresh flat derivation cannot
+		// reproduce it. That absence must not read as an edit, or the lossy
+		// fresh entry replaces the loaded one and drops the coordinate AND the
+		// unprojected 'building' component.
+		l := mk("a", "1 Main St")
+		l.Coordinates = "geo:48.2,16.3"
+		l.Sensitivity = "private"
+		got := mergeAddresses([]contactmodel.Address{l}, []contactmodel.Address{fresh("a", "1 Main St")})
+		assert.Equal(t, l, got[0], "the loaded entry survives whole (coordinate, sensitivity and 'building')")
+	})
 	t.Run("length follows fresh", func(t *testing.T) {
 		assert.Len(t, mergeAddresses([]contactmodel.Address{mk("a", "1")}, nil), 0)
 		got := mergeAddresses(nil, []contactmodel.Address{fresh("a", "1"), fresh("b", "2")})
@@ -443,4 +455,102 @@ func TestRecordForContact_ExposesAddressMapFields(t *testing.T) {
 	assert.Equal(t, "client-id", got.Card.Addresses[0].ID, "a client-supplied ID is kept")
 	assert.Equal(t, "geo:1,2", got.Card.Addresses[0].Coordinates)
 	assert.Equal(t, "secret", got.Card.Addresses[0].Sensitivity)
+}
+
+// TestDeriveDenormalized_PreservesCardOnlyCoordinateAndConvergesFlat is the
+// issue #1440 reproduction, exactly: a Card-only geo: coordinate plus an
+// unprojected 'building' component must survive deriveDenormalized, and the
+// coordinate must converge down onto the flat column so the map endpoint sees
+// it. It is the in-memory half; the real-migrated-schema twin is
+// TestPlainSavePreservesCardOnlyAddressCoordinateAndComponent.
+func TestDeriveDenormalized_PreservesCardOnlyCoordinateAndConvergesFlat(t *testing.T) {
+	c := &Contact{
+		Card: contactmodel.Card{Addresses: []contactmodel.Address{{
+			ID:          "addr-1",
+			Coordinates: "geo:48.2,16.3",
+			Sensitivity: "private",
+			Components: []contactmodel.AddressComponent{
+				{Kind: "name", Value: "Some St 1"},
+				{Kind: "building", Value: "The Tower"},
+			},
+		}}},
+		Addresses: []ContactAddress{{ID: "addr-1", Street: "Some St 1"}},
+	}
+	c.deriveDenormalized()
+
+	require.Len(t, c.Card.Addresses, 1)
+	assert.Equal(t, "geo:48.2,16.3", c.Card.Addresses[0].Coordinates, "the Card-only coordinate survived")
+	assert.Equal(t, "private", c.Card.Addresses[0].Sensitivity)
+	assert.Contains(t, c.Card.Addresses[0].Components, contactmodel.AddressComponent{Kind: "building", Value: "The Tower"},
+		"the unprojected component survived")
+	require.Len(t, c.Addresses, 1)
+	assert.Equal(t, "geo:48.2,16.3", c.Addresses[0].Coordinates, "the flat column converged so the map sees it")
+	assert.Equal(t, "private", c.Addresses[0].Sensitivity)
+}
+
+// TestPlainSavePreservesCardOnlyAddressCoordinateAndComponent is the #1440
+// regression on the real migrated schema (CLAUDE.md backend trap 1): a
+// coordinate and sensitivity that live only on the persisted Card — the state
+// of every GEO contact imported before migration 000071 backfilled `id` but
+// not `coordinates` — must survive a plain db.Save, along with every address
+// component the flat shape cannot express (here 'building'). It also pins the
+// other half of the rule: a genuine flat edit still wins.
+func TestPlainSavePreservesCardOnlyAddressCoordinateAndComponent(t *testing.T) {
+	t.Parallel()
+	db := dbtest.New(t)
+	user := User{Username: "geo-plain", Password: "password123!A", Email: "geo-plain@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Geo"}}},
+		Addresses: []contactmodel.Address{{
+			Components: []contactmodel.AddressComponent{
+				{Kind: "name", Value: "Some St 1"},
+				{Kind: "building", Value: "The Tower"},
+			},
+			Full:        "Some St 1",
+			Coordinates: "geo:48.2,16.3",
+			Sensitivity: "private",
+		}},
+	}}
+	contact := &Contact{UserID: user.ID}
+	ApplyRecordToContact(contact, rec, "")
+	require.Len(t, contact.Addresses, 1)
+	// Simulate the pre-000071 state: the map fields live only on the Card.
+	contact.Addresses[0].Coordinates = ""
+	contact.Addresses[0].Sensitivity = ""
+	require.NoError(t, db.Create(contact).Error)
+
+	var loaded Contact
+	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	require.Len(t, loaded.Addresses, 1)
+	assert.Empty(t, loaded.Addresses[0].Coordinates, "the seed has no flat coordinate")
+	require.Equal(t, "geo:48.2,16.3", loaded.Card.Addresses[0].Coordinates, "the Card holds the coordinate")
+
+	// The exact T75 plain-save shape: mutate an unrelated flat field and Save.
+	loaded.Photo = "new.jpg"
+	require.NoError(t, db.Save(&loaded).Error)
+
+	var persisted Contact
+	require.NoError(t, db.First(&persisted, contact.ID).Error)
+	assert.Equal(t, "geo:48.2,16.3", persisted.Card.Addresses[0].Coordinates, "the Card-only coordinate survived the plain save")
+	assert.Equal(t, "private", persisted.Card.Addresses[0].Sensitivity, "the Card-only sensitivity survived too")
+	assert.Contains(t, persisted.Card.Addresses[0].Components, contactmodel.AddressComponent{Kind: "building", Value: "The Tower"},
+		"the unprojected component survived (the point of the merge tolerance)")
+	assert.Equal(t, "geo:48.2,16.3", persisted.Addresses[0].Coordinates, "the flat map column converged from the Card")
+	assert.Equal(t, "private", persisted.Addresses[0].Sensitivity, "sensitivity converged too")
+
+	// A genuine flat edit still wins: change the street through the flat shape
+	// and the fresh (lossy) derivation replaces the loaded entry.
+	persisted.Addresses[0].Street = "9 Changed Rd"
+	require.NoError(t, db.Save(&persisted).Error)
+
+	var edited Contact
+	require.NoError(t, db.First(&edited, contact.ID).Error)
+	components := map[string]string{}
+	for _, comp := range edited.Card.Addresses[0].Components {
+		components[comp.Kind] = comp.Value
+	}
+	assert.Equal(t, "9 Changed Rd", components["name"], "the flat street edit won")
+	assert.Empty(t, components["building"], "a genuine flat edit rebuilds the entry from flat")
 }

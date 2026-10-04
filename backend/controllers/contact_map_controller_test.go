@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 )
 
@@ -69,6 +72,89 @@ func TestGetContactMap_ReturnsValidPointsOnly_NotSensitivityGated(t *testing.T) 
 	}, resp.Points[0])
 	assert.Equal(t, "a-secret", resp.Points[1].AddressID)
 	assert.Equal(t, "a-private", resp.Points[2].AddressID)
+}
+
+// TestGetContactMap_ShowsCardOnlyCoordinateAfterPlainSave is the issue #1440
+// regression at the endpoint: a coordinate that lives only on the neutral Card
+// (a pre-000071 GEO import) is invisible to the map until a plain save runs
+// the derive-path convergence, then it plots. The map reads the flat
+// `addresses` column only, so this pins that the convergence actually lands
+// there.
+func TestGetContactMap_ShowsCardOnlyCoordinateAfterPlainSave(t *testing.T) {
+	db, router, uid := mapRouter(t)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Geo"}}},
+		Addresses: []contactmodel.Address{{
+			Components: []contactmodel.AddressComponent{
+				{Kind: "name", Value: "Some St 1"},
+				{Kind: "building", Value: "The Tower"},
+			},
+			Full:        "Some St 1",
+			Coordinates: "geo:48.2,16.3",
+		}},
+	}}
+	contact := &models.Contact{UserID: uid}
+	models.ApplyRecordToContact(contact, rec, "")
+	require.Len(t, contact.Addresses, 1)
+	// Simulate the pre-000071 state: the coordinate lives only on the Card.
+	contact.Addresses[0].Coordinates = ""
+	require.NoError(t, db.Create(contact).Error)
+
+	assert.Empty(t, decodeMap(t, getMap(router)).Points, "a card-only coordinate is not yet plottable")
+
+	// A plain save (the T75 path) must converge the flat column.
+	var loaded models.Contact
+	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	loaded.Photo = "new.jpg"
+	require.NoError(t, db.Save(&loaded).Error)
+
+	resp := decodeMap(t, getMap(router))
+	require.Len(t, resp.Points, 1, "the coordinate the Card held all along is now plottable")
+	assert.Equal(t, contact.ID, resp.Points[0].ContactID)
+	assert.Equal(t, "geo:48.2,16.3", resp.Points[0].Coordinates)
+	assert.Equal(t, "Some St 1", resp.Points[0].Label)
+}
+
+// TestGetContactMap_BackfillMigrationSurfacesCardOnlyCoordinate is the issue
+// #1440 acceptance test for data already in the database: a contact imported
+// with a GEO before v1.4.0 (coordinate on the Card, none on the flat column)
+// must appear on the map after migration 000073 runs, with NO plain save in
+// between. dbtest.New applies the whole chain at creation, so the row is seeded
+// afterwards to represent the pre-migration state, then the real migration SQL
+// is executed the way the chain would on upgrade.
+func TestGetContactMap_BackfillMigrationSurfacesCardOnlyCoordinate(t *testing.T) {
+	db, router, uid := mapRouter(t)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Geo"}}},
+		Addresses: []contactmodel.Address{{
+			Components: []contactmodel.AddressComponent{
+				{Kind: "name", Value: "Some St 1"},
+				{Kind: "building", Value: "The Tower"},
+			},
+			Full:        "Some St 1",
+			Coordinates: "geo:48.2,16.3",
+		}},
+	}}
+	contact := &models.Contact{UserID: uid}
+	models.ApplyRecordToContact(contact, rec, "")
+	require.Len(t, contact.Addresses, 1)
+	// Simulate the pre-000071 state: the coordinate lives only on the Card.
+	contact.Addresses[0].Coordinates = ""
+	require.NoError(t, db.Create(contact).Error)
+
+	assert.Empty(t, decodeMap(t, getMap(router)).Points, "a card-only coordinate is invisible before the backfill")
+
+	// Run the 000073 backfill exactly as the migration chain does on upgrade.
+	backfill, err := os.ReadFile(filepath.Join("..", "database", "migrations", "000073_address_coordinates_backfill.up.sql"))
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(string(backfill)).Error)
+
+	resp := decodeMap(t, getMap(router))
+	require.Len(t, resp.Points, 1, "the backfill must surface the Card-only coordinate with no save")
+	assert.Equal(t, contact.ID, resp.Points[0].ContactID)
+	assert.Equal(t, "geo:48.2,16.3", resp.Points[0].Coordinates)
 }
 
 func TestGetContactMap_ScopesToCallerAndExcludesArchivedAndDeleted(t *testing.T) {
