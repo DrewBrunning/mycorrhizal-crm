@@ -103,11 +103,13 @@ func TestCardDAV_GetAddressObject_ExcludesSensitiveAddress(t *testing.T) {
 	adrs := obj.Card["ADR"]
 	require.Len(t, adrs, 1, "only the normal address may be served; the secret one is withheld")
 
-	// Control: the normal address is served, GEO and all, so the above is the
-	// sensitivity filter and not a blank card.
+	// Control: the normal address is served, coordinate and all, so the above
+	// is the sensitivity filter and not a blank card. (#1434: the coordinate
+	// rides as a standalone GEO property, not an ADR GEO parameter.)
 	normal := adrs[0]
 	assert.Equal(t, "1 Normal St", normal.Params.Get("LABEL"))
-	assert.NotEmpty(t, normal.Params["GEO"], "the normal address's geo: coordinate must be served")
+	require.Len(t, obj.Card["GEO"], 1, "the normal address's geo: coordinate must be served")
+	assert.Equal(t, "geo:1,1", obj.Card["GEO"][0].Value)
 	assert.Contains(t, obj.Card.Value(vcard.FieldFormattedName), "Ada", "identity data must still be served")
 
 	// And the address that is gone really is the secret one.
