@@ -115,6 +115,49 @@ func (c *Contact) SetAddressCoordinates(id, coordinates string) bool {
 	return true
 }
 
+// convergeAddressMapFieldsFromCard mirrors the contact-map fields
+// (Coordinates, Sensitivity) from each loaded Card address down onto the flat
+// ContactAddress at the same index when the flat entry does not carry them.
+//
+// ADR 0031 added the fields to both shapes, but migration 000071 backfilled
+// only `id` for pre-existing rows: a contact imported with a vCard/JSContact
+// GEO before v1.4.0 has its coordinate on Card.Addresses alone. The flat
+// column is what GET /contacts/map reads (and what an ID-unaware flat editor
+// round-trips), so without this the coordinate stays invisible to the map even
+// though mergeAddresses now preserves it on the Card (#1440).
+//
+// Directional and copy-on-write, mirroring mergeAddresses' one-sided rule: a
+// flat value that is present is a real edit and is never overwritten; only an
+// empty flat field adopts the Card's. Index pairing is exactly the one the
+// T75 merge uses (mergeAddresses aligns loaded/fresh positionally), so the
+// merged Card is index-aligned with c.Addresses here.
+func (c *Contact) convergeAddressMapFieldsFromCard() {
+	var out []ContactAddress // copy-on-write: allocated only if a field needs filling
+	for i := range c.Addresses {
+		if i >= len(c.Card.Addresses) {
+			break
+		}
+		flat, card := c.Addresses[i], c.Card.Addresses[i]
+		fillCoordinates := flat.Coordinates == "" && card.Coordinates != ""
+		fillSensitivity := flat.Sensitivity == "" && card.Sensitivity != ""
+		if !fillCoordinates && !fillSensitivity {
+			continue
+		}
+		if out == nil {
+			out = append([]ContactAddress(nil), c.Addresses...)
+		}
+		if fillCoordinates {
+			out[i].Coordinates = card.Coordinates
+		}
+		if fillSensitivity {
+			out[i].Sensitivity = card.Sensitivity
+		}
+	}
+	if out != nil {
+		c.Addresses = out
+	}
+}
+
 // ValidateAddressMapFields checks the contact-map fields (ADR 0031) on a
 // submitted Card's addresses: Coordinates must be a geo: URI with an in-range
 // WGS-84 latitude/longitude, Sensitivity one of normal|private|secret (empty
