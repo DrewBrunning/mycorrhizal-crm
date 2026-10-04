@@ -32,6 +32,14 @@ import (
 // and pt.jscontact (whose own row notes literally say "3.0 warn-drop"). This
 // is a documented judgment call — see the final report.
 
+// Concepts covered (export): anniversary.wedding and related are the two
+// adapter-level redirects with a real effective v3.0 home (X-ANNIVERSARY and
+// AGENT), so the coverage gate requires registered coverage for them; the
+// TestDegrade_* tests below are what emit them.
+func init() {
+	registerExportCoverage("anniversary.wedding", "related")
+}
+
 func hasWarn(diags []contactmodel.Diagnostic, concept string) bool {
 	for _, d := range diags {
 		if d.Concept == concept && d.Severity == "warn" {
