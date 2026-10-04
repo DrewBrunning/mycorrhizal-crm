@@ -34,6 +34,34 @@ class ContactMapTest {
     }
 
     @Test
+    fun `formatGeoUri never emits scientific notation`() {
+        // Regression for #1443: Double.toString switches to `1.0E-4` below 1e-3,
+        // which parseGeoUri's DECIMAL rejects, so the value fails to round-trip.
+        listOf(
+            0.0001 to -0.0004,
+            0.001 to -0.001,
+            0.00009 to 0.0,
+            0.0 to 0.0,
+            51.5 to -0.12,
+            -33.8688 to 151.2093,
+            90.0 to 180.0,
+        ).forEach { (lat, lng) ->
+            val uri = formatGeoUri(lat, lng)
+            // The `geo:` scheme itself contains an `e`; the coordinates must not.
+            val coords = uri.removePrefix("geo:")
+            assertFalse("scientific notation leaked into '$uri'", coords.contains('E') || coords.contains('e'))
+            assertEquals("round-trip failed for '$uri'", LatLng(lat, lng), parseGeoUri(uri))
+        }
+    }
+
+    @Test
+    fun `formatGeoUri emits the fixed-point form the backend stores`() {
+        assertEquals("geo:0.0001,-0.0004", formatGeoUri(0.0001, -0.0004))
+        assertEquals("geo:51.5,-0.12", formatGeoUri(51.5, -0.12))
+        assertEquals("geo:0,0", formatGeoUri(0.0, -0.0))
+    }
+
+    @Test
     fun `parseCoordinateInput accepts comma or whitespace separated pairs`() {
         assertEquals(LatLng(51.5007, -0.1246), parseCoordinateInput("51.5007, -0.1246"))
         assertEquals(LatLng(51.5007, -0.1246), parseCoordinateInput("51.5007,-0.1246"))

@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.model.network
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 // ADR 0031 / issue #1287: the contact map's wire types.
 
@@ -77,8 +79,22 @@ fun parseGeoUri(uri: String?): LatLng? {
     return latLngOrNull(decimal(parts[0]), decimal(parts[1]))
 }
 
+/**
+ * Renders one coordinate as fixed-point decimal, rounded to six places (~0.1 m)
+ * with trailing zeros trimmed — the web/backend `formatCoord` shape. A plain
+ * `Double.toString` emits scientific notation below `1e-3` (e.g. `1.0E-4`),
+ * which [parseGeoUri]'s [DECIMAL] rejects, so a small coordinate would round-trip
+ * into a value the UI flags invalid.
+ */
+private fun formatCoord(value: Double): String =
+    BigDecimal(value)
+        .setScale(6, RoundingMode.HALF_UP)
+        .stripTrailingZeros()
+        .toPlainString()
+
 /** Formats a position as the `geo:` URI the backend stores. */
-fun formatGeoUri(latitude: Double, longitude: Double): String = "geo:$latitude,$longitude"
+fun formatGeoUri(latitude: Double, longitude: Double): String =
+    "geo:${formatCoord(latitude)},${formatCoord(longitude)}"
 
 /**
  * Parses a hand-typed "lat, lng" pair (comma and/or whitespace separated) into
