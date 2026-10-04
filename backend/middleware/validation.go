@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -34,6 +35,7 @@ func init() {
 	mustRegisterValidation("relation_type", validateRelationType)
 	mustRegisterValidation("fielddefprojection", validateFieldDefinitionProjection)
 	mustRegisterValidation("life_event_category", validateLifeEventCategory)
+	mustRegisterValidation("geouri", validateGeoURI)
 }
 
 func mustRegisterValidation(tag string, fn validator.Func) {
@@ -102,6 +104,8 @@ func formatValidationError(err validator.FieldError) string {
 		return field + " must be an http:// or https:// URL"
 	case "relation_type":
 		return field + " must be a known relationship type"
+	case "geouri":
+		return field + " must be a geo: URI with latitude -90..90 and longitude -180..180"
 	default:
 		return field + " is invalid"
 	}
@@ -299,6 +303,23 @@ func validateRelationType(fl validator.FieldLevel) bool {
 // second hardcoded `oneof=...` list drifting out of sync with it.
 func validateLifeEventCategory(fl validator.FieldLevel) bool {
 	return models.IsKnownLifeEventCategory(fl.Field().String())
+}
+
+// validateGeoURI is the `geouri` validator backing
+// models.ContactAddress.Coordinates (and any future geo:-carrying struct tag).
+// It is the struct-tag counterpart of models.ValidateAddressMapFields' own
+// coordinates check, deliberately delegating to the same contactmodel.ParseGeoURI
+// so the two cannot drift: an empty value is allowed (matching the other
+// validators here and ValidateAddressMapFields' non-empty guard), and anything
+// else must be a parseable RFC 5870 geo: URI with an in-range WGS-84
+// latitude/longitude.
+func validateGeoURI(fl validator.FieldLevel) bool {
+	raw := fl.Field().String()
+	if raw == "" {
+		return true
+	}
+	_, _, ok := contactmodel.ParseGeoURI(raw)
+	return ok
 }
 
 // fieldDefinitionProjectionPattern matches FieldDefinition.Projection (
