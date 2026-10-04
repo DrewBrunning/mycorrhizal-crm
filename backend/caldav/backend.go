@@ -12,13 +12,16 @@ package caldav
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"mycorrhizal/models"
 
 	"github.com/emersion/go-ical"
+	"github.com/emersion/go-webdav"
 	"github.com/emersion/go-webdav/caldav"
 	"gorm.io/gorm"
 )
@@ -60,10 +63,20 @@ func ContextWithUser(ctx context.Context, userID uint, username string, db *gorm
 	return ctx
 }
 
+// errUnauthenticated is the WebDAV error returned when a request reaches the
+// backend without an authenticated principal in context. It carries an explicit
+// 401 so go-webdav's internal.ServeError renders it as such — a bare
+// fmt.Errorf falls through to a 500 with the message as a plaintext body, which
+// misreports an auth problem as a server fault (the CalDAV counterpart of
+// CardDAV's fix under #874; issue #1439).
+func errUnauthenticated() error {
+	return webdav.NewHTTPError(http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+}
+
 func (b *Backend) getUserID(ctx context.Context) (uint, error) {
 	userID, ok := ctx.Value(userIDKey).(uint)
 	if !ok {
-		return 0, fmt.Errorf("user not authenticated")
+		return 0, errUnauthenticated()
 	}
 	return userID, nil
 }
@@ -84,7 +97,7 @@ func (b *Backend) getDB(ctx context.Context) *gorm.DB {
 func (b *Backend) CurrentUserPrincipal(ctx context.Context) (string, error) {
 	username := b.getUsername(ctx)
 	if username == "" {
-		return "", fmt.Errorf("user not authenticated")
+		return "", errUnauthenticated()
 	}
 	return principalPrefix + username + "/", nil
 }
@@ -93,7 +106,7 @@ func (b *Backend) CurrentUserPrincipal(ctx context.Context) (string, error) {
 func (b *Backend) CalendarHomeSetPath(ctx context.Context) (string, error) {
 	username := b.getUsername(ctx)
 	if username == "" {
-		return "", fmt.Errorf("user not authenticated")
+		return "", errUnauthenticated()
 	}
 	return calendarHome + username + "/", nil
 }
@@ -112,7 +125,7 @@ func calendarFor(username string) caldav.Calendar {
 func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) {
 	username := b.getUsername(ctx)
 	if username == "" {
-		return nil, fmt.Errorf("user not authenticated")
+		return nil, errUnauthenticated()
 	}
 	return []caldav.Calendar{calendarFor(username)}, nil
 }
@@ -121,11 +134,11 @@ func (b *Backend) ListCalendars(ctx context.Context) ([]caldav.Calendar, error) 
 func (b *Backend) GetCalendar(ctx context.Context, urlPath string) (*caldav.Calendar, error) {
 	username := b.getUsername(ctx)
 	if username == "" {
-		return nil, fmt.Errorf("user not authenticated")
+		return nil, errUnauthenticated()
 	}
 	expected := calendarFor(username).Path
 	if urlPath != expected && urlPath+"/" != expected {
-		return nil, fmt.Errorf("calendar not found")
+		return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("calendar not found"))
 	}
 	cal := calendarFor(username)
 	return &cal, nil
@@ -134,12 +147,12 @@ func (b *Backend) GetCalendar(ctx context.Context, urlPath string) (*caldav.Cale
 // CreateCalendar is unsupported: each user has exactly one calendar, served
 // read-only, matching CardDAV's own single-address-book stance.
 func (b *Backend) CreateCalendar(ctx context.Context, calendar *caldav.Calendar) error {
-	return fmt.Errorf("creating calendars is not supported")
+	return webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("creating calendars is not supported"))
 }
 
 // DeleteCalendar is unsupported (see CreateCalendar).
 func (b *Backend) DeleteCalendar(ctx context.Context, urlPath string) error {
-	return fmt.Errorf("deleting calendars is not supported")
+	return webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("deleting calendars is not supported"))
 }
 
 // CalendarObject is one served iCalendar resource (an Activity or a
@@ -286,13 +299,18 @@ func (b *Backend) GetCalendarObject(ctx context.Context, urlPath string, req *ca
 
 	uid := extractUIDFromPath(urlPath)
 	if uid == "" {
-		return nil, fmt.Errorf("invalid path")
+		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("invalid path"))
 	}
 
 	if strings.HasPrefix(uid, "interaction-") {
 		var a models.Activity
 		if err := db.Where("user_id = ? AND uuid = ?", userID, strings.TrimPrefix(uid, "interaction-")).First(&a).Error; err != nil {
-			return nil, fmt.Errorf("event not found")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("event not found"))
+			}
+			// A genuine DB failure is a server fault, not a missing event —
+			// leave it to map to 500 rather than misreporting it as 404.
+			return nil, err
 		}
 		obj := calendarObjectFromActivity(username, &a)
 		return &caldav.CalendarObject{Path: obj.Path, ModTime: obj.ModTime, ETag: obj.ETag, Data: obj.Data}, nil
@@ -301,16 +319,19 @@ func (b *Backend) GetCalendarObject(ctx context.Context, urlPath string, req *ca
 	if strings.HasPrefix(uid, "life-event-") {
 		var le models.LifeEvent
 		if err := db.Where("user_id = ? AND id = ?", userID, strings.TrimPrefix(uid, "life-event-")).First(&le).Error; err != nil {
-			return nil, fmt.Errorf("event not found")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("event not found"))
+			}
+			return nil, err
 		}
 		if !lifeEventHasCalendarDate(&le) {
-			return nil, fmt.Errorf("event not found")
+			return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("event not found"))
 		}
 		obj := calendarObjectFromLifeEvent(username, &le)
 		return &caldav.CalendarObject{Path: obj.Path, ModTime: obj.ModTime, ETag: obj.ETag, Data: obj.Data}, nil
 	}
 
-	return nil, fmt.Errorf("event not found")
+	return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("event not found"))
 }
 
 // QueryCalendarObjects handles calendar-query REPORTs, filtering the served
@@ -399,12 +420,17 @@ func eventInWindow(event *ical.Event, dtstart, start, end time.Time) bool {
 // T13-style write-back targets *subscribed* remote calendars via
 // CalendarSyncService, not this endpoint.
 func (b *Backend) PutCalendarObject(ctx context.Context, urlPath string, calendar *ical.Calendar, opts *caldav.PutCalendarObjectOptions) (*caldav.CalendarObject, error) {
-	return nil, fmt.Errorf("writing calendar objects is not supported")
+	// 403 (not 405): PUT is a method the resource type understands — go-webdav
+	// even advertises it in Allow for a calendar object — but this deployment
+	// refuses to write, matching CardDAV's 403 for its unsupported
+	// create/delete collection paths (issue #874) rather than claiming the
+	// method is unknown.
+	return nil, webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("writing calendar objects is not supported"))
 }
 
 // DeleteCalendarObject is intentionally unsupported (see PutCalendarObject).
 func (b *Backend) DeleteCalendarObject(ctx context.Context, urlPath string) error {
-	return fmt.Errorf("deleting calendar objects is not supported")
+	return webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("deleting calendar objects is not supported"))
 }
 
 // extractUIDFromPath extracts the stable UID from a CalDAV path, e.g.

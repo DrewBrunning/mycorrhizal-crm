@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
+
 	"github.com/emersion/go-ical"
 	"github.com/emersion/go-webdav/caldav"
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func TestGetCalendar(t *testing.T) {
@@ -56,8 +56,7 @@ func TestCreateDeleteCalendarUnsupported(t *testing.T) {
 func TestHandlerDiscovery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	handler := NewHandler(db)
 	h := handler.GinHandler()
