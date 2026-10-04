@@ -1,0 +1,14 @@
+-- Rollback of 000073 is deliberately a no-op.
+--
+-- The migration is purely additive: it copies a card-only coordinate /
+-- sensitivity down onto the flat address that lacked it. There is no way to
+-- tell a value this migration copied from one the user set through the flat
+-- shape afterwards, and clearing the flat value on rollback would delete real
+-- contact-map data — and re-hide, for a never-re-saved GEO contact, the very
+-- coordinate this migration exists to surface. The flat copy is also exactly
+-- what a pre-000073 binary reads, so leaving it populated is harmless: an
+-- older server ignores the keys it does not know. A data-loss-free no-op is
+-- therefore the correct reverse (issue #1440), in the same spirit as 000012's
+-- documented "not a perfect inverse" tradeoff, but chosen here in the
+-- direction that never destroys data.
+SELECT 1;
