@@ -1141,6 +1141,12 @@ func importAddresses(card vcard.Card, rec *contactmodel.Record, diags *[]contact
 // stock Encoder produces valid, parseable output, then splices the
 // correctly quoted real value into the final byte stream afterward — a
 // post-processing correction confined entirely to this adapter.
+//
+// This splice cannot help the CardDAV path: go-webdav re-encodes the
+// vcard.Card the backend returns, so the adapter's bytes never reach the wire.
+// CardDAV carries the coordinate as a standalone GEO property instead (RFC
+// 6350 defines GEO as a property), which go-vcard round-trips — see
+// backend/carddav/vcard_geo.go (issue #1434).
 func exportAddresses(rec *contactmodel.Record, card vcard.Card, splices *[]geoSplice) {
 	for i, addr := range rec.Card.Addresses {
 		ac := kindValuesToAdrComponents(addr.Components)

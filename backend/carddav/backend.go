@@ -370,6 +370,17 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		}
 	}
 
+	// A vCard 4.0 coordinate arrives as a standalone GEO property or an ADR
+	// GEO parameter (see vcard_geo.go). Neither can survive the adapter import:
+	// the adapter does not read a standalone GEO property, and go-vcard mangles
+	// the parameter's comma/colon value. Pull the coordinates off the wire
+	// before the re-encode, and re-apply them after Import.
+	var coordsByID map[string]string
+	var coordsOrdered []string
+	if isVCard4(card) {
+		coordsByID, coordsOrdered = takeGeoCoordinates(card)
+	}
+
 	// Route the incoming vCard through the vcard4/vcard3 adapters instead of
 	// the legacy carddav.VCardToContact mapper (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ). go-webdav's Put handler has
 	// already decoded the request body into `card` (a vcard.Card) before
@@ -389,6 +400,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	for _, d := range diags {
 		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
 	}
+	applyGeoCoordinates(record, coordsByID, coordsOrdered)
 
 	// A WebDAV PUT replaces the whole resource, but contactToAddressObject
 	// withholds above-normal addresses (RecordForContactForSync), so the
@@ -499,6 +511,12 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 			logger.Warn().Err(decodeErr).Str("vcard_uid", contact.VCardUID).Msg("CardDAV: failed to decode exported vCard")
 		} else {
 			card = decoded
+			// CardDAV cannot carry the RFC 9554 ADR GEO parameter — go-webdav
+			// re-encodes this card and go-vcard mangles a comma/colon-bearing
+			// parameter value (issue #1434). Move any coordinate onto a
+			// standalone GEO property, which go-webdav can encode. See
+			// vcard_geo.go.
+			adrGeoParamsToProperties(card)
 		}
 	}
 
