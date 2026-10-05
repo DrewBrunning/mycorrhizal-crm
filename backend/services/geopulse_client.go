@@ -197,11 +197,17 @@ func (c *GeoPulseClient) do(path string, query url.Values) (*http.Response, erro
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Debug().Err(err).Str("path", path).Msg("GeoPulse API request failed")
+		// Never log or wrap the raw *url.Error: its text embeds the full
+		// request URL, and SearchPhotos puts the user's coordinates and the
+		// queried date range in the query string. Redact the URL while keeping
+		// the cause (and the SSRF guard's dial sentinel) reachable through
+		// errors.Is/As — see redactedGeoPulseTransportError.
+		cause := redactedGeoPulseTransportError(err)
+		logger.Debug().Str("path", path).Str("cause", cause.Error()).Msg("GeoPulse API request failed")
 		// %w for the cause too, so a dial refused by the SSRF guard stays
 		// distinguishable (errors.Is ErrGeoPulsePrivateAddress) from plain
 		// unreachability, and Test connection can say which it was.
-		return nil, fmt.Errorf("%w: %w", ErrGeoPulseUnreachable, err)
+		return nil, fmt.Errorf("%w: %w", ErrGeoPulseUnreachable, cause)
 	}
 	logger.Debug().Str("path", path).Int("status", resp.StatusCode).Msg("GeoPulse API request")
 	switch resp.StatusCode {
@@ -220,6 +226,23 @@ func (c *GeoPulseClient) do(path string, query url.Values) (*http.Response, erro
 			Str("body", string(body)).Msg("GeoPulse API request: unexpected status (GeoPulse responded, not unreachable)")
 		return nil, &GeoPulseRequestError{StatusCode: resp.StatusCode, Status: resp.Status, Body: string(body)}
 	}
+}
+
+// redactedGeoPulseTransportError rewrites a transport error so its message no
+// longer embeds the request URL, while preserving the wrapped chain. net/http
+// returns a *url.Error whose Error() text is `Get "<full URL>": …`, and for
+// SearchPhotos that URL carries the user's latitude/longitude and the queried
+// date range. This is the GeoPulse counterpart of the geocoder client's
+// redactedTransportError (which returns a string; an error is returned here so
+// the SSRF guard's ErrGeoPulsePrivateAddress stays reachable via errors.Is).
+func redactedGeoPulseTransportError(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		// %w ue.Err: its text (the bare network/transport cause) omits the URL,
+		// and Unwrap keeps the original chain for errors.Is/As.
+		return fmt.Errorf("%w", ue.Err)
+	}
+	return err
 }
 
 // decodeGeoPulseData reads a bounded {status, message, data} envelope and

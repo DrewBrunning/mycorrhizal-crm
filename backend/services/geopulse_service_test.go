@@ -1,11 +1,14 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -397,6 +400,50 @@ func TestGeoPulseSuggestions_PhotoFailureDegradesNotFails(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 1, photoCalls, "after the first photo failure no further photo calls are made")
+}
+
+// TestGeoPulseSuggestionsForDate_LogsNoCoordinates pins the logging half of
+// issue #1445: the Warn line emitted when a photo search fails on a transport
+// error must not carry the coordinate-bearing request URL.
+func TestGeoPulseSuggestionsForDate_LogsNoCoordinates(t *testing.T) {
+	buf := captureLoggerOutput(t)
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+
+	db := dbtest.New(t)
+	user := seedGeoPulseUser(t, db, "gp-log-redact")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/streaming-timeline":
+			writeGeoPulseEnvelope(w, map[string]any{"stays": []map[string]any{{
+				"id": 1, "timestamp": "2026-09-20T10:00:00Z", "locationName": "A", "city": "Leeds",
+				"country": "Testland", "latitude": 53.8, "longitude": -1.55, "stayDuration": 60,
+			}}})
+		case r.URL.Path == "/api/users/me":
+			// Arm the request seam *before* answering identity, so the very next
+			// call — the photo search carrying the coordinates — fails at the
+			// transport layer, exactly where the URL would otherwise leak.
+			faults.ArmError(faultGeoPulseRequest, errors.New("injected upstream failure"))
+			writeGeoPulseEnvelope(w, map[string]any{"userId": "u1", "fullName": "U"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	connectGeoPulseForUser(t, db, user.ID, srv.URL, "k")
+
+	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	require.NoError(t, err)
+	require.Len(t, res.Suggestions, 1)
+	assert.True(t, res.Suggestions[0].PhotosUnavailable)
+
+	logs := buf.String()
+	assert.Contains(t, logs, "GeoPulse photo lookup failed")
+	assert.NotContains(t, logs, "53.8")
+	assert.NotContains(t, logs, "-1.55")
+	assert.NotContains(t, logs, "latitude=")
+	assert.NotContains(t, logs, "longitude=")
 }
 
 func TestGeoPulseSuggestions_IdentityFailureSkipsPhotos(t *testing.T) {
