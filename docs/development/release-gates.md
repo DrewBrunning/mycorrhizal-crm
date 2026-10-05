@@ -158,7 +158,7 @@ green check says nothing about local mode. Two things cover it instead:
   AAB); `verify-release-assets` re-checks the APK attached to the GitHub Release. The F-Droid
   FOSS build does not carry it yet (see [`fdroid.md`](fdroid.md)).
 - **Manual, per release candidate:** before dispatching `release.yml`, run
-  `./gradlew :app:connectedObtainiumDebugAndroidTest --tests '*LocalOnlyModeE2eTest'` on a real
+  `./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest` on a real
   **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) with
   `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the
   test skips) and confirm the test *ran* (not "skipped"). Do not install over the production package
