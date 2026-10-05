@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"strings"
 	"testing"
+
+	"mycorrhizal/models"
 )
 
 func TestSanitizeString(t *testing.T) {
@@ -441,5 +444,57 @@ func TestValidateStruct_BirthdayIsLexicalOnly(t *testing.T) {
 				t.Errorf("ValidateStruct with birthday %q: hasErrors=%v, want isValid=%v", tt.date, hasErrors, tt.isValid)
 			}
 		})
+	}
+}
+
+// TestValidateStruct_ContactAddressCoordinates guards issue #1444: the flat
+// models.ContactAddress carried a `geouri` struct tag with no registered
+// validator, so validator/v10 panicked in parseFieldTagsRecursive ("Undefined
+// validation function 'geouri'") the moment the struct was validated — before
+// any field value was looked at. The validator is now registered and delegates
+// to contactmodel.ParseGeoURI, the same parser models.ValidateAddressMapFields
+// uses, so the tag and the explicit check cannot drift. Reaching the assertion
+// at all (rather than panicking) is half of what this test pins.
+func TestValidateStruct_ContactAddressCoordinates(t *testing.T) {
+	tests := []struct {
+		name        string
+		coordinates string
+		isValid     bool
+	}{
+		{name: "empty allowed", coordinates: "", isValid: true},
+		{name: "valid geo uri", coordinates: "geo:48.2010,16.3695", isValid: true},
+		{name: "valid geo uri with altitude and parameters", coordinates: "geo:48.2,16.3,183;crs=wgs84;u=40", isValid: true},
+		{name: "valid at latitude/longitude bounds", coordinates: "geo:-90,180", isValid: true},
+		{name: "missing geo scheme", coordinates: "48.2010,16.3695", isValid: false},
+		{name: "non-numeric coordinate", coordinates: "geo:abc,16.3", isValid: false},
+		{name: "latitude out of range", coordinates: "geo:95,0", isValid: false},
+		{name: "longitude out of range", coordinates: "geo:0,181", isValid: false},
+		{name: "longer than the max tag", coordinates: "geo:1," + strings.Repeat("0", 120), isValid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := models.ContactAddress{Coordinates: tt.coordinates}
+			errs := ValidateStruct(obj)
+			hasErrors := len(errs) > 0
+			if hasErrors == tt.isValid {
+				t.Errorf("ValidateStruct(ContactAddress{Coordinates:%q}): hasErrors=%v, want isValid=%v", tt.coordinates, hasErrors, tt.isValid)
+			}
+		})
+	}
+}
+
+// TestValidateStruct_GeoURIErrorMessage checks the user-facing message the new
+// geouri case in formatValidationError produces, so the tag reports the same
+// reason models.ValidateAddressMapFields would rather than the generic
+// "Coordinates is invalid".
+func TestValidateStruct_GeoURIErrorMessage(t *testing.T) {
+	errs := ValidateStruct(models.ContactAddress{Coordinates: "geo:95,0"})
+	if len(errs) != 1 {
+		t.Fatalf("ValidateStruct = %#v, want exactly one error", errs)
+	}
+	want := "Coordinates must be a geo: URI with latitude -90..90 and longitude -180..180"
+	if errs[0].Message != want {
+		t.Errorf("message = %q, want %q", errs[0].Message, want)
 	}
 }

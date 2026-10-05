@@ -764,8 +764,11 @@ design is ADR-0010 / CON-04, issue #479).
   delete data the user manages in a separate product.
 - **GeoPulse location data is never stored (issue #160, ADR 0033).** The "log activity from location
   history" flow reads one day of stays and nearby photo metadata live, returns them as an ephemeral
-  suggestion list, and persists nothing — coordinates, durations and photos are not written anywhere,
-  and not logged (the client's debug log omits the query string). Only a suggestion the user confirms
+  suggestion list, and persists nothing — coordinates, durations and photos are not written anywhere
+  and are not logged: the client logs only the request path, and every transport failure is
+  URL-redacted before it is wrapped, returned or logged, so the coordinate-bearing query string
+  cannot reach a log line or an API response (`backend/services/geopulse_client_test.go`,
+  `TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors`). Only a suggestion the user confirms
   becomes data: an ordinary `Activity` (place label, time, user-chosen contacts, opaque
   `geopulse:stay:<id>` `external_ref`), which follows the Activity lifecycle in §1. Removing the
   `GeoPulseConfig` keeps those activities.

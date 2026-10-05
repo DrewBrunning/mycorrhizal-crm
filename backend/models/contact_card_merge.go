@@ -179,6 +179,19 @@ func mergeProjectedArray[T, F any](loaded, fresh []T, proj func(T) F) []T {
 // ID, its address Period (CRMEnvelope.Periods keys on it) and its unprojected
 // components. When both sides carry an ID they must agree, like any other
 // projected field.
+//
+// The other two contact-map fields (ADR 0031) get the same one-sided
+// tolerance, but only in the loaded->fresh direction. Coordinates and
+// Sensitivity were added to both shapes at once, but migration 000071
+// backfilled only `id`: a contact imported with a vCard/JSContact GEO before
+// v1.4.0 carries its coordinate on the loaded Card entry alone, so the fresh
+// flat derivation cannot reproduce it. That absence is the lossy flat shape's
+// limit, not an edit — without the tolerance the fresh (lossy) entry would
+// replace the loaded one and drop the coordinate AND every unprojected
+// component (#1440). A value present on the fresh side is a real edit
+// expressed through flat (or a clear) and still wins. deriveDenormalized
+// mirrors the surviving coordinate back onto the flat column afterwards, so
+// the map endpoint — which reads flat — sees it too.
 func mergeAddresses(loaded, fresh []contactmodel.Address) []contactmodel.Address {
 	result := make([]contactmodel.Address, len(fresh))
 	for i := range fresh {
@@ -189,6 +202,12 @@ func mergeAddresses(loaded, fresh []contactmodel.Address) []contactmodel.Address
 		l, f := projectAddress(loaded[i]), projectAddress(fresh[i])
 		if l.ID == "" || f.ID == "" {
 			l.ID, f.ID = "", ""
+		}
+		if l.Coordinates != "" && f.Coordinates == "" {
+			l.Coordinates = ""
+		}
+		if l.Sensitivity != "" && f.Sensitivity == "" {
+			l.Sensitivity = ""
 		}
 		if reflect.DeepEqual(l, f) {
 			result[i] = loaded[i]

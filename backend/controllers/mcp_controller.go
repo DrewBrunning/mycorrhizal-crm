@@ -314,7 +314,22 @@ func MCPHandler() gin.HandlerFunc {
 		cfg := currentConfig(c)
 		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 			return newMCPServer(db, userID, cfg)
-		}, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+		}, &mcp.StreamableHTTPOptions{
+			Stateless:    true,
+			JSONResponse: true,
+			// Disable the go-sdk's DNS-rebinding guard (streamable.go: the
+			// 403 when the connection's local address is loopback but Host is
+			// not localhost). It protects a localhost-only MCP server from a
+			// malicious page reaching it via a rebinding hostname; this server
+			// is reached through the shipped nginx, which forwards the
+			// client's public Host to the backend on 127.0.0.1, so the guard
+			// would reject every remote assistant (issue #1441). The endpoint
+			// is not localhost-only and is not left open: it sits behind
+			// AuthMiddleware (session or mycorrhizal_ API token) plus the same
+			// rate limit and CORS policy as /api/v1, so an unauthenticated
+			// rebinding page still cannot run a tool.
+			DisableLocalhostProtection: true,
+		})
 		handler.ServeHTTP(c.Writer, c.Request)
 	}
 }

@@ -151,6 +151,7 @@ var steps = []step{
 	{"import-body-limit", (*smokeRun).importBodyLimitOwnedByApp},     // issue #876
 	{"wellknown-discovery", (*smokeRun).wellKnownDiscoveryRelative},  // issue #865
 	{"assetlinks-not-spa", (*smokeRun).assetLinksReachesBackend},     // ADR 0034 / issue #1293
+	{"mcp-endpoint", (*smokeRun).mcpReachesBackend},                  // issue #1441
 }
 
 // smokeLossyCRM is the CRM-envelope the smoke contact carries. Each field is a
@@ -685,6 +686,96 @@ func (r *smokeRun) assetLinksReachesBackend() error {
 	default:
 		return fmt.Errorf("GET %s: status %d, want 404 (feature off) or 200 JSON (feature on) — no redirects", path, resp.StatusCode)
 	}
+}
+
+// mcpReachesBackend pins issue #1441: the all-in-one image's nginx proxies
+// POST /mcp to the backend. Without that location the SPA fallback answered
+// 200 text/html (index.html), so a remote assistant was silently talking to
+// the app shell, not the MCP server. The request carries a public Host (the
+// shipped nginx forwards it verbatim while connecting over loopback), which
+// also proves the go-sdk's DNS-rebinding guard no longer 403s the proxied
+// case, and a healthy install must list the four read-only tools.
+//
+// It authenticates with an explicit Authorization: Bearer, not the cookie
+// jar. Setting a public Host means Go's cookie jar withholds the host-scoped
+// auth_token (a cookie is bound to the URL host, and the overridden Host no
+// longer matches), and the Authorization header is the path a real MCP client
+// uses anyway (ADR 0032), forwarded by the /mcp nginx location.
+func (r *smokeRun) mcpReachesBackend() error {
+	const path = "/mcp"
+	payload, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": map[string]any{},
+	})
+	if err != nil { // # pragma: no cover — a static map always marshals
+		return fmt.Errorf("marshal MCP request: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, r.baseURL+path, bytes.NewReader(payload))
+	if err != nil { // # pragma: no cover — the URL is a constant plus the fixed base URL
+		return fmt.Errorf("build request for %s: %w", path, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	// Not "localhost": the shipped nginx forwards the client's Host to the
+	// loopback backend, so a public name is what a remote assistant presents.
+	req.Host = "crm.example.com"
+	// The overridden Host above means the cookie jar would not send the
+	// host-scoped auth_token, so authenticate explicitly (the login step has
+	// already proven it is present).
+	u, err := url.Parse(r.baseURL)
+	if err != nil { // # pragma: no cover — baseURL is a fixed http URL
+		return fmt.Errorf("parse base URL: %w", err)
+	}
+	token := ""
+	for _, ck := range r.client.Jar.Cookies(u) {
+		if ck.Name == "auth_token" {
+			token = ck.Value
+			break
+		}
+	}
+	if token == "" { // # pragma: no cover — the login step asserts the cookie exists first
+		return fmt.Errorf("POST %s: no auth_token cookie to authenticate with", path)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("POST %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil { // # pragma: no cover — the test server always sends a complete body
+		return fmt.Errorf("POST %s: read body: %w", path, err)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("POST %s: 403 — the go-sdk loopback Host guard rejected the proxied Host (issue #1441): %s", path, truncate(body, 200))
+	}
+	if mt, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); !strings.Contains(mt, "json") {
+		return fmt.Errorf("POST %s: status %d, Content-Type %q — nginx served the SPA instead of proxying to the backend (issue #1441): %s",
+			path, resp.StatusCode, mt, truncate(body, 200))
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("POST %s: status %d, want 200: %s", path, resp.StatusCode, truncate(body, 200))
+	}
+	var out struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return fmt.Errorf("POST %s: decode %q: %w", path, truncate(body, 300), err)
+	}
+	got := map[string]bool{}
+	for _, tool := range out.Result.Tools {
+		got[tool.Name] = true
+	}
+	for _, name := range []string{"search_contacts", "get_contact", "list_timeline", "run_cadence_report"} {
+		if !got[name] {
+			return fmt.Errorf("POST %s: tools/list missing %q: %s", path, name, truncate(body, 300))
+		}
+	}
+	return nil
 }
 
 // refetchAndAssertFields reads the contact back and checks that every field

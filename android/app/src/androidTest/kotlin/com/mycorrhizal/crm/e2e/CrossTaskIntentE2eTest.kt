@@ -242,8 +242,27 @@ class CrossTaskIntentE2eTest {
     /** Finishes every live MainActivity directly and polls (bounded, never throws) for them to go. */
     private fun finishAllActivities() = E2eActivities.finishAllMainActivities()
 
-    private fun waitFor(matcher: SemanticsMatcher, timeoutMs: Long = DEFAULT_TIMEOUT_MS) =
-        compose.waitUntilAtLeastOneExists(matcher, timeoutMs)
+    /**
+     * Polls until at least one node matches [matcher].
+     *
+     * Deliberately not `compose.waitUntilAtLeastOneExists`: when a cross-task
+     * `am start` is (re)launching MainActivity there is a frame with no compose
+     * root at all, and `waitUntilAtLeastOneExists`'s condition lets the
+     * "No compose hierarchies found in the app" `IllegalStateException` escape
+     * on its first evaluation instead of retrying -- which flaked the cross-task
+     * tests (#1438, run 37195560627). Catching it here and reporting `false`
+     * lets the poll ride out that window; a hierarchy that never comes back
+     * still times out with the real wait error.
+     */
+    private fun waitFor(matcher: SemanticsMatcher, timeoutMs: Long = DEFAULT_TIMEOUT_MS) {
+        compose.waitUntil(timeoutMs) {
+            try {
+                compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
+    }
 
     private fun waitForText(text: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS) =
         waitFor(hasText(text), timeoutMs)

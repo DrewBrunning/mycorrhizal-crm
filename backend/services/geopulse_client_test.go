@@ -1,12 +1,17 @@
 package services
 
 import (
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"mycorrhizal/internal/faults"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -184,4 +189,77 @@ func TestGeoPulseClient_PrivateAddressBlockedWhenEnabled(t *testing.T) {
 	require.NoError(t, err)
 	_, err = open.GetMe()
 	assert.NoError(t, err, "with the guard off (the default) a LAN/loopback GeoPulse works")
+}
+
+// TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors pins issue #1445:
+// SearchPhotos sends latitude/longitude and the day's date range in the query
+// string, and net/http wraps a transport failure in a *url.Error that prints the
+// whole URL. Every error path must redact it, or the retention claim in
+// docs/security/data-retention-lifecycle.md §13 ("not logged") is false.
+func TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors(t *testing.T) {
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+
+	const (
+		lat = 53.8
+		lon = -1.55
+	)
+	start := time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)
+	end := start.Add(24*time.Hour - time.Second)
+
+	assertNoCoordinate := func(t *testing.T, err error) {
+		t.Helper()
+		msg := err.Error()
+		assert.NotContains(t, msg, strconv.FormatFloat(lat, 'f', -1, 64), "the latitude must not appear in the error")
+		assert.NotContains(t, msg, strconv.FormatFloat(lon, 'f', -1, 64), "the longitude must not appear in the error")
+		assert.NotContains(t, msg, "latitude=")
+		assert.NotContains(t, msg, "longitude=")
+		assert.NotContains(t, msg, "startDate=")
+		assert.NotContains(t, msg, "/immich/photos/search", "the coordinate-bearing URL must not appear at all")
+	}
+
+	// An armed transport fault: the client's own unreachable path runs, with the
+	// coordinate-bearing URL in scope.
+	t.Run("injected transport fault", func(t *testing.T) {
+		c, err := NewGeoPulseClient("https://geopulse.example", "k", false)
+		require.NoError(t, err)
+		faults.ArmError(faultGeoPulseRequest, errors.New("injected upstream failure"))
+		t.Cleanup(func() { faults.Disarm(faultGeoPulseRequest) })
+
+		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
+		assert.ErrorContains(t, err, "injected upstream failure", "the underlying cause must survive redaction")
+		assertNoCoordinate(t, err)
+	})
+
+	// A genuinely refused connection: the real *url.Error path.
+	t.Run("connection refused", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		addr := ln.Addr().String()
+		require.NoError(t, ln.Close())
+
+		c, err := NewGeoPulseClient("http://"+addr, "k", false)
+		require.NoError(t, err)
+		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
+		assertNoCoordinate(t, err)
+	})
+
+	// The SSRF guard's private-address sentinel must survive redaction.
+	t.Run("private address still detectable", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("the guarded transport must never reach a loopback server")
+		}))
+		t.Cleanup(srv.Close)
+		c, err := NewGeoPulseClient(srv.URL, "k", true)
+		require.NoError(t, err)
+
+		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrGeoPulsePrivateAddress)
+		assertNoCoordinate(t, err)
+	})
 }

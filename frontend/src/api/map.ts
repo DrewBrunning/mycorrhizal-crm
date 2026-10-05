@@ -56,8 +56,20 @@ export function parseGeoUri(uri: string | undefined | null): LatLng | null {
   return toLatLng(decimal(parts[0]), decimal(parts[1]));
 }
 
+// Fixed-point coordinate formatting: rounds to six decimal places (~0.1 m),
+// half away from zero, then trims trailing zeros — matching the backend's
+// `formatCoord` (math.Round) and Android's BigDecimal/HALF_UP formatter.
+// `Number.prototype.toString` switches to scientific notation below 1e-3
+// (e.g. `1e-7`), which `decimal()` rejects, so a small coordinate written here
+// would fail to parse on reload.
+function formatCoord(value: number): string {
+  const scaled = value * 1e6;
+  const rounded = (scaled < 0 ? -Math.round(-scaled) : Math.round(scaled)) / 1e6;
+  return rounded.toFixed(6).replace(/\.?0+$/, '');
+}
+
 export function formatGeoUri(lat: number, lng: number): string {
-  return `geo:${lat},${lng}`;
+  return `geo:${formatCoord(lat)},${formatCoord(lng)}`;
 }
 
 // Parses a manually typed "lat, lng" pair (comma or whitespace separated).

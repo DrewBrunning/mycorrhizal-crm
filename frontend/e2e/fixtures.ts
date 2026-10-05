@@ -110,17 +110,42 @@ export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
  * 2. Cap the wait anyway, matching the per-test wait below. A finite
  *    animation can still be interrupted or thrash, and the whole point of
  *    this helper is to settle *before* a scan, not to block it.
+ *
+ * Issue #1437 (the dark-mode replay of #1279) fixed two further gaps in the
+ * original scope-based wait:
+ *
+ * 3. It scanned only the `context` subtree, but MUI applies the Dialog
+ *    Fade/Grow to the *container* wrapping the `[role="dialog"]` paper -- an
+ *    ancestor of that subtree -- so `root.getAnimations({ subtree: true })`
+ *    never saw the open transition at all. Scan the whole document instead
+ *    (the per-test scan below always did); the finite-only filter and the cap
+ *    keep it bounded.
+ * 4. It queried once, immediately after `toBeVisible()` -- which Playwright
+ *    reports as soon as the paper is attached, before the Fade has started a
+ *    frame later. Let two animation frames pass, then wait again, so a
+ *    transition that begins in that window is still caught.
  */
-async function waitForAnimationsToSettle(page: Page, context?: string): Promise<void> {
-  await page.evaluate((selector) => {
-    const root = selector ? document.querySelector(selector) : document.body;
-    if (!root) return Promise.resolve();
-    const pending = root
-      .getAnimations({ subtree: true })
-      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-      .map((a) => a.finished.catch(() => {}));
-    return Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, 500))]);
-  }, context ?? null);
+async function waitForAnimationsToSettle(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const finiteAnimations = () =>
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {}));
+
+    const settle = () =>
+      Promise.race([
+        Promise.all(finiteAnimations()),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+
+    const nextFrame = () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+
+    return settle().then(nextFrame).then(settle);
+  });
 }
 
 /**
@@ -131,7 +156,7 @@ async function waitForAnimationsToSettle(page: Page, context?: string): Promise<
  * so the two can never drift out of sync on what counts as blocking.
  */
 export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
-  await waitForAnimationsToSettle(page, context);
+  await waitForAnimationsToSettle(page);
   const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
   if (context) {
     builder.include(context);
@@ -155,7 +180,7 @@ export async function assertNoBlockingA11yViolations(page: Page, context?: strin
  * AA gate stays `assertNoBlockingA11yViolations`.
  */
 export async function assertNoAaaContrastViolations(page: Page, context: string): Promise<void> {
-  await waitForAnimationsToSettle(page, context);
+  await waitForAnimationsToSettle(page);
   const results = await new AxeBuilder({ page })
     .withRules([AAA_CONTRAST_RULE])
     .include(context)

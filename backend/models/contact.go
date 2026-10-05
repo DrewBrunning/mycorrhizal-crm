@@ -392,13 +392,15 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 // checked column can never disagree with what a plain re-save would have
 // written.
 //
-// It mutates only the receiver's derived fields — the flat scalars,
-// AddressesFlat / PhonesNormalized / SortName, FN / Org, and the T75-merged
-// Card / CRM / Passthrough — and performs no I/O. A caller that only wants to
-// inspect the result without persisting it (the probe) runs this on a copy
-// and diffs the derived fields; the shallow copy is safe because every
-// assignment here replaces a field wholesale rather than mutating a shared
-// backing array.
+// It mutates the receiver's derived fields — the flat scalars, AddressesFlat /
+// PhonesNormalized / SortName, FN / Org, and the T75-merged Card / CRM /
+// Passthrough — plus, on the non-cardSetDirectly path, the flat addresses'
+// contact-map fields (convergeAddressMapFieldsFromCard: a Card-only
+// coordinate/sensitivity is mirrored down so GET /contacts/map sees it,
+// #1440). It performs no I/O. A caller that only wants to inspect the result
+// without persisting it (the probe) runs this on a copy and diffs the derived
+// fields; the shallow copy is safe because every assignment here replaces a
+// field wholesale rather than mutating a shared backing array.
 func (c *Contact) deriveDenormalized() {
 	c.ensureAddressIDs(c.cardSetDirectly)
 	if len(c.Emails) > 0 {
@@ -442,6 +444,11 @@ func (c *Contact) deriveDenormalized() {
 		c.Card = record.Card
 		c.CRM = record.Envelope
 		c.Passthrough = record.Passthrough
+		// ADR 0031 map fields flow back down to the flat column so the map
+		// endpoint (which reads flat) sees a coordinate that until now lived
+		// only on the Card (#1440, pre-000071 rows). Directional: a flat value
+		// that is present is a real edit and wins — see the helper.
+		c.convergeAddressMapFieldsFromCard()
 	}
 
 	proj := contactmodel.DeriveProjection(record)
