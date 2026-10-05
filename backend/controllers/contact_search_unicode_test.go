@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"net/url"
 	"testing"
 
 	"mycorrhizal/models"
@@ -89,6 +90,32 @@ func TestGetContactsSearch_DeliberateNonFolds(t *testing.T) {
 		items := ftsSearch(t, router, q)
 		require.Len(t, items, 1, "query %q must match", q)
 	}
+}
+
+// TestGetContactsSearch_NulByteTermDoesNotError is the contacts-LIST half of
+// issue #1460. GET /contacts?search= also feeds the term to a contacts_fts
+// MATCH (applyContactSearch). Pre-fix the unsanitized NUL reached both clause
+// families: the LIKE pattern "%"+term+"%" could truncate at the NUL to a bare
+// "%" (silently matching *every* contact), and the malformed FTS MATCH could
+// 500 with SQLite's "unterminated string" — which surfaced depended on the
+// query plan. NormalizeSearchTerm now strips the NUL before either clause is
+// built, so the term matches nothing and the remaining token still searches
+// normally.
+func TestGetContactsSearch_NulByteTermDoesNotError(t *testing.T) {
+	db, router, user := ftsRealRouter(t, "nul-contacts.db")
+	createNamed(t, db, user.ID, "Ada", "Lovelace")
+	createNamed(t, db, user.ID, "Zoe", "Zephyr")
+
+	// The exact payload shape from the nightly report (NUL, controls, an
+	// invalid UTF-8 sequence). Pre-fix this returned both contacts; post-fix
+	// (NUL stripped) it matches neither.
+	nulTerm := "\x00W(\x02æQ!\u00c3)5ü\xf3\x87\x97\xaeD"
+	items := ftsSearch(t, router, "search="+url.QueryEscape(nulTerm))
+	assert.Empty(t, items, "a NUL must not truncate the term into a match-everything wildcard")
+
+	items = ftsSearch(t, router, "search="+url.QueryEscape("Ada\x00"))
+	require.Len(t, items, 1, "stripping the NUL leaves the searchable token intact")
+	assert.Equal(t, "Ada", items[0]["firstname"])
 }
 
 // TestGetContactsSearch_PreBackfillNFDStillFindable pins that a decomposed

@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -337,6 +338,42 @@ func TestGetNotesSearch(t *testing.T) {
 	// The total tracks the active search filter, so it stays consistent with
 	// the list rendered beside it (see TestGetUnassignedNotes_TotalRespectsSearchFilter).
 	assert.EqualValues(t, 1, responseBody["total"])
+}
+
+// TestGetNotesSearch_NulByteDoesNotMatchEverything is the unfiled-notes
+// sibling of issue #1460: GET /notes?search= turns the term into a
+// "%"+term+"%" LIKE pattern (no FTS arm), so an unsanitized NUL truncated the
+// pattern to a match-everything "%". NormalizeSearchTerm strips it before the
+// pattern is built.
+func TestGetNotesSearch_NulByteDoesNotMatchEverything(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/notes", GetUnassignedNotes)
+
+	db.Create(&models.Note{UserID: user.ID, Content: "Call Alice"})
+	db.Create(&models.Note{UserID: user.ID, Content: "Call Bob"})
+
+	// A NUL-wrapped token that matches nothing must match nothing, not every
+	// note (the pre-fix truncation-to-% behavior).
+	req, _ := http.NewRequest("GET", "/notes?search="+url.QueryEscape("\x00zzz\x00"), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Empty(t, body["notes"], "a NUL must not truncate the term into a match-everything wildcard")
+
+	// The NUL-wrapped real token still matches.
+	req2, _ := http.NewRequest("GET", "/notes?search="+url.QueryEscape("\x00alice\x00"), nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var body2 map[string]any
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &body2))
+	require.Len(t, body2["notes"], 1)
 }
 
 func TestCreateNote(t *testing.T) {
