@@ -155,7 +155,8 @@ Content-Security-Policy pinned `connect-src 'self'` (and named no `worker-src`),
 deployment the browser refused both the style/tile fetches and MapLibre's `blob:` worker — pins
 rendered on a blank canvas. Fixed by deriving the CSP's tile origin from the same env var at container
 start: `docker/entrypoint.sh` renders `$csp_tile_origin` (host only) into the CSP via an
-`hsts.conf`-style include, and the policy adds `worker-src blob:`. `connect-src`/`img-src` therefore
+`hsts.conf`-style include, and the policy adds `worker-src 'self' blob:` (`'self'` for the app's own
+`/service-worker.js`; `blob:` for MapLibre's worker). `connect-src`/`img-src` therefore
 allow exactly `'self'`, `data:`, `blob:` and the one configured origin — no blanket `https:`. The
 split `frontend/nginx.conf` image (no entrypoint) carries the OpenFreeMap default statically.
 

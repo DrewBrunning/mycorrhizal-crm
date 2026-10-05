@@ -57,8 +57,9 @@ esac
 # Render the SPA Content-Security-Policy's map-tile origin (issue #1286
 # follow-up). The contact map loads its style JSON, vector tiles and glyphs
 # straight from the origin of MAP_TILE_STYLE_URL (ADR 0031), and MapLibre
-# builds its worker from a blob: URL -- both must be allowed or the map draws
-# its pins on a blank canvas. The tile host is operator-configurable, so it
+# builds its worker from a blob: URL -- both must be allowed (the same-origin
+# /service-worker.js too, hence worker-src 'self' blob:), or the map draws its
+# pins on a blank canvas. The tile host is operator-configurable, so it
 # cannot be hard-coded in nginx.conf: this renders /etc/nginx/csp_tile.conf,
 # which docker/nginx.conf includes to define $csp_tile_origin, exactly like
 # hsts.conf above. The fallback must stay in step with

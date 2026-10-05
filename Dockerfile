@@ -185,9 +185,12 @@ COPY docker/entrypoint.sh /app/entrypoint.sh
 # is likewise (re)written by the entrypoint from MAP_TILE_STYLE_URL. Seeded
 # here with the OpenFreeMap default so a config parsed without the entrypoint
 # still carries a real CSP rather than an empty (no-CSP) include.
+# The dollar is escaped so the rendered line carries a literal
+# $csp_tile_origin for nginx to interpolate per request, not the (empty)
+# build-time shell value.
 RUN chmod +x /app/entrypoint.sh && \
     : > /etc/nginx/hsts.conf && \
-    printf 'set $csp_tile_origin "https://tiles.openfreemap.org";\n' > /etc/nginx/csp_tile.conf
+    printf "set \$csp_tile_origin \"https://tiles.openfreemap.org\";\n" > /etc/nginx/csp_tile.conf
 
 # Default environment
 # PORT is the backend's internal bind port - nginx listens on 8080 (below) and

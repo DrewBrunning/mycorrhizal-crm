@@ -18,6 +18,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 )
@@ -405,8 +406,35 @@ func TestGeocodeContactAddressDraft_RejectsInvalidSensitivity(t *testing.T) {
 	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
 	db, router, uid := draftGeocodeRouter(t, fake)
 	c := seedGeocodeContact(t, db, uid, "")
-	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), map[string]string{"sensitivity": "top-secret"})
+	// The real middleware, so the oneof tag is what rejects the value (the
+	// withValidated test helper only binds JSON, it does not run validators).
+	router.POST("/validated/contacts/:id/addresses/geocode", middleware.ValidateJSONMiddleware(&models.GeocodeDraftInput{}), GeocodeContactAddressDraft(fake))
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/validated/contacts/%d/addresses/geocode", c.ID), map[string]string{"sensitivity": "top-secret"})
 	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+// The GetValidated guard is defensive — the route is always registered behind
+// ValidateJSONMiddleware — but a route accidentally wired without it must fail
+// closed rather than act on a nil body.
+func TestGeocodeContactAddressDraft_MissingValidatedBodyIs400(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	router.POST("/raw/contacts/:id/addresses/geocode", GeocodeContactAddressDraft(fake))
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/raw/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+func TestGeocodeContactAddressDraft_ContactLookupFailureIs500(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+
+	dbtest.HideTable(t, db, "contacts")
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 	assert.Empty(t, fake.calls)
 }
 

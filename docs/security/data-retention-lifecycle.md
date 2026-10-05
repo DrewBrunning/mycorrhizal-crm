@@ -1099,7 +1099,7 @@ copy of anything.
     (`MAP_TILE_STYLE_URL`, default OpenFreeMap). A tile request is inherently a viewport bounding box:
     it carries no marker, contact or address data. That host sees the client's IP and the areas viewed.
     The web SPA's Content-Security-Policy allows that one origin (interpolated from `MAP_TILE_STYLE_URL`
-    by `docker/entrypoint.sh` into `$csp_tile_origin`) plus `worker-src blob:`; no other third-party
+    by `docker/entrypoint.sh` into `$csp_tile_origin`) plus `worker-src 'self' blob:`; no other third-party
     origin is reachable from the page (`docker/nginx.conf`).
   - **Geocoding** — default **off** (`GEOCODER_PROVIDER=none`). When an operator enables `nominatim`
     (public OpenStreetMap instance) or `maptiler` (needs `GEOCODER_API_KEY`), one explicit user action
