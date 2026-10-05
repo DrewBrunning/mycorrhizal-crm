@@ -202,8 +202,15 @@ class AddressEditorTest {
         composeTestRule.onNodeWithText(coordinatesLabel).performTextInput("1, -0.10")
         composeTestRule.waitForIdle()
 
+        // The field keeps the typed text verbatim -- that is the "not
+        // reformatted under the cursor" contract, and it must not be reset by
+        // the LaunchedEffect re-sync.
         composeTestRule.onNodeWithText("1, -0.10").assertIsDisplayed()
-        assertEquals("geo:1.0,-0.1", current().single().coordinates)
+        // The committed value is the canonical plain-decimal geo URI, with no
+        // trailing zeros and never scientific notation (#1443): `1.0` -> `1`,
+        // matching the web and backend formatters. The old expectation pinned
+        // Double.toString's "1.0"; stripping zeros is the intended change.
+        assertEquals("geo:1,-0.1", current().single().coordinates)
     }
 
     private fun assertSensitiveBlocked(sensitivity: String) {
