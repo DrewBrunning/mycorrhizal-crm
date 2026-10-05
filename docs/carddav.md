@@ -72,6 +72,17 @@ implementations the automated legs run against — lives in the development docs
   Nextcloud) a full refetch receives vCard 3.0 re-serializations. The
   per-server divergence registers in
   [testing.md](development/testing.md) pin exactly what each server does.
+- **Address coordinates are served as a standalone `GEO` property, not RFC 9554's
+  `ADR;GEO=`.** The file exports (vCard 3.0/4.0, JSContact) attach a coordinate
+  to its address the RFC 9554 way, but over CardDAV the coordinate is instead
+  carried as a standalone `GEO` property ([RFC 6350](https://www.rfc-editor.org/rfc/rfc6350),
+  value type `uri`) linked to its address by the shared `PROP-ID` — the pinned
+  `go-webdav` re-encodes the card it is handed, and `go-vcard` cannot encode a
+  parameter value containing the `:` and `,` of a `geo:` URI. A client that only
+  reads the `ADR;GEO=` parameter form will not see the coordinate (the address
+  and every other field are unaffected); clients that preserve the standalone
+  property round-trip it losslessly, and our own GET→PUT handler reapplies it to
+  the neutral address.
 - **Automated client coverage is provision + pull.** The automated DAVx5 leg
   covers account setup and pulling the canonical pathological fixture; push,
   incremental re-sync, and an explicit version-negotiation assertion are not
