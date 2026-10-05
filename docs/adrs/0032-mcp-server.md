@@ -1,7 +1,7 @@
 # ADR 0032: MCP server — streamable-HTTP, read-only high-level tools, opt-in sensitivity
 
-- **Status:** proposed
-- **Date:** 2026-09-28
+- **Status:** accepted — shipped in v1.4.0 (#176 / PR #1423, the read-only `POST /mcp` surface).
+- **Date:** 2026-09-28 (proposed); 2026-10-04 (accepted)
 - **Implements:** issue #176 ("MCP server: expose the CRM over Model Context Protocol"). #176's own
   "Done when" states this design pass, resolved and written down, as its v1.4.0 deliverable — this
   ADR is that design pass.
@@ -132,3 +132,10 @@ with/without `include_sensitive`.
 Filed as #176 (rewritten with this ADR's decisions), milestone v1.4.0 (#28). Backend-only; no web or
 Android component. Implementation must add a new `docs/security/asvs-l2.md` row for the new inbound
 protocol surface per gate #1118's standing criteria.
+
+**Shipped in v1.4.0** (#176 / PR #1423). `POST /mcp` is mounted on the existing Gin server behind the
+same `AuthMiddleware` + `APIRateLimitMiddleware` as `/api/v1`, absent in embedded mode, with the four
+read-only tools and the default-off `include_sensitive` parameter this ADR specifies. The v1.4.0
+milestone-gate review recorded the surface in `docs/security/asvs-l2.md` (row 13.1.6) and
+`docs/security/threat-model.md` (the external-AI-assistant actor row); the follow-up
+`/mcp` nginx-proxy + SDK localhost-guard fix is issue #1441.

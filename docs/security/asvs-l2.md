@@ -10,7 +10,7 @@ row, it does not know what it is changing.
 | **Standards pinned** | OWASP ASVS 4.0.3 (V1–V14), OWASP API Security Top 10 (2023) |
 | **Level** | ASVS **Level 2** (rows marked `✓` in the L2 column of the ASVS). L1 rows are included because L2 subsumes them; L3-only rows are listed per chapter as out of scope. |
 | **Last full pass** | 2026-09-18 — the ASVS L2 verification pass (#2), superseding the 2026-08-26 pass (#1, issue #378). Statuses, evidence, and the level claim are recorded in `docs/security/asvs-l2-verification-report.md`; the prior mapping audit was 2026-08-23. |
-| **Level claimed** | **ASVS L2 with 23 documented exceptions**, self-assessed — see the [verification report](asvs-l2-verification-report.md) §6; this is not an independent third-party audit. Every exception is enumerated in the verification report's exception register. Not a silent downgrade: 195 rows `satisfied`, 37 `not-applicable` with reasons, 2 L3-only. |
+| **Level claimed** | **ASVS L2 with 23 documented exceptions**, self-assessed — see the [verification report](asvs-l2-verification-report.md) §6; this is not an independent third-party audit. Every exception is enumerated in the verification report's exception register. Not a silent downgrade: 197 rows `satisfied`, 36 `not-applicable` with reasons, 2 L3-only. |
 | **Scope** | Single-process Go/Gin + SQLite app, React SPA behind an nginx container, TLS terminated by an operator-supplied reverse proxy. Many cloud/microservice controls are deliberately `not-applicable` — each such row says why. |
 
 ## Status legend

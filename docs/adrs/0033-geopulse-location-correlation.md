@@ -1,7 +1,7 @@
 # ADR 0033: GeoPulse location-history correlation — on-demand lookup, no schema change to Activity
 
-- **Status:** proposed
-- **Date:** 2026-09-28
+- **Status:** accepted — shipped in v1.4.0 (#160 / PR #1425, the on-demand GeoPulse client and suggestion flow).
+- **Date:** 2026-09-28 (proposed); 2026-10-04 (accepted)
 - **Implements:** issue #160 ("Dawarich / GeoPulse integration (location-history correlation)").
   #160's own "Done when" states its v1.4.0 deliverable as the design pass being resolved and written
   down as an ADR or design-pass comment — this ADR is that.
@@ -142,3 +142,10 @@ user-initiated. State this precisely in implementation so the failure-behavior t
 Filed as #160 (rewritten with this ADR's decisions), milestone v1.4.0 (#28). Backend + a web entry
 point for v1; Android explicitly deferred (not required by gate #1118, unlike the Contact Map
 ticket).
+
+**Shipped in v1.4.0** (#160 / PR #1425). The client is the per-user `GeoPulseConfig` + on-demand
+service this ADR specifies (no scheduler entry), classified in `docs/int-01-integration-classification-matrix.md`
+as a `guarded-when-enabled` outbound client and covered by the INT-02 failure-behavior suite
+(`services/integration_failure_behavior_test.go`). The v1.4.0 milestone-gate review recorded the
+egress in `docs/security/threat-model.md` and `docs/security/deployment-baseline.md`; the follow-up
+that redacts coordinate-bearing request URLs from errors and logs is issue #1445.
