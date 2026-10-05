@@ -8,7 +8,11 @@ WORKDIR /app
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+# Retry the module download: proxy.golang.org intermittently drops the
+# connection mid-stream and `go mod download` fails hard on it (a nightly
+# Docker-build flake, issue #1461). One transient stream error must not fail
+# the whole image build; the retries reuse whatever was already fetched.
+RUN go mod download || (sleep 5 && go mod download) || (sleep 15 && go mod download)
 
 # Copy source code
 COPY . .
