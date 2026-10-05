@@ -104,8 +104,19 @@ const MaxSearchTermLen = 256
 // would itself fold NFD/NFC, but the LIKE arms would not — this is the query
 // half of the "normalize at the same boundary as the write" rule. It is an
 // identity on the common (already-NFC) term.
+//
+// NUL bytes are stripped (issue #1460). FTS5's query parser receives the
+// MATCH expression as a C string, so a NUL terminates it and the parser then
+// reports "unterminated string" — a 500 on a term a caller is allowed to
+// send (a nightly Schemathesis stateful sequence found exactly that). NUL is
+// never a meaningful search character (no matchable stored text contains
+// one), so dropping it is lossless for real searches and keeps the term safe
+// for every FTS5 caller (Search, applyContactSearch, note/activity search)
+// and for the LIKE arms in the same request. Every other C0 control byte is
+// harmless to FTS5 (it tokenizes them as separators), pinned by
+// TestSearch_NulByteTermDoesNotError.
 func NormalizeSearchTerm(term string) string {
-	return norm.NFC.String(term)
+	return norm.NFC.String(strings.ReplaceAll(term, "\x00", ""))
 }
 
 // ResolveSearchSynonym reports whether the whole search term resolves to a

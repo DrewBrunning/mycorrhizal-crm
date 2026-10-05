@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -326,6 +327,42 @@ func TestGetActivities(t *testing.T) {
 	assert.NotContains(t, responseBody, "page")
 	assert.EqualValues(t, 25, responseBody["limit"])
 	assert.Equal(t, "incremental", responseBody["sync"].(map[string]any)["mode"])
+}
+
+// TestGetActivitiesSearch_NulByteDoesNotMatchEverything is the activities-list
+// sibling of issue #1460: GET /activities?search= turns the term into a
+// "%"+term+"%" LIKE pattern over title/description/location, so an
+// unsanitized NUL truncated it to a match-everything "%". NormalizeSearchTerm
+// strips it before the pattern is built.
+func TestGetActivitiesSearch_NulByteDoesNotMatchEverything(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/activities", GetActivities)
+
+	db.Create(&models.Activity{UserID: user.ID, Title: "Dinner with Alice", Date: time.Now()})
+	db.Create(&models.Activity{UserID: user.ID, Title: "Lunch with Bob", Date: time.Now()})
+
+	// A NUL-wrapped token that matches nothing must match nothing, not every
+	// activity (the pre-fix truncation-to-% behavior).
+	req, _ := http.NewRequest("GET", "/activities?search="+url.QueryEscape("\x00zzz\x00"), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Empty(t, body["activities"], "a NUL must not truncate the term into a match-everything wildcard")
+
+	// The NUL-wrapped real token still matches.
+	req2, _ := http.NewRequest("GET", "/activities?search="+url.QueryEscape("\x00alice\x00"), nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var body2 map[string]any
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &body2))
+	require.Len(t, body2["activities"], 1)
 }
 
 func TestGetActivitiesSearchByContact(t *testing.T) {

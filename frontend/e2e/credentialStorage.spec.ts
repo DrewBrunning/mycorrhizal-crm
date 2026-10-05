@@ -38,11 +38,16 @@ const KNOWN_BENIGN_LOCAL_STORAGE_KEYS = [
   'dateFormat',
 ];
 
-// IndexedDB databases the app is known to create: `workbox-expiration` is
-// the production service worker's cache-expiration plugin (service-worker.ts,
-// only registered in the frontend-prod build this spec runs against -- see
-// CLAUDE.md's frontend-dev/frontend-prod note), storing cache-entry
-// metadata, not credentials.
+// IndexedDB databases the app is *allowed* to create: `workbox-expiration`
+// is the production service worker's cache-expiration plugin
+// (service-worker.ts, only registered in the frontend-prod build this spec
+// runs against -- see CLAUDE.md's frontend-dev/frontend-prod note), storing
+// cache-entry metadata, not credentials. This is an allowlist, not a set the
+// test requires to exist: workbox creates the database lazily on the first
+// ExpirationPlugin cache write (a same-origin .png served by the service
+// worker), so requiring it made the assertion depend on service-worker
+// timing and flaked the nightly (issue #1458). Zero databases is the safest
+// outcome, not a failure.
 const KNOWN_BENIGN_INDEXEDDB_NAMES = ['workbox-expiration'];
 
 test.describe('Credential storage (issue #419)', () => {
@@ -96,10 +101,15 @@ test.describe('Credential storage (issue #419)', () => {
     await loginUser(page);
 
     const databases = await page.evaluate(() => indexedDB.databases());
-    const names = databases.map((d) => d.name).sort();
-    expect(names, 'only the known-benign IndexedDB databases may exist').toEqual(
-      [...KNOWN_BENIGN_INDEXEDDB_NAMES].sort(),
-    );
+    const names = databases.map((d) => d.name);
+    // Assert the negative: every database that *is* present must be
+    // known-benign. Do not require any particular database to exist -- see
+    // KNOWN_BENIGN_INDEXEDDB_NAMES above for why that flaked (issue #1458).
+    for (const name of names) {
+      expect(KNOWN_BENIGN_INDEXEDDB_NAMES, `unexpected IndexedDB database '${name}'`).toContain(
+        name,
+      );
+    }
   });
 
   test('no credential in the URL after login', async ({ page }) => {

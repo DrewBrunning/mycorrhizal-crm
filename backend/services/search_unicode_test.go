@@ -174,8 +174,44 @@ func TestNormalizeSearchTerm(t *testing.T) {
 	assert.Equal(t, "José Pérez", NormalizeSearchTerm("Jos\u0065\u0301 P\u0065\u0301rez"))
 	assert.Equal(t, "José", NormalizeSearchTerm("José"), "already-NFC query is an identity")
 	assert.Equal(t, "", NormalizeSearchTerm(""))
+	assert.Equal(t, "abc", NormalizeSearchTerm("a\x00b\x00c"), "NUL bytes are stripped (issue #1460)")
 	if !norm.NFC.IsNormalString(NormalizeSearchTerm("Garc\u0069\u0301a")) {
 		t.Fatal("NormalizeSearchTerm output must be NFC")
+	}
+}
+
+// TestSearch_NulByteTermDoesNotError is the regression for issue #1460: a
+// Schemathesis stateful sequence sent a `/search?q=` term containing a NUL
+// byte and got a 500 DATABASE_ERROR. FTS5 hands its query parser a C string,
+// so the NUL terminated the MATCH expression mid-phrase and SQLite reported
+// "unterminated string" — a server error on input the API accepts. The term
+// is stripped of NUL before any arm runs, so the request succeeds and the
+// non-NUL tokens still search normally. Control bytes other than NUL are
+// harmless to FTS5 and must not error either.
+func TestSearch_NulByteTermDoesNotError(t *testing.T) {
+	db := newSearchDB(t)
+	user := newUnicodeUser(t, db, "nulbyte")
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}).Error)
+
+	// The exact shape from the nightly report: NUL first, plus controls and
+	// an invalid UTF-8 sequence, wrapped around a real token.
+	nulTerm := "\x00W(\x02æQ!\u00c3)5ü\xf3\x87\x97\xaeD"
+	_, err := Search(db, user.ID, nulTerm, 26, nil)
+	require.NoError(t, err, "a NUL byte in the term must not 500 the search endpoint")
+
+	// A term whose only non-NUL text still matches must keep matching after
+	// the NUL is stripped.
+	hits := searchFirstnames(t, db, user.ID, "Ada\x00")
+	require.Len(t, hits, 1, "stripping the NUL leaves the searchable token intact")
+
+	// Every other C0 control byte tokenizes without error, so the fix is
+	// narrowly scoped to NUL rather than "strip all controls".
+	for b := 0; b <= 0x1f; b++ {
+		if b == 0 {
+			continue
+		}
+		_, err := Search(db, user.ID, "a"+string(rune(b))+"b", 0, nil)
+		require.NoError(t, err, "control byte 0x%02x must not error", b)
 	}
 }
 

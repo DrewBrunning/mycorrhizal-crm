@@ -55,6 +55,13 @@ storage-form bytes.
 | NFD note content | NFC query (`/search`) | ✅ | tokenizer folds encodings even though notes aren't stored-normalized |
 | pre-backfill NFD row | NFC/NFD/ASCII query | ✅ | search never regressed during the backfill window |
 
+One query-side sanitization is a FTS5-safety matter, not a Unicode one: **NUL bytes are stripped**
+from the term (`NormalizeSearchTerm`, issue #1460). FTS5's query parser receives the `MATCH` expression
+as a C string, so a NUL ends it mid-phrase and SQLite returns "unterminated string" — a 500 on input
+the API otherwise accepts (the nightly Schemathesis stateful pass found exactly that). NUL cannot match
+any stored text, so dropping it is lossless; every other C0 control byte is harmless to FTS5 (it
+tokenizes them as separators). Pinned by `TestSearch_NulByteTermDoesNotError`.
+
 Deliberate non-goals (documented decisions, not bugs):
 
 - **German ß→ss folding is not provided.** There is no universal answer, and adding it changes search

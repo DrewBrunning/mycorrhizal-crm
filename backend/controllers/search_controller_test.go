@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -116,6 +117,35 @@ func TestSearchAll_RejectsOversizedTerm(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
 	assert.Equal(t, http.StatusOK, w2.Code)
+}
+
+// TestSearchAll_NulByteTermReturnsOK is the HTTP-layer regression for issue
+// #1460: the nightly Schemathesis stateful pass sent a `/search?q=` term with
+// a NUL byte (plus controls and an invalid UTF-8 sequence) and got a 500
+// DATABASE_ERROR from FTS5's "unterminated string". The term is sanitized
+// before any FTS arm runs, so the endpoint answers 200.
+func TestSearchAll_NulByteTermReturnsOK(t *testing.T) {
+	db, router := searchRealRouter(t)
+	user := models.User{Username: "search-nul", Password: "password123!A", Email: "search-nul@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}).Error)
+
+	// QueryEscape keeps the NUL and the invalid byte in the request line;
+	// this is the exact shape from the nightly report.
+	term := "\x00W(\x02æQ!\u00c3)5ü\xf3\x87\x97\xaeD"
+	req, _ := http.NewRequest("GET", "/search?q="+url.QueryEscape(term)+"&limit=26", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// The NUL is stripped and the remaining token is still searchable.
+	req2, _ := http.NewRequest("GET", "/search?q="+url.QueryEscape("Ada\x00"), nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var resp searchResult
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp))
+	require.Len(t, resp.Contacts, 1, "stripping the NUL leaves the searchable token intact")
 }
 
 func TestSearchAll_HouseholdScope(t *testing.T) {
