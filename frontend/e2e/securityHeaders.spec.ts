@@ -25,8 +25,12 @@ const NGINX_SECURITY_HEADERS = {
   // deliberately looser than the API's CSP below. See the doc comment on
   // contentSecurityPolicy in backend/middleware/security_headers.go for why
   // the two are allowed to differ.
+  // The map-tile origin (from MAP_TILE_STYLE_URL, default OpenFreeMap) and
+  // worker-src blob: are interpolated in by docker/entrypoint.sh — without
+  // them MapLibre's worker and its tile fetches are CSP-blocked. The e2e
+  // compose sets no MAP_TILE_STYLE_URL, so the default origin is expected.
   'content-security-policy':
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org; worker-src blob:; frame-ancestors 'none';",
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
 } as const;
 

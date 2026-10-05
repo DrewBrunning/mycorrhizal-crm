@@ -14,7 +14,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ContactAddress } from '../api/contacts';
-import { formatGeoUri, geocodeAddress, parseCoordinateInput, parseGeoUri } from '../api/map';
+import { formatGeoUri, geocodeDraft, parseCoordinateInput, parseGeoUri } from '../api/map';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
 
@@ -22,9 +22,9 @@ interface AddressFieldsProps {
   label: string;
   value: ContactAddress[];
   onChange: (next: ContactAddress[]) => void;
-  // The saved contact's id. Needed by the "find coordinates" action (the
-  // backend geocodes a *saved* address by contact id + address id); absent
-  // while creating a contact, where the action is shown disabled.
+  // The saved contact's id, the ownership anchor for the "find coordinates"
+  // action. The address itself need not be saved — the lookup geocodes the
+  // draft text (ADR 0031 amendment) — but the contact must exist.
   contactId?: number | string;
 }
 
@@ -98,12 +98,20 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
   const findCoordinates = async (
     index: number,
     rowKey: number,
-    saved: { contactId: number | string; addressId: string },
+    contactId: number | string,
+    addr: ContactAddress,
   ) => {
     setGeocodeErrors((prev) => omitKey(prev, rowKey));
     setGeocoding((prev) => new Set(prev).add(rowKey));
     try {
-      const result = await geocodeAddress(saved.contactId, saved.addressId);
+      const result = await geocodeDraft(contactId, {
+        street: addr.street,
+        city: addr.city,
+        region: addr.region,
+        postal: addr.postal,
+        country: addr.country,
+        sensitivity: addr.sensitivity,
+      });
       setCoordDrafts((prev) => omitKey(prev, rowKey));
       updateAddr(index, { coordinates: result.coordinates });
     } catch (err) {
@@ -149,10 +157,7 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
           // (ADR 0031) -- mirror the backend's 400 up front, with the reason
           // shown rather than a silently dead button.
           const sensitive = Boolean(addr.sensitivity && addr.sensitivity !== 'normal');
-          const unsaved = contactId == null || !addr.id;
-          let findReason = '';
-          if (sensitive) findReason = t('contacts.addressFields.findCoordinatesSensitive');
-          else if (unsaved) findReason = t('contacts.addressFields.findCoordinatesSaveFirst');
+          const findReason = sensitive ? t('contacts.addressFields.findCoordinatesSensitive') : '';
           const geocodeError = geocodeErrors[rowKey];
           return (
             <Paper key={rowKey} variant="outlined" sx={{ p: 1.5 }}>
@@ -306,15 +311,17 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
                   <Button
                     size="small"
                     variant="outlined"
-                    disabled={findReason !== '' || geocoding.has(rowKey)}
+                    // contactId is a defensive guard only: the editor renders
+                    // inside an existing contact, so it is always present, and
+                    // the address itself need not be saved (draft lookup).
+                    disabled={contactId == null || findReason !== '' || geocoding.has(rowKey)}
                     onClick={() =>
-                      void findCoordinates(index, rowKey, {
-                        // Only reachable when enabled, i.e. saved (see findReason).
-                        contactId: contactId as number | string,
-                        addressId: addr.id as string,
-                      })
+                      void findCoordinates(index, rowKey, contactId as number | string, addr)
                     }
-                    sx={{ textTransform: 'none', whiteSpace: 'nowrap', mt: 0.5 }}
+                    // flexShrink: 0 keeps the label (and its padding) intact;
+                    // without it the flex row — a fullWidth coordinate field
+                    // plus this button — shrinks the button below its content.
+                    sx={{ textTransform: 'none', whiteSpace: 'nowrap', flexShrink: 0, mt: 0.5 }}
                   >
                     {t('contacts.addressFields.findCoordinates')}
                   </Button>

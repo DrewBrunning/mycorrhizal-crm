@@ -1098,17 +1098,25 @@ copy of anything.
     in the MapLibre style served by the unauthenticated `GET /api/v1/config/map`
     (`MAP_TILE_STYLE_URL`, default OpenFreeMap). A tile request is inherently a viewport bounding box:
     it carries no marker, contact or address data. That host sees the client's IP and the areas viewed.
+    The web SPA's Content-Security-Policy allows that one origin (interpolated from `MAP_TILE_STYLE_URL`
+    by `docker/entrypoint.sh` into `$csp_tile_origin`) plus `worker-src blob:`; no other third-party
+    origin is reachable from the page (`docker/nginx.conf`).
   - **Geocoding** — default **off** (`GEOCODER_PROVIDER=none`). When an operator enables `nominatim`
     (public OpenStreetMap instance) or `maptiler` (needs `GEOCODER_API_KEY`), one explicit user action
-    (`POST /contacts/:id/addresses/:addressId/geocode`, `backend/controllers/contact_address_controller.go`
-    `GeocodeContactAddress`) sends **the address text of that one address** — street, city, region,
-    postcode, country; never the PO box/apartment/floor, the contact's name, or any other field — to the
-    configured provider from this server (`backend/services/geocoder_client.go`), through the SSRF-guarded
-    dialer. It is never automatic and never bulk, and an address with `sensitivity` above `normal` is
-    refused (400) unless the request carries `include_sensitive=true`. The provider sees this server's
-    egress IP, the address text, and (for `maptiler`) the API key.
+    sends **the address text of that one address** — street, city, region, postcode, country; never the
+    PO box/apartment/floor, the contact's name, or any other field — to the configured provider from
+    this server (`backend/services/geocoder_client.go`), through the SSRF-guarded dialer. Both routes
+    live in `backend/controllers/contact_address_controller.go`: the persisted
+    `POST /contacts/:id/addresses/:addressId/geocode` (`GeocodeContactAddress`) and the stateless draft
+    `POST /contacts/:id/addresses/geocode` (`GeocodeContactAddressDraft`, ADR 0031 amendment), which
+    resolves a not-yet-saved or edited address and returns the coordinate **without storing it**.
+    Neither is automatic or bulk, and an address with `sensitivity` above `normal` is refused (400)
+    unless the request carries `include_sensitive=true`. The provider sees this server's egress IP, the
+    address text, and (for `maptiler`) the API key.
   - **The resulting coordinate** is ordinary contact data: a `geo:` URI stored on the address (flat
-    `contacts.addresses` JSON and the Card entry) and covered by §1. It follows its address's
+    `contacts.addresses` JSON and the Card entry) and covered by §1. (The persisted route writes it
+    immediately; the draft route returns it to the editor, which stores it through the ordinary
+    contact save — discarding the edit therefore reverts it.) It follows its address's
     sensitivity: a coordinate on an address above `normal` is excluded from the neutral-Card
     exports/shares (vCard/JSContact, via `backend/models/field_selection.go#ApplyFieldSelection`)
     and from the CardDAV served card (§7, via `backend/models/contact_record.go#RecordForContactForSync`)

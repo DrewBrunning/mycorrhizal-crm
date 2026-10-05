@@ -129,6 +129,36 @@ Settled:
   schema + example (which regenerates the contract fixtures and TS types). The web (#1286) and
   Android (#1287) tracks both read the style from this endpoint.
 
+## Amendment, 2026-10-05 (stateless draft geocode)
+
+The v1.4.0 web editor (issue #1286) shipped with "Find coordinates" disabled for any address without a
+saved `id`, so a newly typed address had to be saved (and the contact re-opened) before it could be
+geocoded — and an existing address had to be saved before an edited street/city could be looked up at
+all, because the endpoint geocodes the persisted row. It was also a write: pressing the button saved
+coordinates onto the stored address, so **Discard** did not revert a lookup made mid-edit.
+
+Settled: an additive, **stateless** route — `POST /api/v1/contacts/:id/addresses/geocode`
+(`GeocodeContactAddressDraft`, `backend/controllers/contact_address_controller.go`). It reads the same
+postal fields (plus the address's `sensitivity`) from the request body, applies the same sensitivity
+gate (400 unless `include_sensitive=true` for `private`/`secret`), enforces the same contact-ownership
+scoping, and returns `{coordinates, cached}` **without persisting anything**. The editor holds the
+coordinate in its draft; the ordinary contact save persists it, so Discard correctly reverts it. The
+persisted per-address route is unchanged and remains the endpoint for API clients. Both are still one
+explicit lookup per action, never automatic, never bulk, and the contact id remains the ownership
+anchor, so neither is a general geocoding proxy. The frontend drops the saved-id requirement from the
+button's disabled state (the sensitivity gate stays).
+
+## Amendment, 2026-10-05 (SPA CSP allows the configured tile origin)
+
+§1 chose to fetch tiles straight from `MAP_TILE_STYLE_URL`'s host, but the shipped SPA
+Content-Security-Policy pinned `connect-src 'self'` (and named no `worker-src`), so in a real
+deployment the browser refused both the style/tile fetches and MapLibre's `blob:` worker — pins
+rendered on a blank canvas. Fixed by deriving the CSP's tile origin from the same env var at container
+start: `docker/entrypoint.sh` renders `$csp_tile_origin` (host only) into the CSP via an
+`hsts.conf`-style include, and the policy adds `worker-src blob:`. `connect-src`/`img-src` therefore
+allow exactly `'self'`, `data:`, `blob:` and the one configured origin — no blanket `https:`. The
+split `frontend/nginx.conf` image (no entrypoint) carries the OpenFreeMap default statically.
+
 ## Consequences
 
 - A self-hosted operator who wants OpenFreeMap needs to set nothing; anyone wanting Google-free tiles

@@ -1182,6 +1182,20 @@ export type GeocodeAddressResponse = {
   coordinates: string;
 };
 
+export type GeocodeDraftRequest = {
+  city?: string;
+  country?: string;
+  postal?: string;
+  region?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+  street?: string;
+};
+
+export type GeocodeDraftResponse = {
+  cached: boolean;
+  coordinates: string;
+};
+
 export type Gift = {
   activity_id?: number;
   created_at: string;

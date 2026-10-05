@@ -253,6 +253,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 					logger.Error().Err(err).Msg("geocoder misconfigured; geocoding disabled")
 					geocoder = &services.Geocoder{}
 				}
+				// Draft (stateless) lookup first: the static `geocode` segment
+				// must not be captured as an :addressId.
+				protected.POST("/contacts/:id/addresses/geocode", middleware.ValidateJSONMiddleware(&models.GeocodeDraftInput{}), controllers.GeocodeContactAddressDraft(geocoder))
 				protected.POST("/contacts/:id/addresses/:addressId/geocode", controllers.GeocodeContactAddress(geocoder))
 			}
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
