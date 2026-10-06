@@ -1,5 +1,4 @@
-import { test as base, expect } from '@playwright/test';
-import { test as a11yTest } from './fixtures';
+import { test as a11yTest, expect } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Issue #374 — security headers are set in two places that must stay in sync:
@@ -53,7 +52,7 @@ function assertHeaders(headers: Record<string, string>, expected: Record<string,
   }
 }
 
-const test = base;
+const test = a11yTest;
 
 test.describe('Security headers: SPA (nginx)', () => {
   test('/ carries the nginx security headers (server-level add_header)', async ({ request }) => {

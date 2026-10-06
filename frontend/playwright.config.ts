@@ -31,19 +31,17 @@ export default defineConfig({
   // behind the retry. PR/push keep retrying once.
   retries: process.env.CI ? (process.env.GITHUB_EVENT_NAME === 'schedule' ? 0 : 1) : 0,
 
-  // Tests authenticate once via the `setup` project and reuse the saved
-  // storageState, so they no longer log in through the UI on every test.
-  // That removes the serial-login bottleneck that forced workers: 1. We still
-  // cap workers on CI to keep SQLite write contention predictable.
-  //
-  // Issue #1177: the release composer runs this suite under heavy load, where
-  // two workers racing the shared test user's settings is what flaked RC2.
-  // PLAYWRIGHT_WORKERS lets that run pin to 1 without slowing the per-PR/push
-  // path.
+  // Issue #1480: every worker authenticates as its OWN account (a worker-scoped
+  // fixture in e2e/fixtures.ts registers + seeds it through the API), so
+  // account-level settings a test mutates never reach another worker. That
+  // removed the shared-user race that forced the cross-process settings lock and
+  // the 1-worker pin on the release run (issue #1177), so CI runs 4 workers. The
+  // DB file is still shared (SQLite has one writer) but the rows are disjoint.
+  // PLAYWRIGHT_WORKERS stays as a manual override for local bisecting.
   workers: process.env.PLAYWRIGHT_WORKERS
     ? Number(process.env.PLAYWRIGHT_WORKERS)
     : process.env.CI
-      ? 2
+      ? 4
       : undefined,
 
   // Reporter to use
@@ -61,18 +59,23 @@ export default defineConfig({
   },
 
   projects: [
-    // Authenticates once and writes playwright/.auth/user.json.
+    // Authenticates the shared (auto-admin) `testuser` once and writes
+    // playwright/.auth/user.json.
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
     },
-    // All other specs reuse the saved auth state. Specs that need a
-    // logged-out state (e.g. auth.spec.ts) opt out via test.use({ storageState }).
+    // Specs get their auth state from the per-worker `storageState` fixture
+    // override in e2e/fixtures.ts -- deliberately NOT set here, since a config
+    // value is one file for every worker. Specs that need a logged-out state
+    // (e.g. auth.spec.ts) opt out via test.use({ storageState: LOGGED_OUT });
+    // admin-only / seeded-exact specs opt into the shared user with
+    // test.use({ sharedUser: true }). The `setup` project still logs the shared
+    // `testuser` in, for those and for admin cleanup.
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
       },
       dependencies: ['setup'],
       testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/],

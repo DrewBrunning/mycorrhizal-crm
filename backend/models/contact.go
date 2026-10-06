@@ -532,7 +532,11 @@ func (c *Contact) AfterSave(tx *gorm.DB) error {
 
 // AfterDelete advances updated_at on a soft delete so T17 change feeds see
 // the tombstone (see Note.AfterDelete's doc comment for the full rationale).
-// Hard deletes and bulk deletes are skipped via the DeletedAt guard.
+// Hard deletes are skipped via the DeletedAt guard.
+// Audit events for a zero-identity (bulk-delete) receiver are skipped centrally
+// by auditAfterDelete (issue #1471): GORM's soft-delete clause sets DeletedAt on
+// the model even for a bulk Where(...).Delete, so the DeletedAt guard alone does
+// not skip bulk deletes.
 func (c *Contact) AfterDelete(tx *gorm.DB) error {
 	if !c.DeletedAt.Valid {
 		return nil

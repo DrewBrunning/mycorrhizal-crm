@@ -1,5 +1,12 @@
-import { expect, type Page, test } from '@playwright/test';
-import { createTestContact, deleteTestContact, stableClick, waitForLoading } from './fixtures';
+import type { Page } from '@playwright/test';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  authTest as test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**

@@ -86,7 +86,18 @@ test.describe('Audit log', () => {
     const createdCircle = await createRes.json();
     const circle = createdCircle.circle ?? createdCircle;
 
+    // The "unfiltered list offers Undo" sanity check below needs a contact-update
+    // audit row. It used to inherit one from other specs' history on the shared
+    // user; each worker now has its own fresh account (issue #1480), so this test
+    // makes its own.
+    const contact = await createTestContact(request, { lastname: 'UndoSanity' });
+
     try {
+      const contactUpdated = await request.put(`${API_BASE_URL}/contacts/${contact.ID}`, {
+        data: toContactRecordInput({ firstname: contact.firstname, lastname: 'UndoSanityAfter' }),
+      });
+      expect(contactUpdated.ok()).toBeTruthy();
+
       const updated = await request.put(`${API_BASE_URL}/circles/${circle.id}`, {
         data: { name: `${circleName}-2` },
       });
@@ -121,6 +132,7 @@ test.describe('Audit log', () => {
       await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0, { timeout: 10000 });
     } finally {
       await request.delete(`${API_BASE_URL}/circles/${circle.id}`).catch(() => {});
+      await deleteTestContact(request, contact.ID);
     }
   });
 

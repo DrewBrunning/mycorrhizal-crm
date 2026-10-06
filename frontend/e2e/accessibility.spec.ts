@@ -90,6 +90,10 @@ async function gotoWithTheme(page: Page, route: string, theme: Theme): Promise<v
 // context is deterministic regardless of the selection.
 const AUTH_STORAGE_STATE = 'playwright/.auth/user.json';
 
+// The scans look up the shared `testuser`'s seeded Alice (beforeAll below), so
+// they authenticate as that same user rather than a per-worker one (issue #1480).
+test.use({ sharedUser: true });
+
 let contactId: number | undefined;
 let contactCreated = false;
 

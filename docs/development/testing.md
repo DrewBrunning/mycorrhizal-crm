@@ -269,6 +269,38 @@ Detail and the hard-won traps for each layer follow.
   pinning their values, so the run exercises the genuine `getIntEnv` default
   path and would catch a future change to the shipped default.
 
+### Per-worker test users (issue #1480)
+
+Specs do **not** share one account. `e2e/fixtures.ts` overrides Playwright's
+`storageState` fixture so each **worker** authenticates as its own account
+(`e2e_w<worker>_<run-id>`, `e2e/workerUser.ts`): a worker-scoped `workerUser`
+fixture registers it through the API on first use, seeds the same five sample
+contacts as `global-setup.ts`, logs in through the UI once (so the cached user
+info is in the saved state), and hard-deletes it through the admin API on
+teardown. Account-level settings (`/users/enabled-contact-fields`,
+`/users/date-format`, `/notifications/config`, `/immich/config`, …) are
+singleton rows per user, so a test that mutates one only ever affects its own
+worker — there is **no settings lock**, no `describe.serial` for settings, and
+no `PLAYWRIGHT_WORKERS=1` pin on the release run (CI runs 4 workers).
+
+- Import `test`/`expect` from `./fixtures`, never from `@playwright/test`
+  (`e2e/workerUser.vitest.ts` fails otherwise): the override lives only there, and
+  the project config sets no `storageState`.
+- `test.use({ storageState: LOGGED_OUT })` still opts out (auth/2FA/login specs).
+- `test.use({ sharedUser: true })` opts a file/describe into the **shared
+  `testuser`** — the auto-admin (first registered account) — for specs that need
+  admin rights (`userManagement`, the User Management mobile cases) or assert on the
+  seeded dataset's exact contents (`visual`, `accessibility`). That user's settings
+  are immutable by contract: while it is active, a **browser** request that would
+  write an account-level setting (`isSettingsMutation` in `workerUser.ts`) is
+  aborted and fails the test. (API-only `request` traffic is not intercepted.)
+- Admin-only cleanup (`deleteThrowawayUser(username)`) always goes through the
+  shared admin's saved state, never the calling test's own (non-admin) user.
+- `isolation.spec.ts` asserts the harness itself: two worker-style users never
+  see each other's contacts or settings.
+- A spec that must read the worker's credentials (e.g. `sessionExpiry`'s in-place
+  re-auth) takes the `workerUser` fixture.
+
 ### Visual regression (issue #258)
 
 `frontend/e2e/visual.spec.ts` snapshots a small, curated set of stable views —

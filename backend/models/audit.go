@@ -306,6 +306,9 @@ func auditAfterSave(tx *gorm.DB, entityType, entityID string, userID uint) {
 	if tx == nil || tx.Statement == nil || tx.Statement.Context == nil {
 		return
 	}
+	if skipZeroIdentityAudit(entityType, entityID, userID, AuditOpCreate) {
+		return
+	}
 	state, _ := tx.Statement.Context.Value(auditStateKey).(*auditState)
 	op := AuditOpUpdate
 	before := ""
@@ -319,10 +322,32 @@ func auditAfterSave(tx *gorm.DB, entityType, entityID string, userID uint) {
 	auditRecorder.record(entityType, entityID, op, userID, before)
 }
 
+// skipZeroIdentityAudit reports whether an audit hook fired for a zero-value
+// model (empty/"0" entity id, or user_id 0) and must not record anything
+// (issue #1471). A bulk Where(...).Delete(&Model{}) or Model(&M{}).Where(...)
+// .Update(...) fires the model's hooks once on a zero-value receiver rather
+// than per row; the resulting event can never satisfy audit_events.user_id's
+// FK and only produces a "failed to persist audit event" warning that buries
+// real failures. Cascade children are deliberately not undoable, so no
+// per-child event is lost. Centralised here so a new audited model cannot
+// reintroduce the bug.
+func skipZeroIdentityAudit(entityType, entityID string, userID uint, op string) bool {
+	if entityID != "" && entityID != "0" && userID != 0 {
+		return false
+	}
+	logger.Debug().
+		Str("entity_type", entityType).Str("entity_id", entityID).Str("operation", op).
+		Msg("audit: skipping event for zero-identity (bulk-hook) model")
+	return true
+}
+
 // auditAfterDelete fires the delete audit event with a redacted snapshot of
 // the row being deleted (the model still holds its values in AfterDelete).
 func auditAfterDelete(tx *gorm.DB, entityType, entityID string, userID uint, model any) {
 	if tx == nil {
+		return
+	}
+	if skipZeroIdentityAudit(entityType, entityID, userID, AuditOpDelete) {
 		return
 	}
 	raw, err := redactedJSONForAudit(model)
