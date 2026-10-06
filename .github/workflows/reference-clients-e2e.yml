@@ -229,6 +229,17 @@ jobs:
           CARDDAV_ENABLED: "true"
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
+          # Unlike the vdirsyncer leg above, this leg seeds the canonical
+          # fixture, which by design stores attachment METADATA with no bytes
+          # on disk (internal/canonicalfixture/manifest.go's AttachmentEntry
+          # doc). The live-DB integrity check and the backup-restore drill both
+          # correctly flag those dangling references, but that has nothing to
+          # do with DAVx5 interoperability and would otherwise trip the
+          # logguard step below on every run. Disabled here with the same
+          # throwaway-data rationale docker-compose.test.yml uses for the
+          # drill; the e2e leg keeps the integrity check on against a real DB.
+          DB_INTEGRITY_CHECK_ENABLED: "false"
+          DB_RESTORE_DRILL_ENABLED: "false"
         run: |
           /tmp/mycorrhizal-backend > /tmp/e2e/server.log 2>&1 &
           for _ in $(seq 1 60); do

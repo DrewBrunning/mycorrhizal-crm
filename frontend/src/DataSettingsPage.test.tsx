@@ -390,6 +390,16 @@ test('opening and closing the file import dialog, then reloading history on comp
   fireEvent.click(await screen.findByRole('button', { name: 'import-complete' }));
 
   await waitFor(() => expect(historyMock).toHaveBeenCalledTimes(1));
+
+  // Import completion refreshes the history but must NOT close the dialog:
+  // the wizard still shows its result step (created/updated/skipped) until the
+  // user dismisses it with Done. Closing here raced the Done click and tore
+  // the dialog out from under it (the T96 e2e flake).
+  expect(screen.getByRole('button', { name: 'import-close' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'import-close' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'import-close' })).not.toBeInTheDocument(),
+  );
 });
 
 test('opening and closing the Monica import dialog, then reloading history on completion', async () => {

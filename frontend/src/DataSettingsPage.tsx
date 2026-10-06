@@ -517,7 +517,11 @@ export default function DataSettingsPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImportComplete={() => {
-          setImportOpen(false);
+          // Refresh the history table, but do NOT close the dialog here: a
+          // successful import still has a result step (the created/updated/
+          // skipped summary) for the user to read and dismiss with Done.
+          // Closing from onImportComplete raced the Done click and tore the
+          // dialog out from under it (the T96 e2e flake); Done drives onClose.
           void loadImportHistory();
         }}
       />
