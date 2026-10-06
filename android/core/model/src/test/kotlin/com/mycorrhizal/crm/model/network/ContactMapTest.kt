@@ -111,15 +111,14 @@ class ContactMapTest {
     }
 
     @Test
-    fun `MapConfig and GeocodeAddressResponse decode their wire names`() {
+    fun `MapConfig and GeocodeDraftResponse decode their wire names`() {
         val moshi = MoshiProvider.get()
         assertEquals(
             "https://tiles.example/style",
             moshi.adapter(MapConfig::class.java).fromJson("""{"tile_style_url":"https://tiles.example/style"}""")?.tileStyleUrl,
         )
-        val geo = moshi.adapter(GeocodeAddressResponse::class.java)
-            .fromJson("""{"address_id":"a","coordinates":"geo:1,2","cached":true}""")
-        assertEquals("a", geo?.addressId)
+        val geo = moshi.adapter(GeocodeDraftResponse::class.java)
+            .fromJson("""{"coordinates":"geo:1,2","cached":true}""")
         assertEquals("geo:1,2", geo?.coordinates)
         assertTrue(geo!!.cached)
     }

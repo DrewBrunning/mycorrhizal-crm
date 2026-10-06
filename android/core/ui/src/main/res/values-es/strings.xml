@@ -351,7 +351,13 @@
     <string name="contact_address_coordinates_hint">Por ejemplo 51.5007, -0.1246</string>
     <string name="contact_address_coordinates_invalid">Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.</string>
     <string name="contact_address_find_coordinates">Buscar coordenadas</string>
-    <string name="contact_address_find_coordinates_save_first">Guarda primero esta dirección. Las coordenadas se buscan para la dirección guardada.</string>
+    <string name="contact_address_find_coordinates_save_first">Guarda primero este contacto y luego busca las coordenadas. No hace falta que el texto de la dirección esté guardado.</string>
+    <string name="contact_address_find_coordinates_local">No disponible en perfiles locales — introduce las coordenadas a mano.</string>
+    <string name="contact_address_sensitivity">Sensibilidad</string>
+    <string name="contact_address_sensitivity_normal">Normal</string>
+    <string name="contact_address_sensitivity_private">Privada</string>
+    <string name="contact_address_sensitivity_secret">Secreta</string>
+    <string name="contact_address_sensitivity_hint">Las direcciones privadas y secretas se excluyen de la sincronización, las exportaciones y los envíos compartidos.</string>
     <string name="contact_address_find_coordinates_sensitive">Esta dirección está marcada como privada o secreta, por lo que nunca se envía al geocodificador. Introduce las coordenadas a mano.</string>
     <string name="contact_address_find_coordinates_failed">No se pudieron encontrar coordenadas para esta dirección.</string>
     <string name="contact_address_find_coordinates_loading">Buscando coordenadas…</string>

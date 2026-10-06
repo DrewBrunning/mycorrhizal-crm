@@ -42,10 +42,24 @@ data class ContactMapPoint(
     val coordinates: String = "",
 )
 
-/** `POST /contacts/:id/addresses/:addressId/geocode` response. */
+/**
+ * `POST /contacts/:id/addresses/geocode` request: the stateless draft lookup.
+ * Only the postal fields the geocoder reads plus the sensitivity; no id or
+ * coordinate, because this body never writes an address.
+ */
 @JsonClass(generateAdapter = true)
-data class GeocodeAddressResponse(
-    @Json(name = "address_id") val addressId: String = "",
+data class GeocodeDraftRequest(
+    val street: String = "",
+    val city: String = "",
+    val region: String = "",
+    val postal: String = "",
+    val country: String = "",
+    val sensitivity: String = "",
+)
+
+/** `POST /contacts/:id/addresses/geocode` response: the coordinate, NOT stored server-side. */
+@JsonClass(generateAdapter = true)
+data class GeocodeDraftResponse(
     val coordinates: String = "",
     val cached: Boolean = false,
 )

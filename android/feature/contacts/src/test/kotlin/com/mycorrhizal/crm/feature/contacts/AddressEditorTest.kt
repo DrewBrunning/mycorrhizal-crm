@@ -231,10 +231,91 @@ class AddressEditorTest {
     fun `find coordinates is disabled with a reason for a secret address`() = assertSensitiveBlocked("secret")
 
     @Test
-    fun `find coordinates is disabled with a save-first reason without a contact or id`() {
-        setEditor(listOf(Address()), geocode = AddressGeocodeState(canGeocode = true))
+    fun `find coordinates works for a new unsaved row and reports its positional key`() {
+        val found = mutableListOf<String>()
+        setEditor(listOf(Address()), geocode = AddressGeocodeState(canGeocode = true), onFound = { found += it })
+
+        composeTestRule.onNodeWithText("Find coordinates").assertIsEnabled().performClick()
+
+        assertEquals(listOf("row-0"), found)
+    }
+
+    @Test
+    fun `find coordinates is disabled with a save-first reason when the contact is not saved`() {
+        setEditor(listOf(Address()), geocode = AddressGeocodeState(canGeocode = false))
         composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Save this address first", substring = true).assertExists()
+        composeTestRule.onNodeWithText("Save this contact first", substring = true).assertExists()
+    }
+
+    @Test
+    fun `find coordinates is disabled with a local-profile reason`() {
+        val found = mutableListOf<String>()
+        setEditor(
+            listOf(Address(id = "a1")),
+            geocode = AddressGeocodeState(canGeocode = true, localProfile = true),
+            onFound = { found += it },
+        )
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Not available in local profiles", substring = true).assertExists()
+        assertTrue(found.isEmpty())
+        // Manual entry still works.
+        composeTestRule.onNodeWithText(coordinatesLabel).assertIsEnabled()
+    }
+
+    @Test
+    fun `a new row's in-flight state and error are keyed by its positional key`() {
+        setEditor(
+            listOf(Address()),
+            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("row-0")),
+        )
+        composeTestRule.onNodeWithText("Looking up coordinates…").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `the sensitivity picker shows normal for a null value and preserves it untouched`() {
+        val current = setEditor(listOf(Address(id = "a")))
+
+        composeTestRule.onNodeWithText("Sensitivity").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Normal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("City").performTextInput("Metropolis")
+
+        assertNull(current().single().sensitivity)
+    }
+
+    @Test
+    fun `a loaded secret value shows as Secret`() {
+        setEditor(listOf(Address(id = "a", sensitivity = "secret")))
+
+        composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the picker offers normal private and secret and writes the choice`() {
+        val current = setEditor(listOf(Address(id = "a")))
+
+        composeTestRule.onNodeWithText("Normal").performClick()
+        composeTestRule.onNodeWithText("Private").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Private").performClick()
+
+        assertEquals("private", current().single().sensitivity)
+    }
+
+    @Test
+    fun `picking private disables find coordinates live and picking normal re-enables it`() {
+        val found = mutableListOf<String>()
+        setEditor(listOf(Address(id = "a1")), onFound = { found += it })
+        composeTestRule.onNodeWithText("Find coordinates").assertIsEnabled()
+
+        composeTestRule.onNodeWithText("Normal").performClick()
+        composeTestRule.onNodeWithText("Private").performClick()
+        composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("never sent to the geocoder", substring = true).assertExists()
+
+        composeTestRule.onNodeWithText("Private").performClick()
+        composeTestRule.onNodeWithText("Normal").performClick()
+        composeTestRule.onNodeWithText("Find coordinates").assertIsEnabled().performClick()
+        assertEquals(listOf("a1"), found)
     }
 
     @Test

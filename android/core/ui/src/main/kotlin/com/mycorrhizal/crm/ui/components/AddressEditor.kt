@@ -9,7 +9,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +33,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.mycorrhizal.crm.model.network.ADDRESS_SENSITIVITIES
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.EntryPeriod
@@ -35,6 +41,7 @@ import com.mycorrhizal.crm.model.network.formatGeoUri
 import com.mycorrhizal.crm.model.network.isGeocodable
 import com.mycorrhizal.crm.model.network.parseCoordinateInput
 import com.mycorrhizal.crm.model.network.parseGeoUri
+import com.mycorrhizal.crm.model.network.addressRowKey
 import com.mycorrhizal.crm.model.network.entryPeriodOf
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
@@ -62,10 +69,10 @@ fun AddressEditor(
     // row can display/edit its own start/end year period keyed by element ID.
     periods: List<EntryPeriod> = emptyList(),
     onPeriodsChange: (List<EntryPeriod>) -> Unit = {},
-    // ADR 0031: coordinates + the explicit geocode lookup. `null` onFindCoordinates
-    // (callers without a saved contact) shows the action disabled with a reason.
+    // ADR 0031: coordinates + the explicit geocode lookup, keyed by `addressRowKey`
+    // (a new row has no id). `null` onFindCoordinates shows the action disabled.
     geocode: AddressGeocodeState = AddressGeocodeState(),
-    onFindCoordinates: ((addressId: String) -> Unit)? = null,
+    onFindCoordinates: ((rowKey: String) -> Unit)? = null,
 ) {
     // Per-row reveal keys for the hidden additional fields. Only ever grows
     // (web's useRowKeys semantics); loaded rows key off their stable `id`,
@@ -74,7 +81,7 @@ fun AddressEditor(
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         addresses.forEachIndexed { index, address ->
-            val key = address.id ?: "row-$index"
+            val key = addressRowKey(address, index)
             val draft = address.toDraft()
             val showAdditional = key in revealedKeys || draft.hasAdditionalParts
             val period = address.id?.let { entryPeriodOf(periods, "address", it) }
@@ -98,10 +105,10 @@ fun AddressEditor(
                     onPeriodsChange(upsertEntryPeriod(periods, "address", id, yearTemporalRange(start, end)))
                 },
                 onRevealAdditional = { revealedKeys = revealedKeys + key },
-                findReason = findCoordinatesReason(address, geocode.canGeocode && onFindCoordinates != null),
-                finding = address.id in geocode.inFlight,
-                findError = address.id?.let { geocode.errors[it] },
-                onFindCoordinates = { address.id?.let { id -> onFindCoordinates?.invoke(id) } },
+                findReason = findCoordinatesReason(address, geocode, onFindCoordinates != null),
+                finding = key in geocode.inFlight,
+                findError = geocode.errors[key],
+                onFindCoordinates = { onFindCoordinates?.invoke(key) },
             )
         }
         IconButton(onClick = { onChange(addresses + Address(contexts = listOf("home"))) }) {
@@ -113,12 +120,16 @@ fun AddressEditor(
 /**
  * Why the find-coordinates action is unavailable, or null when it is. A
  * private/secret address is never sent to the geocoder (the backend answers
- * 400); mirror that up front with the reason rather than a dead button.
+ * 400); mirror that up front with the reason rather than a dead button. It is
+ * evaluated from the row's live sensitivity, so flipping the picker updates it.
+ * The address itself need not be saved (the draft route takes the row's text),
+ * only the contact.
  */
 @Composable
-private fun findCoordinatesReason(address: Address, canGeocode: Boolean): String? = when {
+private fun findCoordinatesReason(address: Address, geocode: AddressGeocodeState, hasCallback: Boolean): String? = when {
     !address.isGeocodable -> stringResource(R.string.contact_address_find_coordinates_sensitive)
-    !canGeocode || address.id == null -> stringResource(R.string.contact_address_find_coordinates_save_first)
+    geocode.localProfile -> stringResource(R.string.contact_address_find_coordinates_local)
+    !geocode.canGeocode || !hasCallback -> stringResource(R.string.contact_address_find_coordinates_save_first)
     else -> null
 }
 
@@ -137,6 +148,8 @@ private data class AddressDraft(
     val coordinates: String?,
     val timeZone: String?,
     val full: String?,
+    /** `normal` | `private` | `secret`; null/blank = normal and is preserved untouched. */
+    val sensitivity: String?,
 ) {
     val hasAdditionalParts: Boolean
         get() = pobox.isNotBlank() || apartment.isNotBlank() || floor.isNotBlank()
@@ -165,6 +178,7 @@ private fun Address.toDraft(): AddressDraft {
         coordinates = coordinates,
         timeZone = timeZone,
         full = full,
+        sensitivity = sensitivity,
     )
 }
 
@@ -191,6 +205,7 @@ private fun Address.withDraft(draft: AddressDraft): Address {
         components = components.ifEmpty { null },
         contexts = contexts,
         coordinates = draft.coordinates?.ifBlank { null },
+        sensitivity = draft.sensitivity?.ifBlank { null },
     )
 }
 
@@ -225,6 +240,10 @@ private fun AddressRow(
                 Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
             }
         }
+        SensitivityDropdown(
+            current = draft.sensitivity,
+            onChange = { onDraftChange(draft.copy(sensitivity = it)) },
+        )
         // T115: the standard address parts advertise their ContentType so the
         // Autofill service can fill street/city/region/postal/country from the
         // device address book.
@@ -325,6 +344,52 @@ private fun AddressRow(
         }
     }
 }
+
+/**
+ * ADR 0031: the per-address sensitivity picker. `private`/`secret` addresses are
+ * withheld from sync, exports and shares and never sent to the geocoder. A loaded
+ * null/blank value shows as Normal and is preserved until the user picks one.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SensitivityDropdown(current: String?, onChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val effective = current?.takeIf { it.isNotBlank() } ?: "normal"
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = sensitivityLabel(effective),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.contact_address_sensitivity)) },
+            supportingText = { Text(stringResource(R.string.contact_address_sensitivity_hint)) },
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ADDRESS_SENSITIVITIES.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(sensitivityLabel(option)) },
+                    onClick = {
+                        expanded = false
+                        onChange(option)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun sensitivityLabel(token: String): String = stringResource(
+    when (token) {
+        "private" -> R.string.contact_address_sensitivity_private
+        "secret" -> R.string.contact_address_sensitivity_secret
+        else -> R.string.contact_address_sensitivity_normal
+    },
+)
 
 /**
  * ADR 0031: the manual "lat, lng" entry plus the explicit geocode action. Only

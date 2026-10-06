@@ -202,10 +202,13 @@ switches to a plain list of the same points (the map canvas itself cannot be tra
 holds more than 5000 plottable addresses the screen shows the first 5000 and a notice saying so.
 
 In a contact's address editor, **Coordinates (latitude, longitude)** takes a pair such as `51.5007, -0.1246`, and
-**Find coordinates** looks up a *saved* address through the geocoder your server operator enabled
-(`GEOCODER_PROVIDER`). A private or secret address is never sent to the geocoder, and the lookup is not available in a
-[local (on-device) profile](#local-on-device-profiles), where you enter coordinates by hand. Private and secret
-addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
+**Find coordinates** looks up the address text in the editor through the geocoder your server operator enabled
+(`GEOCODER_PROVIDER`). It works on a new or just-edited address; the result is only stored when you save the contact,
+so Discard leaves the server untouched. Each address also has a **Sensitivity** picker (Normal, Private, Secret):
+private and secret addresses are withheld from sync, exports and shares and are never sent to the geocoder (Find
+coordinates is disabled with a reason, and updates as soon as you change the picker). The lookup is not available in a
+[local (on-device) profile](#local-on-device-profiles), where it is disabled and you enter coordinates by hand. Private
+and secret addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
 [Contact map](map.md).
 
 ## About and build details

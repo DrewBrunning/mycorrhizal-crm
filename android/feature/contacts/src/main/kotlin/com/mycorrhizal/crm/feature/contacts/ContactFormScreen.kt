@@ -169,8 +169,8 @@ fun ContactFormContent(
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
     onAddressesChange: (List<com.mycorrhizal.crm.model.network.Address>) -> Unit,
-    // ADR 0031: the explicit geocode lookup for one saved address (null = unavailable).
-    onFindCoordinates: ((addressId: String) -> Unit)? = null,
+    // ADR 0031: the explicit geocode lookup for one address row, by row key (null = unavailable).
+    onFindCoordinates: ((rowKey: String) -> Unit)? = null,
     onTitlesChange: (List<com.mycorrhizal.crm.model.network.Title>) -> Unit,
     onImppChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onSocialChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
@@ -374,6 +374,7 @@ fun ContactFormContent(
                 onPeriodsChange = onPeriodsChange,
                 geocode = AddressGeocodeState(
                     canGeocode = state.contactId != null,
+                    localProfile = state.localProfile,
                     inFlight = state.geocodeInFlight,
                     errors = state.geocodeErrors,
                 ),
