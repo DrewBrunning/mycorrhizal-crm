@@ -1,0 +1,110 @@
+name: ARM64 Tests
+
+# Issue #1485. The published image is multi-arch (linux/amd64 + linux/arm64)
+# and a large share of self-hosters run the arm64 half (Raspberry Pi, Apple-
+# silicon Docker, Ampere VPS), yet every other workflow runs on amd64
+# `ubuntu-latest`. This workflow runs the Go suite natively on GitHub's free
+# `ubuntu-24.04-arm` runner, which is also the only place backend/main_test.go
+# (it execs the HOST-arch binary: the embedded-host handshake) proves anything
+# about arm64. The published-image arm64 smoke is a matrix leg of
+# docker-publish.yml's `post-publish-smoke` job (same file, same digest).
+#
+# Deliberately a cheap smoke: NO -race (race-instrumented arm builds are slow
+# and amd64 already covers data races), NO coverage (amd64 owns the Codecov
+# numbers). What it catches is architecture-sensitive: build tags, cgo paths,
+# 64-bit atomic alignment, unsafe/endianness code, seccomp/syscall and
+# timing differences.
+#
+# Cadence (the issue asked us to decide): the `rest` leg (everything outside
+# controllers/services/database/schemafixture/property -- includes main_test.go,
+# atrest, the exporters) runs per pull request when backend code changes;
+# `controllers` runs on push:main, nightly, dispatch and release composition.
+# It is a release-tier gate (not in the main-protection ruleset), composed by
+# release-validate.yml.
+#
+# The `GOOS=android GOARCH=arm64 CGO_ENABLED=0 -tags nodynamic` cross-compile
+# of the embedded server is already proved by android-tests.yml's "Build the
+# embedded server binary and assert it is packaged" step; not repeated here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/arm64-tests.yml'
+  schedule:
+    - cron: '25 4 * * *' # 04:25 UTC nightly
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: arm64-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  arm64-go:
+    name: ARM64 Go tests (${{ matrix.leg }})
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # Per-PR cost control: only the `rest` leg runs on a pull request.
+        leg: ${{ fromJSON(github.event_name == 'pull_request' && '["rest"]' || '["rest","controllers"]') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Fail loudly if the runner label ever resolves to a non-arm64 host, so
+      # this job cannot go green while silently testing amd64 again.
+      - name: Assert the job is really running on arm64
+        working-directory: backend
+        run: |
+          set -eu
+          host="$(uname -m)"
+          goarch="$(go env GOARCH)"
+          echo "uname -m=$host  go env GOARCH=$goarch"
+          [ "$host" = "aarch64" ] && [ "$goarch" = "arm64" ] \
+            || { echo "::error::expected aarch64/arm64, got $host/$goarch"; exit 1; }
+
+      - name: Vet (arm64)
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Resolve packages for this leg
+        id: pkgs
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+        run: |
+          case "$LEG" in
+            controllers) list="./controllers/..." ;;
+            rest)        list="$(go list ./... | grep -vE 'mycorrhizal/(controllers|services|database|internal/schemafixture|internal/propertytest|internal/largedata|internal/contactgen)$' | tr '\n' ' ')" ;;
+            *)           echo "unknown leg: $LEG" >&2; exit 1 ;;
+          esac
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests (no -race, no coverage)
+        working-directory: backend
+        env:
+          PKGS: ${{ steps.pkgs.outputs.list }}
+          RAPID_CHECKS: '200'
+          ADDRESS_PROPERTY_ITERATIONS: '200'
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          go test "${pkgs[@]}" -timeout=50m

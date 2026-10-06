@@ -47,6 +47,7 @@ jobs:
         workflow_file:
           - android-tests.yml
           - asvs-staleness.yml
+          - arm64-tests.yml
           - carddav-e2e.yml
           - chaos-tests.yml
           - codeql.yml
