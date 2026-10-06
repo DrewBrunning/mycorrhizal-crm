@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MapPoint } from '../api/map';
 
+const STYLE_LOAD_TIMEOUT_MS = 10_000;
+
 interface ContactMapProps {
   styleUrl: string;
   points: MapPoint[];
@@ -26,6 +28,7 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
   const openRef = useRef(onOpenContact);
   openRef.current = onOpenContact;
   const [failed, setFailed] = useState(false);
+  const [styleFailed, setStyleFailed] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -39,6 +42,18 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
       return;
     }
     setFailed(false);
+    setStyleFailed(false);
+    // A style that never loads (CSP-blocked tile host, outage, bad style URL)
+    // means the source/layers below are never added, so the map would show no
+    // points and no reason. Surface it before 'load' only: individual tile
+    // errors after load are normal and ignored.
+    let loaded = false;
+    const styleTimeout = setTimeout(() => {
+      if (!loaded) setStyleFailed(true);
+    }, STYLE_LOAD_TIMEOUT_MS);
+    map.on('error', () => {
+      if (!loaded) setStyleFailed(true);
+    });
     map.addControl(new NavigationControl(), 'top-right');
 
     const SOURCE = 'contacts';
@@ -65,6 +80,9 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
     // ones cluster. Features carry only the array index; the popup is built
     // from the typed point with textContent (contact data is user input).
     map.on('load', () => {
+      loaded = true;
+      clearTimeout(styleTimeout);
+      setStyleFailed(false);
       map.addSource(SOURCE, {
         type: 'geojson',
         cluster: true,
@@ -137,22 +155,32 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
       map.fitBounds(bounds, { padding: 48, maxZoom: 12, animate: false });
     }
 
-    return () => map.remove();
+    return () => {
+      clearTimeout(styleTimeout);
+      map.remove();
+    };
   }, [styleUrl, points, t]);
 
   if (failed) return <Alert severity="error">{t('map.unavailable')}</Alert>;
   return (
-    <Box
-      ref={containerRef}
-      role="region"
-      aria-label={t('map.title')}
-      data-testid="contact-map"
-      sx={{
-        width: '100%',
-        height: { xs: '60vh', md: '70vh' },
-        borderRadius: 1,
-        overflow: 'hidden',
-      }}
-    />
+    <>
+      {styleFailed && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t('map.styleFailed')}
+        </Alert>
+      )}
+      <Box
+        ref={containerRef}
+        role="region"
+        aria-label={t('map.title')}
+        data-testid="contact-map"
+        sx={{
+          width: '100%',
+          height: { xs: '60vh', md: '70vh' },
+          borderRadius: 1,
+          overflow: 'hidden',
+        }}
+      />
+    </>
   );
 }

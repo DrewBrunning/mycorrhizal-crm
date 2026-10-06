@@ -1731,7 +1731,8 @@
     "unavailable": "No se pudo mostrar el mapa. Es posible que tu navegador no admita WebGL.",
     "truncated": "Se muestran solo las primeras {{count}} direcciones; el mapa está limitado a esta cantidad de puntos.",
     "listHeading": "Contactos en el mapa",
-    "unnamed": "Contacto sin nombre"
+    "unnamed": "Contacto sin nombre",
+    "styleFailed": "No se pudo cargar el fondo del mapa; los contactos se enumeran a continuación."
   },
   "contactScore": {
     "badge": {

@@ -1758,7 +1758,8 @@
     "unavailable": "The map could not be displayed. Your browser may not support WebGL.",
     "truncated": "Showing the first {{count}} addresses only; the map is limited to this many points.",
     "listHeading": "Contacts on the map",
-    "unnamed": "Unnamed contact"
+    "unnamed": "Unnamed contact",
+    "styleFailed": "The map background could not be loaded; the contacts are listed below."
   },
   "contactScore": {
     "badge": {

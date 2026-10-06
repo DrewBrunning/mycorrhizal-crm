@@ -1731,7 +1731,8 @@
     "unavailable": "Die Karte konnte nicht angezeigt werden. Dein Browser unterstützt möglicherweise kein WebGL.",
     "truncated": "Es werden nur die ersten {{count}} Adressen angezeigt; die Karte ist auf diese Anzahl von Punkten begrenzt.",
     "listHeading": "Kontakte auf der Karte",
-    "unnamed": "Unbenannter Kontakt"
+    "unnamed": "Unbenannter Kontakt",
+    "styleFailed": "Der Kartenhintergrund konnte nicht geladen werden; die Kontakte sind unten aufgelistet."
   },
   "contactScore": {
     "badge": {

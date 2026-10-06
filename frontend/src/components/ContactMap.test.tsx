@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { MapPoint } from '../api/map';
@@ -189,6 +189,41 @@ test('hovering points and clusters shows a pointer cursor', () => {
     expect(h.canvas.style.cursor).toBe('pointer');
     h.handlers[`mouseleave:${layer}`]();
     expect(h.canvas.style.cursor).toBe('');
+  }
+});
+
+test('warns, without replacing the map, when the style errors before load', () => {
+  render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  act(() => h.handlers.error());
+  expect(screen.getByRole('alert')).toHaveTextContent(/background could not be loaded/i);
+  expect(screen.getByRole('region', { name: 'Contact map' })).toBeInTheDocument();
+});
+
+test('a tile error after load does not warn', () => {
+  render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+  act(() => h.handlers.load());
+  act(() => h.handlers.error());
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+test('warns when the style has not loaded after the timeout, not if it loaded', () => {
+  vi.useFakeTimers();
+  try {
+    render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    cleanup();
+    render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+    act(() => h.handlers.load());
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
   }
 });
 
