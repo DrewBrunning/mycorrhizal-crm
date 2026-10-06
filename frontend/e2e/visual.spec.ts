@@ -366,6 +366,10 @@ async function interceptContactsList(page: Page): Promise<void> {
 // Desktop (1280x720 — the chromium project's pinned device/viewport)
 // ---------------------------------------------------------------------------
 
+// Baselines are taken against the shared, settings-immutable `testuser` (issue
+// #1480): the fixture fails any test here that writes an account setting.
+test.use({ sharedUser: true });
+
 test.describe('Visual regression (desktop)', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
 

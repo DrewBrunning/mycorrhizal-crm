@@ -1,4 +1,4 @@
-import { expect, test, withExclusiveUserSettings } from './fixtures';
+import { expect, test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // N9 — the
@@ -21,11 +21,10 @@ import { API_BASE_URL } from './global-setup';
 // browser Push API / service worker is unavailable under Playwright's test
 // browser).
 test.describe('Notification settings', () => {
-  // /notifications/config is a singleton row on the shared TEST_USER, same
-  // as /users/enabled-contact-fields and /users/date-format -- restore it in
-  // a finally block (below) and hold the same cross-file lock those specs
-  // use, so a leftover "ntfy enabled, garbage URL" state from this test
-  // can't linger into (or race) anything else sharing the account. Gotify's
+  // /notifications/config is a singleton row on the calling worker's own
+  // per-worker user (issue #1480), so no other spec can race it; it is still
+  // restored in a finally block (below) so a leftover "ntfy enabled, garbage
+  // URL" state can't linger into later tests on the same worker. Gotify's
   // token is never echoed back by the API (see notification_controller.go's
   // notificationConfigResponse), so this spec never touches it and the
   // restore below doesn't need to recover one.
@@ -33,75 +32,73 @@ test.describe('Notification settings', () => {
     page,
     request,
   }) => {
-    await withExclusiveUserSettings(async () => {
-      const before = await request.get(`${API_BASE_URL}/notifications/config`);
-      expect(before.ok()).toBeTruthy();
-      const original = await before.json();
+    const before = await request.get(`${API_BASE_URL}/notifications/config`);
+    expect(before.ok()).toBeTruthy();
+    const original = await before.json();
 
-      try {
-        await page.goto('/settings');
+    try {
+      await page.goto('/settings');
 
-        // The Notifications card renders all three channels.
-        const card = page.getByText('Choose how reminder notifications reach you');
-        await expect(card).toBeVisible();
-        await expect(page.getByText('Send reminders via ntfy')).toBeVisible();
-        await expect(page.getByText('Send reminders via Gotify')).toBeVisible();
-        await expect(page.getByText('Send reminders via browser push')).toBeVisible();
+      // The Notifications card renders all three channels.
+      const card = page.getByText('Choose how reminder notifications reach you');
+      await expect(card).toBeVisible();
+      await expect(page.getByText('Send reminders via ntfy')).toBeVisible();
+      await expect(page.getByText('Send reminders via Gotify')).toBeVisible();
+      await expect(page.getByText('Send reminders via browser push')).toBeVisible();
 
-        // Configure ntfy: URL + topic + enable. A unique topic makes the
-        // persistence assertion exact, and the toggle is flipped to a known
-        // "checked" state rather than blindly clicked, so a leftover enabled state
-        // from a previous (un-wiped) test DB cannot toggle it the wrong way.
-        const topic = `e2e-alerts-${Date.now()}`;
-        await page.getByLabel('ntfy server URL').fill('https://ntfy.example.com');
-        await page.getByLabel('Topic').fill(topic);
-        const ntfyToggle = page.getByLabel('Send reminders via ntfy');
-        if (!(await ntfyToggle.isChecked())) {
-          await ntfyToggle.click();
-        }
-        await expect(ntfyToggle).toBeChecked();
-        await page.getByRole('button', { name: 'Save notification settings' }).click();
-
-        // Save confirmation appears.
-        await expect(page.getByText('Notification settings saved')).toBeVisible();
-
-        // Reload: the saved values come back from the server.
-        await page.reload();
-        await expect(page.getByLabel('ntfy server URL')).toHaveValue('https://ntfy.example.com');
-        await expect(page.getByLabel('Topic')).toHaveValue(topic);
-        await expect(ntfyToggle).toBeChecked();
-
-        // A private URL (as self-hosted ntfy servers usually are) gets a warning
-        // that explains the WEBHOOK_BLOCK_PRIVATE_URLS policy before the user
-        // ever saves it.
-        await page.getByLabel('ntfy server URL').fill('http://localhost:8000');
-        await expect(page.getByText(/WEBHOOK_BLOCK_PRIVATE_URLS/)).toBeVisible();
-
-        // A misconfigured target must report the failure, not fail silently.
-        await page.getByLabel('ntfy server URL').fill('http://127.0.0.1:1');
-        const testButton = page.getByRole('button', { name: 'Send test notification' }).first();
-        await expect(testButton).toBeEnabled();
-        await testButton.click();
-        await expect(page.getByText(/Test failed:/)).toBeVisible({ timeout: 15000 });
-      } finally {
-        // Restore exactly what was there before -- not just "disabled" -- so
-        // a run against an already-configured account (or a re-run of this
-        // test) leaves the shared account the way it found it.
-        await request
-          .put(`${API_BASE_URL}/notifications/config`, {
-            data: {
-              ntfy_url: original.ntfy_url ?? '',
-              ntfy_topic: original.ntfy_topic ?? '',
-              gotify_url: original.gotify_url ?? '',
-              gotify_token: '',
-              notify_ntfy: original.notify_ntfy ?? false,
-              notify_gotify: original.notify_gotify ?? false,
-              notify_push: original.notify_push ?? false,
-            },
-          })
-          .catch(() => {});
+      // Configure ntfy: URL + topic + enable. A unique topic makes the
+      // persistence assertion exact, and the toggle is flipped to a known
+      // "checked" state rather than blindly clicked, so a leftover enabled state
+      // from a previous (un-wiped) test DB cannot toggle it the wrong way.
+      const topic = `e2e-alerts-${Date.now()}`;
+      await page.getByLabel('ntfy server URL').fill('https://ntfy.example.com');
+      await page.getByLabel('Topic').fill(topic);
+      const ntfyToggle = page.getByLabel('Send reminders via ntfy');
+      if (!(await ntfyToggle.isChecked())) {
+        await ntfyToggle.click();
       }
-    });
+      await expect(ntfyToggle).toBeChecked();
+      await page.getByRole('button', { name: 'Save notification settings' }).click();
+
+      // Save confirmation appears.
+      await expect(page.getByText('Notification settings saved')).toBeVisible();
+
+      // Reload: the saved values come back from the server.
+      await page.reload();
+      await expect(page.getByLabel('ntfy server URL')).toHaveValue('https://ntfy.example.com');
+      await expect(page.getByLabel('Topic')).toHaveValue(topic);
+      await expect(ntfyToggle).toBeChecked();
+
+      // A private URL (as self-hosted ntfy servers usually are) gets a warning
+      // that explains the WEBHOOK_BLOCK_PRIVATE_URLS policy before the user
+      // ever saves it.
+      await page.getByLabel('ntfy server URL').fill('http://localhost:8000');
+      await expect(page.getByText(/WEBHOOK_BLOCK_PRIVATE_URLS/)).toBeVisible();
+
+      // A misconfigured target must report the failure, not fail silently.
+      await page.getByLabel('ntfy server URL').fill('http://127.0.0.1:1');
+      const testButton = page.getByRole('button', { name: 'Send test notification' }).first();
+      await expect(testButton).toBeEnabled();
+      await testButton.click();
+      await expect(page.getByText(/Test failed:/)).toBeVisible({ timeout: 15000 });
+    } finally {
+      // Restore exactly what was there before -- not just "disabled" -- so
+      // a run against an already-configured account (or a re-run of this
+      // test) leaves the shared account the way it found it.
+      await request
+        .put(`${API_BASE_URL}/notifications/config`, {
+          data: {
+            ntfy_url: original.ntfy_url ?? '',
+            ntfy_topic: original.ntfy_topic ?? '',
+            gotify_url: original.gotify_url ?? '',
+            gotify_token: '',
+            notify_ntfy: original.notify_ntfy ?? false,
+            notify_gotify: original.notify_gotify ?? false,
+            notify_push: original.notify_push ?? false,
+          },
+        })
+        .catch(() => {});
+    }
   });
 
   test('push subscription registration is user-scoped CRUD via the API', async ({ request }) => {

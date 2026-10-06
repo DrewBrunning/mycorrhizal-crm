@@ -93,7 +93,7 @@ test.describe('Contact sharing', () => {
     } finally {
       await recipientContext.close();
       await deleteTestContact(page.request, contact.ID);
-      await deleteThrowawayUser(page.request, recipient.username);
+      await deleteThrowawayUser(recipient.username);
     }
   });
 
@@ -149,7 +149,7 @@ test.describe('Contact sharing', () => {
     } finally {
       await recipientContext.close();
       await deleteTestContact(page.request, contact.ID);
-      await deleteThrowawayUser(page.request, recipient.username);
+      await deleteThrowawayUser(recipient.username);
     }
   });
 });

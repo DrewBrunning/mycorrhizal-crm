@@ -1,10 +1,9 @@
 import * as crypto from 'node:crypto';
-import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import {
   type APIRequestContext,
+  type BrowserContextOptions,
   test as base,
   expect,
   type Locator,
@@ -12,6 +11,13 @@ import {
 } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
 import { API_BASE_URL, E2E_CONTACT_PREFIX, TEST_USER } from './global-setup';
+import {
+  deleteAccountAsAdmin,
+  isSettingsMutation,
+  provisionWorkerUser,
+  SHARED_STORAGE_STATE,
+  type WorkerUser,
+} from './workerUser';
 
 export { expect } from '@playwright/test';
 
@@ -191,7 +197,73 @@ export async function assertNoAaaContrastViolations(page: Page, context: string)
   expect(detail, JSON.stringify(detail, null, 2)).toEqual([]);
 }
 
-export const test = base.extend<{ page: Page }>({
+type StorageStateOption = BrowserContextOptions['storageState'];
+
+/**
+ * The per-worker-auth layer (issue #1480) with NO automatic a11y scan. Specs
+ * that predate the scan and import `test` from here keep exactly the behavior
+ * they had when they took Playwright's bare `test`; `test` below adds the scan.
+ */
+export const authTest = base.extend<
+  { sharedUser: boolean; storageState: StorageStateOption },
+  { workerUser: WorkerUser }
+>({
+  // Issue #1480: each worker authenticates as its OWN account (registered and
+  // seeded through the API on first use, hard-deleted on teardown), so
+  // account-level settings a test mutates never reach another worker and no
+  // cross-process lock is needed. Specs read the credentials from here when
+  // they must type them (sessionExpiry's in-place re-auth).
+  workerUser: [
+    async ({ browser }, use, workerInfo) => {
+      const stateDir = path.join(workerInfo.project.outputDir, '.auth');
+      const user = await provisionWorkerUser(browser, workerInfo.workerIndex, stateDir);
+      await use(user);
+      await deleteAccountAsAdmin(user.username);
+    },
+    { scope: 'worker', timeout: 60_000 },
+  ],
+
+  // Opt a file/describe into the shared, settings-immutable `testuser` (the
+  // auto-admin) with `test.use({ sharedUser: true })`: for specs that need
+  // admin rights or assert on the seeded dataset's exact contents. While
+  // active, a browser request that would write an account-level setting fails
+  // the test (see the `context` override), so that user's settings stay
+  // immutable and nothing else's read of them can be corrupted.
+  sharedUser: [false, { option: true }],
+
+  // The default auth state is the worker's own user. Only fills in a value
+  // when none was configured: a spec's `test.use({ storageState })` (LOGGED_OUT,
+  // an explicit path) bypasses this override entirely, as before.
+  storageState: async ({ storageState, sharedUser, workerUser }, use) => {
+    if (storageState !== undefined) return use(storageState);
+    await use(sharedUser ? SHARED_STORAGE_STATE : workerUser.storageStatePath);
+  },
+
+  context: async ({ context, sharedUser, storageState }, use) => {
+    const violations: string[] = [];
+    // Only the shared user's own session is guarded: a LOGGED_OUT /
+    // other-account context in a sharedUser describe is not that user.
+    const guarded = sharedUser && storageState === SHARED_STORAGE_STATE;
+    if (guarded) {
+      await context.route(/\/api\/v1\//, async (route) => {
+        const req = route.request();
+        if (isSettingsMutation(req.method(), req.url())) {
+          violations.push(`${req.method()} ${req.url()}`);
+          await route.abort('blockedbyclient');
+          return;
+        }
+        await route.fallback();
+      });
+    }
+    await use(context);
+    expect(
+      violations,
+      "the shared read-only user's account settings are immutable -- run this spec as a per-worker user (drop test.use({ sharedUser: true }))",
+    ).toEqual([]);
+  },
+});
+
+export const test = authTest.extend<{ page: Page }>({
   page: async ({ page }, use, testInfo) => {
     await use(page);
 
@@ -305,131 +377,6 @@ export function uniqueDigits(length = 10): string {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-process mutex for the shared TEST_USER's account-level settings
-// (/users/enabled-contact-fields, /users/date-format, /notifications/config,
-// ...). These are singleton rows on the one account every spec authenticates
-// as (see playwright.config.ts's storageState), so two specs that each
-// read-modify-write one of them -- even from different files -- can
-// interleave their toggle/restore under `fullyParallel: true` and corrupt
-// each other's setting mid-test.
-//
-// `test.describe.configure({ mode: 'serial' })` does NOT close this gap: it
-// only serializes tests *within* one file, and each Playwright worker is a
-// separate OS process, so an in-memory JS lock wouldn't reach across workers
-// either. This is a real cross-process lock -- an atomic `fs.mkdirSync` on a
-// well-known directory in the OS temp dir -- specifically because the race
-// that motivated it (dateFormats.spec.ts and linkFieldTypeEditors.spec.ts
-// both mutating /users/enabled-contact-fields with no coordination) is a
-// cross-file, cross-worker race.
-const USER_SETTINGS_LOCK_DIR = path.join(os.tmpdir(), 'mycorrhizal-e2e-user-settings.lock');
-const USER_SETTINGS_LOCK_OWNER_PREFIX = 'owner-';
-// Issue #1177: a holder is only "stale" when its owning process is actually
-// gone (or the lock is implausibly old, covering a pid reused after a crash).
-// A live but slow holder is NEVER robbed. RC2's dateFormats flake was exactly
-// that: under the composed run's load a holder exceeded the old flat 45s
-// window, the other worker broke the lock, reset the shared user's settings,
-// and the assertion read the reset value. The age window is now only a
-// backstop for a missing owner marker / a reused pid.
-const USER_SETTINGS_LOCK_STALE_MS = 5 * 60_000;
-const USER_SETTINGS_LOCK_ACQUIRE_TIMEOUT_MS = 5 * 60_000;
-
-// The holder records its pid as a *subdirectory* name (`owner-<pid>`), an
-// atomic `mkdir` rather than a write to a predictable path in the shared temp
-// dir (CodeQL js/insecure-temporary-file, CWE-377: the old `writeFileSync`
-// owner file tripped it).
-function readLockOwnerPid(): number | null {
-  try {
-    for (const name of fs.readdirSync(USER_SETTINGS_LOCK_DIR)) {
-      const match = /^owner-(\d+)$/.exec(name);
-      if (match) return Number.parseInt(match[1], 10);
-    }
-  } catch {
-    // Lock dir gone; the caller's EEXIST branch treats that as breakable.
-  }
-  return null;
-}
-
-// True when the current holder is gone (or the lock is implausibly old and its
-// owner can no longer be trusted), so breaking it is safe.
-function lockHolderIsGone(): boolean {
-  try {
-    const stat = fs.statSync(USER_SETTINGS_LOCK_DIR);
-    if (Date.now() - stat.mtimeMs > USER_SETTINGS_LOCK_STALE_MS) return true;
-  } catch {
-    // Lock dir vanished -- nothing to break; the caller retries mkdir.
-    return true;
-  }
-
-  // A live owner pid means the holder is still working, however slow it is.
-  const pid = readLockOwnerPid();
-  if (pid !== null && pid > 0) {
-    try {
-      process.kill(pid, 0); // signal 0 = existence check
-      return false; // alive
-    } catch (err: unknown) {
-      return (err as NodeJS.ErrnoException).code === 'ESRCH';
-    }
-  }
-  // Owner marker not created yet (a holder between the two mkdirs): treat as
-  // live and let the age backstop above decide.
-  return false;
-}
-
-async function acquireUserSettingsLock(
-  timeoutMs = USER_SETTINGS_LOCK_ACQUIRE_TIMEOUT_MS,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      fs.mkdirSync(USER_SETTINGS_LOCK_DIR);
-      // Record the owner so another worker can tell a live-slow holder from a
-      // crashed one (issue #1177).
-      fs.mkdirSync(
-        path.join(USER_SETTINGS_LOCK_DIR, `${USER_SETTINGS_LOCK_OWNER_PREFIX}${process.pid}`),
-      );
-      return;
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-
-      // Break a lock whose holder is gone (or implausibly old) rather than
-      // hang every later test forever, but never rob a live holder.
-      if (lockHolderIsGone()) {
-        fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
-        continue;
-      }
-
-      if (Date.now() > deadline) {
-        throw new Error(
-          'Timed out waiting for the shared e2e user-settings lock -- another test is holding it ' +
-            `(${USER_SETTINGS_LOCK_DIR}). If that directory is stale from a crashed run, delete it.`,
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-}
-
-function releaseUserSettingsLock(): void {
-  fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
-}
-
-/**
- * Runs `fn` with exclusive access to the shared TEST_USER's account-level
- * settings. Every spec that reads-modifies-writes a singleton per-user
- * setting (enabled-contact-fields, date-format, notification config, ...)
- * and restores it afterward must wrap its whole test body in this, so its
- * toggle-then-restore window can never interleave with another spec's.
- */
-export async function withExclusiveUserSettings<T>(fn: () => Promise<T>): Promise<T> {
-  await acquireUserSettingsLock();
-  try {
-    return await fn();
-  } finally {
-    releaseUserSettingsLock();
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Throwaway secondary accounts (isolation checks, contact-share recipients,
 // ...) — always uniquely suffixed so two tests (or two runs) never fight over
 // the same account, and always cleaned up via the admin API so nothing
@@ -452,34 +399,16 @@ export function makeThrowawayUser(label: string): ThrowawayUser {
 }
 
 /**
- * Deletes a throwaway account by username via the admin API. The shared
- * TEST_USER is auto-admin (the first registered account -- see
- * userManagement.spec.ts's note), and DeleteUser is a real hard delete (the
- * one deliberate exception in CLAUDE.md's soft/hard-delete rules, precisely
- * so a torn-down account's username/email can be reused), so this leaves
- * nothing for a later run to skip over.
- *
- * `adminRequest` must be an authenticated-as-TEST_USER request context (e.g.
- * `page.request` on a page using the shared storageState) -- never the
- * throwaway account's own context.
+ * Deletes a throwaway account by username via the admin API, always as the
+ * shared auto-admin `testuser` (the first registered account) -- NOT as the
+ * calling test's own user, which under per-worker users (issue #1480) is an
+ * ordinary non-admin account. DeleteUser is a real hard delete (the one
+ * deliberate exception in CLAUDE.md's soft/hard-delete rules, precisely so a
+ * torn-down account's username/email can be reused), so this leaves nothing
+ * for a later run to skip over. Best-effort: cleanup never fails a test.
  */
-export async function deleteThrowawayUser(
-  adminRequest: APIRequestContext,
-  username: string,
-): Promise<void> {
-  try {
-    const directory = await adminRequest.get(`${API_BASE_URL}/users/directory`);
-    if (!directory.ok()) return;
-    const { users } = await directory.json();
-    const match = (users || []).find(
-      (u: { id: number; username: string }) => u.username === username,
-    );
-    if (match) {
-      await adminRequest.delete(`${API_BASE_URL}/admin/users/${match.id}`).catch(() => {});
-    }
-  } catch {
-    // Best-effort cleanup; never fail a test over it.
-  }
+export async function deleteThrowawayUser(username: string): Promise<void> {
+  await deleteAccountAsAdmin(username);
 }
 
 /**

@@ -164,6 +164,8 @@ func (r *Reminder) AfterSave(tx *gorm.DB) error {
 	return nil
 }
 
+// AfterDelete: a bulk Where(...).Delete(&Reminder{}) fires this on a zero-value
+// receiver; auditAfterDelete skips that zero-identity case centrally (#1471).
 func (r *Reminder) AfterDelete(tx *gorm.DB) error {
 	auditAfterDelete(tx, AuditEntityReminder, fmt.Sprintf("%d", r.ID), r.UserID, r)
 	return nil

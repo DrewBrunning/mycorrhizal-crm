@@ -207,7 +207,12 @@ type LifeEvent struct {
 
 // AfterDelete advances updated_at on a soft delete so T17 change feeds see
 // the tombstone (see Note.AfterDelete's doc comment for the full rationale).
-// Hard deletes and bulk deletes are skipped via the DeletedAt guard. The PK
+// Hard deletes are skipped via the DeletedAt guard.
+// Audit events for a zero-identity (bulk-delete) receiver are skipped centrally
+// by auditAfterDelete (issue #1471): GORM's soft-delete clause sets DeletedAt on
+// the model even for a bulk Where(...).Delete, so the DeletedAt guard alone does
+// not skip bulk deletes.
+// The PK
 // is a UUID string, so no numeric conversion is needed.
 func (l *LifeEvent) AfterDelete(tx *gorm.DB) error {
 	if !l.DeletedAt.Valid {

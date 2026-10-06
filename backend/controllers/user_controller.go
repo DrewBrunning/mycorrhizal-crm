@@ -406,24 +406,47 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 	user.PasswordResetExpiresAt = &expires
 	user.PasswordResetRequestedAt = &requested
 
+	// Issue #1473: from here on the response MUST NOT branch on the outcome of
+	// the persist or the send. Both can only fail for a *known* account, so a
+	// 5xx here would answer "this email is registered" to anyone (a mail
+	// transport that is down, misconfigured or rate-limited is common for
+	// self-hosters). Failures are logged at ERROR and recorded as a
+	// system_event so the operator still sees them.
+	const resetAccepted = "If an account exists, password reset instructions were sent"
+
 	if err := db.Save(&user).Error; err != nil {
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password reset token")
-		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
+		recordPasswordResetFailure(context, db, user.ID, "persist_token", err)
+		context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
 		return
 	}
 
-	// T18/issue #411 audit: reset requested for a known account. Only reached
-	// for a known email -- the unknown-email branch above returns first -- so
-	// this can't itself be used to enumerate accounts.
+	// T18/issue #411 audit: reset requested for a known account. This is an
+	// operator-only audit line, not part of the response.
 	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
 
 	if err := services.SendPasswordResetEmail(user.Email, token, user.Language, cfg); err != nil {
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to send password reset email")
-		apperrors.AbortWithError(context, apperrors.ErrExternal("email", "Failed to send password reset email").WithError(err))
-		return
+		recordPasswordResetFailure(context, db, user.ID, "send_email", err)
 	}
 
-	context.JSON(http.StatusOK, gin.H{"message": "If an account exists, password reset instructions were sent"})
+	context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
+}
+
+// recordPasswordResetFailure records an operator-visible system_event for a
+// password-reset request that could not be completed for a known account,
+// without altering the (non-enumerating) HTTP response (issue #1473).
+func recordPasswordResetFailure(c *gin.Context, db *gorm.DB, userID uint, stage string, err error) {
+	uid := userID
+	models.RecordSystemEvent(c.Request.Context(), db, models.SystemEvent{
+		EventType: models.SysEventIntegrationFailed,
+		Component: logger.ComponentEmail,
+		Operation: "password_reset_request",
+		Result:    models.SysResult(logger.ResultFailure),
+		Error:     err.Error(),
+		Detail:    "stage=" + stage,
+		UserID:    &uid,
+	})
 }
 
 // ConfirmPasswordReset validates the token and updates the password.
