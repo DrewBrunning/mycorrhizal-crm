@@ -3,6 +3,8 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -12,9 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -599,4 +603,137 @@ func TestMCP_TimelineWindow(t *testing.T) {
 	assert.ErrorContains(t, err, "until")
 	_, _, err = mcpTimelineWindow("2026-06-10", "2026-06-01", now)
 	assert.ErrorContains(t, err, "before")
+}
+
+func TestMCP_ServerReportsBuildVersion(t *testing.T) {
+	old := buildinfo.Version
+	buildinfo.Version = "v9.9.9-test"
+	t.Cleanup(func() { buildinfo.Version = old })
+
+	f := newMCPFixture(t)
+	status, out := f.rpc(t, f.alice.ID, "initialize", map[string]any{
+		"protocolVersion": "2025-06-18",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "t", "version": "0"},
+	})
+	require.Equal(t, http.StatusOK, status)
+	info := out["result"].(map[string]any)["serverInfo"].(map[string]any)
+	assert.Equal(t, "mycorrhizal-crm", info["name"])
+	assert.Equal(t, "v9.9.9-test", info["version"])
+}
+
+// ADR 0032 amendment (2026-10-05): include_sensitive=false must not let a
+// search confirm a private/secret address (contacts_fts indexes every
+// address regardless of sensitivity).
+func TestMCP_SearchContacts_SensitiveAddressIsNotAnExistenceOracle(t *testing.T) {
+	f := newMCPFixture(t)
+	seed := func(first string, addrs ...contactmodel.Address) models.Contact {
+		c := models.Contact{UserID: f.alice.ID, Firstname: first, Lastname: "Oracle"}
+		require.NoError(t, f.db.Create(&c).Error)
+		models.ApplyRecordToContact(&c, &contactmodel.Record{Card: contactmodel.Card{
+			Name:      &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: first}}},
+			Addresses: addrs,
+		}}, "")
+		require.NoError(t, f.db.Save(&c).Error)
+		return c
+	}
+	addr := func(id, street, sens string) contactmodel.Address {
+		return contactmodel.Address{ID: id, Full: street, Sensitivity: sens,
+			Components: []contactmodel.AddressComponent{{Kind: "name", Value: street}}}
+	}
+	secretOnly := seed("Secretive", addr("a1", "Quillfeather Lane", models.RelationshipSensitivitySecret))
+	openOnly := seed("Openly", addr("a2", "Quillfeather Lane", ""))
+	byName := seed("Quillfeather", addr("a3", "Hidden Road", models.RelationshipSensitivitySecret))
+
+	ids := func(include bool, q string) map[float64]bool {
+		r := f.call(t, f.alice.ID, "search_contacts", map[string]any{"query": q, "include_sensitive": include})
+		require.False(t, r.isError, r.text)
+		out := map[float64]bool{}
+		for _, c := range r.structured["contacts"].([]any) {
+			out[c.(map[string]any)["id"].(float64)] = true
+		}
+		return out
+	}
+
+	def := ids(false, "Quillfeather")
+	assert.False(t, def[float64(secretOnly.ID)], "a secret-address-only match must not be returned by default")
+	assert.True(t, def[float64(openOnly.ID)], "a normal-address match is still found")
+	assert.True(t, def[float64(byName.ID)], "a non-address match on a contact that has a secret address is still found")
+
+	opt := ids(true, "Quillfeather")
+	assert.True(t, opt[float64(secretOnly.ID)], "include_sensitive=true restores the owner view")
+	assert.True(t, opt[float64(openOnly.ID)])
+	assert.True(t, opt[float64(byName.ID)])
+
+	t.Run("phone-shaped term still works with the filter", func(t *testing.T) {
+		c := models.Contact{UserID: f.alice.ID, Firstname: "Phoney", Lastname: "Oracle", Phones: []models.ContactPhone{{Type: "mobile", Value: "+1 800 555 0142"}}}
+		require.NoError(t, f.db.Create(&c).Error)
+		assert.True(t, ids(false, "8005550142")[float64(c.ID)])
+	})
+}
+
+func TestMCP_RunCadenceReport_IncludeSensitiveIsUniformityOnly(t *testing.T) {
+	f := newMCPFixture(t)
+	c := seedMCPContacts(t, f.db, f.alice.ID, 1, "Cad")[0]
+	require.NoError(t, f.db.Create(&models.Activity{
+		UserID: f.alice.ID, Title: "Call", Type: models.InteractionTypeCall,
+		Date: time.Now().AddDate(0, 0, -30), Contacts: []models.Contact{c},
+	}).Error)
+	require.NoError(t, f.db.Create(&models.CadencePolicy{
+		UserID: f.alice.ID, EntityID: c.VCardUID, TargetIntervalDays: 7,
+		QualifyingTypes: []string{models.InteractionTypeCall},
+	}).Error)
+
+	off := f.call(t, f.alice.ID, "run_cadence_report", map[string]any{"include_sensitive": false})
+	on := f.call(t, f.alice.ID, "run_cadence_report", map[string]any{"include_sensitive": true})
+	require.False(t, off.isError, off.text)
+	assert.Equal(t, off.structured["overdue"], on.structured["overdue"], "the report has no sensitivity tier: the flag changes nothing")
+
+	_, out := f.rpc(t, f.alice.ID, "tools/list", map[string]any{})
+	for _, raw := range out["result"].(map[string]any)["tools"].([]any) {
+		tool := raw.(map[string]any)
+		if tool["name"] != "run_cadence_report" {
+			continue
+		}
+		desc := tool["inputSchema"].(map[string]any)["properties"].(map[string]any)["include_sensitive"].(map[string]any)["description"].(string)
+		assert.Contains(t, desc, "no sensitivity-tiered fields")
+	}
+}
+
+// /mcp sits behind the real AuthMiddleware (routes.go): this pins what it
+// accepts and rejects, which docs/mcp.md states.
+func TestMCP_RealAuthMiddlewareCredentialMatrix(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	user := models.User{Username: "alice", Password: "password123", Email: "alice@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	mint := func(scope, raw string) string {
+		sum := sha256.Sum256([]byte(raw))
+		expires := time.Now().Add(time.Hour)
+		require.NoError(t, db.Create(&models.ApiToken{UserID: user.ID, Name: scope, TokenHash: hex.EncodeToString(sum[:]), Scope: scope, ExpiresAt: &expires}).Error)
+		return raw
+	}
+	full := mint("full", "mycorrhizal_full_mcp_test")
+	dav := mint("carddav", "mycorrhizal_carddav_mcp_test")
+
+	cfg := config.Config{ReminderTimezone: "UTC", JWTSecretKey: "test-secret"}
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("cfg", cfg); c.Next() })
+	router.POST("/mcp", middleware.AuthMiddleware(&cfg), MCPHandler())
+
+	post := func(mutate func(*http.Request)) int {
+		body := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`)
+		req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		mutate(req)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w.Code
+	}
+	assert.Equal(t, http.StatusUnauthorized, post(func(*http.Request) {}), "no credential")
+	assert.Equal(t, http.StatusUnauthorized, post(func(r *http.Request) { r.SetBasicAuth("alice", "password123") }), "Basic credential")
+	assert.Equal(t, http.StatusForbidden, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+dav) }), "carddav-scoped token")
+	assert.Equal(t, http.StatusOK, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+full) }), "full-scope bearer token")
+	assert.Equal(t, http.StatusOK, post(func(r *http.Request) { r.AddCookie(&http.Cookie{Name: "auth_token", Value: full}) }), "the auth_token session cookie is also a credential source")
 }
