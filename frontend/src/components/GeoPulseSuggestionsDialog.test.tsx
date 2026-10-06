@@ -84,6 +84,12 @@ function localToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// The stay's own local calendar day, as the dialog derives it.
+function stayDay(timestamp: string): string {
+  const d = new Date(timestamp);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 test('opens with the explanation, today (local) as the date, and nothing looked up yet', () => {
   renderDialog();
 
@@ -163,7 +169,7 @@ test('lists each stay with its place, duration and region', async () => {
   expect(screen.getByText(/1 h 35 min/)).toBeInTheDocument();
   // A sub-minute stay is shown as at least a minute, never "0 min".
   expect(screen.getByText(/1 min/)).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'Log activity' })).toHaveLength(4);
+  expect(screen.getAllByRole('button', { name: /^Log activity at / })).toHaveLength(4);
 });
 
 test('shows photo file names, and says so when photos could not be checked', async () => {
@@ -210,7 +216,7 @@ test('a stay that is already an Activity is marked logged and cannot be logged a
   await lookUp();
 
   expect(await screen.findByText('Already logged')).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'Log activity' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: /^Log activity at / })).toHaveLength(1);
 });
 
 test('a date with no stays says so', async () => {
@@ -243,12 +249,12 @@ test('logging a stay opens the activity form pre-filled, and confirming creates 
   vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
   const { props } = renderDialog();
   await lookUp('2026-09-20');
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
 
   // The activity form is pre-filled from the stay: place and date, nothing about contacts.
   const form = await screen.findByRole('dialog', { name: 'Add Activity' });
   expect(within(form).getByLabelText('Location')).toHaveValue('Cafe Nero');
-  expect(within(form).getByLabelText('Date *')).toHaveValue('2026-09-20');
+  expect(within(form).getByLabelText('Date *')).toHaveValue(stayDay('2026-09-20T14:00:00Z'));
   expect(within(form).getByLabelText('Title *')).toHaveValue('');
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
@@ -262,7 +268,7 @@ test('logging a stay opens the activity form pre-filled, and confirming creates 
     title: 'Coffee with Alice',
     description: '',
     location: 'Cafe Nero',
-    date: new Date('2026-09-20').toISOString(),
+    date: new Date(stayDay('2026-09-20T14:00:00Z')).toISOString(),
     contact_ids: [],
     external_ref: 'geopulse:stay:7',
   });
@@ -273,7 +279,7 @@ test('logging a stay opens the activity form pre-filled, and confirming creates 
     expect(screen.queryByRole('dialog', { name: 'Add Activity' })).not.toBeInTheDocument(),
   );
   expect(screen.getByText('Already logged')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Log activity' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Log activity at / })).not.toBeInTheDocument();
   expect(getGeoPulseSuggestions).toHaveBeenCalledTimes(1);
 });
 
@@ -281,7 +287,7 @@ test('the contacts are only what the user picks', async () => {
   vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
   renderDialog();
   await lookUp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
 
   const form = await screen.findByRole('dialog', { name: 'Add Activity' });
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
@@ -299,7 +305,7 @@ test('a failed save keeps the form open and does not mark the stay logged', asyn
   vi.mocked(createActivity).mockRejectedValue(new Error('boom'));
   const { props } = renderDialog();
   await lookUp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
 
   const form = await screen.findByRole('dialog', { name: 'Add Activity' });
   fireEvent.change(within(form).getByLabelText('Title *'), { target: { value: 'Coffee' } });
@@ -315,7 +321,7 @@ test('cancelling the activity form returns to the list untouched', async () => {
   vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
   renderDialog();
   await lookUp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
 
   const form = await screen.findByRole('dialog', { name: 'Add Activity' });
   fireEvent.click(within(form).getByRole('button', { name: 'Cancel' }));
@@ -324,7 +330,7 @@ test('cancelling the activity form returns to the list untouched', async () => {
     expect(screen.queryByRole('dialog', { name: 'Add Activity' })).not.toBeInTheDocument(),
   );
   expect(createActivity).not.toHaveBeenCalled();
-  expect(screen.getByRole('button', { name: 'Log activity' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Log activity at / })).toBeInTheDocument();
 });
 
 test('closing the dialog forgets the lookup, the logged set and any open form', async () => {
@@ -336,7 +342,7 @@ test('closing the dialog forgets the lookup, the logged set and any open form', 
     </MemoryRouter>,
   );
   await lookUp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
   await screen.findByRole('dialog', { name: 'Add Activity' });
 
   rerender(
@@ -361,4 +367,81 @@ test('Close calls onClose', () => {
   const { props } = renderDialog();
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   expect(props.onClose).toHaveBeenCalled();
+});
+
+test('the activity form is pre-filled from the stay, not from a date typed after the lookup', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
+  renderDialog();
+  await lookUp('2026-09-20');
+  const logButton = await screen.findByRole('button', { name: /^Log activity at / });
+
+  // The user fiddles with the date input but does not press Look up again.
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2027-01-02' } });
+  fireEvent.click(logButton);
+
+  const form = await screen.findByRole('dialog', { name: 'Add Activity' });
+  expect(within(form).getByLabelText('Date *')).toHaveValue(stayDay('2026-09-20T14:00:00Z'));
+  expect(within(form).getByLabelText('Date *')).not.toHaveValue('2027-01-02');
+});
+
+test('each Log activity button names its place and time', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(
+    response(
+      stay(),
+      stay({
+        stay_id: 8,
+        external_ref: 'geopulse:stay:8',
+        location: '',
+        timestamp: '2026-09-20T18:30:00Z',
+      }),
+    ),
+  );
+  renderDialog();
+  await lookUp();
+
+  const buttons = await screen.findAllByRole('button', { name: /^Log activity at / });
+  expect(buttons).toHaveLength(2);
+  expect(buttons[0]).toHaveAccessibleName(/^Log activity at Cafe Nero, .*\d/);
+  expect(buttons[1]).toHaveAccessibleName(/^Log activity at Unnamed place, .*\d/);
+  expect(buttons[0].getAttribute('aria-label')).not.toBe(buttons[1].getAttribute('aria-label'));
+});
+
+test('lookup outcomes are announced through a polite status region', async () => {
+  let resolve: (v: GeoPulseSuggestionsResponse) => void = () => {};
+  vi.mocked(getGeoPulseSuggestions).mockImplementation(() => new Promise((r) => (resolve = r)));
+  renderDialog();
+
+  const status = screen.getByRole('status');
+  expect(status).toHaveAttribute('aria-live', 'polite');
+  expect(status).toHaveTextContent('');
+
+  await lookUp();
+  await waitFor(() => expect(status).toHaveTextContent('Looking up…'));
+  // The spinner carries an accessible name too.
+  expect(screen.getByRole('progressbar')).toHaveAccessibleName('Looking up…');
+
+  resolve(response(stay(), stay({ stay_id: 8, external_ref: 'geopulse:stay:8' })));
+  await waitFor(() => expect(status).toHaveTextContent('Places found: 2'));
+});
+
+test('an empty lookup is announced as no places', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response());
+  renderDialog();
+  await lookUp();
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No places found'));
+});
+
+test('a failed lookup stays announced by the error alert', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValue(new Error('nope'));
+  renderDialog();
+  await lookUp();
+  expect(await screen.findByRole('alert')).toHaveTextContent(/nope/);
+  expect(screen.getByRole('status')).toHaveTextContent('');
+});
+
+test('an already-logged stay is perceivable as text, not just colour', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay({ existing_activity_id: 5 })));
+  renderDialog();
+  await lookUp();
+  expect(await screen.findByText('Already logged')).toBeVisible();
 });
