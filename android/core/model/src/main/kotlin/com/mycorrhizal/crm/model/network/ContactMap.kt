@@ -53,10 +53,14 @@ data class GeocodeAddressResponse(
 /** A validated WGS84 position. */
 data class LatLng(val latitude: Double, val longitude: Double)
 
-private val DECIMAL = Regex("^-?[0-9]+(\\.[0-9]+)?$")
+// The grammar the Go server's strconv.ParseFloat accepts for stored coordinates:
+// optional sign, ".5"/"5." forms and an exponent ("+48.2", "4.8e1", "1E-7").
+// Must stay a superset of what the server accepts (testdata/geo-uri-fixtures.json);
+// a stricter client silently drops a stored valid point.
+private val DECIMAL = Regex("^[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?$")
 
 private fun decimal(text: String): Double? =
-    text.takeIf { DECIMAL.matches(it) }?.toDoubleOrNull()
+    text.takeIf { DECIMAL.matches(it) }?.toDoubleOrNull()?.takeIf { it.isFinite() }
 
 private fun latLngOrNull(lat: Double?, lng: Double?): LatLng? {
     if (lat == null || lng == null) return null
