@@ -567,6 +567,7 @@
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
+    "loadError": "Dieser Kontakt konnte nicht geladen werden.",
     "timelineLoadError": "Einige Zeitachsendaten konnten nicht geladen werden. Bitte lade die Seite neu.",
     "section": {
       "name": "Name",
@@ -867,6 +868,7 @@
     "continue": "Weiter",
     "add": "Hinzufügen",
     "loadMore": "Mehr laden",
+    "tryAgain": "Erneut versuchen",
     "none": "Keine",
     "copy": "Kopieren",
     "copied": "In die Zwischenablage kopiert",
