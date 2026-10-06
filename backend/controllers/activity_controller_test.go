@@ -489,7 +489,7 @@ func TestCreateActivitySetsTypeAndExternalRef(t *testing.T) {
 
 	payload := models.ActivityInput{
 		Title: "Coffee", Date: time.Now().AddDate(0, 0, 1),
-		Type: models.InteractionTypeMeal, ExternalRef: "caldav:abc123",
+		Type: ptrStr(models.InteractionTypeMeal), ExternalRef: ptrStr("caldav:abc123"),
 	}
 	jsonValue, _ := json.Marshal(payload)
 
@@ -518,7 +518,7 @@ func TestUpdateActivitySetsTypeAndExternalRef(t *testing.T) {
 
 	payload := models.ActivityInput{
 		Title: "Coffee", Date: time.Now(),
-		Type: models.InteractionTypeVisit, ExternalRef: "caldav:xyz789",
+		Type: ptrStr(models.InteractionTypeVisit), ExternalRef: ptrStr("caldav:xyz789"),
 	}
 	jsonValue, _ := json.Marshal(payload)
 
@@ -568,4 +568,94 @@ func TestDeleteActivity(t *testing.T) {
 	var deletedActivity models.Activity
 	result := db.First(&deletedActivity, activity.ID)
 	assert.True(t, result.Error != nil) // This should return an error as it has been deleted
+}
+
+func ptrStr(s string) *string { return &s }
+
+// A web edit never sends external_ref; it must not wipe the stored key (that
+// key is the GeoPulse dedupe anchor). An explicit "" is the only way to clear.
+func TestUpdateActivity_ExternalRefOmittedKeepsStored_EmptyClears(t *testing.T) {
+	db, router := setupRouter(t)
+	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
+	router.PUT("/activities/:id", withValidated(func() any { return &models.ActivityInput{} }), UpdateActivity)
+
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	const ref = "geopulse:stay:42"
+	w := do("POST", "/activities", `{"title":"Stay","date":"2026-08-20T18:00:00Z","external_ref":"`+ref+`"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var created map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	id := strconv.Itoa(int(created["activity"].(map[string]any)["ID"].(float64)))
+
+	// PUT without the key (what the web edit form sends): ref preserved.
+	w = do("PUT", "/activities/"+id, `{"title":"Edited","date":"2026-08-20T18:00:00Z"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var reloaded models.Activity
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, "Edited", reloaded.Title)
+	assert.Equal(t, ref, reloaded.ExternalRef)
+
+	// Explicit null also keeps.
+	w = do("PUT", "/activities/"+id, `{"title":"Edited2","date":"2026-08-20T18:00:00Z","external_ref":null}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, ref, reloaded.ExternalRef)
+
+	// Re-confirming the stay returns the existing activity, no duplicate.
+	w = do("POST", "/activities", `{"title":"Stay again","date":"2026-08-20T18:00:00Z","external_ref":"`+ref+`"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "Activity already exists")
+	var n int64
+	require.NoError(t, db.Model(&models.Activity{}).Where("external_ref = ?", ref).Count(&n).Error)
+	assert.EqualValues(t, 1, n)
+
+	// Explicit "" clears.
+	w = do("PUT", "/activities/"+id, `{"title":"Edited3","date":"2026-08-20T18:00:00Z","external_ref":""}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, "", reloaded.ExternalRef)
+}
+
+func TestUpdateActivity_TypeOmittedKeepsStored_EmptyClears(t *testing.T) {
+	db, router := setupRouter(t)
+	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
+	router.PUT("/activities/:id", withValidated(func() any { return &models.ActivityInput{} }), UpdateActivity)
+
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	w := do("POST", "/activities", `{"title":"Lunch","date":"2026-08-20T18:00:00Z","type":"`+models.InteractionTypeMeal+`"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var created map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	id := strconv.Itoa(int(created["activity"].(map[string]any)["ID"].(float64)))
+
+	w = do("PUT", "/activities/"+id, `{"title":"Lunch edited","date":"2026-08-20T18:00:00Z"}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var reloaded models.Activity
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, "Lunch edited", reloaded.Title)
+	assert.Equal(t, models.InteractionTypeMeal, reloaded.Type)
+
+	w = do("PUT", "/activities/"+id, `{"title":"Lunch","date":"2026-08-20T18:00:00Z","type":null}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, models.InteractionTypeMeal, reloaded.Type)
+
+	w = do("PUT", "/activities/"+id, `{"title":"Lunch","date":"2026-08-20T18:00:00Z","type":""}`)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, db.First(&reloaded, id).Error)
+	assert.Equal(t, "", reloaded.Type)
 }

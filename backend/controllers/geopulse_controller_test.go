@@ -361,7 +361,7 @@ func TestConfirmGeoPulseStay_IsIdempotent(t *testing.T) {
 
 	confirm := models.ActivityInput{
 		Title: "Coffee with Alice", Location: sug.Location, Date: sug.Timestamp,
-		ExternalRef: sug.ExternalRef, ContactIDs: []uint{contact.ID},
+		ExternalRef: ptrStr(sug.ExternalRef), ContactIDs: []uint{contact.ID},
 	}
 	first := geopulseDo(t, router, "POST", "/activities", confirm)
 	require.Equal(t, http.StatusOK, first.Code, first.Body.String())
@@ -399,7 +399,7 @@ func TestConfirmGeoPulseStay_IsIdempotent(t *testing.T) {
 
 	// Dedupe is scoped to user_id: another user confirming the same stay id gets their own.
 	otherRouter := geopulseTestRouter(t, db, other.ID, config.Config{})
-	third := geopulseDo(t, otherRouter, "POST", "/activities", models.ActivityInput{Title: "mine", Date: sug.Timestamp, ExternalRef: "geopulse:stay:7"})
+	third := geopulseDo(t, otherRouter, "POST", "/activities", models.ActivityInput{Title: "mine", Date: sug.Timestamp, ExternalRef: ptrStr("geopulse:stay:7")})
 	require.Equal(t, http.StatusOK, third.Code)
 	assert.Contains(t, third.Body.String(), "Activity created successfully")
 
@@ -416,7 +416,7 @@ func TestCreateActivity_NonGeoPulseRefsAreNotDeduped(t *testing.T) {
 	db, user := seedGeoPulseControllerDB(t)
 	router := geopulseTestRouter(t, db, user.ID, config.Config{})
 	for _, ref := range []string{"", "calendar:abc", "calendar:abc", "geopulse:other:1"} {
-		w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{Title: "x", Date: time.Now(), ExternalRef: ref})
+		w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{Title: "x", Date: time.Now(), ExternalRef: ptrStr(ref)})
 		require.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "Activity created successfully", "ref %q", ref)
 	}
@@ -434,7 +434,7 @@ func TestConfirmGeoPulseStay_ContactOwnershipStillEnforced(t *testing.T) {
 
 	router := geopulseTestRouter(t, db, user.ID, config.Config{})
 	w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{
-		Title: "x", Date: time.Now(), ExternalRef: "geopulse:stay:9", ContactIDs: []uint{theirContact.ID},
+		Title: "x", Date: time.Now(), ExternalRef: ptrStr("geopulse:stay:9"), ContactIDs: []uint{theirContact.ID},
 	})
 	assert.Equal(t, http.StatusNotFound, w.Code, "a contact the user does not own must be rejected before any dedupe")
 	var count int64
@@ -483,7 +483,7 @@ func TestGeoPulse_LocalFailuresAreNotBlamedOnGeoPulse(t *testing.T) {
 		db, user := seedGeoPulseControllerDB(t)
 		router := geopulseTestRouter(t, db, user.ID, config.Config{})
 		dbtest.HideTable(t, db, "activities")
-		w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{Title: "x", Date: time.Now(), ExternalRef: "geopulse:stay:1"})
+		w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{Title: "x", Date: time.Now(), ExternalRef: ptrStr("geopulse:stay:1")})
 		assert.Equal(t, http.StatusInternalServerError, w.Code, "a failed dedupe lookup must not fall through to creating a duplicate")
 	})
 }
