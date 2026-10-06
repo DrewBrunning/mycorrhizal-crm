@@ -862,6 +862,68 @@ The **manual client matrix** (Apple Contacts macOS/iOS, Thunderbird,
 Android native, DAVx5) — the clients that cannot be scripted — is a documented
 checklist with last-run dates in `docs/development/reference-client-matrix.md`.
 
+## Real-server integration contract tests (issue #1490)
+
+Every external integration other than CardDAV used to be tested only against
+a hand-written `httptest` fake, which encodes *our reading* of the other
+side's API — the "shared misconception" failure ADR-0003 names for formats.
+INT-02's failure-behavior suite proves what we do when an integration fails;
+`backend/integrations/realserver` proves we speak its protocol when it
+succeeds, against the actual server:
+
+| Server (pinned in `backend/integrations/realserver/stack/`) | Test file | What it proves |
+|---|---|---|
+| Keycloak 26 (OIDC) | `oidc_test.go` | full authorization-code + PKCE (S256) login through our real `/auth/oidc/*` handlers, PKCE verifier enforced, RP-initiated logout (`end_session_endpoint`, `id_token_hint`, `post_logout_redirect_uri`) ends the IdP session, signing-key rotation after the JWKS was cached |
+| ntfy, Gotify | `notifications_test.go` | a notification sent through our delivery code is read back from the server's own API with the title/message we meant; a rejected request / bad token surfaces as an error |
+| Mailpit (SMTP) | `smtp_test.go` | `SendEmail`'s SMTP transport delivers; envelope, Q-encoded UTF-8 subject and HTML body read back from the server |
+| Nextcloud (WebDAV) | `webdav_test.go` | `Ping`/`ListDir` against a real PROPFIND: dir vs file, decoded non-ASCII names, `oc:fileid`, 401/404 sentinels |
+| Paperless-ngx | `paperless_test.go` | Test Connection (`Ping`/`GetMe`), `ListDocuments` (listing + full-text query) and `GetDocument` over a real consumed document |
+| Immich | `immich_test.go` | `Ping`/`GetMyUser`/`ListPeople`/`GetStatistics`/`RecentAssets` (`POST /api/search/metadata`) and both thumbnail fetches over a real uploaded asset and person |
+| Seafile 11 | `seafile_test.go` | `Ping`/`PingAuth`/`ListLibraries`/`ListDir` over a real library, folder and file |
+
+It earned its keep on the first run: it found that ntfy was being sent a JSON
+body at `/<topic>` (a real ntfy displays that raw JSON as the message, with no
+title — ntfy's JSON API posts to the server root), that Paperless Test
+Connection could never succeed (`GET /api/` is a 302 and `/api/auth/me/` is not
+an endpoint) and that Paperless's file name was read from a field the API does
+not serve. The fakes had all agreed with the code.
+
+**Running it.** `.github/workflows/integration-real-servers.yml` runs nightly,
+on dispatch, and on a PR only when the `realservers` filter in
+`.github/filters.yaml` fires; it is a release-tier gate composed by
+`release-validate.yml`. It sets `MYCORRHIZAL_REQUIRE_REFERENCES=1`, and every
+test goes through `internal/citest.SkipOrRequire`, so a server that fails to
+provision fails the job rather than skipping green. Locally, bring up one stack
+at a time and export the `MYCORRHIZAL_RS_*` variables the workflow lists:
+
+```bash
+cd backend/integrations/realserver/stack
+docker compose -f docker-compose.light.yml up -d        # ntfy, Gotify, Mailpit, Keycloak
+cd ../../.. && MYCORRHIZAL_RS_OIDC_ISSUER=http://127.0.0.1:18082/realms/mycorrhizal \
+  MYCORRHIZAL_RS_NTFY_URL=http://127.0.0.1:18080 \
+  go test ./integrations/realserver/ -run 'Ntfy|OIDC' -v
+```
+
+The ports and credentials in the workflow's `env:` block are the ones each
+`docker-compose.*.yml` publishes; the heavy stacks (`paperless`, `immich`,
+`seafile`) are separate files so only one runs at a time, and Nextcloud reuses
+`.github/scripts/carddav-reference/provision-nextcloud.sh`. Images are pinned
+by `tag@digest`; Dependabot's `docker` entry for the `stack/` directory
+proposes bumps, and a bump that breaks a client *is* the signal.
+
+**Coverage map.** `backend/integrations/realserver_coverage_test.go` has a row
+for every `Registry()` integration: real-server tests that exist, or a reasoned
+`Exclusion` (hosted vendor APIs — geocoder, Resend, HIBP, the update check,
+browser push services — webhooks whose "server" is the user's own receiver, and
+the not-yet-wired CalDAV and GeoPulse legs). A new integration cannot land
+without one or the other, and the same file asserts every `MYCORRHIZAL_RS_*`
+variable the tests read is set by the workflow.
+
+**Hand-verifying a leg:** break the client and watch it fail — e.g. rename the
+`username` JSON tag on `PaperlessUser`, or change `sendNtfyMessage` to POST to
+`/<topic>` again — the unit tests stay green (the fakes follow the code) and
+the real-server leg goes red.
+
 ## Layers vs CI path gating
 
 Each layer maps onto an existing area of `.github/filters.yaml` (issue #264) —
@@ -881,6 +943,7 @@ protection.
 | API contract | `openapi` (drift tests ride `backend`; fixture consumers ride `frontend`/`android`; spec fuzz + `cmd/schemagate` ride `openapi`) |
 | Import/export interop | `backend` |
 | CardDAV real-server interop | `carddav` (the fake-based CardDAV suite rides `backend` on every PR; the real-server Radicale job runs on the schedule + manual dispatch, and on a PR only when the `carddav` filter fires — issue #496) |
+| Integration real-server contract | `realservers` (nightly + dispatch always; on a PR only when the clients, the suite or its stacks change — issue #1490) |
 | Migration | `backend` |
 | Frontend unit | `frontend` |
 | Android unit/Robolectric | `android` |

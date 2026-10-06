@@ -200,6 +200,24 @@ carddav:
   - 'backend/internal/canonicalfixture/**'
   - 'testdata/canonical-fixture/**'
 
+# realservers (issue #1490): the real-server contract suite for every external
+# integration (OIDC IdP, ntfy, Gotify, SMTP, Nextcloud, Paperless, Immich,
+# Seafile). Same narrow gate as carddav: the clients it exercises, the suite
+# itself and its pinned server stacks; nightly + dispatch always run it.
+realservers:
+  - '.github/workflows/integration-real-servers.yml'
+  - '.github/scripts/carddav-reference/provision-nextcloud.sh'
+  - 'backend/integrations/**'
+  - 'backend/services/immich_*.go'
+  - 'backend/services/paperless_*.go'
+  - 'backend/services/seafile_*.go'
+  - 'backend/services/webdav_*.go'
+  - 'backend/services/notification_service.go'
+  - 'backend/services/mailer.go'
+  - 'backend/services/oidc_*.go'
+  - 'backend/controllers/oidc_controller.go'
+  - 'backend/controllers/user_controller.go'
+
 # reference-clients (issue #681, TEST-09 direction 1): the scheduled job that
 # drives a REAL third-party client (vdirsyncer) against OUR server. Same
 # philosophy as carddav: narrow gate, slow by design, always on at night.

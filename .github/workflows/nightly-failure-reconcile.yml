@@ -56,6 +56,7 @@ jobs:
           - docker-pin-check.yml
           - e2e-tests.yml
           - flake-ledger.yml
+          - integration-real-servers.yml
           - go-mutation.yml
           - governance-drift.yml
           - grype.yml

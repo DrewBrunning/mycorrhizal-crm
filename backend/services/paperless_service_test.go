@@ -132,7 +132,7 @@ func TestTestPaperlessConnection_SuccessAndDiagnosis(t *testing.T) {
 
 	fake := newFakePaperlessServer(t, "sekret")
 	defer fake.Close()
-	fake.Me = map[string]any{"user_name": "alice", "id": 2}
+	fake.Me = map[string]any{"username": "alice", "id": 2}
 	connectPaperlessForUser(t, db, user.ID, fake.URL(), "sekret")
 
 	result, err := TestPaperlessConnection(db, paperlessTestConfig(), user.ID)
