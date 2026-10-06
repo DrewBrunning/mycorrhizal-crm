@@ -15,6 +15,9 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - **Relationship Tracking** - Map connections between contacts
 - **Activities & Notes** - Log meetings, calls, and personal notes
 - **Reminders** - Set recurring reminders, delivered by email, ntfy, Gotify or browser push
+- **[Contact Map](map.md)** - See where your contacts live on a map (web and Android); optional per-address geocoding, with private and secret addresses kept out of exports, sync and shares
+- **[GeoPulse integration](settings.md#geopulse-connection)** - Turn a day of your own location history into activity suggestions you confirm one by one
+- **[MCP server](mcp.md)** - Let an AI assistant read your CRM data through a read-only Model Context Protocol endpoint
 - **Privacy-Focused** - Self-hosted, your data stays with you
 
 ## Quick Links
@@ -24,6 +27,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Supported versions — what this runs on, "supported" tiers, and the multi-user deployment shape](supported-versions.md)
 - [Android app — install channels, signing keys, and channel switching](android-app.md)
 - [Integrations — ownership, diagnostics, and what breaks if one is down](integration-ownership.md)
+- [Contact map — usage, address sensitivity, and the tile/geocoder operator settings](map.md)
 - [MCP server — endpoint, token, and read-only tools](mcp.md)
 - [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
 - [Service-worker updates & the recovery page](service-worker-updates.md)
