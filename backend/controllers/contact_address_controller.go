@@ -123,6 +123,11 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 			return
 		}
 
+		// The save bumped the revision/ETag, so this is a real contact change:
+		// notify webhook consumers exactly as UpdateContact does (same event,
+		// same payload). The stateless draft route writes nothing and fires none.
+		services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", contact)
+
 		c.JSON(http.StatusOK, gin.H{
 			"address_id":  addressID,
 			"coordinates": coordinates,
