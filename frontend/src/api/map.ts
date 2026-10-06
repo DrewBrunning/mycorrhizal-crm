@@ -15,6 +15,24 @@ export interface GeocodeAddressResult {
   cached: boolean;
 }
 
+// POST /contacts/:id/addresses/geocode (ADR 0031 amendment) response: the
+// stateless draft lookup, which returns the coordinate without storing it.
+export interface GeocodeDraftResult {
+  coordinates: string;
+  cached: boolean;
+}
+
+// The postal fields the draft lookup sends — exactly what the geocoder reads,
+// plus the address's sensitivity for the same gate the persisted route applies.
+export interface GeocodeDraftAddress {
+  street: string;
+  city: string;
+  region: string;
+  postal: string;
+  country: string;
+  sensitivity?: string;
+}
+
 export interface LatLng {
   lat: number;
   lng: number;
@@ -102,6 +120,38 @@ export async function geocodeAddress(
   const response = await apiFetch(
     `${API_BASE_URL}/contacts/${contactId}/addresses/${encodeURIComponent(addressId)}/geocode${query}`,
     { method: 'POST', headers: getAuthHeaders() },
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+  return response.json();
+}
+
+// Triggers exactly one geocode lookup for an address the editor holds as a
+// draft — a new row, or an existing one with unsaved text edits — and returns
+// the coordinate WITHOUT storing it (the caller keeps it in the draft; saving
+// the contact persists it, and Discard reverts it). `includeSensitive` is the
+// explicit opt-in the backend requires for a private/secret address.
+export async function geocodeDraft(
+  contactId: string | number,
+  address: GeocodeDraftAddress,
+  includeSensitive = false,
+): Promise<GeocodeDraftResult> {
+  const query = includeSensitive ? '?include_sensitive=true' : '';
+  const response = await apiFetch(
+    `${API_BASE_URL}/contacts/${contactId}/addresses/geocode${query}`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        street: address.street,
+        city: address.city,
+        region: address.region,
+        postal: address.postal,
+        country: address.country,
+        sensitivity: address.sensitivity,
+      }),
+    },
   );
   if (!response.ok) {
     throw await parseErrorResponse(response);

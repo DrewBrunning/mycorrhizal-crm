@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   formatGeoUri,
   geocodeAddress,
+  geocodeDraft,
   getMapConfig,
   getMapPoints,
   parseCoordinateInput,
@@ -147,6 +148,48 @@ describe('geocodeAddress', () => {
   test('throws the parsed error on failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(geocodeAddress(1, 'a')).rejects.toThrow('nope');
+  });
+});
+
+describe('geocodeDraft', () => {
+  const draft = {
+    street: '1 Rue',
+    city: 'Paris',
+    region: '',
+    postal: '75001',
+    country: 'FR',
+    sensitivity: 'normal',
+  };
+
+  test('POSTs the draft fields and returns the coordinate without an address id', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ coordinates: 'geo:48.85,2.35', cached: false }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await geocodeDraft(7, draft);
+
+    expect(result).toEqual({ coordinates: 'geo:48.85,2.35', cached: false });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/contacts\/7\/addresses\/geocode$/);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual(draft);
+  });
+
+  test('appends include_sensitive=true when opted in', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ coordinates: 'geo:1,2', cached: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await geocodeDraft('7', draft, true);
+    expect(fetchMock.mock.calls[0][0]).toMatch(/addresses\/geocode\?include_sensitive=true$/);
+  });
+
+  test('throws the parsed error on failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(geocodeDraft(1, draft)).rejects.toThrow('nope');
   });
 });
 

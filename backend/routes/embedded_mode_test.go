@@ -53,6 +53,7 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"POST /api/v1/password-reset/request",
 		"POST /api/v1/password-reset/confirm",
 		"GET /api/v1/auth/oidc/config",
+		"POST /api/v1/contacts/:id/addresses/geocode",            // ADR 0031: outbound geocoder, absent like Immich/Paperless
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode", // ADR 0031: outbound geocoder, absent like Immich/Paperless
 		"GET /api/v1/users/2fa/status",
 		"POST /api/v1/users/2fa/setup",
@@ -114,6 +115,7 @@ func TestRegisterRoutes_ServerKeepsNetworkSurfaces(t *testing.T) {
 		"GET /api/v1/api-tokens",
 		"GET /api/v1/webhooks",
 		"GET /api/v1/config/map",
+		"POST /api/v1/contacts/:id/addresses/geocode",
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode",
 	} {
 		require.Truef(t, got[route], "server mode must keep %s", route)
@@ -133,5 +135,6 @@ func TestRegisterRoutes_MisconfiguredGeocoderStillRegistersDisabledRoute(t *test
 	cfg := testConfig()
 	cfg.GeocoderProvider = config.GeocoderProviderMapTiler // no GeocoderAPIKey
 	require.NotPanics(t, func() { RegisterRoutes(router, cfg, db, nil) })
+	require.True(t, routeSet(t, router)["POST /api/v1/contacts/:id/addresses/geocode"])
 	require.True(t, routeSet(t, router)["POST /api/v1/contacts/:id/addresses/:addressId/geocode"])
 }

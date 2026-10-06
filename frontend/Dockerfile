@@ -78,6 +78,16 @@ USER 101
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Map-tile origin for the CSP (issue #1286 follow-up). nginx's stock
+# entrypoint runs /docker-entrypoint.d/*.sh before nginx starts; this one
+# renders conf/csp_tile.inc from MAP_TILE_STYLE_URL (the same script as the
+# all-in-one image). conf.d is the directory nginx-unprivileged leaves writable
+# for the non-root user. Seeded with the default so a config parsed without
+# the entrypoint still carries a real CSP.
+ENV CSP_TILE_CONF_PATH=/etc/nginx/conf.d/csp_tile.inc
+COPY --chmod=0755 --chown=101:0 docker/render-csp-tile.sh /docker-entrypoint.d/40-render-csp-tile.sh
+COPY --chmod=0664 --chown=101:0 docker/csp_tile.inc.default /etc/nginx/conf.d/csp_tile.inc
+
 # Copy built assets from builder
 COPY --from=builder /app/build /usr/share/nginx/html
 

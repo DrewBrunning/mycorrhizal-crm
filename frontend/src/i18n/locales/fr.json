@@ -423,7 +423,6 @@
       "coordinatesHelp": "Par exemple 51.5007, -0.1246",
       "coordinatesInvalid": "Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.",
       "findCoordinates": "Trouver les coordonnées",
-      "findCoordinatesSaveFirst": "Enregistrez d'abord cette adresse. Les coordonnées sont recherchées pour l'adresse enregistrée.",
       "findCoordinatesSensitive": "Cette adresse est marquée comme privée ou secrète ; elle n'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.",
       "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse."
     },
