@@ -96,9 +96,10 @@ data class Address(
     val coordinates: String? = null,
     /**
      * ADR 0031: `normal` | `private` | `secret` (null = normal). A CRM-side
-     * classification with no RFC 9553 home. Never shown or edited here, but it
-     * MUST round-trip: Moshi drops unknown keys, so omitting it would erase it
-     * on the next save. It gates the geocode lookup ([isGeocodable]).
+     * classification with no RFC 9553 home. Edited by the address editor's
+     * sensitivity picker and it MUST round-trip: Moshi drops unknown keys, so
+     * omitting it would erase it on the next save. It gates the geocode lookup
+     * ([isGeocodable]).
      */
     val sensitivity: String? = null,
     val timeZone: String? = null,
@@ -118,6 +119,16 @@ data class Address(
  */
 val Address.isGeocodable: Boolean
     get() = sensitivity.isNullOrBlank() || sensitivity == "normal"
+
+/**
+ * Stable key for one address row in the editor / form state: the element `id`
+ * once the row has one, else a positional key for a brand-new row (which has no
+ * id yet). The geocode in-flight/error state is keyed by this.
+ */
+fun addressRowKey(address: Address, index: Int): String = address.id ?: "row-$index"
+
+/** The accepted `Address.sensitivity` tokens, in picker order. Mirrors the backend `oneof=normal private secret`; keep in sync. */
+val ADDRESS_SENSITIVITIES: List<String> = listOf("normal", "private", "secret")
 
 @JsonClass(generateAdapter = true)
 data class GrammaticalGender(

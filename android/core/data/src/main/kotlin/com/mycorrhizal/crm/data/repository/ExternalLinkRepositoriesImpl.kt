@@ -2,12 +2,17 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
+import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
+import com.mycorrhizal.crm.model.network.GeoPulseConfigResponse
+import com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult
+import com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.model.network.ImmichConfigResponse
@@ -185,4 +190,21 @@ class NextcloudRepositoryImpl @Inject constructor(
                 fileId = item.fileId,
             ),
         )
+}
+
+/** Online-only GeoPulse integration (issue #160) — delegates straight to the ApiClient. */
+class GeoPulseRepositoryImpl @Inject constructor(
+    private val apiClient: ApiClient,
+) : GeoPulseRepository {
+    override suspend fun getConfig(): Result<GeoPulseConfigResponse> = apiClient.getGeoPulseConfig()
+
+    override suspend fun saveConfig(input: GeoPulseConfigInput): Result<GeoPulseConfigResponse> =
+        apiClient.saveGeoPulseConfig(input)
+
+    override suspend fun deleteConfig(): Result<Unit> = apiClient.deleteGeoPulseConfig()
+
+    override suspend fun testConnection(): Result<GeoPulseConnectionTestResult> = apiClient.testGeoPulseConnection()
+
+    override suspend fun getSuggestions(date: String, timezone: String?): Result<GeoPulseSuggestionsResponse> =
+        apiClient.getGeoPulseSuggestions(date, timezone)
 }

@@ -61,6 +61,11 @@ func NormalizeSeafileBaseURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
+// ErrSeafileSecretRequired is returned when the base URL moves to a different
+// origin without a freshly entered API token (credential-exfiltration guard,
+// see SameOrigin).
+var ErrSeafileSecretRequired = errors.New("re-enter the API token when changing the Seafile server")
+
 // UpsertSeafileConfig creates or updates a user's SeafileConfig. A non-empty
 // APIToken is encrypted at rest (credential_crypto.go); an empty one on update
 // keeps the existing stored token unchanged. On create the token is required.
@@ -76,6 +81,9 @@ func UpsertSeafileConfig(db *gorm.DB, jwtSecret string, userID uint, input model
 	}
 
 	if existing != nil {
+		if input.APIToken == "" && !SameOrigin(existing.BaseURL, baseURL) {
+			return nil, ErrSeafileSecretRequired
+		}
 		existing.BaseURL = baseURL
 		if input.APIToken != "" {
 			enc, err := EncryptCredential(jwtSecret, input.APIToken)
@@ -175,6 +183,8 @@ func diagnoseSeafileConnectionFailure(stage string, err error) *SeafileConnectio
 		message = "The Seafile URL resolves to a private or loopback address, which this server is configured to block (SEAFILE_BLOCK_PRIVATE_URLS)."
 	case errors.Is(err, ErrSeafileUnauthorized):
 		message = "Seafile rejected the API token. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrSeafileRedirect):
+		message = "Seafile answered with a redirect — check the base URL (http vs https, path). Redirects are not followed because they would forward your credentials."
 	case errors.Is(err, ErrSeafileUnreachable):
 		message = fmt.Sprintf("Could not reach the Seafile server: %v", err)
 	case errors.Is(err, ErrSeafileRequestFailed):

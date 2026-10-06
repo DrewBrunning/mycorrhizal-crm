@@ -111,6 +111,11 @@ func NormalizeImmichBaseURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
+// ErrImmichSecretRequired is returned when the base URL moves to a different
+// origin without a freshly entered API key (credential-exfiltration guard,
+// see SameOrigin).
+var ErrImmichSecretRequired = errors.New("re-enter the API key when changing the Immich server")
+
 // UpsertImmichConfig creates or updates a user's ImmichConfig. A non-empty
 // APIKey is encrypted at rest (credential_crypto.go); an empty one on update
 // keeps the existing stored key unchanged. On create the key is required.
@@ -134,6 +139,9 @@ func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 
 	if existing != nil {
+		if input.APIKey == "" && !SameOrigin(existing.BaseURL, baseURL) {
+			return nil, ErrImmichSecretRequired
+		}
 		existing.BaseURL = baseURL
 		existing.SyncEnabled = syncEnabled
 		if input.APIKey != "" {
@@ -247,6 +255,8 @@ func diagnoseImmichConnectionFailure(stage string, err error) *ImmichConnectionT
 		message = "The Immich URL resolves to a private or loopback address, which this server is configured to block (IMMICH_BLOCK_PRIVATE_URLS)."
 	case errors.Is(err, ErrImmichUnauthorized):
 		message = "Immich rejected the API key. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrImmichRedirect):
+		message = "Immich answered with a redirect — check the base URL (http vs https, path). Redirects are not followed because they would forward your credentials."
 	case errors.Is(err, ErrImmichUnreachable):
 		message = fmt.Sprintf("Could not reach the Immich server: %v", err)
 	case errors.Is(err, ErrImmichRequestFailed):

@@ -79,6 +79,7 @@ class ServerCapabilityGatingTest {
         composeTestRule.onNodeWithText("Paperless-ngx").assertDoesNotExist()
         composeTestRule.onNodeWithText("Seafile").assertDoesNotExist()
         composeTestRule.onNodeWithText("Nextcloud / ownCloud").assertDoesNotExist()
+        composeTestRule.onNodeWithText("GeoPulse").assertDoesNotExist()
     }
 
     @Test
@@ -98,5 +99,6 @@ class ServerCapabilityGatingTest {
         composeTestRule.onNodeWithText("API Tokens").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Calendar Sync").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Immich").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("GeoPulse").performScrollTo().assertIsDisplayed()
     }
 }

@@ -4,6 +4,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -21,6 +23,8 @@ import com.mycorrhizal.crm.model.network.NameComponent
 import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.addressRowKey
 import com.mycorrhizal.crm.model.network.isGeocodable
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Organization
@@ -106,9 +110,11 @@ data class ContactFormState(
     // + department are surfaced as plain strings and mapped to `organizations[0]` on
     // save (extra organizations are preserved untouched).
     val addresses: List<Address> = emptyList(),
-    // ADR 0031 / issue #1287: address ids with a geocode lookup in flight, and the
+    // ADR 0031 / issue #1287: address row keys with a geocode lookup in flight, and the
     // failure message for the ones whose lookup failed.
     val geocodeInFlight: Set<String> = emptySet(),
+    /** The active profile is on-device: the embedded backend has no geocode routes. */
+    val localProfile: Boolean = false,
     val geocodeErrors: Map<String, String> = emptyMap(),
     val organizationName: String = "",
     val department: String = "",
@@ -485,6 +491,8 @@ class ContactFormViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     // ADR 0031 / issue #1287: the explicit per-address "find coordinates" lookup.
     private val mapRepository: MapRepository,
+    // Issue #1287 follow-up: whether the active profile is on-device (no geocode routes).
+    sessionManager: SessionManager,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -511,6 +519,11 @@ class ContactFormViewModel @Inject constructor(
             _uiState.update { it.copy(language = defaultLanguage()) }
         }
         loadOptions()
+        viewModelScope.launch {
+            sessionManager.observeActiveProfile().collect { profile ->
+                _uiState.update { it.copy(localProfile = profile?.kind is ServerProfileKind.Local) }
+            }
+        }
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
                 _uiState.update { it.copy(enabledFields = resolveEnabledFields(session.enabledContactFields)) }
@@ -593,36 +606,41 @@ class ContactFormViewModel @Inject constructor(
     fun onPhonesChange(value: List<Phone>) = _uiState.update { it.copy(phones = value) }
     fun onAddressesChange(value: List<Address>) = _uiState.update { it.copy(addresses = value) }
     /**
-     * ADR 0031: one explicit geocode lookup for one *saved* address of this
-     * contact. The result is written onto the form's copy of the address (the
-     * server has already stored it too, so Save re-sends the same value). A
-     * private/secret address is refused here without a request, matching the
-     * backend's 400; the editor shows the reason up front.
+     * ADR 0031: one explicit geocode lookup for one address row, keyed by
+     * `addressRowKey` (a new row has no id). It uses the stateless draft route, so the
+     * row's current — possibly unsaved or edited — postal text is sent and the
+     * server stores nothing: the result lands on the form's copy only and is
+     * persisted by Save, so Discard leaves the server untouched. Still needs the
+     * contact to exist (the route is under /contacts/{id}). A private/secret
+     * address is refused here without a request, matching the backend's 400, and
+     * nothing is sent from a local (embedded) profile, which has no geocode route.
      */
-    fun onFindCoordinates(addressId: String) {
+    fun onFindCoordinates(rowKey: String) {
         val id = contactId ?: return
-        val address = _uiState.value.addresses.firstOrNull { it.id == addressId } ?: return
-        if (!address.isGeocodable || addressId in _uiState.value.geocodeInFlight) return
+        val state = _uiState.value
+        if (state.localProfile || rowKey in state.geocodeInFlight) return
+        val address = state.addresses.withIndex().firstOrNull { (i, a) -> addressRowKey(a, i) == rowKey }?.value ?: return
+        if (!address.isGeocodable) return
         _uiState.update {
-            it.copy(geocodeInFlight = it.geocodeInFlight + addressId, geocodeErrors = it.geocodeErrors - addressId)
+            it.copy(geocodeInFlight = it.geocodeInFlight + rowKey, geocodeErrors = it.geocodeErrors - rowKey)
         }
         viewModelScope.launch {
-            mapRepository.geocodeAddress(id, addressId).foldApiError(
+            mapRepository.geocodeAddressDraft(id, address.toGeocodeDraft()).foldApiError(
                 onSuccess = { result ->
-                    _uiState.update { state ->
-                        state.copy(
-                            addresses = state.addresses.map { a ->
-                                if (a.id == addressId) a.copy(coordinates = result.coordinates) else a
+                    _uiState.update { s ->
+                        s.copy(
+                            addresses = s.addresses.mapIndexed { i, a ->
+                                if (addressRowKey(a, i) == rowKey) a.copy(coordinates = result.coordinates) else a
                             },
-                            geocodeInFlight = state.geocodeInFlight - addressId,
+                            geocodeInFlight = s.geocodeInFlight - rowKey,
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update {
                         it.copy(
-                            geocodeInFlight = it.geocodeInFlight - addressId,
-                            geocodeErrors = it.geocodeErrors + (addressId to error.displayMessage),
+                            geocodeInFlight = it.geocodeInFlight - rowKey,
+                            geocodeErrors = it.geocodeErrors + (rowKey to error.displayMessage),
                         )
                     }
                 },
@@ -841,3 +859,16 @@ class ContactFormViewModel @Inject constructor(
 private fun newEntryId(): String = UUID.randomUUID().toString()
 
 
+
+/** The postal fields the draft geocode route reads, from the row's current text. */
+private fun Address.toGeocodeDraft(): GeocodeDraftRequest {
+    fun find(kind: String): String = components.orEmpty().firstOrNull { it.kind == kind }?.value.orEmpty()
+    return GeocodeDraftRequest(
+        street = find("name").ifBlank { find("number") },
+        city = find("locality"),
+        region = find("region"),
+        postal = find("postcode"),
+        country = find("country").ifBlank { countryCode.orEmpty() },
+        sensitivity = sensitivity.orEmpty(),
+    )
+}

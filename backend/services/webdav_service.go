@@ -65,6 +65,11 @@ func NormalizeWebDAVBaseURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
+// ErrWebDAVSecretRequired is returned when the base URL moves to a different
+// origin without a freshly entered app password (credential-exfiltration guard,
+// see SameOrigin).
+var ErrWebDAVSecretRequired = errors.New("re-enter the app password when changing the Nextcloud server")
+
 // UpsertWebDAVConfig creates or updates a user's WebDAVConfig. A non-empty
 // AppPassword is encrypted at rest (credential_crypto.go); an empty one on
 // update keeps the existing stored password unchanged. On create the password
@@ -81,6 +86,9 @@ func UpsertWebDAVConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 
 	if existing != nil {
+		if input.AppPassword == "" && !SameOrigin(existing.BaseURL, baseURL) {
+			return nil, ErrWebDAVSecretRequired
+		}
 		existing.BaseURL = baseURL
 		existing.Username = input.Username
 		if input.AppPassword != "" {
@@ -177,6 +185,8 @@ func diagnoseWebDAVConnectionFailure(err error) *WebDAVConnectionTestResult {
 		message = "The Nextcloud URL resolves to a private or loopback address, which this server is configured to block (WEBDAV_BLOCK_PRIVATE_URLS)."
 	case errors.Is(err, ErrWebDAVUnauthorized):
 		message = "Nextcloud rejected the app password. Check that it hasn't been revoked, expired, or mistyped, and that the username is correct."
+	case errors.Is(err, ErrWebDAVRedirect):
+		message = "Nextcloud answered with a redirect — check the base URL (http vs https, path). Redirects are not followed because they would forward your credentials."
 	case errors.Is(err, ErrWebDAVUnreachable):
 		message = fmt.Sprintf("Could not reach the Nextcloud server: %v", err)
 	case errors.Is(err, ErrWebDAVRequestFailed):

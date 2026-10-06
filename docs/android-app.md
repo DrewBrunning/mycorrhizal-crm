@@ -80,7 +80,7 @@ code the server runs, so a local profile has the same dashboard, cadence,
 duplicates and exports a remote one does.
 
 A local profile is **storage only** (ADR 0028 Decision 2, amended 2026-09-29):
-it has no network or multi-user surface. Immich, Paperless, Seafile, Nextcloud,
+it has no network or multi-user surface. Immich, Paperless, Seafile, Nextcloud, GeoPulse,
 calendar and contact subscriptions, the Monica import and live Meerkat fetch,
 notification channels, admin/user management, webhooks, API tokens and DAV are
 not available on-device, and their Settings entries are hidden. Reminders are
@@ -186,6 +186,18 @@ paths on your own server (`/contacts/{id}`, `/search?q=…`, …), which is the 
 notification taps into; where the web has no matching screen it opens the route's nearest parent (a
 tag opens `/circles?tab=tags`, a circle opens `/circles`).
 
+## Log activities from location history (GeoPulse)
+
+With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → GeoPulse**: server URL and a
+write-only API token, **Test connection**, **Disconnect**; the token must be re-entered on first connect and
+whenever the server's origin changes), the **Activities** screen's top bar has **Log from location history**.
+Pick a date and **Look up**: each recorded stay shows its place, local start time, duration, city/country, the
+file names of photos found nearby (or a "could not be checked" note), or **Already logged**. The result count is
+announced to screen readers, and each stay's **Log activity** control is labelled with its place and time. Tapping
+it opens the normal activity form pre-filled with the location, the stay's own local date and its `external_ref`;
+you choose the contacts and save (the server dedupes a stay that was already logged). Nothing is stored until you
+save. Both entry points are hidden on a local (embedded) profile, which has no outbound integrations.
+
 ## Contact timeline
 
 A contact's page shows the **5 most recent** events of its merged timeline (activities, notes,
@@ -202,10 +214,13 @@ switches to a plain list of the same points (the map canvas itself cannot be tra
 holds more than 5000 plottable addresses the screen shows the first 5000 and a notice saying so.
 
 In a contact's address editor, **Coordinates (latitude, longitude)** takes a pair such as `51.5007, -0.1246`, and
-**Find coordinates** looks up a *saved* address through the geocoder your server operator enabled
-(`GEOCODER_PROVIDER`). A private or secret address is never sent to the geocoder, and the lookup is not available in a
-[local (on-device) profile](#local-on-device-profiles), where you enter coordinates by hand. Private and secret
-addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
+**Find coordinates** looks up the address text in the editor through the geocoder your server operator enabled
+(`GEOCODER_PROVIDER`). It works on a new or just-edited address; the result is only stored when you save the contact,
+so Discard leaves the server untouched. Each address also has a **Sensitivity** picker (Normal, Private, Secret):
+private and secret addresses are withheld from sync, exports and shares and are never sent to the geocoder (Find
+coordinates is disabled with a reason, and updates as soon as you change the picker). The lookup is not available in a
+[local (on-device) profile](#local-on-device-profiles), where it is disabled and you enter coordinates by hand. Private
+and secret addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
 [Contact map](map.md).
 
 ## About and build details

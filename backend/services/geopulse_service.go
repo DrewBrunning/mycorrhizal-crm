@@ -60,30 +60,6 @@ var (
 // origin without a freshly entered API token.
 var ErrGeoPulseTokenRequired = errors.New("re-enter the API token when changing the GeoPulse server")
 
-// sameGeoPulseOrigin reports whether two normalized base URLs share scheme,
-// host and port (case-insensitive; default ports are equated). An unparseable
-// stored URL counts as a different origin (fail closed).
-func sameGeoPulseOrigin(a, b string) bool {
-	ua, errA := url.Parse(a)
-	ub, errB := url.Parse(b)
-	if errA != nil || errB != nil {
-		return false
-	}
-	return strings.EqualFold(ua.Scheme, ub.Scheme) &&
-		strings.EqualFold(ua.Hostname(), ub.Hostname()) &&
-		geopulseEffectivePort(ua) == geopulseEffectivePort(ub)
-}
-
-func geopulseEffectivePort(u *url.URL) string {
-	if p := u.Port(); p != "" {
-		return p
-	}
-	if strings.EqualFold(u.Scheme, "https") {
-		return "443"
-	}
-	return "80"
-}
-
 // ErrGeoPulseInvalidDate is returned for an unparseable date or timezone.
 var ErrGeoPulseInvalidDate = errors.New("GeoPulse date must be YYYY-MM-DD and timezone a valid IANA name")
 
@@ -186,7 +162,7 @@ func UpsertGeoPulseConfig(db *gorm.DB, jwtSecret string, userID uint, input mode
 	}
 
 	if existing != nil {
-		if input.APIKey == "" && !sameGeoPulseOrigin(existing.BaseURL, baseURL) {
+		if input.APIKey == "" && !SameOrigin(existing.BaseURL, baseURL) {
 			return nil, ErrGeoPulseTokenRequired
 		}
 		existing.BaseURL = baseURL

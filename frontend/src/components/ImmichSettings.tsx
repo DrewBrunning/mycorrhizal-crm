@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useImmich } from '../hooks/useImmich';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 // ImmichSettings is the settings-page card for the Immich connection
 // (T15/T16). The base URL + API key are per-user-global; the key is stored
@@ -33,6 +34,14 @@ export default function ImmichSettings() {
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Mirrors the backend rule: moving a stored connection to a different origin
+  // requires re-entering the secret (it would otherwise be sent to the new host).
+  const secretRequired = secretRequiredForOriginChange(
+    immich.config?.has_api_key,
+    immich.config?.base_url,
+    baseUrl,
+  );
 
   useEffect(() => {
     void immich.refreshConfig();
@@ -62,6 +71,10 @@ export default function ImmichSettings() {
     // https), so the client must too.
     if (!isHttpUrlString(trimmed)) {
       setSaveError(t('immich.settings.invalidBaseUrl'));
+      return;
+    }
+    if (secretRequired && !apiKey.trim()) {
+      setSaveError(t('immich.settings.apiKeyRequiredOriginChange'));
       return;
     }
     setSaving(true);
@@ -146,10 +159,13 @@ export default function ImmichSettings() {
               }}
               fullWidth
               size="small"
+              required={secretRequired}
               helperText={
-                immich.config?.has_api_key
-                  ? t('immich.settings.apiKeyHintExisting')
-                  : t('immich.settings.apiKeyHintNew')
+                secretRequired
+                  ? t('immich.settings.apiKeyRequiredOriginChange')
+                  : immich.config?.has_api_key
+                    ? t('immich.settings.apiKeyHintExisting')
+                    : t('immich.settings.apiKeyHintNew')
               }
             />
 

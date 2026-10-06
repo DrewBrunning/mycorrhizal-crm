@@ -109,9 +109,22 @@ func UpdateCalendarSubscription(c *gin.Context) {
 		return
 	}
 
-	if _, err := services.NormalizeCalendarURL(input.URL); err != nil {
+	newURL, err := services.NormalizeCalendarURL(input.URL)
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http, https, or webcal URL"))
 		return
+	}
+
+	// Credential-exfiltration guard: an empty password means "keep the stored one",
+	// so moving the subscription to a different origin without re-entering it
+	// would let a hijacked session aim the saved password at an attacker host
+	// (the next sync sends it as Basic auth). A path-only change keeps it.
+	if input.Password == "" && !input.ClearPassword && subscription.PasswordEncrypted != "" {
+		oldURL, oldErr := services.NormalizeCalendarURL(subscription.URL)
+		if oldErr != nil || !services.SameOrigin(oldURL.String(), newURL.String()) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("password", "re-enter the password when changing the server"))
+			return
+		}
 	}
 
 	subscription.Name = input.Name
