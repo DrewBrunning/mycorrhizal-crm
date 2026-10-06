@@ -993,6 +993,7 @@
       "apiKey": "Jeton d'API",
       "apiKeyHintNew": "Créez un jeton dans GeoPulse (Profil → Sécurité) et collez-le ici.",
       "apiKeyHintExisting": "Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.",
+      "apiKeyRequiredOriginChange": "L'adresse du serveur a changé : saisissez de nouveau le jeton d'API. Le jeton enregistré n'est jamais envoyé à un autre serveur.",
       "saveButton": "Enregistrer la connexion",
       "removeButton": "Supprimer la connexion",
       "testConnectionButton": "Tester la connexion",

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -92,12 +93,21 @@ func TestUpsertGeoPulseConfig_CreateUpdateKeepKey(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "key-1", plain)
 
-	// Empty key on update keeps the stored one; a new key replaces it.
-	kept, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp2.example"})
+	// Empty key on a same-origin (path-only) update keeps the stored one.
+	kept, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://GP.example:443/geopulse"})
 	require.NoError(t, err)
-	assert.Equal(t, "https://gp2.example", kept.BaseURL)
+	assert.Equal(t, "https://GP.example:443/geopulse", kept.BaseURL)
 	plain, _ = DecryptCredential(secret, kept.APIKeyEncrypted)
 	assert.Equal(t, "key-1", plain)
+
+	// Moving to a different origin without re-entering the token is refused and
+	// changes nothing (credential-exfiltration guard); a new key makes it legal.
+	for _, other := range []string{"https://gp2.example", "http://gp.example", "https://gp.example:8443", "https://gp.example.evil.test"} {
+		_, err = UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: other})
+		assert.ErrorIs(t, err, ErrGeoPulseTokenRequired, other)
+	}
+	still, _ := GetGeoPulseConfigForUser(db, user.ID)
+	assert.Equal(t, "https://GP.example:443/geopulse", still.BaseURL)
 
 	replaced, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp2.example", APIKey: "key-2"})
 	require.NoError(t, err)
@@ -126,7 +136,7 @@ func TestUpsertGeoPulseConfig_DatabaseFailures(t *testing.T) {
 		user := seedGeoPulseUser(t, db, "gp-up-update")
 		connectGeoPulseForUser(t, db, user.ID, "https://gp.example", "k")
 		require.NoError(t, db.Exec(`CREATE TRIGGER gp_block_update BEFORE UPDATE ON geopulse_configs BEGIN SELECT RAISE(ABORT, 'blocked'); END`).Error)
-		_, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp2.example"})
+		_, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp.example/x"})
 		require.Error(t, err)
 	})
 	t.Run("insert fails", func(t *testing.T) {
@@ -182,7 +192,7 @@ func TestBuildGeoPulseClient_UnreadableConfig(t *testing.T) {
 	dbtest.HideTable(t, db, "geopulse_configs")
 	_, err := buildGeoPulseClient(db, geopulseTestConfig(), user.ID)
 	assert.ErrorIs(t, err, ErrGeoPulseConfigUnreadable)
-	_, err = GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	_, err = GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	assert.ErrorIs(t, err, ErrGeoPulseConfigUnreadable)
 }
 
@@ -193,7 +203,7 @@ func TestGeoPulseSuggestionsForDate_ExistingActivityLookupFailure(t *testing.T) 
 	f.addStay(1, "2026-09-20T10:00:00Z", "A", "Leeds", 53.1, -1.1, 60)
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 	dbtest.HideTable(t, db, "activities")
-	_, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	_, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	assert.ErrorIs(t, err, ErrGeoPulseConfigUnreadable, "a failed already-logged lookup is a local fault, reported as such")
 }
 
@@ -202,12 +212,12 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 	user := seedGeoPulseUser(t, db, "gp-test")
 	cfg := geopulseTestConfig()
 
-	_, err := TestGeoPulseConnection(db, cfg, user.ID)
+	_, err := TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	assert.ErrorIs(t, err, ErrGeoPulseUnauthorized, "no connection: the check itself cannot run")
 
 	f := newFakeGeoPulseServer(t, "good")
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "good")
-	res, err := TestGeoPulseConnection(db, cfg, user.ID)
+	res, err := TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	assert.True(t, res.OK)
 	assert.Equal(t, "ok", res.Stage)
@@ -216,7 +226,7 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 	// No full name: the message falls back to the GeoPulse user id.
 	f.UserID = "abc-123"
 	f.FullName = ""
-	res, err = TestGeoPulseConnection(db, cfg, user.ID)
+	res, err = TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	assert.True(t, res.OK)
 	assert.Contains(t, res.Message, "abc-123")
@@ -225,7 +235,7 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 	f.Key = "good"
 	_, err = UpsertGeoPulseConfig(db, cfg.JWTSecretKey, user.ID, models.GeoPulseConfigInput{BaseURL: f.URL(), APIKey: "bad"})
 	require.NoError(t, err)
-	res, err = TestGeoPulseConnection(db, cfg, user.ID)
+	res, err = TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	assert.False(t, res.OK)
 	assert.Equal(t, "auth", res.Stage)
@@ -234,7 +244,7 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 	// Server error → reachability stage, reachable-but-failed wording.
 	f.Key = ""
 	f.FailMe = http.StatusInternalServerError
-	res, err = TestGeoPulseConnection(db, cfg, user.ID)
+	res, err = TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	assert.False(t, res.OK)
 	assert.Equal(t, "reachability", res.Stage)
@@ -244,9 +254,9 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 	dead := newFakeGeoPulseServer(t, "")
 	deadURL := dead.URL()
 	dead.Server.Close()
-	_, err = UpsertGeoPulseConfig(db, cfg.JWTSecretKey, user.ID, models.GeoPulseConfigInput{BaseURL: deadURL})
+	_, err = UpsertGeoPulseConfig(db, cfg.JWTSecretKey, user.ID, models.GeoPulseConfigInput{BaseURL: deadURL, APIKey: "k"})
 	require.NoError(t, err)
-	res, err = TestGeoPulseConnection(db, cfg, user.ID)
+	res, err = TestGeoPulseConnection(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	assert.False(t, res.OK)
 	assert.Equal(t, "reachability", res.Stage)
@@ -254,11 +264,11 @@ func TestTestGeoPulseConnection_Stages(t *testing.T) {
 
 	// SSRF guard on: its own message, naming the env var.
 	live := newFakeGeoPulseServer(t, "")
-	_, err = UpsertGeoPulseConfig(db, cfg.JWTSecretKey, user.ID, models.GeoPulseConfigInput{BaseURL: live.URL()})
+	_, err = UpsertGeoPulseConfig(db, cfg.JWTSecretKey, user.ID, models.GeoPulseConfigInput{BaseURL: live.URL(), APIKey: "k"})
 	require.NoError(t, err)
 	blocking := cfg
 	blocking.GeoPulseBlockPrivateURLs = true
-	res, err = TestGeoPulseConnection(db, blocking, user.ID)
+	res, err = TestGeoPulseConnection(context.Background(), db, blocking, user.ID)
 	require.NoError(t, err)
 	assert.False(t, res.OK)
 	assert.Contains(t, res.Message, "GEOPULSE_BLOCK_PRIVATE_URLS")
@@ -316,7 +326,7 @@ func TestGeoPulseSuggestionsForDate_HappyPath(t *testing.T) {
 	f.addPhoto(53.8, "p2", "IMG_2.jpg", "2026-09-20T14:20:00Z")
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	assert.Equal(t, "2026-09-20", res.Date)
 	require.Len(t, res.Suggestions, 2)
@@ -368,7 +378,7 @@ func TestGeoPulseSuggestionsForDate_FlagsAlreadyLoggedStays(t *testing.T) {
 	// Another user's activity with the same ref must not count.
 	require.NoError(t, db.Create(&models.Activity{UserID: other.ID, Title: "x", Date: time.Now(), ExternalRef: "geopulse:stay:8"}).Error)
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	require.Len(t, res.Suggestions, 2)
 	require.NotNil(t, res.Suggestions[0].ExistingActivityID)
@@ -385,7 +395,7 @@ func TestGeoPulseSuggestions_PhotoFailureDegradesNotFails(t *testing.T) {
 	f.FailPhotos = http.StatusInternalServerError // e.g. Immich not configured inside GeoPulse
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err, "a failed photo call must not fail the suggestion list")
 	require.Len(t, res.Suggestions, 2)
 	for _, s := range res.Suggestions {
@@ -433,7 +443,7 @@ func TestGeoPulseSuggestionsForDate_LogsNoCoordinates(t *testing.T) {
 	t.Cleanup(srv.Close)
 	connectGeoPulseForUser(t, db, user.ID, srv.URL, "k")
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	require.Len(t, res.Suggestions, 1)
 	assert.True(t, res.Suggestions[0].PhotosUnavailable)
@@ -454,7 +464,7 @@ func TestGeoPulseSuggestions_IdentityFailureSkipsPhotos(t *testing.T) {
 	f.FailMe = http.StatusInternalServerError
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	require.Len(t, res.Suggestions, 1)
 	assert.True(t, res.Suggestions[0].PhotosUnavailable)
@@ -473,7 +483,7 @@ func TestGeoPulseSuggestions_PhotoLookupsAreCapped(t *testing.T) {
 	}
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 
-	res, err := GeoPulseSuggestionsForDate(db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	require.Len(t, res.Suggestions, stays, "every stay is still suggested")
 
@@ -493,25 +503,25 @@ func TestGeoPulseSuggestionsForDate_Errors(t *testing.T) {
 	user := seedGeoPulseUser(t, db, "gp-err")
 	cfg := geopulseTestConfig()
 
-	_, err := GeoPulseSuggestionsForDate(db, cfg, user.ID, "not-a-date", "")
+	_, err := GeoPulseSuggestionsForDate(context.Background(), db, cfg, user.ID, "not-a-date", "")
 	assert.ErrorIs(t, err, ErrGeoPulseInvalidDate, "a bad date is rejected before any connection lookup")
-	_, err = GeoPulseSuggestionsForDate(db, cfg, user.ID, "2026-09-20", "")
+	_, err = GeoPulseSuggestionsForDate(context.Background(), db, cfg, user.ID, "2026-09-20", "")
 	assert.ErrorIs(t, err, ErrGeoPulseUnauthorized, "no connection configured")
 
 	f := newFakeGeoPulseServer(t, "")
 	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
 
 	f.FailTimeline = http.StatusBadGateway
-	_, err = GeoPulseSuggestionsForDate(db, cfg, user.ID, "2026-09-20", "")
+	_, err = GeoPulseSuggestionsForDate(context.Background(), db, cfg, user.ID, "2026-09-20", "")
 	assert.ErrorIs(t, err, ErrGeoPulseRequestFailed, "a failed timeline call fails the request")
 
 	f.FailTimeline = 0
 	f.addStay(1, "yesterday-ish", "A", "Leeds", 53.1, -1.1, 60)
-	_, err = GeoPulseSuggestionsForDate(db, cfg, user.ID, "2026-09-20", "")
+	_, err = GeoPulseSuggestionsForDate(context.Background(), db, cfg, user.ID, "2026-09-20", "")
 	assert.ErrorIs(t, err, ErrGeoPulseInvalidData, "an unparseable stay timestamp is invalid data, not a silent zero time")
 
 	f.Stays = nil
-	res, err := GeoPulseSuggestionsForDate(db, cfg, user.ID, "2026-09-20", "")
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, cfg, user.ID, "2026-09-20", "")
 	require.NoError(t, err)
 	assert.NotNil(t, res.Suggestions)
 	assert.Empty(t, res.Suggestions, "a day with no stays is an empty (non-null) list")
@@ -559,4 +569,71 @@ func TestFindActivityByExternalRef(t *testing.T) {
 	got, err = FindActivityByExternalRef(db, user.ID, "geopulse:stay:1")
 	require.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+// A slow-but-alive GeoPulse (photo endpoint stalls) must not hold the request
+// past the overall budget: the call returns in time with the stays suggested
+// and photos_unavailable set.
+func TestGeoPulseSuggestionsForDate_BudgetBoundsSlowPhotoLookups(t *testing.T) {
+	prevBudget, prevTimeout := geopulseSuggestionsBudget, geopulseRequestTimeout
+	geopulseSuggestionsBudget = 300 * time.Millisecond
+	geopulseRequestTimeout = 30 * time.Second
+	t.Cleanup(func() { geopulseSuggestionsBudget, geopulseRequestTimeout = prevBudget, prevTimeout })
+
+	db := dbtest.New(t)
+	user := seedGeoPulseUser(t, db, "gp-budget")
+	f := newFakeGeoPulseServer(t, "")
+	f.PhotoDelay = 10 * time.Second
+	f.addStay(1, "2026-09-20T10:00:00Z", "A", "Leeds", 53.1, -1.1, 60)
+	f.addStay(2, "2026-09-20T12:00:00Z", "B", "York", 53.9, -1.0, 60)
+	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
+
+	began := time.Now()
+	res, err := GeoPulseSuggestionsForDate(context.Background(), db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	elapsed := time.Since(began)
+	require.NoError(t, err)
+	assert.Less(t, elapsed, 5*time.Second, "must return near the budget, not wait out the 10s photo delay")
+	require.Len(t, res.Suggestions, 2)
+	for _, s := range res.Suggestions {
+		assert.True(t, s.PhotosUnavailable)
+		assert.Empty(t, s.Photos)
+	}
+	photoCalls := 0
+	for _, c := range f.calls() {
+		if strings.Contains(c, "/photos/search") {
+			photoCalls++
+		}
+	}
+	assert.Equal(t, 1, photoCalls, "after the budget is spent no further photo lookups are issued")
+}
+
+// Cancelling the caller's context (client went away) aborts the timeline call.
+func TestGeoPulseSuggestionsForDate_CancelledContextIsAnError(t *testing.T) {
+	db := dbtest.New(t)
+	user := seedGeoPulseUser(t, db, "gp-cancel")
+	f := newFakeGeoPulseServer(t, "")
+	connectGeoPulseForUser(t, db, user.ID, f.URL(), "k")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := GeoPulseSuggestionsForDate(ctx, db, geopulseTestConfig(), user.ID, "2026-09-20", "")
+	assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
+}
+
+func TestSameGeoPulseOrigin(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"https://gp.example", "https://gp.example/sub/path", true},
+		{"https://gp.example", "https://GP.EXAMPLE:443", true},
+		{"http://gp.example", "http://gp.example:80/x", true},
+		{"http://gp.example", "https://gp.example", false},
+		{"https://gp.example", "https://gp.example:8443", false},
+		{"https://gp.example", "https://gp.example.evil.test", false},
+		{"://bad", "https://gp.example", false},
+		{"https://gp.example", "://bad", false},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, sameGeoPulseOrigin(tc.a, tc.b), "%s vs %s", tc.a, tc.b)
+	}
 }

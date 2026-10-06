@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeGeoPulseServer is a permanent, real-protocol test double for the slice of
@@ -36,6 +37,10 @@ type fakeGeoPulseServer struct {
 	FailMe       int
 	FailTimeline int
 	FailPhotos   int
+	// PhotoDelay delays every photo-search response (slow-GeoPulse tests).
+	PhotoDelay time.Duration
+	// RedirectTo, when non-empty, answers every request with a 302 to it.
+	RedirectTo string
 	// RawBody, when non-empty, replaces every 200 response body (malformed-data tests).
 	RawBody string
 
@@ -92,6 +97,11 @@ func (f *fakeGeoPulseServer) handle(w http.ResponseWriter, r *http.Request) {
 	f.LastKey = r.Header.Get("X-API-Key")
 	f.mu.Unlock()
 
+	if f.RedirectTo != "" {
+		http.Redirect(w, r, f.RedirectTo, http.StatusFound)
+		return
+	}
+
 	if f.Key != "" && r.Header.Get("X-API-Key") != f.Key {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -121,6 +131,13 @@ func (f *fakeGeoPulseServer) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		writeGeoPulseEnvelope(w, map[string]any{"stays": stays, "trips": []any{}, "dataGaps": []any{}})
 	case strings.HasPrefix(r.URL.Path, "/api/users/") && strings.HasSuffix(r.URL.Path, "/immich/photos/search"):
+		if f.PhotoDelay > 0 {
+			select {
+			case <-time.After(f.PhotoDelay):
+			case <-r.Context().Done():
+				return
+			}
+		}
 		if f.FailPhotos != 0 {
 			w.WriteHeader(f.FailPhotos)
 			return
