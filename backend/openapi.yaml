@@ -12282,7 +12282,7 @@ components:
       properties:
         contact_id: { type: integer }
         contact_uid: { type: string }
-        contact_name: { type: string }
+        contact_name: { type: string, description: "Display name: first and last name, falling back to the nickname, then the organization, for a contact with no name." }
         address_id: { type: string }
         label: { type: string, description: The formatted postal address. }
         coordinates: { type: string, description: "RFC 5870 geo: URI, e.g. geo:51.5034,-0.1276." }

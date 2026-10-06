@@ -1729,7 +1729,9 @@
     "count_other": "{{count}} direcciones en el mapa",
     "openContact": "Abrir contacto",
     "unavailable": "No se pudo mostrar el mapa. Es posible que tu navegador no admita WebGL.",
-    "truncated": "Se muestran solo las primeras {{count}} direcciones; el mapa está limitado a esta cantidad de puntos."
+    "truncated": "Se muestran solo las primeras {{count}} direcciones; el mapa está limitado a esta cantidad de puntos.",
+    "listHeading": "Contactos en el mapa",
+    "unnamed": "Contacto sin nombre"
   },
   "contactScore": {
     "badge": {

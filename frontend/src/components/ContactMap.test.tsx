@@ -5,6 +5,7 @@ import type { MapPoint } from '../api/map';
 
 // maplibre-gl needs WebGL, which jsdom lacks. The stub records what
 // ContactMap asks of it.
+type Handler = (e?: unknown) => void;
 const h = vi.hoisted(() => ({
   mapCtor: vi.fn(),
   remove: vi.fn(),
@@ -12,7 +13,13 @@ const h = vi.hoisted(() => ({
   setZoom: vi.fn(),
   fitBounds: vi.fn(),
   addControl: vi.fn(),
-  markers: [] as { lngLat?: [number, number]; popupContent?: HTMLElement }[],
+  addSource: vi.fn(),
+  addLayer: vi.fn(),
+  easeTo: vi.fn(),
+  getClusterExpansionZoom: vi.fn(),
+  handlers: {} as Record<string, (e?: unknown) => void>,
+  canvas: { style: { cursor: '' } },
+  popups: [] as { lngLat?: [number, number]; content?: HTMLElement; added: boolean }[],
   boundsExtend: vi.fn(),
   throwOnConstruct: false,
 }));
@@ -25,6 +32,14 @@ vi.mock('maplibre-gl', () => ({
       h.mapCtor(opts);
     }
     addControl = h.addControl;
+    addSource = h.addSource;
+    addLayer = h.addLayer;
+    easeTo = h.easeTo;
+    getSource = () => ({ getClusterExpansionZoom: h.getClusterExpansionZoom });
+    getCanvas = () => h.canvas;
+    on(type: string, a: string | Handler, b?: Handler) {
+      h.handlers[typeof a === 'string' ? `${type}:${a}` : type] = (b ?? a) as Handler;
+    }
     setCenter = h.setCenter;
     setZoom = h.setZoom;
     fitBounds = h.fitBounds;
@@ -35,26 +50,20 @@ vi.mock('maplibre-gl', () => ({
     extend = h.boundsExtend;
   },
   Popup: class {
-    content?: HTMLElement;
-    setDOMContent(el: HTMLElement) {
-      this.content = el;
-      return this;
-    }
-  },
-  Marker: class {
-    rec: { lngLat?: [number, number]; popupContent?: HTMLElement } = {};
+    rec: { lngLat?: [number, number]; content?: HTMLElement; added: boolean } = { added: false };
     constructor() {
-      h.markers.push(this.rec);
+      h.popups.push(this.rec);
     }
     setLngLat(ll: [number, number]) {
       this.rec.lngLat = ll;
       return this;
     }
-    setPopup(p: { content?: HTMLElement }) {
-      this.rec.popupContent = p.content;
+    setDOMContent(el: HTMLElement) {
+      this.rec.content = el;
       return this;
     }
     addTo() {
+      this.rec.added = true;
       return this;
     }
   },
@@ -65,7 +74,9 @@ import ContactMap from './ContactMap';
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
-  h.markers.length = 0;
+  h.popups.length = 0;
+  h.handlers = {};
+  h.canvas.style.cursor = '';
   h.throwOnConstruct = false;
 });
 
@@ -78,6 +89,9 @@ const point = (patch: Partial<MapPoint> = {}): MapPoint => ({
   lng: -0.12,
   ...patch,
 });
+
+const clickPoint = (idx: number) =>
+  h.handlers['click:contact-points']({ features: [{ properties: { idx } }] });
 
 test('creates the map with the configured style and a navigation control', () => {
   render(<ContactMap styleUrl="https://tiles.example/style" points={[]} onOpenContact={vi.fn()} />);
@@ -92,8 +106,6 @@ test('creates the map with the configured style and a navigation control', () =>
 
 test('a single point centers and zooms in instead of fitting bounds', () => {
   render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
-  expect(h.markers).toHaveLength(1);
-  expect(h.markers[0].lngLat).toEqual([-0.12, 51.5]);
   expect(h.setCenter).toHaveBeenCalledWith([-0.12, 51.5]);
   expect(h.setZoom).toHaveBeenCalledWith(10);
   expect(h.fitBounds).not.toHaveBeenCalled();
@@ -107,15 +119,37 @@ test('several points fit the map to their bounds', () => {
       onOpenContact={vi.fn()}
     />,
   );
-  expect(h.markers).toHaveLength(2);
   expect(h.boundsExtend).toHaveBeenCalledTimes(2);
   expect(h.fitBounds).toHaveBeenCalledTimes(1);
 });
 
-test('popup content is built from text nodes (no HTML injection) and opens the contact', () => {
+test('on load, all points go into one clustered GeoJSON source with circle layers', () => {
+  render(
+    <ContactMap
+      styleUrl="s"
+      points={[point(), point({ contactId: 2, lat: 40, lng: -74 })]}
+      onOpenContact={vi.fn()}
+    />,
+  );
+  expect(h.addSource).not.toHaveBeenCalled();
+  h.handlers.load();
+  expect(h.addSource).toHaveBeenCalledTimes(1);
+  const [id, spec] = h.addSource.mock.calls[0];
+  expect(id).toBe('contacts');
+  expect(spec.cluster).toBe(true);
+  expect(spec.data.features).toHaveLength(2);
+  expect(spec.data.features[1].geometry.coordinates).toEqual([-74, 40]);
+  expect(h.addLayer.mock.calls.map((c) => c[0].id)).toEqual(['contact-clusters', 'contact-points']);
+});
+
+test('clicking a point opens a popup built from text nodes (no HTML injection) and opens the contact', () => {
   const onOpen = vi.fn();
   render(<ContactMap styleUrl="s" points={[point({ contactId: 9 })]} onOpenContact={onOpen} />);
-  const content = h.markers[0].popupContent as HTMLElement;
+  clickPoint(0);
+  expect(h.popups).toHaveLength(1);
+  expect(h.popups[0].added).toBe(true);
+  expect(h.popups[0].lngLat).toEqual([-0.12, 51.5]);
+  const content = h.popups[0].content as HTMLElement;
   expect(content.querySelector('b')).toBeNull();
   expect(content.querySelector('strong')?.textContent).toBe('Ada <b>Lovelace</b>');
   expect(content.textContent).toContain('1 Main St');
@@ -123,10 +157,39 @@ test('popup content is built from text nodes (no HTML injection) and opens the c
   expect(onOpen).toHaveBeenCalledWith(9);
 });
 
+test('a click that resolves to no known point opens nothing', () => {
+  render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+  h.handlers['click:contact-points']({ features: [] });
+  h.handlers['click:contact-points']({ features: [{ properties: { idx: 5 } }] });
+  expect(h.popups).toHaveLength(0);
+});
+
 test('omits the address line when the label is empty', () => {
   render(<ContactMap styleUrl="s" points={[point({ label: '' })]} onOpenContact={vi.fn()} />);
-  const content = h.markers[0].popupContent as HTMLElement;
-  expect(content.querySelectorAll('div')).toHaveLength(0);
+  clickPoint(0);
+  expect((h.popups[0].content as HTMLElement).querySelectorAll('div')).toHaveLength(0);
+});
+
+test('clicking a cluster zooms to its expansion zoom', async () => {
+  h.getClusterExpansionZoom.mockResolvedValue(7);
+  render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+  h.handlers['click:contact-clusters']({
+    features: [{ geometry: { type: 'Point', coordinates: [1, 2] }, properties: { cluster_id: 3 } }],
+  });
+  await vi.waitFor(() => expect(h.easeTo).toHaveBeenCalledWith({ center: [1, 2], zoom: 7 }));
+  expect(h.getClusterExpansionZoom).toHaveBeenCalledWith(3);
+  h.handlers['click:contact-clusters']({ features: [] });
+  expect(h.getClusterExpansionZoom).toHaveBeenCalledTimes(1);
+});
+
+test('hovering points and clusters shows a pointer cursor', () => {
+  render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);
+  for (const layer of ['contact-points', 'contact-clusters']) {
+    h.handlers[`mouseenter:${layer}`]();
+    expect(h.canvas.style.cursor).toBe('pointer');
+    h.handlers[`mouseleave:${layer}`]();
+    expect(h.canvas.style.cursor).toBe('');
+  }
 });
 
 test('removes the map on unmount', () => {
