@@ -18,4 +18,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #1483: AssumeOrFailInCi uses JUnit's Assume and reads the instrumentation arguments.
+    implementation(libs.junit)
+    implementation(libs.androidx.test.runner)
 }
