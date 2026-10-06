@@ -45,6 +45,26 @@ func csvSafe(value string) string {
 	return value
 }
 
+// formatExportAddresses renders a contact's structured addresses as the three
+// parallel "; "-joined cells (formatted address, sensitivity, geo: URI). An
+// empty sensitivity is written "normal" so the label is never blank; empty
+// coordinates stay empty so positions line up across the three lists.
+func formatExportAddresses(addresses []models.ContactAddress) []string {
+	texts := make([]string, 0, len(addresses))
+	sens := make([]string, 0, len(addresses))
+	coords := make([]string, 0, len(addresses))
+	for _, a := range addresses {
+		texts = append(texts, models.FormatAddress(a))
+		s := a.Sensitivity
+		if s == "" {
+			s = "normal"
+		}
+		sens = append(sens, s)
+		coords = append(coords, a.Coordinates)
+	}
+	return []string{strings.Join(texts, "; "), strings.Join(sens, "; "), strings.Join(coords, "; ")}
+}
+
 // csvSafeRecord applies csvSafe to every field of a record.
 func csvSafeRecord(record []string) []string {
 	for i, field := range record {
@@ -415,6 +435,10 @@ func ExportData(c *gin.Context) {
 		"ID", "Firstname", "Lastname", "Nickname", "Gender", "Email", "Phone",
 		"Birthday", "Address", "How We Met", "Food Preference", "Work Information",
 		"Contact Information", "Circles", "Tags", "Periods", "Created At", "Updated At",
+		// Every postal address with its own sensitivity and map point, as
+		// parallel "; "-joined lists. The legacy "Address" column above
+		// stays the first address only.
+		"Addresses", "Address Sensitivities", "Address Coordinates",
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
@@ -448,6 +472,7 @@ func ExportData(c *gin.Context) {
 			contact.CreatedAt.Format(time.RFC3339),
 			contact.UpdatedAt.Format(time.RFC3339),
 		}
+		record = append(record, formatExportAddresses(contact.Addresses)...)
 		// Custom-field values: one column per definition, empty when the
 		// contact has no value for it.
 		values := valueByContactAndDef[contact.VCardUID]
