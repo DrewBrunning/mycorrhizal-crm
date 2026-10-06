@@ -1,0 +1,20 @@
+# Mycorrhizal CRM Docker Compose - build-once candidate override (issue #1484)
+#
+# Layered over docker-compose.yml by deploy-smoke.yml when it is composed into
+# the release battery (release-validate.yml): the image the gates exercise is
+# the ONE candidate image that release-validate.yml built and pushed, pulled by
+# digest -- not a from-source rebuild. `!reset null` drops docker-compose.yml's
+# `build: .`, because Compose otherwise builds anyway whenever a `build:` is
+# present anywhere in the effective file set (the same trap
+# docker-compose.published-smoke.yml documents), which would silently put the
+# test back on a from-source build.
+#
+# USAGE (CI; COMPOSE_FILE makes every `docker compose` call, including
+# .github/scripts/deploy-smoke-misconfig.sh's, pick the override up):
+#   MYCORRHIZAL_IMAGE=ghcr.io/<repo>@sha256:<digest> \
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.candidate.yml \
+#     docker compose up -d --wait
+services:
+  mycorrhizal:
+    image: ${MYCORRHIZAL_IMAGE:?set MYCORRHIZAL_IMAGE to the candidate image reference, by digest}
+    build: !reset null

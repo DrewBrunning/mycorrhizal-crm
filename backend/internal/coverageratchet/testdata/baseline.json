@@ -233,6 +233,7 @@
     "internal/releasegates/releasegates.go": 96.43,
     "internal/releasenotes/config.go": 100,
     "internal/releasenotes/releasenotes.go": 100,
+    "internal/releaseworkflow/candidate.go": 100,
     "internal/releaseworkflow/releaseworkflow.go": 100,
     "internal/residualrisk/residualrisk.go": 100,
     "internal/rfctest/helpers.go": 85.15,

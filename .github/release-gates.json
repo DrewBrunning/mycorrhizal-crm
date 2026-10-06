@@ -198,6 +198,16 @@
       "criterion": "a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529)."
     },
     {
+      "name": "build-candidate",
+      "workflow": "release-validate.yml",
+      "check_context": null,
+      "check_kind": "internal",
+      "tier": "release-internal",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "a job inside the composer release-validate.yml (issue #1484): builds the all-in-one image ONCE (multi-arch, the release's own build args, labels and SOURCE_DATE_EPOCH), pushes it to GHCR as a non-release candidate-<sha> tag, and exports its sha256 digest. Every image-running gate (e2e, container-hardening, deploy-smoke, zap-dast) `needs:` it and pulls that digest instead of rebuilding from source; a failed build blocks the whole battery. The digest is recorded in release-readiness.json (validated_candidate) and re-tagged, not rebuilt, by build-and-push."
+    },
+    {
       "name": "build-and-push",
       "workflow": "docker-publish.yml",
       "check_context": null,
@@ -205,7 +215,7 @@
       "tier": "release-internal",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance."
+      "criterion": "the multi-arch images publish; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. The all-in-one image is NOT rebuilt: its release tags are created by re-tagging the candidate digest the release-gate tested (issue #1484); only the backend/frontend images, and the all-in-one image when the gate was overridden, build from source."
     },
     {
       "name": "build-android-apk",
@@ -235,7 +245,7 @@
       "tier": "release-internal",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "attaches mycorrhizal-apk.intoto.jsonl and a SHA256SUMS manifest to the Release, then asserts the Release carries app-obtainium-release.apk, mycorrhizal-apk.sigstore.json, mycorrhizal-apk.intoto.jsonl and SHA256SUMS, and every published image tag resolves in the registry."
+      "criterion": "attaches mycorrhizal-apk.intoto.jsonl and a SHA256SUMS manifest to the Release, then asserts the Release carries app-obtainium-release.apk, mycorrhizal-apk.sigstore.json, mycorrhizal-apk.intoto.jsonl and SHA256SUMS, and every published image tag resolves in the registry; and that the published all-in-one image digest equals the digest the release gates tested (issue #1484), failing with an ::error:: otherwise."
     },
     {
       "name": "Test minimum supported versions",
@@ -326,6 +336,16 @@
       "mandatory": true,
       "release_gate": false,
       "criterion": "the baseline scan raises no new high-risk dynamic finding."
+    },
+    {
+      "name": "Clean-install smoke (candidate image)",
+      "workflow": "deploy-smoke.yml",
+      "check_context": null,
+      "check_kind": "check_run",
+      "tier": "release-tier",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "the candidate release image (pulled by digest, never rebuilt) boots from nothing via the documented compose path: startup ordering (config validated, empty-DB migrations, then serving), the end-to-end register/login/contact/photo/search/export workflow, CORS withheld from a foreign origin, and the blank-JWT_SECRET_KEY / empty-FRONTEND_URL misconfigurations fail naming the variable (DEPLOY-01, #450; made a release gate by #1484 -- it used to run only per-PR on infra changes, push:main and nightly)."
     },
     {
       "name": "OpenSSF Scorecard",
