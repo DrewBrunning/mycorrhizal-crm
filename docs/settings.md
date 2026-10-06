@@ -65,7 +65,7 @@ new-activity dialog pre-filled with the place and date, you choose who you were 
 - **Operators:** set `GEOPULSE_BLOCK_PRIVATE_URLS=true` on any instance reachable from the internet, so a user cannot
   point the connection at a loopback or LAN address (see [Deployment](deployment.md#production-environment)).
   Ownership and failure behaviour are in [Integrations](integration-ownership.md#geopulse).
-- This is a web feature: the Android app has no GeoPulse screen.
+- The Android app has the same flow (Settings → GeoPulse, and **Log from location history** on the Activities screen); see [Android app](android-app.md#log-activities-from-location-history-geopulse). Both are hidden on a local (embedded) profile.
 
 
 ## Two-factor authentication

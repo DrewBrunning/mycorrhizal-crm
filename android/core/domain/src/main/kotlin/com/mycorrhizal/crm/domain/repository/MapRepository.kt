@@ -1,7 +1,8 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.ContactMapResponse
-import com.mycorrhizal.crm.model.network.GeocodeAddressResponse
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.MapConfig
 
 /**
@@ -16,6 +17,9 @@ interface MapRepository {
     /** GET /contacts/map — every plottable address of the owner's contacts. */
     suspend fun getContactMap(): Result<ContactMapResponse>
 
-    /** POST /contacts/{id}/addresses/{addressId}/geocode — one explicit lookup. */
-    suspend fun geocodeAddress(contactId: Int, addressId: String): Result<GeocodeAddressResponse>
+    /**
+     * POST /contacts/{id}/addresses/geocode — one explicit, stateless lookup for
+     * an address draft (saved or not). The coordinate is returned, never stored.
+     */
+    suspend fun geocodeAddressDraft(contactId: Int, draft: GeocodeDraftRequest): Result<GeocodeDraftResponse>
 }

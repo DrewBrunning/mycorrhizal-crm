@@ -40,7 +40,9 @@ Next to the field, **Find coordinates** asks a geocoding service to look the add
 - It is **off by default**. The operator must set `GEOCODER_PROVIDER` (see
   [Operator setup](#operator-setup)); until then the lookup fails with "geocoding is not enabled on this
   server".
-- It works on a **saved** address. On a new, unsaved address the editor asks you to save first.
+- It geocodes the address text currently in the editor, so it works on a new or just-edited address too: the
+  coordinates come back to the form and are stored only when you save the contact (Discard leaves them
+  untouched). The contact itself must already exist, so on a brand-new contact the editor asks you to save first.
 - It is **one address per click.** The app never geocodes in the background or in bulk, and the only thing
   sent to the provider is the address text of that one address.
 - On success the coordinates are written to the address (replacing any that were there) and shown in the
@@ -50,7 +52,8 @@ Next to the field, **Find coordinates** asks a geocoding service to look the add
 - Failures give a short reason: no result found, the provider is rate limiting (try again shortly), the
   provider rejected the server's key, or the provider could not be reached.
 - **In an Android local (on-device) profile** the geocoding endpoint does not exist, because it is an outbound
-  integration and local profiles are storage only. Enter coordinates by hand instead.
+  integration and local profiles are storage only. Enter coordinates by hand instead. The Android editor shows the action
+  disabled there with a reason.
 
 ## Address sensitivity
 

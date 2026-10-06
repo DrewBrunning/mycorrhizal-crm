@@ -105,7 +105,7 @@ sealed interface ActivityFormEvent {
 class ActivityFormViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -118,7 +118,25 @@ class ActivityFormViewModel @Inject constructor(
         (raw as? Int) ?: (raw as? String)?.toIntOrNull()
     }
 
-    private val _uiState = MutableStateFlow(ActivityFormState(contactId = contactId, activityId = activityId))
+    // Issue #160 (ADR 0033): "Log from location history" opens the create form pre-filled from a
+    // stay. Create mode only — an edit hydrates from the loaded activity. `externalRef` rides
+    // through to save untouched (it is not an editable field); the server dedupes geopulse:stay refs.
+    private fun prefillArg(key: String): String? =
+        (savedStateHandle.get<Any?>(key) as? String)?.takeIf { it.isNotBlank() }
+
+    private val _uiState = MutableStateFlow(
+        ActivityFormState(contactId = contactId, activityId = activityId).let { base ->
+            if (activityId != null) {
+                base
+            } else {
+                base.copy(
+                    location = prefillArg(PREFILL_LOCATION).orEmpty(),
+                    date = prefillArg(PREFILL_DATE).orEmpty(),
+                    externalRef = prefillArg(PREFILL_EXTERNAL_REF),
+                )
+            }
+        },
+    )
     val uiState: StateFlow<ActivityFormState> = _uiState.asStateFlow()
 
     private val _events = MutableStateFlow<ActivityFormEvent?>(null)
@@ -269,7 +287,12 @@ class ActivityFormViewModel @Inject constructor(
         externalRef = activity.externalRef,
     )
 
-    private companion object {
-        const val SEARCH_DEBOUNCE_MS = 300L
+    companion object {
+        private const val SEARCH_DEBOUNCE_MS = 300L
+
+        /** Nav-arg keys for the optional create-mode prefill (issue #160). */
+        const val PREFILL_LOCATION = "location"
+        const val PREFILL_DATE = "date"
+        const val PREFILL_EXTERNAL_REF = "externalRef"
     }
 }

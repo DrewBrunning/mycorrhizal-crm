@@ -303,3 +303,33 @@ class NextcloudRepositoryImplTest {
         assertTrue(result.isSuccess)
     }
 }
+
+class GeoPulseRepositoryImplTest {
+
+    private val apiClient = mockk<ApiClient>()
+    private val repository = GeoPulseRepositoryImpl(apiClient)
+
+    @Test
+    fun `config calls forward to the client`() = runTest {
+        val input = com.mycorrhizal.crm.model.network.GeoPulseConfigInput("https://g.example.com", "tok")
+        val config = com.mycorrhizal.crm.model.network.GeoPulseConfigResponse("https://g.example.com", true)
+        coEvery { apiClient.getGeoPulseConfig() } returns Result.success(config)
+        coEvery { apiClient.saveGeoPulseConfig(input) } returns Result.success(config)
+        coEvery { apiClient.deleteGeoPulseConfig() } returns Result.success(Unit)
+
+        assertEquals(config, repository.getConfig().getOrThrow())
+        assertEquals(config, repository.saveConfig(input).getOrThrow())
+        assertTrue(repository.deleteConfig().isSuccess)
+    }
+
+    @Test
+    fun `test connection and suggestions forward their arguments`() = runTest {
+        val test = com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult(ok = true, stage = "ok")
+        val sugg = com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse(date = "2026-03-10")
+        coEvery { apiClient.testGeoPulseConnection() } returns Result.success(test)
+        coEvery { apiClient.getGeoPulseSuggestions("2026-03-10", "Europe/Rome") } returns Result.success(sugg)
+
+        assertEquals(test, repository.testConnection().getOrThrow())
+        assertEquals(sugg, repository.getSuggestions("2026-03-10", "Europe/Rome").getOrThrow())
+    }
+}

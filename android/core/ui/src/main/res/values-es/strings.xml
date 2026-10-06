@@ -351,7 +351,13 @@
     <string name="contact_address_coordinates_hint">Por ejemplo 51.5007, -0.1246</string>
     <string name="contact_address_coordinates_invalid">Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.</string>
     <string name="contact_address_find_coordinates">Buscar coordenadas</string>
-    <string name="contact_address_find_coordinates_save_first">Guarda primero esta dirección. Las coordenadas se buscan para la dirección guardada.</string>
+    <string name="contact_address_find_coordinates_save_first">Guarda primero este contacto y luego busca las coordenadas. No hace falta que el texto de la dirección esté guardado.</string>
+    <string name="contact_address_find_coordinates_local">No disponible en perfiles locales — introduce las coordenadas a mano.</string>
+    <string name="contact_address_sensitivity">Sensibilidad</string>
+    <string name="contact_address_sensitivity_normal">Normal</string>
+    <string name="contact_address_sensitivity_private">Privada</string>
+    <string name="contact_address_sensitivity_secret">Secreta</string>
+    <string name="contact_address_sensitivity_hint">Las direcciones privadas y secretas se excluyen de la sincronización, las exportaciones y los envíos compartidos.</string>
     <string name="contact_address_find_coordinates_sensitive">Esta dirección está marcada como privada o secreta, por lo que nunca se envía al geocodificador. Introduce las coordenadas a mano.</string>
     <string name="contact_address_find_coordinates_failed">No se pudieron encontrar coordenadas para esta dirección.</string>
     <string name="contact_address_find_coordinates_loading">Buscando coordenadas…</string>
@@ -1891,4 +1897,44 @@
     <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
     <string name="share_intent_label">Añadir nota en Mycorrhizal</string>
     <string name="share_pick_contact_title">Compartir con…</string>
+
+    <!-- Issue #160 (ADR 0033): GeoPulse location-history correlation -->
+    <string name="settings_geopulse_title">GeoPulse</string>
+    <string name="geopulse_settings_description">Conecta una instancia de GeoPulse autoalojada para convertir un día de historial de ubicaciones en sugerencias de actividad. No se importa nada automáticamente: eliges una fecha, revisas los lugares y decides con quién estabas. El token de API se guarda cifrado en tu servidor.</string>
+    <string name="geopulse_settings_base_url">URL del servidor GeoPulse</string>
+    <string name="geopulse_settings_base_url_required">La URL del servidor es obligatoria.</string>
+    <string name="geopulse_settings_base_url_invalid">La URL del servidor debe ser una dirección http:// o https://.</string>
+    <string name="geopulse_settings_api_key">Token de API</string>
+    <string name="geopulse_settings_api_key_hint_existing">Ya hay un token guardado. Deja el campo vacío para conservarlo.</string>
+    <string name="geopulse_settings_api_key_hint_new">Crea un token en GeoPulse (Perfil → Seguridad) y pégalo aquí.</string>
+    <string name="geopulse_settings_api_key_required">El token de API es obligatorio para conectar.</string>
+    <string name="geopulse_settings_api_key_required_origin_change">La dirección del servidor ha cambiado, así que vuelve a introducir el token de API. El token guardado nunca se envía a otro servidor.</string>
+    <string name="geopulse_settings_test">Probar conexión</string>
+    <string name="geopulse_settings_testing">Probando…</string>
+    <string name="geopulse_settings_test_success">Prueba de conexión correcta</string>
+    <string name="geopulse_settings_test_failed">La prueba falló (%1$s): %2$s</string>
+    <string name="geopulse_settings_test_unknown">error desconocido</string>
+    <string name="geopulse_settings_remove">Desconectar</string>
+    <string name="geopulse_settings_remove_title">Desconectar GeoPulse</string>
+    <string name="geopulse_settings_remove_confirm">¿Desconectar GeoPulse? Se conservan las actividades que ya registraste desde el historial de ubicaciones.</string>
+    <string name="geopulse_entry_point">Registrar desde el historial de ubicaciones</string>
+    <string name="geopulse_title">Registrar desde el historial de ubicaciones</string>
+    <string name="geopulse_description">Elige una fecha para ver los lugares que registró GeoPulse. No se guarda nada hasta que registres uno, y tú decides con quién estabas.</string>
+    <string name="geopulse_date">Fecha</string>
+    <string name="geopulse_pick_date">Elegir fecha</string>
+    <string name="geopulse_look_up">Buscar</string>
+    <string name="geopulse_looking_up">Buscando…</string>
+    <string name="geopulse_open_settings">Abrir ajustes de GeoPulse</string>
+    <string name="geopulse_no_stays">GeoPulse no tiene estancias registradas para esta fecha.</string>
+    <string name="geopulse_unnamed_place">Lugar sin nombre</string>
+    <string name="geopulse_already_logged">Ya registrado</string>
+    <string name="geopulse_log_activity">Registrar actividad</string>
+    <string name="geopulse_log_activity_at">Registrar actividad en %1$s, %2$s</string>
+    <string name="geopulse_announce_found">Lugares encontrados: %1$d</string>
+    <string name="geopulse_announce_none">No se encontraron lugares</string>
+    <string name="geopulse_photos">Fotos cercanas (%1$d)</string>
+    <string name="geopulse_photos_unavailable">No se pudieron comprobar las fotos.</string>
+    <string name="geopulse_duration_minutes">%1$d min</string>
+    <string name="geopulse_duration_hours">%1$d h</string>
+    <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
 </resources>

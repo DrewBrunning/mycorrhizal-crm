@@ -2,6 +2,10 @@ package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
+import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
+import com.mycorrhizal.crm.model.network.GeoPulseConfigResponse
+import com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult
+import com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.model.network.ImmichConfigResponse
@@ -165,4 +169,26 @@ interface NextcloudRepository {
 
     /** POST /nextcloud/contacts/:vcard_uid/link — writes the ExternalIdentity server-side. */
     suspend fun linkItem(vcardUid: String, item: WebDAVItem): Result<Unit>
+}
+
+/**
+ * The GeoPulse location-history integration (issue #160, ADR 0033). Online-only like the other
+ * integrations — the suggestion list is ephemeral and nothing is cached locally. Confirming a
+ * suggestion is an ordinary [ActivityRepository.create] carrying the stay's `external_ref`.
+ */
+interface GeoPulseRepository {
+    /** GET /geopulse/config. */
+    suspend fun getConfig(): Result<GeoPulseConfigResponse>
+
+    /** PUT /geopulse/config — an empty [GeoPulseConfigInput.apiKey] keeps the stored token (unless the origin changed). */
+    suspend fun saveConfig(input: GeoPulseConfigInput): Result<GeoPulseConfigResponse>
+
+    /** DELETE /geopulse/config. */
+    suspend fun deleteConfig(): Result<Unit>
+
+    /** POST /geopulse/test-connection — a diagnosed failure is a success-with-`ok:false`. */
+    suspend fun testConnection(): Result<GeoPulseConnectionTestResult>
+
+    /** GET /geopulse/suggestions — the stays for one calendar [date] (YYYY-MM-DD) in IANA [timezone]. */
+    suspend fun getSuggestions(date: String, timezone: String?): Result<GeoPulseSuggestionsResponse>
 }
