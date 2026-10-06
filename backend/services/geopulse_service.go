@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -34,7 +35,17 @@ const (
 	// request, so a pathological day cannot fan out into hundreds of outbound
 	// calls. Stays past the cap are still suggested, without photos.
 	geopulseMaxStayLookups = 50
+
+	// geopulseSuggestionsBudget is the overall wall-clock budget of one
+	// suggestions request (timeline call + every photo lookup). It sits under
+	// nginx's 30 s proxy_read_timeout so a slow-but-alive GeoPulse degrades to
+	// "photos unavailable" instead of a proxy 504 while the backend keeps
+	// fanning out for minutes after the client left.
+	geopulseSuggestionsBudgetDefault = 20 * time.Second
 )
+
+// geopulseSuggestionsBudget is a var so a test can shrink it.
+var geopulseSuggestionsBudget = geopulseSuggestionsBudgetDefault
 
 var (
 	// ErrGeoPulseConfigUnreadable wraps a failure to load the user's stored
@@ -44,6 +55,34 @@ var (
 	// — typically a rotated JWT_SECRET_KEY — which the user fixes by re-entering it.
 	ErrGeoPulseKeyUndecryptable = errors.New("stored GeoPulse API token could not be decrypted")
 )
+
+// ErrGeoPulseTokenRequired is returned when the base URL moves to a different
+// origin without a freshly entered API token.
+var ErrGeoPulseTokenRequired = errors.New("re-enter the API token when changing the GeoPulse server")
+
+// sameGeoPulseOrigin reports whether two normalized base URLs share scheme,
+// host and port (case-insensitive; default ports are equated). An unparseable
+// stored URL counts as a different origin (fail closed).
+func sameGeoPulseOrigin(a, b string) bool {
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	return strings.EqualFold(ua.Scheme, ub.Scheme) &&
+		strings.EqualFold(ua.Hostname(), ub.Hostname()) &&
+		geopulseEffectivePort(ua) == geopulseEffectivePort(ub)
+}
+
+func geopulseEffectivePort(u *url.URL) string {
+	if p := u.Port(); p != "" {
+		return p
+	}
+	if strings.EqualFold(u.Scheme, "https") {
+		return "443"
+	}
+	return "80"
+}
 
 // ErrGeoPulseInvalidDate is returned for an unparseable date or timezone.
 var ErrGeoPulseInvalidDate = errors.New("GeoPulse date must be YYYY-MM-DD and timezone a valid IANA name")
@@ -130,6 +169,11 @@ func NormalizeGeoPulseBaseURL(raw string) (string, error) {
 // UpsertGeoPulseConfig creates or updates a user's GeoPulseConfig. A non-empty
 // APIKey is encrypted at rest (credential_crypto.go); an empty one on update
 // keeps the stored token. On create the token is required.
+//
+// Credential-exfiltration guard: an empty token on an update that moves the
+// base URL to a different origin (scheme+host+port) is rejected, otherwise a
+// hijacked session could point the saved token at an attacker host and press
+// "Test connection". A path-only change on the same origin keeps the token.
 func UpsertGeoPulseConfig(db *gorm.DB, jwtSecret string, userID uint, input models.GeoPulseConfigInput) (*models.GeoPulseConfig, error) {
 	existing, err := GetGeoPulseConfigForUser(db, userID)
 	if err != nil {
@@ -142,6 +186,9 @@ func UpsertGeoPulseConfig(db *gorm.DB, jwtSecret string, userID uint, input mode
 	}
 
 	if existing != nil {
+		if input.APIKey == "" && !sameGeoPulseOrigin(existing.BaseURL, baseURL) {
+			return nil, ErrGeoPulseTokenRequired
+		}
 		existing.BaseURL = baseURL
 		if input.APIKey != "" {
 			enc, err := EncryptCredential(jwtSecret, input.APIKey)
@@ -199,13 +246,13 @@ func buildGeoPulseClient(db *gorm.DB, cfg config.Config, userID uint) (*GeoPulse
 // error means the check itself could not run (no connection configured, stored
 // URL unparseable); a non-error result with OK:false is a *successful* diagnosis
 // of an upstream problem.
-func TestGeoPulseConnection(db *gorm.DB, cfg config.Config, userID uint) (*GeoPulseConnectionTestResult, error) {
+func TestGeoPulseConnection(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (*GeoPulseConnectionTestResult, error) {
 	client, err := buildGeoPulseClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := client.GetMe()
+	user, err := client.GetMe(ctx)
 	if err != nil {
 		stage := "reachability"
 		if errors.Is(err, ErrGeoPulseUnauthorized) {
@@ -232,6 +279,8 @@ func diagnoseGeoPulseConnectionFailure(stage string, err error) *GeoPulseConnect
 		message = "The GeoPulse URL resolves to a private or loopback address, which this server is configured to block (GEOPULSE_BLOCK_PRIVATE_URLS)."
 	case errors.Is(err, ErrGeoPulseUnauthorized):
 		message = "GeoPulse rejected the API token. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrGeoPulseRedirect):
+		message = "GeoPulse answered with a redirect — check the base URL (http vs https, path). Redirects are not followed because they would forward your API token."
 	case errors.Is(err, ErrGeoPulseUnreachable):
 		message = fmt.Sprintf("Could not reach the GeoPulse server: %v", err)
 	case errors.Is(err, ErrGeoPulseNotFound):
@@ -273,7 +322,7 @@ func geopulseDayBounds(date, timezone string) (time.Time, time.Time, error) {
 // search per stay. The result is ephemeral — nothing is written. A failed timeline
 // call fails the request; a failed photo lookup only marks that and the remaining
 // stays PhotosUnavailable, because photos are context, not the point.
-func GeoPulseSuggestionsForDate(db *gorm.DB, cfg config.Config, userID uint, date, timezone string) (*GeoPulseSuggestionsResponse, error) {
+func GeoPulseSuggestionsForDate(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, date, timezone string) (*GeoPulseSuggestionsResponse, error) {
 	start, end, err := geopulseDayBounds(date, timezone)
 	if err != nil {
 		return nil, err
@@ -282,7 +331,9 @@ func GeoPulseSuggestionsForDate(db *gorm.DB, cfg config.Config, userID uint, dat
 	if err != nil {
 		return nil, err
 	}
-	stays, err := client.GetStays(start, end)
+	ctx, cancel := context.WithTimeout(ctx, geopulseSuggestionsBudget)
+	defer cancel()
+	stays, err := client.GetStays(ctx, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +379,7 @@ func GeoPulseSuggestionsForDate(db *gorm.DB, cfg config.Config, userID uint, dat
 		if photosOK && lookups < geopulseMaxStayLookups {
 			lookups++
 			if gpUserID == "" {
-				me, merr := client.GetMe()
+				me, merr := client.GetMe(ctx)
 				if merr != nil {
 					logger.Warn().Err(merr).Uint("user_id", userID).Msg("GeoPulse photo lookup skipped: could not resolve GeoPulse user id")
 					photosOK = false
@@ -337,9 +388,11 @@ func GeoPulseSuggestionsForDate(db *gorm.DB, cfg config.Config, userID uint, dat
 				}
 			}
 			if photosOK {
-				photos, perr := client.SearchPhotos(gpUserID, s.Latitude, s.Longitude, GeoPulsePhotoRadiusMeters, start, end, geopulsePhotosPerStay)
+				photos, perr := client.SearchPhotos(ctx, gpUserID, s.Latitude, s.Longitude, GeoPulsePhotoRadiusMeters, start, end, geopulsePhotosPerStay)
 				if perr != nil {
-					logger.Warn().Err(perr).Uint("user_id", userID).Msg("GeoPulse photo lookup failed; remaining stays are suggested without photos")
+					// Once the overall budget is spent every further lookup fails instantly
+					// on the expired context, so this one branch also covers "budget exhausted".
+					logger.Warn().Err(perr).Uint("user_id", userID).Bool("budget_exhausted", ctx.Err() != nil).Msg("GeoPulse photo lookup failed; remaining stays are suggested without photos")
 					photosOK = false
 				} else {
 					photosChecked = true

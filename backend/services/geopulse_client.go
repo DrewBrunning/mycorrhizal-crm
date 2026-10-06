@@ -67,6 +67,10 @@ var (
 	ErrGeoPulseInvalidData    = errors.New("GeoPulse returned data that could not be parsed")
 	ErrGeoPulsePrivateAddress = errors.New("GeoPulse URL resolves to a private or loopback address")
 	ErrGeoPulseRequestFailed  = errors.New("GeoPulse responded with an unexpected status")
+	// ErrGeoPulseRedirect: GeoPulse answered 3xx. Redirects are never followed
+	// (the API key rides a custom header that net/http would forward to the
+	// redirect target), so the user must fix the base URL instead.
+	ErrGeoPulseRedirect = errors.New("GeoPulse answered with a redirect")
 )
 
 // geopulseRequestTimeout is a var (not a const) so a test can shrink it to keep
@@ -162,8 +166,14 @@ func NewGeoPulseClient(baseURL, apiKey string, blockPrivateURLs bool) (*GeoPulse
 		baseURL: trimmed,
 		apiKey:  apiKey,
 		client: &http.Client{
-			Timeout:   geopulseRequestTimeout,
-			Transport: faultingRoundTripper{name: faultGeoPulseRequest, base: getGeoPulseTransport(blockPrivateURLs)},
+			Timeout: geopulseRequestTimeout,
+			// Never follow redirects: the token travels in the custom X-API-Key
+			// header, which net/http forwards across hosts (it only strips
+			// Authorization/Cookie/WWW-Authenticate), and a redirect could also
+			// bounce the request to an internal address when the private-URL
+			// guard is off. A 3xx surfaces as ErrGeoPulseRedirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     faultingRoundTripper{name: faultGeoPulseRequest, base: getGeoPulseTransport(blockPrivateURLs)},
 		},
 	}, nil
 }
@@ -183,12 +193,12 @@ func geopulsePrivateBlockingDialContext(ctx context.Context, network, addr strin
 // mapping auth/not-found responses to sentinel errors. Calls are logged at Debug
 // (method/path/outcome, never the key — and never the query string, which carries
 // the user's coordinates).
-func (c *GeoPulseClient) do(path string, query url.Values) (*http.Response, error) {
+func (c *GeoPulseClient) do(ctx context.Context, path string, query url.Values) (*http.Response, error) {
 	full := c.baseURL + path
 	if len(query) > 0 {
 		full += "?" + query.Encode()
 	}
-	req, err := http.NewRequest(http.MethodGet, full, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, full, nil)
 	if err != nil {
 		return nil, ErrGeoPulseInvalidURL // # pragma: no cover — NewGeoPulseClient already proved baseURL parses and every path/query here is built from constants and url.Values
 	}
@@ -219,6 +229,11 @@ func (c *GeoPulseClient) do(path string, query url.Values) (*http.Response, erro
 	case http.StatusNotFound, http.StatusGone:
 		resp.Body.Close()
 		return nil, ErrGeoPulseNotFound
+	case http.StatusMultipleChoices, http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusNotModified, http.StatusUseProxy, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		// Deliberately not logging Location: it can embed the query string.
+		resp.Body.Close()
+		return nil, ErrGeoPulseRedirect
 	default:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxGeoPulseErrorBodyBytes))
 		resp.Body.Close()
@@ -276,8 +291,8 @@ func decodeGeoPulseData(resp *http.Response, out any) error {
 // GetMe resolves the token's owning account (GET /api/users/me). It doubles as
 // the connection check (reachability + auth in one call) and as the source of
 // the GeoPulse user id the photo-search URL needs.
-func (c *GeoPulseClient) GetMe() (*GeoPulseUser, error) {
-	resp, err := c.do("/api/users/me", nil)
+func (c *GeoPulseClient) GetMe(ctx context.Context) (*GeoPulseUser, error) {
+	resp, err := c.do(ctx, "/api/users/me", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -292,19 +307,19 @@ func (c *GeoPulseClient) GetMe() (*GeoPulseUser, error) {
 }
 
 // Ping verifies reachability and the API token in one call.
-func (c *GeoPulseClient) Ping() error {
-	_, err := c.GetMe()
+func (c *GeoPulseClient) Ping(ctx context.Context) error {
+	_, err := c.GetMe(ctx)
 	return err
 }
 
 // GetStays returns the stays GeoPulse recorded between start and end
 // (GET /api/streaming-timeline). GeoPulse documents no range cap, so callers
 // self-limit to a single day.
-func (c *GeoPulseClient) GetStays(start, end time.Time) ([]GeoPulseStay, error) {
+func (c *GeoPulseClient) GetStays(ctx context.Context, start, end time.Time) ([]GeoPulseStay, error) {
 	q := url.Values{}
 	q.Set("startTime", start.UTC().Format(time.RFC3339))
 	q.Set("endTime", end.UTC().Format(time.RFC3339))
-	resp, err := c.do("/api/streaming-timeline", q)
+	resp, err := c.do(ctx, "/api/streaming-timeline", q)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +336,7 @@ func (c *GeoPulseClient) GetStays(start, end time.Time) ([]GeoPulseStay, error) 
 // configured) for photos taken within radiusMeters of a point during
 // [start, end] (GET /api/users/{userId}/immich/photos/search). userID is the
 // GeoPulse user id from GetMe; it is path-escaped.
-func (c *GeoPulseClient) SearchPhotos(userID string, lat, lon, radiusMeters float64, start, end time.Time, limit int) ([]GeoPulsePhoto, error) {
+func (c *GeoPulseClient) SearchPhotos(ctx context.Context, userID string, lat, lon, radiusMeters float64, start, end time.Time, limit int) ([]GeoPulsePhoto, error) {
 	q := url.Values{}
 	q.Set("startDate", start.Format(time.RFC3339))
 	q.Set("endDate", end.Format(time.RFC3339))
@@ -329,7 +344,7 @@ func (c *GeoPulseClient) SearchPhotos(userID string, lat, lon, radiusMeters floa
 	q.Set("longitude", strconv.FormatFloat(lon, 'f', -1, 64))
 	q.Set("radiusMeters", strconv.FormatFloat(radiusMeters, 'f', -1, 64))
 	q.Set("limit", strconv.Itoa(limit))
-	resp, err := c.do("/api/users/"+url.PathEscape(userID)+"/immich/photos/search", q)
+	resp, err := c.do(ctx, "/api/users/"+url.PathEscape(userID)+"/immich/photos/search", q)
 	if err != nil {
 		return nil, err
 	}

@@ -427,6 +427,28 @@ test('an address with coordinates links to the geo: URI directly', () => {
   expect(link.closest('a')).toHaveAttribute('href', 'geo:39.78,-89.65');
 });
 
+test.each(['private', 'secret'] as const)(
+  'a %s address shows an accessible lock indicator on the detail view',
+  (sensitivity) => {
+    renderInformation({
+      addresses: [{ components: [{ kind: 'locality', value: 'Springfield' }], sensitivity }],
+    });
+    expect(
+      within(fieldRow('Address')).getByRole('img', { name: /withheld from sync, exports/ }),
+    ).toBeInTheDocument();
+  },
+);
+
+test('a normal or unset address shows no lock indicator', () => {
+  renderInformation({
+    addresses: [
+      { components: [{ kind: 'locality', value: 'Springfield' }], sensitivity: 'normal' },
+      { components: [{ kind: 'locality', value: 'Shelbyville' }] },
+    ],
+  });
+  expect(within(fieldRow('Address')).queryByRole('img', { name: /withheld/ })).toBeNull();
+});
+
 test('a raw link (Card.Links) is directly tappable, plus a copy action', () => {
   renderInformation(
     { links: [{ uri: 'https://example.com/profile', contexts: ['home'] }] },

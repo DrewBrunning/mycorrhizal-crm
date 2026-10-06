@@ -8,6 +8,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
 import LanguageIcon from '@mui/icons-material/Language';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -552,6 +553,15 @@ export default function ContactInformation({
                 )}
               </Box>
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {a.sensitivity && a.sensitivity !== 'normal' && (
+                  <Tooltip title={t('contacts.addressFields.sensitivityIndicator')}>
+                    <LockOutlinedIcon
+                      fontSize="small"
+                      color="action"
+                      titleAccess={t('contacts.addressFields.sensitivityIndicator')}
+                    />
+                  </Tooltip>
+                )}
                 {formatted && (
                   <CopyButton
                     value={formatted}

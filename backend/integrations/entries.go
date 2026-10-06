@@ -247,12 +247,12 @@ func geopulseIntegration() Integration {
 		FailureImpactNote: "The user cannot load suggestions for a date and can still log the activity by hand; no stored data is affected.",
 
 		Timeout:     30 * time.Second,
-		TimeoutNote: "services.geopulseRequestTimeout on the http.Client, per request (one timeline call, one identity call, then up to 50 photo searches, each bounded separately); transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.",
+		TimeoutNote: "services.geopulseRequestTimeout on the http.Client, per request (one timeline call, one identity call, then up to 50 photo searches, each bounded separately) and the whole suggestions request is capped by services.geopulseSuggestionsBudget (20s, under nginx's 30s proxy_read_timeout; the request context is threaded through so a departed client cancels the fan-out, and stays past the budget are suggested with photos_unavailable); transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.",
 
 		RetryBudget: "No retry — every call is synchronous and user-initiated. The request fails with a mapped error and the user retries. A failed photo lookup does not fail the request: it ends further photo lookups for that request and the suggestions are returned flagged photos_unavailable.",
 
 		SSRF:     SSRFGuardedWhenEnabled,
-		SSRFNote: "geopulsePrivateBlockingDialContext → httputil.SafeDialContext, applied only when GEOPULSE_BLOCK_PRIVATE_URLS is set. Default off so a LAN GeoPulse works; the base URL is user-supplied and typically private.",
+		SSRFNote: "geopulsePrivateBlockingDialContext → httputil.SafeDialContext, applied only when GEOPULSE_BLOCK_PRIVATE_URLS is set. Default off so a LAN GeoPulse works; the base URL is user-supplied and typically private. Redirects are never followed (the X-API-Key header would be forwarded cross-host): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the token.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "The request returns a mapped 503 'Could not reach GeoPulse' error; nothing is written; the user can still log the activity by hand.",
