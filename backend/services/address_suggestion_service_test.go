@@ -5,6 +5,7 @@ import (
 
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 )
 
 func setupAddressSuggestionTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
 	return db

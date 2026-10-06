@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,7 @@ func countIntegrationFailedEvents(t *testing.T, db *gorm.DB) int64 {
 }
 
 func TestWebhookDelivery_PermanentStatusIsTerminalNotRetried(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery will not be retried")
 	cases := []struct {
 		status     int
 		wantReason string
@@ -114,6 +116,7 @@ func TestWebhookDelivery_RateLimitedRetryAfterHTTPDate(t *testing.T) {
 }
 
 func TestWebhookDelivery_TransientStatusBacksOffAndIsBounded(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery will not be retried")
 	db := setupWebhookRetryTestDB(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

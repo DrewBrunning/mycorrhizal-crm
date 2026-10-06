@@ -7,6 +7,7 @@ import (
 	"io"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -318,6 +319,7 @@ func TestSyncContactSubscription_Success(t *testing.T) {
 }
 
 func TestSyncContactSubscription_UnauthorizedReflectsFailure(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed; Manual contact sync failed; Request error")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -384,6 +386,7 @@ func TestSyncContactSubscription_NotFoundForOtherUser(t *testing.T) {
 // closing the underlying *sql.DB out from under gorm before the request
 // (mirrors export_controller_test.go's TestExportContactsAsVCF_DBError).
 func TestListContactSubscriptions_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
@@ -405,6 +408,7 @@ func TestListContactSubscriptions_DBError(t *testing.T) {
 // TestCreateContactSubscription_DBError exercises the subscription-count
 // db.Count error branch (the first DB call CreateContactSubscription makes).
 func TestCreateContactSubscription_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
@@ -429,6 +433,7 @@ func TestCreateContactSubscription_DBError(t *testing.T) {
 // TestFindContactSubscription_DBError exercises findContactSubscription's
 // non-"record not found" DB error branch (used by Update/Delete/Sync).
 func TestFindContactSubscription_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)

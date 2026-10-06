@@ -6,6 +6,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 )
 
 func setupCadenceJobTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -152,6 +153,7 @@ func TestMycorrhizalImport_FullControllerFlow(t *testing.T) {
 // TestMycorrhizalImport_RejectsBadBundle covers the format/version gates and
 // the missing-file/unknown-session branches.
 func TestMycorrhizalImport_RejectsBadBundle(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Mycorrhizal bundle upload rejected")
 	_, router := setupRouter(t)
 	registerMycorrhizalRoutes(router)
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ import (
 // use gorm.Model soft delete with partial unique indexes from hand-written
 // migrations — CLAUDE.md backend trap 1).
 func setupExternalConfigTestDB(t *testing.T) (*gorm.DB, models.User) {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
 	user := models.User{Username: "extconfig", Password: "password123!A", Email: "extconfig@example.com"}

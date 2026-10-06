@@ -25,6 +25,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/i18n"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -39,6 +40,7 @@ import (
 // index that AutoMigrate cannot see, and the senders rely on the exact columns
 // the migration creates).
 func setupNotificationTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
 	t.Cleanup(func() {
@@ -225,6 +227,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 // a failure in one channel must not mark the reminder as sent and must not
 // block another channel from dispatching.
 func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	db := setupNotificationTestDB(t)
 	// The ntfy target is /{topic} = /my-topic; the gotify target is {url}/message.
 	fake := newFakeChannelServer(t, map[string]int{"/message": 500})
@@ -283,6 +286,7 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 // before any network call and recorded as failed; with it off (the default,
 // for self-hosters), the same target is reached.
 func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	db := setupNotificationTestDB(t)
 	fake := newFakeChannelServer(t, nil)
 	user := newNotificationUser(t, db, true, false, false, fake.URL(), "")
@@ -320,6 +324,7 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 // so a loopback endpoint must be refused on the real send path and the
 // reminder stays due (a failed delivery, not a silent drop).
 func TestSendReminders_PushPrivateAddressBlocked(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	db := setupNotificationTestDB(t)
 	fake := newFakeChannelServer(t, nil)
 	user := newNotificationUser(t, db, false, false, true, "", "")
@@ -734,6 +739,7 @@ func TestNotificationShortBody(t *testing.T) {
 // TestRecordNotificationDeliveryFailureCarriesError pins the failed-delivery
 // bookkeeping used by every channel sender.
 func TestRecordNotificationDeliveryFailureCarriesError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed")
 	db := setupNotificationTestDB(t)
 	user := newNotificationUser(t, db, false, false, false, "", "")
 	first := newDueReminder(t, db, user, "first")

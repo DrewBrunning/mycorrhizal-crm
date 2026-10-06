@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -176,6 +177,7 @@ func TestNotificationConfig_TestNtfy(t *testing.T) {
 }
 
 func TestNotificationConfig_TestUnconfiguredChannel(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Test notification channel failed")
 	_, router := setupRouter(t)
 	router.POST("/notifications/config/test", TestNotificationChannel)
 
@@ -238,8 +240,9 @@ func testChannel(t *testing.T, router http.Handler, channel string) map[string]a
 // gets the beginning of the real dial error, truncated, never the full
 // unbounded text.
 func TestNotificationConfig_TestNtfy_ErrorTruncated(t *testing.T) {
-	buf := captureTestLogger(t)
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs a warn/error line")
 	router := newNotificationTestRouter(t, config.Config{})
+	buf := captureTestLogger(t) // after the router: its Guard swaps the logger (issue #1474)
 
 	long := strings.Repeat("a", 300)
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://" + long + ".invalid", NtfyTopic: "alerts"})
@@ -270,8 +273,9 @@ func TestNotificationConfig_TestNtfy_ErrorTruncated(t *testing.T) {
 // the neutral outbound-policy message, and the distinct sentinel stays in the
 // server log.
 func TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded(t *testing.T) {
-	buf := captureTestLogger(t)
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs a warn/error line")
 	router := newNotificationTestRouter(t, config.Config{WebhookBlockPrivateURLs: true})
+	buf := captureTestLogger(t) // after the router: its Guard swaps the logger (issue #1474)
 
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://127.0.0.1:1", NtfyTopic: "alerts"})
 	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
@@ -294,8 +298,9 @@ func TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded(t *testi
 // text as a private-address target, so the flag cannot be used to probe which
 // rule a target tripped.
 func TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded(t *testing.T) {
-	buf := captureTestLogger(t)
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs a warn/error line")
 	router := newNotificationTestRouter(t, config.Config{WebhookBlockPrivateURLs: true})
+	buf := captureTestLogger(t) // after the router: its Guard swaps the logger (issue #1474)
 
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://nonexistent.invalid", NtfyTopic: "alerts"})
 	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))

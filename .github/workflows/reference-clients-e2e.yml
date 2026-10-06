@@ -119,6 +119,9 @@ jobs:
           PROFILE_PHOTO_DIR: /tmp/e2e/photos
           ATTACHMENTS_DIR: /tmp/e2e/attachments
           FRONTEND_URL: http://localhost:7300
+          # JSON logs (a non-release GIN_MODE forces console format) so
+          # cmd/logguard can parse them (issue #1474).
+          GIN_MODE: release
           CARDDAV_ENABLED: "true"
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
@@ -139,6 +142,13 @@ jobs:
         env:
           MYCORRHIZAL_OUR_CARDDAV_URL: http://127.0.0.1:7300
           MYCORRHIZAL_VDIRSYNCER_CMD: vdirsyncer
+
+      # Issue #1474: fail on any unexpected warn/error line the real server
+      # logged while the reference client talked to it
+      # (backend/cmd/logguard/allowlist.json).
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: go run ./cmd/logguard < /tmp/e2e/server.log
 
       - name: Show server logs on failure
         if: failure()
@@ -213,6 +223,9 @@ jobs:
           PROFILE_PHOTO_DIR: /tmp/e2e/photos
           ATTACHMENTS_DIR: /tmp/e2e/attachments
           FRONTEND_URL: http://localhost:7300
+          # JSON logs (a non-release GIN_MODE forces console format) so
+          # cmd/logguard can parse them (issue #1474).
+          GIN_MODE: release
           CARDDAV_ENABLED: "true"
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
@@ -300,6 +313,13 @@ jobs:
           path: /tmp/davx5-diag/
           retention-days: 7
           if-no-files-found: ignore
+
+      # Issue #1474: fail on any unexpected warn/error line the real server
+      # logged while the reference client talked to it
+      # (backend/cmd/logguard/allowlist.json).
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: go run ./cmd/logguard < /tmp/e2e/server.log
 
       - name: Show server logs on failure
         if: failure()

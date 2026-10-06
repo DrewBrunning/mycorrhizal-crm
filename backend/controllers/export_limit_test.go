@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,7 @@ import (
 // request into a 507 with a pointer at the paginated API, instead of an OOM.
 
 func TestExport_RefusesWhenContactCountExceedsLimit(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)

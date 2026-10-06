@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -257,6 +258,7 @@ func TestUploadCSVForImport_Success(t *testing.T) {
 }
 
 func TestUploadCSVForImport_MissingFile(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No file uploaded")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
@@ -303,6 +305,7 @@ func TestUploadCSVForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadCSVForImport_MalformedCSV_Returns400NotPanic(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to parse CSV")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
@@ -413,6 +416,7 @@ func TestUploadVCFForImport_DuplicateDetected(t *testing.T) {
 }
 
 func TestUploadVCFForImport_MissingFile(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No file uploaded")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
@@ -458,6 +462,7 @@ func TestUploadVCFForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadVCFForImport_Malformed_Returns400NotPanic(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to parse VCF")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
@@ -513,6 +518,7 @@ func TestUploadJSContactForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadJSContactForImport_MalformedJSON_Returns400NotPanic(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to parse JSContact file")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
@@ -998,6 +1004,7 @@ func TestConfirmVCFImport_NoAuth_Unauthorized(t *testing.T) {
 // =====================================================================================
 
 func TestUploadJSContactForImport_MissingFile(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No file uploaded")
 	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 

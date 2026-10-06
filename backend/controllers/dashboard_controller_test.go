@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -216,6 +217,7 @@ func TestGetDashboard_FavoritesBlock(t *testing.T) {
 // with a 500 rather than silently dropping the block, mirroring the error
 // contract every other block already gets from apperrors.AbortWithError.
 func TestGetDashboard_DataDecayQueryFails(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 
