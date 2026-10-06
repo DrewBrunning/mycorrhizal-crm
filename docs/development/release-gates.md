@@ -136,6 +136,8 @@ tag exist, so its pre-tag battery tests a candidate built from that commit; `doc
 `release-gate` then builds and tests a candidate from the **tagged** commit, and *that* digest is what
 publishes. `release.yml` records its own candidate in `release-readiness.json` (`validated_candidate`)
 for comparison; the two coincide whenever the fixture commit does not change the image build context.
+When the tag-time battery is *reused* (issue #1487, below), the carried gates cover the pre-tag candidate's
+tree and only `deploy-smoke` boots the digest that publishes.
 **(b)** With the gate overridden (`override_reason`) there is no tested candidate, so the all-in-one
 image builds from source and `verify-release-assets` only warns that digest equality cannot be asserted.
 
@@ -145,6 +147,109 @@ the digest and `needs: build-candidate`, and pulls through the script; the candi
 `build-and-push` agree on build args and the shared stamp; and the retag and digest-equality
 assertions are present. A candidate tag is left in GHCR per release attempt (including dry runs);
 prune old `candidate-*` package versions periodically.
+
+## Flake exposure: ledger, reuse, rerun, retries (issue #1487)
+
+Release reliability data (the last 50 `release.yml` runs as of 2026-10-05: 19 success, 18 failure,
+8 cancelled, 5 `startup_failure`) showed the failures after `preflight` were almost all flakes in
+individually-gating suites, not defects in the candidate — and the battery gave every flaky suite
+**two** rolls per release (once in `release.yml`'s `validate`, again in `docker-publish.yml`'s
+`release-gate` after the tag exists, where a failure leaves a tag with no artifacts) and re-ran the
+**whole** battery on any failure. Four mechanisms cut that exposure without weakening what a gate
+means. The decision logic is unit-tested Go (`backend/internal/releaseplan`, front end
+`cd backend && go run ./cmd/releaseplan`), not inline shell.
+
+### The per-gate ledger
+
+`release-validate.yml`'s `results` job writes `release-gate-ledger.json` into the
+`release-gate-results` artifact: one row per composed gate (every job that calls a reusable
+workflow; `build-candidate` is not a gate).
+
+```json
+{"sha": "<commit the battery ran against>", "release_tag": "v1.2.3", "gate": "e2e-tests",
+ "conclusion": "success", "run_id": "123", "carried_from_run": "98"}
+```
+
+`carried_from_run` appears only on a gate this run did **not** execute but carried from an earlier
+run; `run_id` is then the current run and `carried_from_run` the run that earned the success. A
+carried row keeps the *earning* commit's `sha`, so the ledger can never claim a commit it did not
+test. A gate that did not run for any other reason records `skipped`, which no later carry or reuse
+ever accepts. `release.yml` folds the ledger into `release-readiness.json` as `gate_ledger`.
+
+### Tag-time reuse (`docker-publish.yml`'s `reuse-decision`)
+
+The tag push used to re-run the entire battery that `release.yml` had just passed. Now a
+`reuse-decision` job reads the ledger from the `release-readiness-<tag>` artifact and runs
+`releaseplan reuse`. The pre-tag battery is **accepted** only when **all** hold:
+
+1. every composed gate is a recorded `success` for this tag, and the ledger covers exactly **one**
+   validated commit;
+2. that commit is an ancestor of the tag (`git merge-base --is-ancestor`); and
+3. the tree diff from the validated commit to the tag (`git diff --name-only`) is a subset of the
+   fixture allowlist — exactly the two files `release.yml`'s fixture commit may change:
+   `backend/database/testdata/schemas/<tag>.sql` and `backend/internal/schemafixture/releases.go`
+   (an RC tag *is* the validated commit: empty diff).
+
+Anything else — no artifact (a hand-pushed tag, expired, pre-ledger), a gate not green, a stray file,
+an unreadable diff — is `reuse=false` and the **full battery runs, exactly as before**: the tool never
+errors toward reuse, and the job is `continue-on-error` so it can only ever cost the reuse, never block
+a release. On reuse, `release-gate` is called with `skip_gates` (every gate except the retest floor)
+and the carried rows; the composer's per-gate `if:` skips them. The decision — reuse or not, the
+reason, the changed files, which gates were carried — is written to the run summary and recorded in
+the attached `release-readiness.json` as `tag_time_battery`.
+
+**The retest floor is `deploy-smoke`.** `build-candidate` still builds the image from the **tag** (its
+digest is what `build-and-push` re-tags and `verify-release-assets` compares), and that fresh build
+differs from the pre-tag candidate by its stamped commit and the inert fixture files, so under reuse
+the exact published digest was *not* exercised by the carried gates. The clean-install smoke is cheap
+and boots exactly those bytes, so it always re-runs (`releaseplan.RetestOnReuse`). This is the
+honest weakening of #1484's "tested image == shipped image" under reuse: the carried gates vouch for
+the **tree** (identical but for the allowlisted fixture), the smoke for the **bytes**. A partial
+policy ("run only the gates whose inputs differ" when the diff is *not* fixture-only) was deliberately
+not built: a hand-kept path-to-gate map is exactly the kind of table that silently goes stale, and a
+source change in the diff simply runs everything.
+
+### `rerun_gates` on `release.yml`
+
+`release.yml` accepts `rerun_gates` — a comma list of gate ids (the job ids in
+`release-validate.yml`) or the word `failed` — and optional `rerun_from_run`. `preflight` finds the
+newest `release-gate-results` ledger recorded for the release commit (or the named run's), runs
+`releaseplan rerun`, and `validate` is called with `skip_gates` and the carried rows. Rules, all
+pinned by `releaseplan`'s tests: only a recorded `success` for **exactly this commit and this version**
+is carried; a gate with no such row re-runs even if not named; an unknown id, or a request with
+nothing left to run, fails in `preflight` before any gate; a ledger for a different commit carries
+nothing. `build-candidate` always rebuilds (cache-warm) so re-run image gates test the digest the
+readiness record names. Ledgers live in a 5-day artifact; past that, dispatch without `rerun_gates`.
+Dependent gates are handled explicitly: `reference-clients-e2e` needs `android-tests`, so its `if:`
+accepts a *skipped* (carried) `android-tests` while a *failed* one still blocks it.
+
+### Flake policy: what is retried, what is not
+
+Evidence first (failed gate step on each of the failing runs, from the Actions API):
+
+| Suite | Failure | Class | Policy |
+|---|---|---|---|
+| ZAP `zapgate` (2 runs) | `self-test: no High/Medium alert for plugin 40012 found on the canary — the scan is blind` | **Scanner flake** (ZAP's JVM drops in-progress alert data under memory pressure, issue #1278); the app was not judged | `zapgate` exits `3` for *exactly* this case; `.github/scripts/zap-scan-gate.sh` re-scans **once**. An unaccepted High/Medium **app** finding exits `1` and is **never** retried. |
+| Schemathesis `schemagate` (2 runs) | `1 unaccepted finding(s)`, a randomized-fuzz `Server error` (5xx) | **A real finding**, not infra: `schemagate` already gates on a committed ignore list and failed on a *new* finding | **Not retried.** Re-rolling a fuzzer until it stops finding a 500 hides a defect; fix the 5xx or add a justified ignore entry. |
+| `min-version-tests` Go floor (3 runs, 2026-09-19..22) | a different timing-sensitive test each time: `TestCheckDBIntegrityScheduledFiresWebhookOnCorruption` (SQLITE_BUSY lock-release race, with `services` taking 2–3 min under a contended runner), `TestDetectReachOutSuggestions_OrganizationChange`, and a `schemafixture` 10 min timeout (since raised to 25 min) | **Timing flakes, not floor-specific** — the same packages pass at the current toolchain in the same battery | `.github/scripts/go-test-retry-failed.sh` re-runs **only the failed packages, once**, with a `::warning::` naming each retried package and test. A build/vet failure, more than 3 failed packages, or a package that fails twice still fails the leg. |
+| Playwright E2E, DAVx5 / Android emulator legs, zizmor, large-dataset migration | already retried in-job (the emulator legs run a "retry, fresh emulator" attempt) or one-off | — | unchanged; the ledger + `rerun_gates` bound their cost to one gate instead of the battery |
+
+The two retries are *bounded* on purpose: a retry that can mask a real finding turns a gate into a
+suggestion. The structural wiring (the scripts are what the workflows run; `zapgate`'s exit code and
+the script's agree) is pinned by `releaseworkflow.CheckResilience` and the shell tests
+`.github/scripts/tests/zap-scan-gate.test.sh` / `go-test-retry-failed.test.sh` (CI: `actionlint.yml`).
+
+`go run ./cmd/releasegatecheck` enforces the wiring (`releaseworkflow.CheckResilience`): every
+composed gate carries a `skip_gates` condition naming itself, dependent gates tolerate a skipped
+need, `build-candidate` is never conditional, the `results` job records and uploads the ledger,
+`release.yml` plans the rerun and passes it to `validate`, `docker-publish.yml`'s `reuse-decision`
+exists, is `continue-on-error`, checks ancestry and feeds `release-gate`, and the two retry wrappers
+are what `zap-dast.yml` and `min-version-tests.yml` run.
+
+**Not done here.** PR and push CI still retry once and nightly retries zero, so a flaky test is masked
+(PR) or loud-then-closed (nightly) with no longitudinal signal; a flake-rate record per suite is a
+separate piece of work. The "release success rate over the next 10 dispatches" in the issue's verify
+criteria can only be measured after this lands and is reported on the gate issue.
 
 ## The Android decision (issue #527)
 

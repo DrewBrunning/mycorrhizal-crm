@@ -74,7 +74,12 @@ jobs:
           go version
           go build ./...
           go vet ./...
-          go test -timeout 25m ./...
+          # Issue #1487: this leg failed three release cuts on lone timing
+          # flakes (a different test each time, none floor-specific); the
+          # script retries ONLY the failed packages once, loudly, and still
+          # fails a build error, more than 3 failed packages, or a package that
+          # fails twice. Policy: docs/development/release-gates.md "Flake policy".
+          GO_TEST_FLAGS='-timeout 25m' bash ../.github/scripts/go-test-retry-failed.sh
 
   go-below-minimum:
     name: Go below minimum fails clearly (1.25.5)
