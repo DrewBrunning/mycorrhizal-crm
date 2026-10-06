@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { ErrorBucket } from '../api/errorAggregation';
 import { useErrorAggregation } from '../hooks/useErrorAggregation';
+import { statusTextColor } from '../utils/statusText';
 
 const WINDOW_HOURS = 24;
 
@@ -160,8 +161,10 @@ function ErrorBucketRow({
           <Typography
             variant="body2"
             component="span"
-            sx={{ fontWeight: 700 }}
-            color={bucket.recurring ? 'error' : 'text.primary'}
+            sx={{
+              fontWeight: 700,
+              color: bucket.recurring ? statusTextColor('error') : 'text.primary',
+            }}
           >
             {bucket.count}
           </Typography>
@@ -170,6 +173,7 @@ function ErrorBucketRow({
               size="small"
               color="error"
               variant="outlined"
+              sx={{ color: statusTextColor('error') }}
               label={t('errorAggregation.recurring')}
             />
           )}
@@ -177,7 +181,11 @@ function ErrorBucketRow({
       </TableCell>
       <TableCell sx={{ overflowWrap: 'anywhere' }}>{componentLabel}</TableCell>
       <TableCell sx={{ overflowWrap: 'anywhere' }}>
-        <Typography variant="body2" component="span" color="error" sx={{ wordBreak: 'break-word' }}>
+        <Typography
+          variant="body2"
+          component="span"
+          sx={{ wordBreak: 'break-word', color: statusTextColor('error') }}
+        >
           {bucket.sample_error || bucket.cause}
         </Typography>
       </TableCell>
