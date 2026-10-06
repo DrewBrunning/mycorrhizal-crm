@@ -445,3 +445,42 @@ test('an already-logged stay is perceivable as text, not just colour', async () 
   await lookUp();
   expect(await screen.findByText('Already logged')).toBeVisible();
 });
+
+// The Add Activity form falls back to the lookup's own date when the stay's day
+// cannot be derived (unparseable timestamp, or Intl yielding no usable parts).
+async function openFormFor(s: GeoPulseStaySuggestion) {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(s));
+  renderDialog();
+  await lookUp();
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
+  return within(await screen.findByRole('dialog', { name: 'Add Activity' }));
+}
+
+test('an unparseable stay timestamp pre-fills the lookup date', async () => {
+  const form = await openFormFor(stay({ timestamp: 'not-a-time' }));
+  expect(form.getByLabelText('Date *')).toHaveValue('2026-09-20');
+});
+
+test('a date formatter that yields no parts pre-fills the lookup date', async () => {
+  const original = Intl.DateTimeFormat.prototype.formatToParts;
+  const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'formatToParts').mockImplementation(() => []);
+  try {
+    const form = await openFormFor(stay());
+    expect(form.getByLabelText('Date *')).toHaveValue('2026-09-20');
+  } finally {
+    spy.mockRestore();
+    expect(Intl.DateTimeFormat.prototype.formatToParts).toBe(original);
+  }
+});
+
+test('a date formatter that throws pre-fills the lookup date', async () => {
+  const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'formatToParts').mockImplementation(() => {
+    throw new RangeError('bad zone');
+  });
+  try {
+    const form = await openFormFor(stay());
+    expect(form.getByLabelText('Date *')).toHaveValue('2026-09-20');
+  } finally {
+    spy.mockRestore();
+  }
+});
