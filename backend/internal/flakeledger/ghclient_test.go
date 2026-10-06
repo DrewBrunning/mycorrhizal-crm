@@ -40,7 +40,7 @@ func TestUnzip(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(d, "a", "b.xml")); string(b) != "<x/>" {
 		t.Errorf("%q", b)
 	}
-	for _, evil := range []string{"../escape.txt", "a/../../escape.txt", "/abs.txt"} {
+	for _, evil := range []string{"../escape.txt", "a/../../escape.txt", "/abs.txt", ".."} {
 		if err := Unzip(mkzip(t, map[string]string{evil: "x"}), t.TempDir()); err == nil {
 			t.Errorf("%s must be refused", evil)
 		}

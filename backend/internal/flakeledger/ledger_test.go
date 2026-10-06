@@ -114,6 +114,11 @@ func TestCandidatesRespectClosedIssue(t *testing.T) {
 	if got := Candidates(l, 3, map[string]time.Time{title: closedAt}); len(got) != 0 {
 		t.Fatalf("closed issue must suppress: %+v", got)
 	}
+	// An event exactly at the close time predates the close: not counted
+	// (runs 0..3 sit at now, now-1d, now-2d, now-3d; close at now-2d leaves 2).
+	if got := Candidates(l, 3, map[string]time.Time{title: now.AddDate(0, 0, -2)}); len(got) != 0 {
+		t.Fatalf("event at the close instant must not count: %+v", got)
+	}
 	// Closed long ago: everything counts again.
 	if got := Candidates(l, 3, map[string]time.Time{title: now.AddDate(0, 0, -20)}); len(got) != 1 {
 		t.Fatalf("old close must not suppress: %+v", got)
