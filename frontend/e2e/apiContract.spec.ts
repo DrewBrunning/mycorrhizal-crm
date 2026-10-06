@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, authTest as test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 /**

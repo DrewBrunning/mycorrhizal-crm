@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, LOGGED_OUT, test } from './fixtures';
 import { TEST_USER } from './global-setup';
 
 // Issue #992 (split from #917 finding G6): docs/development/supported-runtime-matrix.md's
@@ -38,6 +38,10 @@ import { TEST_USER } from './global-setup';
 // real push service, and there is still no real-Safari CI runner anywhere to
 // compare against. What this pins is the capability surface the app's own
 // browserSupportsPush() checks for, on the actual engine CI can run.
+// Logs in through the UI itself, so it must start logged out -- and must not
+// trigger a per-worker user's provisioning on an engine `setup` never ran for.
+test.use({ storageState: LOGGED_OUT });
+
 test.describe('WebKit smoke (issue #992)', () => {
   test('the app loads and functions on WebKit, with the Push API surface present', async ({
     page,

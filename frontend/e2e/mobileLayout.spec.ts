@@ -36,7 +36,8 @@ test.describe('Mobile layout: Settings (T32)', () => {
 });
 
 test.describe('Mobile layout: User Management (T32)', () => {
-  test.use({ viewport: { width: 360, height: 800 } });
+  // The shared `testuser` is the auto-admin; per-worker users are not.
+  test.use({ viewport: { width: 360, height: 800 }, sharedUser: true });
 
   test('user list reflows to stacked cards, readable and actionable', async ({ page }) => {
     await page.goto('/users');
@@ -53,7 +54,7 @@ test.describe('Mobile layout: User Management (T32)', () => {
 });
 
 test.describe('Mobile layout: User Management at 414px (T32)', () => {
-  test.use({ viewport: { width: 414, height: 896 } });
+  test.use({ viewport: { width: 414, height: 896 }, sharedUser: true });
 
   test('user list does not overflow at 414px either', async ({ page }) => {
     await page.goto('/users');
