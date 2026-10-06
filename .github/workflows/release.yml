@@ -93,6 +93,16 @@ on:
         required: false
         type: string
         default: ''
+      rerun_gates:
+        description: 'Re-run ONLY these gates (comma list of release-validate.yml gate ids, or "failed") on the same commit; every other gate''s recorded success is carried from the prior battery''s ledger (issue #1487). Blank runs the full battery.'
+        required: false
+        type: string
+        default: ''
+      rerun_from_run:
+        description: 'Optional run id whose gate ledger rerun_gates carries from; blank picks the newest ledger recorded for this commit'
+        required: false
+        type: string
+        default: ''
 
 # Read-only by default (StepSecurity "Restrict permissions for GITHUB_TOKEN").
 permissions:
@@ -120,6 +130,11 @@ jobs:
       resume: ${{ steps.validate.outputs.resume }}
       resumed_from_run: ${{ steps.validate.outputs.resumed_from_run }}
       release_commit: ${{ steps.verify.outputs.release_commit }}
+      # Issue #1487: the rerun_gates plan, handed straight to the composer.
+      skip_gates: ${{ steps.rerun.outputs.skip_gates }}
+      carried_ledger: ${{ steps.rerun.outputs.carried }}
+      rerun_gates: ${{ steps.rerun.outputs.rerun_gates }}
+      carried_from_runs: ${{ steps.rerun.outputs.carried_from_runs }}
     steps:
       - name: Checkout the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -241,6 +256,52 @@ jobs:
           fi
           echo "release_commit=$head" >> "$GITHUB_OUTPUT"
 
+      # Issue #1487: `rerun_gates` re-runs only the named (or, with `failed`,
+      # only the not-green) gates against this same commit. Every other gate is
+      # carried from a prior battery's gate ledger -- but only an entry that is
+      # a recorded `success` for exactly this commit and this version; a gate
+      # with no such entry is re-run even if not named. A wrong gate name, a
+      # missing ledger or a nothing-to-do request fails HERE, before any
+      # expensive gate runs. The plan logic is unit-tested Go
+      # (backend/internal/releaseplan), not shell.
+      - name: Plan the gate rerun
+        id: rerun
+        if: ${{ inputs.rerun_gates != '' }}
+        env:
+          RERUN_GATES: ${{ inputs.rerun_gates }}
+          RERUN_FROM_RUN: ${{ inputs.rerun_from_run }}
+          VERSION: ${{ steps.validate.outputs.version }}
+          RELEASE_COMMIT: ${{ steps.verify.outputs.release_commit }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=release-gate-results&per_page=100" > "${RUNNER_TEMP}/gate-artifacts.json"
+          if [ -n "$RERUN_FROM_RUN" ]; then
+            art_id="$(jq -r --arg run "$RERUN_FROM_RUN" '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run)] | sort_by(.created_at) | last | .id // empty' "${RUNNER_TEMP}/gate-artifacts.json")"
+          else
+            art_id="$(jq -r --arg sha "$RELEASE_COMMIT" '[.artifacts[] | select(.expired == false and .workflow_run.head_sha == $sha)] | sort_by(.created_at) | last | .id // empty' "${RUNNER_TEMP}/gate-artifacts.json")"
+          fi
+          if [ -z "$art_id" ]; then
+            echo "::error::rerun_gates needs a prior battery's gate ledger for ${RELEASE_COMMIT} (release-gate-results artifacts expire after 5 days), found none${RERUN_FROM_RUN:+ in run ${RERUN_FROM_RUN}}. Dispatch without rerun_gates for a full battery."
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${art_id}/zip" > "${RUNNER_TEMP}/gate-ledger.zip"
+          unzip -o -q "${RUNNER_TEMP}/gate-ledger.zip" -d "${RUNNER_TEMP}/gate-ledger"
+          (cd backend && go run ./cmd/releaseplan rerun \
+            -composer ../.github/workflows/release-validate.yml \
+            -rerun "$RERUN_GATES" \
+            -ledger "${RUNNER_TEMP}/gate-ledger/release-gate-ledger.json" \
+            -sha "$RELEASE_COMMIT" -tag "$VERSION") > "${RUNNER_TEMP}/rerun-plan.txt"
+          cat "${RUNNER_TEMP}/rerun-plan.txt" >> "$GITHUB_OUTPUT"
+          carried="$(sed -n 's/^carried=//p' "${RUNNER_TEMP}/rerun-plan.txt")"
+          echo "carried_from_runs=$(printf '%s' "$carried" | jq -r '[.[] | (.carried_from_run // .run_id)] | unique | join(",")')" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Gate rerun plan"
+            echo
+            echo "- re-running: \`$(sed -n 's/^rerun_gates=//p' "${RUNNER_TEMP}/rerun-plan.txt")\`"
+            echo "- carried forward (recorded success for this commit): \`$(sed -n 's/^skip_gates=//p' "${RUNNER_TEMP}/rerun-plan.txt")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Gate - security-doc citations (citecheck)
         working-directory: backend
         run: |
@@ -272,6 +333,11 @@ jobs:
     with:
       release_tag: ${{ needs.preflight.outputs.version }}
       source_ref: ${{ needs.preflight.outputs.release_commit }}
+      # Issue #1487: empty (the default) runs every gate; a `rerun_gates`
+      # dispatch passes the planned skip list and the carried successes that
+      # justify it (built by `releaseplan rerun` in preflight).
+      skip_gates: ${{ needs.preflight.outputs.skip_gates }}
+      carried_ledger: ${{ needs.preflight.outputs.carried_ledger }}
     permissions:
       contents: read
       pull-requests: read
@@ -519,11 +585,20 @@ jobs:
           REF: ${{ inputs.ref }}
           ACK_ASVS: ${{ inputs.ack_asvs_current }}
           ACK_ADV: ${{ inputs.ack_adversarial_delta }}
+          # Issue #1487: what a rerun_gates dispatch re-ran vs carried.
+          RERUN_GATES: ${{ needs.preflight.outputs.rerun_gates }}
+          SKIP_GATES: ${{ needs.preflight.outputs.skip_gates }}
+          CARRIED_FROM_RUNS: ${{ needs.preflight.outputs.carried_from_runs }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -eu
           # The residual-risk statement (#953), same input docker-publish.yml's
           # release metadata uses.
+          # Issue #1487: the per-gate ledger (sha, gate, conclusion, run_id) the
+          # tag-time battery reads to decide reuse. Absent (ledger step failed)
+          # records [] -- the consumer then runs the full battery.
+          ledger=release-gate-results/release-gate-ledger.json
+          [ -f "$ledger" ] || echo '[]' > "$ledger"
           residual="${RUNNER_TEMP:-/tmp}/residual-risk.json"
           (cd backend && go run ./cmd/residualrisk -out "$residual")
           jq -n \
@@ -541,8 +616,12 @@ jobs:
             --arg ack_adv "$ACK_ADV" \
             --slurpfile gates release-gate-results/release-gate-results.json \
             --slurpfile candidate release-gate-results/release-candidate.json \
+            --slurpfile ledger "$ledger" \
+            --arg rerun_gates "$RERUN_GATES" \
+            --arg skip_gates "$SKIP_GATES" \
+            --arg carried_from_runs "$CARRIED_FROM_RUNS" \
             --slurpfile residual "$residual" \
-            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], validated_candidate:$candidate[0], ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
+            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], validated_candidate:$candidate[0], gate_ledger:$ledger[0], gate_rerun:{rerun_gates:$rerun_gates, skip_gates:$skip_gates, carried_from_runs:$carried_from_runs}, ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
             | tee release-readiness.json
 
       - name: Upload release-readiness artifact
