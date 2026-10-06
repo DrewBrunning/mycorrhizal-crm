@@ -114,7 +114,7 @@ func integrationClientCases() []integrationClientCase {
 			build: func(t *testing.T, baseURL string) func() error {
 				c, err := NewGeoPulseClient(baseURL, "tok", false)
 				require.NoError(t, err)
-				return c.Ping
+				return func() error { return c.Ping(context.Background()) }
 			},
 			sentinels: clientSentinels{ErrGeoPulseUnreachable, ErrGeoPulseUnauthorized, ErrGeoPulseNotFound},
 		},

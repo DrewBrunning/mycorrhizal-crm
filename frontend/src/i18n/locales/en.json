@@ -1021,6 +1021,7 @@
       "apiKey": "API Token",
       "apiKeyHintNew": "Create a token in GeoPulse (Profile → Security) and paste it here.",
       "apiKeyHintExisting": "A token is already stored. Leave the field empty to keep it.",
+      "apiKeyRequiredOriginChange": "The server address changed, so re-enter the API token. The stored token is never sent to a different server.",
       "saveButton": "Save connection",
       "removeButton": "Remove connection",
       "testConnectionButton": "Test connection",

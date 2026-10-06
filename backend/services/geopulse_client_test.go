@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
@@ -32,12 +33,12 @@ func TestGeoPulseClient_GetMeSendsKeyAndParsesEnvelope(t *testing.T) {
 	c, err := NewGeoPulseClient(f.URL(), "secret-key", false)
 	require.NoError(t, err)
 
-	me, err := c.GetMe()
+	me, err := c.GetMe(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, f.UserID, me.UserID)
 	assert.Equal(t, "Test User", me.FullName)
 	assert.Equal(t, "secret-key", f.LastKey)
-	assert.NoError(t, c.Ping())
+	assert.NoError(t, c.Ping(context.Background()))
 }
 
 func TestGeoPulseClient_WrongKeyIsUnauthorized(t *testing.T) {
@@ -45,11 +46,11 @@ func TestGeoPulseClient_WrongKeyIsUnauthorized(t *testing.T) {
 	c, err := NewGeoPulseClient(f.URL(), "wrong", false)
 	require.NoError(t, err)
 
-	_, err = c.GetMe()
+	_, err = c.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulseUnauthorized)
-	_, err = c.GetStays(time.Now().Add(-time.Hour), time.Now())
+	_, err = c.GetStays(context.Background(), time.Now().Add(-time.Hour), time.Now())
 	assert.ErrorIs(t, err, ErrGeoPulseUnauthorized)
-	_, err = c.SearchPhotos("u", 1, 2, 200, time.Now().Add(-time.Hour), time.Now(), 5)
+	_, err = c.SearchPhotos(context.Background(), "u", 1, 2, 200, time.Now().Add(-time.Hour), time.Now(), 5)
 	assert.ErrorIs(t, err, ErrGeoPulseUnauthorized)
 }
 
@@ -57,7 +58,7 @@ func TestGeoPulseClient_GetMeMissingUserID(t *testing.T) {
 	f := newFakeGeoPulseServer(t, "")
 	f.UserID = ""
 	c, _ := NewGeoPulseClient(f.URL(), "k", false)
-	_, err := c.GetMe()
+	_, err := c.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulseInvalidData)
 }
 
@@ -68,7 +69,7 @@ func TestGeoPulseClient_GetStaysQueriesTheDayAndParsesStays(t *testing.T) {
 
 	start := time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 9, 20, 23, 59, 59, 0, time.UTC)
-	stays, err := c.GetStays(start, end)
+	stays, err := c.GetStays(context.Background(), start, end)
 	require.NoError(t, err)
 	require.Len(t, stays, 1)
 	assert.Equal(t, GeoPulseStay{ID: 7, Timestamp: "2026-09-20T14:00:00Z", LocationName: "Cafe Nero", City: "Leeds", Country: "Testland", Latitude: 53.8, Longitude: -1.55, StayDuration: 3600}, stays[0])
@@ -87,7 +88,7 @@ func TestGeoPulseClient_SearchPhotosBuildsQueryAndEscapesUserID(t *testing.T) {
 
 	start := time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)
 	end := start.Add(24*time.Hour - time.Second)
-	photos, err := c.SearchPhotos("abc/../def", 53.8, -1.55, GeoPulsePhotoRadiusMeters, start, end, 12)
+	photos, err := c.SearchPhotos(context.Background(), "abc/../def", 53.8, -1.55, GeoPulsePhotoRadiusMeters, start, end, 12)
 	require.NoError(t, err)
 	require.Len(t, photos, 1)
 	assert.Equal(t, "p1", photos[0].ID)
@@ -117,11 +118,11 @@ func TestGeoPulseClient_MalformedBodiesAreInvalidData(t *testing.T) {
 			f := newFakeGeoPulseServer(t, "")
 			f.RawBody = body
 			c, _ := NewGeoPulseClient(f.URL(), "k", false)
-			_, err := c.GetMe()
+			_, err := c.GetMe(context.Background())
 			assert.ErrorIs(t, err, ErrGeoPulseInvalidData)
-			_, err = c.GetStays(time.Now().Add(-time.Hour), time.Now())
+			_, err = c.GetStays(context.Background(), time.Now().Add(-time.Hour), time.Now())
 			assert.ErrorIs(t, err, ErrGeoPulseInvalidData)
-			_, err = c.SearchPhotos("u", 1, 2, 200, time.Now().Add(-time.Hour), time.Now(), 5)
+			_, err = c.SearchPhotos(context.Background(), "u", 1, 2, 200, time.Now().Add(-time.Hour), time.Now(), 5)
 			assert.ErrorIs(t, err, ErrGeoPulseInvalidData)
 		})
 	}
@@ -133,7 +134,7 @@ func TestGeoPulseClient_OversizedBodyIsInvalidData(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	c, _ := NewGeoPulseClient(srv.URL, "k", false)
-	_, err := c.GetMe()
+	_, err := c.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulseInvalidData, "a body past the cap is truncated and so fails to parse")
 }
 
@@ -146,7 +147,7 @@ func TestGeoPulseClient_TruncatedBodyIsInvalidData(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	c, _ := NewGeoPulseClient(srv.URL, "k", false)
-	_, err := c.GetMe()
+	_, err := c.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulseInvalidData)
 }
 
@@ -157,7 +158,7 @@ func TestGeoPulseClient_UnexpectedStatusCarriesStatus(t *testing.T) {
 			_, _ = w.Write([]byte("boom"))
 		}))
 		c, _ := NewGeoPulseClient(srv.URL, "k", false)
-		_, err := c.GetMe()
+		_, err := c.GetMe(context.Background())
 		srv.Close()
 		require.ErrorIs(t, err, ErrGeoPulseRequestFailed, "status %d", status)
 		var reqErr *GeoPulseRequestError
@@ -173,7 +174,7 @@ func TestGeoPulseClient_UnreachableHost(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 	c, _ := NewGeoPulseClient(url, "k", false)
-	_, err := c.GetMe()
+	_, err := c.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
 }
 
@@ -181,13 +182,13 @@ func TestGeoPulseClient_PrivateAddressBlockedWhenEnabled(t *testing.T) {
 	f := newFakeGeoPulseServer(t, "") // listens on loopback
 	blocked, err := NewGeoPulseClient(f.URL(), "k", true)
 	require.NoError(t, err)
-	_, err = blocked.GetMe()
+	_, err = blocked.GetMe(context.Background())
 	assert.ErrorIs(t, err, ErrGeoPulsePrivateAddress)
 	assert.Empty(t, f.calls(), "a blocked dial must never reach the server")
 
 	open, err := NewGeoPulseClient(f.URL(), "k", false)
 	require.NoError(t, err)
-	_, err = open.GetMe()
+	_, err = open.GetMe(context.Background())
 	assert.NoError(t, err, "with the guard off (the default) a LAN/loopback GeoPulse works")
 }
 
@@ -226,7 +227,7 @@ func TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors(t *testing.T) {
 		faults.ArmError(faultGeoPulseRequest, errors.New("injected upstream failure"))
 		t.Cleanup(func() { faults.Disarm(faultGeoPulseRequest) })
 
-		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		_, err = c.SearchPhotos(context.Background(), "u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
 		assert.ErrorContains(t, err, "injected upstream failure", "the underlying cause must survive redaction")
@@ -242,7 +243,7 @@ func TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors(t *testing.T) {
 
 		c, err := NewGeoPulseClient("http://"+addr, "k", false)
 		require.NoError(t, err)
-		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		_, err = c.SearchPhotos(context.Background(), "u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrGeoPulseUnreachable)
 		assertNoCoordinate(t, err)
@@ -257,9 +258,37 @@ func TestGeoPulseClient_CoordinateBearingURLNeverAppearsInErrors(t *testing.T) {
 		c, err := NewGeoPulseClient(srv.URL, "k", true)
 		require.NoError(t, err)
 
-		_, err = c.SearchPhotos("u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
+		_, err = c.SearchPhotos(context.Background(), "u", lat, lon, GeoPulsePhotoRadiusMeters, start, end, 5)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrGeoPulsePrivateAddress)
 		assertNoCoordinate(t, err)
 	})
+}
+
+// A 3xx must never be followed: the API key rides a custom header that
+// net/http would forward cross-host. Server B must see nothing, and the call
+// must fail with the redirect sentinel.
+func TestGeoPulseClient_RedirectIsNotFollowedAndKeyNotForwarded(t *testing.T) {
+	b := newFakeGeoPulseServer(t, "")
+	a := newFakeGeoPulseServer(t, "")
+	a.RedirectTo = b.URL() + "/api/users/me"
+
+	c, err := NewGeoPulseClient(a.URL(), "secret-token", false)
+	require.NoError(t, err)
+
+	_, err = c.GetMe(context.Background())
+	require.ErrorIs(t, err, ErrGeoPulseRedirect)
+	_, err = c.GetStays(context.Background(), time.Now().Add(-time.Hour), time.Now())
+	require.ErrorIs(t, err, ErrGeoPulseRedirect)
+
+	assert.Empty(t, b.calls(), "the redirect target must never be contacted")
+	assert.Empty(t, b.LastKey, "the API key must not reach the redirect target")
+
+	res := diagnoseGeoPulseConnectionFailure("reachability", err)
+	assert.Contains(t, res.Message, "redirect")
+}
+
+func TestRedactedGeoPulseTransportError_NonURLErrorPassesThrough(t *testing.T) {
+	plain := errors.New("plain")
+	assert.Equal(t, plain, redactedGeoPulseTransportError(plain))
 }

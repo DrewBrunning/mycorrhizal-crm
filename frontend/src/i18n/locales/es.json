@@ -994,6 +994,7 @@
       "apiKey": "Token de API",
       "apiKeyHintNew": "Crea un token en GeoPulse (Perfil → Seguridad) y pégalo aquí.",
       "apiKeyHintExisting": "Ya hay un token guardado. Deja el campo vacío para conservarlo.",
+      "apiKeyRequiredOriginChange": "La dirección del servidor ha cambiado, así que vuelve a introducir el token de API. El token guardado nunca se envía a un servidor distinto.",
       "saveButton": "Guardar conexión",
       "removeButton": "Eliminar conexión",
       "testConnectionButton": "Probar conexión",
