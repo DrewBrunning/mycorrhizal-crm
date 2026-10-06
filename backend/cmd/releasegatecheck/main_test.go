@@ -171,6 +171,33 @@ func TestRunAtFailsOnMissingPromoteWorkflow(t *testing.T) {
 	assert.Equal(t, 2, code)
 }
 
+// TestRunAtFailsOnMissingImageGateWorkflow: the build-once check (#1484) reads
+// every image-running gate workflow; a missing one is a checker failure, not a
+// silent skip.
+func TestRunAtFailsOnMissingImageGateWorkflow(t *testing.T) {
+	dst := copyRepoTree(t)
+	require.NoError(t, os.Remove(filepath.Join(dst, workflowsDir, "deploy-smoke.yml")))
+
+	var out bytes.Buffer
+	assert.Equal(t, 2, runAt(&out, dst))
+}
+
+// TestRunAtFailsWhenAGateStopsUsingTheCandidate is the #1484 regression gate
+// end to end: an image gate that goes back to building from source (its pull
+// of the candidate digest removed) fails releasegatecheck.
+func TestRunAtFailsWhenAGateStopsUsingTheCandidate(t *testing.T) {
+	dst := copyRepoTree(t)
+	p := filepath.Join(dst, workflowsDir, "zap-dast.yml")
+	b, err := os.ReadFile(p) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	require.Contains(t, string(b), "candidate-image.sh pull")
+	require.NoError(t, os.WriteFile(p, []byte(strings.ReplaceAll(string(b), "candidate-image.sh pull", "echo pull")), 0o644))
+
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "zap-dast.yml never runs")
+}
+
 // TestRunAtFailsOnMissingDockerPublish: docker-publish.yml is read for the
 // dispatch-path check (#1396); missing is a checker failure.
 func TestRunAtFailsOnMissingDockerPublish(t *testing.T) {

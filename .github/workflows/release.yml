@@ -262,11 +262,24 @@ jobs:
   validate:
     needs: preflight
     uses: ./.github/workflows/release-validate.yml
+    # Issue #1484: the battery builds the release's all-in-one image once
+    # (stamped as this version, from the verified release commit) and every
+    # image-running gate tests that image; its digest lands in the
+    # release-readiness record. A dry run pushes the same non-release
+    # `candidate-<sha>` tag and nothing else. (docker-publish.yml rebuilds the
+    # candidate from the TAG -- the fixture commit sits between the two commits
+    # -- and publishes THAT tested digest; see docs/development/release-gates.md.)
+    with:
+      release_tag: ${{ needs.preflight.outputs.version }}
+      source_ref: ${{ needs.preflight.outputs.release_commit }}
     permissions:
       contents: read
       pull-requests: read
       actions: read
       security-events: write
+      # build-candidate pushes the candidate tag to GHCR (a called workflow
+      # cannot exceed its caller's permissions).
+      packages: write
       # Required by unit-tests.yml's `codecov-patch-stub` job (#1188); inert
       # when composed (the job is skipped off pull_request events).
       statuses: write
@@ -527,8 +540,9 @@ jobs:
             --arg ack_asvs "$ACK_ASVS" \
             --arg ack_adv "$ACK_ADV" \
             --slurpfile gates release-gate-results/release-gate-results.json \
+            --slurpfile candidate release-gate-results/release-candidate.json \
             --slurpfile residual "$residual" \
-            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
+            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], validated_candidate:$candidate[0], ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
             | tee release-readiness.json
 
       - name: Upload release-readiness artifact

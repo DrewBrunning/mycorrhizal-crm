@@ -24,7 +24,13 @@
 //     cannot silently reintroduce the dispatch-and-poll path; and the composer
 //     (`release-validate.yml`) calls exactly that set — no omission, no extra.
 //
-//  5. No mandatory release-internal gate of docker-publish.yml is push-only
+//  5. The build-once release image wiring holds (issue #1484,
+//     releaseworkflow.CheckCandidate): release-validate.yml builds the candidate
+//     and exports its digest, every image-running gate pulls that digest instead
+//     of rebuilding, and docker-publish.yml re-tags it and asserts published ==
+//     tested.
+//
+//  6. No mandatory release-internal gate of docker-publish.yml is push-only
 //     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
 //     workflow_dispatch fallback while the run still concludes success, unless
 //     the gate is allowlisted with a reason and a defined failing check on the
@@ -125,6 +131,19 @@ func runAt(w io.Writer, root string) int {
 		return 2
 	}
 	findings = append(findings, releasegates.CheckDispatchPath(reg, string(publishBytes))...)
+	// Issue #1484: the build-once wiring across the composer, the image-running
+	// gates and docker-publish.yml's re-tag + digest-equality assertion.
+	gateTexts := map[string]string{}
+	for _, name := range releaseworkflow.ImageGateFiles {
+		// #nosec G304 -- name is one of a fixed list of workflow basenames under the repo root
+		b, readErr := os.ReadFile(filepath.Join(root, workflowsDir, name))
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "releasegatecheck: read", name, readErr)
+			return 2
+		}
+		gateTexts[name] = string(b)
+	}
+	findings = append(findings, releaseworkflow.CheckCandidate(string(composerBytes), string(publishBytes), gateTexts)...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {
