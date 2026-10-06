@@ -1740,7 +1740,10 @@
     "count_other": "{{count}} indirizzi sulla mappa",
     "openContact": "Apri contatto",
     "unavailable": "Impossibile mostrare la mappa. Il tuo browser potrebbe non supportare WebGL.",
-    "truncated": "Vengono mostrati solo i primi {{count}} indirizzi; la mappa è limitata a questo numero di punti."
+    "truncated": "Vengono mostrati solo i primi {{count}} indirizzi; la mappa è limitata a questo numero di punti.",
+    "listHeading": "Contatti sulla mappa",
+    "unnamed": "Contatto senza nome",
+    "styleFailed": "Non è stato possibile caricare lo sfondo della mappa; i contatti sono elencati di seguito."
   },
   "contactScore": {
     "badge": {

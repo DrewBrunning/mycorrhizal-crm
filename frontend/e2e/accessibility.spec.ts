@@ -35,7 +35,7 @@ import { API_BASE_URL } from './global-setup';
 // ---------------------------------------------------------------------------
 // Coverage inventory
 // ---------------------------------------------------------------------------
-// 15 authenticated routes x 2 themes + login/register (logged out) x 2 themes
+// 16 authenticated routes x 2 themes + login/register (logged out) x 2 themes
 // = 34 route scans. `:contactId` is resolved to a real contact at runtime via
 // beforeAll (hardcoding an id like /contacts/2 is fragile: seeded-contact ids
 // shift with the schema, and parallel specs churn the shared account's data).
@@ -47,6 +47,7 @@ const AUTH_ROUTES: Array<[string, string]> = [
   ['notes', '/notes'],
   ['activities', '/activities'],
   ['network', '/network'],
+  ['map', '/map'],
   ['households', '/households'],
   ['circles', '/circles'],
   ['shares', '/shares'],

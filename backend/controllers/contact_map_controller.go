@@ -58,7 +58,7 @@ func GetContactMap(c *gin.Context) {
 	// contacts that mention a coordinate at all; the authoritative range check
 	// is ParseGeoURI below.
 	rows, err := db.Model(&models.Contact{}).
-		Select("id", "vcard_uid", "firstname", "lastname", "addresses").
+		Select("id", "vcard_uid", "firstname", "lastname", "nickname", "org", "addresses").
 		Where("user_id = ?", userID).
 		Where("archived = ?", false).
 		Where("addresses LIKE ?", `%"coordinates"%`).
@@ -78,7 +78,15 @@ scan:
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to read contact map").WithError(err))
 			return
 		}
+		// An org-only or nickname-only contact has no first/last name; fall back
+		// so the popup and the accessible list never show a blank name.
 		name := strings.TrimSpace(contact.Firstname + " " + contact.Lastname)
+		if name == "" {
+			name = strings.TrimSpace(contact.Nickname)
+		}
+		if name == "" {
+			name = strings.TrimSpace(contact.Org)
+		}
 		for _, a := range contact.Addresses {
 			if a.ID == "" {
 				continue

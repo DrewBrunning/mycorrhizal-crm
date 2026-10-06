@@ -1740,7 +1740,10 @@
     "count_other": "{{count}} adresses sur la carte",
     "openContact": "Ouvrir le contact",
     "unavailable": "La carte n'a pas pu être affichée. Votre navigateur ne prend peut-être pas en charge WebGL.",
-    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points."
+    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points.",
+    "listHeading": "Contacts sur la carte",
+    "unnamed": "Contact sans nom",
+    "styleFailed": "Le fond de carte n'a pas pu être chargé ; les contacts sont listés ci-dessous."
   },
   "contactScore": {
     "badge": {
