@@ -42,6 +42,7 @@ import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemEvents } from './hooks/useSystemEvents';
+import { statusTextColor } from './utils/statusText';
 
 const SEVERITY_COLORS: Record<SystemEventSeverity, 'default' | 'warning' | 'error'> = {
   info: 'default',
@@ -301,6 +302,15 @@ export default function SystemEventsPage() {
                         size="small"
                         variant="outlined"
                         color={RESULT_COLORS[event.result] ?? 'default'}
+                        sx={
+                          event.result === 'success' || event.result === 'failure'
+                            ? {
+                                color: statusTextColor(
+                                  event.result === 'success' ? 'success' : 'error',
+                                ),
+                              }
+                            : undefined
+                        }
                         label={t(`systemEvents.results.${event.result}`)}
                       />
                     ) : (

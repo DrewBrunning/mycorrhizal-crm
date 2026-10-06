@@ -280,6 +280,42 @@ no `PLAYWRIGHT_WORKERS=1` pin on the release run (CI runs 4 workers).
 - A spec that must read the worker's credentials (e.g. `sessionExpiry`'s in-place
   re-auth) takes the `workerUser` fixture.
 
+### Feature-seam specs and the route-coverage guard (issue #1481)
+
+Four features had backend deep tests and mocked component tests but no spec
+driving the real bundle against the real server. Each now has one thin
+happy-path-plus-one-failure spec (the lower layers own the matrix):
+
+| Spec | Drives |
+|---|---|
+| `occasions.spec.ts` | gift obligation created on a contact page → "Needed" on `/occasions` → a purchased gift flips it → deactivating it (the "handled" switch; there is no separate done button) removes it → bad anchor rejected → contact delete takes the obligation |
+| `passkeys.spec.ts` | Chromium CDP **virtual authenticator** (`WebAuthn.enable` + `addVirtualAuthenticator`): register in Settings → log out → passkey is the second factor → wrong-code removal refused → recovery-code removal. Skipped on non-Chromium (no CDP WebAuthn domain; #1479) |
+| `systemEvents.spec.ts` | a webhook receiver answering 404 makes the delivery path record an `integration_failed` event; asserts severity/component/result on `/system-events`, detail, a server-side filter, and "Load more" growing past the first 100 rows; also `/system-status` and the non-admin 403 |
+| `apiTokens.spec.ts` | create → one-time secret + clipboard → bearer-only client gets 200 (cookie-less 401) → secret absent after reload → revoke → same bearer 401 |
+| `legacyRedirects.spec.ts` | `/api-tokens` → `/settings`, `/tags` → `/circles?tab=tags` |
+
+**Intentionally E2E-exempt: GeoPulse (#160).** It is an outbound integration to
+a user-hosted GeoPulse server; the default test stack has none and the feature
+has no UI beyond the connection form, so a spec would only test a stub. The
+client and service are owned by `services/geopulse_client_test.go` and `geopulse_service_test.go`, the
+form/suggestions by `useGeoPulse.test.ts`/`ActivitiesPage.test.tsx`.
+
+**Route-coverage guard.** `frontend/scripts/check-e2e-routes.mjs`
+(`yarn e2e:routes`) parses the `<Route path>` table in `src/App.tsx` and fails
+if a path is not mentioned as a whole path literal in some `e2e/*.spec.ts`
+(`/contacts` is not satisfied by `/contacts/${id}/prep`), unless it is in
+`e2e/route-exemptions.json` (`{ "/path": "reason" }`, reason ≥ 15 chars). A
+*stale* exemption (route gone, or a spec now covers it) also fails, so the list
+only shrinks. It is enforced in the required Vitest job by
+`scripts/check-e2e-routes.test.mjs`, whose last case runs it against the real
+repo. The first run left the exemption file empty: every route was or became
+covered. Adding a page therefore means adding a spec (or a reasoned exemption).
+
+These specs run the automatic per-test axe scan (`fixtures.ts`), which found
+three real light-mode contrast/naming defects on the admin pages — outlined
+`success`/`error` chip text and error text on a hovered row, and an unnamed
+storage `progressbar` — fixed via `src/utils/statusText.ts` and an `aria-label`.
+
 ### Visual regression (issue #258)
 
 `frontend/e2e/visual.spec.ts` snapshots a small, curated set of stable views —

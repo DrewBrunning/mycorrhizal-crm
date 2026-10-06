@@ -1,7 +1,9 @@
+import { ThemeProvider } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { type ErrorBucket, getErrorAggregation } from '../api/errorAggregation';
+import { lightTheme } from '../theme';
 import ErrorAggregationPanel from './ErrorAggregationPanel';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -88,4 +90,22 @@ test('shows the empty state when there are no buckets', async () => {
   await waitFor(() =>
     expect(screen.getByText(/No repeated errors in the last 24h\./)).toBeInTheDocument(),
   );
+});
+
+// Issue #1481: error text on a hovered row sits on a darker tint, where
+// error.main drops under AA (4.34:1). The bucket text, count and the
+// "Recurring" chip use error.dark in the light theme.
+test('recurring-bucket error text uses the legible light-mode error shade', async () => {
+  vi.mocked(getErrorAggregation).mockResolvedValue(resp([bucket()]));
+  render(
+    <ThemeProvider theme={lightTheme}>
+      <ErrorAggregationPanel onViewEvents={() => {}} />
+    </ThemeProvider>,
+  );
+  const sample = await screen.findByText('CardDAV authentication failed (HTTP 401)');
+  expect(getComputedStyle(sample).color).toBe('rgb(146, 59, 51)');
+  expect(getComputedStyle(screen.getByText('17')).color).toBe('rgb(146, 59, 51)');
+  expect(
+    getComputedStyle(screen.getByText('Recurring').closest('.MuiChip-root') as HTMLElement).color,
+  ).toBe('rgb(146, 59, 51)');
 });

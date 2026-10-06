@@ -26,6 +26,7 @@ import { isAdmin } from './auth';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemStatus } from './hooks/useSystemStatus';
+import { statusTextColor } from './utils/statusText';
 
 // Overall roll-up (healthy | degraded | unhealthy) — healthy reads success,
 // degraded reads warning, unhealthy reads error. Same idiom as the
@@ -354,6 +355,15 @@ function HealthChecksCard({ status }: { status: SystemStatusResponse }) {
                       size="small"
                       variant="outlined"
                       color={CHECK_COLORS[f.detail.status] ?? 'default'}
+                      sx={
+                        f.detail.status === 'ok' || f.detail.status === 'unhealthy'
+                          ? {
+                              color: statusTextColor(
+                                f.detail.status === 'ok' ? 'success' : 'error',
+                              ),
+                            }
+                          : undefined
+                      }
                       label={t(`systemStatus.status.${f.detail.status}`)}
                     />
                   </TableCell>
@@ -556,6 +566,7 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
           <LinearProgress
             variant="determinate"
             value={Math.min(100, usedPct)}
+            aria-label={t('systemStatus.storage.title')}
             color={thresholdColor}
             sx={{ borderRadius: 1, height: 8 }}
           />
