@@ -1,5 +1,10 @@
-import { expect, test } from '@playwright/test';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  authTest as test,
+  waitForLoading,
+} from './fixtures';
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
 /**

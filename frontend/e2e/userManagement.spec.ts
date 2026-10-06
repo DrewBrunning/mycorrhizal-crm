@@ -5,6 +5,10 @@ import { API_BASE_URL } from './global-setup';
 // T39: Add new users from User Management. The shared storageState user
 // ("testuser") is the first registered account and therefore auto-admin —
 // see mobileLayout.spec.ts's note on the same fact.
+// Needs admin rights, which only the shared `testuser` has (per-worker users are
+// ordinary accounts).
+test.use({ sharedUser: true });
+
 test.describe('User Management: Add User (T39)', () => {
   test('an admin creates a new user, who can then log in with the set password', async ({
     page,

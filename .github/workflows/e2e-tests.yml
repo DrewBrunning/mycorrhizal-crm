@@ -222,10 +222,9 @@ jobs:
           # self-skip unless RUN_PERF_HEAVY is set, so they run nightly
           # only; light @perf specs run unconditionally.
           RUN_PERF_HEAVY: ${{ github.event_name == 'schedule' && '1' || '' }}
-          # Issue #1177: the release composer runs this suite under heavy
-          # load, where two workers racing the shared test user's settings
-          # flaked RC2. Pin to one worker there.
-          PLAYWRIGHT_WORKERS: ${{ github.event_name == 'workflow_call' && '1' || '' }}
+          # Issue #1480: no PLAYWRIGHT_WORKERS pin for the release composer
+          # any more -- each worker authenticates as its own per-worker user,
+          # so there is no shared-settings race left to pin around (#1177).
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

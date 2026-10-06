@@ -59,6 +59,7 @@ const (
 	ComponentCalendarSync = "calendar_sync"
 	ComponentNotify       = "notification"
 	ComponentWebhook      = "webhook"
+	ComponentEmail        = "email"
 	ComponentBackup       = "backup"
 	ComponentStorage      = "storage"
 )

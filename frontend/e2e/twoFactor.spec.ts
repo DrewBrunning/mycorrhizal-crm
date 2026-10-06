@@ -1,5 +1,4 @@
 import * as crypto from 'node:crypto';
-import { request } from '@playwright/test';
 import {
   deleteThrowawayUser,
   expect,
@@ -153,14 +152,9 @@ test.describe('Two-factor authentication', () => {
         timeout: 10000,
       });
     } finally {
-      // Admin cleanup (the shared TEST_USER is auto-admin): hard-delete the
-      // throwaway account so nothing accumulates across runs.
-      const admin = await request.newContext({ storageState: 'playwright/.auth/user.json' });
-      try {
-        await deleteThrowawayUser(admin, user.username);
-      } finally {
-        await admin.dispose();
-      }
+      // Admin cleanup (deleteThrowawayUser uses the shared auto-admin): hard-delete
+      // the throwaway account so nothing accumulates across runs.
+      await deleteThrowawayUser(user.username);
     }
   });
 });
