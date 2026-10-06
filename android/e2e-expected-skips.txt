@@ -1,0 +1,22 @@
+# Expected skips for the Android instrumented E2E suite (issue #1483).
+#
+# `Android E2E (emulator)` is a required, release-gating check, but a JUnit
+# Assume failure reports as a *skip* -- and a skip is green. This file is the
+# complete, reviewed list of tests that are EXPECTED to skip on the CI
+# emulator. `go run ./cmd/androidskipcheck -results <dir>` (backend/, run by
+# the android-e2e jobs in .github/workflows/android-tests.yml) fails when the
+# observed skip set differs from this list in either direction:
+#   - a test skips that is not listed  (a silent loss of coverage), or
+#   - a listed test does not skip      (delete the entry; the gate tightens).
+# `-static` (docs-citations job, every PR) fails if an entry no longer names a
+# real test method.
+#
+# Format, one per line:   fully.qualified.Class#method | reason
+#
+# Do NOT add a test here because its CI dependency is flaky or missing: use
+# com.mycorrhizal.crm.testing.assumeOrFailInCi, which fails in CI instead of
+# skipping. Only conditions that are legitimately false on the x86_64 CI
+# emulator belong here.
+
+com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest#embeddedServerStartsServesHealthAndDeletesOverTheSocket | embedded Go server is arm64-v8a only (ADR 0028); the x86_64 CI emulator has no packaged binary. Covered by the manual real-arm64 step in docs/development/release-gates.md (issue #1339).
+com.mycorrhizal.crm.e2e.LocalBundleRoundTripE2eTest#exportDeleteLocalDataAndRestoreBringsTheDataBack | same arm64-only embedded server (ADR 0028); needs the manual real-arm64 run in docs/development/release-gates.md (issue #1339).

@@ -181,6 +181,13 @@ jobs:
         working-directory: backend
         run: go run ./cmd/nightlyalertcheck
 
+      # Issue #1483: every android/e2e-expected-skips.txt entry must name a
+      # real androidTest method (the emulator job that enforces the skip set
+      # itself is not on the PR path, so a rename is caught here).
+      - name: Verify Android E2E expected-skips allowlist resolves to real tests
+        working-directory: backend
+        run: go run ./cmd/androidskipcheck -static
+
       # coverage.md's Override path asks for a reason on every
       # coverage-exclusion marker; pragmacheck makes that mechanical over
       # `# pragma: no cover` (backend) and `/* v8 ignore ... */` (frontend).

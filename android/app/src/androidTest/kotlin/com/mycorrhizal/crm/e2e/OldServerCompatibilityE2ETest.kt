@@ -14,9 +14,9 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.MainActivity
+import com.mycorrhizal.crm.testing.assumeOrFailInCi
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -72,7 +72,7 @@ class OldServerCompatibilityE2ETest {
 
     @Before
     fun setUp() {
-        assumeTrue("old-server backend at $OLD_SERVER_URL is not reachable", backend.isReachable())
+        assumeOrFailInCi("old-server backend at $OLD_SERVER_URL is not reachable", backend.isReachable())
         backend.registerSeedUser()
         clearSession()
     }

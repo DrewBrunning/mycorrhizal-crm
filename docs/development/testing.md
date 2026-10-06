@@ -209,6 +209,27 @@ Detail and the hard-won traps for each layer follow.
   **off the PR path** (issue #578, B5): push:main + nightly + manual, so an
   Android PR is gated by Robolectric only and the emulator signal lands
   post-merge and nightly.
+- **Skips are gated, not trusted (issue #1483).** A JUnit `Assume` failure is a
+  *skip* and a skip reports green, so on this required job it would otherwise be
+  a silent loss of coverage. Two mechanisms close that:
+  - Tests that need a **CI-provided** dependency (the `docker-compose.compat-test.yml`
+    backends: `ForceUpdateGateE2ETest`, `OldServerCompatibilityE2ETest`) use
+    `com.mycorrhizal.crm.testing.assumeOrFailInCi` (`android/core/testing`), the
+    Android analogue of Go's `citest.SkipOrRequire`: it skips locally but **fails**
+    when the workflow passes `-Pandroid.testInstrumentationRunnerArguments.requireReferences=true`
+    (every `android-tests.yml` E2E run does). Use it for any condition CI always satisfies.
+  - Tests whose condition is **legitimately false on the x86_64 CI emulator** (the
+    arm64-only embedded server, ADR 0028: `LocalOnlyModeE2eTest`,
+    `LocalBundleRoundTripE2eTest`) keep a plain `assumeTrue` and are listed, with a
+    reason, in `android/e2e-expected-skips.txt` (`fully.qualified.Class#method | reason`).
+    After the run, `cd backend && go run ./cmd/androidskipcheck -results
+    ../android/app/build/outputs/androidTest-results/connected` parses AGP's JUnit XML
+    and fails unless the skipped set **equals** the allowlist: a new skip, a listed
+    test that stopped skipping (delete its entry), a listed test that did not run, or
+    a run with zero test cases all fail. The skip count and per-test reasons land in
+    the job summary. `androidskipcheck -static` runs on every PR (`docs-citations`
+    job, pre-commit hook) and fails if an entry no longer names a real test method.
+    Do **not** allowlist a test because its dependency is flaky -- use `assumeOrFailInCi`.
 - **Known gap, accepted:** this suite (and every other instrumented job) runs
   the **debug** build only. Neither a release/R8-minified APK nor an
   install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
