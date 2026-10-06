@@ -5,15 +5,20 @@ import {
   Autocomplete,
   Box,
   Button,
+  FormControl,
+  FormHelperText,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ContactAddress } from '../api/contacts';
+import type { AddressSensitivity, ContactAddress } from '../api/contacts';
 import { formatGeoUri, geocodeDraft, parseCoordinateInput, parseGeoUri } from '../api/map';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
@@ -27,6 +32,23 @@ interface AddressFieldsProps {
   // draft text (ADR 0031 amendment) — but the contact must exist.
   contactId?: number | string;
 }
+
+// Mirrors the backend oneof (normal|private|secret) on the address
+// sensitivity — keep in sync with contactmodel.Address.Sensitivity (ADR 0031).
+// The backend treats "" as normal, so an unset value renders as Normal.
+const SENSITIVITY_OPTIONS: readonly AddressSensitivity[] = ['normal', 'private', 'secret'];
+
+const SENSITIVITY_LABEL_KEYS = {
+  normal: 'contacts.addressFields.sensitivityNormal',
+  private: 'contacts.addressFields.sensitivityPrivate',
+  secret: 'contacts.addressFields.sensitivitySecret',
+} as const;
+
+const SENSITIVITY_HELP_KEYS = {
+  normal: 'contacts.addressFields.sensitivityHelpNormal',
+  private: 'contacts.addressFields.sensitivityHelpPrivate',
+  secret: 'contacts.addressFields.sensitivityHelpSecret',
+} as const;
 
 const EMPTY_ADDRESS: ContactAddress = {
   type: 'home',
@@ -326,6 +348,28 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
                     {t('contacts.addressFields.findCoordinates')}
                   </Button>
                 </Stack>
+                <FormControl size="small" fullWidth>
+                  <InputLabel id={`address-sensitivity-label-${rowKey}`}>
+                    {t('contacts.addressFields.sensitivity')}
+                  </InputLabel>
+                  <Select<AddressSensitivity>
+                    labelId={`address-sensitivity-label-${rowKey}`}
+                    label={t('contacts.addressFields.sensitivity')}
+                    value={addr.sensitivity || 'normal'}
+                    onChange={(e) =>
+                      updateAddr(index, { sensitivity: e.target.value as AddressSensitivity })
+                    }
+                  >
+                    {SENSITIVITY_OPTIONS.map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {t(SENSITIVITY_LABEL_KEYS[opt])}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {t(SENSITIVITY_HELP_KEYS[addr.sensitivity || 'normal'])}
+                  </FormHelperText>
+                </FormControl>
                 {findReason && (
                   <Typography variant="caption" color="text.secondary">
                     {findReason}

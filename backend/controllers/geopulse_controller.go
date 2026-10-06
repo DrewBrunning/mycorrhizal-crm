@@ -30,6 +30,8 @@ func abortGeoPulseServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("GeoPulse resource").WithError(err))
 	case errors.Is(err, services.ErrGeoPulseInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("GeoPulse base URL is invalid"))
+	case errors.Is(err, services.ErrGeoPulseRedirect):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "GeoPulse answered with a redirect — check the base URL (http vs https, path).").WithError(err))
 	case errors.Is(err, services.ErrGeoPulseInvalidDate):
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("date", "date must be YYYY-MM-DD and timezone a valid IANA name"))
 	case errors.Is(err, services.ErrGeoPulseRequestFailed):
@@ -99,6 +101,10 @@ func SaveGeoPulseConfig(c *gin.Context) {
 			abortGeoPulseServiceError(c, saveErr)
 			return
 		}
+		if errors.Is(saveErr, services.ErrGeoPulseTokenRequired) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()))
+			return
+		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save GeoPulse config").WithError(saveErr))
 		return
 	}
@@ -132,7 +138,7 @@ func TestGeoPulseConnection(c *gin.Context) {
 		return
 	}
 
-	result, err := services.TestGeoPulseConnection(db, currentConfig(c), userID)
+	result, err := services.TestGeoPulseConnection(c.Request.Context(), db, currentConfig(c), userID)
 	if err != nil {
 		abortGeoPulseServiceError(c, err)
 		return
@@ -157,7 +163,7 @@ func GetGeoPulseSuggestions(c *gin.Context) {
 		return
 	}
 
-	result, err := services.GeoPulseSuggestionsForDate(db, currentConfig(c), userID, date, strings.TrimSpace(c.Query("timezone")))
+	result, err := services.GeoPulseSuggestionsForDate(c.Request.Context(), db, currentConfig(c), userID, date, strings.TrimSpace(c.Query("timezone")))
 	if err != nil {
 		abortGeoPulseServiceError(c, err)
 		return

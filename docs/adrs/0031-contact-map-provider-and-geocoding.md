@@ -118,6 +118,8 @@ Settled:
   exactly (no lossy lat/lng conversion on the exporter path); the editor validates lat/lng ranges.
 - **Geocode cache is in-memory** (bounded size + TTL, lost on restart). No table, no migration, no new
   persisted copy of address text. Supersedes the "retained copy" wording in §4 above and in #694.
+  The cache key includes the requesting user's id, so `cached` never reveals another user's lookups; the
+  Nominatim 1 req/s gate queues at most 10 s deep, past which a lookup is rejected as rate limited (503).
 - **Route.** `POST /contacts/:id/addresses/:addressId/geocode` is final (the "e.g." is dropped).
 - **Tile-style delivery.** A new unauthenticated bootstrap endpoint, `GET /api/v1/config/map`,
   mirroring `GET /api/v1/auth/oidc/config` (`routes/routes.go`), returns only

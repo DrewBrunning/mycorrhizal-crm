@@ -106,3 +106,67 @@ func TestCardDAV_PutV4_SurplusGeoBeyondAddresses_Preserved(t *testing.T) {
 	assert.ElementsMatch(t, []string{"geo:1,1", "geo:2,2"}, geoValues(obj.Card),
 		"positional fallback attaches geo[0] to address[0]; the surplus GEO must not be dropped")
 }
+
+// An ADR GEO parameter is bound to its own ADR, so it must survive even when a
+// sibling ADR carries a PROP-ID (which flips standalone-GEO matching to by-ID).
+func TestCardDAV_PutV4_AdrGeoParamWithoutPropID_MixedWithPropID(t *testing.T) {
+	backend, _ := newTestBackend(t)
+	ctx := ContextWithUser(context.Background(), 1, "tester", backend.db, backend.photoDir, "")
+	uid := "geo-mixed"
+	urlPath := "/carddav/addressbooks/tester/contacts/" + uid + ".vcf"
+	card := v4GeoCard(uid, []*vcard.Field{
+		{Value: ";;1 Main St;;;;", Params: vcard.Params{
+			vcard4.ParamPropID: []string{"a"}, vcard4.ParamGeo: []string{"geo:1", "1"}}},
+		{Value: ";;2 Side St;;;;", Params: vcard.Params{
+			vcard4.ParamGeo: []string{"geo:2", "2"}}},
+	}, nil)
+
+	_, err := backend.PutAddressObject(ctx, urlPath, card, nil)
+	require.NoError(t, err)
+
+	var stored models.Contact
+	require.NoError(t, backend.db.Where("user_id = ? AND vcard_uid = ?", uint(1), uid).First(&stored).Error)
+	byStreet := map[string]string{}
+	for _, a := range stored.Addresses {
+		byStreet[a.Street] = a.Coordinates
+	}
+	assert.Equal(t, "geo:1,1", byStreet["1 Main St"])
+	assert.Equal(t, "geo:2,2", byStreet["2 Side St"])
+
+	obj, err := backend.GetAddressObject(ctx, urlPath, nil)
+	require.NoError(t, err)
+	assert.Len(t, geoValues(obj.Card), 2, "both coordinates come back on GET")
+}
+
+// A standalone GEO with no PROP-ID next to PROP-ID-bearing ADRs matches no
+// address (by-ID mode) and stays passthrough, per #1466.
+func TestCardDAV_PutV4_StandaloneGeoNoPropID_BesidePropIDAdrs_StaysPassthrough(t *testing.T) {
+	backend, _ := newTestBackend(t)
+	ctx := ContextWithUser(context.Background(), 1, "tester", backend.db, backend.photoDir, "")
+	uid := "geo-boundary"
+	urlPath := "/carddav/addressbooks/tester/contacts/" + uid + ".vcf"
+	card := v4GeoCard(uid, []*vcard.Field{
+		{Value: ";;1 Main St;;;;", Params: vcard.Params{vcard4.ParamPropID: []string{"a"}}},
+		{Value: ";;2 Side St;;;;", Params: vcard.Params{
+			vcard4.ParamGeo: []string{"geo:2", "2"}}},
+	}, []*vcard.Field{
+		{Value: "geo:1,1", Params: vcard.Params{vcard4.ParamPropID: []string{"a"}}},
+		{Value: "geo:9,9"},
+	})
+
+	_, err := backend.PutAddressObject(ctx, urlPath, card, nil)
+	require.NoError(t, err)
+
+	var stored models.Contact
+	require.NoError(t, backend.db.Where("user_id = ? AND vcard_uid = ?", uint(1), uid).First(&stored).Error)
+	byStreet := map[string]string{}
+	for _, a := range stored.Addresses {
+		byStreet[a.Street] = a.Coordinates
+	}
+	assert.Equal(t, "geo:1,1", byStreet["1 Main St"])
+	assert.Equal(t, "geo:2,2", byStreet["2 Side St"])
+
+	obj, err := backend.GetAddressObject(ctx, urlPath, nil)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"geo:1,1", "geo:2,2", "geo:9,9"}, geoValues(obj.Card))
+}

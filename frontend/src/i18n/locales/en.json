@@ -524,7 +524,15 @@
       "coordinatesInvalid": "Enter latitude (-90 to 90) and longitude (-180 to 180), separated by a comma.",
       "findCoordinates": "Find coordinates",
       "findCoordinatesSensitive": "This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.",
-      "findCoordinatesFailed": "Could not find coordinates for this address."
+      "findCoordinatesFailed": "Could not find coordinates for this address.",
+      "sensitivity": "Sensitivity",
+      "sensitivityNormal": "Normal",
+      "sensitivityPrivate": "Private",
+      "sensitivitySecret": "Secret",
+      "sensitivityHelpNormal": "Shared and exported like any other address.",
+      "sensitivityHelpPrivate": "Kept on your own map and in your backups. Withheld from sync, exports, shares and MCP unless explicitly included.",
+      "sensitivityHelpSecret": "Same as Private, for addresses you want treated with the most care. Kept on your own map and backups; withheld from sync, exports, shares and MCP unless explicitly included.",
+      "sensitivityIndicator": "Private or secret address: withheld from sync, exports, shares and MCP"
     },
     "reviewDuplicates": "Review duplicates"
   },
@@ -1020,6 +1028,7 @@
       "apiKey": "API Token",
       "apiKeyHintNew": "Create a token in GeoPulse (Profile → Security) and paste it here.",
       "apiKeyHintExisting": "A token is already stored. Leave the field empty to keep it.",
+      "apiKeyRequiredOriginChange": "The server address changed, so re-enter the API token. The stored token is never sent to a different server.",
       "saveButton": "Save connection",
       "removeButton": "Remove connection",
       "testConnectionButton": "Test connection",
@@ -1042,6 +1051,9 @@
       "unnamedPlace": "Unnamed place",
       "alreadyLogged": "Already logged",
       "logActivity": "Log activity",
+      "logActivityAt": "Log activity at {{place}}, {{time}}",
+      "announceFound": "Places found: {{count}}",
+      "announceNone": "No places found",
       "photos": "Photos nearby ({{count}})",
       "photosUnavailable": "Photos could not be checked.",
       "durationMinutes": "{{count}} min",
@@ -1755,7 +1767,10 @@
     "count_other": "{{count}} addresses on the map",
     "openContact": "Open contact",
     "unavailable": "The map could not be displayed. Your browser may not support WebGL.",
-    "truncated": "Showing the first {{count}} addresses only; the map is limited to this many points."
+    "truncated": "Showing the first {{count}} addresses only; the map is limited to this many points.",
+    "listHeading": "Contacts on the map",
+    "unnamed": "Unnamed contact",
+    "styleFailed": "The map background could not be loaded; the contacts are listed below."
   },
   "contactScore": {
     "badge": {

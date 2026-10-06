@@ -48,6 +48,27 @@ function browserTimezone(): string | undefined {
   }
 }
 
+// stayLocalDate is the stay's own calendar day (YYYY-MM-DD) in the lookup's
+// timezone. The activity form is pre-filled from this, never from the live date
+// input, which the user may have changed after the lookup without re-running it.
+function stayLocalDate(timestamp: string, timeZone: string | undefined, fallback: string): string {
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return fallback;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone,
+    }).formatToParts(d);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value;
+    const [y, m, day] = [get('year'), get('month'), get('day')];
+    return y && m && day ? `${y}-${m}-${day}` : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function formatStayTime(timestamp: string, timeZone: string | undefined): string {
   try {
     return new Date(timestamp).toLocaleTimeString(undefined, {
@@ -128,6 +149,18 @@ export default function GeoPulseSuggestionsDialog({
 
   const suggestions = geopulse.suggestions?.suggestions ?? [];
 
+  // Polite live-region text: loading, outcome of the lookup, or nothing. The
+  // visible error Alert is itself role="alert", so errors are not repeated here.
+  let announcement = '';
+  if (geopulse.suggestionsLoading) {
+    announcement = t('geopulse.dialog.lookingUp');
+  } else if (geopulse.suggestions) {
+    announcement =
+      suggestions.length === 0
+        ? t('geopulse.dialog.announceNone')
+        : t('geopulse.dialog.announceFound', { count: suggestions.length });
+  }
+
   return (
     <>
       <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -158,6 +191,22 @@ export default function GeoPulseSuggestionsDialog({
                   ? t('geopulse.dialog.lookingUp')
                   : t('geopulse.dialog.lookUp')}
               </Button>
+            </Box>
+
+            {/* Always mounted so assistive tech registers it before the text changes. */}
+            <Box
+              role="status"
+              aria-live="polite"
+              sx={{
+                position: 'absolute',
+                width: 1,
+                height: 1,
+                overflow: 'hidden',
+                clip: 'rect(0 0 0 0)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {announcement}
             </Box>
 
             {geopulse.suggestionsLoading && (
@@ -209,7 +258,15 @@ export default function GeoPulseSuggestionsDialog({
                         label={t('geopulse.dialog.alreadyLogged')}
                       />
                     ) : (
-                      <Button size="small" variant="outlined" onClick={() => setConfirming(s)}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setConfirming(s)}
+                        aria-label={t('geopulse.dialog.logActivityAt', {
+                          place: s.location || t('geopulse.dialog.unnamedPlace'),
+                          time: formatStayTime(s.timestamp, timezone),
+                        })}
+                      >
                         {t('geopulse.dialog.logActivity')}
                       </Button>
                     )}
@@ -257,7 +314,7 @@ export default function GeoPulseSuggestionsDialog({
           onSave={handleConfirm}
           prefill={{
             location: confirming.location,
-            date,
+            date: stayLocalDate(confirming.timestamp, timezone, geopulse.suggestions?.date ?? date),
             externalRef: confirming.external_ref,
           }}
         />

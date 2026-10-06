@@ -910,9 +910,9 @@
     },
     "src/components/GeoPulseSettings.tsx": {
       "lines": 100,
-      "linesTotal": 47,
-      "branches": 92.1,
-      "branchesTotal": 38
+      "linesTotal": 56,
+      "branches": 94,
+      "branchesTotal": 50
     },
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 95.65,

@@ -49,7 +49,7 @@ func MapConfigHandler(cfg *config.Config) gin.HandlerFunc {
 // controller tests can substitute a fake provider without opening a socket.
 type addressGeocoder interface {
 	Enabled() bool
-	GeocodeAddress(ctx context.Context, addr models.ContactAddress) (coordinates string, cached bool, err error)
+	GeocodeAddress(ctx context.Context, userID uint, addr models.ContactAddress) (coordinates string, cached bool, err error)
 }
 
 // GeocodeContactAddress handles POST /contacts/:id/addresses/:addressId/geocode
@@ -104,7 +104,7 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 			return
 		}
 
-		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), addr)
+		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), userID, addr)
 		if err != nil {
 			abortGeocodeError(c, err)
 			return
@@ -122,6 +122,11 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save coordinates").WithError(err))
 			return
 		}
+
+		// The save bumped the revision/ETag, so this is a real contact change:
+		// notify webhook consumers exactly as UpdateContact does (same event,
+		// same payload). The stateless draft route writes nothing and fires none.
+		services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", contact)
 
 		c.JSON(http.StatusOK, gin.H{
 			"address_id":  addressID,
@@ -191,7 +196,7 @@ func GeocodeContactAddressDraft(geocoder addressGeocoder) gin.HandlerFunc {
 			return
 		}
 
-		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), addr)
+		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), userID, addr)
 		if err != nil {
 			abortGeocodeError(c, err)
 			return

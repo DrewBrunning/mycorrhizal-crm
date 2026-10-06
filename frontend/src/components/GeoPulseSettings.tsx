@@ -22,6 +22,16 @@ import { isHttpUrlString } from '../utils/linkResolution';
 // #160, ADR 0033). The base URL + API token are per-user-global; the token is
 // stored encrypted server-side and never shown again after save. GeoPulse's own
 // user id is not asked for — the server discovers it.
+
+// urlOrigin returns scheme+host+port of a URL string, or null if unparseable.
+function urlOrigin(raw: string): string | null {
+  try {
+    return new URL(raw.trim()).origin;
+  } catch {
+    return null;
+  }
+}
+
 export default function GeoPulseSettings() {
   const { t } = useTranslation();
   const { showSuccess, showError } = useSnackbar();
@@ -31,6 +41,15 @@ export default function GeoPulseSettings() {
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Mirrors the backend rule: moving a stored connection to a different origin
+  // requires re-entering the token (it would otherwise be sent to the new host).
+  const storedOrigin = geopulse.config?.has_api_key ? urlOrigin(geopulse.config.base_url) : null;
+  const typedOrigin = urlOrigin(baseUrl);
+  const tokenRequired =
+    geopulse.config?.has_api_key === true &&
+    typedOrigin !== null &&
+    (storedOrigin === null || storedOrigin !== typedOrigin);
 
   useEffect(() => {
     void geopulse.refreshConfig();
@@ -56,6 +75,10 @@ export default function GeoPulseSettings() {
     // base URL is a readable message here rather than a 400.
     if (!isHttpUrlString(trimmed)) {
       setSaveError(t('geopulse.settings.invalidBaseUrl'));
+      return;
+    }
+    if (tokenRequired && !apiKey.trim()) {
+      setSaveError(t('geopulse.settings.apiKeyRequiredOriginChange'));
       return;
     }
     setSaving(true);
@@ -132,10 +155,13 @@ export default function GeoPulseSettings() {
               }}
               fullWidth
               size="small"
+              required={tokenRequired}
               helperText={
-                geopulse.config?.has_api_key
-                  ? t('geopulse.settings.apiKeyHintExisting')
-                  : t('geopulse.settings.apiKeyHintNew')
+                tokenRequired
+                  ? t('geopulse.settings.apiKeyRequiredOriginChange')
+                  : geopulse.config?.has_api_key
+                    ? t('geopulse.settings.apiKeyHintExisting')
+                    : t('geopulse.settings.apiKeyHintNew')
               }
             />
 

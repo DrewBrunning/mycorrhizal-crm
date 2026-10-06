@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -69,7 +70,7 @@ type mcpSearchContactsInput struct {
 	Query            string `json:"query" jsonschema:"search term (required, at least 2 characters)"`
 	Limit            int    `json:"limit,omitempty" jsonschema:"results per section; default 20, max 50 (larger values are clamped)"`
 	Offset           int    `json:"offset,omitempty" jsonschema:"results to skip per section; default 0"`
-	IncludeSensitive bool   `json:"include_sensitive,omitempty" jsonschema:"include private/secret data; default false"`
+	IncludeSensitive bool   `json:"include_sensitive,omitempty" jsonschema:"include private/secret data; default false. When false, a contact is not returned if its only match is a private/secret address"`
 }
 
 type mcpGetContactInput struct {
@@ -89,7 +90,7 @@ type mcpListTimelineInput struct {
 type mcpRunCadenceReportInput struct {
 	Limit            int  `json:"limit,omitempty" jsonschema:"results per page; default 25, max 100 (larger values are clamped)"`
 	Offset           int  `json:"offset,omitempty" jsonschema:"results to skip; default 0"`
-	IncludeSensitive bool `json:"include_sensitive,omitempty" jsonschema:"include private/secret data; default false"`
+	IncludeSensitive bool `json:"include_sensitive,omitempty" jsonschema:"accepted for interface uniformity; this report carries no sensitivity-tiered fields"`
 }
 
 // mcpToolError is a tool-level failure: reported to the client as an
@@ -176,7 +177,7 @@ func mcpTimelineWindow(since, until string, now time.Time) (cutoff, notAfter tim
 // authenticated user. A fresh server per request (stateless transport) keeps
 // the user identity out of any shared state.
 func newMCPServer(db *gorm.DB, userID uint, cfg config.Config) *mcp.Server {
-	server := mcp.NewServer(&mcp.Implementation{Name: "mycorrhizal-crm", Version: "1.0.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "mycorrhizal-crm", Version: buildinfo.Get().Version}, nil)
 	now := func() time.Time { return timeNow().In(cfg.GetReminderLocation()) }
 
 	mcp.AddTool(server, &mcp.Tool{
@@ -191,7 +192,7 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config) *mcp.Server {
 			return mcpToolError("query must be at most %d characters", services.MaxSearchTermLen)
 		}
 		limit := mcpClampLimit(in.Limit, mcpSearchDefaultLimit, mcpSearchMaxLimit)
-		result, err := services.SearchPage(db, userID, term, limit, mcpClampOffset(in.Offset), nil)
+		result, err := services.SearchPageScoped(db, userID, term, limit, mcpClampOffset(in.Offset), nil, in.IncludeSensitive)
 		if err != nil {
 			return mcpToolError("search failed")
 		}

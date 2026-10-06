@@ -12365,7 +12365,7 @@ components:
       properties:
         contact_id: { type: integer }
         contact_uid: { type: string }
-        contact_name: { type: string }
+        contact_name: { type: string, description: "Display name: first and last name, falling back to the nickname, then the organization, for a contact with no name." }
         address_id: { type: string }
         label: { type: string, description: The formatted postal address. }
         coordinates: { type: string, description: "RFC 5870 geo: URI, e.g. geo:51.5034,-0.1276." }
@@ -13540,8 +13540,19 @@ components:
         contact_ids:
           type: array
           items: { type: integer }
-        type: { type: string }
-        external_ref: { type: string }
+        type:
+          type: string
+          description: >
+            Optional interaction type. On PUT an omitted (or null) type keeps
+            the stored value (the web edit form does not send it); an explicit
+            empty string clears it. On POST an omitted value is stored as empty.
+        external_ref:
+          type: string
+          description: >
+            Optional dedupe/link key. On PUT an omitted (or null) external_ref
+            keeps the stored value, so a client that does not manage it (the web
+            edit form) never wipes a `geopulse:stay:<id>` key; an explicit empty
+            string clears it. On POST an omitted value is stored as empty.
     ReminderInput:
       type: object
       description: >

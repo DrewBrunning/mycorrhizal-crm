@@ -75,6 +75,15 @@ schemas gets an optional `include_sensitive` boolean parameter, threaded straigh
 `false` — an assistant has to explicitly ask for sensitive data, same as any other API client using
 that token would.
 
+> **Amendment, 2026-10-05 (v1.4.1 review).** The "threaded straight into the underlying
+> `includeSensitive` parameter" wording above was not true for two tools at v1.4.0.
+> `search_contacts` now calls `services.SearchPageScoped(..., includeSensitive)`: with `false`, a contact
+> that carries a private/secret address (ADR 0031) is returned only if a non-address `contacts_fts`
+> column matches (FTS5 column filter), so a search can no longer confirm a secret address. Residual: a
+> contact with both a normal and a secret address is not found by its normal address text. REST
+> `GET /search` is unchanged (owner view). `run_cadence_report` has no sensitivity-tiered output, so its
+> `include_sensitive` is accepted for interface uniformity only and its schema says so.
+
 ### 5. Dependency
 
 Use the **official** Go SDK, `github.com/modelcontextprotocol/go-sdk` (maintained by the MCP project
@@ -93,7 +102,8 @@ Each tool calls the exact function its REST endpoint calls — never a hand-roll
 the same JSON shape as that endpoint, so `openapi.yaml`'s examples remain the contract. Limits are
 clamped **server-side**; a value over the max is clamped, not rejected. `include_sensitive`
 (boolean, default `false`) is accepted by every tool and threaded into the underlying
-`includeSensitive` parameter.
+`includeSensitive` parameter (see the 2026-10-05 amendment under §4 for the two tools where this is
+not a literal pass-through).
 
 | Tool | Backed by | Inputs | Limits |
 |---|---|---|---|
@@ -104,7 +114,8 @@ clamped **server-side**; a value over the max is clamped, not rejected. `include
 
 `run_cadence_report` takes no date range: "overdue" is evaluated as of now. Each tool's real-DB test
 (`dbtest.New(t)`) covers ownership scoping (another user's id returns not-found), the clamp, and
-with/without `include_sensitive`.
+with/without `include_sensitive` for `search_contacts` (secret-address oracle) and `get_contact`/
+`list_timeline`; `run_cadence_report` pins that the flag changes nothing.
 
 ## Consequences
 

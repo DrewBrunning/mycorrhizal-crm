@@ -46,6 +46,8 @@ describe('parseGeoUri', () => {
     'geo:1',
     'geo:1,2,x',
     'geo:1,2,3,4',
+    'geo:1e2e3,0',
+    'geo:1e999,0',
   ])('rejects %s', (input) => {
     expect(parseGeoUri(input as string | undefined | null)).toBeNull();
   });

@@ -217,6 +217,31 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 // sections (the MCP search_contacts tool's pagination); offset 0 is exactly
 // Search. A negative offset is treated as 0.
 func SearchPage(db *gorm.DB, userID uint, term string, limit, offset int, householdID *string) (*SearchResult, error) {
+	return SearchPageScoped(db, userID, term, limit, offset, householdID, true)
+}
+
+// contactFTSNonAddressColumns are the contacts_fts columns other than
+// addresses_flat, for an FTS5 column filter that matches "everything but the
+// address text". Keep in sync with the contacts_fts definition (migration
+// 000020).
+const contactFTSNonAddressColumns = "firstname lastname nickname email phone org phones_normalized"
+
+// contactHasSensitiveAddressSQL is true for a contacts row (alias c) carrying
+// at least one private/secret address in its addresses JSON (ADR 0031).
+const contactHasSensitiveAddressSQL = `EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(c.addresses) THEN c.addresses ELSE '[]' END) a
+		WHERE COALESCE(json_extract(a.value, '$.sensitivity'), '') NOT IN ('', 'normal'))`
+
+// SearchPageScoped is SearchPage with an includeSensitive switch for copies
+// that leave the owner's own view (the MCP search_contacts tool). With
+// includeSensitive=true it is exactly SearchPage. With false, a contact hit
+// must not be explainable only by a private/secret address: contacts_fts
+// indexes addresses_flat across every sensitivity, so an unfiltered match
+// would confirm that a secret address exists (an existence oracle). A contact
+// that carries a sensitive address is therefore returned only when its
+// non-address columns match; a contact with only normal addresses matches
+// across all columns as usual. Conservative by design: a contact holding both
+// a normal and a secret address is not found by its normal address text.
+func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, householdID *string, includeSensitive bool) (*SearchResult, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -286,7 +311,14 @@ func SearchPage(db *gorm.DB, userID uint, term string, limit, offset int, househ
 		models.Contact
 		Snippet string
 	}
-	contactArgs := append([]interface{}{contactMatch, userID, userID}, householdArgs...)
+	sensitiveClause := ""
+	contactArgs := []interface{}{contactMatch, userID, userID}
+	if !includeSensitive {
+		sensitiveClause = ` AND (NOT ` + contactHasSensitiveAddressSQL + `
+		  OR c.id IN (SELECT rowid FROM contacts_fts WHERE contacts_fts MATCH ? AND user_id = ?))`
+		contactArgs = append(contactArgs, "{"+contactFTSNonAddressColumns+"} : ("+contactMatch+")", userID)
+	}
+	contactArgs = append(contactArgs, householdArgs...)
 	contactArgs = append(contactArgs, limit, offset)
 	err := db.Raw(`
 		SELECT c.*, snippet(contacts_fts, 0, '…', '…', '…', 20) AS snippet
@@ -295,7 +327,7 @@ func SearchPage(db *gorm.DB, userID uint, term string, limit, offset int, househ
 		WHERE contacts_fts MATCH ?
 		  AND contacts_fts.user_id = ?
 		  AND c.user_id = ?
-		  AND c.deleted_at IS NULL`+householdClause+`
+		  AND c.deleted_at IS NULL`+sensitiveClause+householdClause+`
 		ORDER BY contacts_fts.rank
 		LIMIT ? OFFSET ?`,
 		contactArgs...,

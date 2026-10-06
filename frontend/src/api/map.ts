@@ -48,9 +48,26 @@ export interface MapPoint {
   lng: number;
 }
 
-// A plain decimal ("51.5", "-0.12"); rejects "", "1.2.3", "--1", "1e5".
+// A decimal in the grammar the Go server's strconv.ParseFloat accepts for
+// stored coordinates: optional sign, ".5"/"5." forms and an exponent
+// ("+48.2", "4.8e1", "1E-7"). Must stay a superset of what the server accepts
+// (testdata/geo-uri-fixtures.json) -- a stricter client silently drops a stored
+// valid point. Rejects "", "1.2.3", "--1", "NaN", "Inf".
+// Checked in pieces (mantissa / exponent) rather than one regex, to stay clear
+// of the security/detect-unsafe-regex heuristic.
+const MANTISSA = /^[+-]?\d*\.?\d*$/;
+const DIGIT = /\d/;
+const EXPONENT = /^[+-]?\d+$/;
+
+function isDecimalText(text: string): boolean {
+  const parts = text.split(/[eE]/);
+  if (parts.length > 2) return false;
+  if (!MANTISSA.test(parts[0]) || !DIGIT.test(parts[0])) return false;
+  return parts.length === 1 || EXPONENT.test(parts[1]);
+}
+
 function decimal(text: string): number | null {
-  if (!/^[-0-9.]+$/.test(text)) return null;
+  if (!isDecimalText(text)) return null;
   const n = Number(text);
   return Number.isFinite(n) ? n : null;
 }
