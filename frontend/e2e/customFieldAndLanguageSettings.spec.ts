@@ -8,18 +8,16 @@ import {
   stableClick,
   test,
   waitForLoading,
-  withExclusiveUserSettings,
 } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Custom field definitions (Settings -> Data -> "Custom Fields", T7) and the
 // Preferred Languages contact field (opt-in, not in
 // DEFAULT_ENABLED_CONTACT_FIELDS) had zero Playwright coverage before this
-// file. Preferred Languages toggles the shared TEST_USER's account-level
-// field-visibility setting, so — same as linkFieldTypeEditors.spec.ts and
-// dateFormats.spec.ts — every test that touches it wraps its body in
-// withExclusiveUserSettings and the whole describe block runs serial so this
-// file's own toggle/restore windows can't interleave with each other either.
+// file. Preferred Languages toggles the worker user's account-level
+// field-visibility setting. Every worker authenticates as its own user
+// (issue #1480), so that toggle/restore can't interleave with any other
+// spec's, and no lock or serial mode is needed.
 
 async function getEnabledFields(page: Page): Promise<string[] | null> {
   const resp = await page.request.get(`${API_BASE_URL}/users/enabled-contact-fields`);
@@ -213,60 +211,56 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
 });
 
 test.describe('Preferred Languages contact field', () => {
-  test.describe.configure({ mode: 'serial' });
-
   test('add, edit, and remove a preferred language on a contact', async ({ page }) => {
-    await withExclusiveUserSettings(async () => {
-      const restore = await withPreferredLanguagesEnabled(page);
-      let contact: Awaited<ReturnType<typeof createTestContact>> | undefined;
-      try {
-        contact = await createTestContact(page.request, {
-          firstname: 'E2EPreferredLang',
-          lastname: String(Date.now()),
-        });
+    const restore = await withPreferredLanguagesEnabled(page);
+    let contact: Awaited<ReturnType<typeof createTestContact>> | undefined;
+    try {
+      contact = await createTestContact(page.request, {
+        firstname: 'E2EPreferredLang',
+        lastname: String(Date.now()),
+      });
 
-        await page.goto(`/contacts/${contact.ID}`);
-        await waitForLoading(page);
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
 
-        const languageRow = fieldRow(page, 'Preferred Languages');
-        await languageRow.hover();
-        await stableClick(languageRow.getByLabel('Edit'));
-        await stableClick(page.getByText('Add', { exact: true }));
+      const languageRow = fieldRow(page, 'Preferred Languages');
+      await languageRow.hover();
+      await stableClick(languageRow.getByLabel('Edit'));
+      await stableClick(page.getByText('Add', { exact: true }));
 
-        await page.getByLabel('Language').fill('fr-CA');
-        // Preferred Languages also carries an optional usage-context
-        // multi-select (work/private/school/...).
-        const contextsInput = page.getByRole('combobox', { name: 'Contexts' });
-        await contextsInput.click();
-        await contextsInput.fill('work');
-        await page.keyboard.press('Enter');
+      await page.getByLabel('Language').fill('fr-CA');
+      // Preferred Languages also carries an optional usage-context
+      // multi-select (work/private/school/...).
+      const contextsInput = page.getByRole('combobox', { name: 'Contexts' });
+      await contextsInput.click();
+      await contextsInput.fill('work');
+      await page.keyboard.press('Enter');
 
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Save').first()).toBeHidden();
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByText('Save').first()).toBeHidden();
 
-        // Saved value + context render in the display view.
-        await expect(page.getByText('fr-CA (work)')).toBeVisible();
+      // Saved value + context render in the display view.
+      await expect(page.getByText('fr-CA (work)')).toBeVisible();
 
-        // Edit again: change the language value.
-        await languageRow.hover();
-        await stableClick(languageRow.getByLabel('Edit'));
-        await page.getByLabel('Language').fill('es-MX');
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Save').first()).toBeHidden();
-        await expect(page.getByText('es-MX (work)')).toBeVisible();
-        await expect(page.getByText('fr-CA (work)')).toHaveCount(0);
+      // Edit again: change the language value.
+      await languageRow.hover();
+      await stableClick(languageRow.getByLabel('Edit'));
+      await page.getByLabel('Language').fill('es-MX');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByText('Save').first()).toBeHidden();
+      await expect(page.getByText('es-MX (work)')).toBeVisible();
+      await expect(page.getByText('fr-CA (work)')).toHaveCount(0);
 
-        // Remove the row entirely.
-        await languageRow.hover();
-        await stableClick(languageRow.getByLabel('Edit'));
-        await page.getByLabel('Delete').click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Save').first()).toBeHidden();
-        await expect(page.getByText('es-MX (work)')).toHaveCount(0);
-      } finally {
-        if (contact) await deleteTestContact(page.request, contact.ID);
-        await restore();
-      }
-    });
+      // Remove the row entirely.
+      await languageRow.hover();
+      await stableClick(languageRow.getByLabel('Edit'));
+      await page.getByLabel('Delete').click();
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByText('Save').first()).toBeHidden();
+      await expect(page.getByText('es-MX (work)')).toHaveCount(0);
+    } finally {
+      if (contact) await deleteTestContact(page.request, contact.ID);
+      await restore();
+    }
   });
 });
