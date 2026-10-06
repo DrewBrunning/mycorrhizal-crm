@@ -99,6 +99,21 @@ function renderPage() {
   );
 }
 
+test('a failed dashboard fetch shows the error with a Try again that reloads it (issue #1478)', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  getDashboardMock.mockRejectedValueOnce(new Error('Service unavailable'));
+  getDashboardMock.mockResolvedValueOnce(emptyDashboard());
+
+  renderPage();
+
+  expect(await screen.findByText('Service unavailable')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+  await waitFor(() => expect(screen.queryByText('Service unavailable')).not.toBeInTheDocument());
+  expect(getDashboardMock).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+});
+
 test('fetches the dashboard composite once and renders all four blocks', async () => {
   getDashboardMock.mockResolvedValue({
     birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
