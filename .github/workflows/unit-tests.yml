@@ -622,6 +622,20 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      # Issue #1488: the flake ledger's Go input. Kept apart from the 7-day
+      # coverage parts above (large) so the 14-day ledger window is readable:
+      # only the JUnit + gotestsum's rerun report, a few hundred KB.
+      - name: Upload flake-ledger input (Go JUnit + rerun report)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: flake-go-${{ matrix.leg }}
+          path: |
+            backend/junit-${{ matrix.leg }}.xml
+            backend/rerun-fails-${{ matrix.leg }}.txt
+          retention-days: 14
+          if-no-files-found: ignore
+
   backend:
     permissions:
       contents: read

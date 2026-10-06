@@ -226,6 +226,17 @@ jobs:
           # any more -- each worker authenticates as its own per-worker user,
           # so there is no shared-settings race left to pin around (#1177).
 
+      # Issue #1488: the flake ledger's Playwright input (per-test status incl.
+      # "flaky"). Always uploaded -- a green run's passed-on-retry is the signal.
+      - name: Upload flake-ledger input (Playwright JSON)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: flake-playwright-e2e
+          path: frontend/playwright-results/results.json
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
@@ -387,6 +398,17 @@ jobs:
         run: npx playwright test --grep @prod-defaults --workers=1 --project=chromium
         env:
           CI: true
+
+      # Issue #1488: the flake ledger's Playwright input (per-test status incl.
+      # "flaky"). Always uploaded -- a green run's passed-on-retry is the signal.
+      - name: Upload flake-ledger input (Playwright JSON)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: flake-playwright-prod-defaults
+          path: frontend/playwright-results/results.json
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -575,6 +597,17 @@ jobs:
         run: npx playwright test --project=webkit
         env:
           CI: true
+
+      # Issue #1488: the flake ledger's Playwright input (per-test status incl.
+      # "flaky"). Always uploaded -- a green run's passed-on-retry is the signal.
+      - name: Upload flake-ledger input (Playwright JSON)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: flake-playwright-webkit
+          path: frontend/playwright-results/results.json
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

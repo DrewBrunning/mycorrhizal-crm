@@ -478,6 +478,20 @@ jobs:
         working-directory: backend
         run: go run ./cmd/androidskipcheck -results ../android/app/build/outputs/androidTest-results/connected -summary "$GITHUB_STEP_SUMMARY"
 
+      # Issue #1488: the flake ledger's Android input -- the final run's JUnit
+      # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,
+      # kept 14 days (the bulky reports in the artifact below keep 7).
+      - name: Upload flake-ledger input (Android JUnit)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: flake-android-api35
+          path: |
+            android/app/build/outputs/androidTest-results/connected/*.xml
+            android/app/build/flaky-attempt-*/*.xml
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Upload E2E results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
@@ -631,6 +645,20 @@ jobs:
         if: success()
         working-directory: backend
         run: go run ./cmd/androidskipcheck -results ../android/app/build/outputs/androidTest-results/connected -summary "$GITHUB_STEP_SUMMARY"
+
+      # Issue #1488: the flake ledger's Android input -- the final run's JUnit
+      # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,
+      # kept 14 days (the bulky reports in the artifact below keep 7).
+      - name: Upload flake-ledger input (Android JUnit)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: flake-android-api26
+          path: |
+            android/app/build/outputs/androidTest-results/connected/*.xml
+            android/app/build/flaky-attempt-*/*.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload E2E results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

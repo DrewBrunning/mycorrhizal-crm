@@ -56,6 +56,7 @@ on:
       - Differential E2E (calcard)
       - Docker image build (cache-busted)
       - E2E Tests
+      - Flake ledger
       - Mutation Testing (Go)
       - Governance drift
       - Vulnerability Scan (Grype)

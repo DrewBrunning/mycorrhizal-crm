@@ -901,6 +901,62 @@ since `.github/filters.yaml` maps a workflow-only change to `workflows`, not
 workflow that nobody registered would otherwise alert on nothing, and a
 renamed or de-scheduled workflow would leave a dead entry.
 
+## Flake ledger (issue #1488)
+
+Retry-and-forget hid flakes: `gotestsum --rerun-fails` (PR/push), Playwright
+`retries: 1` and the Android second emulator boot each turn a failed first
+attempt into a green check, and the only trace used to be a log line. A test
+failing 1-in-5 was invisible until it failed twice in a row on someone's PR.
+The flake ledger is the longitudinal record.
+
+**Inputs.** Each suite uploads a small `flake-*` artifact (14-day retention,
+separate from the bulky 7-day report artifacts):
+
+| Artifact | Producer | Contents |
+|---|---|---|
+| `flake-go-<leg>` | `unit-tests.yml` backend legs | `junit-<leg>.xml` (the `-race` pass) + gotestsum's `rerun-fails-<leg>.txt` |
+| `flake-playwright-<job>` | `e2e-tests.yml` (`e2e`, `prod-defaults`, `webkit`) | `playwright-results/results.json` (Playwright's JSON reporter, now always on; `status: flaky` = failed then passed) |
+| `flake-android-<leg>` | `android-tests.yml` (API 35, API 26) | final-attempt JUnit + the preserved `flaky-attempt-*` XML |
+| `flake-signals-<name>` | anything else that retries | a `flake-signals-*.json` in the neutral format below |
+
+The neutral format lets a new retry mechanism feed the ledger without a new
+parser: `{"suite":"go/floor","tests":[{"test":"pkg.TestX","outcome":"passed_on_retry"}]}`
+with `outcome` one of `passed`, `passed_on_retry`, `failed`. (The Go
+failed-package re-run script and the ZAP re-scan proposed in #1487 are the
+intended users: emit that file and upload it as `flake-signals-<name>`.)
+
+**The ledger.** `flake-ledger.yml` runs daily (06:15 UTC; also
+`workflow_dispatch`), lists the last 14 days of runs of `unit-tests.yml`,
+`e2e-tests.yml` and `android-tests.yml`, downloads their `flake-*` artifacts
+and runs `backend/cmd/flakeledger` (`collect` -> `report` -> `issues`). Per
+`(suite, test)` it records `{runs, failed-first-attempt, passed-on-retry,
+failed}` and ranks by flake rate (failed-first-attempt / runs). The rendered
+markdown is the job summary and the `ledger-report` artifact; it is not
+committed (a daily commit to protected `main` would only add noise). The
+renderer's output format is pinned by a golden test
+(`backend/internal/flakeledger/testdata/ledger.golden.md`;
+`go test ./internal/flakeledger -update` regenerates it).
+
+**Policy.** A test with **3 or more passed-on-retry events in 14 days** gets an
+auto-opened issue titled `Flaky test: <suite> <test>`, labelled `flaky-test`
+and `p1`, in the in-flight milestone (the open milestone with the earliest due
+date), naming the test and linking the runs. At most 5 are opened per day; an
+open issue with the same title suppresses a duplicate. **Closing requires a
+root-cause note** (what was racing or leaking, and the fix) — raising a retry
+count or timeout is not a resolution. Events at or before an issue's close time
+do not count towards re-opening it, so a closed issue is not undone by the
+same events still inside the window; a recurrence opens a fresh one.
+
+**Advisory.** The ledger never fails a PR and is not a required check. Its own
+failures (API outage, missing artifacts) are warnings in the log; a red
+`flake-ledger.yml` run is reported by `nightly-failure-alert.yml` like any
+scheduled workflow.
+
+**Verify it.** Run it with `workflow_dispatch` against the repository's recent
+history and confirm known flaky suites (the `credentialStorage` IndexedDB spec,
+the Android emulator leg) rank near the top; a deliberately `time.Sleep`-flaky
+test on a branch appears within a day of its third passed-on-retry run.
+
 ## Anti-goal: coverage percentage is not the acceptance criterion
 
 The milestone states it verbatim, and this project means it: **coverage is

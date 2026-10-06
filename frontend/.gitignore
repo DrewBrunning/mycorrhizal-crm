@@ -22,6 +22,7 @@
 # Issue #476: sw-upgrade suite artifacts, kept out of the main suite's dirs so
 # the two Playwright configs never clobber each other's output.
 /playwright-report-sw/
+/playwright-results/
 /test-results-sw/
 
 # misc
