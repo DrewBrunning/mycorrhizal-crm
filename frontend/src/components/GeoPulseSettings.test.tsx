@@ -354,3 +354,65 @@ test('cancelling the remove confirmation leaves the connection in place', async 
   );
   expect(screen.getByLabelText('Base URL')).toHaveValue('http://geopulse:8080');
 });
+
+const originHint =
+  'The server address changed, so re-enter the API token. The stored token is never sent to a different server.';
+
+test('moving a stored connection to a different origin makes the token required and blocks a tokenless save', async () => {
+  let putSeen = false;
+  mockFetchByUrl({
+    '/geopulse/config': (init) => {
+      if (init?.method === 'PUT') putSeen = true;
+      return connected;
+    },
+  });
+  renderSettings();
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Base URL')).toHaveValue('http://geopulse:8080'),
+  );
+  await settle();
+  // Same origin, new path: token stays optional.
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'http://geopulse:8080/gp' },
+  });
+  expect(screen.queryByText(originHint)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('API Token')).not.toBeRequired();
+
+  // Different host: required + explanatory helper text, and no request is sent.
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'https://elsewhere.example' },
+  });
+  expect(screen.getByText(originHint)).toBeInTheDocument();
+  expect(screen.getByLabelText('API Token *')).toBeRequired();
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(screen.getAllByText(originHint).length).toBeGreaterThan(1));
+  expect(putSeen).toBe(false);
+});
+
+test('a different origin saves once the token is re-entered', async () => {
+  let putBody: Record<string, unknown> | null = null;
+  mockFetchByUrl({
+    '/geopulse/config': (init) => {
+      if (init?.method === 'PUT') {
+        putBody = JSON.parse(String(init.body));
+        return { base_url: 'https://elsewhere.example', has_api_key: true };
+      }
+      return connected;
+    },
+  });
+  renderSettings();
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Base URL')).toHaveValue('http://geopulse:8080'),
+  );
+  await settle();
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'https://elsewhere.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API Token *'), { target: { value: 'new-token' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+
+  await waitFor(() => expect(putBody).not.toBeNull());
+  expect(putBody).toEqual({ base_url: 'https://elsewhere.example', api_key: 'new-token' });
+});

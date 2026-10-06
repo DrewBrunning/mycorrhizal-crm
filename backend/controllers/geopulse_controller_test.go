@@ -103,8 +103,8 @@ func TestGeoPulseConfig_EmptyDefaultSaveHideDelete(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), "plaintext-key")
 	assert.Contains(t, w.Body.String(), `"has_api_key":true`)
 
-	// Empty key on update keeps the stored one.
-	w = geopulseDo(t, router, "PUT", "/geopulse/config", models.GeoPulseConfigInput{BaseURL: "https://gp2.example"})
+	// Empty key on a same-origin update keeps the stored one.
+	w = geopulseDo(t, router, "PUT", "/geopulse/config", models.GeoPulseConfigInput{BaseURL: "https://gp.example/geopulse"})
 	require.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, db.Where("user_id = ?", user.ID).First(&stored).Error)
 	plain, _ = services.DecryptCredential(geopulseTestSecret, stored.APIKeyEncrypted)
@@ -117,6 +117,26 @@ func TestGeoPulseConfig_EmptyDefaultSaveHideDelete(t *testing.T) {
 
 	// Delete → re-create works on the real schema (the partial unique index).
 	connectGeoPulseController(t, router, "https://gp.example")
+}
+
+// A different origin with no token is a 400 on api_key and leaves the stored
+// config (URL and token) untouched.
+func TestSaveGeoPulseConfig_OriginChangeRequiresToken(t *testing.T) {
+	db, user := seedGeoPulseControllerDB(t)
+	router := geopulseTestRouter(t, db, user.ID, config.Config{})
+	connectGeoPulseController(t, router, "https://gp.example")
+
+	w := geopulseDo(t, router, "PUT", "/geopulse/config", models.GeoPulseConfigInput{BaseURL: "https://attacker.example"})
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "api_key")
+	assert.Contains(t, w.Body.String(), "re-enter the API token")
+
+	var stored models.GeoPulseConfig
+	require.NoError(t, db.Where("user_id = ?", user.ID).First(&stored).Error)
+	assert.Equal(t, "https://gp.example", stored.BaseURL)
+
+	w = geopulseDo(t, router, "PUT", "/geopulse/config", models.GeoPulseConfigInput{BaseURL: "https://other.example", APIKey: "new-key"})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 }
 
 func TestSaveGeoPulseConfig_Rejections(t *testing.T) {
@@ -466,4 +486,25 @@ func TestGeoPulse_LocalFailuresAreNotBlamedOnGeoPulse(t *testing.T) {
 		w := geopulseDo(t, router, "POST", "/activities", models.ActivityInput{Title: "x", Date: time.Now(), ExternalRef: "geopulse:stay:1"})
 		assert.Equal(t, http.StatusInternalServerError, w.Code, "a failed dedupe lookup must not fall through to creating a duplicate")
 	})
+}
+
+// A GeoPulse that answers with a redirect surfaces as a clear 503 about the
+// base URL, and the redirect target is never contacted.
+func TestGeoPulseSuggestions_RedirectIsAClearError(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("redirect target must never be contacted (got %s)", r.URL.Path)
+	}))
+	defer target.Close()
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL+r.URL.Path, http.StatusMovedPermanently)
+	}))
+	defer redirector.Close()
+
+	db, user := seedGeoPulseControllerDB(t)
+	router := geopulseTestRouter(t, db, user.ID, config.Config{})
+	connectGeoPulseController(t, router, redirector.URL)
+
+	w := geopulseDo(t, router, "GET", "/geopulse/suggestions?date=2026-09-20", nil)
+	require.Equal(t, http.StatusServiceUnavailable, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "redirect")
 }

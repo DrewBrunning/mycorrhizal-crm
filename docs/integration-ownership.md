@@ -278,6 +278,12 @@ integration in the classification registry to its <a id> on this page. -->
   activity by hand; stored activities are unaffected. If only the photo lookup
   fails (for example Immich is not configured inside GeoPulse) the stays are
   still suggested, marked "photos unavailable".
+  The whole suggestions request is capped at 20 seconds (under the bundled
+  nginx's 30-second proxy timeout); stays still waiting on a photo lookup when
+  that budget runs out are suggested without photos. GeoPulse redirects are
+  never followed (your token would travel with them), so a wrong http/https or
+  path in the base URL shows as "check the base URL". Changing the base URL to
+  a different server requires re-entering the API token.
 - **Diagnosing it.** Settings → **Test connection** (reachability vs. token),
   `GET /admin/diagnostics` (`integration_geopulse`).
 - **Removing it.** Deleting the config keeps every activity you confirmed.

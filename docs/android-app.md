@@ -194,6 +194,35 @@ full-screen timeline explorer that pages through the contact's timeline with the
 recency filters as the web app and a **Load more** button. The explorer needs a connection to the
 server (it is not kept in the offline mirror); on a local profile it reads the on-device server.
 
+## Contact map
+
+**Map** in the navigation drawer (or rail) plots every contact address that has coordinates, on the tile style your
+server is configured with. Tap a pin to see the contact's name and address and open the contact; the top-bar toggle
+switches to a plain list of the same points (the map canvas itself cannot be traversed with TalkBack). If the server
+holds more than 5000 plottable addresses the screen shows the first 5000 and a notice saying so.
+
+In a contact's address editor, **Coordinates (latitude, longitude)** takes a pair such as `51.5007, -0.1246`, and
+**Find coordinates** looks up a *saved* address through the geocoder your server operator enabled
+(`GEOCODER_PROVIDER`). A private or secret address is never sent to the geocoder, and the lookup is not available in a
+[local (on-device) profile](#local-on-device-profiles), where you enter coordinates by hand. Private and secret
+addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
+[Contact map](map.md).
+
+## About and build details
+
+**Settings → About** lists the app's **Version**, **Version code**, **Build type** (build type and distribution
+flavor, for example `release / obtainium`, plus any application-id suffix), and, when known, the **Commit** and
+**Built** date. **Server version** shows the version (and commit) of the server you are signed in to, with the build date
+beneath it when the server reports one; if the server lookup fails it shows a dash and the rest of Settings is
+unaffected. **Copy build details** puts all of this on the clipboard as plain text for a bug report.
+
+## Tablets and landscape phones
+
+On a tablet-sized window the app shows a permanent navigation rail and a two-pane contacts list and detail. A phone held
+in landscape is wide but short, so the rail would not leave room to scroll its own destinations. The permanent rail and
+two-pane layout therefore apply only when the window is both wide (the Expanded width class) and at least medium in
+height; a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination stays reachable.
+
 ## Passkeys
 
 The app can use a passkey as your second sign-in step and lets you add, list and remove passkeys

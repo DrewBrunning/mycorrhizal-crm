@@ -993,6 +993,7 @@
       "apiKey": "API-Token",
       "apiKeyHintNew": "Erstelle in GeoPulse ein Token (Profil → Sicherheit) und füge es hier ein.",
       "apiKeyHintExisting": "Es ist bereits ein Token gespeichert. Lass das Feld leer, um es zu behalten.",
+      "apiKeyRequiredOriginChange": "Die Serveradresse wurde geändert, gib daher das API-Token erneut ein. Das gespeicherte Token wird nie an einen anderen Server gesendet.",
       "saveButton": "Verbindung speichern",
       "removeButton": "Verbindung entfernen",
       "testConnectionButton": "Verbindung testen",
