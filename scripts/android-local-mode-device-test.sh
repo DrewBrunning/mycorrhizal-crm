@@ -100,7 +100,9 @@ if [ -z "$junit" ]; then
   [ -n "$junit" ] || die "Gradle produced no JUnit XML under ${results_dir}" 1
 else
   [ -f "$junit" ] || die "--junit file not found: $junit"
-  [ -n "$device" ] && [ -n "$abi" ] || die "--junit needs --device and --abi"
+  if [ -z "$device" ] || [ -z "$abi" ]; then
+    die "--junit needs --device and --abi"
+  fi
 fi
 
 # Sum every <testsuite ...> tag's counts (works for a <testsuites> wrapper too).
