@@ -217,7 +217,17 @@ time-based rule.
 - **Responsible for** component state and rendering, hooks/data-fetching logic,
   i18n key parity across all five locales (`src/i18n/locales.test.ts`),
   date-format providers, and contract-fixture parsing. Network is mocked; no
-  browser.
+  browser. The `src/api/*` modules are tested at the **request level with
+  `msw`** (`src/test/mswServer.ts`, issue #1482): a call runs through the real
+  `apiFetch` and `fetch`, and the test asserts the request that went on the
+  wire (method, URL including query string, headers, JSON/multipart body) and
+  that a 4xx backend envelope maps to the module's typed error. Use
+  `setupMswServer()` / `mockApi()` / `errorEnvelope()` there; multipart tests
+  also call `setupNativeMultipart()` (jsdom's `FormData` cannot be serialized by
+  Node's `fetch`). `src/api/requestContracts.test.ts` is the table-driven
+  home for thin modules (add a row per new endpoint); modules with richer logic
+  get their own file. Component editors assert the **save payload** passed to
+  `onChange`, not just rendering.
 - **Must not be used for** end-to-end flows (that's Playwright).
 - **Gotchas that live here** (CLAUDE.md frontend traps): no auto-cleanup and no
   `globals: true` — add `afterEach(cleanup)` explicitly; MUI appends `" *"` to a
@@ -1024,13 +1034,18 @@ criterion.**
   reaching the Go safety-critical paths) insufficient to back that claim, so
   it is now two nightly, threshold-gated workflows rather than one advisory
   one:
-  - `stryker.yml` — frontend, the core domain modules (`src/api/contacts.ts`,
-    `relationshipEdges.ts`, `lifeEvents.ts`) plus their matching
-    `useContacts`/`useRelationshipEdges`/`useLifeEvents` hooks.
-    `frontend/stryker.conf.json`'s `thresholds.break` fails the run itself on
-    a score drop below the committed baseline (90.27% measured 2026-09-25;
-    `break: 85` leaves margin for run-to-run noise, not because a further
-    drop is expected).
+  - `stryker.yml` — frontend, every `src/api/*.ts` module and every
+    `src/hooks/use*.ts` hook (issue #1482; the scope was six files — the
+    contacts / relationship-edge / life-event modules — which were already the
+    best-tested, so the gate said little). `frontend/stryker.conf.json`'s
+    `thresholds.break` fails the run itself on a score drop below the
+    committed baseline. **Baseline measured 2026-10-06: 79.62% overall**
+    (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%), so `break: 74`
+    sits ~5 points under it. Hooks are the weak half and the obvious next
+    ratchet target. Static mutants are ignored (`ignoreStatic`: 6% of mutants
+    but 58% of the run time); the run takes ~1h45m, hence the job's 180-minute
+    timeout. Locally run a slice with `npx stryker run --mutate
+    src/api/notes.ts` (the dry run still executes the whole suite, ~5 min).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
     data loss lives: migration/upgrade and backup/restore (`database`),
     data-integrity invariants (`atrest`), delete cascade (the two files

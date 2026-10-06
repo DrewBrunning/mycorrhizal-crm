@@ -7,11 +7,12 @@ name: Mutation Testing (Stryker)
 #
 # Tier 3 (nightly) + manual dispatch only — deliberately NOT on PR or push:
 # mutation testing is O(test suite × mutant count), too slow to gate every
-# diff. The scope (stryker.conf.json's `mutate`) is the core domain modules
-# only — the contact/relationship-edge/life-event API layer and their
-# matching useContacts/useRelationshipEdges/useLifeEvents hooks — not the
-# whole tree, and the vitest-runner's `related` mode narrows each mutant to
-# the tests that touch it.
+# diff. The scope (stryker.conf.json's `mutate`) is every src/api/*.ts module
+# and every src/hooks/use*.ts hook (issue #1482; it was 6 files) — not the
+# whole tree — and the vitest-runner's `related` mode narrows each mutant to
+# the tests that touch it. Measured 2026-10-06: ~7.7k mutants, ~1h45m on a
+# 16-core box with 6 runners (dry run ~5m, static mutants ignored), so the job
+# timeout below is 180 minutes.
 #
 # Threshold-gated (issue #915): stryker.conf.json's `thresholds.break` is set
 # at the current baseline, so `npx stryker run` itself exits non-zero — and
@@ -33,7 +34,7 @@ jobs:
   stryker:
     name: Mutation test (core modules)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
 
     steps:
       - name: Checkout repository
@@ -56,7 +57,7 @@ jobs:
 
       - name: Run Stryker (fails below thresholds.break)
         working-directory: frontend
-        run: npx stryker run
+        run: npx stryker run --concurrency 4
 
       - name: Upload mutation report
         if: always()
