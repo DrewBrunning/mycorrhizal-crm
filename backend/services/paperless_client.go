@@ -64,8 +64,11 @@ func newPaperlessTransport() *http.Transport {
 // Sentinel errors for Paperless client failures, mapped to API errors in the
 // controller (the immich_client pattern).
 var (
-	ErrPaperlessInvalidURL     = errors.New("Paperless base URL is invalid")
-	ErrPaperlessUnreachable    = errors.New("Paperless could not be reached")
+	ErrPaperlessInvalidURL  = errors.New("Paperless base URL is invalid")
+	ErrPaperlessUnreachable = errors.New("Paperless could not be reached")
+	// ErrPaperlessRedirect: Paperless answered 3xx. Redirects are never followed (the credential
+	// would travel with them), so the user must fix the base URL instead.
+	ErrPaperlessRedirect       = errors.New("Paperless answered with a redirect")
 	ErrPaperlessUnauthorized   = errors.New("Paperless API token is invalid or expired")
 	ErrPaperlessNotFound       = errors.New("Paperless document was not found")
 	ErrPaperlessInvalidData    = errors.New("Paperless returned data that could not be parsed")
@@ -164,8 +167,14 @@ func NewPaperlessClient(baseURL, token string, blockPrivateURLs bool) (*Paperles
 		baseURL: trimmed,
 		token:   token,
 		client: &http.Client{
-			Timeout:   paperlessRequestTimeout,
-			Transport: faultingRoundTripper{name: faultPaperlessRequest, base: getPaperlessTransport(blockPrivateURLs)},
+			Timeout: paperlessRequestTimeout,
+			// Never follow redirects: the credential travels in a request header that
+			// net/http can forward to the redirect target (custom headers such as
+			// x-api-key are forwarded cross-host), and a redirect could bounce the
+			// request to an internal address when the private-URL guard is off. A
+			// 3xx surfaces as ErrPaperlessRedirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     faultingRoundTripper{name: faultPaperlessRequest, base: getPaperlessTransport(blockPrivateURLs)},
 		},
 	}, nil
 }
@@ -208,6 +217,11 @@ func (c *PaperlessClient) do(path string) (*http.Response, error) {
 		resp.Body.Close()
 		return nil, ErrPaperlessNotFound
 	default:
+		if isRedirectStatus(resp.StatusCode) {
+			resp.Body.Close()
+			// Deliberately not logging Location: it can embed the query string.
+			return nil, ErrPaperlessRedirect
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxPaperlessErrorBodyBytes))
 		resp.Body.Close()
 		logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).

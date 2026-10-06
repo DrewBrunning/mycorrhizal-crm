@@ -164,7 +164,7 @@ Two-way sync of a subscribed remote address book into contacts (full-overwrite r
 - **Failure impact** — silent-staleness. A subscription that stops syncing looks identical to one where nothing changed; contacts silently age. sync_health (#390) is the surface that makes it visible.
 - **Timeout** — 60s. services.contactSyncRequestTimeout on the http.Client; a per-request context deadline bounds each REPORT/PUT.
 - **Retry budget** — No in-call retry. The user re-triggers; the next run re-fetches from the stored sync-token (or does a full refetch if the token was rejected). No partial state is committed on failure.
-- **SSRF** — guarded-when-enabled. A custom RoundTripper wraps httputil.SafeDialContext; address filtering is applied only when CALDAV_BLOCK_PRIVATE_URLS is set (shared with CalDAV). Default off so LAN DAV servers work.
+- **SSRF** — guarded-when-enabled. A custom RoundTripper wraps httputil.SafeDialContext; address filtering is applied only when CALDAV_BLOCK_PRIVATE_URLS is set (shared with CalDAV). Default off so LAN DAV servers work. Redirects are followed (DAV servers legitimately redirect, e.g. well-known and trailing-slash); Go strips the Authorization header on a cross-host hop. Changing the subscription URL to a different origin requires re-entering the password.
 - **Source** — `backend/services/contact_sync_service.go`
 - **Failure behavior verified by** — #465 (INT-02) failure matrix; contact_sync_hostile_input_test.go; sync_health advance test.
 
@@ -191,7 +191,7 @@ Imports a subscribed remote calendar's events as activities/life events; optiona
 - **Failure impact** — silent-staleness. A failing scheduled sync ages the imported timeline with nothing visibly wrong; sync_health (#390) surfaces it.
 - **Timeout** — 60s. services.calendarRequestTimeout on the http.Client; the push phase also wraps each PUT in a context.WithTimeout of the same value. The timeout is far below the 6h cadence so runs cannot pile up.
 - **Retry budget** — No in-call retry. The job releases its lock on failure; the next scheduled run (≤ interval) retries. Two-way push overwrites the remote unconditionally on the next run rather than tracking a retry queue.
-- **SSRF** — guarded-when-enabled. Custom RoundTripper over httputil.SafeDialContext; filtering applied only when CALDAV_BLOCK_PRIVATE_URLS is set.
+- **SSRF** — guarded-when-enabled. Custom RoundTripper over httputil.SafeDialContext; filtering applied only when CALDAV_BLOCK_PRIVATE_URLS is set. Redirects are followed (DAV servers legitimately redirect, e.g. well-known and trailing-slash); Go strips the Authorization header on a cross-host hop. Changing the subscription URL to a different origin requires re-entering the password.
 - **Source** — `backend/services/calendar_sync_service.go`
 - **Failure behavior verified by** — #465 (INT-02); calendar_sync_hostile_input_test.go; calendar_two_way_test.go; cadence_job_lock_test.go.
 
@@ -218,7 +218,7 @@ Matches contacts to Immich people and pulls a face thumbnail as a profile photo.
 - **Failure impact** — degraded-feature. New matches stop appearing and thumbnails stop refreshing; existing data is unaffected.
 - **Timeout** — 30s. services.immichRequestTimeout on the shared http.Client (also IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s on the transport).
 - **Retry budget** — No in-call retry. A person that fails to sync is skipped and retried on the next scheduled run; nothing is deleted.
-- **SSRF** — guarded-always. immichPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport; every connection is re-resolved and pinned to a public address.
+- **SSRF** — guarded-always. immichPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport; every connection is re-resolved and pinned to a public address. Redirects are never followed (the x-api-key header would be forwarded cross-host): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API key.
 - **Source** — `backend/services/immich_client.go`, `backend/services/immich_service.go`
 - **Failure behavior verified by** — #465 (INT-02); immich_fault_injection_test.go; immich_fake_test.go.
 
@@ -272,7 +272,7 @@ Links contacts to documents in a Paperless-ngx instance and fetches titles/previ
 - **Failure impact** — blocked-workflow. The user tries to open or attach a document and cannot; already-stored links remain but do not resolve.
 - **Timeout** — 30s. services.paperlessRequestTimeout on the http.Client; transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.
 - **Retry budget** — No retry — the call is inline in a user request. The request fails with a mapped error and the user retries.
-- **SSRF** — guarded-always. paperlessPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.
+- **SSRF** — guarded-always. paperlessPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the token would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API token.
 - **Source** — `backend/services/paperless_client.go`, `backend/services/paperless_service.go`
 - **Failure behavior verified by** — #465 (INT-02); paperless_fake_test.go; controllers/paperless_real_db_test.go.
 
@@ -326,7 +326,7 @@ Stores and retrieves contact attachments in a Seafile library via its Web API.
 - **Failure impact** — blocked-workflow. Upload or download of a Seafile-backed attachment fails; references remain but do not resolve.
 - **Timeout** — 30s. services.seafileRequestTimeout on the http.Client; transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s.
 - **Retry budget** — No retry — inline in a user request; the request fails with a mapped error and the user retries.
-- **SSRF** — guarded-always. seafilePrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.
+- **SSRF** — guarded-always. seafilePrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the token would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API token.
 - **Source** — `backend/services/seafile_client.go`, `backend/services/seafile_service.go`
 - **Failure behavior verified by** — #465 (INT-02); seafile_fake_test.go; controllers/seafile_real_db_test.go.
 
@@ -353,7 +353,7 @@ Stores and retrieves contact attachments on any RFC 4918 WebDAV server.
 - **Failure impact** — blocked-workflow. Upload or download of a WebDAV-backed attachment fails; references remain but do not resolve.
 - **Timeout** — 30s. services.webdavRequestTimeout on the http.Client; transport IdleConnTimeout 30s / TLSHandshakeTimeout 10s / ResponseHeaderTimeout 15s. XXE is blocked in the PROPFIND parser (webdav_client_xxe_test.go).
 - **Retry budget** — No retry — inline in a user request; fails with a mapped error and the user retries.
-- **SSRF** — guarded-always. webdavPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.
+- **SSRF** — guarded-always. webdavPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the Basic credentials would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the app password.
 - **Source** — `backend/services/webdav_client.go`, `backend/services/webdav_service.go`
 - **Failure behavior verified by** — #465 (INT-02); webdav_fake_test.go; webdav_client_xxe_test.go.
 

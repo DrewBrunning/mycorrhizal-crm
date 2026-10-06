@@ -65,6 +65,11 @@ func NormalizePaperlessBaseURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
+// ErrPaperlessSecretRequired is returned when the base URL moves to a different
+// origin without a freshly entered API token (credential-exfiltration guard,
+// see SameOrigin).
+var ErrPaperlessSecretRequired = errors.New("re-enter the API token when changing the Paperless server")
+
 // UpsertPaperlessConfig creates or updates a user's PaperlessConfig. A
 // non-empty APIToken is encrypted at rest (credential_crypto.go); an empty one
 // on update keeps the existing stored token unchanged. On create the token is
@@ -82,6 +87,9 @@ func UpsertPaperlessConfig(db *gorm.DB, jwtSecret string, userID uint, input mod
 	}
 
 	if existing != nil {
+		if input.APIToken == "" && !SameOrigin(existing.BaseURL, baseURL) {
+			return nil, ErrPaperlessSecretRequired
+		}
 		existing.BaseURL = baseURL
 		if input.APIToken != "" {
 			enc, err := EncryptCredential(jwtSecret, input.APIToken)
@@ -188,6 +196,8 @@ func diagnosePaperlessConnectionFailure(stage string, err error) *PaperlessConne
 		message = "The Paperless URL resolves to a private or loopback address, which this server is configured to block (PAPERLESS_BLOCK_PRIVATE_URLS)."
 	case errors.Is(err, ErrPaperlessUnauthorized):
 		message = "Paperless rejected the API token. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrPaperlessRedirect):
+		message = "Paperless answered with a redirect — check the base URL (http vs https, path). Redirects are not followed because they would forward your credentials."
 	case errors.Is(err, ErrPaperlessUnreachable):
 		message = fmt.Sprintf("Could not reach the Paperless server: %v", err)
 	case errors.Is(err, ErrPaperlessRequestFailed):

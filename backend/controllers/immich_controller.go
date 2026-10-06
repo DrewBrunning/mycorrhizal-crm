@@ -32,6 +32,8 @@ func abortImmichServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Immich person").WithError(err))
 	case errors.Is(err, services.ErrImmichInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich base URL is invalid"))
+	case errors.Is(err, services.ErrImmichRedirect):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich answered with a redirect — check the base URL (http vs https, path).").WithError(err))
 	case errors.Is(err, services.ErrImmichRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.ImmichRequestError
@@ -111,6 +113,10 @@ func SaveImmichConfig(c *gin.Context) {
 		// save time rather than only on first use.
 		if errors.Is(saveErr, services.ErrImmichInvalidURL) {
 			abortImmichServiceError(c, saveErr)
+			return
+		}
+		if errors.Is(saveErr, services.ErrImmichSecretRequired) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Immich config").WithError(saveErr))

@@ -61,8 +61,11 @@ func newWebDAVTransport() *http.Transport {
 // Sentinel errors for the WebDAV client failures, mapped to API errors in the
 // controller (the immich_client pattern).
 var (
-	ErrWebDAVInvalidURL     = errors.New("Nextcloud base URL is invalid")
-	ErrWebDAVUnreachable    = errors.New("Nextcloud could not be reached")
+	ErrWebDAVInvalidURL  = errors.New("Nextcloud base URL is invalid")
+	ErrWebDAVUnreachable = errors.New("Nextcloud could not be reached")
+	// ErrWebDAVRedirect: Nextcloud answered 3xx. Redirects are never followed (the credential
+	// would travel with them), so the user must fix the base URL instead.
+	ErrWebDAVRedirect       = errors.New("Nextcloud answered with a redirect")
 	ErrWebDAVUnauthorized   = errors.New("Nextcloud app password is invalid or expired")
 	ErrWebDAVNotFound       = errors.New("Nextcloud file or folder was not found")
 	ErrWebDAVInvalidData    = errors.New("Nextcloud returned data that could not be parsed")
@@ -163,8 +166,14 @@ func NewWebDAVClient(baseURL, username, appPassword string, blockPrivateURLs boo
 		username:    username,
 		password:    appPassword,
 		client: &http.Client{
-			Timeout:   webdavRequestTimeout,
-			Transport: faultingRoundTripper{name: faultWebDAVRequest, base: getWebDAVTransport(blockPrivateURLs)},
+			Timeout: webdavRequestTimeout,
+			// Never follow redirects: the credential travels in a request header that
+			// net/http can forward to the redirect target (custom headers such as
+			// x-api-key are forwarded cross-host), and a redirect could bounce the
+			// request to an internal address when the private-URL guard is off. A
+			// 3xx surfaces as ErrWebDAVRedirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     faultingRoundTripper{name: faultWebDAVRequest, base: getWebDAVTransport(blockPrivateURLs)},
 		},
 	}, nil
 }
@@ -269,6 +278,10 @@ func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
 	case http.StatusNotFound, http.StatusGone:
 		return nil, ErrWebDAVNotFound
 	default:
+		if isRedirectStatus(resp.StatusCode) {
+			// Deliberately not logging Location: it can embed the query string.
+			return nil, ErrWebDAVRedirect
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxWebDAVErrorBodyBytes))
 		logger.Debug().Str("url", reqURL.String()).Int("status", resp.StatusCode).
 			Str("body", string(body)).Msg("WebDAV PROPFIND: unexpected status (Nextcloud responded, not unreachable)")

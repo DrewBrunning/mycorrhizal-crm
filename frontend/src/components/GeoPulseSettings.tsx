@@ -17,20 +17,12 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useGeoPulse } from '../hooks/useGeoPulse';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 // GeoPulseSettings is the settings-page card for the GeoPulse connection (issue
 // #160, ADR 0033). The base URL + API token are per-user-global; the token is
 // stored encrypted server-side and never shown again after save. GeoPulse's own
 // user id is not asked for — the server discovers it.
-
-// urlOrigin returns scheme+host+port of a URL string, or null if unparseable.
-function urlOrigin(raw: string): string | null {
-  try {
-    return new URL(raw.trim()).origin;
-  } catch {
-    return null;
-  }
-}
 
 export default function GeoPulseSettings() {
   const { t } = useTranslation();
@@ -44,12 +36,11 @@ export default function GeoPulseSettings() {
 
   // Mirrors the backend rule: moving a stored connection to a different origin
   // requires re-entering the token (it would otherwise be sent to the new host).
-  const storedOrigin = geopulse.config?.has_api_key ? urlOrigin(geopulse.config.base_url) : null;
-  const typedOrigin = urlOrigin(baseUrl);
-  const tokenRequired =
-    geopulse.config?.has_api_key === true &&
-    typedOrigin !== null &&
-    (storedOrigin === null || storedOrigin !== typedOrigin);
+  const tokenRequired = secretRequiredForOriginChange(
+    geopulse.config?.has_api_key,
+    geopulse.config?.base_url,
+    baseUrl,
+  );
 
   useEffect(() => {
     void geopulse.refreshConfig();

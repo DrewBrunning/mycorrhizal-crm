@@ -35,7 +35,7 @@ func carddavIntegration() Integration {
 		RetryBudget: "No in-call retry. The user re-triggers; the next run re-fetches from the stored sync-token (or does a full refetch if the token was rejected). No partial state is committed on failure.",
 
 		SSRF:     SSRFGuardedWhenEnabled,
-		SSRFNote: "A custom RoundTripper wraps httputil.SafeDialContext; address filtering is applied only when CALDAV_BLOCK_PRIVATE_URLS is set (shared with CalDAV). Default off so LAN DAV servers work.",
+		SSRFNote: "A custom RoundTripper wraps httputil.SafeDialContext; address filtering is applied only when CALDAV_BLOCK_PRIVATE_URLS is set (shared with CalDAV). Default off so LAN DAV servers work. Redirects are followed (DAV servers legitimately redirect, e.g. well-known and trailing-slash); Go strips the Authorization header on a cross-host hop. Changing the subscription URL to a different origin requires re-entering the password.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Sync run fails cleanly; sync_health goes to failing with the error; local contacts and the stored sync-token are untouched; the user sees the failure on the subscription.",
@@ -79,7 +79,7 @@ func caldavIntegration() Integration {
 		RetryBudget: "No in-call retry. The job releases its lock on failure; the next scheduled run (≤ interval) retries. Two-way push overwrites the remote unconditionally on the next run rather than tracking a retry queue.",
 
 		SSRF:     SSRFGuardedWhenEnabled,
-		SSRFNote: "Custom RoundTripper over httputil.SafeDialContext; filtering applied only when CALDAV_BLOCK_PRIVATE_URLS is set.",
+		SSRFNote: "Custom RoundTripper over httputil.SafeDialContext; filtering applied only when CALDAV_BLOCK_PRIVATE_URLS is set. Redirects are followed (DAV servers legitimately redirect, e.g. well-known and trailing-slash); Go strips the Authorization header on a cross-host hop. Changing the subscription URL to a different origin requires re-entering the password.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Job run records failure, releases the job lock, leaves imported activities and CalendarEventLink rows intact; sync_health → failing.",
@@ -122,7 +122,7 @@ func immichIntegration() Integration {
 		RetryBudget: "No in-call retry. A person that fails to sync is skipped and retried on the next scheduled run; nothing is deleted.",
 
 		SSRF:     SSRFGuardedAlways,
-		SSRFNote: "immichPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport; every connection is re-resolved and pinned to a public address.",
+		SSRFNote: "immichPrivateBlockingDialContext → httputil.SafeDialContext on the shared transport; every connection is re-resolved and pinned to a public address. Redirects are never followed (the x-api-key header would be forwarded cross-host): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API key.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Sync job records failure and releases its lock; existing profile photos and match links are kept; the failure shows on the Immich settings page.",
@@ -209,7 +209,7 @@ func paperlessIntegration() Integration {
 		RetryBudget: "No retry — the call is inline in a user request. The request fails with a mapped error and the user retries.",
 
 		SSRF:     SSRFGuardedAlways,
-		SSRFNote: "paperlessPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.",
+		SSRFNote: "paperlessPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the token would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API token.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "The request returns a mapped 'Paperless unreachable' error; no stored links are touched.",
@@ -295,7 +295,7 @@ func seafileIntegration() Integration {
 		RetryBudget: "No retry — inline in a user request; the request fails with a mapped error and the user retries.",
 
 		SSRF:     SSRFGuardedAlways,
-		SSRFNote: "seafilePrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.",
+		SSRFNote: "seafilePrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the token would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the API token.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Mapped 'Seafile unreachable' error to the caller; no reference rows changed.",
@@ -338,7 +338,7 @@ func webdavIntegration() Integration {
 		RetryBudget: "No retry — inline in a user request; fails with a mapped error and the user retries.",
 
 		SSRF:     SSRFGuardedAlways,
-		SSRFNote: "webdavPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally.",
+		SSRFNote: "webdavPrivateBlockingDialContext → httputil.SafeDialContext, unconditionally. Redirects are never followed (the Basic credentials would follow the redirect): a 3xx is a mapped 'check the base URL' error. Changing the base URL to a different origin requires re-entering the app password.",
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Mapped 'WebDAV unreachable' error; no reference rows changed.",

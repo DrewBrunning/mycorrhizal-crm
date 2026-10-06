@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { usePaperless } from '../hooks/usePaperless';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 // PaperlessSettings is the settings-page card for the Paperless-ngx connection
 // (P2a). The base URL + API token are per-user-global; the token is stored
@@ -30,6 +31,14 @@ export default function PaperlessSettings() {
   const [apiToken, setApiToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Mirrors the backend rule: moving a stored connection to a different origin
+  // requires re-entering the secret (it would otherwise be sent to the new host).
+  const secretRequired = secretRequiredForOriginChange(
+    paperless.config?.has_api_token,
+    paperless.config?.base_url,
+    baseUrl,
+  );
 
   useEffect(() => {
     void paperless.refreshConfig();
@@ -55,6 +64,10 @@ export default function PaperlessSettings() {
     // non-http(s) base URL is a readable message here rather than a 400.
     if (!isHttpUrlString(trimmed)) {
       setSaveError(t('paperless.settings.invalidBaseUrl'));
+      return;
+    }
+    if (secretRequired && !apiToken.trim()) {
+      setSaveError(t('paperless.settings.apiTokenRequiredOriginChange'));
       return;
     }
     setSaving(true);
@@ -137,10 +150,13 @@ export default function PaperlessSettings() {
               }}
               fullWidth
               size="small"
+              required={secretRequired}
               helperText={
-                paperless.config?.has_api_token
-                  ? t('paperless.settings.apiTokenHintExisting')
-                  : t('paperless.settings.apiTokenHintNew')
+                secretRequired
+                  ? t('paperless.settings.apiTokenRequiredOriginChange')
+                  : paperless.config?.has_api_token
+                    ? t('paperless.settings.apiTokenHintExisting')
+                    : t('paperless.settings.apiTokenHintNew')
               }
             />
 

@@ -61,8 +61,11 @@ func newSeafileTransport() *http.Transport {
 // Sentinel errors for Seafile client failures, mapped to API errors in the
 // controller (the immich_client pattern).
 var (
-	ErrSeafileInvalidURL     = errors.New("Seafile base URL is invalid")
-	ErrSeafileUnreachable    = errors.New("Seafile could not be reached")
+	ErrSeafileInvalidURL  = errors.New("Seafile base URL is invalid")
+	ErrSeafileUnreachable = errors.New("Seafile could not be reached")
+	// ErrSeafileRedirect: Seafile answered 3xx. Redirects are never followed (the credential
+	// would travel with them), so the user must fix the base URL instead.
+	ErrSeafileRedirect       = errors.New("Seafile answered with a redirect")
 	ErrSeafileUnauthorized   = errors.New("Seafile API token is invalid or expired")
 	ErrSeafileNotFound       = errors.New("Seafile library or file was not found")
 	ErrSeafileInvalidData    = errors.New("Seafile returned data that could not be parsed")
@@ -155,8 +158,14 @@ func NewSeafileClient(baseURL, token string, blockPrivateURLs bool) (*SeafileCli
 		baseURL: trimmed,
 		token:   token,
 		client: &http.Client{
-			Timeout:   seafileRequestTimeout,
-			Transport: faultingRoundTripper{name: faultSeafileRequest, base: getSeafileTransport(blockPrivateURLs)},
+			Timeout: seafileRequestTimeout,
+			// Never follow redirects: the credential travels in a request header that
+			// net/http can forward to the redirect target (custom headers such as
+			// x-api-key are forwarded cross-host), and a redirect could bounce the
+			// request to an internal address when the private-URL guard is off. A
+			// 3xx surfaces as ErrSeafileRedirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     faultingRoundTripper{name: faultSeafileRequest, base: getSeafileTransport(blockPrivateURLs)},
 		},
 	}, nil
 }
@@ -198,6 +207,11 @@ func (c *SeafileClient) do(path string) (*http.Response, error) {
 		resp.Body.Close()
 		return nil, ErrSeafileNotFound
 	default:
+		if isRedirectStatus(resp.StatusCode) {
+			resp.Body.Close()
+			// Deliberately not logging Location: it can embed the query string.
+			return nil, ErrSeafileRedirect
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxSeafileErrorBodyBytes))
 		resp.Body.Close()
 		logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).
@@ -227,6 +241,11 @@ func (c *SeafileClient) doUnauthenticated(path string) (*http.Response, error) {
 		resp.Body.Close()
 		return nil, ErrSeafileUnauthorized
 	default:
+		if isRedirectStatus(resp.StatusCode) {
+			resp.Body.Close()
+			// Deliberately not logging Location: it can embed the query string.
+			return nil, ErrSeafileRedirect
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxSeafileErrorBodyBytes))
 		resp.Body.Close()
 		return nil, &SeafileRequestError{StatusCode: resp.StatusCode, Status: resp.Status, Body: string(body)}

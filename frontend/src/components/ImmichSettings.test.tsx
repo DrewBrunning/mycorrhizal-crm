@@ -235,3 +235,79 @@ test('test connection shows the backend-diagnosed failure message, not a generic
     expect(screen.getByText('Immich rejected the API key.')).toBeInTheDocument();
   });
 });
+
+const originHint =
+  'The server address changed, so re-enter the API key. The stored key is never sent to a different server.';
+
+function renderSettings() {
+  render(
+    <SnackbarProvider>
+      <ImmichSettings />
+    </SnackbarProvider>,
+  );
+}
+
+const connectedForOriginTest = {
+  base_url: 'http://svc.example:8080',
+  has_api_key: true,
+  sync_enabled: true,
+};
+
+test('moving a stored connection to a different origin makes the secret required and blocks a secretless save', async () => {
+  let putSeen = false;
+  mockFetchByUrl({
+    '/immich/config': (init) => {
+      if (init?.method === 'PUT') putSeen = true;
+      return connectedForOriginTest;
+    },
+  });
+  renderSettings();
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Base URL')).toHaveValue('http://svc.example:8080'),
+  );
+  await settle();
+  // Same origin, new path: the secret stays optional.
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'http://svc.example:8080/sub' },
+  });
+  expect(screen.queryByText(originHint)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('API Key')).not.toBeRequired();
+
+  // Different host: required + explanatory helper text, and no request is sent.
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'https://elsewhere.example' },
+  });
+  expect(screen.getByText(originHint)).toBeInTheDocument();
+  expect(screen.getByLabelText('API Key *')).toBeRequired();
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+  await waitFor(() => expect(screen.getAllByText(originHint).length).toBeGreaterThan(1));
+  expect(putSeen).toBe(false);
+});
+
+test('a different origin saves once the secret is re-entered', async () => {
+  let putBody: Record<string, unknown> | null = null;
+  mockFetchByUrl({
+    '/immich/config': (init) => {
+      if (init?.method === 'PUT') {
+        putBody = JSON.parse(String(init.body));
+        return { ...connectedForOriginTest, base_url: 'https://elsewhere.example' };
+      }
+      return connectedForOriginTest;
+    },
+  });
+  renderSettings();
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Base URL')).toHaveValue('http://svc.example:8080'),
+  );
+  await settle();
+  fireEvent.change(screen.getByLabelText('Base URL'), {
+    target: { value: 'https://elsewhere.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API Key *'), { target: { value: 'new-secret' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+
+  await waitFor(() => expect(putBody).not.toBeNull());
+  expect(putBody).toMatchObject({ base_url: 'https://elsewhere.example', api_key: 'new-secret' });
+});
