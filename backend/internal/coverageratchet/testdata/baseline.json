@@ -147,7 +147,7 @@
     "controllers/tag_controller.go": 89.94,
     "controllers/timeline_controller.go": 92.54,
     "controllers/two_factor_controller.go": 81.63,
-    "controllers/user_controller.go": 81.75,
+    "controllers/user_controller.go": 81.95,
     "controllers/user_delete_cascade.go": 100,
     "controllers/webauthn_controller.go": 100,
     "controllers/webdav_controller.go": 64.12,
