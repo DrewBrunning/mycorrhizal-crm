@@ -62,6 +62,13 @@ class ContactMapTest {
     }
 
     @Test
+    fun `decimal rejects a grammar-valid exponent that overflows to infinity`() {
+        assertNull(parseGeoUri("geo:1e999,10"))
+        assertNull(parseGeoUri("geo:10,-1e999"))
+        assertNull(parseCoordinateInput("1e999 10"))
+    }
+
+    @Test
     fun `parseCoordinateInput accepts comma or whitespace separated pairs`() {
         assertEquals(LatLng(51.5007, -0.1246), parseCoordinateInput("51.5007, -0.1246"))
         assertEquals(LatLng(51.5007, -0.1246), parseCoordinateInput("51.5007,-0.1246"))
