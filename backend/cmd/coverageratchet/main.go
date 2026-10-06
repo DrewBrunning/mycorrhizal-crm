@@ -5,9 +5,13 @@
 // at 0% coverage stays there forever, and a PR that deletes or guts a test
 // for a file it doesn't otherwise touch trips no status at all.
 //
-// It reads the merged coverprofile the `backend` job in
-// .github/workflows/unit-tests.yml produces (backend/coverage.out) and
-// compares each file's statement coverage % against the committed baseline
+// It reads the CROSS-PACKAGE coverprofile (issue #1477): the `backend` job in
+// .github/workflows/unit-tests.yml runs `go test ./... -coverpkg=./...` once
+// and writes backend/coverage-cross.out, so a file is credited for a test in
+// ANY package -- the ratchet asks "is any test exercising this file", while
+// Codecov's patch gate (per-package profiles) asks "does this package's own
+// suite cover the line". Blocks repeated in the profile are merged (counts
+// summed) while reading. It compares each file's statement coverage % against the committed baseline
 // (backend/internal/coverageratchet/testdata/baseline.json).
 //
 // Normal workflow:
@@ -15,6 +19,10 @@
 //	cd backend && go run ./cmd/coverageratchet                # check (default)
 //	cd backend && go run ./cmd/coverageratchet -update         # regenerate the baseline
 //	cd backend && go run ./cmd/coverageratchet -profile x.out  # check a different profile
+//
+// Generate the profile (heavy: whole suite, ~4 min), by hand:
+//
+//	go test ./... -coverpkg=./... -covermode=atomic -p 4 -coverprofile=coverage-cross.out
 //
 // Exit status 0: within tolerance (or baseline regenerated). 1: at least
 // one file's coverage dropped past tolerance. 2: the command could not
@@ -49,7 +57,7 @@ func main() {
 
 func run(args []string, w interface{ Write([]byte) (int, error) }) int {
 	fs := flag.NewFlagSet("coverageratchet", flag.ContinueOnError)
-	profile := fs.String("profile", "coverage.out", "path to the merged Go coverprofile")
+	profile := fs.String("profile", "coverage-cross.out", "path to the cross-package Go coverprofile (go test ./... -coverpkg=./...)")
 	update := fs.Bool("update", false, "regenerate the committed baseline instead of checking it")
 	root := fs.String("root", ".", "source root the coverprofile's module paths resolve against (normally backend/)")
 	if err := fs.Parse(args); err != nil {
@@ -63,7 +71,7 @@ func run(args []string, w interface{ Write([]byte) (int, error) }) int {
 	}
 	defer f.Close() //nolint:errcheck // read-only baseline/profile handle
 
-	blocks, err := coverageratchet.ParseCoverprofile(f)
+	blocks, err := coverageratchet.ParseMergedCoverprofile(f)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "coverageratchet: %v\n", err)
 		return 2
