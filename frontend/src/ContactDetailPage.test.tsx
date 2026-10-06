@@ -264,6 +264,7 @@ const errorResponse = (message: string, status = 500) => ({
 function mockFetch({
   record = contactRecord,
   failGet = [],
+  recordFailStatus = 404,
   fail = {},
   enabledFields = null,
   selfContactUid = null,
@@ -276,6 +277,8 @@ function mockFetch({
 }: {
   record?: ContactRecordResponse;
   failGet?: Endpoint[];
+  // Status the failed 'record' GET answers with: 404 = no such contact, 5xx = a server fault.
+  recordFailStatus?: number;
   fail?: Partial<Record<Mutation, boolean>>;
   // GET /users/me's enabled_contact_fields -- some fields exercised below
   // (organization/department) are not in DEFAULT_ENABLED_CONTACT_FIELDS.
@@ -312,7 +315,10 @@ function mockFetch({
         switch (path) {
           case '/contacts/1':
             return failGet.includes('record')
-              ? errorResponse('Contact not found', 404)
+              ? errorResponse(
+                  recordFailStatus === 404 ? 'Contact not found' : 'Detail is unavailable',
+                  recordFailStatus,
+                )
               : json(current);
           case '/contacts/1/notes':
             return get('notes', () => ({ notes }));
@@ -660,6 +666,29 @@ test('a failed contact record renders "not found"', async () => {
   mockFetch({ failGet: ['record'] });
   renderPage();
   expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+});
+
+test('a 5xx on the contact record shows a retryable error, not "not found" (issue #1478)', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ failGet: ['record'], recordFailStatus: 503 });
+  renderPage();
+
+  expect(await screen.findByText(/Detail is unavailable/)).toBeInTheDocument();
+  expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
+
+  // Retry re-runs the load against the (now healthy) backend.
+  mockFetch();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByText('Contract fixture note')).toBeInTheDocument();
+  expect(screen.queryByText(/Detail is unavailable/)).not.toBeInTheDocument();
+});
+
+test('a 404 on the contact record offers no retry', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ failGet: ['record'] });
+  renderPage();
+  expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
 });
 
 test('the /users/me self-contact pointer marks this contact as Me', async () => {

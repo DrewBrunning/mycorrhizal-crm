@@ -567,6 +567,7 @@
   },
   "contactDetail": {
     "notFound": "Contatto non trovato",
+    "loadError": "Impossibile caricare questo contatto.",
     "timelineLoadError": "Impossibile caricare alcuni dati della cronologia. Prova ad aggiornare la pagina.",
     "section": {
       "name": "Nome",
@@ -867,6 +868,7 @@
     "continue": "Continua",
     "add": "Aggiungi",
     "loadMore": "Carica altri",
+    "tryAgain": "Riprova",
     "none": "Nessuno",
     "copy": "Copia",
     "copied": "Copiato negli appunti",

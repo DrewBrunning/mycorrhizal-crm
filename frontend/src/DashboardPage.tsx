@@ -12,6 +12,7 @@ import {
   Alert,
   Avatar,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -279,7 +280,16 @@ function DashboardPage() {
   if (error) {
     return (
       <Box sx={{ maxWidth: 1400, mx: 'auto', mt: 2, p: 2 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void loadDashboardData()}>
+              {t('common.tryAgain')}
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
       </Box>
     );
   }

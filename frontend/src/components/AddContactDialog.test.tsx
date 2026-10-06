@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
 import '../i18n/config';
 import { addCircleMember, type Circle, createCircle } from '../api/circles';
+import { ApiError } from '../api/client';
 import { createContactRecord } from '../api/contacts';
 import { addContactTag, createTag, type Tag } from '../api/tags';
 import { resolveEnabledFields } from '../contactFields';
@@ -417,4 +418,44 @@ test('shows an error and does not call onContactAdded when contact creation itse
   // May render both as the inline form error and as a snackbar toast.
   await waitFor(() => expect(screen.getAllByText('server exploded').length).toBeGreaterThan(0));
   expect(onContactAdded).not.toHaveBeenCalled();
+});
+
+test('a server VALIDATION_ERROR on card.name lands on the first-name field, keeps the draft, and clears on edit (issue #1478)', async () => {
+  vi.mocked(createContactRecord).mockRejectedValue(
+    new ApiError('Request validation failed', 'VALIDATION_ERROR', 400, {
+      'card.name': 'Name is not acceptable',
+    }),
+  );
+  const onContactAdded = vi.fn();
+
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={onContactAdded}
+          availableCircles={[]}
+          availableTags={[]}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Rejected' } });
+  fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'ByServer' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  const field = screen.getByLabelText('First Name *');
+  await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
+  // The message is the field's helper text, and the dialog's banner is not
+  // used for it (the snackbar toast is the only other place it may appear).
+  expect(screen.getByText('Name is not acceptable', { selector: 'p' })).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(field).toHaveValue('Rejected');
+  expect(screen.getByLabelText('Last Name')).toHaveValue('ByServer');
+  expect(onContactAdded).not.toHaveBeenCalled();
+
+  fireEvent.change(field, { target: { value: 'Rejected again' } });
+  expect(field).not.toHaveAttribute('aria-invalid', 'true');
 });

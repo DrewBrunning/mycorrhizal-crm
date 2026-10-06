@@ -567,6 +567,7 @@
   },
   "contactDetail": {
     "notFound": "Contact not found",
+    "loadError": "Couldn't load this contact.",
     "timelineLoadError": "Some timeline data failed to load. Try refreshing the page.",
     "section": {
       "name": "Name",
@@ -895,6 +896,7 @@
     "add": "Add",
     "none": "None",
     "loadMore": "Load more",
+    "tryAgain": "Try again",
     "copy": "Copy",
     "copied": "Copied to clipboard",
     "copyFailed": "Couldn't copy to clipboard",
