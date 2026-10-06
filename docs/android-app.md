@@ -80,7 +80,7 @@ code the server runs, so a local profile has the same dashboard, cadence,
 duplicates and exports a remote one does.
 
 A local profile is **storage only** (ADR 0028 Decision 2, amended 2026-09-29):
-it has no network or multi-user surface. Immich, Paperless, Seafile, Nextcloud,
+it has no network or multi-user surface. Immich, Paperless, Seafile, Nextcloud, GeoPulse,
 calendar and contact subscriptions, the Monica import and live Meerkat fetch,
 notification channels, admin/user management, webhooks, API tokens and DAV are
 not available on-device, and their Settings entries are hidden. Reminders are
@@ -185,6 +185,18 @@ nothing: the app shows whatever it would have shown without the link. The same r
 paths on your own server (`/contacts/{id}`, `/search?q=…`, …), which is the form a Web Push
 notification taps into; where the web has no matching screen it opens the route's nearest parent (a
 tag opens `/circles?tab=tags`, a circle opens `/circles`).
+
+## Log activities from location history (GeoPulse)
+
+With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → GeoPulse**: server URL and a
+write-only API token, **Test connection**, **Disconnect**; the token must be re-entered on first connect and
+whenever the server's origin changes), the **Activities** screen's top bar has **Log from location history**.
+Pick a date and **Look up**: each recorded stay shows its place, local start time, duration, city/country, the
+file names of photos found nearby (or a "could not be checked" note), or **Already logged**. The result count is
+announced to screen readers, and each stay's **Log activity** control is labelled with its place and time. Tapping
+it opens the normal activity form pre-filled with the location, the stay's own local date and its `external_ref`;
+you choose the contacts and save (the server dedupes a stay that was already logged). Nothing is stored until you
+save. Both entry points are hidden on a local (embedded) profile, which has no outbound integrations.
 
 ## Contact timeline
 

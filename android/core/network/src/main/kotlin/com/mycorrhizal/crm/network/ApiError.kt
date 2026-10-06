@@ -25,7 +25,15 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
             // (issue #1313: an account bundle over the import size cap) — its
             // message names the limit and the remedy, so show it instead of the
             // generic text. Other 5xx bodies stay hidden (may carry internals).
-            is Server -> if (code == INSUFFICIENT_STORAGE && body.isNotBlank()) body else "Server error ($code)"
+            is Server -> when {
+                code == INSUFFICIENT_STORAGE && body.isNotBlank() -> body
+                // The backend's ErrExternal: a fixed, user-actionable string about a configured
+                // outbound integration ("Could not reach GeoPulse. Is the instance up?"), never
+                // internals. Gated on the error code, not the status, so INTERNAL_ERROR /
+                // DATABASE_ERROR bodies (also 5xx) stay hidden.
+                errorCode == EXTERNAL_SERVICE_ERROR && body.isNotBlank() -> body
+                else -> "Server error ($code)"
+            }
             is Client -> when (code) {
                 401 -> "Session expired — please log in again"
                 403 -> "You don't have permission"
@@ -40,7 +48,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
 
     class Network(cause: IOException) : ApiError("Network error", cause)
     class Timeout(cause: SocketTimeoutException) : ApiError("Timeout", cause)
-    class Server(val code: Int, val body: String) : ApiError(body)
+    class Server(val code: Int, val body: String, val errorCode: String? = null) : ApiError(body)
     class Client(val code: Int, val body: String) : ApiError(body)
     class Parse(body: String) : ApiError(body)
 
@@ -74,3 +82,6 @@ fun <T> Result<T>.foldApiError(
 }
 
 private const val INSUFFICIENT_STORAGE = 507
+
+/** Mirrors backend `errors.ErrCodeExternal` — keep in sync by hand. */
+private const val EXTERNAL_SERVICE_ERROR = "EXTERNAL_SERVICE_ERROR"

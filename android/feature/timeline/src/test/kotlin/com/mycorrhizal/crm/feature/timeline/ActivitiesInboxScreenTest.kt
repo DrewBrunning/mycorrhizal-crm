@@ -42,6 +42,7 @@ class ActivitiesInboxScreenTest {
         onDelete: (Int) -> Unit = {},
         onRefresh: () -> Unit = {},
         darkTheme: Boolean = false,
+        onLogFromLocation: (() -> Unit)? = null,
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -52,9 +53,24 @@ class ActivitiesInboxScreenTest {
                     onLoadMore = onLoadMore,
                     onDelete = onDelete,
                     onRefresh = onRefresh,
+                    onLogFromLocation = onLogFromLocation,
                 )
             }
         }
+    }
+
+    @Test
+    fun `the location-history entry point is shown only when wired and fires on tap`() {
+        var taps = 0
+        setContent(ActivitiesInboxUiState(isLoading = false), onLogFromLocation = { taps++ })
+        composeTestRule.onNodeWithContentDescription("Log from location history").performClick()
+        assertEquals(1, taps)
+    }
+
+    @Test
+    fun `no location-history entry point when GeoPulse is unavailable (embedded profile)`() {
+        setContent(ActivitiesInboxUiState(isLoading = false), onLogFromLocation = null)
+        composeTestRule.onNodeWithContentDescription("Log from location history").assertDoesNotExist()
     }
 
     @Test

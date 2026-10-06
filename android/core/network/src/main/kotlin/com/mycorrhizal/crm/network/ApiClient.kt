@@ -119,6 +119,10 @@ import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
+import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
+import com.mycorrhizal.crm.model.network.GeoPulseConfigResponse
+import com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult
+import com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
@@ -2053,6 +2057,41 @@ class ApiClient(
             moshi.adapter(ImmichConnectionTestResult::class.java).fromJson(body)
         }
 
+    // --- Issue #160 / ADR 0033: GeoPulse location-history correlation (mirrors frontend/src/api/geopulse.ts) ---
+
+    /** GET /api/v1/geopulse/config — `has_api_key` gates the "Log from location history" entry points. */
+    suspend fun getGeoPulseConfig(): Result<GeoPulseConfigResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$GEOPULSE_PATH/config") { _, body ->
+            moshi.adapter(GeoPulseConfigResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/geopulse/config — the token is write-only; 400 on `api_key` when it is required but empty. */
+    suspend fun saveGeoPulseConfig(input: GeoPulseConfigInput): Result<GeoPulseConfigResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$GEOPULSE_PATH/config", input) { _, body ->
+            moshi.adapter(GeoPulseConfigResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/geopulse/config — already-confirmed Activities are ordinary and kept. */
+    suspend fun deleteGeoPulseConfig(): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$GEOPULSE_PATH/config")
+
+    /** POST /api/v1/geopulse/test-connection — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testGeoPulseConnection(): Result<GeoPulseConnectionTestResult> =
+        executePostEmpty("$GEOPULSE_PATH/test-connection") { _, body ->
+            moshi.adapter(GeoPulseConnectionTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/geopulse/suggestions?date=YYYY-MM-DD&timezone=<IANA> — one ephemeral lookup for a day. */
+    suspend fun getGeoPulseSuggestions(date: String, timezone: String? = null): Result<GeoPulseSuggestionsResponse> {
+        val url = "$PLACEHOLDER_ORIGIN$GEOPULSE_PATH/suggestions".toHttpUrl().newBuilder()
+            .addQueryParameter("date", date)
+            .apply { timezone?.takeIf { it.isNotBlank() }?.let { addQueryParameter("timezone", it) } }
+            .build()
+        return executeGet(url.toString()) { _, body ->
+            moshi.adapter(GeoPulseSuggestionsResponse::class.java).fromJson(body)
+        }
+    }
+
     /** POST /api/v1/immich/sync — the manual "sync now" trigger (issue #836); response body ignored. */
     suspend fun syncImmichNow(): Result<Unit> =
         executePostEmpty("$IMMICH_PATH/sync") { _, _ -> Unit }
@@ -2953,7 +2992,11 @@ class ApiClient(
     private fun parseError(code: Int, body: String): ApiError {
         val parsed = parseErrorDisplayMessage(body)
         val message = parsed?.takeIf { it.isNotBlank() } ?: body.ifBlank { "HTTP $code" }
-        return if (code in 400..499) ApiError.Client(code, message) else ApiError.Server(code, message)
+        return if (code in 400..499) {
+            ApiError.Client(code, message)
+        } else {
+            ApiError.Server(code, message, errorCode = parseErrorCode(body))
+        }
     }
 
     /**
@@ -2966,6 +3009,10 @@ class ApiClient(
      * body's `error` is a String, which the envelope model can't decode, and
      * that must not mask the `message` fallback.
      */
+    private fun parseErrorCode(body: String): String? = runCatching {
+        moshi.adapter(BackendError::class.java).fromJson(body)?.error?.code
+    }.getOrNull()
+
     private fun parseErrorDisplayMessage(body: String): String? {
         val envelopeMessage = runCatching {
             moshi.adapter(BackendError::class.java).fromJson(body)?.error?.displayMessage
@@ -3069,6 +3116,7 @@ class ApiClient(
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val EXTERNAL_ACTIVITIES_PATH = "$API_V1/external-activities"
         private const val IMMICH_PATH = "$API_V1/immich"
+        private const val GEOPULSE_PATH = "$API_V1/geopulse"
         private const val PAPERLESS_PATH = "$API_V1/paperless"
         private const val SEAFILE_PATH = "$API_V1/seafile"
         private const val NEXTCLOUD_PATH = "$API_V1/nextcloud"

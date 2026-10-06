@@ -103,6 +103,8 @@ fun SettingsScreen(
     onPaperlessSettings: () -> Unit = {},
     onSeafileSettings: () -> Unit = {},
     onNextcloudSettings: () -> Unit = {},
+    // Issue #160: the GeoPulse location-history connection settings screen.
+    onGeoPulseSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     // T104 + data suggestions: the Data review surface and its trigger.
     onData: () -> Unit = {},
@@ -226,6 +228,7 @@ fun SettingsScreen(
             onPaperlessSettings = onPaperlessSettings,
             onSeafileSettings = onSeafileSettings,
             onNextcloudSettings = onNextcloudSettings,
+            onGeoPulseSettings = onGeoPulseSettings,
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
             onManageCustomFields = onManageCustomFields,
@@ -283,6 +286,8 @@ fun SettingsContent(
     onPaperlessSettings: () -> Unit = {},
     onSeafileSettings: () -> Unit = {},
     onNextcloudSettings: () -> Unit = {},
+    // Issue #160: the GeoPulse location-history connection settings screen.
+    onGeoPulseSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
     onManageCustomFields: () -> Unit = {},
@@ -685,6 +690,8 @@ fun SettingsContent(
             NavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
             NavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
             NavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
+            // Issue #160: GeoPulse location history (an outbound integration, so hidden on embedded profiles).
+            NavigationRow(stringResource(R.string.settings_geopulse_title), onClick = onGeoPulseSettings)
         }
 
         // M26: one-time legacy circle/tag cleanup.
