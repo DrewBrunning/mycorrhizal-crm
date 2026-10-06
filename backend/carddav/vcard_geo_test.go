@@ -84,7 +84,8 @@ func TestTakeGeoCoordinates(t *testing.T) {
 	card[vcard4.PropAdr] = []*vcard.Field{{
 		Value:  ";;3 Third St;;;;",
 		Params: vcard.Params{vcard4.ParamGeo: []string{"geo:3", "3"}, vcard4.ParamPropID: []string{"addr-3"}},
-	}}
+	}, {Value: ";;1;;;;", Params: vcard.Params{vcard4.ParamPropID: []string{"addr-1"}}},
+		{Value: ";;2;;;;", Params: vcard.Params{vcard4.ParamPropID: []string{"addr-2"}}}}
 
 	byID, ordered := takeGeoCoordinates(card)
 
@@ -92,6 +93,7 @@ func TestTakeGeoCoordinates(t *testing.T) {
 	assert.Equal(t, []string{"geo:1,1", "geo:2,2", "geo:3,3"}, ordered)
 	assert.Empty(t, card[vcard4.PropGeo], "the GEO properties are consumed")
 	assert.Empty(t, card[vcard4.PropAdr][0].Params[vcard4.ParamGeo], "the ADR GEO parameter is consumed")
+	assert.Equal(t, "geo:3,3", ordered[2])
 }
 
 func TestApplyGeoCoordinates(t *testing.T) {
