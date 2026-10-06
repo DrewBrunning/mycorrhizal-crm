@@ -27,6 +27,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -79,10 +80,29 @@ func loadConfig(getenv func(string) string) config {
 	return cfg
 }
 
+// exitBlind is the process exit code when the ONLY unaccepted finding is the
+// canary self-test (the scan went blind: the planted XSS was not seen). That is
+// a probabilistic scanner/infra outcome, not a verdict on the app, so the
+// release-battery wrapper (.github/scripts/zap-scan-gate.sh, issue #1487)
+// re-runs the scan once on exactly this code. Any real app finding, with or
+// without a blind self-test, exits 1 and is never retried -- a retry there
+// would mask a genuine defect.
+const exitBlind = 3
+
+// errScanBlind marks a run whose sole failure is the canary self-test.
+var errScanBlind = errors.New("scan blind")
+
+// osExit is os.Exit through a seam so tests can drive main() itself.
+var osExit = os.Exit
+
 func main() {
 	if err := run(os.Getenv); err != nil {
 		fmt.Fprintln(os.Stderr, "zapgate:", err)
-		os.Exit(1)
+		if errors.Is(err, errScanBlind) {
+			osExit(exitBlind)
+			return
+		}
+		osExit(1)
 	}
 }
 
@@ -165,8 +185,13 @@ func run(getenv func(string) string) error {
 	}
 
 	if len(failures) > 0 {
-		return fmt.Errorf("%d unaccepted finding(s):\n  %s",
+		msg := fmt.Sprintf("%d unaccepted finding(s):\n  %s",
 			len(failures), strings.Join(failures, "\n  "))
+		// Only the self-test failed: no real app finding rode along.
+		if len(failures) == 1 && !canarySelfTestSeen {
+			return fmt.Errorf("%w: %s", errScanBlind, msg)
+		}
+		return errors.New(msg)
 	}
 	fmt.Println("OK: DAST gate passed — no unaccepted High/Medium findings, canary self-test present.")
 	return nil

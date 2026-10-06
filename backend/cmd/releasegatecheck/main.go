@@ -30,7 +30,14 @@
 //     of rebuilding, and docker-publish.yml re-tags it and asserts published ==
 //     tested.
 //
-//  6. No mandatory release-internal gate of docker-publish.yml is push-only
+//  6. The release battery's flake-exposure wiring holds (issue #1487,
+//     releaseworkflow.CheckResilience): every composed gate honours the
+//     composer's skip_gates input, the results job records the per-gate
+//     ledger, release.yml's rerun_gates and docker-publish.yml's tag-time reuse
+//     are wired through `cmd/releaseplan`, and the DAST and Go-floor bounded
+//     retries run through their scripts (whose exit codes agree with zapgate).
+//
+//  7. No mandatory release-internal gate of docker-publish.yml is push-only
 //     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
 //     workflow_dispatch fallback while the run still concludes success, unless
 //     the gate is allowlisted with a reason and a defined failing check on the
@@ -144,6 +151,28 @@ func runAt(w io.Writer, root string) int {
 		gateTexts[name] = string(b)
 	}
 	findings = append(findings, releaseworkflow.CheckCandidate(string(composerBytes), string(publishBytes), gateTexts)...)
+	// Issue #1487: the flake-exposure wiring (per-gate ledger + skip conditions,
+	// rerun_gates, tag-time reuse, the two bounded retries).
+	res := releaseworkflow.ResilienceFiles{Composer: string(composerBytes), Release: string(releaseBytes), Publish: string(publishBytes)}
+	for _, in := range []struct {
+		dst  *string
+		rel  string
+		name string
+	}{
+		{&res.Zap, filepath.Join(workflowsDir, releaseworkflow.ZapFile), releaseworkflow.ZapFile},
+		{&res.MinVersion, filepath.Join(workflowsDir, releaseworkflow.MinVersionFile), releaseworkflow.MinVersionFile},
+		{&res.ZapScript, releaseworkflow.ZapScript, releaseworkflow.ZapScript},
+		{&res.ZapgateSrc, releaseworkflow.ZapgateSource, releaseworkflow.ZapgateSource},
+	} {
+		// #nosec G304 -- fixed repo-relative paths under the repository root
+		b, readErr := os.ReadFile(filepath.Join(root, in.rel))
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "releasegatecheck: read", in.name, readErr)
+			return 2
+		}
+		*in.dst = string(b)
+	}
+	findings = append(findings, releaseworkflow.CheckResilience(res)...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

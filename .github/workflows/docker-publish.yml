@@ -65,6 +65,88 @@ jobs:
           fi
           echo "Tag '$RELEASE_TAG' is a valid release tag."
 
+  # Issue #1487: the tag-time battery used to re-run every gate that release.yml
+  # had just passed -- every flaky suite got a second roll, and a second-battery
+  # failure left a tag with no artifacts. This job decides whether the pre-tag
+  # battery can be accepted instead: it reads the per-gate ledger release.yml
+  # recorded in the release-readiness artifact, asks `releaseplan reuse` whether
+  # EVERY composed gate is a recorded success for one validated commit AND the
+  # tagged commit differs from it only by the schema-fixture registration
+  # (releases.go + the new dump), and hands release-gate the skip list.
+  # Anything unprovable (no artifact, expired, a gate not green, any other file
+  # changed, a missing diff) is reuse=false and the full battery runs, as before.
+  # continue-on-error: this job can only ever cost the reuse, never block a
+  # release -- its outputs are then empty, which release-gate reads as "run all".
+  reuse-decision:
+    needs: validate-tag
+    if: ${{ inputs.override_reason == '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      # Read the release-readiness artifact.
+      actions: read
+    outputs:
+      reuse: ${{ steps.decide.outputs.reuse }}
+      skip_gates: ${{ steps.decide.outputs.skip_gates }}
+      carried: ${{ steps.decide.outputs.carried }}
+      decision: ${{ steps.decide.outputs.decision }}
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          # Full history: the validated commit must be an ancestor of the tag.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      - name: Decide whether the pre-tag battery can be reused
+        id: decide
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          tag_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          ledger="${RUNNER_TEMP}/ledger.json"
+          diff_file="${RUNNER_TEMP}/changed-files.txt"
+          rm -f "$ledger" "$diff_file"
+          art_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=release-readiness-${RELEASE_TAG}" \
+                      --jq '[.artifacts[] | select(.expired==false)] | sort_by(.created_at) | last | .id // empty' 2>/dev/null || true)"
+          if [ -n "$art_id" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${art_id}/zip" > "${RUNNER_TEMP}/readiness.zip"
+            unzip -o -q "${RUNNER_TEMP}/readiness.zip" -d "${RUNNER_TEMP}/readiness"
+            jq '.gate_ledger // []' "${RUNNER_TEMP}/readiness/release-readiness.json" > "$ledger"
+            validated="$(jq -r --arg t "$RELEASE_TAG" '[.[] | select(.release_tag == $t) | .sha] | unique | if length == 1 then .[0] else empty end' "$ledger")"
+            # The diff list is written ONLY when the validated commit is a real
+            # ancestor of the tag; without it the tool refuses reuse.
+            if [ -n "$validated" ] && git cat-file -e "${validated}^{commit}" 2>/dev/null \
+               && git merge-base --is-ancestor "$validated" "$tag_sha"; then
+              git diff --name-only "$validated" "$tag_sha" > "$diff_file"
+            fi
+          else
+            echo "::notice::No release-readiness artifact for ${RELEASE_TAG} (tag not cut by release.yml, or it expired): the full battery runs."
+          fi
+          (cd backend && go run ./cmd/releaseplan reuse \
+            -composer ../.github/workflows/release-validate.yml \
+            -ledger "$ledger" -tag "$RELEASE_TAG" -tag-sha "$tag_sha" \
+            -changed-files "$diff_file") > "${RUNNER_TEMP}/decision.txt"
+          cat "${RUNNER_TEMP}/decision.txt" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Tag-time battery"
+            echo
+            echo "- reuse the pre-tag battery: \`$(sed -n 's/^reuse=//p' "${RUNNER_TEMP}/decision.txt")\`"
+            echo "- reason: $(sed -n 's/^reason=//p' "${RUNNER_TEMP}/decision.txt")"
+            echo "- gates carried instead of re-run: \`$(sed -n 's/^skip_gates=//p' "${RUNNER_TEMP}/decision.txt")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # REL-03 (issue #447), by composition (ADR 0021 / #1165): calls the same
   # reusable release-validate.yml that release.yml calls before tagging, so
   # "is this commit releasable" has one definition. A dispatch with a
@@ -72,7 +154,7 @@ jobs:
   # sibling release-gate-override job instead. Full gate list:
   # docs/development/release-gates.md.
   release-gate:
-    needs: validate-tag
+    needs: [validate-tag, reuse-decision]
     if: ${{ inputs.override_reason == '' }}
     uses: ./.github/workflows/release-validate.yml
     # Issue #1484: the gate battery builds the all-in-one image ONCE (stamped
@@ -82,6 +164,13 @@ jobs:
     with:
       release_tag: ${{ inputs.tag || github.ref_name }}
       source_ref: ${{ inputs.tag || github.ref_name }}
+      # Issue #1487: when reuse-decision proved the tagged tree equals the tree
+      # release.yml already validated, the gates it recorded green are carried
+      # instead of re-rolled (build-candidate and the deploy-smoke floor still
+      # run, so the digest that publishes is built from the tag and boot-tested).
+      # Empty (no reuse) runs every gate, exactly as before.
+      skip_gates: ${{ needs.reuse-decision.outputs.skip_gates }}
+      carried_ledger: ${{ needs.reuse-decision.outputs.carried }}
     permissions:
       contents: read
       pull-requests: read
@@ -122,7 +211,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [validate-tag, release-gate, release-gate-override, build-android-apk]
+    needs: [validate-tag, reuse-decision, release-gate, release-gate-override, build-android-apk]
     # #508: the protected `release` environment. Add required reviewers to it
     # (Settings -> Environments -> release) to gate publication behind a human;
     # until then it is a no-op. See docs/development/repo-governance.md.
@@ -294,6 +383,9 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          # Issue #1487: the tag-time battery decision (reuse or full battery,
+          # why, which gates were carried) is recorded in the readiness asset.
+          REUSE_DECISION: ${{ needs.reuse-decision.outputs.decision }}
         run: |
           set -eu
           name="release-readiness-${RELEASE_TAG}"
@@ -305,6 +397,12 @@ jobs:
           fi
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${art_id}/zip" > "${RUNNER_TEMP}/readiness.zip"
           unzip -o -q "${RUNNER_TEMP}/readiness.zip" -d "${RUNNER_TEMP}/readiness"
+          decision="${REUSE_DECISION:-}"
+          if ! printf '%s' "$decision" | jq -e . >/dev/null 2>&1; then
+            decision='{"reuse":false,"reason":"the reuse decision was unavailable: the full battery ran"}'
+          fi
+          jq --argjson d "$decision" '. + {tag_time_battery: $d}' "${RUNNER_TEMP}/readiness/release-readiness.json" > "${RUNNER_TEMP}/readiness/release-readiness.recorded.json"
+          mv "${RUNNER_TEMP}/readiness/release-readiness.recorded.json" "${RUNNER_TEMP}/readiness/release-readiness.json"
           gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/readiness/release-readiness.json" --clobber
 
   # Builds the same signed release APK android-apk-build.yml's manual "release"

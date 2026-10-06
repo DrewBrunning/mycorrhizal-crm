@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -286,4 +287,61 @@ func mustWrite(t *testing.T, content string) string {
 		t.Fatalf("write: %v", err)
 	}
 	return path
+}
+
+// Issue #1487: a blind scan (only the canary self-test missing) is the one
+// failure the release battery may retry; any real app finding must not be.
+func TestRun_BlindOnlyIsRetryable(t *testing.T) {
+	report, ignore := writeConfigFiles(t, `{"site":[{"@name":"http://localhost:7301","alerts":[]}]}`, "# none\n")
+	err := run(gateEnv(report, ignore))
+	if !errors.Is(err, errScanBlind) {
+		t.Fatalf("run() = %v, want errScanBlind (sole failure is the self-test)", err)
+	}
+}
+
+func TestRun_BlindPlusAppFindingIsNotRetryable(t *testing.T) {
+	// The canary self-test is missing AND the app has an unaccepted finding:
+	// retrying could hide the real finding behind a lucky second scan.
+	report, ignore := writeConfigFiles(t, `{"site":[{"@name":"http://localhost:7300","alerts":[
+	  {"pluginid":"10038","alert":"CSP","riskcode":"2","instances":[{"uri":"http://localhost:7300/x"}]}]}]}`, "# none\n")
+	err := run(gateEnv(report, ignore))
+	if err == nil || errors.Is(err, errScanBlind) {
+		t.Fatalf("run() = %v, want a non-retryable error", err)
+	}
+}
+
+func TestRun_AppFindingWithSelfTestSeenIsNotRetryable(t *testing.T) {
+	report, ignore := writeConfigFiles(t, sampleReport, "# none\n")
+	err := run(gateEnv(report, ignore))
+	if err == nil || errors.Is(err, errScanBlind) {
+		t.Fatalf("run() = %v, want a non-retryable error", err)
+	}
+}
+
+func TestMain_ExitCodes(t *testing.T) {
+	orig := osExit
+	t.Cleanup(func() { osExit = orig })
+	cases := []struct {
+		name   string
+		report string
+		want   int // -1 = osExit not called (gate passed)
+	}{
+		{"blind only exits 3", `{"site":[{"@name":"http://localhost:7301","alerts":[]}]}`, exitBlind},
+		{"app finding exits 1", sampleReport, 1},
+		{"clean passes", `{"site":[{"@name":"http://localhost:7301","alerts":[
+		  {"pluginid":"40012","alert":"XSS","riskcode":"3","instances":[]}]}]}`, -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			report, ignore := writeConfigFiles(t, tc.report, "# none\n")
+			t.Setenv("ZAPGATE_REPORT", report)
+			t.Setenv("ZAPGATE_IGNORE", ignore)
+			got := -1
+			osExit = func(code int) { got = code }
+			main()
+			if got != tc.want {
+				t.Fatalf("exit = %d, want %d", got, tc.want)
+			}
+		})
+	}
 }
