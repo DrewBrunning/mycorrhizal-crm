@@ -2990,7 +2990,11 @@ class ApiClient(
     private fun parseError(code: Int, body: String): ApiError {
         val parsed = parseErrorDisplayMessage(body)
         val message = parsed?.takeIf { it.isNotBlank() } ?: body.ifBlank { "HTTP $code" }
-        return if (code in 400..499) ApiError.Client(code, message) else ApiError.Server(code, message)
+        return if (code in 400..499) {
+            ApiError.Client(code, message)
+        } else {
+            ApiError.Server(code, message, errorCode = parseErrorCode(body))
+        }
     }
 
     /**
@@ -3003,6 +3007,10 @@ class ApiClient(
      * body's `error` is a String, which the envelope model can't decode, and
      * that must not mask the `message` fallback.
      */
+    private fun parseErrorCode(body: String): String? = runCatching {
+        moshi.adapter(BackendError::class.java).fromJson(body)?.error?.code
+    }.getOrNull()
+
     private fun parseErrorDisplayMessage(body: String): String? {
         val envelopeMessage = runCatching {
             moshi.adapter(BackendError::class.java).fromJson(body)?.error?.displayMessage

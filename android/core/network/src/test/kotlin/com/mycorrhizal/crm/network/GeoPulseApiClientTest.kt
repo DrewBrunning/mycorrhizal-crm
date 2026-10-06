@@ -139,4 +139,35 @@ class GeoPulseApiClientTest {
 
         assertFalse(server.takeRequest().path!!.contains("timezone"))
     }
+
+    @Test
+    fun `503 external-service error surfaces the server's actionable message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(503).setBody(
+                """{"error":{"code":"EXTERNAL_SERVICE_ERROR","message":"GeoPulse service error: Could not reach GeoPulse. Is the instance up?"}}""",
+            ),
+        )
+
+        val result = client.getGeoPulseSuggestions("2026-03-10", "UTC")
+
+        assertEquals(
+            "GeoPulse service error: Could not reach GeoPulse. Is the instance up?",
+            (result.exceptionOrNull() as ApiError).displayMessage,
+        )
+    }
+
+    @Test
+    fun `500 internal and database errors stay generic`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(500)
+                .setBody("""{"error":{"code":"INTERNAL_ERROR","message":"sql: connection refused at 10.0.0.5"}}"""),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(503)
+                .setBody("""{"error":{"code":"DATABASE_ERROR","message":"database is locked"}}"""),
+        )
+
+        assertEquals("Server error (500)", (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage)
+        assertEquals("Server error (503)", (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage)
+    }
 }

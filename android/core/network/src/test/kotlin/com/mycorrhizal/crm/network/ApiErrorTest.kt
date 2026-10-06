@@ -77,6 +77,14 @@ class ApiErrorTest {
     }
 
     @Test
+    fun `display message for the external-service code shows the server's message on any 5xx`() {
+        val msg = "GeoPulse service error: Could not reach GeoPulse. Is the instance up?"
+        assertEquals(msg, ApiError.Server(503, msg, errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage)
+        assertEquals("Server error (503)", ApiError.Server(503, "", errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage)
+        assertEquals("Server error (500)", ApiError.Server(500, "db detail", errorCode = "DATABASE_ERROR").displayMessage)
+    }
+
+    @Test
     fun `display message for other 5xx never leaks the body`() {
         assertEquals("Server error (503)", ApiError.Server(503, "internal detail").displayMessage)
     }
