@@ -611,7 +611,7 @@ paths:
       summary: Request a password reset email
       operationId: requestPasswordReset
       security: []
-      description: Always returns the same response whether or not the email exists (anti-enumeration).
+      description: Always returns the same response whether or not the email exists (anti-enumeration), including when the reset email could not be sent or the token could not be stored for a known account; those failures are logged and recorded as a system event for the operator, never surfaced to the caller (issue #1473).
       requestBody:
         required: true
         content:
@@ -633,8 +633,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Password changes are disabled in demo mode.
-        "502":
-          description: The reset email could not be sent.
   /password-reset/confirm:
     post:
       summary: Complete a password reset with the emailed token
