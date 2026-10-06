@@ -44,8 +44,15 @@ export default defineConfig({
       ? 4
       : undefined,
 
-  // Reporter to use
-  reporter: [['html', { open: 'never' }], ['list']],
+  // Reporter to use. The JSON reporter (issue #1488) is the flake ledger's
+  // input: per-test status incl. "flaky" (failed then passed on retry). It is
+  // advisory data only -- nothing fails on it. The workflow uploads it as the
+  // `flake-playwright-<job>` artifact (cmd/flakeledger parses it).
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    ['json', { outputFile: 'playwright-results/results.json' }],
+  ],
 
   // Shared settings for all projects
   use: {
