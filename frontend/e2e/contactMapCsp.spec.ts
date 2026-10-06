@@ -49,6 +49,18 @@ test.describe('contact map CSP (#1286)', () => {
     await expect
       .poll(() => styleRequests, { message: 'style request reached the tile origin' })
       .toBeGreaterThan(0);
+    // MapLibre builds its worker from a blob: URL, but an empty stub style may
+    // never spawn one, so probe the same operation directly: a CSP without
+    // worker-src blob: raises a violation here regardless of the style.
+    await page.evaluate(() => {
+      const url = URL.createObjectURL(new Blob([''], { type: 'text/javascript' }));
+      try {
+        new Worker(url).terminate();
+      } catch {
+        // a blocked worker may also throw synchronously; the event is the signal
+      }
+      URL.revokeObjectURL(url);
+    });
     // Let the worker spin up and any blocked follow-up requests surface.
     await page.waitForTimeout(500);
     expect(violations).toEqual([]);

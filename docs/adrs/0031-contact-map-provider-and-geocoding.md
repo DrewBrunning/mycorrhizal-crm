@@ -171,7 +171,10 @@ directive (`backend/config/entrypoint_csp_test.go` runs it against hostile value
 worker). `connect-src`/`img-src` therefore allow exactly `'self'`, `data:`, `blob:` and the one
 configured origin — no blanket `https:`. `TestNginxCSPConsistentAcrossImages` keeps the two nginx
 configs identical and free of hard-coded hosts, and `frontend/e2e/contactMapCsp.spec.ts` proves in a
-real browser that the style request and worker raise no `securitypolicyviolation`.
+real browser that the style request and a blob: worker raise no `securitypolicyviolation`.
+`scripts/check-csp-tile-images.sh` (a step in the required `Run E2E Tests` job) starts the built
+all-in-one and split images with default, custom and credentialed `MAP_TILE_STYLE_URL` values and
+asserts the served header / refusal.
 
 **Operator caveat:** only the style URL's own origin is allowed. A self-hosted style whose JSON points
 tiles, sprites or glyphs at a *different* host is blocked by the CSP (visible as a blank basemap and

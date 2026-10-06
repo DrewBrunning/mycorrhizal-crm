@@ -115,6 +115,24 @@ jobs:
           cache-from: type=gha,scope=combined
           cache-to: type=gha,scope=combined,mode=max
 
+      # Issue #1286 follow-up: the SPA CSP's map-tile origin is rendered at
+      # container start from MAP_TILE_STYLE_URL, in BOTH image shapes. Started
+      # images prove nginx accepts the rendered include and that the variable
+      # reaches the served header; the Go tests only prove the files agree.
+      # Lives in this required job (not a new context) so it is merge-blocking.
+      - name: Build split frontend image (CSP tile-origin check)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          load: true
+          tags: mycorrhizal-frontend-csp-test:latest
+          cache-from: type=gha,scope=./frontend/Dockerfile
+
+      - name: Assert MAP_TILE_STYLE_URL reaches the CSP in both images
+        run: scripts/check-csp-tile-images.sh mycorrhizal-crm-test:latest mycorrhizal-frontend-csp-test:latest
+
       - name: Start services
         run: |
           docker compose -f docker-compose.test.yml up -d
