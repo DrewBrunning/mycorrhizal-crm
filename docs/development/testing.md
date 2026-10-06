@@ -991,7 +991,18 @@ criterion.**
     data-integrity invariants (`atrest`), delete cascade (the two files
     `contact_controller.go`/`admin_user_controller.go` name in backend trap
     6), import ingestion (`services`' import-source files), and the three
-    exporters (`vcard3`, `vcard4`, `jscontact`). The complete scope and each
+    exporters (`vcard3`, `vcard4`, `jscontact`). Issue #1491 added the
+    decision-heavy code whose silent breakage is worst: auth middleware
+    (`middleware-auth`: `auth.go`, `admin.go`, `idempotency.go`,
+    `login_lockout.go`), the SSRF guard (`ssrf`: all of `httputil`), merge
+    (`services-merge`, `controllers-merge`), date/threshold arithmetic
+    (`schedule-math`: cadence, reminder, data-decay, occasion), and sync
+    reconcile (`sync-reconcile`: `contact_sync_service.go`;
+    `carddav-backend`, `caldav-backend`: the DAV backends). gremlins v0.6.0
+    mutates comparisons, arithmetic and increments only — it does not delete
+    an `if !ok` arm or an `AND user_id = ?` SQL fragment, so ownership
+    scoping stays covered by `routes/ownership_matrix_test.go`, not by a
+    mutation leg. The complete scope and each
     leg's threshold (with the baseline run it ratchets from) live in
     `backend/internal/mutationscope.Scopes`, generated into
     `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after
