@@ -316,6 +316,36 @@ three real light-mode contrast/naming defects on the admin pages — outlined
 `success`/`error` chip text and error text on a hovered row, and an unnamed
 storage `progressbar` — fixed via `src/utils/statusText.ts` and an `aria-label`.
 
+### Failure-mode specs (issue #1478)
+
+The error UX used to be verified only in vitest with a mocked `fetch`.
+`frontend/e2e/failureModes.spec.ts` (tagged `@failure-modes`, runs on every PR
+with the rest of the suite) drives the real bundle in a real browser while the
+backend misbehaves, one test per failure class:
+
+| Failure | Mechanism | Asserts |
+|---|---|---|
+| 503 on dashboard / contacts list / contact detail | `page.route` fulfilling the backend's real error envelope (`backend/errors/errors.go`) | visible, retryable error (not a blank list, not "Contact not found"); `request_id` shown; the `details` sentinel never reaches the DOM; Try again recovers |
+| Genuine 404 on contact detail | real backend | still "Contact not found", no retry |
+| Network down mid-session | `context.setOffline` | error alert, then recovery after going back online |
+| 429 from the rate limiter | stubbed `RATE_LIMIT_EXCEEDED` + `Retry-After` | the limiter's message shown; retry recovers |
+| 401 mid-save of the add-contact form | stubbed 401 on `POST /contacts` | in-place re-auth (no redirect to `/login`), draft preserved, retry saves |
+| Field-level validation error | stubbed `400 VALIDATION_ERROR` with `details: {"card.name": ...}` | message on the first-name field (`aria-invalid`), draft preserved, edit clears it |
+| Slow response (>5s) | route delaying 6s | skeleton (no error) while waiting, content after |
+
+Every test also fails on an uncaught `pageerror` or an unexpected
+`console.error` (only the browser's own "Failed to load resource" line and the
+app's structured `[operation] Error:` log are allowed), and ends on a state the
+automatic axe scan from `fixtures.ts` then checks, so the *error state* is
+scanned too. Two traps when writing more of these: `page.unroute` matches by
+**function reference** (a predicate rebuilt on each call silently removes
+nothing -- the spec memoises its matchers), and the re-auth dialog and the
+dialog behind it can both contain the text "Session expired" -- locate the
+re-auth prompt by role + accessible name. The real backend reports validation
+failures as `400 VALIDATION_ERROR`, not 422. `412 Precondition Failed` is
+deliberately not covered: the web client never sends `If-Match` (ADR 0008), so
+that is a missing feature, not a missing test.
+
 ### Visual regression (issue #258)
 
 `frontend/e2e/visual.spec.ts` snapshots a small, curated set of stable views —

@@ -2,6 +2,7 @@ import { mdiCalendarPlus, mdiNotePlusOutline } from '@mdi/js';
 import AddIcon from '@mui/icons-material/Add';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -18,6 +19,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
+import { ApiError } from './api/client';
 import {
   type ContactRecordResponse,
   getContactDisplayName,
@@ -118,7 +120,7 @@ import {
   markGivenGiftInput,
 } from './utils/contactDetailPayloads';
 import { buildTimelineItems } from './utils/contactTimeline';
-import { handleFetchError } from './utils/errorHandler';
+import { getErrorMessage, handleFetchError } from './utils/errorHandler';
 
 // T31: the contact detail page is one scrollable page grouped into a handful
 // of anchor sections instead of a growing tab strip. PanelCard is the visual
@@ -342,6 +344,8 @@ export default function ContactDetailPage() {
   const contactName = `${firstname}${lastname ? ` ${lastname}` : ''}`;
 
   // T78: the timeline explorer dialog.
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [timelineExplorerOpen, setTimelineExplorerOpen] = useState(false);
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
   // Contact merge dialog state (ticket N1)
@@ -802,6 +806,8 @@ export default function ContactDetailPage() {
     setLoading,
     loadDependents,
     onAuxFetchFailed: () => showError(t('contactDetail.timelineLoadError')),
+    onLoadError: setLoadError,
+    attempt: loadAttempt,
   });
 
   const timelineItems = buildTimelineItems({
@@ -892,6 +898,33 @@ export default function ContactDetailPage() {
         <Box sx={{ mt: 3 }}>
           <TimelineSkeleton count={5} />
         </Box>
+      </Box>
+    );
+  }
+
+  if (!record && loadError && !(loadError instanceof ApiError && loadError.status === 404)) {
+    // The record fetch failed for a reason other than "no such contact" (5xx,
+    // network down): say so and offer a retry rather than claiming the contact
+    // doesn't exist (issue #1478).
+    return (
+      <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, p: 2 }}>
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setLoading(true);
+                setLoadAttempt((n) => n + 1);
+              }}
+            >
+              {t('common.tryAgain')}
+            </Button>
+          }
+        >
+          {t('contactDetail.loadError')} {getErrorMessage(loadError)}
+        </Alert>
       </Box>
     );
   }

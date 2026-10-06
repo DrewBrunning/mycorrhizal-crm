@@ -6,6 +6,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import {
+  Alert,
   Avatar,
   Box,
   Button,
@@ -210,7 +211,7 @@ export default function ContactsPage() {
   );
 
   // Use custom hook for fetching contacts
-  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore, setContacts } =
+  const { contacts, nextCursor, hiddenCount, loading, error, refetch, loadMore, setContacts } =
     useContacts(contactParams);
 
   // #211: result-count announcement, once per settled fetch (not per
@@ -600,7 +601,20 @@ export default function ContactsPage() {
           onDelete={handleBulkDelete}
         />
       </Box>
-      {loading && contacts.length === 0 ? (
+      {error && contacts.length === 0 && !loading ? (
+        // A failed first-page fetch used to render as a silently empty list.
+        // Say so, and offer a retry (issue #1478).
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void refetch()}>
+              {t('common.tryAgain')}
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      ) : loading && contacts.length === 0 ? (
         <ContactListSkeleton count={10} />
       ) : (
         <>

@@ -195,6 +195,13 @@ export interface ContactDetailLoaderOptions {
   // Called when an auxiliary timeline fetch fell back to empty. Read through
   // a ref, not a dependency: a notifier change must not refetch the page.
   onAuxFetchFailed: () => void;
+  // The record load itself failed (as opposed to an auxiliary fetch, which
+  // falls back to empty). Lets the page tell a genuine failure (5xx, network)
+  // from a 404 and offer a retry instead of claiming "not found" (issue
+  // #1478). `null` is reported when an attempt starts.
+  onLoadError?: (error: unknown) => void;
+  // Bump to re-run the load for the same id (the page's Retry button).
+  attempt?: number;
 }
 
 export function useContactDetailLoader(
@@ -205,8 +212,12 @@ export function useContactDetailLoader(
     setLoading,
     loadDependents,
     onAuxFetchFailed,
+    onLoadError,
+    attempt = 0,
   }: ContactDetailLoaderOptions,
 ) {
+  const onLoadErrorRef = useRef(onLoadError);
+  onLoadErrorRef.current = onLoadError;
   const onAuxFetchFailedRef = useRef(onAuxFetchFailed);
   onAuxFetchFailedRef.current = onAuxFetchFailed;
   const loadDependentsRef = useRef(loadDependents);
@@ -221,6 +232,7 @@ export function useContactDetailLoader(
     let cancelled = false;
 
     const fetchData = async () => {
+      onLoadErrorRef.current?.(null);
       try {
         const core = await fetchContactDetailCore(id);
         if (cancelled) return;
@@ -246,6 +258,7 @@ export function useContactDetailLoader(
       } catch (err) {
         if (cancelled) return;
         console.error('Error fetching data:', err);
+        onLoadErrorRef.current?.(err);
         setLoading(false);
       }
     };
@@ -258,5 +271,5 @@ export function useContactDetailLoader(
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, applyCore, setProfilePic, setLoading]);
+  }, [id, applyCore, setProfilePic, setLoading, attempt]);
 }

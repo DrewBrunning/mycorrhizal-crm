@@ -149,6 +149,24 @@ function renderPage() {
   );
 }
 
+test('a failed first-page fetch shows the error with a Try again, not a silently empty list (issue #1478)', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(getContacts).mockRejectedValueOnce(new Error('Contacts are unavailable'));
+  vi.mocked(getContacts).mockResolvedValueOnce({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+  });
+  renderPage();
+
+  expect(await screen.findByText('Contacts are unavailable')).toBeInTheDocument();
+  expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByText('Alice')).toBeInTheDocument();
+  expect(screen.queryByText('Contacts are unavailable')).not.toBeInTheDocument();
+});
+
 test('selection survives pagination and selects across both pages', async () => {
   mockTwoPages();
   renderPage();
