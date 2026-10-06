@@ -26,7 +26,7 @@ Alternatively, API tokens can be used in the `Authorization` header:
 Authorization: Bearer mycorrhizal_<token>
 ```
 
-API tokens are created and managed via the admin endpoints, the tokens always have normal user rights. The plaintext token is only returned once at creation time.
+API tokens are created and managed by each user under Settings → API Tokens (`/api/v1/api-tokens`); a token always has the rights of the user who created it, never admin rights. The plaintext token is only returned once at creation time.
 
 ## Error Responses
 
