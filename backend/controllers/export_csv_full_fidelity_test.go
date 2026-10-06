@@ -23,6 +23,7 @@ package controllers
 // decision about what the user's backup is allowed to omit.
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,6 +36,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // csvFullFidelityFixture seeds one user with, for each sensitivity-bearing
@@ -44,6 +46,7 @@ import (
 // export is simply broken and the test says so.
 type csvFullFidelityFixture struct {
 	router *gin.Engine
+	db     *gorm.DB
 	user   models.User
 	ada    models.Contact
 	bob    models.Contact
@@ -121,7 +124,7 @@ func seedCSVFullFidelity(t *testing.T) csvFullFidelityFixture {
 	router.GET("/export", ExportData)
 	registerVCFRoute(router, "")
 
-	return csvFullFidelityFixture{router: router, user: user, ada: ada, bob: bob}
+	return csvFullFidelityFixture{router: router, db: db, user: user, ada: ada, bob: bob}
 }
 
 const (
@@ -207,4 +210,58 @@ func TestExportCSV_IsFullFidelityBackup_UnlikeVCard(t *testing.T) {
 		body := csvFidelityGet(t, f.router, "/export/vcf?include_sensitive=true")
 		assert.Contains(t, body, csvFidelitySecretFieldValue, "include_sensitive=true is the vCard path's explicit opt-in")
 	})
+}
+
+// TestExportCSV_AddressesCarryEverySensitivityAndCoordinates pins that the
+// CONTACTS section exports every postal address with its own sensitivity and
+// geo: URI: a secret first address must not be exported unlabelled, and the
+// 2nd+ addresses must not be dropped (v1.4.0 review).
+func TestExportCSV_AddressesCarryEverySensitivityAndCoordinates(t *testing.T) {
+	f := seedCSVFullFidelity(t)
+
+	contactCol := func() func(string) string {
+		body := csvFidelityGet(t, f.router, "/export")
+		section := body[:strings.Index(body, "\n=== RELATIONSHIPS ===")]
+		rows, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(section, "=== CONTACTS ===\n"))).ReadAll()
+		require.NoError(t, err)
+		header := rows[0]
+		var row []string
+		for _, r := range rows[1:] {
+			if r[1] == "Ada" {
+				row = r
+			}
+		}
+		require.NotNil(t, row)
+		return func(name string) string {
+			for i, h := range header {
+				if h == name {
+					return row[i]
+				}
+			}
+			t.Fatalf("missing column %q in %v", name, header)
+			return ""
+		}
+	}
+
+	var contact models.Contact
+	require.NoError(t, f.db.First(&contact, f.ada.ID).Error)
+	contact.Addresses = []models.ContactAddress{
+		{ID: "a-1", Street: "1 Secret Lane", City: "Wien", Sensitivity: "secret", Coordinates: "geo:48.2,16.3"},
+		{ID: "a-2", Street: "2 Plain Road", City: "Graz"},
+	}
+	require.NoError(t, f.db.Save(&contact).Error)
+
+	col := contactCol()
+	assert.Equal(t, "1 Secret Lane, Wien; 2 Plain Road, Graz", col("Addresses"))
+	assert.Equal(t, "secret; normal", col("Address Sensitivities"))
+	assert.Equal(t, "geo:48.2,16.3; ", col("Address Coordinates"))
+	assert.Equal(t, "1 Secret Lane, Wien", col("Address"), "the legacy column stays the first address")
+
+	// Formula injection: a cell starting with a formula leader is neutralized.
+	require.NoError(t, f.db.First(&contact, f.ada.ID).Error)
+	contact.Addresses = []models.ContactAddress{{ID: "a-3", Street: "=1+1", Sensitivity: "private"}}
+	require.NoError(t, f.db.Save(&contact).Error)
+	col = contactCol()
+	assert.Equal(t, "'=1+1", col("Addresses"))
+	assert.Equal(t, "private", col("Address Sensitivities"))
 }
