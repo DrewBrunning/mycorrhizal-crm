@@ -1,3 +1,4 @@
+import { ThemeProvider } from '@mui/material';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { getSystemStatus, type SystemStatusResponse } from './api/systemStatus';
 import { isAdmin } from './auth';
 import './i18n/config';
 import SystemStatusPage from './SystemStatusPage';
+import { lightTheme } from './theme';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true
 // (CLAUDE.md frontend trap #1).
@@ -320,4 +322,41 @@ test('storage growth and projection degrade to dashes without history', async ()
   // No banner on an ok/unknown threshold, and the page survives.
   expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
   expect(screen.queryByText(/Critical:/)).not.toBeInTheDocument();
+});
+
+// Issue #1481 (surfaced by the System Events e2e spec's automatic axe scan): the
+// storage bar was an unnamed role=progressbar (axe aria-progressbar-name), and
+// the outlined "OK" chip's success.main text missed AA contrast on the card.
+test('the storage usage bar has an accessible name', async () => {
+  renderPage();
+  await screen.findByText('System status');
+  expect(screen.getByRole('progressbar', { name: 'Storage' })).toBeInTheDocument();
+});
+
+test('the outlined OK and unhealthy chips use the legible light-mode shades', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      health: {
+        ...fullStatus().health,
+        database: { status: 'ok' },
+        migrations: { status: 'unhealthy', reason: 'dirty' },
+      },
+    }),
+  );
+  render(
+    <ThemeProvider theme={lightTheme}>
+      <MemoryRouter initialEntries={['/system-status']}>
+        <Routes>
+          <Route path="/system-status" element={<SystemStatusPage />} />
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+  await screen.findByText('Health checks');
+  const chipColor = (el: HTMLElement) =>
+    getComputedStyle(el.closest('.MuiChip-root') as HTMLElement).color;
+  expect(chipColor(screen.getAllByText('OK')[0])).toBe('rgb(11, 118, 67)'); // success.dark
+  expect(chipColor(screen.getByText('Unhealthy', { selector: '.MuiChip-label' }))).toBe(
+    'rgb(146, 59, 51)', // error.dark
+  );
 });

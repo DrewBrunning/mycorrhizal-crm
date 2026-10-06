@@ -40,6 +40,16 @@ on:
   # for why not a `push: release/**` trigger). Not for ad hoc manual runs.
   workflow_dispatch:
   workflow_call:
+    inputs:
+      # Issue #1484: digest of the candidate image release-validate.yml built
+      # once (sha256:<64 hex>). When set, the all-in-one image is pulled by
+      # digest instead of built from source. Empty (every non-composed run:
+      # per-PR, push, schedule, dispatch) keeps the from-source build.
+      image_digest:
+        description: 'Candidate image digest to test instead of building from source (release composition only).'
+        required: false
+        type: string
+        default: ''
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -106,6 +116,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      packages: read
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
@@ -121,7 +132,27 @@ jobs:
       # Same image e2e-tests.yml builds, so the scan inspects the actual
       # shipped artifact. `load: true` puts it in the local daemon for
       # docker/cis-hardening.sh; cache scope shared with e2e-tests.yml.
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #1484: composed into the release battery, the image under test is
+      # the ONE candidate release-validate.yml built, pulled by digest and
+      # tagged under the name the rest of this job expects -- not a from-source
+      # rebuild. The build step below is skipped in that case; per-PR,
+      # push and schedule runs (no image_digest) still build from source.
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-test:latest
+
       - name: Build all-in-one image
+        if: ${{ inputs.image_digest == '' }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .

@@ -422,7 +422,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
 
       - name: Preserve attempt-1 instrumented results (flake triage)
         if: steps.android-e2e-attempt-1.outcome == 'failure'
@@ -446,7 +446,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
 
       # Issue #268: if the suite passed only after a retry, the preserved
       # flaky-attempt-* XMLs are the flake signal.
@@ -460,6 +460,23 @@ jobs:
           else
             echo "No instrumented retries this run."
           fi
+
+      # Issue #1483: a JUnit Assume failure is a *skip*, and a skip is green on
+      # this required, release-gating job. Fail unless the skipped set equals
+      # android/e2e-expected-skips.txt exactly (new skip, vanished skip, or an
+      # empty run all fail), and write the skip report to the job summary.
+      # (The compat-backend tests use assumeOrFailInCi + requireReferences=true
+      # above, so an unreachable backend FAILS rather than skipping.)
+      - name: Set up Go (skip-gate checker)
+        if: success()
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Gate unexpected skips
+        if: success()
+        working-directory: backend
+        run: go run ./cmd/androidskipcheck -results ../android/app/build/outputs/androidTest-results/connected -summary "$GITHUB_STEP_SUMMARY"
 
       # Issue #1488: the flake ledger's Android input -- the final run's JUnit
       # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,
@@ -586,7 +603,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
 
       - name: Preserve attempt-1 instrumented results (API 26, flake triage)
         if: steps.android-e2e-min-sdk-attempt-1.outcome == 'failure'
@@ -610,7 +627,24 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
+
+      # Issue #1483: a JUnit Assume failure is a *skip*, and a skip is green on
+      # this required, release-gating job. Fail unless the skipped set equals
+      # android/e2e-expected-skips.txt exactly (new skip, vanished skip, or an
+      # empty run all fail), and write the skip report to the job summary.
+      # (The compat-backend tests use assumeOrFailInCi + requireReferences=true
+      # above, so an unreachable backend FAILS rather than skipping.)
+      - name: Set up Go (skip-gate checker)
+        if: success()
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Gate unexpected skips (API 26)
+        if: success()
+        working-directory: backend
+        run: go run ./cmd/androidskipcheck -results ../android/app/build/outputs/androidTest-results/connected -summary "$GITHUB_STEP_SUMMARY"
 
       # Issue #1488: the flake ledger's Android input -- the final run's JUnit
       # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,

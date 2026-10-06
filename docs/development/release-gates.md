@@ -101,6 +101,51 @@ push-triggered run produces the provenance.
 asserts its absence with an `::error::` (`backend/internal/releasegates/dispatchpath.go`). Today only
 `apk-provenance` is allowlisted, compensated by `verify-release-assets`.
 
+### Build once: the tested image is the shipped image (issue #1484)
+
+Before #1484 the artifact the gates ran was not the artifact that shipped: `e2e-tests.yml` built
+`mycorrhizal-crm-test:latest` from source, and `docker-publish.yml` built the release image again
+later, so a green battery said nothing about the bytes published. Now:
+
+1. **`build-candidate`** (a job inside `release-validate.yml`) builds the all-in-one image **once** —
+   same Dockerfile, build args, OCI labels, `SOURCE_DATE_EPOCH` and multi-arch platforms as the release
+   build; the stamp arithmetic is the shared `.github/scripts/release-image-stamp.sh` so the two cannot
+   disagree — and pushes it to GHCR as `ghcr.io/<repo>:candidate-<sha7>` (a non-release tag; no `latest`,
+   no version tag). Its **digest** is the workflow's `candidate_digest` output.
+2. Every gate that runs the image — `e2e-tests.yml` (all three jobs), `container-hardening.yml`,
+   `zap-dast.yml`, and the new release-tier `deploy-smoke.yml` — takes an optional `image_digest`
+   input. Set (only the release composition sets it), the gate **pulls that digest** with
+   `.github/scripts/candidate-image.sh pull` (which refuses anything but a `sha256:` digest and
+   verifies the pulled image carries it) and skips its from-source build; every gate's log shows the
+   same digest. Per-PR, `push: main`, nightly and dispatch runs pass nothing and keep building from
+   source. `deploy-smoke.yml` boots it through `docker-compose.yml` + `docker-compose.candidate.yml`
+   (`build: !reset null`, so Compose cannot silently rebuild). `chaos-tests.yml` does not run the
+   container image (Go tests only) and is unaffected.
+3. **`docker-publish.yml`'s `build-and-push`** receives the digest from its `release-gate` job and,
+   for the all-in-one image, **re-tags it by digest** (`docker buildx imagetools create`, the
+   `promote-rc.yml` pattern) instead of rebuilding; each resulting tag is resolved back and asserted
+   equal to the tested digest, then cosign/attestation/SBOM run against that digest as before. The
+   backend and frontend images (which no gate runs) still build in that job.
+4. **`verify-release-assets`** asserts `published digest == tested digest` and fails with an
+   `::error::` otherwise (or if the gate passed but exported no digest).
+5. `post-publish-smoke` stays as defense in depth, but it is no longer the first time the published
+   image is exercised.
+
+Two honest limits. **(a)** `release.yml` validates the release commit *before* the fixture commit and
+tag exist, so its pre-tag battery tests a candidate built from that commit; `docker-publish.yml`'s
+`release-gate` then builds and tests a candidate from the **tagged** commit, and *that* digest is what
+publishes. `release.yml` records its own candidate in `release-readiness.json` (`validated_candidate`)
+for comparison; the two coincide whenever the fixture commit does not change the image build context.
+**(b)** With the gate overridden (`override_reason`) there is no tested candidate, so the all-in-one
+image builds from source and `verify-release-assets` only warns that digest equality cannot be asserted.
+
+`go run ./cmd/releasegatecheck` enforces the wiring (`releaseworkflow.CheckCandidate`): `build-candidate`
+exists and exports the digest, every image-running gate declares `image_digest`, is called with
+the digest and `needs: build-candidate`, and pulls through the script; the candidate and
+`build-and-push` agree on build args and the shared stamp; and the retag and digest-equality
+assertions are present. A candidate tag is left in GHCR per release attempt (including dry runs);
+prune old `candidate-*` package versions periodically.
+
 ## The Android decision (issue #527)
 
 **A release hard-blocks on a green, keystore-signed, `apksigner`-verified APK that lands on the
@@ -141,7 +186,10 @@ tracked.
 server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
 process exec, Keystore-wrapped secrets, readiness handshake, `/health` over the socket) is an
 `assumeTrue` **skip** on the x86_64 `Android E2E (emulator)` gate. A skip is not evidence, so that
-green check says nothing about local mode. Two things cover it instead:
+green check says nothing about local mode. The skip is now *accounted for* (issue #1483): the job
+fails unless the skipped tests are exactly those in `android/e2e-expected-skips.txt`
+(`backend/cmd/androidskipcheck`; see [`testing.md`](testing.md#e2e-android-instrumented)), so a
+new silent skip cannot hide behind this accepted one. Things that cover local mode instead:
 
 - **Automated, per-PR:** `backend/main_test.go` builds the real backend binary for the CI host,
   execs it with `--embedded-host`, and asserts the readiness handshake, `/health` over the Unix
@@ -200,10 +248,11 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
 | `release-gate` | release-internal | yes | calls the reusable `release-validate.yml` and blocks publication unless it passes: every `release_gate:true` per-PR check and every release-tier suite is composed with `needs:` (ADR 0021, issue #1165), so the tag-triggered path cannot drift from `release.yml`'s cut-time composition. A `workflow_dispatch` run with a non-empty `override_reason` skips the composed gate and the sibling `release-gate-override` job records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
-| `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
+| `build-candidate` | release-internal | yes | a job inside the composer `release-validate.yml` ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)): builds the all-in-one image once (multi-arch, the release's own build args, labels and `SOURCE_DATE_EPOCH`), pushes it as a non-release `candidate-<sha>` tag and exports its digest. Every image-running gate pulls that digest instead of rebuilding; a failed build blocks the battery. | `release-validate.yml` |
+| `build-and-push` | release-internal | yes | the multi-arch images publish; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. The all-in-one image is **not rebuilt**: its release tags are created by re-tagging the candidate digest the release-gate tested ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)); only the backend/frontend images, and the all-in-one image when the gate was overridden, build from source. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |
 | `apk-provenance` | release-internal | yes | the `slsa-github-generator` reusable workflow signs the APK subject and emits `mycorrhizal-apk.intoto.jsonl` (SLSA build provenance) as a workflow artifact (issue #355). | `docker-publish.yml` |
-| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-obtainium-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry. | `docker-publish.yml` |
+| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-obtainium-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry; and that the published all-in-one image digest equals the digest the release gates tested ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)), failing with an `::error::` otherwise. | `docker-publish.yml` |
 | `Test minimum supported versions` | release-tier | yes | the app builds and the suite passes against each declared minimum runtime (COMPAT-02, #473). | `min-version-tests.yml` |
 | `Android E2E (emulator, minSdk 26)` | release-tier | yes | the same instrumented suite as `Android E2E (emulator)` passes against the docker-compose.test.yml backend on an API-26 emulator — the declared minSdk floor (COMPAT-02, #473). Runs on push:main, nightly, and dispatch so the floor is exercised pre-tag, not just a number in a build file (issue #927). | `android-tests.yml` |
 | `Migration at scale (large dataset)` | release-tier | yes | with MYCORRHIZAL_LARGE_TESTS=1, every supported release migrates to current at ~134x the canonical manifest with row counts and integrity intact (#495). | `migration-tests.yml` |
@@ -213,6 +262,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Differential E2E (calcard)` | release-tier | yes | our JSContact / iCalendar output matches the pinned reference implementations (#680). | `differential-e2e.yml` |
 | `Reference-clients E2E` | release-tier | yes | vdirsyncer round-trips against our server with no data loss (#681); a real DAVx5 client discovers, syncs, and lands the canonical pathological fixture in Android's ContactsContract with no divergence (#917). | `reference-clients-e2e.yml` |
 | `ZAP DAST` | release-tier | yes | the baseline scan raises no new high-risk dynamic finding. | `zap-dast.yml` |
+| `Clean-install smoke (candidate image)` | release-tier | yes | the candidate release image (pulled by digest, never rebuilt) boots from nothing via the documented compose path: startup ordering (config validated, empty-DB migrations, then serving), the end-to-end register/login/contact/photo/search/export workflow, CORS withheld from a foreign origin, and the blank-`JWT_SECRET_KEY` / empty-`FRONTEND_URL` misconfigurations fail naming the variable (DEPLOY-01, #450; made a release gate by [#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484) -- it used to run only per-PR on `infra` changes, on `push: main` and nightly). | `deploy-smoke.yml` |
 | `OpenSSF Scorecard` | advisory | no | informational supply-chain posture; a score drop is reviewed, never release-blocking. | `scorecard.yml` |
 | `CodeQL` | advisory | no | SARIF is uploaded; a new alert is triaged in the Security tab, not release-blocking. | `codeql.yml` |
 | `Grype vulnerability scan` | advisory | no | second-opinion CVE scan; the critical/high hard gate is on main + nightly, advisory at release time. | `grype.yml` |

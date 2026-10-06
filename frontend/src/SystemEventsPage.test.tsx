@@ -1,3 +1,4 @@
+import { ThemeProvider } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -9,6 +10,7 @@ import { getNotificationChannelHealth } from './api/notificationHealth';
 import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
 import SystemEventsPage from './SystemEventsPage';
+import { lightTheme } from './theme';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
@@ -218,4 +220,32 @@ test('mounts the diagnostics and background-jobs panels wired to their APIs', as
   // Background-jobs panel (#391): present, and it loads its projection on mount.
   expect(screen.getByRole('heading', { name: 'Background jobs' })).toBeInTheDocument();
   await waitFor(() => expect(vi.mocked(getJobRunHealth)).toHaveBeenCalled());
+});
+
+// Issue #1481: outlined success/failure result chips use the legible light-mode
+// shades (axe color-contrast, surfaced by the System Events e2e spec).
+test('result chips use success.dark / error.dark text in the light theme', async () => {
+  getMock.mockResolvedValue({
+    system_events: [
+      ev({ id: 2, event_type: 'sync_failed', severity: 'error', result: 'failure' }),
+      ev({ id: 1, event_type: 'job_completed', component: 'scheduler', result: 'success' }),
+    ],
+    total: 2,
+  });
+  render(
+    <ThemeProvider theme={lightTheme}>
+      <MemoryRouter initialEntries={['/system-events']}>
+        <SystemEventsPage />
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+  await waitFor(() => expect(screen.getByText('Sync failed')).toBeInTheDocument());
+  const chipColor = (label: string) =>
+    getComputedStyle(
+      screen
+        .getByText(label, { selector: '.MuiChip-label' })
+        .closest('.MuiChip-root') as HTMLElement,
+    ).color;
+  expect(chipColor('Success')).toBe('rgb(11, 118, 67)');
+  expect(chipColor('Failure')).toBe('rgb(146, 59, 51)');
 });

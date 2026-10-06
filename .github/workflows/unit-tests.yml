@@ -181,6 +181,13 @@ jobs:
         working-directory: backend
         run: go run ./cmd/nightlyalertcheck
 
+      # Issue #1483: every android/e2e-expected-skips.txt entry must name a
+      # real androidTest method (the emulator job that enforces the skip set
+      # itself is not on the PR path, so a rename is caught here).
+      - name: Verify Android E2E expected-skips allowlist resolves to real tests
+        working-directory: backend
+        run: go run ./cmd/androidskipcheck -static
+
       # coverage.md's Override path asks for a reason on every
       # coverage-exclusion marker; pragmacheck makes that mechanical over
       # `# pragma: no cover` (backend) and `/* v8 ignore ... */` (frontend).
@@ -634,7 +641,7 @@ jobs:
       contents: read
     name: Backend (Go)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     needs: [changes, backend-checks, backend-tests]
     # Always run so this required status check still reports when the two
     # upstream jobs are path-gated out — they come back "skipped", which the
@@ -755,14 +762,37 @@ jobs:
 
       # Per-file no-regression ratchet (frontend counterpart below):
       # codecov/patch/backend only judges lines a PR actually changed, so a
-      # file already at 0% trips nothing. Compares backend/coverage.out
-      # against internal/coverageratchet/testdata/baseline.json. PR-only:
-      # RAPID_CHECKS is tiered by trigger, so push/schedule coverage numbers
-      # aren't comparable to the PR-tier baseline this is generated from.
-      - name: Per-file coverage ratchet (pull_request only)
-        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+      # file already at 0% trips nothing. Compares a CROSS-PACKAGE profile
+      # against internal/coverageratchet/testdata/baseline.json (issue
+      # #1477): the per-leg profiles above credit a file only for tests in
+      # its own package (no -coverpkg), so 25 files looked 0-50% covered while
+      # tests elsewhere covered them fully, and deleting that test tripped
+      # nothing. One extra non-sharded, non-race `-coverpkg=./...` run credits a
+      # file for ANY package's tests; the Codecov upload above stays on the
+      # per-package profile, so the patch gate's semantics are unchanged
+      # (docs/development/coverage.md). The cmd merges repeated blocks itself.
+      # PR-only: RAPID_CHECKS is tiered by trigger (pinned to the PR tier
+      # here), so push/schedule numbers aren't comparable to the baseline.
+      # Test failures here are not this step's concern (the legs gate them,
+      # with retries) -- a package that fails to build or crashes just loses
+      # coverage, which the ratchet then reports as a drop. schemafixture is
+      # excluded as in every leg (migration-tests.yml owns it).
+      - name: Collect cross-package coverage (pull_request only)
+        id: cross
+        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success'
         working-directory: backend
-        run: go run ./cmd/coverageratchet
+        env:
+          RAPID_CHECKS: "200"
+          ADDRESS_PROPERTY_ITERATIONS: "200"
+        run: |
+          pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"
+          # shellcheck disable=SC2086 # $pkgs is a controlled space-joined list
+          go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross.out || echo "::warning::cross-package coverage run had failing tests/packages; ratchet judges what was collected"
+
+      - name: Per-file coverage ratchet (pull_request only)
+        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success'
+        working-directory: backend
+        run: go run ./cmd/coverageratchet -profile coverage-cross.out
 
       - name: Render HTML coverage report
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
