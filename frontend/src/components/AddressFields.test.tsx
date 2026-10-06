@@ -336,3 +336,54 @@ test('a sensitive address is still blocked even when unsaved', () => {
   expect(findButton()).toBeDisabled();
   expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
 });
+
+// --- Per-address sensitivity picker (ADR 0031) ---
+
+const sensitivitySelect = () => screen.getByRole('combobox', { name: 'Sensitivity' });
+
+function chooseSensitivity(label: 'Normal' | 'Private' | 'Secret') {
+  fireEvent.mouseDown(sensitivitySelect());
+  fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: label }));
+}
+
+test('an address with no sensitivity shows Normal with its explanation', () => {
+  renderWithContact([addr({ id: 'a' })]);
+  expect(sensitivitySelect()).toHaveTextContent('Normal');
+  expect(screen.getByText('Shared and exported like any other address.')).toBeInTheDocument();
+});
+
+test.each(['Private', 'Secret'] as const)('choosing %s emits it in the value', (label) => {
+  const { last } = renderWithContact([addr({ id: 'a', street: '1 Main St' })]);
+  chooseSensitivity(label);
+  expect(last()?.[0]).toMatchObject({
+    id: 'a',
+    street: '1 Main St',
+    sensitivity: label.toLowerCase(),
+  });
+  expect(sensitivitySelect()).toHaveTextContent(label);
+  expect(screen.getByText(/ithheld from sync, exports, shares and MCP/)).toBeInTheDocument();
+});
+
+test('an existing sensitivity is shown and preserved through unrelated edits', () => {
+  const { last } = renderWithContact([addr({ id: 'a', sensitivity: 'secret' })]);
+  expect(sensitivitySelect()).toHaveTextContent('Secret');
+  fireEvent.change(screen.getByLabelText('City'), { target: { value: 'Oslo' } });
+  expect(last()?.[0]).toMatchObject({ city: 'Oslo', sensitivity: 'secret' });
+});
+
+test('moving back to Normal emits an explicit normal', () => {
+  const { last } = renderWithContact([addr({ id: 'a', sensitivity: 'private' })]);
+  chooseSensitivity('Normal');
+  expect(last()?.[0].sensitivity).toBe('normal');
+});
+
+test('changing sensitivity updates Find coordinates live', () => {
+  renderWithContact([addr({ id: 'a' })]);
+  expect(findButton()).toBeEnabled();
+  chooseSensitivity('Private');
+  expect(findButton()).toBeDisabled();
+  expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
+  chooseSensitivity('Normal');
+  expect(findButton()).toBeEnabled();
+  expect(screen.queryByText(/never sent to the geocoder/)).not.toBeInTheDocument();
+});

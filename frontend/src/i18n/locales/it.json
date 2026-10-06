@@ -424,7 +424,15 @@
       "coordinatesInvalid": "Inserisci latitudine (da -90 a 90) e longitudine (da -180 a 180), separate da una virgola.",
       "findCoordinates": "Trova coordinate",
       "findCoordinatesSensitive": "Questo indirizzo è contrassegnato come privato o segreto, quindi non viene mai inviato al geocoder. Inserisci le coordinate a mano.",
-      "findCoordinatesFailed": "Impossibile trovare le coordinate per questo indirizzo."
+      "findCoordinatesFailed": "Impossibile trovare le coordinate per questo indirizzo.",
+      "sensitivity": "Riservatezza",
+      "sensitivityNormal": "Normale",
+      "sensitivityPrivate": "Privato",
+      "sensitivitySecret": "Segreto",
+      "sensitivityHelpNormal": "Condiviso ed esportato come qualsiasi altro indirizzo.",
+      "sensitivityHelpPrivate": "Resta sulla tua mappa e nei tuoi backup. Escluso da sincronizzazione, esportazioni, condivisioni e MCP, salvo inclusione esplicita.",
+      "sensitivityHelpSecret": "Come Privato, per gli indirizzi da trattare con la massima cura. Resta sulla tua mappa e nei backup; escluso da sincronizzazione, esportazioni, condivisioni e MCP, salvo inclusione esplicita.",
+      "sensitivityIndicator": "Indirizzo privato o segreto: escluso da sincronizzazione, esportazioni, condivisioni e MCP"
     },
     "anniversaries": "Anniversari",
     "socialProfiles": "Profil social",
