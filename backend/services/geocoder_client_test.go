@@ -469,7 +469,9 @@ func TestGeocoderClient_FullGateMapsToRateLimitedWithoutRequest(t *testing.T) {
 	require.NoError(t, gate.Wait(context.Background())) // free slot; the next is an hour away
 	c := newGeocoderClient(config.GeocoderProviderNominatim, "", srv.URL, plainTransport(), gate)
 	start := time.Now()
-	_, err := c.Geocode(context.Background(), "x")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // a regression fails fast instead of sleeping an hour
+	defer cancel()
+	_, err := c.Geocode(ctx, "x")
 	assert.ErrorIs(t, err, ErrGeocoderRateLimited)
 	assert.Less(t, time.Since(start), time.Second, "rejected immediately, no hang")
 	assert.Zero(t, atomic.LoadInt32(&hits))
