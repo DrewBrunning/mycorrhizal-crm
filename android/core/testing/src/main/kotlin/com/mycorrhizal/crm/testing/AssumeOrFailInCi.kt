@@ -1,6 +1,6 @@
 package com.mycorrhizal.crm.testing
 
-import org.junit.Assume.assumeTrue
+import org.junit.AssumptionViolatedException
 
 /**
  * Issue #1483: the Android analogue of the Go side's `internal/citest.SkipOrRequire`.
@@ -34,7 +34,10 @@ internal fun assumeOrFailInCi(
                 "so this is a failure, not a skip)",
         )
     }
-    assumeTrue(message, false)
+    // A JUnit skip: byte-for-byte what assumeTrue(message, false) does, but
+    // inlined so the unconditional throw is one statement the coverage tool
+    // records (assumeTrue's internal conditional left this line uncovered).
+    throw AssumptionViolatedException(message)
 }
 
 /** Reads `requireReferences` from the running instrumentation's arguments. */
