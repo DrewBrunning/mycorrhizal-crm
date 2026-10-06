@@ -147,7 +147,11 @@ mkdir -p "$repo"
 )
 sha_full="$(git -C "$repo" rev-parse HEAD)"
 
-stamp() { (cd "$repo" && bash "$STAMP" "$@"); }
+# `env -u GITHUB_OUTPUT`: a real Actions step always exports GITHUB_OUTPUT, so
+# without this the script appends there and the stdout-capturing cases below see
+# nothing (they passed only on a developer machine where it is unset). The
+# explicit `GITHUB_OUTPUT=` case further down sets it deliberately.
+stamp() { (cd "$repo" && env -u GITHUB_OUTPUT bash "$STAMP" "$@"); }
 
 out="$(stamp v1.2.3 2>&1)"
 if grep -qx "display_version=1.2.3" <<<"$out" \

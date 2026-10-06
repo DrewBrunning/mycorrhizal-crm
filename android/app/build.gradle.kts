@@ -256,6 +256,8 @@ dependencies {
     // already on the androidTest runtime classpath, so the seeding helper can
     // reuse them for its API calls.
     androidTestImplementation(libs.junit)
+    // Issue #1483: assumeOrFailInCi (skip locally, fail in CI).
+    androidTestImplementation(project(":core:testing"))
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

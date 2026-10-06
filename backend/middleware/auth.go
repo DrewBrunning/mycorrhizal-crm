@@ -92,6 +92,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		if !token.Valid {
+			// # pragma: no cover — jwt.Parse returns a non-nil error whenever Valid is false, so this defense-in-depth arm is unreachable
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
@@ -101,6 +102,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// than falling through to c.Next() with no userID set.
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
+			// # pragma: no cover — jwt.Parse always yields MapClaims, so this defense-in-depth arm is unreachable
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return

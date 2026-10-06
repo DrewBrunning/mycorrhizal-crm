@@ -55,6 +55,7 @@ jobs:
           - differential-e2e.yml
           - docker-pin-check.yml
           - e2e-tests.yml
+          - flake-ledger.yml
           - go-mutation.yml
           - governance-drift.yml
           - grype.yml

@@ -1,4 +1,4 @@
-import { request } from '@playwright/test';
+import { type Page, request } from '@playwright/test';
 import {
   createTestContact,
   deleteTestContact,
@@ -8,6 +8,7 @@ import {
   test,
 } from './fixtures';
 import { API_BASE_URL } from './global-setup';
+import { deleteAccountAsAdmin, provisionWorkerUser, workerUserCredentials } from './workerUser';
 
 test.describe('Multi-user isolation', () => {
   test("a user cannot see another user's contacts", async ({ page }) => {
@@ -52,8 +53,7 @@ test.describe('Multi-user isolation', () => {
       ).toBeFalsy();
     } finally {
       await ctx.dispose();
-      // page.request is authenticated as the shared (auto-admin) TEST_USER.
-      await deleteThrowawayUser(page.request, userB.username);
+      await deleteThrowawayUser(userB.username);
     }
   });
 
@@ -129,8 +129,119 @@ test.describe('Multi-user isolation', () => {
       await recipientCtx.dispose();
       await thirdCtx.dispose();
       if (contact) await deleteTestContact(page.request, contact.ID);
-      await deleteThrowawayUser(page.request, shareRecipient.username);
-      await deleteThrowawayUser(page.request, shareThirdParty.username);
+      await deleteThrowawayUser(shareRecipient.username);
+      await deleteThrowawayUser(shareThirdParty.username);
     }
+  });
+
+  // Issue #1480: the harness's own isolation. Every Playwright worker
+  // authenticates as a distinct account, and a test mutating or creating data
+  // as one must be invisible to every other -- if this ever failed, the
+  // per-worker-user model (the replacement for the old settings lock) would
+  // be silently sharing state again.
+  test("per-worker e2e users never see each other's contacts or settings", async ({
+    page,
+    browser,
+    workerUser,
+  }, testInfo) => {
+    // Provisioning the sibling account (register + seed + UI login) is itself
+    // several seconds of work, well beyond what a typical API-only test spends.
+    test.setTimeout(90_000);
+
+    // Not the shared admin, and named for this worker.
+    expect(workerUser.username).not.toBe('testuser');
+    expect(workerUser.username).toBe(workerUserCredentials(testInfo.workerIndex).username);
+
+    // A second worker-style account, provisioned exactly as a sibling worker's
+    // would be (distinct index), stands in for "another worker's user".
+    const sibling = await provisionWorkerUser(
+      browser,
+      10_000 + testInfo.workerIndex,
+      testInfo.outputPath('sibling-auth'),
+    );
+    const siblingCtx = await request.newContext({
+      baseURL: 'http://localhost:7300',
+      storageState: sibling.storageStatePath,
+    });
+    const marker = `E2EFixtureIso${Date.now()}`;
+    let mine: Awaited<ReturnType<typeof createTestContact>> | undefined;
+    let theirs: Awaited<ReturnType<typeof createTestContact>> | undefined;
+    const count = async (api: typeof page.request, q: string) => {
+      const r = await api.get(`${API_BASE_URL}/contacts?search=${encodeURIComponent(q)}&limit=50`);
+      expect(r.ok()).toBeTruthy();
+      return ((await r.json()).contacts || []).length;
+    };
+    try {
+      mine = await createTestContact(page.request, { firstname: marker, lastname: 'Mine' });
+      theirs = await createTestContact(siblingCtx, { firstname: marker, lastname: 'Theirs' });
+
+      // Each sees exactly its own marker contact -- never the other's.
+      expect(await count(page.request, marker)).toBe(1);
+      expect(await count(siblingCtx, marker)).toBe(1);
+      expect(await count(page.request, 'Theirs')).toBe(0);
+      expect(await count(siblingCtx, 'Mine')).toBe(0);
+
+      // Both are seeded with the same sample dataset, independently.
+      expect(await count(page.request, 'Alice')).toBeGreaterThan(0);
+      expect(await count(siblingCtx, 'Alice')).toBeGreaterThan(0);
+
+      // A settings write by one never reaches the other (the old shared-user
+      // corruption this harness exists to prevent).
+      const patch = await siblingCtx.patch(`${API_BASE_URL}/users/enabled-contact-fields`, {
+        data: { fields: ['socialProfiles'] },
+      });
+      expect(patch.ok(), `enabled-contact-fields PATCH: ${patch.status()}`).toBeTruthy();
+      const theirFields = (
+        await (await siblingCtx.get(`${API_BASE_URL}/users/enabled-contact-fields`)).json()
+      ).enabled_contact_fields;
+      const myFields = (
+        await (await page.request.get(`${API_BASE_URL}/users/enabled-contact-fields`)).json()
+      ).enabled_contact_fields;
+      expect(theirFields).toEqual(['socialProfiles']);
+      expect(myFields).not.toEqual(['socialProfiles']);
+    } finally {
+      if (mine) await deleteTestContact(page.request, mine.ID);
+      if (theirs) await deleteTestContact(siblingCtx, theirs.ID);
+      await siblingCtx.dispose();
+      await deleteAccountAsAdmin(sibling.username);
+    }
+  });
+});
+
+// Issue #1480: the shared `testuser` is the read-only-by-contract user, and the
+// fixture that enforces it is itself under test.
+test.describe('Shared read-only user guard', () => {
+  test.use({ sharedUser: true });
+
+  const patchLanguage = (page: Page) =>
+    page.evaluate(async () => {
+      try {
+        const res = await fetch('/api/v1/users/language', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: 'en' }),
+        });
+        return res.status;
+      } catch {
+        return 'blocked';
+      }
+    });
+
+  test('a browser write to an account setting never reaches the server and fails the test', async ({
+    page,
+  }) => {
+    // test.fail() inverts the verdict: this passes only if the guard in
+    // fixtures.ts' `context` override records the write and fails the test.
+    test.fail();
+    await page.goto('/');
+    expect(await patchLanguage(page)).toBe('blocked');
+  });
+
+  test('reads of account settings are unaffected', async ({ page }) => {
+    await page.goto('/');
+    const status = await page.evaluate(
+      async () => (await fetch('/api/v1/users/enabled-contact-fields')).status,
+    );
+    expect(status).toBe(200);
   });
 });

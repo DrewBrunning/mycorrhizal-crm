@@ -266,6 +266,31 @@ describe('useContactDetailLoader', () => {
     expect(loadDependents).not.toHaveBeenCalled();
   });
 
+  test('reports a failed record fetch (null at the start of each attempt) and re-runs on attempt (issue #1478)', async () => {
+    const onLoadError = vi.fn();
+    const failure = new Error('503');
+    vi.mocked(getContactRecord).mockRejectedValueOnce(failure);
+    const hook = renderHook(
+      ({ attempt }: { attempt: number }) =>
+        useContactDetailLoader('1', {
+          applyCore: vi.fn(),
+          setProfilePic: vi.fn(),
+          setLoading: vi.fn(),
+          loadDependents: vi.fn(async () => {}),
+          onAuxFetchFailed: vi.fn(),
+          onLoadError,
+          attempt,
+        }),
+      { initialProps: { attempt: 0 } },
+    );
+    await waitFor(() => expect(onLoadError).toHaveBeenCalledWith(failure));
+    expect(onLoadError).toHaveBeenNthCalledWith(1, null);
+
+    hook.rerender({ attempt: 1 });
+    await waitFor(() => expect(getContactRecord).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onLoadError).toHaveBeenLastCalledWith(null));
+  });
+
   test('a failed profile picture leaves the current picture untouched', async () => {
     vi.mocked(getContactRecord).mockResolvedValue({ ...record, photo: 'p.jpg' });
     vi.mocked(getContactProfilePicture).mockRejectedValue(new Error('x'));

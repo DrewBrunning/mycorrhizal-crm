@@ -169,7 +169,16 @@ async function loginAndCreateContacts(api: APIRequestContext): Promise<void> {
   // Remove data left behind by previous runs so the suite starts clean
   await cleanupLeftoverTestData(api);
 
-  // Ensure each sample contact exists exactly once (idempotent upsert by name).
+  await seedSampleContacts(api);
+}
+
+/**
+ * Ensures each sample contact exists exactly once for the user `api` is
+ * authenticated as (idempotent upsert by name). Shared by the one-time shared
+ * user seed below and by the per-worker users provisioned in `workerUser.ts`
+ * (issue #1480).
+ */
+export async function seedSampleContacts(api: APIRequestContext): Promise<void> {
   console.log('Ensuring sample contacts exist...');
 
   for (const contact of SAMPLE_CONTACTS) {

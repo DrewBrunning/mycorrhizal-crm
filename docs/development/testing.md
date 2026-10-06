@@ -209,6 +209,27 @@ Detail and the hard-won traps for each layer follow.
   **off the PR path** (issue #578, B5): push:main + nightly + manual, so an
   Android PR is gated by Robolectric only and the emulator signal lands
   post-merge and nightly.
+- **Skips are gated, not trusted (issue #1483).** A JUnit `Assume` failure is a
+  *skip* and a skip reports green, so on this required job it would otherwise be
+  a silent loss of coverage. Two mechanisms close that:
+  - Tests that need a **CI-provided** dependency (the `docker-compose.compat-test.yml`
+    backends: `ForceUpdateGateE2ETest`, `OldServerCompatibilityE2ETest`) use
+    `com.mycorrhizal.crm.testing.assumeOrFailInCi` (`android/core/testing`), the
+    Android analogue of Go's `citest.SkipOrRequire`: it skips locally but **fails**
+    when the workflow passes `-Pandroid.testInstrumentationRunnerArguments.requireReferences=true`
+    (every `android-tests.yml` E2E run does). Use it for any condition CI always satisfies.
+  - Tests whose condition is **legitimately false on the x86_64 CI emulator** (the
+    arm64-only embedded server, ADR 0028: `LocalOnlyModeE2eTest`,
+    `LocalBundleRoundTripE2eTest`) keep a plain `assumeTrue` and are listed, with a
+    reason, in `android/e2e-expected-skips.txt` (`fully.qualified.Class#method | reason`).
+    After the run, `cd backend && go run ./cmd/androidskipcheck -results
+    ../android/app/build/outputs/androidTest-results/connected` parses AGP's JUnit XML
+    and fails unless the skipped set **equals** the allowlist: a new skip, a listed
+    test that stopped skipping (delete its entry), a listed test that did not run, or
+    a run with zero test cases all fail. The skip count and per-test reasons land in
+    the job summary. `androidskipcheck -static` runs on every PR (`docs-citations`
+    job, pre-commit hook) and fails if an entry no longer names a real test method.
+    Do **not** allowlist a test because its dependency is flaky -- use `assumeOrFailInCi`.
 - **Known gap, accepted:** this suite (and every other instrumented job) runs
   the **debug** build only. Neither a release/R8-minified APK nor an
   install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
@@ -247,6 +268,104 @@ Detail and the hard-won traps for each layer follow.
   refill). The override nulls the rate-limit vars to empty strings rather than
   pinning their values, so the run exercises the genuine `getIntEnv` default
   path and would catch a future change to the shipped default.
+
+### Per-worker test users (issue #1480)
+
+Specs do **not** share one account. `e2e/fixtures.ts` overrides Playwright's
+`storageState` fixture so each **worker** authenticates as its own account
+(`e2e_w<worker>_<run-id>`, `e2e/workerUser.ts`): a worker-scoped `workerUser`
+fixture registers it through the API on first use, seeds the same five sample
+contacts as `global-setup.ts`, logs in through the UI once (so the cached user
+info is in the saved state), and hard-deletes it through the admin API on
+teardown. Account-level settings (`/users/enabled-contact-fields`,
+`/users/date-format`, `/notifications/config`, `/immich/config`, …) are
+singleton rows per user, so a test that mutates one only ever affects its own
+worker — there is **no settings lock**, no `describe.serial` for settings, and
+no `PLAYWRIGHT_WORKERS=1` pin on the release run (CI runs 4 workers).
+
+- Import `test`/`expect` from `./fixtures`, never from `@playwright/test`
+  (`e2e/workerUser.vitest.ts` fails otherwise): the override lives only there, and
+  the project config sets no `storageState`.
+- `test.use({ storageState: LOGGED_OUT })` still opts out (auth/2FA/login specs).
+- `test.use({ sharedUser: true })` opts a file/describe into the **shared
+  `testuser`** — the auto-admin (first registered account) — for specs that need
+  admin rights (`userManagement`, the User Management mobile cases) or assert on the
+  seeded dataset's exact contents (`visual`, `accessibility`). That user's settings
+  are immutable by contract: while it is active, a **browser** request that would
+  write an account-level setting (`isSettingsMutation` in `workerUser.ts`) is
+  aborted and fails the test. (API-only `request` traffic is not intercepted.)
+- Admin-only cleanup (`deleteThrowawayUser(username)`) always goes through the
+  shared admin's saved state, never the calling test's own (non-admin) user.
+- `isolation.spec.ts` asserts the harness itself: two worker-style users never
+  see each other's contacts or settings.
+- A spec that must read the worker's credentials (e.g. `sessionExpiry`'s in-place
+  re-auth) takes the `workerUser` fixture.
+
+### Feature-seam specs and the route-coverage guard (issue #1481)
+
+Four features had backend deep tests and mocked component tests but no spec
+driving the real bundle against the real server. Each now has one thin
+happy-path-plus-one-failure spec (the lower layers own the matrix):
+
+| Spec | Drives |
+|---|---|
+| `occasions.spec.ts` | gift obligation created on a contact page → "Needed" on `/occasions` → a purchased gift flips it → deactivating it (the "handled" switch; there is no separate done button) removes it → bad anchor rejected → contact delete takes the obligation |
+| `passkeys.spec.ts` | Chromium CDP **virtual authenticator** (`WebAuthn.enable` + `addVirtualAuthenticator`): register in Settings → log out → passkey is the second factor → wrong-code removal refused → recovery-code removal. Skipped on non-Chromium (no CDP WebAuthn domain; #1479) |
+| `systemEvents.spec.ts` | a webhook receiver answering 404 makes the delivery path record an `integration_failed` event; asserts severity/component/result on `/system-events`, detail, a server-side filter, and "Load more" growing past the first 100 rows; also `/system-status` and the non-admin 403 |
+| `apiTokens.spec.ts` | create → one-time secret + clipboard → bearer-only client gets 200 (cookie-less 401) → secret absent after reload → revoke → same bearer 401 |
+| `legacyRedirects.spec.ts` | `/api-tokens` → `/settings`, `/tags` → `/circles?tab=tags` |
+
+**Intentionally E2E-exempt: GeoPulse (#160).** It is an outbound integration to
+a user-hosted GeoPulse server; the default test stack has none and the feature
+has no UI beyond the connection form, so a spec would only test a stub. The
+client and service are owned by `services/geopulse_client_test.go` and `geopulse_service_test.go`, the
+form/suggestions by `useGeoPulse.test.ts`/`ActivitiesPage.test.tsx`.
+
+**Route-coverage guard.** `frontend/scripts/check-e2e-routes.mjs`
+(`yarn e2e:routes`) parses the `<Route path>` table in `src/App.tsx` and fails
+if a path is not mentioned as a whole path literal in some `e2e/*.spec.ts`
+(`/contacts` is not satisfied by `/contacts/${id}/prep`), unless it is in
+`e2e/route-exemptions.json` (`{ "/path": "reason" }`, reason ≥ 15 chars). A
+*stale* exemption (route gone, or a spec now covers it) also fails, so the list
+only shrinks. It is enforced in the required Vitest job by
+`scripts/check-e2e-routes.test.mjs`, whose last case runs it against the real
+repo. The first run left the exemption file empty: every route was or became
+covered. Adding a page therefore means adding a spec (or a reasoned exemption).
+
+These specs run the automatic per-test axe scan (`fixtures.ts`), which found
+three real light-mode contrast/naming defects on the admin pages — outlined
+`success`/`error` chip text and error text on a hovered row, and an unnamed
+storage `progressbar` — fixed via `src/utils/statusText.ts` and an `aria-label`.
+
+### Failure-mode specs (issue #1478)
+
+The error UX used to be verified only in vitest with a mocked `fetch`.
+`frontend/e2e/failureModes.spec.ts` (tagged `@failure-modes`, runs on every PR
+with the rest of the suite) drives the real bundle in a real browser while the
+backend misbehaves, one test per failure class:
+
+| Failure | Mechanism | Asserts |
+|---|---|---|
+| 503 on dashboard / contacts list / contact detail | `page.route` fulfilling the backend's real error envelope (`backend/errors/errors.go`) | visible, retryable error (not a blank list, not "Contact not found"); `request_id` shown; the `details` sentinel never reaches the DOM; Try again recovers |
+| Genuine 404 on contact detail | real backend | still "Contact not found", no retry |
+| Network down mid-session | `context.setOffline` | error alert, then recovery after going back online |
+| 429 from the rate limiter | stubbed `RATE_LIMIT_EXCEEDED` + `Retry-After` | the limiter's message shown; retry recovers |
+| 401 mid-save of the add-contact form | stubbed 401 on `POST /contacts` | in-place re-auth (no redirect to `/login`), draft preserved, retry saves |
+| Field-level validation error | stubbed `400 VALIDATION_ERROR` with `details: {"card.name": ...}` | message on the first-name field (`aria-invalid`), draft preserved, edit clears it |
+| Slow response (>5s) | route delaying 6s | skeleton (no error) while waiting, content after |
+
+Every test also fails on an uncaught `pageerror` or an unexpected
+`console.error` (only the browser's own "Failed to load resource" line and the
+app's structured `[operation] Error:` log are allowed), and ends on a state the
+automatic axe scan from `fixtures.ts` then checks, so the *error state* is
+scanned too. Two traps when writing more of these: `page.unroute` matches by
+**function reference** (a predicate rebuilt on each call silently removes
+nothing -- the spec memoises its matchers), and the re-auth dialog and the
+dialog behind it can both contain the text "Session expired" -- locate the
+re-auth prompt by role + accessible name. The real backend reports validation
+failures as `400 VALIDATION_ERROR`, not 422. `412 Precondition Failed` is
+deliberately not covered: the web client never sends `If-Match` (ADR 0008), so
+that is a missing feature, not a missing test.
 
 ### Visual regression (issue #258)
 
@@ -781,6 +900,62 @@ since `.github/filters.yaml` maps a workflow-only change to `workflows`, not
 `backend`) fails the build if the two sets ever diverge: a newly-scheduled
 workflow that nobody registered would otherwise alert on nothing, and a
 renamed or de-scheduled workflow would leave a dead entry.
+
+## Flake ledger (issue #1488)
+
+Retry-and-forget hid flakes: `gotestsum --rerun-fails` (PR/push), Playwright
+`retries: 1` and the Android second emulator boot each turn a failed first
+attempt into a green check, and the only trace used to be a log line. A test
+failing 1-in-5 was invisible until it failed twice in a row on someone's PR.
+The flake ledger is the longitudinal record.
+
+**Inputs.** Each suite uploads a small `flake-*` artifact (14-day retention,
+separate from the bulky 7-day report artifacts):
+
+| Artifact | Producer | Contents |
+|---|---|---|
+| `flake-go-<leg>` | `unit-tests.yml` backend legs | `junit-<leg>.xml` (the `-race` pass) + gotestsum's `rerun-fails-<leg>.txt` |
+| `flake-playwright-<job>` | `e2e-tests.yml` (`e2e`, `prod-defaults`, `webkit`) | `playwright-results/results.json` (Playwright's JSON reporter, now always on; `status: flaky` = failed then passed) |
+| `flake-android-<leg>` | `android-tests.yml` (API 35, API 26) | final-attempt JUnit + the preserved `flaky-attempt-*` XML |
+| `flake-signals-<name>` | anything else that retries | a `flake-signals-*.json` in the neutral format below |
+
+The neutral format lets a new retry mechanism feed the ledger without a new
+parser: `{"suite":"go/floor","tests":[{"test":"pkg.TestX","outcome":"passed_on_retry"}]}`
+with `outcome` one of `passed`, `passed_on_retry`, `failed`. (The Go
+failed-package re-run script and the ZAP re-scan proposed in #1487 are the
+intended users: emit that file and upload it as `flake-signals-<name>`.)
+
+**The ledger.** `flake-ledger.yml` runs daily (06:15 UTC; also
+`workflow_dispatch`), lists the last 14 days of runs of `unit-tests.yml`,
+`e2e-tests.yml` and `android-tests.yml`, downloads their `flake-*` artifacts
+and runs `backend/cmd/flakeledger` (`collect` -> `report` -> `issues`). Per
+`(suite, test)` it records `{runs, failed-first-attempt, passed-on-retry,
+failed}` and ranks by flake rate (failed-first-attempt / runs). The rendered
+markdown is the job summary and the `ledger-report` artifact; it is not
+committed (a daily commit to protected `main` would only add noise). The
+renderer's output format is pinned by a golden test
+(`backend/internal/flakeledger/testdata/ledger.golden.md`;
+`go test ./internal/flakeledger -update` regenerates it).
+
+**Policy.** A test with **3 or more passed-on-retry events in 14 days** gets an
+auto-opened issue titled `Flaky test: <suite> <test>`, labelled `flaky-test`
+and `p1`, in the in-flight milestone (the open milestone with the earliest due
+date), naming the test and linking the runs. At most 5 are opened per day; an
+open issue with the same title suppresses a duplicate. **Closing requires a
+root-cause note** (what was racing or leaking, and the fix) — raising a retry
+count or timeout is not a resolution. Events at or before an issue's close time
+do not count towards re-opening it, so a closed issue is not undone by the
+same events still inside the window; a recurrence opens a fresh one.
+
+**Advisory.** The ledger never fails a PR and is not a required check. Its own
+failures (API outage, missing artifacts) are warnings in the log; a red
+`flake-ledger.yml` run is reported by `nightly-failure-alert.yml` like any
+scheduled workflow.
+
+**Verify it.** Run it with `workflow_dispatch` against the repository's recent
+history and confirm known flaky suites (the `credentialStorage` IndexedDB spec,
+the Android emulator leg) rank near the top; a deliberately `time.Sleep`-flaky
+test on a branch appears within a day of its third passed-on-retry run.
 
 ## Anti-goal: coverage percentage is not the acceptance criterion
 

@@ -12,16 +12,9 @@ function immichCard(page: Page) {
 }
 
 test.describe('Immich integration', () => {
-  // Every test in this file reads and writes the *same* per-user
-  // /immich/config row (there is only one config per user, and each test
-  // asserts against whatever it just seeded). With fullyParallel the runner
-  // would schedule two of them in different workers at once and one test's
-  // beforeEach/afterEach DELETE would silently strip the config the other's
-  // page had just loaded — seen as "Test connection" button never appearing
-  // and the browse-error alert never surfacing. The config is a single shared
-  // resource, so these tests must never overlap.
-  test.describe.configure({ mode: 'serial' });
-
+  // /immich/config is one row per user. Every worker authenticates as its
+  // own user (issue #1480), and a worker runs its tests one at a time, so no
+  // two tests can ever strip each other's config -- no serial mode needed.
   test.beforeEach(async ({ request }) => {
     await request.delete(`${API_BASE_URL}/immich/config`);
   });

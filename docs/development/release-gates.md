@@ -291,7 +291,10 @@ tracked.
 server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
 process exec, Keystore-wrapped secrets, readiness handshake, `/health` over the socket) is an
 `assumeTrue` **skip** on the x86_64 `Android E2E (emulator)` gate. A skip is not evidence, so that
-green check says nothing about local mode. Two things cover it instead:
+green check says nothing about local mode. The skip is now *accounted for* (issue #1483): the job
+fails unless the skipped tests are exactly those in `android/e2e-expected-skips.txt`
+(`backend/cmd/androidskipcheck`; see [`testing.md`](testing.md#e2e-android-instrumented)), so a
+new silent skip cannot hide behind this accepted one. Things that cover local mode instead:
 
 - **Automated, per-PR:** `backend/main_test.go` builds the real backend binary for the CI host,
   execs it with `--embedded-host`, and asserts the readiness handshake, `/health` over the Unix

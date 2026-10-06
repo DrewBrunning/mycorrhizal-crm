@@ -3,6 +3,7 @@ package coverageratchet
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -373,5 +374,113 @@ func TestUnitTolerance(t *testing.T) {
 	}
 	if got := unitTolerance(1.5, 0); got != 1.5 {
 		t.Errorf("no statements: got %v, want the pt tolerance", got)
+	}
+}
+
+// Issue #1477: a -coverpkg=./... profile repeats every block once per test
+// binary that instrumented it (count 0 in most, >0 where a test ran it).
+const crossPackageProfile = `mode: atomic
+mycorrhizal/services/tok.go:10.2,12.3 2 0
+mycorrhizal/services/tok.go:14.2,14.10 1 0
+mycorrhizal/services/tok.go:10.2,12.3 2 7
+mycorrhizal/services/tok.go:14.2,14.10 1 0
+mycorrhizal/services/tok.go:10.2,12.3 2 0
+mycorrhizal/models/a.go:1.1,2.2 4 3
+`
+
+func TestParseMergedCoverprofile_SumsRepeatedBlocks(t *testing.T) {
+	blocks, err := ParseMergedCoverprofile(strings.NewReader(crossPackageProfile))
+	if err != nil {
+		t.Fatalf("ParseMergedCoverprofile: %v", err)
+	}
+	if len(blocks) != 3 {
+		t.Fatalf("got %d blocks, want 3 (repeats merged): %+v", len(blocks), blocks)
+	}
+	want := []Block{
+		{File: "mycorrhizal/models/a.go", StartLine: 1, EndLine: 2, NumStmt: 4, Count: 3},
+		{File: "mycorrhizal/services/tok.go", StartLine: 10, EndLine: 12, NumStmt: 2, Count: 7},
+		{File: "mycorrhizal/services/tok.go", StartLine: 14, EndLine: 14, NumStmt: 1, Count: 0},
+	}
+	for i, w := range want {
+		if blocks[i] != w {
+			t.Errorf("blocks[%d] = %+v, want %+v", i, blocks[i], w)
+		}
+	}
+}
+
+// The reason ParseMergedCoverprofile exists: an unmerged parse double-counts
+// statements and credits a block as uncovered while a repeat of it ran.
+func TestParseMergedCoverprofile_CoveredIfAnyOccurrenceRan_NoDoubleCount(t *testing.T) {
+	raw, err := ParseCoverprofile(strings.NewReader(crossPackageProfile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	merged, err := ParseMergedCoverprofile(strings.NewReader(crossPackageProfile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawTok := PerFileStats(raw)["mycorrhizal/services/tok.go"]
+	tok := PerFileStats(merged)["mycorrhizal/services/tok.go"]
+	if tok.Statements != 3 || tok.Covered != 2 {
+		t.Errorf("merged tok.go = %+v, want 3 statements / 2 covered", tok)
+	}
+	if rawTok.Statements == tok.Statements {
+		t.Errorf("fixture must distinguish merged from raw (both %d statements)", tok.Statements)
+	}
+	if got := tok.Percent(); got < 66.6 || got > 66.7 {
+		t.Errorf("percent = %v, want ~66.67", got)
+	}
+}
+
+func TestParseMergedCoverprofile_Errors(t *testing.T) {
+	for name, in := range map[string]string{
+		"empty":     "",
+		"no mode":   "x\n",
+		"malformed": "mode: atomic\nnope\n",
+	} {
+		if _, err := ParseMergedCoverprofile(strings.NewReader(in)); err == nil {
+			t.Errorf("%s: want an error", name)
+		}
+	}
+}
+
+// The regex constrains each numeric field to digits, but a value wider than
+// the destination type still overflows and must surface as an error rather
+// than wrapping. Each case reaches one of scanCoverprofile's four conversions.
+func TestParseMergedCoverprofile_OutOfRangeNumbers(t *testing.T) {
+	const huge = "999999999999999999999999999999"
+	for name, line := range map[string]string{
+		"start line": "mycorrhizal/f.go:" + huge + ".1,2.1 1 1",
+		"end line":   "mycorrhizal/f.go:1.1," + huge + ".1 1 1",
+		"statements": "mycorrhizal/f.go:1.1,2.1 " + huge + " 1",
+		"count":      "mycorrhizal/f.go:1.1,2.1 1 " + huge,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseMergedCoverprofile(strings.NewReader("mode: atomic\n" + line + "\n")); err == nil {
+				t.Fatalf("expected an out-of-range error for the %s field", name)
+			}
+		})
+	}
+}
+
+func TestParseMergedCoverprofile_SortOrderAcrossFields(t *testing.T) {
+	in := `mode: atomic
+mycorrhizal/z.go:1.1,2.2 1 1
+mycorrhizal/a.go:5.1,6.2 1 1
+mycorrhizal/a.go:3.1,9.2 1 1
+mycorrhizal/a.go:3.1,4.2 2 1
+mycorrhizal/a.go:3.1,4.2 1 1
+`
+	blocks, err := ParseMergedCoverprofile(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, b := range blocks {
+		got = append(got, b.File+":"+strconv.Itoa(b.StartLine)+"-"+strconv.Itoa(b.EndLine)+"/"+strconv.Itoa(b.NumStmt))
+	}
+	want := "mycorrhizal/a.go:3-4/1 mycorrhizal/a.go:3-4/2 mycorrhizal/a.go:3-9/1 mycorrhizal/a.go:5-6/1 mycorrhizal/z.go:1-2/1"
+	if strings.Join(got, " ") != want {
+		t.Errorf("order = %v\nwant    %s", got, want)
 	}
 }

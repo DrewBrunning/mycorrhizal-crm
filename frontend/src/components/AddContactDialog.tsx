@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addCircleMember, type Circle, createCircle } from '../api/circles';
+import { ApiError } from '../api/client';
 import {
   type ContactValue,
   createContactRecord,
@@ -99,8 +100,13 @@ export default function AddContactDialog({
   // they're still filling the form out for the first time.
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const firstNameInvalid = submitAttempted && !formData.firstname.trim();
+  // Server-side field validation (400 VALIDATION_ERROR with details keyed by
+  // JSON path, e.g. "card.name") rendered on the field it names (issue #1478)
+  // rather than only as a generic banner.
+  const [serverNameError, setServerNameError] = useState('');
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (field === 'firstname') setServerNameError('');
     setFormData({ ...formData, [field]: event.target.value });
   };
 
@@ -140,6 +146,7 @@ export default function AddContactDialog({
 
     setLoading(true);
     setError('');
+    setServerNameError('');
 
     try {
       const nameComponents: NameComponent[] = [];
@@ -202,8 +209,15 @@ export default function AddContactDialog({
       handleClose();
     } catch (err) {
       handleError(err, { operation: 'creating contact' }, { showError });
-      const errorMessage = getErrorMessage(err);
-      setError(errorMessage);
+      const nameDetail =
+        err instanceof ApiError && err.code === 'VALIDATION_ERROR'
+          ? err.details?.['card.name']
+          : undefined;
+      if (nameDetail) {
+        setServerNameError(nameDetail);
+      } else {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -218,6 +232,7 @@ export default function AddContactDialog({
     setSelectedTags([]);
     setNewTag('');
     setError('');
+    setServerNameError('');
     setSubmitAttempted(false);
     onClose();
   };
@@ -261,8 +276,11 @@ export default function AddContactDialog({
               value={formData.firstname}
               onChange={handleChange('firstname')}
               required
-              error={firstNameInvalid}
-              helperText={firstNameInvalid ? t('contacts.add.firstNameRequired') : undefined}
+              error={firstNameInvalid || !!serverNameError}
+              helperText={
+                serverNameError ||
+                (firstNameInvalid ? t('contacts.add.firstNameRequired') : undefined)
+              }
             />
             {isOn('middle_name') && (
               <TextField

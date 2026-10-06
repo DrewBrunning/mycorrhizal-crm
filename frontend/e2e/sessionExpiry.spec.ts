@@ -6,7 +6,6 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
-import { TEST_USER } from './global-setup';
 
 // Issue #557: a 401 used to be a hard `window.location.href = '/login'` from
 // inside the shared fetch wrapper -- unconditional, on any request. That
@@ -17,6 +16,7 @@ import { TEST_USER } from './global-setup';
 test.describe('Session expiry', () => {
   test('a 401 on Save keeps the note dialog and its content intact, and re-authenticating in place clears the prompt', async ({
     page,
+    workerUser,
   }) => {
     const contact = await createTestContact(page.request);
     const noteContent = `E2E session-expiry note ${Date.now()}`;
@@ -59,8 +59,8 @@ test.describe('Session expiry', () => {
       expect(page.url()).toContain(`/contacts/${contact.ID}`);
 
       // Sign back in without leaving the page.
-      await reauthDialog.getByLabel(/username or email/i).fill(TEST_USER.username);
-      await reauthDialog.getByLabel(/^password/i).fill(TEST_USER.password);
+      await reauthDialog.getByLabel(/username or email/i).fill(workerUser.username);
+      await reauthDialog.getByLabel(/^password/i).fill(workerUser.password);
       await reauthDialog.getByRole('button', { name: /sign in/i }).click();
 
       await expect(reauthDialog).toBeHidden({ timeout: 10000 });
