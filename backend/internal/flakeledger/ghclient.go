@@ -191,7 +191,7 @@ func Unzip(b []byte, dest string) error {
 	var total int64
 	for _, f := range zr.File {
 		name := filepath.Clean(filepath.FromSlash(f.Name))
-		if filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) {
+		if !filepath.IsLocal(name) {
 			return fmt.Errorf("zip entry escapes destination: %q", f.Name)
 		}
 		target := filepath.Join(dest, name)
