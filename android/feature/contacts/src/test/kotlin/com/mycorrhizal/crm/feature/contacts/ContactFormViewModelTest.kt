@@ -1636,6 +1636,30 @@ class ContactFormViewModelTest {
         }
 
     @Test
+    fun `removing an earlier new row mid-lookup does not move the result onto another address`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = editVm(Address(id = "a1"))
+            val rowA = streetAddress("new-A", "1 A St")
+            val rowB = streetAddress("new-B", "2 B St")
+            vm.onAddressesChange(listOf(Address(id = "a1"), rowA, rowB))
+            val response = kotlinx.coroutines.CompletableDeferred<Result<GeocodeDraftResponse>>()
+            coEvery { mapRepository.geocodeAddressDraft(5, any()) } coAnswers { response.await() }
+
+            vm.onFindCoordinates("new-B")
+            advanceUntilIdle()
+            // The user removes row A while the request is in flight.
+            vm.onAddressesChange(listOf(Address(id = "a1"), rowB))
+            response.complete(draftResult("geo:7,8"))
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(listOf("a1", "new-B"), state.addresses.map { it.id })
+            assertNull(state.addresses.first { it.id == "a1" }.coordinates)
+            assertEquals("geo:7,8", state.addresses.first { it.id == "new-B" }.coordinates)
+            assertTrue(state.geocodeInFlight.isEmpty())
+        }
+
+    @Test
     fun `a failed lookup records the message by row key and leaves coordinates alone`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = editVm(Address(id = "a1", coordinates = "geo:1,2"))

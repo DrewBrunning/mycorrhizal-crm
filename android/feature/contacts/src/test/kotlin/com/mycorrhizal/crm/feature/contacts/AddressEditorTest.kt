@@ -7,9 +7,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Address
@@ -269,6 +271,20 @@ class AddressEditorTest {
             geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("row-0")),
         )
         composeTestRule.onNodeWithText("Looking up coordinates…").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `adding a row mints a stable id so geocode state is keyed by identity`() {
+        val current = setEditor(listOf(Address(id = "a1")))
+
+        composeTestRule.onNodeWithContentDescription("Add")
+            // Off-screen in the unscrolled test host, so invoke the click action directly.
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        composeTestRule.waitForIdle()
+
+        val added = current()[1]
+        assertTrue(!added.id.isNullOrBlank())
+        assertEquals(listOf("home"), added.contexts)
     }
 
     @Test

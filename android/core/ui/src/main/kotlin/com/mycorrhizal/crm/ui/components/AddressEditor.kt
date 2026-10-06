@@ -111,7 +111,12 @@ fun AddressEditor(
                 onFindCoordinates = { onFindCoordinates?.invoke(key) },
             )
         }
-        IconButton(onClick = { onChange(addresses + Address(contexts = listOf("home"))) }) {
+        // A new row is minted a stable element id up front so its geocode in-flight
+        // state and result are keyed by identity, not by a position that shifts
+        // when an earlier row is removed mid-lookup.
+        IconButton(
+            onClick = { onChange(addresses + Address(id = UUID.randomUUID().toString(), contexts = listOf("home"))) },
+        ) {
             Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
         }
     }
