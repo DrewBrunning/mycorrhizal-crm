@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -622,4 +623,71 @@ func TestGeocodeContactAddress_ContactLookupFailureIs500(t *testing.T) {
 	w := postGeocode(router, fmt.Sprint(c.ID), c.Addresses[0].ID, "")
 	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 	assert.Empty(t, fake.calls)
+}
+
+// geocodeWebhookTarget subscribes the seeded user to contact.updated, pointed
+// at a recording httptest server, and returns a func that drains the async
+// fan-out and reports the received webhook bodies.
+func geocodeWebhookTarget(t *testing.T, db *gorm.DB, userID uint) func() []map[string]any {
+	t.Helper()
+	var mu sync.Mutex
+	var got []map[string]any
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		mu.Lock()
+		got = append(got, body)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(target.Close)
+	require.NoError(t, db.Create(&models.Webhook{
+		UserID: userID, Name: "geo-hook", URL: target.URL,
+		Events: []string{"contact.updated"}, IsActive: true,
+	}).Error)
+	return func() []map[string]any {
+		services.WaitForWebhookGoroutines()
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]map[string]any(nil), got...)
+	}
+}
+
+func TestGeocodeContactAddress_FiresContactUpdatedWebhookOnce(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:51.5,-0.12"}
+	db, router, uid := geocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	drain := geocodeWebhookTarget(t, db, uid)
+
+	w := postGeocode(router, fmt.Sprint(c.ID), c.Addresses[0].ID, "")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	got := drain()
+	require.Len(t, got, 1, "exactly one webhook delivery")
+	assert.Equal(t, "contact.updated", got[0]["event"])
+	data, ok := got[0]["data"].(map[string]any)
+	require.True(t, ok, "payload carries the contact, as UpdateContact's does")
+	assert.EqualValues(t, c.ID, data["ID"])
+}
+
+func TestGeocodeContactAddress_FailedLookupFiresNoWebhook(t *testing.T) {
+	fake := &fakeAddressGeocoder{err: services.ErrGeocoderNoResult}
+	db, router, uid := geocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	drain := geocodeWebhookTarget(t, db, uid)
+
+	w := postGeocode(router, fmt.Sprint(c.ID), c.Addresses[0].ID, "")
+	require.Equal(t, http.StatusUnprocessableEntity, w.Code, w.Body.String())
+	assert.Empty(t, drain(), "nothing changed, nothing announced")
+}
+
+func TestGeocodeContactAddressDraft_FiresNoWebhook(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:51.5,-0.12"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	drain := geocodeWebhookTarget(t, db, uid)
+
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Empty(t, drain(), "the stateless draft route writes nothing and must not notify")
 }
