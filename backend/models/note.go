@@ -84,8 +84,10 @@ func (n *Note) AfterCreate(tx *gorm.DB) error {
 // created would sit ahead of the tombstone and the deletion would silently
 // never propagate (the exact trap T17 calls out). Unscoped so the UPDATE can
 // touch a now-soft-deleted row; UpdateColumn bypasses hooks, so this cannot
-// recurse. Hard deletes (Unscoped Delete) and bulk deletes fire with a
-// zero-value DeletedAt and are skipped.
+// recurse. Hard deletes (Unscoped Delete) fire with a zero-value DeletedAt and
+// are skipped. Bulk soft deletes do NOT: GORM's soft-delete clause sets
+// DeletedAt on the zero-value receiver, so they reach auditAfterDelete, which
+// skips the zero-identity event centrally (issue #1471).
 func (n *Note) AfterDelete(tx *gorm.DB) error {
 	if !n.DeletedAt.Valid {
 		return nil
