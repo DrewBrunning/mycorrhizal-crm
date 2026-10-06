@@ -62,6 +62,7 @@ unleash:
         - ^oidc_service\.go$
         - ^operational_alert\.go$
         - ^operational_check_result\.go$
+        - ^origin\.go$
         - ^paperless_client\.go$
         - ^paperless_service\.go$
         - ^password_reset_service\.go$

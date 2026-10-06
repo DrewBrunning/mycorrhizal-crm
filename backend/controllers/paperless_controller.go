@@ -30,6 +30,8 @@ func abortPaperlessServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Paperless document").WithError(err))
 	case errors.Is(err, services.ErrPaperlessInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless base URL is invalid"))
+	case errors.Is(err, services.ErrPaperlessRedirect):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless answered with a redirect — check the base URL (http vs https, path).").WithError(err))
 	case errors.Is(err, services.ErrPaperlessRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.PaperlessRequestError
@@ -101,6 +103,10 @@ func SavePaperlessConfig(c *gin.Context) {
 	if saveErr != nil {
 		if errors.Is(saveErr, services.ErrPaperlessInvalidURL) {
 			abortPaperlessServiceError(c, saveErr)
+			return
+		}
+		if errors.Is(saveErr, services.ErrPaperlessSecretRequired) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Paperless config").WithError(saveErr))

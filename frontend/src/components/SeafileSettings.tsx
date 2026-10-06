@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useSeafile } from '../hooks/useSeafile';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 // SeafileSettings is the settings-page card for the Seafile connection (P2b).
 // The server URL + API token are per-user-global; the token is stored
@@ -30,6 +31,14 @@ export default function SeafileSettings() {
   const [apiToken, setApiToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Mirrors the backend rule: moving a stored connection to a different origin
+  // requires re-entering the secret (it would otherwise be sent to the new host).
+  const secretRequired = secretRequiredForOriginChange(
+    seafile.config?.has_api_token,
+    seafile.config?.base_url,
+    baseUrl,
+  );
 
   useEffect(() => {
     void seafile.refreshConfig();
@@ -54,6 +63,10 @@ export default function SeafileSettings() {
     // Mirror the backend's `httpurl` validator (T41) client-side.
     if (!isHttpUrlString(trimmed)) {
       setSaveError(t('seafile.settings.invalidBaseUrl'));
+      return;
+    }
+    if (secretRequired && !apiToken.trim()) {
+      setSaveError(t('seafile.settings.apiTokenRequiredOriginChange'));
       return;
     }
     setSaving(true);
@@ -136,10 +149,13 @@ export default function SeafileSettings() {
               }}
               fullWidth
               size="small"
+              required={secretRequired}
               helperText={
-                seafile.config?.has_api_token
-                  ? t('seafile.settings.apiTokenHintExisting')
-                  : t('seafile.settings.apiTokenHintNew')
+                secretRequired
+                  ? t('seafile.settings.apiTokenRequiredOriginChange')
+                  : seafile.config?.has_api_token
+                    ? t('seafile.settings.apiTokenHintExisting')
+                    : t('seafile.settings.apiTokenHintNew')
               }
             />
 

@@ -28,6 +28,8 @@ func abortWebDAVServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Nextcloud file or folder").WithError(err))
 	case errors.Is(err, services.ErrWebDAVInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud base URL is invalid"))
+	case errors.Is(err, services.ErrWebDAVRedirect):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud answered with a redirect — check the base URL (http vs https, path).").WithError(err))
 	case errors.Is(err, services.ErrWebDAVRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.WebDAVRequestError
@@ -99,6 +101,10 @@ func SaveWebDAVConfig(c *gin.Context) {
 	if saveErr != nil {
 		if errors.Is(saveErr, services.ErrWebDAVInvalidURL) {
 			abortWebDAVServiceError(c, saveErr)
+			return
+		}
+		if errors.Is(saveErr, services.ErrWebDAVSecretRequired) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("app_password", saveErr.Error()))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Nextcloud config").WithError(saveErr))

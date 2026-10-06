@@ -51,7 +51,7 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # 2026-09-30: bumped 3.5.8-r0 -> 3.5.9-r0. Alpine published 3.5.9-r0 to
 # alpine/v3.24/main and pruned 3.5.8-r0 from the index, so the old pin became
 # unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
-RUN apk add --no-cache ca-certificates=20260909-r0 tzdata=2026d-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
+RUN apk add --no-cache ca-certificates=20260909-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
 
 WORKDIR /app
 

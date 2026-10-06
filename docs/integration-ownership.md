@@ -115,6 +115,9 @@ integration in the classification registry to its <a id> on this page. -->
   the reason: the saved password/token was rejected, access was revoked, or the
   remote address book no longer exists. Staleness is shown as "Last successful
   sync: N days ago".
+  Redirects are followed here (DAV servers legitimately redirect), and Go drops
+  the Basic-auth header on a cross-host hop. Changing the subscription URL to a
+  different server requires re-entering the password.
 - **Diagnosing it.** Settings → Data on the subscription (status, terminal
   reason, last success) → fix the credential at the source and use **Sync now**.
   A subscription edit clears a terminal state. For the served direction,
@@ -150,6 +153,9 @@ integration in the classification registry to its <a id> on this page. -->
 - **If it is unavailable.** The scheduled import fails; the subscription shows a
   failed-sync chip or the terminal "Sync stopped — action needed" state. Imported
   events already in your local activities are unaffected.
+  Redirects are followed here (DAV servers legitimately redirect), and Go drops
+  the Basic-auth header on a cross-host hop. Changing the subscription URL to a
+  different server requires re-entering the password.
 - **Diagnosing it.** Settings → Data on the calendar subscription (terminal
   reason, last success, `calendar sync` system events), then the remote
   calendar's own health.
@@ -181,6 +187,10 @@ integration in the classification registry to its <a id> on this page. -->
   entries stay but go stale; the contact page's thumbnail proxy fails with "no
   Immich connection configured" (or the API-key error). Nothing local is
   corrupted.
+  Immich redirects are never followed (your credentials would travel with
+  them), so a wrong http/https or path in the base URL shows as "check the
+  base URL". Changing the server address to a different server requires
+  re-entering the API key; a path-only change keeps the stored one.
 - **Diagnosing it.** Settings → the Immich config's sync state, `immich` system
   events / `integration_failed`, and `GET /admin/diagnostics` (`integration_immich`).
 - **Removing it.** Deleting the config stops future enrichment **and keeps every
@@ -244,6 +254,10 @@ integration in the classification registry to its <a id> on this page. -->
 - **If it is unavailable.** Links stay but stop resolving live once the config
   is gone or the token fails; a linked document that no longer exists is a
   stale reference, not an error state that retries forever.
+  Paperless redirects are never followed (your credentials would travel with
+  them), so a wrong http/https or path in the base URL shows as "check the
+  base URL". Changing the server address to a different server requires
+  re-entering the API token; a path-only change keeps the stored one.
 - **Diagnosing it.** Settings → the config's state, `GET /admin/diagnostics`
   (`integration_paperless`).
 - **Removing it.** Deleting the config keeps the links (dead references).
@@ -310,6 +324,10 @@ integration in the classification registry to its <a id> on this page. -->
   SSRF posture: `guarded-always` — see [The SSRF boundary](#the-ssrf-boundary).
 - **Ownership.** As Immich. Remote files are Seafile-owned.
 - **If it is unavailable.** Links stop resolving. Nothing local breaks.
+  Seafile redirects are never followed (your credentials would travel with
+  them), so a wrong http/https or path in the base URL shows as "check the
+  base URL". Changing the server address to a different server requires
+  re-entering the API token; a path-only change keeps the stored one.
 - **Diagnosing it.** Settings → config state; `GET /admin/diagnostics`
   (`integration_seafile`).
 - **Removing it.** Config deletion keeps links; individual link deletion removes
@@ -352,6 +370,10 @@ integration in the classification registry to its <a id> on this page. -->
   "Will not retry" and "Deliveries are failing permanently — fix the receiver or
   the URL" once classified permanent; failed/retrying deliveries are visible per
   webhook.
+  Nextcloud redirects are never followed (your credentials would travel with
+  them), so a wrong http/https or path in the base URL shows as "check the
+  base URL". Changing the server address to a different server requires
+  re-entering the app password; a path-only change keeps the stored one.
 - **Diagnosing it.** Settings → Webhooks: per-webhook delivery health and recent
   deliveries, the "Test" button (reports the real response/error), and the
   `webhook_delivery_failed` system events. Retention: delivery rows carry a copy

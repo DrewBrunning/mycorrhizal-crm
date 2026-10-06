@@ -146,7 +146,7 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
 RUN apk add --no-cache \
     ca-certificates=20260909-r0 \
-    tzdata=2026d-r0 \
+    tzdata=2026e-r0 \
     nginx=1.30.4-r1 \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \

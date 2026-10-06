@@ -76,8 +76,11 @@ func newImmichTransport() *http.Transport {
 // Sentinel errors for Immich client failures, mapped to API errors in the
 // controller (the calendar_sync_service pattern).
 var (
-	ErrImmichInvalidURL     = errors.New("Immich base URL is invalid")
-	ErrImmichUnreachable    = errors.New("Immich could not be reached")
+	ErrImmichInvalidURL  = errors.New("Immich base URL is invalid")
+	ErrImmichUnreachable = errors.New("Immich could not be reached")
+	// ErrImmichRedirect: Immich answered 3xx. Redirects are never followed (the credential
+	// would travel with them), so the user must fix the base URL instead.
+	ErrImmichRedirect       = errors.New("Immich answered with a redirect")
 	ErrImmichUnauthorized   = errors.New("Immich API key is invalid or expired")
 	ErrImmichNotFound       = errors.New("Immich person was not found")
 	ErrImmichInvalidData    = errors.New("Immich returned data that could not be parsed")
@@ -209,8 +212,14 @@ func NewImmichClient(baseURL, apiKey string, blockPrivateURLs bool) (*ImmichClie
 		baseURL: trimmed,
 		apiKey:  apiKey,
 		client: &http.Client{
-			Timeout:   immichRequestTimeout,
-			Transport: getSharedTransport(blockPrivateURLs),
+			Timeout: immichRequestTimeout,
+			// Never follow redirects: the credential travels in a request header that
+			// net/http can forward to the redirect target (custom headers such as
+			// x-api-key are forwarded cross-host), and a redirect could bounce the
+			// request to an internal address when the private-URL guard is off. A
+			// 3xx surfaces as ErrImmichRedirect.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     getSharedTransport(blockPrivateURLs),
 		},
 	}, nil
 }
@@ -297,6 +306,11 @@ func (c *ImmichClient) doRequest(method, path string, body any) (*http.Response,
 		resp.Body.Close()
 		return nil, ErrImmichNotFound
 	default:
+		if isRedirectStatus(resp.StatusCode) {
+			resp.Body.Close()
+			// Deliberately not logging Location: it can embed the query string.
+			return nil, ErrImmichRedirect
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxImmichErrorBodyBytes))
 		resp.Body.Close()
 		logger.Debug().Str("method", method).Str("url", c.baseURL+path).Int("status", resp.StatusCode).

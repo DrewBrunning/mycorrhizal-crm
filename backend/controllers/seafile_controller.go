@@ -29,6 +29,8 @@ func abortSeafileServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Seafile library or file").WithError(err))
 	case errors.Is(err, services.ErrSeafileInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile base URL is invalid"))
+	case errors.Is(err, services.ErrSeafileRedirect):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile answered with a redirect — check the base URL (http vs https, path).").WithError(err))
 	case errors.Is(err, services.ErrSeafileRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.SeafileRequestError
@@ -99,6 +101,10 @@ func SaveSeafileConfig(c *gin.Context) {
 	if saveErr != nil {
 		if errors.Is(saveErr, services.ErrSeafileInvalidURL) {
 			abortSeafileServiceError(c, saveErr)
+			return
+		}
+		if errors.Is(saveErr, services.ErrSeafileSecretRequired) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Seafile config").WithError(saveErr))

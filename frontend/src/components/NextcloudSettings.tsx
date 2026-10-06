@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useNextcloud } from '../hooks/useNextcloud';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 // NextcloudSettings is the settings-page card for the Nextcloud / ownCloud
 // (WebDAV) connection (P2c). The base URL + username + app password are
@@ -33,6 +34,14 @@ export default function NextcloudSettings() {
   const [appPassword, setAppPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Mirrors the backend rule: moving a stored connection to a different origin
+  // requires re-entering the secret (it would otherwise be sent to the new host).
+  const secretRequired = secretRequiredForOriginChange(
+    nextcloud.config?.has_app_password,
+    nextcloud.config?.base_url,
+    baseUrl,
+  );
 
   useEffect(() => {
     void nextcloud.refreshConfig();
@@ -62,6 +71,10 @@ export default function NextcloudSettings() {
     // Mirror the backend's `httpurl` validator (T41) client-side.
     if (!isHttpUrlString(trimmed)) {
       setSaveError(t('nextcloud.settings.invalidBaseUrl'));
+      return;
+    }
+    if (secretRequired && !appPassword.trim()) {
+      setSaveError(t('nextcloud.settings.appPasswordRequiredOriginChange'));
       return;
     }
     setSaving(true);
@@ -158,10 +171,13 @@ export default function NextcloudSettings() {
               }}
               fullWidth
               size="small"
+              required={secretRequired}
               helperText={
-                nextcloud.config?.has_app_password
-                  ? t('nextcloud.settings.appPasswordHintExisting')
-                  : t('nextcloud.settings.appPasswordHintNew')
+                secretRequired
+                  ? t('nextcloud.settings.appPasswordRequiredOriginChange')
+                  : nextcloud.config?.has_app_password
+                    ? t('nextcloud.settings.appPasswordHintExisting')
+                    : t('nextcloud.settings.appPasswordHintNew')
               }
             />
 
