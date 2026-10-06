@@ -2858,6 +2858,45 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/{id}/addresses/geocode",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "request_body": "ref:GeocodeDraftRequest",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:GeocodeDraftResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "503",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/{id}/addresses/{addressId}/geocode",
       "parameters": [
         {
@@ -13813,6 +13852,61 @@
           "type": "string",
           "required": true
         },
+        {
+          "name": "cached",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "coordinates",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GeocodeDraftRequest",
+      "properties": [
+        {
+          "name": "city",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "country",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "postal",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "street",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "GeocodeDraftResponse",
+      "properties": [
         {
           "name": "cached",
           "type": "boolean",

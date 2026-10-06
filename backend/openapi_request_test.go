@@ -109,6 +109,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contact-shares":                     bindingFor(models.ContactShareInput{}),
 	"POST /contact-shares/{id}/confirm":        bindingFor(models.ImportConfirmRequest{}),
 	"PUT /contacts/{id}/field-values":          bindingFor(models.ContactFieldValuesInput{}),
+	"POST /contacts/{id}/addresses/geocode":    bindingFor(models.GeocodeDraftInput{}),
 
 	// --- Relationship edges / notes / activities ---
 	"POST /relationship-edges":     bindingFor(models.RelationshipEdgeInput{}),

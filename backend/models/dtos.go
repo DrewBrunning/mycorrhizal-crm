@@ -84,6 +84,37 @@ type ApplyContactAddressSuggestionInput struct {
 	AddressKey      string `json:"address_key" validate:"required"`
 }
 
+// GeocodeDraftInput is the DTO for POST /contacts/:id/addresses/geocode, the
+// stateless draft lookup (ADR 0031 amendment, issue #1286 follow-up). It
+// carries exactly the postal fields the geocoder reads plus the address's
+// sensitivity, so the editor can resolve coordinates for an address that is
+// not saved yet (or whose text has unsaved edits) without persisting anything:
+// the result is returned to the client and lands on the address when the
+// contact is next saved. Coordinate/ID are intentionally absent — this body
+// never writes an address.
+type GeocodeDraftInput struct {
+	Street      string `json:"street" validate:"max=500"`
+	City        string `json:"city" validate:"max=200"`
+	Region      string `json:"region" validate:"max=200"`
+	Postal      string `json:"postal" validate:"max=30"`
+	Country     string `json:"country" validate:"max=100"`
+	Sensitivity string `json:"sensitivity" validate:"omitempty,oneof=normal private secret"`
+}
+
+// ToContactAddress projects the input onto the flat address shape the geocoder
+// and the sensitivity gate read. Only the postal fields are populated; no ID or
+// coordinate is set.
+func (in *GeocodeDraftInput) ToContactAddress() ContactAddress {
+	return ContactAddress{
+		Street:      in.Street,
+		City:        in.City,
+		Region:      in.Region,
+		Postal:      in.Postal,
+		Country:     in.Country,
+		Sensitivity: in.Sensitivity,
+	}
+}
+
 // TagInput is the DTO for creating/updating a Tag (tag.go). Only Name is
 // editable here -- tagging lifecycle lives in its own AddContactTag/
 // RemoveContactTag endpoints, not folded into update.

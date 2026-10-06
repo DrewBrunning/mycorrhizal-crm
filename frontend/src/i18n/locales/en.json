@@ -523,7 +523,6 @@
       "coordinatesHelp": "For example 51.5007, -0.1246",
       "coordinatesInvalid": "Enter latitude (-90 to 90) and longitude (-180 to 180), separated by a comma.",
       "findCoordinates": "Find coordinates",
-      "findCoordinatesSaveFirst": "Save this address first. Coordinates are looked up for the saved address.",
       "findCoordinatesSensitive": "This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.",
       "findCoordinatesFailed": "Could not find coordinates for this address."
     },

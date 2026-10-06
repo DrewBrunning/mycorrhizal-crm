@@ -134,8 +134,11 @@ func buildCWTable(s seeded) map[string]cwRow {
 		// over; it persists through the contact's own revision CAS, so a
 		// concurrent edit surfaces as a 412 rather than a lost write.
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode": exempt(reasonAction),
-		"POST /api/v1/contacts/:id/unfavorite":                   exempt(reasonToggle),
-		"POST /api/v1/reminders/:id/complete":                    exempt(reasonToggle),
+		// ADR 0031 amendment: the stateless draft lookup writes nothing at
+		// all, so there is no revision to CAS over.
+		"POST /api/v1/contacts/:id/addresses/geocode": exempt(reasonAction),
+		"POST /api/v1/contacts/:id/unfavorite":        exempt(reasonToggle),
+		"POST /api/v1/reminders/:id/complete":         exempt(reasonToggle),
 		// Issue #352: "confirm still current" is the same shape as completing
 		// a reminder — a toggle-like action on a non-revision-bearing entity.
 		"POST /api/v1/data-decay-policies/:id/verify": exempt(reasonToggle),

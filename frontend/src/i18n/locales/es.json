@@ -423,7 +423,6 @@
       "coordinatesHelp": "Por ejemplo 51.5007, -0.1246",
       "coordinatesInvalid": "Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.",
       "findCoordinates": "Buscar coordenadas",
-      "findCoordinatesSaveFirst": "Guarda primero esta dirección. Las coordenadas se buscan para la dirección guardada.",
       "findCoordinatesSensitive": "Esta dirección está marcada como privada o secreta, por lo que nunca se envía al geocodificador. Introduce las coordenadas a mano.",
       "findCoordinatesFailed": "No se pudieron encontrar coordenadas para esta dirección."
     },

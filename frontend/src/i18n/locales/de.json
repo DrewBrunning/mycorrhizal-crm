@@ -423,7 +423,6 @@
       "coordinatesHelp": "Zum Beispiel 51.5007, -0.1246",
       "coordinatesInvalid": "Gib Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.",
       "findCoordinates": "Koordinaten suchen",
-      "findCoordinatesSaveFirst": "Speichere diese Adresse zuerst. Die Koordinaten werden für die gespeicherte Adresse gesucht.",
       "findCoordinatesSensitive": "Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Gib die Koordinaten stattdessen von Hand ein.",
       "findCoordinatesFailed": "Für diese Adresse konnten keine Koordinaten gefunden werden."
     },

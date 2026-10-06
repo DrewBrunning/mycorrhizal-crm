@@ -129,6 +129,58 @@ Settled:
   schema + example (which regenerates the contract fixtures and TS types). The web (#1286) and
   Android (#1287) tracks both read the style from this endpoint.
 
+## Amendment, 2026-10-05 (stateless draft geocode)
+
+The v1.4.0 web editor (issue #1286) shipped with "Find coordinates" disabled for any address without a
+saved `id`, so a newly typed address had to be saved (and the contact re-opened) before it could be
+geocoded — and an existing address had to be saved before an edited street/city could be looked up at
+all, because the endpoint geocodes the persisted row. It was also a write: pressing the button saved
+coordinates onto the stored address, so **Discard** did not revert a lookup made mid-edit.
+
+Settled: an additive, **stateless** route — `POST /api/v1/contacts/:id/addresses/geocode`
+(`GeocodeContactAddressDraft`, `backend/controllers/contact_address_controller.go`). It reads the same
+postal fields (plus the address's `sensitivity`) from the request body, applies the same sensitivity
+gate (400 unless `include_sensitive=true` for `private`/`secret`), enforces the same contact-ownership
+scoping, and returns `{coordinates, cached}` **without persisting anything**. The editor holds the
+coordinate in its draft; the ordinary contact save persists it, so Discard correctly reverts it. The
+persisted per-address route is unchanged and remains the endpoint for API clients. Both are still one
+explicit lookup per action, never automatic, never bulk, and the contact id remains the ownership
+anchor, so neither is a general geocoding proxy. The frontend drops the saved-id requirement from the
+button's disabled state (the sensitivity gate stays).
+
+The `sensitivity` the draft route gates on is **client-asserted** (the body is not tied to a stored
+row), so the gate is a consent guard against accidentally sending a private/secret address's text
+to the geocoder, not an enforcement boundary: the caller already holds the text, and a client that
+lies about it only sends its own text to the provider it could reach anyway. The persisted route,
+which reads the stored sensitivity, remains the authoritative gate for API clients.
+
+## Amendment, 2026-10-05 (SPA CSP allows the configured tile origin)
+
+§1 chose to fetch tiles straight from `MAP_TILE_STYLE_URL`'s host, but the shipped SPA
+Content-Security-Policy pinned `connect-src 'self'` (and named no `worker-src`), so in a real
+deployment the browser refused both the style/tile fetches and MapLibre's `blob:` worker — pins
+rendered on a blank canvas. Fixed by deriving the CSP's tile origin from the same env var at container
+start: `frontend/docker/render-csp-tile.sh` — one script shared by **both** images — renders
+`$csp_tile_origin` (scheme://host[:port] only) into the CSP via an `hsts.conf`-style include
+(`docker/entrypoint.sh` for the all-in-one image; nginx's `/docker-entrypoint.d/` for the split
+frontend image, so a custom `MAP_TILE_STYLE_URL` works in either deployment shape). The script parses
+the URL strictly: credentials, query, fragment and path are dropped, and anything that is not an
+http(s) URL with a plain host **fails the container start** rather than emitting a broken or injectable
+directive (`backend/config/entrypoint_csp_test.go` runs it against hostile values). The policy adds
+`worker-src 'self' blob:` (`'self'` for the app's own `/service-worker.js`; `blob:` for MapLibre's
+worker). `connect-src`/`img-src` therefore allow exactly `'self'`, `data:`, `blob:` and the one
+configured origin — no blanket `https:`. `TestNginxCSPConsistentAcrossImages` keeps the two nginx
+configs identical and free of hard-coded hosts, and `frontend/e2e/contactMapCsp.spec.ts` proves in a
+real browser that the style request and a blob: worker raise no `securitypolicyviolation`.
+`scripts/check-csp-tile-images.sh` (a step in the required `Run E2E Tests` job) starts the built
+all-in-one and split images with default, custom and credentialed `MAP_TILE_STYLE_URL` values and
+asserts the served header / refusal.
+
+**Operator caveat:** only the style URL's own origin is allowed. A self-hosted style whose JSON points
+tiles, sprites or glyphs at a *different* host is blocked by the CSP (visible as a blank basemap and
+`securitypolicyviolation` console errors); serve everything from the one origin or front it with a
+reverse proxy.
+
 ## Consequences
 
 - A self-hosted operator who wants OpenFreeMap needs to set nothing; anyone wanting Google-free tiles

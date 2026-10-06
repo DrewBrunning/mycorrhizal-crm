@@ -176,11 +176,24 @@ COPY --from=frontend-builder /app/build /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /app/entrypoint.sh
+# Shared with the split frontend image (frontend/Dockerfile): renders the
+# map-tile origin into the SPA CSP from MAP_TILE_STYLE_URL.
+COPY frontend/docker/render-csp-tile.sh /app/render-csp-tile.sh
 
 # docker/nginx.conf includes /etc/nginx/hsts.conf in every add_header block; it
 # is (re)written by docker/entrypoint.sh at startup based on COOKIE_SECURE, but
 # it must exist here too so the shipped nginx config is valid standalone.
-RUN chmod +x /app/entrypoint.sh && : > /etc/nginx/hsts.conf
+#
+# /etc/nginx/csp_tile.conf (the map-tile origin interpolated into the SPA CSP)
+# is likewise (re)written by the entrypoint from MAP_TILE_STYLE_URL. Seeded
+# here with the OpenFreeMap default so a config parsed without the entrypoint
+# still carries a real CSP rather than an empty (no-CSP) include.
+# The dollar is escaped so the rendered line carries a literal
+# $csp_tile_origin for nginx to interpolate per request, not the (empty)
+# build-time shell value.
+RUN chmod +x /app/entrypoint.sh /app/render-csp-tile.sh && \
+    : > /etc/nginx/hsts.conf && \
+    printf "set \$csp_tile_origin \"https://tiles.openfreemap.org\";\n" > /etc/nginx/csp_tile.conf
 
 # Default environment
 # PORT is the backend's internal bind port - nginx listens on 8080 (below) and

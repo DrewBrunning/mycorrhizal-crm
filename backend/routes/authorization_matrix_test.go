@@ -338,6 +338,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/:id/archive":                      {class: classItem, probe: "/api/v1/contacts/" + contact + "/archive"},
 		"POST /api/v1/contacts/:id/unarchive":                    {class: classItem, probe: "/api/v1/contacts/" + contact + "/unarchive"},
 		"POST /api/v1/contacts/:id/favorite":                     {class: classItem, probe: "/api/v1/contacts/" + contact + "/favorite"},
+		"POST /api/v1/contacts/:id/addresses/geocode":            {class: classItem, probe: "/api/v1/contacts/" + contact + "/addresses/geocode"},
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode": {class: classItem, probe: "/api/v1/contacts/" + contact + "/addresses/probe-address/geocode"},
 		"POST /api/v1/contacts/:id/unfavorite":                   {class: classItem, probe: "/api/v1/contacts/" + contact + "/unfavorite"},
 		"GET /api/v1/contacts/:id/attachments":                   {class: classItem, probe: "/api/v1/contacts/" + contact + "/attachments"},

@@ -18,6 +18,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 )
@@ -301,6 +302,172 @@ func TestGeocodeContactAddress_DBFailureIs500(t *testing.T) {
 	fake.onCall = func() { require.NoError(t, db.Exec("DROP TABLE contacts_fts").Error) }
 	w := postGeocode(router, fmt.Sprint(c.ID), c.Addresses[0].ID, "")
 	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+}
+
+// --- POST /contacts/:id/addresses/geocode (stateless draft lookup) ----------
+
+func draftGeocodeRouter(t *testing.T, g addressGeocoder) (*gorm.DB, *gin.Engine, uint) {
+	t.Helper()
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	router.POST("/contacts/:id/addresses/geocode", withValidated(func() any { return &models.GeocodeDraftInput{} }), GeocodeContactAddressDraft(g))
+	return db, router, user.ID
+}
+
+func TestGeocodeContactAddressDraft_ReturnsCoordinatesWithoutWriting(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:51.5,-0.12"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{
+		Street: "1 Main St", City: "Springfield", Region: "IL", Postal: "62701", Country: "US",
+	})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, map[string]any{"coordinates": "geo:51.5,-0.12", "cached": false}, body,
+		"the draft response carries no address_id")
+
+	require.Len(t, fake.calls, 1, "exactly one lookup")
+	assert.Equal(t, "1 Main St", fake.calls[0].Street)
+	assert.Equal(t, "Springfield", fake.calls[0].City)
+	assert.Empty(t, fake.calls[0].ID, "the body has no id and none is invented")
+
+	var stored models.Contact
+	require.NoError(t, db.First(&stored, c.ID).Error)
+	assert.Empty(t, stored.Addresses[0].Coordinates, "the draft lookup writes nothing")
+	assert.Equal(t, c.Revision, stored.Revision, "and does not touch the revision")
+}
+
+func TestGeocodeContactAddressDraft_SensitivityGate(t *testing.T) {
+	for _, sensitivity := range []string{models.RelationshipSensitivityPrivate, models.RelationshipSensitivitySecret} {
+		t.Run(sensitivity+" refused without opt-in", func(t *testing.T) {
+			fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+			db, router, uid := draftGeocodeRouter(t, fake)
+			c := seedGeocodeContact(t, db, uid, "")
+			body := models.GeocodeDraftInput{Street: "1 Main St", Sensitivity: sensitivity}
+
+			for _, q := range []string{"", "?include_sensitive=false", "?include_sensitive=yes"} {
+				w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode%s", c.ID, q), body)
+				assert.Equal(t, http.StatusBadRequest, w.Code, "query %q: %s", q, w.Body.String())
+				assert.Contains(t, w.Body.String(), sensitivity)
+			}
+			assert.Empty(t, fake.calls, "a refused address never reaches the geocoder")
+		})
+
+		t.Run(sensitivity+" allowed with the explicit opt-in", func(t *testing.T) {
+			fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+			db, router, uid := draftGeocodeRouter(t, fake)
+			c := seedGeocodeContact(t, db, uid, "")
+			body := models.GeocodeDraftInput{Street: "1 Main St", Sensitivity: sensitivity}
+
+			w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode?include_sensitive=true", c.ID), body)
+			assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+			assert.Len(t, fake.calls, 1)
+		})
+	}
+}
+
+func TestGeocodeContactAddressDraft_NotFoundCases(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+
+	stranger := models.User{Username: "draft-stranger", Password: "password123", Email: "draft-stranger@example.com"}
+	require.NoError(t, db.Create(&stranger).Error)
+	theirs := seedGeocodeContact(t, db, stranger.ID, "")
+
+	deleted := seedGeocodeContact(t, db, uid, "")
+	require.NoError(t, db.Delete(&models.Contact{}, deleted.ID).Error)
+
+	for name, contact := range map[string]string{
+		"another user's contact": fmt.Sprint(theirs.ID),
+		"nonexistent contact":    "999999",
+		"soft-deleted contact":   fmt.Sprint(deleted.ID),
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%s/addresses/geocode", contact), models.GeocodeDraftInput{Street: "1 Main St"})
+			assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+		})
+	}
+	assert.Empty(t, fake.calls, "nothing was looked up for any of them")
+}
+
+func TestGeocodeContactAddressDraft_RejectsNonNumericContactID(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	_, router, _ := draftGeocodeRouter(t, fake)
+	w := sendJSON(router, http.MethodPost, "/contacts/abc/addresses/geocode", models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+func TestGeocodeContactAddressDraft_RejectsInvalidSensitivity(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	// The real middleware, so the oneof tag is what rejects the value (the
+	// withValidated test helper only binds JSON, it does not run validators).
+	router.POST("/validated/contacts/:id/addresses/geocode", middleware.ValidateJSONMiddleware(&models.GeocodeDraftInput{}), GeocodeContactAddressDraft(fake))
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/validated/contacts/%d/addresses/geocode", c.ID), map[string]string{"sensitivity": "top-secret"})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+// The GetValidated guard is defensive — the route is always registered behind
+// ValidateJSONMiddleware — but a route accidentally wired without it must fail
+// closed rather than act on a nil body.
+func TestGeocodeContactAddressDraft_MissingValidatedBodyIs400(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+	router.POST("/raw/contacts/:id/addresses/geocode", GeocodeContactAddressDraft(fake))
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/raw/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+func TestGeocodeContactAddressDraft_ContactLookupFailureIs500(t *testing.T) {
+	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+
+	dbtest.HideTable(t, db, "contacts")
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Empty(t, fake.calls)
+}
+
+func TestGeocodeContactAddressDraft_DisabledInstance(t *testing.T) {
+	fake := &fakeAddressGeocoder{disabled: true}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "not enabled")
+	assert.Empty(t, fake.calls)
+}
+
+func TestGeocodeContactAddressDraft_DoesNotLeakProviderText(t *testing.T) {
+	const providerSecret = "key=SUPER-SECRET"
+	fake := &fakeAddressGeocoder{err: fmt.Errorf("%w: %s", services.ErrGeocoderUnreachable, providerSecret)}
+	db, router, uid := draftGeocodeRouter(t, fake)
+	c := seedGeocodeContact(t, db, uid, "")
+
+	w := sendJSON(router, http.MethodPost, fmt.Sprintf("/contacts/%d/addresses/geocode", c.ID), models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code, w.Body.String())
+	assert.NotContains(t, w.Body.String(), providerSecret)
+}
+
+func TestGeocodeContactAddressDraft_RequiresAuthenticatedUser(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db, _ := setupRouter(t)
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // a db, but no userID: as if AuthMiddleware were bypassed
+	router.POST("/contacts/:id/addresses/geocode", withValidated(func() any { return &models.GeocodeDraftInput{} }), GeocodeContactAddressDraft(&fakeAddressGeocoder{uri: "geo:1,1"}))
+	w := sendJSON(router, http.MethodPost, "/contacts/1/addresses/geocode", models.GeocodeDraftInput{Street: "1 Main St"})
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
 }
 
 // --- GET /api/v1/config/map -------------------------------------------------
