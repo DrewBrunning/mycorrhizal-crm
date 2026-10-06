@@ -48,9 +48,8 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
     // points and no reason. Surface it before 'load' only: individual tile
     // errors after load are normal and ignored.
     let loaded = false;
-    const styleTimeout = setTimeout(() => {
-      if (!loaded) setStyleFailed(true);
-    }, STYLE_LOAD_TIMEOUT_MS);
+    // 'load' clears this timer, so firing means the style never loaded.
+    const styleTimeout = setTimeout(() => setStyleFailed(true), STYLE_LOAD_TIMEOUT_MS);
     map.on('error', () => {
       if (!loaded) setStyleFailed(true);
     });
