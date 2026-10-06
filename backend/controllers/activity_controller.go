@@ -48,6 +48,10 @@ func CreateActivity(c *gin.Context) {
 	// the same stay returns the Activity it already created instead of a second
 	// one. Application-level lookup-before-create scoped to user_id — no unique
 	// index, no schema change to Activity.
+	activityType := ""
+	if activityInput.Type != nil {
+		activityType = *activityInput.Type
+	}
 	externalRef := ""
 	if activityInput.ExternalRef != nil {
 		externalRef = *activityInput.ExternalRef
@@ -71,7 +75,7 @@ func CreateActivity(c *gin.Context) {
 		Date:        activityInput.Date,
 		Description: activityInput.Description,
 		Location:    activityInput.Location,
-		Type:        activityInput.Type,
+		Type:        activityType,
 		ExternalRef: externalRef,
 	}
 	if err := db.Create(&activity).Error; err != nil {
@@ -302,7 +306,10 @@ func UpdateActivity(c *gin.Context) {
 	activity.Description = activityInput.Description
 	activity.Location = activityInput.Location
 	activity.Date = activityInput.Date
-	activity.Type = activityInput.Type
+	// Omitted/null type keeps the stored value; an explicit "" clears it.
+	if activityInput.Type != nil {
+		activity.Type = *activityInput.Type
+	}
 	// Omitted/null external_ref keeps the stored value; an explicit "" clears it.
 	if activityInput.ExternalRef != nil {
 		activity.ExternalRef = *activityInput.ExternalRef

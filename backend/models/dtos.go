@@ -17,7 +17,9 @@ type ActivityInput struct {
 	// Type/ExternalRef are Interaction fields (activity.go) -- open/
 	// conventional, no oneof validation, matching Activity.Type's own doc
 	// comment on why it's deliberately unvalidated.
-	Type string `json:"type,omitempty"`
+	// Type is a pointer for the same reason as ExternalRef: on PUT an absent/null
+	// key keeps the stored type, "" clears it.
+	Type *string `json:"type,omitempty"`
 	// ExternalRef is a pointer so an absent key is distinguishable from an
 	// explicit "": on PUT, absent/null keeps the stored value (a web edit never
 	// sends it and must not wipe a geopulse:stay:<id> dedupe key), "" clears it.

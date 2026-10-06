@@ -13438,7 +13438,12 @@ components:
         contact_ids:
           type: array
           items: { type: integer }
-        type: { type: string }
+        type:
+          type: string
+          description: >
+            Optional interaction type. On PUT an omitted (or null) type keeps
+            the stored value (the web edit form does not send it); an explicit
+            empty string clears it. On POST an omitted value is stored as empty.
         external_ref:
           type: string
           description: >
