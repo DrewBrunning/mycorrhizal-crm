@@ -444,6 +444,25 @@ func TestParseMergedCoverprofile_Errors(t *testing.T) {
 	}
 }
 
+// The regex constrains each numeric field to digits, but a value wider than
+// the destination type still overflows and must surface as an error rather
+// than wrapping. Each case reaches one of scanCoverprofile's four conversions.
+func TestParseMergedCoverprofile_OutOfRangeNumbers(t *testing.T) {
+	const huge = "999999999999999999999999999999"
+	for name, line := range map[string]string{
+		"start line": "mycorrhizal/f.go:" + huge + ".1,2.1 1 1",
+		"end line":   "mycorrhizal/f.go:1.1," + huge + ".1 1 1",
+		"statements": "mycorrhizal/f.go:1.1,2.1 " + huge + " 1",
+		"count":      "mycorrhizal/f.go:1.1,2.1 1 " + huge,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseMergedCoverprofile(strings.NewReader("mode: atomic\n" + line + "\n")); err == nil {
+				t.Fatalf("expected an out-of-range error for the %s field", name)
+			}
+		})
+	}
+}
+
 func TestParseMergedCoverprofile_SortOrderAcrossFields(t *testing.T) {
 	in := `mode: atomic
 mycorrhizal/z.go:1.1,2.2 1 1

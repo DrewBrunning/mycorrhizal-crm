@@ -130,20 +130,23 @@ func scanCoverprofile(r io.Reader, emit func(Block)) error {
 		if m == nil {
 			return fmt.Errorf("coverprofile line %d does not match the expected format: %q", lineNo, line)
 		}
+		// blockLineRE constrains these to digit strings, but a value wider than
+		// the destination still overflows and errors -- reachable, not a
+		// no-cover line (pinned by TestParseMergedCoverprofile_OutOfRangeNumbers).
 		startLine, err := strconv.Atoi(m[2])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
+		if err != nil {
 			return err
 		}
 		endLine, err := strconv.Atoi(m[3])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
+		if err != nil {
 			return err
 		}
 		numStmt, err := strconv.Atoi(m[4])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
+		if err != nil {
 			return err
 		}
 		count, err := strconv.ParseInt(m[5], 10, 64)
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
+		if err != nil {
 			return err
 		}
 		emit(Block{
