@@ -5652,30 +5652,43 @@ class ApiClientTest {
     }
 
     @Test
-    fun `geocodeAddress POSTs to the per-address geocode route with the id encoded`() = runBlocking {
+    fun `geocodeAddressDraft POSTs the postal draft to the stateless route`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"address_id":"a/1","coordinates":"geo:48.85,2.35","cached":false}"""),
+                .setBody("""{"coordinates":"geo:48.85,2.35","cached":false}"""),
         )
 
-        val result = client.geocodeAddress(contactId = 7, addressId = "a/1")
+        val result = client.geocodeAddressDraft(
+            contactId = 7,
+            draft = com.mycorrhizal.crm.model.network.GeocodeDraftRequest(
+                street = "1 Rue X", city = "Paris", region = "", postal = "75001", country = "FR", sensitivity = "normal",
+            ),
+        )
 
         assertEquals("geo:48.85,2.35", result.getOrThrow().coordinates)
         val request = server.takeRequest()
         assertEquals("POST", request.method)
-        assertEquals("/api/v1/contacts/7/addresses/a%2F1/geocode", request.path)
-        // No include_sensitive: Android never opts a private/secret address in.
+        // The draft route, NOT the per-address one that stores the coordinate.
+        assertEquals("/api/v1/contacts/7/addresses/geocode", request.path)
+        val body = request.body.readUtf8()
+        assertEquals(
+            """{"street":"1 Rue X","city":"Paris","region":"","postal":"75001","country":"FR","sensitivity":"normal"}""",
+            body,
+        )
+        // No address id/coordinates are ever sent (the body can't write an address),
+        // and Android never opts a private/secret address in via include_sensitive.
+        assertFalse(body.contains("coordinates"))
         assertFalse(request.path.orEmpty().contains("include_sensitive"))
     }
 
     @Test
-    fun `geocodeAddress maps the server's refusal to a Client error carrying its message`() = runBlocking {
+    fun `geocodeAddressDraft maps the server's refusal to a Client error carrying its message`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(422)
                 .setBody("""{"error":{"code":"BUSINESS_LOGIC_ERROR","message":"geocoding is not enabled on this server"}}"""),
         )
 
-        val result = client.geocodeAddress(contactId = 7, addressId = "a")
+        val result = client.geocodeAddressDraft(contactId = 7, draft = com.mycorrhizal.crm.model.network.GeocodeDraftRequest())
 
         val error = result.exceptionOrNull() as ApiError
         assertTrue(error is ApiError.Client)

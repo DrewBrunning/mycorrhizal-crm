@@ -152,7 +152,8 @@ import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
-import com.mycorrhizal.crm.model.network.GeocodeAddressResponse
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
 import com.mycorrhizal.crm.model.network.ContactMapResponse
 import com.mycorrhizal.crm.model.network.MapConfig
@@ -2764,16 +2765,17 @@ class ApiClient(
         }
 
     /**
-     * POST /api/v1/contacts/{id}/addresses/{addressId}/geocode — one explicit
-     * lookup for one saved address (never bulk). A private/secret address is
-     * refused with 400 by the server; the UI blocks it before it gets here.
-     * 404 when the instance runs without a geocoder (e.g. embedded).
+     * POST /api/v1/contacts/{id}/addresses/geocode — one explicit, stateless
+     * lookup for an address draft (never bulk). The server returns the
+     * coordinate without storing it, so an unsaved or edited address can be
+     * geocoded and Discard leaves the server untouched. A private/secret address
+     * is refused with 400 by the server (we never send `include_sensitive`); the
+     * UI blocks it before it gets here. 404 when the instance has no geocoder
+     * (e.g. embedded).
      */
-    suspend fun geocodeAddress(contactId: Int, addressId: String): Result<GeocodeAddressResponse> =
-        executePostEmpty(
-            "$API_V1/contacts/$contactId/addresses/${java.net.URLEncoder.encode(addressId, "UTF-8")}/geocode",
-        ) { _, body ->
-            moshi.adapter(GeocodeAddressResponse::class.java).fromJson(body)
+    suspend fun geocodeAddressDraft(contactId: Int, draft: GeocodeDraftRequest): Result<GeocodeDraftResponse> =
+        executePost("$API_V1/contacts/$contactId/addresses/geocode", draft) { _, body ->
+            moshi.adapter(GeocodeDraftResponse::class.java).fromJson(body)
         }
 
     private suspend fun <T> executeGet(

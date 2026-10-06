@@ -2,7 +2,8 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.model.network.ContactMapResponse
-import com.mycorrhizal.crm.model.network.GeocodeAddressResponse
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -15,6 +16,6 @@ class MapRepositoryImpl @Inject constructor(
 
     override suspend fun getContactMap(): Result<ContactMapResponse> = apiClient.getContactMap()
 
-    override suspend fun geocodeAddress(contactId: Int, addressId: String): Result<GeocodeAddressResponse> =
-        apiClient.geocodeAddress(contactId, addressId)
+    override suspend fun geocodeAddressDraft(contactId: Int, draft: GeocodeDraftRequest): Result<GeocodeDraftResponse> =
+        apiClient.geocodeAddressDraft(contactId, draft)
 }

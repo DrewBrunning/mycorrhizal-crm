@@ -1,7 +1,8 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.model.network.ContactMapResponse
-import com.mycorrhizal.crm.model.network.GeocodeAddressResponse
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.network.ApiClient
 import io.mockk.coEvery
@@ -34,12 +35,13 @@ class MapRepositoryImplTest {
     }
 
     @Test
-    fun `geocodeAddress passes the contact and address ids through`() = runTest {
-        coEvery { apiClient.geocodeAddress(7, "a1") } returns
-            Result.success(GeocodeAddressResponse(addressId = "a1", coordinates = "geo:1,2"))
+    fun `geocodeAddressDraft passes the contact id and draft through`() = runTest {
+        val draft = GeocodeDraftRequest(street = "1 Main St", city = "Springfield")
+        coEvery { apiClient.geocodeAddressDraft(7, draft) } returns
+            Result.success(GeocodeDraftResponse(coordinates = "geo:1,2"))
 
-        assertEquals("geo:1,2", repository.geocodeAddress(7, "a1").getOrThrow().coordinates)
-        coVerify(exactly = 1) { apiClient.geocodeAddress(7, "a1") }
+        assertEquals("geo:1,2", repository.geocodeAddressDraft(7, draft).getOrThrow().coordinates)
+        coVerify(exactly = 1) { apiClient.geocodeAddressDraft(7, draft) }
     }
 
     @Test

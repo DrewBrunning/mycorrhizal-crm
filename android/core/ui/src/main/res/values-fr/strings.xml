@@ -351,7 +351,13 @@
     <string name="contact_address_coordinates_hint">Par exemple 51.5007, -0.1246</string>
     <string name="contact_address_coordinates_invalid">Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.</string>
     <string name="contact_address_find_coordinates">Trouver les coordonnées</string>
-    <string name="contact_address_find_coordinates_save_first">Enregistrez d\'abord cette adresse. Les coordonnées sont recherchées pour l\'adresse enregistrée.</string>
+    <string name="contact_address_find_coordinates_save_first">Enregistrez d\'abord ce contact, puis recherchez les coordonnées. Le texte de l\'adresse n\'a pas besoin d\'être enregistré.</string>
+    <string name="contact_address_find_coordinates_local">Indisponible dans les profils locaux — saisissez les coordonnées à la main.</string>
+    <string name="contact_address_sensitivity">Sensibilité</string>
+    <string name="contact_address_sensitivity_normal">Normale</string>
+    <string name="contact_address_sensitivity_private">Privée</string>
+    <string name="contact_address_sensitivity_secret">Secrète</string>
+    <string name="contact_address_sensitivity_hint">Les adresses privées et secrètes sont exclues de la synchronisation, des exports et des partages.</string>
     <string name="contact_address_find_coordinates_sensitive">Cette adresse est marquée comme privée ou secrète ; elle n\'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.</string>
     <string name="contact_address_find_coordinates_failed">Impossible de trouver les coordonnées de cette adresse.</string>
     <string name="contact_address_find_coordinates_loading">Recherche des coordonnées…</string>
