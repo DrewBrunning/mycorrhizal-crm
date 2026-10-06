@@ -319,7 +319,7 @@ func TestGeocoderClient_CanceledWhileThrottledIsUnreachable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { atomic.AddInt32(&hits, 1) }))
 	t.Cleanup(srv.Close)
 
-	gate := newRateGate(time.Hour)
+	gate := newRateGate(time.Hour, 0)
 	require.NoError(t, gate.Wait(context.Background())) // takes the free slot; the next waits an hour
 	c := newGeocoderClient(config.GeocoderProviderNominatim, "", srv.URL, plainTransport(), gate)
 
@@ -419,4 +419,58 @@ func TestRedactedTransportError(t *testing.T) {
 	assert.Equal(t, "connection refused", redactedTransportError(wrapped))
 	assert.Equal(t, "connection refused", redactedTransportError(fmt.Errorf("outer: %w", wrapped)), "found through wrapping too")
 	assert.Equal(t, "plain", redactedTransportError(errors.New("plain")))
+}
+
+func TestRateGate_RejectsBeyondMaxWaitWithoutReservingSlot(t *testing.T) {
+	now := time.Unix(4_000_000, 0)
+	var slept []time.Duration
+	g := &rateGate{
+		interval: time.Second,
+		maxWait:  3 * time.Second,
+		now:      func() time.Time { return now },
+		sleep:    func(_ context.Context, d time.Duration) error { slept = append(slept, d); return nil },
+	}
+	ctx := context.Background()
+	// Slots at +0,+1,+2,+3 are accepted: (maxWait/interval)+1 callers.
+	for i := 0; i < 4; i++ {
+		require.NoError(t, g.Wait(ctx))
+	}
+	next := g.next
+	for i := 0; i < 5; i++ {
+		assert.ErrorIs(t, g.Wait(ctx), errRateGateFull)
+	}
+	assert.Equal(t, next, g.next, "a rejected caller must not advance the queue")
+	assert.Len(t, slept, 3)
+
+	now = now.Add(time.Second) // one slot drains; the queue accepts again
+	require.NoError(t, g.Wait(ctx))
+}
+
+func TestRateGate_CanceledWaiterStillConsumesSlotWithinMaxWait(t *testing.T) {
+	now := time.Unix(5_000_000, 0)
+	g := &rateGate{
+		interval: time.Second,
+		maxWait:  10 * time.Second,
+		now:      func() time.Time { return now },
+		sleep:    func(ctx context.Context, _ time.Duration) error { return ctx.Err() },
+	}
+	require.NoError(t, g.Wait(context.Background()))
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.ErrorIs(t, g.Wait(canceled), context.Canceled)
+	assert.Equal(t, now.Add(2*time.Second), g.next, "the canceled waiter's slot stays consumed")
+}
+
+func TestGeocoderClient_FullGateMapsToRateLimitedWithoutRequest(t *testing.T) {
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { atomic.AddInt32(&hits, 1) }))
+	t.Cleanup(srv.Close)
+	gate := newRateGate(time.Hour, time.Second)
+	require.NoError(t, gate.Wait(context.Background())) // free slot; the next is an hour away
+	c := newGeocoderClient(config.GeocoderProviderNominatim, "", srv.URL, plainTransport(), gate)
+	start := time.Now()
+	_, err := c.Geocode(context.Background(), "x")
+	assert.ErrorIs(t, err, ErrGeocoderRateLimited)
+	assert.Less(t, time.Since(start), time.Second, "rejected immediately, no hang")
+	assert.Zero(t, atomic.LoadInt32(&hits))
 }

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -54,8 +55,10 @@ func (g *Geocoder) Enabled() bool { return g != nil && g.client != nil }
 // city, region, postcode, country — never the PO box / apartment / floor, which
 // a geocoder cannot place and which would only add noise (and entropy to the
 // cache key). cached reports whether the answer came from the cache, i.e. no
-// request left the instance.
-func (g *Geocoder) GeocodeAddress(ctx context.Context, addr models.ContactAddress) (coordinates string, cached bool, err error) {
+// request left the instance. The cache is scoped per user (userID is part of the
+// key): a process-wide key would let one user learn, via cached or timing,
+// whether another user had geocoded the same address.
+func (g *Geocoder) GeocodeAddress(ctx context.Context, userID uint, addr models.ContactAddress) (coordinates string, cached bool, err error) {
 	if !g.Enabled() {
 		return "", false, ErrGeocoderDisabled
 	}
@@ -64,7 +67,7 @@ func (g *Geocoder) GeocodeAddress(ctx context.Context, addr models.ContactAddres
 		return "", false, ErrGeocoderNoResult
 	}
 	provider := g.client.Provider()
-	if uri, ok := g.cache.get(provider, query); ok {
+	if uri, ok := g.cache.get(userID, provider, query); ok {
 		return uri, true, nil
 	}
 	res, err := g.client.Geocode(ctx, query)
@@ -72,7 +75,7 @@ func (g *Geocoder) GeocodeAddress(ctx context.Context, addr models.ContactAddres
 		return "", false, err // errors are never cached: a failed lookup is retried
 	}
 	uri := contactmodel.FormatGeoURI(res.Lat, res.Lon)
-	g.cache.put(provider, query, uri)
+	g.cache.put(userID, provider, query, uri)
 	return uri, false, nil
 }
 
@@ -104,7 +107,7 @@ func IsGeocoderClientError(err error) bool {
 }
 
 // geocodeCache is a fixed-capacity LRU with a per-entry TTL, safe for
-// concurrent use. Keys are SHA-256 digests of provider + normalized address
+// concurrent use. Keys are SHA-256 digests of user id + provider + normalized address
 // text, so the cache never retains a readable copy of an address — only the
 // coordinate the provider returned. It lives in process memory only.
 type geocodeCache struct {
@@ -128,15 +131,16 @@ func newGeocodeCache(max int, ttl time.Duration, now func() time.Time) *geocodeC
 
 // geocodeCacheKey normalizes address text (case-folded, whitespace-collapsed)
 // so trivially different spellings of one address share an entry, then hashes
-// it together with the provider.
-func geocodeCacheKey(provider, text string) string {
+// it together with the requesting user and the provider, so entries are never
+// shared across users.
+func geocodeCacheKey(userID uint, provider, text string) string {
 	norm := strings.Join(strings.FieldsFunc(strings.ToLower(text), unicode.IsSpace), " ")
-	sum := sha256.Sum256([]byte(provider + "\x00" + norm))
+	sum := sha256.Sum256([]byte(strconv.FormatUint(uint64(userID), 10) + "\x00" + provider + "\x00" + norm))
 	return hex.EncodeToString(sum[:])
 }
 
-func (c *geocodeCache) get(provider, text string) (string, bool) {
-	key := geocodeCacheKey(provider, text)
+func (c *geocodeCache) get(userID uint, provider, text string) (string, bool) {
+	key := geocodeCacheKey(userID, provider, text)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	el, ok := c.entries[key]
@@ -153,8 +157,8 @@ func (c *geocodeCache) get(provider, text string) (string, bool) {
 	return e.uri, true
 }
 
-func (c *geocodeCache) put(provider, text, uri string) {
-	key := geocodeCacheKey(provider, text)
+func (c *geocodeCache) put(userID uint, provider, text, uri string) {
+	key := geocodeCacheKey(userID, provider, text)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if el, ok := c.entries[key]; ok {

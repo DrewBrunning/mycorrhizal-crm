@@ -36,7 +36,7 @@ type fakeAddressGeocoder struct {
 
 func (f *fakeAddressGeocoder) Enabled() bool { return !f.disabled }
 
-func (f *fakeAddressGeocoder) GeocodeAddress(_ context.Context, a models.ContactAddress) (string, bool, error) {
+func (f *fakeAddressGeocoder) GeocodeAddress(_ context.Context, _ uint, a models.ContactAddress) (string, bool, error) {
 	f.calls = append(f.calls, a)
 	if f.onCall != nil {
 		f.onCall()
