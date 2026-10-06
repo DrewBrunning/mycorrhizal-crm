@@ -8278,6 +8278,14 @@ paths:
         column so a consumer can re-apply the classification. Export vCard
         or JSContact instead for a copy that default-denies sensitive
         fields. See docs/security/data-retention-lifecycle.md §11.
+
+
+        The CONTACTS header ends its fixed columns with `Addresses`,
+        `Address Sensitivities` and `Address Coordinates`: parallel
+        "; "-joined lists with one entry per postal address (formatted
+        text, `normal`/`private`/`secret`, `geo:` URI or empty). The legacy
+        `Address` column is still the first address only. Parse by header
+        name, not column position.
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
