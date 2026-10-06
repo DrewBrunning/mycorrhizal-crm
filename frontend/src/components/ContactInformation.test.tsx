@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Card, CRMEnvelope } from '../api/contacts';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
+import { geocodeDraft } from '../api/map';
 import type { ContactFieldKey } from '../contactFields';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
@@ -42,7 +43,13 @@ vi.mock('../api/linkFieldTypes', async (importOriginal) => {
   return { ...actual, getLinkFieldTypes: vi.fn() };
 });
 
+vi.mock('../api/map', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api/map')>()),
+  geocodeDraft: vi.fn(),
+}));
+
 beforeEach(() => {
+  vi.mocked(geocodeDraft).mockReset();
   vi.mocked(getLinkFieldTypes).mockReset().mockResolvedValue([]);
 });
 
@@ -52,6 +59,7 @@ function renderInformation(
   opts: {
     onUpdateCard?: (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => Promise<void>;
     enabledFields?: Set<ContactFieldKey>;
+    contactId?: number;
   } = {},
 ) {
   const onUpdateCard = opts.onUpdateCard ?? vi.fn(async () => {});
@@ -71,6 +79,7 @@ function renderInformation(
             onEditValueChange={vi.fn()}
             onUpdateCard={onUpdateCard}
             enabledFields={opts.enabledFields}
+            contactId={opts.contactId}
           />
         </DateFormatProvider>
       </SnackbarProvider>
@@ -748,4 +757,60 @@ test('card notes and work information stay full-span (T88)', () => {
 
   expect(hasFullSpanAncestor(screen.getByText('Notes (vCard)'), classes)).toBe(true);
   expect(hasFullSpanAncestor(screen.getByText('Work Information'), classes)).toBe(true);
+});
+
+// --- ADR 0031 amendment (issue #1286 follow-up): draft geocoding -----------
+// "Find coordinates" returns a coordinate WITHOUT storing it; it lives in the
+// editor's draft until Save, so Cancel/Discard must revert it. The old route
+// wrote straight to the database, so a lookup made mid-edit survived Discard.
+
+const addressRowCard: Card = {
+  addresses: [{ components: [{ kind: 'locality', value: 'Springfield' }] }],
+};
+const addressOptions = {
+  enabledFields: new Set<ContactFieldKey>(['addresses']),
+  contactId: 7,
+};
+
+function openAddressEditor() {
+  fireEvent.click(within(fieldRow('Address')).getByLabelText('Edit'));
+}
+
+test('a coordinate found mid-edit is persisted only by Save', async () => {
+  vi.mocked(geocodeDraft).mockResolvedValue({ coordinates: 'geo:39.78,-89.65', cached: false });
+  const onUpdateCard = vi.fn(async () => {});
+  renderInformation(addressRowCard, {}, { ...addressOptions, onUpdateCard });
+
+  openAddressEditor();
+  fireEvent.click(screen.getByRole('button', { name: 'Find coordinates' }));
+  await waitFor(() =>
+    expect(screen.getByLabelText('Coordinates (latitude, longitude)')).toHaveValue('39.78, -89.65'),
+  );
+  expect(onUpdateCard).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(onUpdateCard).toHaveBeenCalledTimes(1));
+  expect(onUpdateCard).toHaveBeenCalledWith(
+    { addresses: [expect.objectContaining({ coordinates: 'geo:39.78,-89.65' })] },
+    expect.anything(),
+  );
+});
+
+test('Cancel discards a coordinate found mid-edit and persists nothing', async () => {
+  vi.mocked(geocodeDraft).mockResolvedValue({ coordinates: 'geo:39.78,-89.65', cached: false });
+  const onUpdateCard = vi.fn(async () => {});
+  renderInformation(addressRowCard, {}, { ...addressOptions, onUpdateCard });
+
+  openAddressEditor();
+  fireEvent.click(screen.getByRole('button', { name: 'Find coordinates' }));
+  await waitFor(() =>
+    expect(screen.getByLabelText('Coordinates (latitude, longitude)')).toHaveValue('39.78, -89.65'),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(onUpdateCard).not.toHaveBeenCalled();
+
+  // Re-opening the editor shows the stored (coordinate-less) address again.
+  openAddressEditor();
+  expect(screen.getByLabelText('Coordinates (latitude, longitude)')).toHaveValue('');
 });

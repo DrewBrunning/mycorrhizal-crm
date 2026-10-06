@@ -55,19 +55,11 @@ case "${COOKIE_SECURE:-false}" in
 esac
 
 # Render the SPA Content-Security-Policy's map-tile origin (issue #1286
-# follow-up). The contact map loads its style JSON, vector tiles and glyphs
-# straight from the origin of MAP_TILE_STYLE_URL (ADR 0031), and MapLibre
-# builds its worker from a blob: URL -- both must be allowed (the same-origin
-# /service-worker.js too, hence worker-src 'self' blob:), or the map draws its
-# pins on a blank canvas. The tile host is operator-configurable, so it
-# cannot be hard-coded in nginx.conf: this renders /etc/nginx/csp_tile.conf,
-# which docker/nginx.conf includes to define $csp_tile_origin, exactly like
-# hsts.conf above. The fallback must stay in step with
-# config.DefaultMapTileStyleURL (a drift test reads this file).
-MAP_TILE_STYLE_URL="${MAP_TILE_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}"
-# scheme://host, path stripped -- CSP sources are origins, not URLs.
-_tile_rest="${MAP_TILE_STYLE_URL#*://}"
-TILE_ORIGIN="${MAP_TILE_STYLE_URL%%://*}://${_tile_rest%%/*}"
-printf 'set $csp_tile_origin "%s";\n' "$TILE_ORIGIN" > /etc/nginx/csp_tile.conf
+# follow-up) from MAP_TILE_STYLE_URL into /etc/nginx/csp_tile.conf, which
+# docker/nginx.conf includes to define $csp_tile_origin, exactly like hsts.conf
+# above. Parsing/validation lives in the script shared with the split frontend
+# image; an unusable URL aborts startup (set -e) rather than shipping a CSP
+# that silently blocks the basemap.
+/app/render-csp-tile.sh /etc/nginx/csp_tile.conf
 
 exec "$@"

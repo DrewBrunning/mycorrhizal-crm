@@ -176,6 +176,9 @@ COPY --from=frontend-builder /app/build /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /app/entrypoint.sh
+# Shared with the split frontend image (frontend/Dockerfile): renders the
+# map-tile origin into the SPA CSP from MAP_TILE_STYLE_URL.
+COPY frontend/docker/render-csp-tile.sh /app/render-csp-tile.sh
 
 # docker/nginx.conf includes /etc/nginx/hsts.conf in every add_header block; it
 # is (re)written by docker/entrypoint.sh at startup based on COOKIE_SECURE, but
@@ -188,7 +191,7 @@ COPY docker/entrypoint.sh /app/entrypoint.sh
 # The dollar is escaped so the rendered line carries a literal
 # $csp_tile_origin for nginx to interpolate per request, not the (empty)
 # build-time shell value.
-RUN chmod +x /app/entrypoint.sh && \
+RUN chmod +x /app/entrypoint.sh /app/render-csp-tile.sh && \
     : > /etc/nginx/hsts.conf && \
     printf "set \$csp_tile_origin \"https://tiles.openfreemap.org\";\n" > /etc/nginx/csp_tile.conf
 

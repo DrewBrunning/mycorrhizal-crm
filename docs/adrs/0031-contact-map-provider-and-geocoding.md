@@ -148,17 +148,35 @@ explicit lookup per action, never automatic, never bulk, and the contact id rema
 anchor, so neither is a general geocoding proxy. The frontend drops the saved-id requirement from the
 button's disabled state (the sensitivity gate stays).
 
+The `sensitivity` the draft route gates on is **client-asserted** (the body is not tied to a stored
+row), so the gate is a consent guard against accidentally sending a private/secret address's text
+to the geocoder, not an enforcement boundary: the caller already holds the text, and a client that
+lies about it only sends its own text to the provider it could reach anyway. The persisted route,
+which reads the stored sensitivity, remains the authoritative gate for API clients.
+
 ## Amendment, 2026-10-05 (SPA CSP allows the configured tile origin)
 
 §1 chose to fetch tiles straight from `MAP_TILE_STYLE_URL`'s host, but the shipped SPA
 Content-Security-Policy pinned `connect-src 'self'` (and named no `worker-src`), so in a real
 deployment the browser refused both the style/tile fetches and MapLibre's `blob:` worker — pins
 rendered on a blank canvas. Fixed by deriving the CSP's tile origin from the same env var at container
-start: `docker/entrypoint.sh` renders `$csp_tile_origin` (host only) into the CSP via an
-`hsts.conf`-style include, and the policy adds `worker-src 'self' blob:` (`'self'` for the app's own
-`/service-worker.js`; `blob:` for MapLibre's worker). `connect-src`/`img-src` therefore
-allow exactly `'self'`, `data:`, `blob:` and the one configured origin — no blanket `https:`. The
-split `frontend/nginx.conf` image (no entrypoint) carries the OpenFreeMap default statically.
+start: `frontend/docker/render-csp-tile.sh` — one script shared by **both** images — renders
+`$csp_tile_origin` (scheme://host[:port] only) into the CSP via an `hsts.conf`-style include
+(`docker/entrypoint.sh` for the all-in-one image; nginx's `/docker-entrypoint.d/` for the split
+frontend image, so a custom `MAP_TILE_STYLE_URL` works in either deployment shape). The script parses
+the URL strictly: credentials, query, fragment and path are dropped, and anything that is not an
+http(s) URL with a plain host **fails the container start** rather than emitting a broken or injectable
+directive (`backend/config/entrypoint_csp_test.go` runs it against hostile values). The policy adds
+`worker-src 'self' blob:` (`'self'` for the app's own `/service-worker.js`; `blob:` for MapLibre's
+worker). `connect-src`/`img-src` therefore allow exactly `'self'`, `data:`, `blob:` and the one
+configured origin — no blanket `https:`. `TestNginxCSPConsistentAcrossImages` keeps the two nginx
+configs identical and free of hard-coded hosts, and `frontend/e2e/contactMapCsp.spec.ts` proves in a
+real browser that the style request and worker raise no `securitypolicyviolation`.
+
+**Operator caveat:** only the style URL's own origin is allowed. A self-hosted style whose JSON points
+tiles, sprites or glyphs at a *different* host is blocked by the CSP (visible as a blank basemap and
+`securitypolicyviolation` console errors); serve everything from the one origin or front it with a
+reverse proxy.
 
 ## Consequences
 
