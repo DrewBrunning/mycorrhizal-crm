@@ -1891,4 +1891,44 @@
     <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
     <string name="share_intent_label">Ajouter une note dans Mycorrhizal</string>
     <string name="share_pick_contact_title">Partager avec…</string>
+
+    <!-- Issue #160 (ADR 0033): GeoPulse location-history correlation -->
+    <string name="settings_geopulse_title">GeoPulse</string>
+    <string name="geopulse_settings_description">Connectez une instance GeoPulse auto-hébergée pour transformer une journée d\'historique de localisation en suggestions d\'activités. Rien n\'est importé automatiquement : vous choisissez une date, examinez les lieux et décidez avec qui vous étiez. Le jeton d\'API est stocké chiffré sur votre serveur.</string>
+    <string name="geopulse_settings_base_url">URL du serveur GeoPulse</string>
+    <string name="geopulse_settings_base_url_required">L\'URL du serveur est obligatoire.</string>
+    <string name="geopulse_settings_base_url_invalid">L\'URL du serveur doit être une adresse http:// ou https://.</string>
+    <string name="geopulse_settings_api_key">Jeton d\'API</string>
+    <string name="geopulse_settings_api_key_hint_existing">Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.</string>
+    <string name="geopulse_settings_api_key_hint_new">Créez un jeton dans GeoPulse (Profil → Sécurité) et collez-le ici.</string>
+    <string name="geopulse_settings_api_key_required">Le jeton d\'API est obligatoire pour se connecter.</string>
+    <string name="geopulse_settings_api_key_required_origin_change">L\'adresse du serveur a changé : saisissez à nouveau le jeton d\'API. Le jeton enregistré n\'est jamais envoyé à un autre serveur.</string>
+    <string name="geopulse_settings_test">Tester la connexion</string>
+    <string name="geopulse_settings_testing">Test en cours…</string>
+    <string name="geopulse_settings_test_success">Test de connexion réussi</string>
+    <string name="geopulse_settings_test_failed">Échec du test (%1$s) : %2$s</string>
+    <string name="geopulse_settings_test_unknown">erreur inconnue</string>
+    <string name="geopulse_settings_remove">Déconnecter</string>
+    <string name="geopulse_settings_remove_title">Déconnecter GeoPulse</string>
+    <string name="geopulse_settings_remove_confirm">Déconnecter GeoPulse ? Les activités déjà enregistrées depuis l\'historique de localisation sont conservées.</string>
+    <string name="geopulse_entry_point">Enregistrer depuis l\'historique de localisation</string>
+    <string name="geopulse_title">Enregistrer depuis l\'historique de localisation</string>
+    <string name="geopulse_description">Choisissez une date pour voir les lieux enregistrés par GeoPulse. Rien n\'est sauvegardé tant que vous n\'en enregistrez pas un, et vous décidez avec qui vous étiez.</string>
+    <string name="geopulse_date">Date</string>
+    <string name="geopulse_pick_date">Choisir une date</string>
+    <string name="geopulse_look_up">Rechercher</string>
+    <string name="geopulse_looking_up">Recherche…</string>
+    <string name="geopulse_open_settings">Ouvrir les paramètres GeoPulse</string>
+    <string name="geopulse_no_stays">GeoPulse n\'a enregistré aucun séjour à cette date.</string>
+    <string name="geopulse_unnamed_place">Lieu sans nom</string>
+    <string name="geopulse_already_logged">Déjà enregistré</string>
+    <string name="geopulse_log_activity">Enregistrer l\'activité</string>
+    <string name="geopulse_log_activity_at">Enregistrer l\'activité à %1$s, %2$s</string>
+    <string name="geopulse_announce_found">Lieux trouvés : %1$d</string>
+    <string name="geopulse_announce_none">Aucun lieu trouvé</string>
+    <string name="geopulse_photos">Photos à proximité (%1$d)</string>
+    <string name="geopulse_photos_unavailable">Les photos n\'ont pas pu être vérifiées.</string>
+    <string name="geopulse_duration_minutes">%1$d min</string>
+    <string name="geopulse_duration_hours">%1$d h</string>
+    <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
 </resources>

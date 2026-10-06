@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -63,6 +64,9 @@ fun ActivitiesInboxScreen(
     onMenuClick: (() -> Unit)? = {},
     onActivityClick: (Int) -> Unit,
     onContactClick: (Int) -> Unit,
+    // Issue #160: "Log from location history" (GeoPulse). Null hides it — embedded/local profiles
+    // omit the GeoPulse routes entirely.
+    onLogFromLocation: (() -> Unit)? = null,
     viewModel: ActivitiesInboxViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +75,7 @@ fun ActivitiesInboxScreen(
         onMenuClick = onMenuClick,
         onActivityClick = onActivityClick,
         onContactClick = onContactClick,
+        onLogFromLocation = onLogFromLocation,
         onLoadMore = viewModel::loadMore,
         onDelete = viewModel::delete,
         onRefresh = viewModel::load,
@@ -91,6 +96,7 @@ fun ActivitiesInboxScreenContent(
     onMenuClick: (() -> Unit)? = {},
     onActivityClick: (Int) -> Unit = {},
     onContactClick: (Int) -> Unit = {},
+    onLogFromLocation: (() -> Unit)? = null,
     onLoadMore: () -> Unit = {},
     onDelete: (Int) -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -112,6 +118,16 @@ fun ActivitiesInboxScreenContent(
                 },
                 title = {
                     Text(stringResource(R.string.nav_activities), style = MaterialTheme.typography.titleLarge)
+                },
+                actions = {
+                    onLogFromLocation?.let { onLog ->
+                        AccessibleIconButton(onClick = onLog) {
+                            Icon(
+                                Icons.Outlined.LocationOn,
+                                contentDescription = stringResource(R.string.geopulse_entry_point),
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

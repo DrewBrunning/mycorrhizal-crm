@@ -39,6 +39,7 @@ import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.GeoPulseRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
@@ -100,6 +101,7 @@ import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
@@ -554,6 +556,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindImmichRepository(impl: ImmichRepositoryImpl): ImmichRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGeoPulseRepository(impl: GeoPulseRepositoryImpl): GeoPulseRepository
 
     @Binds
     @Singleton

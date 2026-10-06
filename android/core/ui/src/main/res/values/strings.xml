@@ -1906,4 +1906,44 @@
     <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
     <string name="share_intent_label">Add note in Mycorrhizal</string>
     <string name="share_pick_contact_title">Share to…</string>
+
+    <!-- Issue #160 (ADR 0033): GeoPulse location-history correlation -->
+    <string name="settings_geopulse_title">GeoPulse</string>
+    <string name="geopulse_settings_description">Connect a self-hosted GeoPulse instance to turn a day of location history into activity suggestions. Nothing is imported automatically: you pick a date, review the places, and choose who you were with. The API token is stored encrypted on your server.</string>
+    <string name="geopulse_settings_base_url">GeoPulse server URL</string>
+    <string name="geopulse_settings_base_url_required">Server URL is required.</string>
+    <string name="geopulse_settings_base_url_invalid">Server URL must be an http:// or https:// URL.</string>
+    <string name="geopulse_settings_api_key">API token</string>
+    <string name="geopulse_settings_api_key_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
+    <string name="geopulse_settings_api_key_hint_new">Create a token in GeoPulse (Profile → Security) and paste it here.</string>
+    <string name="geopulse_settings_api_key_required">The API token is required to connect.</string>
+    <string name="geopulse_settings_api_key_required_origin_change">The server address changed, so re-enter the API token. The stored token is never sent to a different server.</string>
+    <string name="geopulse_settings_test">Test connection</string>
+    <string name="geopulse_settings_testing">Testing…</string>
+    <string name="geopulse_settings_test_success">Connection test succeeded</string>
+    <string name="geopulse_settings_test_failed">Test failed (%1$s): %2$s</string>
+    <string name="geopulse_settings_test_unknown">unknown error</string>
+    <string name="geopulse_settings_remove">Disconnect</string>
+    <string name="geopulse_settings_remove_title">Disconnect GeoPulse</string>
+    <string name="geopulse_settings_remove_confirm">Disconnect GeoPulse? Activities you already logged from location history are kept.</string>
+    <string name="geopulse_entry_point">Log from location history</string>
+    <string name="geopulse_title">Log from location history</string>
+    <string name="geopulse_description">Pick a date to see the places GeoPulse recorded. Nothing is saved until you log one, and you choose who you were with.</string>
+    <string name="geopulse_date">Date</string>
+    <string name="geopulse_pick_date">Pick a date</string>
+    <string name="geopulse_look_up">Look up</string>
+    <string name="geopulse_looking_up">Looking up…</string>
+    <string name="geopulse_open_settings">Open GeoPulse settings</string>
+    <string name="geopulse_no_stays">GeoPulse has no recorded stays for this date.</string>
+    <string name="geopulse_unnamed_place">Unnamed place</string>
+    <string name="geopulse_already_logged">Already logged</string>
+    <string name="geopulse_log_activity">Log activity</string>
+    <string name="geopulse_log_activity_at">Log activity at %1$s, %2$s</string>
+    <string name="geopulse_announce_found">Places found: %1$d</string>
+    <string name="geopulse_announce_none">No places found</string>
+    <string name="geopulse_photos">Photos nearby (%1$d)</string>
+    <string name="geopulse_photos_unavailable">Photos could not be checked.</string>
+    <string name="geopulse_duration_minutes">%1$d min</string>
+    <string name="geopulse_duration_hours">%1$d h</string>
+    <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
 </resources>

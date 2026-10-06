@@ -139,6 +139,8 @@ import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionsScreen
+import com.mycorrhizal.crm.feature.settings.GeoPulseSettingsScreen
+import com.mycorrhizal.crm.feature.timeline.GeoPulseSuggestionsScreen
 import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NextcloudSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
@@ -1002,6 +1004,8 @@ private fun AppNavGraph(
     // Issue #150: no drawer at Expanded — drawer-based screens hide their
     // hamburger when this is null.
     val menu: (() -> Unit)? = if (isTwoPane) null else onMenuClick
+    // Issue #160 / #1367: outbound integrations (GeoPulse, ...) are absent on an embedded local server.
+    val integrationsAvailable = !LocalServerCapabilities.current.isEmbedded
 
     NavHost(
         navController = navController,
@@ -1168,8 +1172,15 @@ private fun AppNavGraph(
             )
         }
         composable(
-            route = "contacts/{contactId}/activities/new",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            route = "contacts/{contactId}/activities/new" +
+                "?location={location}&date={date}&externalRef={externalRef}",
+            arguments = listOf(
+                navArgument("contactId") { type = NavType.IntType },
+                // Issue #160: optional create-mode prefill from a GeoPulse stay (read by ActivityFormViewModel).
+                navArgument("location") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("externalRef") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
         ) {
             ActivityFormScreen(
                 onSaved = { navController.popBackStack() },
@@ -1429,6 +1440,28 @@ private fun AppNavGraph(
                 onMenuClick = menu,
                 onActivityClick = { id -> navController.navigate("contacts/0/activities/$id/edit") },
                 onContactClick = { id -> navController.navigate("contacts/$id") },
+                // Issue #160: GeoPulse is an outbound integration — absent on embedded profiles.
+                onLogFromLocation = if (integrationsAvailable) {
+                    { navController.navigate("activities/geopulse") }
+                } else {
+                    null
+                },
+            )
+        }
+        // Issue #160 (ADR 0033): pick a date → GeoPulse stays → tap one to open the pre-filled form.
+        composable("activities/geopulse") {
+            GeoPulseSuggestionsScreen(
+                onBack = { navController.popBackStack() },
+                onLogStay = { stay, prefillDate ->
+                    // contactId 0 = "no route contact": the user picks participants on the form.
+                    navController.navigate(
+                        "contacts/0/activities/new" +
+                            "?location=${Uri.encode(stay.location.ifBlank { stay.city })}" +
+                            "&date=${Uri.encode(prefillDate)}" +
+                            "&externalRef=${Uri.encode(stay.externalRef)}",
+                    )
+                },
+                onOpenSettings = { navController.navigate("geopulse-settings") },
             )
         }
         composable("home") {
@@ -1459,6 +1492,8 @@ private fun AppNavGraph(
                 onPaperlessSettings = { navController.navigate("paperless-settings") },
                 onSeafileSettings = { navController.navigate("seafile-settings") },
                 onNextcloudSettings = { navController.navigate("nextcloud-settings") },
+                // Issue #160: GeoPulse location-history connection settings.
+                onGeoPulseSettings = { navController.navigate("geopulse-settings") },
                 // M26: the one-time legacy circle/tag cleanup tool.
                 onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                 // T104 + address suggestions: the Data review surface.
@@ -1599,6 +1634,12 @@ private fun AppNavGraph(
         }
         composable("nextcloud-settings") {
             NextcloudSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #160: GeoPulse location-history connection settings.
+        composable("geopulse-settings") {
+            GeoPulseSettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

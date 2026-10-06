@@ -1891,4 +1891,44 @@
     <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
     <string name="share_intent_label">Aggiungi nota in Mycorrhizal</string>
     <string name="share_pick_contact_title">Condividi con…</string>
+
+    <!-- Issue #160 (ADR 0033): GeoPulse location-history correlation -->
+    <string name="settings_geopulse_title">GeoPulse</string>
+    <string name="geopulse_settings_description">Collega un\'istanza GeoPulse self-hosted per trasformare un giorno di cronologia delle posizioni in suggerimenti di attività. Nulla viene importato automaticamente: scegli una data, controlli i luoghi e decidi con chi eri. Il token API è memorizzato cifrato sul tuo server.</string>
+    <string name="geopulse_settings_base_url">URL del server GeoPulse</string>
+    <string name="geopulse_settings_base_url_required">L\'URL del server è obbligatorio.</string>
+    <string name="geopulse_settings_base_url_invalid">L\'URL del server deve essere un indirizzo http:// o https://.</string>
+    <string name="geopulse_settings_api_key">Token API</string>
+    <string name="geopulse_settings_api_key_hint_existing">Un token è già memorizzato. Lascia il campo vuoto per mantenerlo.</string>
+    <string name="geopulse_settings_api_key_hint_new">Crea un token in GeoPulse (Profilo → Sicurezza) e incollalo qui.</string>
+    <string name="geopulse_settings_api_key_required">Il token API è obbligatorio per connettersi.</string>
+    <string name="geopulse_settings_api_key_required_origin_change">L\'indirizzo del server è cambiato, quindi inserisci di nuovo il token API. Il token memorizzato non viene mai inviato a un altro server.</string>
+    <string name="geopulse_settings_test">Verifica connessione</string>
+    <string name="geopulse_settings_testing">Verifica in corso…</string>
+    <string name="geopulse_settings_test_success">Verifica della connessione riuscita</string>
+    <string name="geopulse_settings_test_failed">Verifica non riuscita (%1$s): %2$s</string>
+    <string name="geopulse_settings_test_unknown">errore sconosciuto</string>
+    <string name="geopulse_settings_remove">Disconnetti</string>
+    <string name="geopulse_settings_remove_title">Disconnetti GeoPulse</string>
+    <string name="geopulse_settings_remove_confirm">Disconnettere GeoPulse? Le attività già registrate dalla cronologia delle posizioni vengono conservate.</string>
+    <string name="geopulse_entry_point">Registra dalla cronologia delle posizioni</string>
+    <string name="geopulse_title">Registra dalla cronologia delle posizioni</string>
+    <string name="geopulse_description">Scegli una data per vedere i luoghi registrati da GeoPulse. Nulla viene salvato finché non ne registri uno, e decidi tu con chi eri.</string>
+    <string name="geopulse_date">Data</string>
+    <string name="geopulse_pick_date">Scegli una data</string>
+    <string name="geopulse_look_up">Cerca</string>
+    <string name="geopulse_looking_up">Ricerca in corso…</string>
+    <string name="geopulse_open_settings">Apri le impostazioni di GeoPulse</string>
+    <string name="geopulse_no_stays">GeoPulse non ha soste registrate per questa data.</string>
+    <string name="geopulse_unnamed_place">Luogo senza nome</string>
+    <string name="geopulse_already_logged">Già registrata</string>
+    <string name="geopulse_log_activity">Registra attività</string>
+    <string name="geopulse_log_activity_at">Registra attività a %1$s, %2$s</string>
+    <string name="geopulse_announce_found">Luoghi trovati: %1$d</string>
+    <string name="geopulse_announce_none">Nessun luogo trovato</string>
+    <string name="geopulse_photos">Foto nelle vicinanze (%1$d)</string>
+    <string name="geopulse_photos_unavailable">Non è stato possibile controllare le foto.</string>
+    <string name="geopulse_duration_minutes">%1$d min</string>
+    <string name="geopulse_duration_hours">%1$d h</string>
+    <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
 </resources>
