@@ -266,3 +266,57 @@ func loadBaselineForTest(dir string) (map[string]float64, error) {
 	}
 	return parsed.Files, nil
 }
+
+// Issue #1477: the CLI reads a cross-package profile whose blocks repeat once
+// per test binary; the ratchet must merge them (covered if ANY ran) instead
+// of double-counting statements or crediting only the first occurrence.
+func TestRun_MergesRepeatedBlocksFromCrossPackageProfile(t *testing.T) {
+	dir := t.TempDir()
+	cross := `mode: atomic
+mycorrhizal/services/tok.go:1.1,3.2 2 0
+mycorrhizal/services/tok.go:1.1,3.2 2 5
+mycorrhizal/services/tok.go:1.1,3.2 2 0
+`
+	profile := writeProfile(t, dir, "coverage-cross.out", cross)
+	var out bytes.Buffer
+	if code := run([]string{"-profile", profile, "-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("-update exited %d: %s", code, out.String())
+	}
+	data, err := os.ReadFile(filepath.Join(dir, baselinePath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b struct {
+		Files map[string]float64 `json:"files"`
+	}
+	if err := json.Unmarshal(data, &b); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.Files["services/tok.go"]; got != 100 {
+		t.Errorf("services/tok.go baseline = %v, want 100 (covered by one repeat)", got)
+	}
+
+	// Losing the only test that ran the block (every repeat count 0) is a drop.
+	dead := writeProfile(t, dir, "dead.out", "mode: atomic\nmycorrhizal/services/tok.go:1.1,3.2 2 0\nmycorrhizal/services/tok.go:1.1,3.2 2 0\n")
+	out.Reset()
+	if code := run([]string{"-profile", dead, "-root", dir}, &out); code != 1 {
+		t.Fatalf("check exited %d, want 1: %s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "DROP: services/tok.go") {
+		t.Errorf("output = %q", out.String())
+	}
+}
+
+func TestRun_DefaultProfileIsTheCrossPackageProfile(t *testing.T) {
+	dir := t.TempDir()
+	// No -profile flag: must look for coverage-cross.out in the working dir.
+	t.Chdir(dir)
+	var out bytes.Buffer
+	if code := run([]string{"-root", dir}, &out); code != 2 {
+		t.Fatalf("exit %d, want 2 (default profile absent)", code)
+	}
+	writeProfile(t, dir, "coverage-cross.out", twoFileProfile)
+	if code := run([]string{"-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("default profile not picked up: exit %d: %s", code, out.String())
+	}
+}
