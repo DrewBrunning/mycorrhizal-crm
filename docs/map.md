@@ -70,9 +70,14 @@ treated as data you do not want to leave your instance:
 So marking an address private keeps it out of every copy that leaves the instance or reaches someone else, but
 you still see it on your own map.
 
-As of v1.4.0 neither the web nor the Android editor has a control for setting an address's sensitivity. The
-value is set through the REST API (`sensitivity` on an entry in the contact record's `addresses`; see the
-[API reference](api-reference.md)), and the editors keep an existing value when you save.
+In the web contact editor each address has a **Sensitivity** select (Normal, Private, Secret) with a short
+explanation of the chosen level underneath. Changing it also updates **Find coordinates** immediately: a
+private or secret address disables the button and shows why. On the contact page a private or secret address
+shows a small lock icon (hover or screen-reader label: withheld from sync, exports, shares and MCP).
+
+The Android editor does not yet have this control; there the value is set through the web editor or the REST
+API (`sensitivity` on an entry in the contact record's `addresses`; see the [API reference](api-reference.md)),
+and the Android editor keeps an existing value when you save.
 
 ## Operator setup
 

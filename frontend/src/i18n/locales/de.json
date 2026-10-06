@@ -424,7 +424,15 @@
       "coordinatesInvalid": "Gib Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.",
       "findCoordinates": "Koordinaten suchen",
       "findCoordinatesSensitive": "Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Gib die Koordinaten stattdessen von Hand ein.",
-      "findCoordinatesFailed": "Für diese Adresse konnten keine Koordinaten gefunden werden."
+      "findCoordinatesFailed": "Für diese Adresse konnten keine Koordinaten gefunden werden.",
+      "sensitivity": "Vertraulichkeit",
+      "sensitivityNormal": "Normal",
+      "sensitivityPrivate": "Privat",
+      "sensitivitySecret": "Geheim",
+      "sensitivityHelpNormal": "Wird wie jede andere Adresse geteilt und exportiert.",
+      "sensitivityHelpPrivate": "Bleibt auf Ihrer eigenen Karte und in Ihren Backups. Wird von Synchronisierung, Exporten, Freigaben und MCP zurückgehalten, sofern nicht ausdrücklich eingeschlossen.",
+      "sensitivityHelpSecret": "Wie Privat, für Adressen, die mit besonderer Sorgfalt behandelt werden sollen. Bleibt auf Ihrer eigenen Karte und in Backups; wird von Synchronisierung, Exporten, Freigaben und MCP zurückgehalten, sofern nicht ausdrücklich eingeschlossen.",
+      "sensitivityIndicator": "Private oder geheime Adresse: von Synchronisierung, Exporten, Freigaben und MCP ausgenommen"
     },
     "anniversaries": "Jahrestage",
     "socialProfiles": "Soziale Profile",

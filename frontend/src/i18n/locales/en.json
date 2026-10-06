@@ -524,7 +524,15 @@
       "coordinatesInvalid": "Enter latitude (-90 to 90) and longitude (-180 to 180), separated by a comma.",
       "findCoordinates": "Find coordinates",
       "findCoordinatesSensitive": "This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.",
-      "findCoordinatesFailed": "Could not find coordinates for this address."
+      "findCoordinatesFailed": "Could not find coordinates for this address.",
+      "sensitivity": "Sensitivity",
+      "sensitivityNormal": "Normal",
+      "sensitivityPrivate": "Private",
+      "sensitivitySecret": "Secret",
+      "sensitivityHelpNormal": "Shared and exported like any other address.",
+      "sensitivityHelpPrivate": "Kept on your own map and in your backups. Withheld from sync, exports, shares and MCP unless explicitly included.",
+      "sensitivityHelpSecret": "Same as Private, for addresses you want treated with the most care. Kept on your own map and backups; withheld from sync, exports, shares and MCP unless explicitly included.",
+      "sensitivityIndicator": "Private or secret address: withheld from sync, exports, shares and MCP"
     },
     "reviewDuplicates": "Review duplicates"
   },

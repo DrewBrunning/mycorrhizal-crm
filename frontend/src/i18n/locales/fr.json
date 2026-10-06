@@ -424,7 +424,15 @@
       "coordinatesInvalid": "Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.",
       "findCoordinates": "Trouver les coordonnées",
       "findCoordinatesSensitive": "Cette adresse est marquée comme privée ou secrète ; elle n'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.",
-      "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse."
+      "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse.",
+      "sensitivity": "Confidentialité",
+      "sensitivityNormal": "Normale",
+      "sensitivityPrivate": "Privée",
+      "sensitivitySecret": "Secrète",
+      "sensitivityHelpNormal": "Partagée et exportée comme n'importe quelle autre adresse.",
+      "sensitivityHelpPrivate": "Conservée sur votre propre carte et dans vos sauvegardes. Exclue de la synchronisation, des exports, des partages et de MCP, sauf inclusion explicite.",
+      "sensitivityHelpSecret": "Comme Privée, pour les adresses que vous voulez traiter avec le plus grand soin. Conservée sur votre propre carte et vos sauvegardes ; exclue de la synchronisation, des exports, des partages et de MCP, sauf inclusion explicite.",
+      "sensitivityIndicator": "Adresse privée ou secrète : exclue de la synchronisation, des exports, des partages et de MCP"
     },
     "anniversaries": "Anniversaires",
     "socialProfiles": "Profils sociaux",
