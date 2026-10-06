@@ -79,8 +79,10 @@ jobs:
           host="$(uname -m)"
           goarch="$(go env GOARCH)"
           echo "uname -m=$host  go env GOARCH=$goarch"
-          [ "$host" = "aarch64" ] && [ "$goarch" = "arm64" ] \
-            || { echo "::error::expected aarch64/arm64, got $host/$goarch"; exit 1; }
+          if [ "$host" != "aarch64" ] || [ "$goarch" != "arm64" ]; then
+            echo "::error::expected aarch64/arm64, got $host/$goarch"
+            exit 1
+          fi
 
       - name: Vet (arm64)
         working-directory: backend
