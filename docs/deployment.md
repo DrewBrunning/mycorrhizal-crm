@@ -158,6 +158,28 @@ Obtainium (GitHub Releases) build only; until the Google Play and F-Droid signin
 If the app reports that the server is not set up for Android passkeys, check the four points above
 first. The server does not call Google, so it cannot tell you whether Google can see the file.
 
+## Contact map and geocoding
+
+The [contact map](map.md) works out of the box: it loads tiles from the free hosted OpenFreeMap service, and geocoding
+("Find coordinates") is off. Three instance-wide settings change that; each needs a restart, and the defaults and
+validation rules are in the [configuration reference](configuration-reference.md).
+
+| Variable | Default | Effect |
+|---|---|---|
+| `MAP_TILE_STYLE_URL` | `https://tiles.openfreemap.org/styles/liberty` | MapLibre style JSON URL the web and Android maps load tiles from |
+| `GEOCODER_PROVIDER` | `none` | `nominatim` or `maptiler` turns on the per-address "Find coordinates" lookup; the address text of that one address is sent to the provider |
+| `GEOCODER_API_KEY` | empty | Required for `maptiler`; unused for `nominatim` |
+
+- The map needs the tile host to be reachable from the user's browser. v1.4.1 and later derive the allowed tile origin
+  from `MAP_TILE_STYLE_URL` automatically; on v1.4.0 the bundled nginx Content-Security-Policy is not derived from it, so
+  check the CSP first if the web map is blank.
+- `GET /api/v1/config/map` is public and returns only the tile style URL.
+- The public Nominatim instance allows one request per second; the server throttles itself to that.
+- Geocoding is an outbound integration: it is absent in an Android local (on-device) profile, and
+  [`integration-ownership.md`](integration-ownership.md#geocoder) describes its failure behaviour.
+- Set `GEOPULSE_BLOCK_PRIVATE_URLS=true` alongside the other `*_BLOCK_PRIVATE_URLS` flags above if you expose the
+  instance to the internet and users can configure the optional [GeoPulse connection](settings.md#geopulse).
+
 ## Multi-user instances
 
 One deployment can host several independent users, each with their own contacts, graph,

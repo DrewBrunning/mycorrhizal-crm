@@ -17,8 +17,13 @@ type ActivityInput struct {
 	// Type/ExternalRef are Interaction fields (activity.go) -- open/
 	// conventional, no oneof validation, matching Activity.Type's own doc
 	// comment on why it's deliberately unvalidated.
-	Type        string `json:"type,omitempty"`
-	ExternalRef string `json:"external_ref,omitempty"`
+	// Type is a pointer for the same reason as ExternalRef: on PUT an absent/null
+	// key keeps the stored type, "" clears it.
+	Type *string `json:"type,omitempty"`
+	// ExternalRef is a pointer so an absent key is distinguishable from an
+	// explicit "": on PUT, absent/null keeps the stored value (a web edit never
+	// sends it and must not wipe a geopulse:stay:<id> dedupe key), "" clears it.
+	ExternalRef *string `json:"external_ref,omitempty"`
 }
 
 // CircleInput is the DTO for creating/updating a Circle (circle.go). Only
@@ -82,6 +87,37 @@ type ApplyContactAddressSuggestionInput struct {
 	SourceKind      string `json:"source_kind" validate:"required,oneof=relationship household"`
 	SourceID        string `json:"source_id" validate:"required"`
 	AddressKey      string `json:"address_key" validate:"required"`
+}
+
+// GeocodeDraftInput is the DTO for POST /contacts/:id/addresses/geocode, the
+// stateless draft lookup (ADR 0031 amendment, issue #1286 follow-up). It
+// carries exactly the postal fields the geocoder reads plus the address's
+// sensitivity, so the editor can resolve coordinates for an address that is
+// not saved yet (or whose text has unsaved edits) without persisting anything:
+// the result is returned to the client and lands on the address when the
+// contact is next saved. Coordinate/ID are intentionally absent — this body
+// never writes an address.
+type GeocodeDraftInput struct {
+	Street      string `json:"street" validate:"max=500"`
+	City        string `json:"city" validate:"max=200"`
+	Region      string `json:"region" validate:"max=200"`
+	Postal      string `json:"postal" validate:"max=30"`
+	Country     string `json:"country" validate:"max=100"`
+	Sensitivity string `json:"sensitivity" validate:"omitempty,oneof=normal private secret"`
+}
+
+// ToContactAddress projects the input onto the flat address shape the geocoder
+// and the sensitivity gate read. Only the postal fields are populated; no ID or
+// coordinate is set.
+func (in *GeocodeDraftInput) ToContactAddress() ContactAddress {
+	return ContactAddress{
+		Street:      in.Street,
+		City:        in.City,
+		Region:      in.Region,
+		Postal:      in.Postal,
+		Country:     in.Country,
+		Sensitivity: in.Sensitivity,
+	}
 }
 
 // TagInput is the DTO for creating/updating a Tag (tag.go). Only Name is

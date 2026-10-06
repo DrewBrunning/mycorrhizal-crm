@@ -54,4 +54,12 @@ case "${COOKIE_SECURE:-false}" in
         ;;
 esac
 
+# Render the SPA Content-Security-Policy's map-tile origin (issue #1286
+# follow-up) from MAP_TILE_STYLE_URL into /etc/nginx/csp_tile.conf, which
+# docker/nginx.conf includes to define $csp_tile_origin, exactly like hsts.conf
+# above. Parsing/validation lives in the script shared with the split frontend
+# image; an unusable URL aborts startup (set -e) rather than shipping a CSP
+# that silently blocks the basemap.
+/app/render-csp-tile.sh /etc/nginx/csp_tile.conf
+
 exec "$@"

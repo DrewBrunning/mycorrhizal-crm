@@ -240,7 +240,7 @@ Resolves ONE explicitly-chosen postal address to a coordinate via the operator-s
 
 - **Criticality** — optional. Default off (GEOCODER_PROVIDER=none). Coordinates can always be entered by hand or arrive with an imported card; the map plots whatever already has one.
 - **Direction** — outbound. Address text (street, city, region, postcode, country — never PO box/apartment/floor) goes out; a coordinate comes back. Map tiles are fetched by the client straight from MAP_TILE_STYLE_URL's host and never carry an address.
-- **Cadence** — interactive. Only when a user presses 'find coordinates' on one address (POST /contacts/:id/addresses/:addressId/geocode). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.
+- **Cadence** — interactive. Only when a user presses 'find coordinates' on one address — the persisted POST /contacts/:id/addresses/:addressId/geocode or the stateless draft POST /contacts/:id/addresses/geocode (ADR 0031 amendment). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.
 - **Data authority** — enrichment. The geocoder adds a derived coordinate to an address we own and keeps no state we depend on. Removing it leaves every stored coordinate in place; an in-memory cache (lost on restart) bounds repeat lookups.
 - **Failure impact** — blocked-workflow. The user presses 'find coordinates' and gets an error; they can retry later or enter coordinates by hand. Nothing else depends on it.
 - **Timeout** — 15s. services.geocoderRequestTimeout on the http.Client (also TLSHandshakeTimeout 10s / ResponseHeaderTimeout 10s on the transport); the nominatim 1 req/s throttle wait is additionally bounded by the request context.

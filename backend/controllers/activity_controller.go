@@ -48,8 +48,16 @@ func CreateActivity(c *gin.Context) {
 	// the same stay returns the Activity it already created instead of a second
 	// one. Application-level lookup-before-create scoped to user_id — no unique
 	// index, no schema change to Activity.
-	if strings.HasPrefix(activityInput.ExternalRef, services.GeoPulseStayRefPrefix) {
-		existing, err := services.FindActivityByExternalRef(db, userID, activityInput.ExternalRef)
+	activityType := ""
+	if activityInput.Type != nil {
+		activityType = *activityInput.Type
+	}
+	externalRef := ""
+	if activityInput.ExternalRef != nil {
+		externalRef = *activityInput.ExternalRef
+	}
+	if strings.HasPrefix(externalRef, services.GeoPulseStayRefPrefix) {
+		existing, err := services.FindActivityByExternalRef(db, userID, externalRef)
 		if err != nil {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to check for an existing activity").WithError(err))
 			return
@@ -67,8 +75,8 @@ func CreateActivity(c *gin.Context) {
 		Date:        activityInput.Date,
 		Description: activityInput.Description,
 		Location:    activityInput.Location,
-		Type:        activityInput.Type,
-		ExternalRef: activityInput.ExternalRef,
+		Type:        activityType,
+		ExternalRef: externalRef,
 	}
 	if err := db.Create(&activity).Error; err != nil {
 		logger.FromContext(c).Error().Err(err).Msg("Error saving activity to database")
@@ -298,8 +306,14 @@ func UpdateActivity(c *gin.Context) {
 	activity.Description = activityInput.Description
 	activity.Location = activityInput.Location
 	activity.Date = activityInput.Date
-	activity.Type = activityInput.Type
-	activity.ExternalRef = activityInput.ExternalRef
+	// Omitted/null type keeps the stored value; an explicit "" clears it.
+	if activityInput.Type != nil {
+		activity.Type = *activityInput.Type
+	}
+	// Omitted/null external_ref keeps the stored value; an explicit "" clears it.
+	if activityInput.ExternalRef != nil {
+		activity.ExternalRef = *activityInput.ExternalRef
+	}
 
 	// Update contacts association if contact_ids are provided
 	if activityInput.ContactIDs != nil {

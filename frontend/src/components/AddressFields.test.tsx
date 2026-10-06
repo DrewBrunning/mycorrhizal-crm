@@ -157,7 +157,7 @@ const geocodeMock = vi.hoisted(() => vi.fn());
 beforeEach(() => geocodeMock.mockReset());
 vi.mock('../api/map', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/map')>()),
-  geocodeAddress: geocodeMock,
+  geocodeDraft: geocodeMock,
 }));
 
 function renderWithContact(
@@ -220,21 +220,54 @@ test('clearing the field removes the coordinates', () => {
   expect(screen.queryByText(/Enter latitude/)).not.toBeInTheDocument();
 });
 
-test('find coordinates geocodes the saved address and fills the field', async () => {
+test('find coordinates geocodes the draft address and fills the field', async () => {
   geocodeMock.mockResolvedValueOnce({
-    address_id: 'a',
     coordinates: 'geo:48.85,2.35',
     cached: false,
   });
   const { last } = renderWithContact([addr({ id: 'a', street: '1 Rue' })]);
   fireEvent.click(findButton());
   await waitFor(() => expect(last()?.[0].coordinates).toBe('geo:48.85,2.35'));
-  expect(geocodeMock).toHaveBeenCalledWith(7, 'a');
+  expect(geocodeMock).toHaveBeenCalledWith(7, {
+    street: '1 Rue',
+    city: '',
+    region: '',
+    postal: '',
+    country: '',
+  });
   expect(coordField()).toHaveValue('48.85, 2.35');
 });
 
+// The bug this covers: the button used to require a saved address id, so a
+// brand-new row had to be saved (and the form re-entered) before it could be
+// geocoded. The draft lookup geocodes the text as typed.
+test('a new address with no id can be geocoded without saving first', async () => {
+  geocodeMock.mockResolvedValueOnce({ coordinates: 'geo:51.5,-0.12', cached: false });
+  const { last } = renderWithContact([addr({ street: '10 Downing St', city: 'London' })]);
+  expect(findButton()).toBeEnabled();
+  fireEvent.click(findButton());
+  await waitFor(() => expect(last()?.[0].coordinates).toBe('geo:51.5,-0.12'));
+  expect(geocodeMock).toHaveBeenCalledWith(7, {
+    street: '10 Downing St',
+    city: 'London',
+    region: '',
+    postal: '',
+    country: '',
+  });
+});
+
+test('the draft lookup carries unsaved text edits to the geocoder', async () => {
+  geocodeMock.mockResolvedValueOnce({ coordinates: 'geo:1,2', cached: false });
+  renderWithContact([addr({ id: 'a', street: 'Old St' })]);
+  fireEvent.change(screen.getByLabelText('Street'), { target: { value: 'New St' } });
+  fireEvent.click(findButton());
+  await waitFor(() =>
+    expect(geocodeMock).toHaveBeenCalledWith(7, expect.objectContaining({ street: 'New St' })),
+  );
+});
+
 test('find coordinates overrides a half-typed draft with the result', async () => {
-  geocodeMock.mockResolvedValueOnce({ address_id: 'a', coordinates: 'geo:1,2', cached: true });
+  geocodeMock.mockResolvedValueOnce({ coordinates: 'geo:1,2', cached: true });
   renderWithContact([addr({ id: 'a' })]);
   fireEvent.change(coordField(), { target: { value: '9,' } });
   fireEvent.click(findButton());
@@ -247,7 +280,7 @@ test('is disabled while a lookup is in flight', async () => {
   renderWithContact([addr({ id: 'a' })]);
   fireEvent.click(findButton());
   await waitFor(() => expect(findButton()).toBeDisabled());
-  resolve({ address_id: 'a', coordinates: 'geo:1,2', cached: false });
+  resolve({ coordinates: 'geo:1,2', cached: false });
   await waitFor(() => expect(findButton()).toBeEnabled());
 });
 
@@ -259,7 +292,7 @@ test('a failed lookup shows the error and leaves coordinates alone, then clears 
   expect(last()).toBeUndefined();
   expect(findButton()).toBeEnabled();
 
-  geocodeMock.mockResolvedValueOnce({ address_id: 'a', coordinates: 'geo:1,2', cached: false });
+  geocodeMock.mockResolvedValueOnce({ coordinates: 'geo:1,2', cached: false });
   fireEvent.click(findButton());
   await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
 });
@@ -293,20 +326,64 @@ test('a normal-sensitivity address is not blocked', () => {
   expect(screen.queryByText(/never sent to the geocoder/)).not.toBeInTheDocument();
 });
 
-test('an unsaved address (no id) asks to save first', () => {
-  renderWithContact([addr()]);
-  expect(findButton()).toBeDisabled();
-  expect(screen.getByText(/Save this address first/)).toBeInTheDocument();
-});
-
-test('without a contact id (creating) the action is disabled with the save-first reason', () => {
+test('without a contact id the action is disabled (no ownership anchor)', () => {
   renderWithContact([addr({ id: 'a' })], {});
   expect(findButton()).toBeDisabled();
-  expect(screen.getByText(/Save this address first/)).toBeInTheDocument();
 });
 
-test('sensitivity reason takes precedence over save-first', () => {
+test('a sensitive address is still blocked even when unsaved', () => {
   renderWithContact([addr({ sensitivity: 'private' })]);
+  expect(findButton()).toBeDisabled();
   expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
-  expect(screen.queryByText(/Save this address first/)).not.toBeInTheDocument();
+});
+
+// --- Per-address sensitivity picker (ADR 0031) ---
+
+const sensitivitySelect = () => screen.getByRole('combobox', { name: 'Sensitivity' });
+
+function chooseSensitivity(label: 'Normal' | 'Private' | 'Secret') {
+  fireEvent.mouseDown(sensitivitySelect());
+  fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: label }));
+}
+
+test('an address with no sensitivity shows Normal with its explanation', () => {
+  renderWithContact([addr({ id: 'a' })]);
+  expect(sensitivitySelect()).toHaveTextContent('Normal');
+  expect(screen.getByText('Shared and exported like any other address.')).toBeInTheDocument();
+});
+
+test.each(['Private', 'Secret'] as const)('choosing %s emits it in the value', (label) => {
+  const { last } = renderWithContact([addr({ id: 'a', street: '1 Main St' })]);
+  chooseSensitivity(label);
+  expect(last()?.[0]).toMatchObject({
+    id: 'a',
+    street: '1 Main St',
+    sensitivity: label.toLowerCase(),
+  });
+  expect(sensitivitySelect()).toHaveTextContent(label);
+  expect(screen.getByText(/ithheld from sync, exports, shares and MCP/)).toBeInTheDocument();
+});
+
+test('an existing sensitivity is shown and preserved through unrelated edits', () => {
+  const { last } = renderWithContact([addr({ id: 'a', sensitivity: 'secret' })]);
+  expect(sensitivitySelect()).toHaveTextContent('Secret');
+  fireEvent.change(screen.getByLabelText('City'), { target: { value: 'Oslo' } });
+  expect(last()?.[0]).toMatchObject({ city: 'Oslo', sensitivity: 'secret' });
+});
+
+test('moving back to Normal emits an explicit normal', () => {
+  const { last } = renderWithContact([addr({ id: 'a', sensitivity: 'private' })]);
+  chooseSensitivity('Normal');
+  expect(last()?.[0].sensitivity).toBe('normal');
+});
+
+test('changing sensitivity updates Find coordinates live', () => {
+  renderWithContact([addr({ id: 'a' })]);
+  expect(findButton()).toBeEnabled();
+  chooseSensitivity('Private');
+  expect(findButton()).toBeDisabled();
+  expect(screen.getByText(/never sent to the geocoder/)).toBeInTheDocument();
+  chooseSensitivity('Normal');
+  expect(findButton()).toBeEnabled();
+  expect(screen.queryByText(/never sent to the geocoder/)).not.toBeInTheDocument();
 });

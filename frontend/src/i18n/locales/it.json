@@ -423,9 +423,16 @@
       "coordinatesHelp": "Ad esempio 51.5007, -0.1246",
       "coordinatesInvalid": "Inserisci latitudine (da -90 a 90) e longitudine (da -180 a 180), separate da una virgola.",
       "findCoordinates": "Trova coordinate",
-      "findCoordinatesSaveFirst": "Salva prima questo indirizzo. Le coordinate vengono cercate per l'indirizzo salvato.",
       "findCoordinatesSensitive": "Questo indirizzo è contrassegnato come privato o segreto, quindi non viene mai inviato al geocoder. Inserisci le coordinate a mano.",
-      "findCoordinatesFailed": "Impossibile trovare le coordinate per questo indirizzo."
+      "findCoordinatesFailed": "Impossibile trovare le coordinate per questo indirizzo.",
+      "sensitivity": "Riservatezza",
+      "sensitivityNormal": "Normale",
+      "sensitivityPrivate": "Privato",
+      "sensitivitySecret": "Segreto",
+      "sensitivityHelpNormal": "Condiviso ed esportato come qualsiasi altro indirizzo.",
+      "sensitivityHelpPrivate": "Resta sulla tua mappa e nei tuoi backup. Escluso da sincronizzazione, esportazioni, condivisioni e MCP, salvo inclusione esplicita.",
+      "sensitivityHelpSecret": "Come Privato, per gli indirizzi da trattare con la massima cura. Resta sulla tua mappa e nei backup; escluso da sincronizzazione, esportazioni, condivisioni e MCP, salvo inclusione esplicita.",
+      "sensitivityIndicator": "Indirizzo privato o segreto: escluso da sincronizzazione, esportazioni, condivisioni e MCP"
     },
     "anniversaries": "Anniversari",
     "socialProfiles": "Profil social",
@@ -1019,6 +1026,9 @@
       "unnamedPlace": "Luogo senza nome",
       "alreadyLogged": "Già registrata",
       "logActivity": "Registra attività",
+      "logActivityAt": "Registra attività a {{place}}, {{time}}",
+      "announceFound": "Luoghi trovati: {{count}}",
+      "announceNone": "Nessun luogo trovato",
       "photos": "Foto nelle vicinanze ({{count}})",
       "photosUnavailable": "Non è stato possibile controllare le foto.",
       "durationMinutes": "{{count}} min",
@@ -1734,7 +1744,10 @@
     "count_other": "{{count}} indirizzi sulla mappa",
     "openContact": "Apri contatto",
     "unavailable": "Impossibile mostrare la mappa. Il tuo browser potrebbe non supportare WebGL.",
-    "truncated": "Vengono mostrati solo i primi {{count}} indirizzi; la mappa è limitata a questo numero di punti."
+    "truncated": "Vengono mostrati solo i primi {{count}} indirizzi; la mappa è limitata a questo numero di punti.",
+    "listHeading": "Contatti sulla mappa",
+    "unnamed": "Contatto senza nome",
+    "styleFailed": "Non è stato possibile caricare lo sfondo della mappa; i contatti sono elencati di seguito."
   },
   "contactScore": {
     "badge": {

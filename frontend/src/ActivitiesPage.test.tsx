@@ -303,7 +303,7 @@ test('Log from location history opens the GeoPulse dialog and a confirmed stay r
 
   fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-20' } });
   fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Log activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
 
   fireEvent.change(await screen.findByLabelText('Title *'), { target: { value: 'Coffee' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));

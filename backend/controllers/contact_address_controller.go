@@ -12,6 +12,7 @@ import (
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 )
@@ -48,7 +49,7 @@ func MapConfigHandler(cfg *config.Config) gin.HandlerFunc {
 // controller tests can substitute a fake provider without opening a socket.
 type addressGeocoder interface {
 	Enabled() bool
-	GeocodeAddress(ctx context.Context, addr models.ContactAddress) (coordinates string, cached bool, err error)
+	GeocodeAddress(ctx context.Context, userID uint, addr models.ContactAddress) (coordinates string, cached bool, err error)
 }
 
 // GeocodeContactAddress handles POST /contacts/:id/addresses/:addressId/geocode
@@ -103,7 +104,7 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 			return
 		}
 
-		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), addr)
+		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), userID, addr)
 		if err != nil {
 			abortGeocodeError(c, err)
 			return
@@ -122,8 +123,88 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 			return
 		}
 
+		// The save bumped the revision/ETag, so this is a real contact change:
+		// notify webhook consumers exactly as UpdateContact does (same event,
+		// same payload). The stateless draft route writes nothing and fires none.
+		services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", contact)
+
 		c.JSON(http.StatusOK, gin.H{
 			"address_id":  addressID,
+			"coordinates": coordinates,
+			"cached":      cached,
+		})
+	}
+}
+
+// GeocodeContactAddressDraft handles POST /contacts/:id/addresses/geocode
+// (ADR 0031 amendment, issue #1286 follow-up): the stateless counterpart of
+// GeocodeContactAddress. It geocodes the address *as submitted in the body*
+// and returns the coordinate WITHOUT writing anything, so the editor can
+// resolve coordinates for a not-yet-saved address or one whose text has
+// unsaved edits. The coordinate then rides the ordinary contact save — which
+// means Discard correctly reverts it, unlike the persisted route.
+//
+// Same privacy boundary as the persisted route: one explicit lookup, only the
+// postal fields (street, city, region, postcode, country) are sent, and an
+// address above normal sensitivity is refused with 400 unless the request
+// carries ?include_sensitive=true. The contact lookup is ownership-scoped so
+// an unknown or other user's contact is a 404, never a cross-tenant anchor.
+func GeocodeContactAddressDraft(geocoder addressGeocoder) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := requirePathUintID(c, "id")
+		if !ok {
+			return
+		}
+		input, verr := middleware.GetValidated[models.GeocodeDraftInput](c)
+		if verr != nil {
+			apperrors.AbortWithError(c, verr)
+			return
+		}
+		db := c.MustGet("db").(*gorm.DB)
+		userID, ok := currentUserID(c)
+		if !ok {
+			return
+		}
+
+		// Ownership anchor, matching the persisted route: the contact must be
+		// this user's (and not soft-deleted). Its contents are not read — the
+		// body is authoritative — but the row must exist so a draft lookup
+		// cannot be driven through a stranger's contact.
+		var contact models.Contact
+		if err := db.Select("id").Where("user_id = ?", userID).First(&contact, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", id))
+			} else {
+				apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
+			}
+			return
+		}
+
+		addr := input.ToContactAddress()
+		// Sensitivity gate first, exactly as the persisted route: a refused
+		// address must never reach the geocoder, and the answer must not
+		// depend on whether geocoding is enabled.
+		if addr.Sensitivity != "" && addr.Sensitivity != models.RelationshipSensitivityNormal && !includeSensitiveRequested(c) {
+			apperrors.AbortWithError(c, apperrors.ErrValidation("This address is marked "+addr.Sensitivity+
+				"; send include_sensitive=true to geocode it").
+				WithDetails("sensitivity", addr.Sensitivity))
+			return
+		}
+
+		if !geocoder.Enabled() {
+			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()))
+			return
+		}
+
+		coordinates, cached, err := geocoder.GeocodeAddress(c.Request.Context(), userID, addr)
+		if err != nil {
+			abortGeocodeError(c, err)
+			return
+		}
+
+		// No persistence: the client holds the coordinate in the draft until
+		// the contact is saved through the ordinary update path.
+		c.JSON(http.StatusOK, gin.H{
 			"coordinates": coordinates,
 			"cached":      cached,
 		})

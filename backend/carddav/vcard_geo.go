@@ -69,49 +69,103 @@ func adrGeoParamsToProperties(card vcard.Card) {
 	}
 }
 
-// takeGeoCoordinates is the write-side (PUT) half: it removes every standalone
-// GEO property and any ADR GEO parameter from card, returning the coordinates
-// keyed by PROP-ID and, for a client that stripped PROP-ID, in the order seen.
+// takeGeoCoordinates is the write-side (PUT) half: it removes every ADR GEO
+// parameter, and every standalone GEO property that applyGeoCoordinates will
+// actually attach to an address, from card. It returns:
+//
+//   - byAdr: coordinates read off an ADR GEO parameter, keyed by the ADR's index
+//     in card[ADR]. A parameter is intrinsically bound to its own ADR, so it
+//     needs no PROP-ID or positional matching (and is unaffected by whether any
+//     other coordinate carried a PROP-ID). The vcard4 adapter imports ADRs into
+//     Card.Addresses in card order, so the index is the imported address index.
+//   - byID / ordered: coordinates from standalone GEO properties, keyed by
+//     PROP-ID and, for a client that stripped PROP-ID, in the order seen.
+//
 // Callers apply them to the imported neutral addresses with applyGeoCoordinates.
-func takeGeoCoordinates(card vcard.Card) (byID map[string]string, ordered []string) {
+//
+// GEO is a contact-level property (RFC 6350, cardinality *), so a standalone
+// GEO that no address will claim — no ADR carries its PROP-ID, or there are more
+// positional GEOs than addresses, or its value is not a geo: URI — is left on
+// the card: the vcard4 adapter does not map a standalone GEO, so it keeps it in
+// Record.Passthrough.VCard and the GET path re-emits it, exactly as before
+// issue #1434. Consuming it unconditionally silently deleted it.
+func takeGeoCoordinates(card vcard.Card) (byAdr map[int]string, byID map[string]string, ordered []string) {
+	byAdr = map[int]string{}
 	byID = map[string]string{}
 	ordered = []string{}
 
-	collect := func(raw []string, id string) {
-		coord := normalizeGeoCoordinate(strings.Join(raw, ","))
-		if coord == "" {
-			return
-		}
-		ordered = append(ordered, coord)
-		if id != "" {
-			byID[id] = coord
-		}
-	}
-
-	for _, geo := range card[vcard4.PropGeo] {
-		collect([]string{geo.Value}, geo.Params.Get(vcard4.ParamPropID))
-	}
-	delete(card, vcard4.PropGeo)
-
+	adrIDs := map[string]bool{}
 	for _, adr := range card[vcard4.PropAdr] {
+		if id := adr.Params.Get(vcard4.ParamPropID); id != "" {
+			adrIDs[id] = true
+		}
+	}
+	addrCount := len(card[vcard4.PropAdr])
+
+	// ADR parameters: bound directly to their own ADR.
+	for i, adr := range card[vcard4.PropAdr] {
 		raw, ok := adr.Params[vcard4.ParamGeo]
 		if !ok {
 			continue
 		}
-		collect(raw, adr.Params.Get(vcard4.ParamPropID))
+		if coord := normalizeGeoCoordinate(strings.Join(raw, ",")); coord != "" {
+			byAdr[i] = coord
+		}
 		delete(adr.Params, vcard4.ParamGeo)
 	}
-	return byID, ordered
+
+	type entry struct {
+		id    string
+		field *vcard.Field
+	}
+	var entries []entry
+	var kept []*vcard.Field
+	for _, geo := range card[vcard4.PropGeo] {
+		coord := normalizeGeoCoordinate(geo.Value)
+		if coord == "" {
+			kept = append(kept, geo) // not a coordinate: keep verbatim
+			continue
+		}
+		id := geo.Params.Get(vcard4.ParamPropID)
+		ordered = append(ordered, coord)
+		if id != "" {
+			byID[id] = coord
+		}
+		entries = append(entries, entry{id: id, field: geo})
+	}
+
+	// Mirror applyGeoCoordinates: by PROP-ID when any standalone coordinate
+	// carried one, otherwise positionally over the addresses.
+	positional := len(byID) == 0
+	for i, e := range entries {
+		if (positional && i < addrCount) || (!positional && e.id != "" && adrIDs[e.id]) {
+			continue // applied to an address: consumed
+		}
+		kept = append(kept, e.field)
+	}
+
+	if len(kept) == 0 {
+		delete(card, vcard4.PropGeo)
+	} else {
+		card[vcard4.PropGeo] = kept
+	}
+	return byAdr, byID, ordered
 }
 
-// applyGeoCoordinates sets the coordinate on each imported address, matching by
-// the same ID the vcard4 adapter derived from the ADR's PROP-ID. If the client
-// preserved no PROP-ID at all, the coordinates are applied positionally.
-func applyGeoCoordinates(record *contactmodel.Record, byID map[string]string, ordered []string) {
+// applyGeoCoordinates sets the coordinate on each imported address. An ADR GEO
+// parameter (byAdr, keyed by address index) always wins for its own address.
+// Standalone GEO properties are matched by the same ID the vcard4 adapter
+// derived from the ADR's PROP-ID; if the client preserved no PROP-ID on any
+// standalone GEO, they are applied positionally.
+func applyGeoCoordinates(record *contactmodel.Record, byAdr map[int]string, byID map[string]string, ordered []string) {
 	if record == nil {
 		return
 	}
 	for i := range record.Card.Addresses {
+		if coord, ok := byAdr[i]; ok {
+			record.Card.Addresses[i].Coordinates = coord
+			continue
+		}
 		if coord, ok := byID[record.Card.Addresses[i].ID]; ok {
 			record.Card.Addresses[i].Coordinates = coord
 			continue

@@ -375,10 +375,11 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// the adapter does not read a standalone GEO property, and go-vcard mangles
 	// the parameter's comma/colon value. Pull the coordinates off the wire
 	// before the re-encode, and re-apply them after Import.
+	var coordsByAdr map[int]string
 	var coordsByID map[string]string
 	var coordsOrdered []string
 	if isVCard4(card) {
-		coordsByID, coordsOrdered = takeGeoCoordinates(card)
+		coordsByAdr, coordsByID, coordsOrdered = takeGeoCoordinates(card)
 	}
 
 	// Route the incoming vCard through the vcard4/vcard3 adapters instead of
@@ -400,7 +401,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	for _, d := range diags {
 		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
 	}
-	applyGeoCoordinates(record, coordsByID, coordsOrdered)
+	applyGeoCoordinates(record, coordsByAdr, coordsByID, coordsOrdered)
 
 	// A WebDAV PUT replaces the whole resource, but contactToAddressObject
 	// withholds above-normal addresses (RecordForContactForSync), so the

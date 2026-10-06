@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { getMapConfig, getMapPoints, type MapPoint } from './api/map';
 import ContactMap from './components/ContactMap';
+import MapPointList from './components/MapPointList';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
 
@@ -70,6 +71,7 @@ export default function MapPage() {
             points={points}
             onOpenContact={(id) => void navigate(`/contacts/${id}`)}
           />
+          <MapPointList points={points} />
         </>
       )}
     </Box>

@@ -152,7 +152,7 @@ func geocoderIntegration() Integration {
 		DirectionNote: "Address text (street, city, region, postcode, country — never PO box/apartment/floor) goes out; a coordinate comes back. Map tiles are fetched by the client straight from MAP_TILE_STYLE_URL's host and never carry an address.",
 
 		Cadence:     CadenceInteractive,
-		CadenceNote: "Only when a user presses 'find coordinates' on one address (POST /contacts/:id/addresses/:addressId/geocode). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.",
+		CadenceNote: "Only when a user presses 'find coordinates' on one address — the persisted POST /contacts/:id/addresses/:addressId/geocode or the stateless draft POST /contacts/:id/addresses/geocode (ADR 0031 amendment). Never automatic, never bulk; an address above normal sensitivity needs include_sensitive=true.",
 
 		DataAuthority:     AuthorityEnrichment,
 		DataAuthorityNote: "The geocoder adds a derived coordinate to an address we own and keeps no state we depend on. Removing it leaves every stored coordinate in place; an in-memory cache (lost on restart) bounds repeat lookups.",

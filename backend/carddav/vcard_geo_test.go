@@ -84,12 +84,14 @@ func TestTakeGeoCoordinates(t *testing.T) {
 	card[vcard4.PropAdr] = []*vcard.Field{{
 		Value:  ";;3 Third St;;;;",
 		Params: vcard.Params{vcard4.ParamGeo: []string{"geo:3", "3"}, vcard4.ParamPropID: []string{"addr-3"}},
-	}}
+	}, {Value: ";;1;;;;", Params: vcard.Params{vcard4.ParamPropID: []string{"addr-1"}}},
+		{Value: ";;2;;;;", Params: vcard.Params{vcard4.ParamPropID: []string{"addr-2"}}}}
 
-	byID, ordered := takeGeoCoordinates(card)
+	byAdr, byID, ordered := takeGeoCoordinates(card)
 
-	assert.Equal(t, map[string]string{"addr-1": "geo:1,1", "addr-2": "geo:2,2", "addr-3": "geo:3,3"}, byID)
-	assert.Equal(t, []string{"geo:1,1", "geo:2,2", "geo:3,3"}, ordered)
+	assert.Equal(t, map[int]string{0: "geo:3,3"}, byAdr, "an ADR parameter is bound to its own ADR index")
+	assert.Equal(t, map[string]string{"addr-1": "geo:1,1", "addr-2": "geo:2,2"}, byID)
+	assert.Equal(t, []string{"geo:1,1", "geo:2,2"}, ordered)
 	assert.Empty(t, card[vcard4.PropGeo], "the GEO properties are consumed")
 	assert.Empty(t, card[vcard4.PropAdr][0].Params[vcard4.ParamGeo], "the ADR GEO parameter is consumed")
 }
@@ -101,21 +103,28 @@ func TestApplyGeoCoordinates(t *testing.T) {
 
 	t.Run("by ID", func(t *testing.T) {
 		rec := record
-		applyGeoCoordinates(rec, map[string]string{"addr-2": "geo:2,2"}, nil)
+		applyGeoCoordinates(rec, nil, map[string]string{"addr-2": "geo:2,2"}, nil)
 		assert.Empty(t, rec.Card.Addresses[0].Coordinates)
 		assert.Equal(t, "geo:2,2", rec.Card.Addresses[1].Coordinates)
 	})
 
 	t.Run("positionally when no ID matched", func(t *testing.T) {
 		rec := &contactmodel.Record{Card: contactmodel.Card{Addresses: []contactmodel.Address{{ID: ""}, {ID: ""}}}}
-		applyGeoCoordinates(rec, map[string]string{}, []string{"geo:1,1", "geo:2,2"})
+		applyGeoCoordinates(rec, nil, map[string]string{}, []string{"geo:1,1", "geo:2,2"})
 		assert.Equal(t, "geo:1,1", rec.Card.Addresses[0].Coordinates)
 		assert.Equal(t, "geo:2,2", rec.Card.Addresses[1].Coordinates)
 	})
 
+	t.Run("ADR parameter index wins over ID and position", func(t *testing.T) {
+		rec := &contactmodel.Record{Card: contactmodel.Card{Addresses: []contactmodel.Address{{ID: "a"}, {ID: "b"}}}}
+		applyGeoCoordinates(rec, map[int]string{1: "geo:5,5"}, map[string]string{"a": "geo:1,1", "b": "geo:9,9"}, nil)
+		assert.Equal(t, "geo:1,1", rec.Card.Addresses[0].Coordinates)
+		assert.Equal(t, "geo:5,5", rec.Card.Addresses[1].Coordinates)
+	})
+
 	t.Run("no coordinates is a no-op", func(t *testing.T) {
 		rec := &contactmodel.Record{Card: contactmodel.Card{Addresses: []contactmodel.Address{{ID: "addr-1"}}}}
-		applyGeoCoordinates(rec, nil, nil)
+		applyGeoCoordinates(rec, nil, nil, nil)
 		assert.Empty(t, rec.Card.Addresses[0].Coordinates)
 	})
 }

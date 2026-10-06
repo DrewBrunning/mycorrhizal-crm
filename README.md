@@ -116,6 +116,22 @@ given and gifts received, with notes and links. Contacts can link to identified 
 [ownCloud](https://owncloud.com/) via read-only links. A configurable link registry also supports
 custom links such as `tel:`, `sms:` and WhatsApp.
 
+**Contact Map** plots every address that has coordinates on a map, on web and Android, using free
+hosted OpenFreeMap tiles by default (configurable with `MAP_TILE_STYLE_URL`). An optional,
+off-by-default **Find coordinates** lookup geocodes one saved address at a time through Nominatim or
+MapTiler (`GEOCODER_PROVIDER`). Addresses marked `private` or `secret` stay out of vCard/JSContact
+exports, CardDAV sync, contact shares and the MCP server, but still show on your own map and in your
+full backups - see [Contact map](https://drewbrunning.github.io/mycorrhizal-crm/map.html).
+
+The optional **GeoPulse** integration turns a day of your self-hosted
+[GeoPulse](https://github.com/tess1o/geopulse) location history into activity suggestions: you pick
+a date, review the places, choose who you were with, and nothing is stored until you confirm - see
+[Settings](https://drewbrunning.github.io/mycorrhizal-crm/settings.html#geopulse-connection).
+
+A read-only **MCP server** at `/mcp` lets an AI assistant such as Claude read your CRM data with the
+same per-user API token as the REST API, with private and secret data withheld unless a call opts in -
+see [MCP server](https://drewbrunning.github.io/mycorrhizal-crm/mcp.html).
+
 ### Sync & data portability
 
 Contacts and calendars speak CardDAV and CalDAV, so any compatible client can sync against your

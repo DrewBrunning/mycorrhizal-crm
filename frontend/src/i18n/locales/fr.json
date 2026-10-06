@@ -423,9 +423,16 @@
       "coordinatesHelp": "Par exemple 51.5007, -0.1246",
       "coordinatesInvalid": "Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.",
       "findCoordinates": "Trouver les coordonnées",
-      "findCoordinatesSaveFirst": "Enregistrez d'abord cette adresse. Les coordonnées sont recherchées pour l'adresse enregistrée.",
       "findCoordinatesSensitive": "Cette adresse est marquée comme privée ou secrète ; elle n'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.",
-      "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse."
+      "findCoordinatesFailed": "Impossible de trouver les coordonnées de cette adresse.",
+      "sensitivity": "Confidentialité",
+      "sensitivityNormal": "Normale",
+      "sensitivityPrivate": "Privée",
+      "sensitivitySecret": "Secrète",
+      "sensitivityHelpNormal": "Partagée et exportée comme n'importe quelle autre adresse.",
+      "sensitivityHelpPrivate": "Conservée sur votre propre carte et dans vos sauvegardes. Exclue de la synchronisation, des exports, des partages et de MCP, sauf inclusion explicite.",
+      "sensitivityHelpSecret": "Comme Privée, pour les adresses que vous voulez traiter avec le plus grand soin. Conservée sur votre propre carte et vos sauvegardes ; exclue de la synchronisation, des exports, des partages et de MCP, sauf inclusion explicite.",
+      "sensitivityIndicator": "Adresse privée ou secrète : exclue de la synchronisation, des exports, des partages et de MCP"
     },
     "anniversaries": "Anniversaires",
     "socialProfiles": "Profils sociaux",
@@ -1019,6 +1026,9 @@
       "unnamedPlace": "Lieu sans nom",
       "alreadyLogged": "Déjà enregistrée",
       "logActivity": "Enregistrer l'activité",
+      "logActivityAt": "Enregistrer une activité à {{place}}, {{time}}",
+      "announceFound": "Lieux trouvés : {{count}}",
+      "announceNone": "Aucun lieu trouvé",
       "photos": "Photos à proximité ({{count}})",
       "photosUnavailable": "Les photos n'ont pas pu être vérifiées.",
       "durationMinutes": "{{count}} min",
@@ -1734,7 +1744,10 @@
     "count_other": "{{count}} adresses sur la carte",
     "openContact": "Ouvrir le contact",
     "unavailable": "La carte n'a pas pu être affichée. Votre navigateur ne prend peut-être pas en charge WebGL.",
-    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points."
+    "truncated": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points.",
+    "listHeading": "Contacts sur la carte",
+    "unnamed": "Contact sans nom",
+    "styleFailed": "Le fond de carte n'a pas pu être chargé ; les contacts sont listés ci-dessous."
   },
   "contactScore": {
     "badge": {

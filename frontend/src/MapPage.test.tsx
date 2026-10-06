@@ -145,3 +145,32 @@ test('shows no truncation warning for a complete list', async () => {
   await screen.findByTestId('map-stub');
   expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
 });
+
+test('renders a keyboard-reachable list of contacts under a heading, linking to each contact', async () => {
+  h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
+  h.getMapPoints.mockResolvedValue({
+    points: [
+      { ...pt, contactId: 7, contactName: 'Ada Lovelace', label: '1 Main St' },
+      { ...pt, contactId: 8, addressId: 'b', contactName: '' },
+    ],
+    truncated: false,
+  });
+  renderPage();
+  expect(
+    await screen.findByRole('heading', { level: 2, name: 'Contacts on the map' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Ada Lovelace/ })).toHaveAttribute('href', '/contacts/7');
+  expect(screen.getByRole('link', { name: /1 Main St/ })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Unnamed contact' })).toHaveAttribute(
+    'href',
+    '/contacts/8',
+  );
+});
+
+test('shows no list when there are no points', async () => {
+  h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
+  h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
+  renderPage();
+  await screen.findByTestId('map-stub');
+  expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+});

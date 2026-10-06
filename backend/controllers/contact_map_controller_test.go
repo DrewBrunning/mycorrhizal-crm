@@ -207,3 +207,25 @@ func TestGetContactMap_BoundedAtCeiling(t *testing.T) {
 	assert.False(t, resp.Truncated)
 	assert.Len(t, resp.Points, MaxContactMapPoints)
 }
+
+// A contact with no first/last name must still carry a non-blank display name:
+// nickname first, then organisation (the web popup and accessible list render
+// ContactName verbatim).
+func TestGetContactMap_NameFallsBackToNicknameThenOrg(t *testing.T) {
+	db, router, uid := mapRouter(t)
+	addr := func(id string) []models.ContactAddress {
+		return []models.ContactAddress{{ID: id, Street: "1 Main St", Coordinates: "geo:1,2"}}
+	}
+	nick := models.Contact{UserID: uid, Nickname: "Sparky", Addresses: addr("a-nick")}
+	require.NoError(t, db.Create(&nick).Error)
+	org := models.Contact{UserID: uid, Organization: "Acme Corp", Addresses: addr("a-org")}
+	require.NoError(t, db.Create(&org).Error)
+
+	resp := decodeMap(t, getMap(router))
+	names := map[string]string{}
+	for _, p := range resp.Points {
+		names[p.AddressID] = p.ContactName
+	}
+	assert.Equal(t, "Sparky", names["a-nick"])
+	assert.Equal(t, "Acme Corp", names["a-org"])
+}

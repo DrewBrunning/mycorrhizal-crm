@@ -35,6 +35,39 @@ Choose how reminders reach you — email, [ntfy](https://ntfy.sh), [Gotify](http
 See [Notifications](notifications.html) for what each channel needs, how they differ, and what to check when one stops arriving.
 
 
+## GeoPulse connection
+
+<a id="geopulse"></a>
+
+**Settings → GeoPulse** connects a self-hosted [GeoPulse](https://github.com/tess1o/geopulse) instance so you
+can turn a day of location history into activity suggestions
+([ADR 0033](adrs/0033-geopulse-location-correlation.md)). It is optional and does nothing until configured.
+
+1. In GeoPulse, create an API token (**Profile → Security**).
+2. In **Settings → GeoPulse**, enter the **Base URL** of your GeoPulse server (an `http://` or `https://` URL,
+   for example `http://geopulse:8080`) and paste the **API Token**, then **Save connection**. The token is stored
+   encrypted and never shown again; leave the field empty on later saves to keep the stored one.
+3. **Test connection** (shown once a token is stored) checks that the server is reachable and the token is
+   accepted. **Remove connection** deletes the stored URL and token; activities you already logged are kept.
+
+To use it, open **Activities** and choose **Log from location history**. Pick a date and **Look up**. The dialog
+lists the places GeoPulse recorded as stays that day (time, duration, city) and, for each, the file names of any
+photos GeoPulse found nearby. Choose **Log activity** on a stay you want to record: it opens the normal
+new-activity dialog pre-filled with the place and date, you choose who you were with, and save.
+
+- **Nothing is stored until you confirm.** The list is a live lookup for one date; there is no background sync.
+- **You choose the contacts.** Nothing is inferred from location.
+- **Photos are display-only.** They are shown as file names and never copied into the activity.
+- **No duplicates.** A stay you already logged is marked "Already logged".
+- **If the lookup fails** (server down, token revoked) the dialog shows the error with a link to Settings, and you
+  can still log the activity by hand. If only the photo check fails, the stays are still listed, marked
+  "Photos could not be checked."
+- **Operators:** set `GEOPULSE_BLOCK_PRIVATE_URLS=true` on any instance reachable from the internet, so a user cannot
+  point the connection at a loopback or LAN address (see [Deployment](deployment.md#production-environment)).
+  Ownership and failure behaviour are in [Integrations](integration-ownership.md#geopulse).
+- This is a web feature: the Android app has no GeoPulse screen.
+
+
 ## Two-factor authentication
 
 <a id="two-factor-authentication"></a>

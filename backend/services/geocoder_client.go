@@ -66,6 +66,12 @@ const (
 	// nominatimMinInterval is the public instance's usage policy: an absolute
 	// maximum of one request per second.
 	nominatimMinInterval = time.Second
+
+	// nominatimMaxWait bounds how long a caller may queue for a slot. Slots are
+	// reserved one interval apart, so without a bound one user firing N lookups
+	// pushes every later lookup (all users) N seconds out, past the reverse
+	// proxy's read timeout. Beyond this the caller is rejected as rate limited.
+	nominatimMaxWait = 10 * time.Second
 )
 
 // GeocodeResult is one resolved coordinate (WGS-84 degrees).
@@ -90,7 +96,7 @@ var (
 	// nominatimGate is process-wide: the 1 req/s policy binds the instance's
 	// egress IP, not any one client value, and the controller may build more
 	// than one client over the process lifetime (config reload in tests).
-	nominatimGate = newRateGate(nominatimMinInterval)
+	nominatimGate = newRateGate(nominatimMinInterval, nominatimMaxWait)
 )
 
 func getGeocoderTransport() *http.Transport {
@@ -176,6 +182,9 @@ func (c *GeocoderClient) Geocode(ctx context.Context, query string) (GeocodeResu
 
 	if c.gate != nil {
 		if err := c.gate.Wait(ctx); err != nil {
+			if errors.Is(err, errRateGateFull) {
+				return GeocodeResult{}, ErrGeocoderRateLimited
+			}
 			return GeocodeResult{}, fmt.Errorf("%w: %v", ErrGeocoderUnreachable, err)
 		}
 	}
@@ -338,16 +347,23 @@ func redactedTransportError(err error) string {
 type rateGate struct {
 	mu       sync.Mutex
 	interval time.Duration
+	maxWait  time.Duration // 0 = unbounded
 	next     time.Time
 	now      func() time.Time
 	sleep    func(ctx context.Context, d time.Duration) error
 }
 
-func newRateGate(interval time.Duration) *rateGate {
-	return &rateGate{interval: interval, now: time.Now, sleep: sleepContext}
+// errRateGateFull means the queue is already maxWait deep; the caller is
+// rejected without reserving a slot.
+var errRateGateFull = errors.New("rate gate queue is full")
+
+func newRateGate(interval, maxWait time.Duration) *rateGate {
+	return &rateGate{interval: interval, maxWait: maxWait, now: time.Now, sleep: sleepContext}
 }
 
-// Wait blocks until this caller's slot, or returns ctx's error. Slots are
+// Wait blocks until this caller's slot, or returns ctx's error, or
+// errRateGateFull (consuming no slot) when the slot would be more than maxWait
+// away. Slots are
 // reserved under the lock, so concurrent callers queue one interval apart. A
 // caller whose context ends still consumed its slot, which only ever makes the
 // gate more conservative than the provider's policy requires.
@@ -357,6 +373,10 @@ func (g *rateGate) Wait(ctx context.Context) error {
 	slot := g.next
 	if slot.Before(now) {
 		slot = now
+	}
+	if g.maxWait > 0 && slot.Sub(now) > g.maxWait {
+		g.mu.Unlock()
+		return errRateGateFull
 	}
 	g.next = slot.Add(g.interval)
 	g.mu.Unlock()
