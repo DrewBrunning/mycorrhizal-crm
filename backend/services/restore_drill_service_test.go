@@ -184,23 +184,34 @@ func TestCompareTableCountsMatching(t *testing.T) {
 	assert.True(t, ok, "detail: %s", detail)
 }
 
-// TestLiveTablesExcludesJobExecutions pins a real false-positive found while
-// hand-verifying this feature: job_executions is written by every scheduled
-// job's own lock acquisition, including a burst of concurrent initial runs
-// at boot, so including it in the drift comparison produces false alarms
-// unrelated to actual restore fidelity.
-func TestLiveTablesExcludesJobExecutions(t *testing.T) {
+// TestLiveTablesExcludesVolatileSchedulerTables pins a real false-positive
+// found while hand-verifying this feature, and again on a fresh install when
+// the warn/error log guard (issue #1474) surfaced the drill reporting a
+// mismatch: the scheduler writes its lock (job_executions), its per-run
+// history (job_runs) and its storage sample (storage_samples) on every fire,
+// including a burst of concurrent initial runs at boot, so including them in
+// the drift comparison produces false alarms unrelated to actual restore
+// fidelity.
+func TestLiveTablesExcludesVolatileSchedulerTables(t *testing.T) {
 	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
 	})
-	require.NoError(t, db.Create(&models.JobExecution{JobName: "some_job", LastRunAt: time.Now()}).Error)
+	now := time.Now()
+	require.NoError(t, db.Create(&models.JobExecution{JobName: "some_job", LastRunAt: now}).Error)
+	require.NoError(t, db.Create(&models.JobRun{
+		JobName: "some_job", Trigger: "scheduled",
+		StartedAt: now.Add(-time.Second), FinishedAt: now, DurationMS: 1000, Result: "success",
+	}).Error)
+	require.NoError(t, db.Create(&models.StorageSample{TakenAt: now}).Error)
 
 	names, err := liveTables(db)
 	require.NoError(t, err)
 	assert.NotContains(t, names, "job_executions")
+	assert.NotContains(t, names, "job_runs")
+	assert.NotContains(t, names, "storage_samples")
 }
 
 // TestLiveTablesErrorsOnClosedConnection covers liveTables' own query-error

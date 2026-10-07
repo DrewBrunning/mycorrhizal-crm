@@ -388,7 +388,7 @@ func ValidateJSONMiddleware(template interface{}) gin.HandlerFunc {
 		obj := reflect.New(templateType).Interface()
 
 		if err := c.ShouldBindJSON(obj); err != nil {
-			logger.FromContext(c).Warn().Err(err).Msg("Invalid JSON in request body")
+			logger.FromContext(c).Info().Err(err).Msg("Invalid JSON in request body")
 
 			appErr := apperrors.ErrInvalidInput("request body", err.Error())
 			apperrors.AbortWithError(c, appErr)
@@ -397,7 +397,8 @@ func ValidateJSONMiddleware(template interface{}) gin.HandlerFunc {
 
 		// Validate the struct
 		if validationErrors := ValidateStruct(obj); len(validationErrors) > 0 {
-			logger.FromContext(c).Warn().Interface("validation_errors", validationErrors).Msg("Validation failed")
+			// Issue #1474: a 400 on bad client input is not server misbehaviour.
+			logger.FromContext(c).Info().Interface("validation_errors", validationErrors).Msg("Validation failed")
 
 			// Build detailed validation error
 			appErr := apperrors.ErrValidation("Request validation failed")

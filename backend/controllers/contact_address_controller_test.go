@@ -19,6 +19,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -238,6 +239,7 @@ func TestGeocodeContactAddress_RejectsNonNumericContactID(t *testing.T) {
 }
 
 func TestGeocodeContactAddress_ErrorMapping(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error; Unexpected geocoder error")
 	const providerSecret = "key=SUPER-SECRET"
 	cases := []struct {
 		name   string
@@ -296,6 +298,7 @@ func TestGeocodeContactAddress_ConcurrentEditIsAPreconditionFailure(t *testing.T
 }
 
 func TestGeocodeContactAddress_DBFailureIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Error saving geocoded address coordinates; Request error")
 	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
 	db, router, uid := geocodeRouter(t, fake)
 	c := seedGeocodeContact(t, db, uid, "")
@@ -429,6 +432,7 @@ func TestGeocodeContactAddressDraft_MissingValidatedBodyIs400(t *testing.T) {
 }
 
 func TestGeocodeContactAddressDraft_ContactLookupFailureIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
 	db, router, uid := draftGeocodeRouter(t, fake)
 	c := seedGeocodeContact(t, db, uid, "")
@@ -451,6 +455,7 @@ func TestGeocodeContactAddressDraft_DisabledInstance(t *testing.T) {
 }
 
 func TestGeocodeContactAddressDraft_DoesNotLeakProviderText(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	const providerSecret = "key=SUPER-SECRET"
 	fake := &fakeAddressGeocoder{err: fmt.Errorf("%w: %s", services.ErrGeocoderUnreachable, providerSecret)}
 	db, router, uid := draftGeocodeRouter(t, fake)
@@ -615,6 +620,7 @@ func TestGeocodeContactAddress_RequiresAuthenticatedUser(t *testing.T) {
 }
 
 func TestGeocodeContactAddress_ContactLookupFailureIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	fake := &fakeAddressGeocoder{uri: "geo:5,5"}
 	db, router, uid := geocodeRouter(t, fake)
 	c := seedGeocodeContact(t, db, uid, "")

@@ -61,7 +61,7 @@ func UploadCSVForImport(c *gin.Context) {
 	// Get uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Warn().Err(err).Msg("No file uploaded")
+		log.Info().Err(err).Msg("No file uploaded")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
 		return
 	}
@@ -84,10 +84,13 @@ func UploadCSVForImport(c *gin.Context) {
 	}
 	defer f.Close()
 
-	// Parse CSV using service
+	// Parse CSV using service. A malformed or over-limit CSV is a rejected
+	// client upload (the caller gets a 400), not a server fault, so it logs at
+	// info -- the same rule issue #1474 applied to the other 4xx paths, and
+	// what keeps the warn/error log guard from flagging a negative E2E case.
 	headers, dataRows, err := services.ParseCSV(f)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to parse CSV")
+		log.Info().Err(err).Msg("Failed to parse CSV")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
 		return
 	}
@@ -135,7 +138,7 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Warn().Err(err).Msg("No file uploaded")
+		log.Info().Err(err).Msg("No file uploaded")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
 		return
 	}
@@ -158,10 +161,11 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 	}
 	defer f.Close()
 
-	// Parse VCF using service
+	// Parse VCF using service. A malformed upload is a rejected client
+	// request (400), not a server fault, so it logs at info (issue #1474).
 	vcfContacts, previews, stats, err := services.ParseVCF(f, db, userID)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to parse VCF")
+		log.Info().Err(err).Msg("Failed to parse VCF")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
 		return
 	}
@@ -214,7 +218,7 @@ func UploadJSContactForImport(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Warn().Err(err).Msg("No file uploaded")
+		log.Info().Err(err).Msg("No file uploaded")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
 		return
 	}
@@ -239,7 +243,7 @@ func UploadJSContactForImport(c *gin.Context) {
 
 	contacts, previews, stats, err := services.ParseJSContact(f, db, userID)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to parse JSContact file")
+		log.Info().Err(err).Msg("Failed to parse JSContact file")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
 		return
 	}

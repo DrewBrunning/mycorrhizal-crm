@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -395,6 +396,7 @@ func TestSyncCalendarSubscription_Success(t *testing.T) {
 }
 
 func TestSyncCalendarSubscription_UnauthorizedReflectsFailure(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed; Manual calendar sync failed; Request error")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -525,6 +527,7 @@ func TestFindCalendarSubscription_NonNumericID_InvalidInput(t *testing.T) {
 // TestListCalendarSubscriptions_DBError exercises the db.Find error branch by
 // closing the underlying *sql.DB out from under gorm before the request.
 func TestListCalendarSubscriptions_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
@@ -546,6 +549,7 @@ func TestListCalendarSubscriptions_DBError(t *testing.T) {
 // TestCreateCalendarSubscription_DBError exercises the subscription-count
 // db.Count error branch (the first DB call CreateCalendarSubscription makes).
 func TestCreateCalendarSubscription_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)

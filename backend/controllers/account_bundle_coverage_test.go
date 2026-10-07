@@ -8,6 +8,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -57,6 +58,7 @@ func TestAccountBundleHandlers_RequireUser(t *testing.T) {
 // TestExportAccountBundle_GuardAndBuildFailures covers the export handler's
 // database-error branches via dbtest.HideTable.
 func TestExportAccountBundle_GuardAndBuildFailures(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to count contacts for export; Request error; Failed to build account bundle")
 	t.Run("count failure", func(t *testing.T) {
 		db, router := setupRouter(t)
 		router.GET("/export/account", ExportAccountBundle)

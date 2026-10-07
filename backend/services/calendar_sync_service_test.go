@@ -9,6 +9,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/i18n"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 )
 
 func setupCalendarSyncTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)
@@ -187,6 +189,7 @@ func TestCalendarSyncWithoutCredentialsSendsNoAuthHeader(t *testing.T) {
 }
 
 func TestCalendarSyncUnauthorizedReturnsSentinel(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed")
 	db := setupCalendarSyncTestDB(t)
 	cfg := calendarTestConfig()
 	user := createCalendarTestUser(t, db)
@@ -529,6 +532,7 @@ func mustEncrypt(t *testing.T, secret, value string) string {
 }
 
 func TestSyncAllCalendarsRecordsErrorsPerSubscription(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed; Scheduled calendar sync failed")
 	db := setupCalendarSyncTestDB(t)
 	cfg := calendarTestConfig()
 	user := createCalendarTestUser(t, db)
