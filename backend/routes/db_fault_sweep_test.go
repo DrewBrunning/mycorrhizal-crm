@@ -76,13 +76,13 @@ func newFaultEnv(t *testing.T) *faultEnv {
 	gin.SetMode(gin.TestMode)
 	middleware.ConfigureAPIRateLimiter(time.Microsecond, 1_000_000)
 
-	db := dbtest.New(t, dbtest.WithFaults())
-	db.Logger = logger.Default.LogMode(logger.Silent)
 	// Audit appends are best-effort side effects outside the request under
-	// test. With no recorder the models layer lazily installs a synchronous
-	// one, putting audit_events statements on the request goroutine where the
-	// sweep would count (and fail) them.
-	models.DisableAudit(db)
+	// test, so the sweep runs with the production-shaped async recorder
+	// (issue #1493): audit_events statements run on their own goroutine, which
+	// the injector does not count, exactly as in production. The synchronous
+	// test default would put them inside the request's transaction.
+	db := dbtest.New(t, dbtest.WithFaults(), dbtest.WithAsyncAudit())
+	db.Logger = logger.Default.LogMode(logger.Silent)
 
 	cfg := &config.Config{
 		JWTSecretKey:     "db-fault-sweep-secret-key-that-is-long-enough",
@@ -146,6 +146,11 @@ func (e *faultEnv) do(t *testing.T, r faultReq) *httptest.ResponseRecorder {
 // authored lives in them.
 var faultVolatileTables = map[string]string{
 	"sessions": "AuthMiddleware stamps last-used on the session row on every authenticated request, success or failure",
+	// Known production bug, not bookkeeping: the async audit recorder persists
+	// an event for a write whose transaction rolled back. Surfaced by running
+	// this sweep with the production-shaped recorder (dbtest.WithAsyncAudit,
+	// #1493). Remove this entry as part of fixing issue #1547.
+	"audit_events": "issue #1547: async audit recorder persists events for rolled-back writes; remove when fixed",
 }
 
 // snapshotDB returns table -> "count:sha256(all rows)" for every real table,

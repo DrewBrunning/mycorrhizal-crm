@@ -210,11 +210,6 @@ func TestFullInstallUpgrade(t *testing.T) {
 // table invariant.
 func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	// This test hand-seeds its audit history (seedMigrationScopeData) and
-	// asserts on it; the model saves the NFC backfill performs must not append
-	// recorder-written rows ahead of it (#1493: an unarmed test DB now records
-	// by default instead of silently dropping events).
-	models.DisableAudit(db)
 
 	// Resolve the master key the way main.go does: atrest.EncryptionKey reads
 	// JWT_SECRET_KEY when no dedicated key is configured.

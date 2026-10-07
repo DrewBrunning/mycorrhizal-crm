@@ -3,9 +3,10 @@ package models
 import (
 	"sync"
 	"sync/atomic"
-	"testing"
 	"time"
 
+	"mycorrhizal/internal/auditwire"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 
 	"gorm.io/gorm"
@@ -179,10 +180,13 @@ func (a *auditLogger) Record(tx *gorm.DB, entityType, entityID, operation string
 	a.wg.Add(1)
 	a.mu.Unlock()
 
-	go func() {
+	// Tracked by fireandforget too, so a test harness's drain (internal/dbtest
+	// waits on it before closing the DB) covers in-flight audit writes the
+	// same way it covers webhook deliveries and session touches (issue #703).
+	fireandforget.Run(func() {
 		defer a.wg.Done()
 		a.persist(db, entityType, entityID, operation, userID, snapshotJSON)
-	}()
+	})
 }
 
 // persist appends one event to the hash chain. The chain append (read previous
@@ -226,24 +230,32 @@ func (a *auditLogger) persist(db *gorm.DB, entityType, entityID, operation strin
 
 // recordAudit resolves db's recorder and records through it.
 //
-// With no recorder installed: in production (embedded.Start installs one
-// right after the DB opens) it is skipped silently, as before — the only
-// no-recorder window is the startup path before wiring. In a test binary it
-// must not be a silent no-op (that made audit assertions pass vacuously, and
-// a stale registration wrote into a deleted temp DB), so a sync recorder is
-// installed on this DB on first use: the event is really written, and bound to
-// this DB alone. A test that wants no audit calls DisableAudit(db).
+// With no recorder installed the event is skipped silently — production
+// (embedded.Start installs one right after the DB opens) has no other
+// no-recorder window than the startup path before wiring, and a DB opened
+// without one (a scratch restore-drill copy, a CLI tool) deliberately records
+// nothing. The one exception is a DB a test harness explicitly armed with an
+// auditwire.Default marker (internal/dbtest does, for every DB it hands out):
+// there a silent no-op would make audit assertions pass vacuously, so a
+// recorder is installed on first use, bound to this DB alone — synchronous by
+// default, or the production-shaped async recorder when the marker asks for
+// it. A test that wants no audit calls DisableAudit(db).
 func recordAudit(db *gorm.DB, entityType, entityID, operation string, userID uint, snapshotJSON string) {
 	rec := AuditRecorderFor(db)
 	if rec == nil {
-		if !testing.Testing() || db == nil || db.Config == nil {
+		marker := auditwire.For(db)
+		if marker == nil {
 			return
 		}
 		auditPluginsMu.Lock()
 		if cur, ok := db.Plugins[auditPluginName].(AuditRecorder); ok {
 			rec = cur // lost a race with a concurrent first write
 		} else {
-			rec = &auditLogger{sync: true}
+			if marker.Async {
+				rec = &auditLogger{db: marker.Root()}
+			} else {
+				rec = &auditLogger{sync: true}
+			}
 			setAuditRecorderLocked(db, rec)
 		}
 		auditPluginsMu.Unlock()

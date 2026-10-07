@@ -12,8 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// newFaultDB is a fault-injectable migrated DB with audit disabled: without a
-// recorder the models layer lazily installs a synchronous one, whose
+// newFaultDB is a fault-injectable migrated DB with audit disabled: dbtest arms
+// audit recording with the synchronous recorder by default (#1493), whose
 // audit_events statements would land on the goroutine the injector counts.
 func newFaultDB(t *testing.T) *gorm.DB {
 	t.Helper()

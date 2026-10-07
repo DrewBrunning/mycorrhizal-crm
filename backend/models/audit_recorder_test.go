@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"mycorrhizal/internal/auditwire"
 	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
@@ -91,12 +92,13 @@ func TestAuditRecorder_ParallelTestsHaveOwnRecorders(t *testing.T) {
 	}
 }
 
-// TestAuditRecorder_UnregisteredDBStillRecordsInTests pins item 4 of #1493: a
-// test DB with no explicit recorder can no longer make audit assertions pass
-// vacuously — the first audited write installs a sync recorder on that DB, so
-// the event really exists.
-func TestAuditRecorder_UnregisteredDBStillRecordsInTests(t *testing.T) {
+// TestAuditRecorder_ArmedTestDBRecords pins item 4 of #1493: a dbtest DB is
+// explicitly armed (auditwire marker), so a test with no explicit recorder can
+// never make audit assertions pass vacuously — the first audited write
+// installs a sync recorder on that DB, so the event really exists.
+func TestAuditRecorder_ArmedTestDBRecords(t *testing.T) {
 	db := dbtest.New(t)
+	require.NotNil(t, auditwire.For(db), "precondition: dbtest arms audit")
 	require.Nil(t, AuditRecorderFor(db), "precondition: no recorder yet")
 	u := mustUser(t, db, "lazy")
 	c := Contact{UserID: u.ID, Firstname: "Lazy"}
@@ -105,11 +107,43 @@ func TestAuditRecorder_UnregisteredDBStillRecordsInTests(t *testing.T) {
 	assert.NotNil(t, AuditRecorderFor(db))
 	assert.EqualValues(t, 1, countAuditEvents(t, db, AuditEntityContact, c.VCardUID))
 
-	// RecordAuditEvent on a DB without a recorder does the same.
+	// RecordAuditEvent on an armed DB without a recorder does the same.
 	db2 := dbtest.New(t)
 	u2 := mustUser(t, db2, "lazy2")
 	RecordAuditEvent(db2, AuditEntityAuth, "x", AuditOpLogin, u2.ID)
 	assert.EqualValues(t, 1, auditCount(t, db2))
+}
+
+// TestAuditRecorder_UnarmedDBRecordsNothing pins the production half: a DB with
+// neither a recorder nor the test-harness marker (a scratch restore-drill copy,
+// a CLI tool, the startup window before embedded.Start wires one) records
+// nothing — there is no test-binary special case in production code.
+func TestAuditRecorder_UnarmedDBRecordsNothing(t *testing.T) {
+	db := dbtest.New(t)
+	delete(db.Plugins, auditwire.PluginName)
+	u := mustUser(t, db, "unarmed")
+	require.NoError(t, db.Create(&Contact{UserID: u.ID, Firstname: "Unarmed"}).Error)
+	RecordAuditEvent(db, AuditEntityAuth, "x", AuditOpLogin, u.ID)
+	assert.Nil(t, AuditRecorderFor(db), "no recorder may be installed implicitly")
+	assert.Zero(t, auditCount(t, db))
+}
+
+// TestAuditRecorder_AsyncArmedTestDBRecordsOffTransaction pins
+// dbtest.WithAsyncAudit: the lazily installed recorder is the production-shaped
+// async one, bound to the root DB (not the hook's transaction), and its writes
+// land after Flush.
+func TestAuditRecorder_AsyncArmedTestDBRecordsOffTransaction(t *testing.T) {
+	db := dbtest.New(t, dbtest.WithAsyncAudit())
+	u := mustUser(t, db, "async")
+	c := Contact{UserID: u.ID, Firstname: "Async"}
+	require.NoError(t, db.Create(&c).Error)
+
+	rec, ok := AuditRecorderFor(db).(*auditLogger)
+	require.True(t, ok)
+	assert.False(t, rec.sync, "WithAsyncAudit must install the production-shaped recorder")
+	assert.Same(t, auditwire.For(db).Root(), rec.db, "bound to the root handle, not a hook transaction")
+	rec.Flush()
+	assert.EqualValues(t, 1, countAuditEvents(t, db, AuditEntityContact, c.VCardUID))
 }
 
 func TestAuditRecorder_DisableAuditDropsEvents(t *testing.T) {

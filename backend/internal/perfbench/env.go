@@ -147,9 +147,10 @@ func NewEnv(opts EnvOptions) (*Env, error) {
 		return nil, fmt.Errorf("perfbench: opening counting connection: %w", err)
 	}
 
-	// The baselines were measured without an audit recorder; an unarmed DB in a
-	// test binary now records by default (issue #1493), so keep the measured
-	// connection audit-silent to leave the committed query counts unchanged.
+	// The baselines were measured without an audit recorder; a seed DB from an
+	// injected internal/dbtest opener is armed to record audit (issue #1493),
+	// so keep the measured connection audit-silent to leave the committed
+	// query counts unchanged.
 	models.DisableAudit(countDB)
 
 	photoDir := filepath.Join(opts.WorkDir, "photos")
