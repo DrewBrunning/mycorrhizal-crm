@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"mycorrhizal/database"
+	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/fireandforget"
 
 	"gorm.io/gorm"
@@ -109,15 +110,33 @@ func finalizeTemplate(db *gorm.DB, p string) (string, error) {
 //
 //	db, err := database.InitDB(filepath.Join(t.TempDir(), "x.db"))
 //	require.NoError(t, err)
-func New(tb testing.TB) *gorm.DB {
+//
+// Options (WithFaults) are variadic so existing call sites compile unchanged.
+func New(tb testing.TB, opts ...Option) *gorm.DB {
 	tb.Helper()
-	return NewAt(tb, filepath.Join(tb.TempDir(), "x.db"))
+	return NewAt(tb, filepath.Join(tb.TempDir(), "x.db"), opts...)
+}
+
+// Option customises the database New/NewAt returns.
+type Option func(testing.TB, *gorm.DB)
+
+// WithFaults registers the internal/dbfault statement-failure plugin on the
+// returned database (issue #1476). The injector starts idle, so a test that
+// never calls dbfault.For(db) behaves exactly as without the option. Fetch it
+// with dbfault.For(db).
+func WithFaults() Option {
+	return func(tb testing.TB, db *gorm.DB) {
+		tb.Helper()
+		if err := db.Use(dbfault.New()); err != nil {
+			tb.Fatalf("dbtest: registering dbfault plugin: %v", err) // # pragma: no cover — gorm's Use only fails on a duplicate callback name, and a fresh connection has none
+		}
+	}
 }
 
 // NewAt is New but writes the database copy to a caller-chosen path, for tests
 // that also need the database file on disk (backup, restore-drill and
 // VACUUM INTO style tests that pass the path to code under test).
-func NewAt(tb testing.TB, dbPath string) *gorm.DB {
+func NewAt(tb testing.TB, dbPath string, opts ...Option) *gorm.DB {
 	tb.Helper()
 
 	if err := copyFile(template(tb), dbPath); err != nil {
@@ -127,6 +146,9 @@ func NewAt(tb testing.TB, dbPath string) *gorm.DB {
 	db, err := database.OpenMigratedFile(dbPath)
 	if err != nil {
 		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err) // # pragma: no cover — database.OpenMigratedFile failing against a file this function just wrote a valid template copy to is not reachable without corrupting the template out from under every other test in the binary
+	}
+	for _, o := range opts {
+		o(tb, db)
 	}
 	tb.Cleanup(func() {
 		// Drain the fire-and-forget goroutines (webhook deliveries, audit

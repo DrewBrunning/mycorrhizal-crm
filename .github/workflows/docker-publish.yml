@@ -1364,8 +1364,18 @@ jobs:
   # even when verify-release-assets fails on the (unavoidable) missing SLSA
   # provenance. On a push it still waits for verify-release-assets to pass.
   post-publish-smoke:
-    name: Post-publish smoke (published image)
-    runs-on: ubuntu-latest
+    name: Post-publish smoke (published image, ${{ matrix.arch }})
+    # Issue #1485: the same digest is a multi-arch index; each leg's docker
+    # pulls its own platform, so arm64 users' image is actually executed.
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     needs: [build-and-push, verify-release-assets]
     # issue #1184: explicit guard against the skipped release-gate-override job.
     if: >-
@@ -1421,6 +1431,14 @@ jobs:
           digest="$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r '.digest')"
           echo "Testing ghcr.io/${repo}@${digest} (published as ${ref})"
           echo "MYCORRHIZAL_IMAGE=ghcr.io/${repo}@${digest}" >> "$GITHUB_ENV"
+
+      - name: Assert the image runs on this leg's architecture
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -eu
+          case "$(uname -m)" in x86_64) host=amd64 ;; aarch64) host=arm64 ;; *) host=other ;; esac
+          [ "$host" = "$ARCH" ] || { echo "::error::leg expects $ARCH, runner is $host"; exit 1; }
 
       - name: Bring up the published image
         run: docker compose -f docker-compose.published-smoke.yml up -d --wait --wait-timeout 240

@@ -6,7 +6,7 @@ toolchain go1.27.1
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/arran4/golang-ical v0.3.6
+	github.com/arran4/golang-ical v0.3.7
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
 	github.com/fxamacker/cbor/v2 v2.9.4
@@ -21,7 +21,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
-	github.com/modelcontextprotocol/go-sdk v1.6.0
+	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pquerna/otp v1.5.0
 	github.com/resend/resend-go/v2 v2.28.0

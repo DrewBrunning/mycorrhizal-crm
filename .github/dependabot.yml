@@ -70,3 +70,11 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+  # Issue #1490: the real-server contract stacks (docker-compose.*.yml, images
+  # pinned by tag@digest). A bump that breaks a client is the intended signal.
+  - package-ecosystem: "docker"
+    directory: "/backend/integrations/realserver/stack"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7

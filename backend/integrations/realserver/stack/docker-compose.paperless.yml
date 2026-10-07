@@ -1,0 +1,26 @@
+# Real-server contract stack: Paperless-ngx (issue #1490). SQLite + Redis, the
+# smallest supported topology. Images pinned by digest; Dependabot's docker
+# entry for this directory proposes bumps.
+#
+#   docker compose -f backend/integrations/realserver/stack/docker-compose.paperless.yml up -d
+#   MYCORRHIZAL_RS_PAPERLESS_URL=http://127.0.0.1:18084 \
+#   MYCORRHIZAL_RS_PAPERLESS_ADMIN_USER=admin MYCORRHIZAL_RS_PAPERLESS_ADMIN_PASSWORD=contract-admin-pass \
+#     go test ./integrations/realserver/ -run Paperless
+name: mycorrhizal-rs-paperless
+services:
+  redis:
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.0@sha256:8ffd737c69a569bbdadc118e7f54b0b1050ffac2868fdf9e390a68cb7c82a79d
+    depends_on: [redis]
+    environment:
+      PAPERLESS_REDIS: redis://redis:6379
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: contract-admin-pass
+      PAPERLESS_SECRET_KEY: contract-test-secret-key-not-for-production
+      PAPERLESS_URL: http://127.0.0.1:18084
+      PAPERLESS_OCR_LANGUAGE: eng
+      PAPERLESS_TASK_WORKERS: "1"
+      PAPERLESS_THREADS_PER_WORKER: "1"
+    ports: ["127.0.0.1:18084:8000"]

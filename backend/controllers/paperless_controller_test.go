@@ -162,7 +162,7 @@ func TestTestPaperlessConnection_SuccessAndFailure(t *testing.T) {
 
 	fake := newPaperlessTestServer(t, "sekret")
 	defer fake.Close()
-	fake.Me = map[string]any{"user_name": "alice", "id": 2}
+	fake.Me = map[string]any{"username": "alice", "id": 2}
 
 	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
 	require.NoError(t, err)
