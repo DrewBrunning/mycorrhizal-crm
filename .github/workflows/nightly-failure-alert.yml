@@ -47,6 +47,7 @@ on:
   workflow_run:
     workflows:
       - Android Tests
+      - ARM64 Tests
       - ASVS attestation staleness
       - CardDAV Real-Server E2E (reference-server matrix)
       - Chaos Tests (failure injection)
