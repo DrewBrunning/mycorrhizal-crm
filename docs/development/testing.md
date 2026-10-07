@@ -1021,6 +1021,36 @@ developer-specific state:
   do not depend on local state or ordering (Playwright reuses a `storageState`
   captured in the `setup` project).
 
+### Order-dependence pass (issue #1492)
+
+CI otherwise runs tests in declaration order with `-count=1`, which hides a test that
+only passes because an earlier one left state behind (a package-level global, the
+process-wide metrics registry, a rate limiter) or that cannot run twice in one
+process. The nightly `schedule` run of `unit-tests.yml`'s `backend-tests` job
+therefore adds a second step, **Order-dependence pass (shuffle + count=2, nightly
+only)**, per leg: `go test <leg pkgs> -run <leg shard> -race -shuffle=on -count=2`.
+
+- **Zero retries.** A red pass is the signal; `nightly-failure-alert.yml` opens the
+  issue (`unit-tests.yml` is already a registered scheduled workflow, so
+  `nightlyalertcheck` needs no change).
+- **Reproducing.** `go test` prints `-test.shuffle <seed>`; the step copies the seed,
+  the leg's package list and its `-run` shard regex into the job summary. The
+  sharded legs (`controllers-1/-2`, `services-1/-2`) shuffle within their shard
+  only, so the seed alone does not reproduce — use all three:
+  `cd backend && go test <pkgs> -run '<shard>' -race -shuffle=<seed> -count=2`.
+- **Skipped leg.** `property` (rapid/largedata/contactgen) owns no cross-test state
+  and doubling its 8000-iteration nightly depth would blow the job timeout.
+  `RAPID_CHECKS`/`ADDRESS_PROPERTY_ITERATIONS` are pinned to 200 for this pass —
+  it probes ordering, not search depth.
+- **Fix at the source.** A new failure is fixed with a reset helper, a
+  `t.Cleanup` that restores the global, or injection (#1493) — never by pinning
+  order or `-p 1`. A test asserting on a process-global counter asserts the
+  **delta** across its own actions (see `sample` in `middleware/metrics_test.go`).
+- **Locally:** `cd backend && go test ./<pkg> -shuffle=on -count=2` (one package at
+  a time; the full tree is heavy).
+- **Follow-up (not done here):** after 30 clean nights, add `-shuffle=on` (single
+  count) to the per-PR run so the class stays closed.
+
 ## Bug disposition: a test that catches a bug owns it
 
 The layers this page describes are the gate for every milestone from v0.6.3

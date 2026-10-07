@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -129,18 +130,41 @@ func TestRecoverJob_SchedulerSurvivesPanic(t *testing.T) {
 // job_runs_total / job_duration_seconds families on both the success and the
 // recovered-panic path (issue #389).
 func TestRunJob_RecordsJobMetrics(t *testing.T) {
+	okRuns := metricDelta(t, `job_runs_total{job="metrics-unit-ok",result="success"}`)
+	boomRuns := metricDelta(t, `job_runs_total{job="metrics-unit-boom",result="failure"}`)
+	okCount := metricDelta(t, `job_duration_seconds_count{job="metrics-unit-ok"}`)
+
 	runJob(nil, "metrics-unit-ok", models.JobTriggerScheduled, func() error { return nil })
 	require.NotPanics(t, func() {
 		runJob(nil, "metrics-unit-boom", models.JobTriggerScheduled, func() error { panic("boom") })
 	})
 
-	var sb strings.Builder
-	require.NoError(t, metrics.Default().WritePrometheus(&sb))
-	out := sb.String()
+	require.Equal(t, 1.0, okRuns())
+	require.Equal(t, 1.0, boomRuns())
+	require.Equal(t, 1.0, okCount())
+}
 
-	require.Contains(t, out, `job_runs_total{job="metrics-unit-ok",result="success"} 1`+"\n")
-	require.Contains(t, out, `job_runs_total{job="metrics-unit-boom",result="failure"} 1`+"\n")
-	require.Contains(t, out, `job_duration_seconds_count{job="metrics-unit-ok"} 1`+"\n")
+// metricDelta returns a func reporting how much the process-global Prometheus
+// sample that starts with series (name plus label set) has grown since
+// metricDelta was called; an absent series reads as 0. The registry survives
+// across tests and across -count=N repeats, so under -shuffle/-count=2
+// (issue #1492) an absolute `... 1` assertion fails the second time round.
+func metricDelta(t *testing.T, series string) func() float64 {
+	t.Helper()
+	read := func() float64 {
+		var sb strings.Builder
+		require.NoError(t, metrics.Default().WritePrometheus(&sb))
+		for _, line := range strings.Split(sb.String(), "\n") {
+			if rest, ok := strings.CutPrefix(line, series+" "); ok {
+				v, err := strconv.ParseFloat(strings.TrimSpace(rest), 64)
+				require.NoError(t, err, "unparseable sample %q", line)
+				return v
+			}
+		}
+		return 0
+	}
+	before := read()
+	return func() float64 { return read() - before }
 }
 
 // failRawExec makes every subsequent raw Exec on db fail, simulating a storage

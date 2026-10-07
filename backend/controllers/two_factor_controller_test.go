@@ -38,6 +38,7 @@ const testJWTSecret = "test-jwt-secret-that-is-at-least-32-characters-long"
 func twoFactorTestEnv(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config, models.User) {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
+	isolateAccountLimiter(t)
 
 	db := dbtest.New(t)
 

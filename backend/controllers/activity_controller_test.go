@@ -29,6 +29,7 @@ import (
 func setupRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
+	isolateAccountLimiter(t)
 
 	db := dbtest.New(t)
 

@@ -591,6 +591,48 @@ jobs:
           read -ra pkgs <<< "$PKGS"
           go test "${pkgs[@]}" -run "$RUN" -timeout="$GO_TEST_TIMEOUT" -coverprofile="coverage-${LEG}.out" -covermode=atomic
 
+      # Issue #1492: nightly-only order-dependence pass. CI otherwise runs
+      # tests in declaration order, which hides tests that only pass because
+      # an earlier one left (or cleaned) shared state. `-shuffle=on` picks a
+      # random seed that `go test` prints as `-test.shuffle <seed>`; `-count=2`
+      # re-runs every test in the same process so a test that mutates a package
+      # global without a cleanup fails on its second run. Zero retries (the
+      # schedule policy) -- a red pass IS the signal, and the nightly alert
+      # (nightly-failure-alert.yml) opens the issue. The seed, this leg's
+      # package list and its -run shard regex go to the job summary: the
+      # sharded legs shuffle within their shard only, so the seed alone does
+      # not reproduce a failure. `property` is skipped: its rapid/largedata
+      # packages are generative and own no cross-test state, and doubling the
+      # 8000-iteration run would blow the job timeout; RAPID_CHECKS is pinned
+      # low because this pass probes ordering, not search depth.
+      - name: Order-dependence pass (shuffle + count=2, nightly only)
+        if: github.event_name == 'schedule' && matrix.leg != 'property'
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+          PKGS: ${{ steps.pkgs.outputs.list }}
+          RUN: ${{ steps.pkgs.outputs.run }}
+          RAPID_CHECKS: '200'
+          ADDRESS_PROPERTY_ITERATIONS: '200'
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          set -o pipefail
+          out="shuffle-${LEG}.log"
+          rc=0
+          go test "${pkgs[@]}" -run "$RUN" -race -shuffle=on -count=2 -timeout="$GO_TEST_TIMEOUT" 2>&1 | tee "$out" || rc=$?
+          seeds="$(grep -oE '^-test\.shuffle [0-9]+' "$out" | sort -u | tr '\n' ',' | sed 's/,$//' || true)"
+          {
+            echo "### Order-dependence pass (#1492) — leg \`${LEG}\`"
+            echo
+            echo "- result: $([ "$rc" -eq 0 ] && echo pass || echo "**FAIL** (exit $rc)")"
+            echo "- seed(s): \`${seeds:-none printed}\`"
+            echo "- reproduce: \`cd backend && go test ${PKGS} -run '${RUN}' -race -shuffle=<seed> -count=2\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::order-dependence pass failed on leg ${LEG}; reproduce with -shuffle=<seed> (seed(s): ${seeds:-none printed})"
+          fi
+          exit "$rc"
+
       # Issue #268: flake signal, visibility only. Always empty on the
       # nightly run (RERUN_FAILS=0, #974).
       - name: Report flaky tests (failed once, passed on retry)
