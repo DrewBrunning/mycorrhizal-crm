@@ -44,12 +44,20 @@ type countRow struct {
 //   - job_executions: every scheduled job writes its lock row on every fire;
 //     at boot they all fire together (each `go safeGo(...)` initial run in
 //     main.go). Confirmed live: "job_executions: live=9 restored=7".
+//   - job_runs: the per-invocation history (issue #391) every scheduled job
+//     writes alongside its lock row, so the same boot-time burst lands here
+//     too. Confirmed live on a fresh install: "job_runs: live=16 restored=4".
+//   - storage_samples: the storage-trend sampler writes one row per run; at
+//     boot it fires before the drill's snapshot/live count. Confirmed live on
+//     a fresh install: "storage_samples: live=1 restored=0".
 //   - system_events (#424) / operational_check_results (#421/#620): the drill
 //     records its own restore_test_completed / backup_failed row and its own
 //     check-result row while it runs — the live count is always ahead of the
 //     snapshot by exactly those.
 var excludedFromRestoreDrill = map[string]bool{
 	"job_executions":            true,
+	"job_runs":                  true,
+	"storage_samples":           true,
 	"system_events":             true,
 	"operational_check_results": true,
 	// alert_states (#428): the scheduled alert evaluator fires alongside this

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,6 +37,7 @@ func decodeTestPNGForImportSession(t *testing.T) []byte {
 }
 
 func setupImportSessionTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)

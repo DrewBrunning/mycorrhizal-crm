@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -73,6 +74,7 @@ func assertExportFailureDetails(t *testing.T, w *httptest.ResponseRecorder, want
 }
 
 func TestExportData_DBError_IdentifiesOperationAndCategory(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to count contacts for export; Request error")
 	db, router := setupRouter(t)
 	router.GET("/export", ExportData)
 
@@ -705,6 +707,7 @@ func TestExportContactsAsVCF_NoAuth_Unauthorized(t *testing.T) {
 // TestExportContactsAsVCF_DBError exercises the db.Find error branch by
 // closing the underlying *sql.DB out from under gorm before the request.
 func TestExportContactsAsVCF_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to count contacts for export; Request error")
 	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
@@ -788,6 +791,8 @@ func TestExportContactsAsVCF_Empty(t *testing.T) {
 // the sanitized message line is produced. Capturing the global logger and
 // asserting the diagnostic appears is what proves the loop executes.
 func TestExportContactsAsVCF_DiagnosticSanitization(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs a warn/error line")
+	db, router := setupRouter(t) // first: its Guard swaps the logger (issue #1474)
 	buf := &bytes.Buffer{}
 	oldLogger := logger.Logger
 	oldLevel := zerolog.GlobalLevel()
@@ -798,7 +803,6 @@ func TestExportContactsAsVCF_DiagnosticSanitization(t *testing.T) {
 		zerolog.SetGlobalLevel(oldLevel)
 	})
 
-	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -935,6 +939,7 @@ func TestExportContactsAsJSContact_NoAuth_Unauthorized(t *testing.T) {
 // TestExportContactsAsJSContact_DBError exercises the db.Find error branch
 // by closing the underlying *sql.DB out from under gorm before the request.
 func TestExportContactsAsJSContact_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to count contacts for export; Request error")
 	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
