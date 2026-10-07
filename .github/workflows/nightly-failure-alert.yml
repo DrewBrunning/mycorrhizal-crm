@@ -58,6 +58,7 @@ on:
       - E2E Tests
       - Flake ledger
       - Mutation Testing (Go)
+      - Soak Test
       - Governance drift
       - Vulnerability Scan (Grype)
       - License Compliance

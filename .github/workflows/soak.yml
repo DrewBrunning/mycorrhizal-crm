@@ -1,0 +1,72 @@
+name: Soak Test
+
+# Issue #1496: the long-run (soak) test. Every other test is short-lived; this
+# one runs the real server in-process (embedded.Start, the entry point main()
+# uses) against a migrated SQLite file under a sustained mixed workload and
+# fails on *growth* of RSS / heap / goroutines / fds / WAL / rate-limiter
+# entries, latency degradation, any 5xx, a failed integrity_check, FTS drift,
+# a failing doctor pass or a wedged scheduler. Thresholds are committed in
+# backend/internal/soak/budgets.go (docs/development/soak-baseline.md).
+#
+# The short per-PR form is the Go test `internal/soak` TestRun_* in the
+# required `Backend (Go)` job; this workflow is the long form. Weekly +
+# manual, registered with nightly-failure-alert.yml (a scheduled run is
+# zero-retry, so red here is a signal, not a flake).
+#
+# Advisory tier first: not a required status context and not a release gate.
+
+on:
+  schedule:
+    - cron: '25 4 * * 0' # Sundays 04:25 UTC
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Workload duration (Go duration, e.g. 45m)'
+        required: false
+        default: '45m'
+      fault:
+        description: 'Harness self-test: inject a leak (goroutines|heap|fds|limiter|wal); the run is expected to FAIL'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: soak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    name: Soak (in-process real server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Run soak
+        working-directory: backend
+        env:
+          SOAK_DURATION: ${{ inputs.duration || '45m' }}
+          SOAK_FAULT: ${{ inputs.fault }}
+        run: |
+          go run ./cmd/soak \
+            -duration "$SOAK_DURATION" -sample 30s -users 10 -rate 20 \
+            -fault "$SOAK_FAULT" -quiet \
+            -md "$GITHUB_STEP_SUMMARY" -json "$RUNNER_TEMP/soak-report.json"
+
+      - name: Upload report (every sampled series)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: soak-report
+          path: ${{ runner.temp }}/soak-report.json
+          if-no-files-found: ignore

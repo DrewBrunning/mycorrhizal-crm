@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -78,6 +80,16 @@ var (
 	dbWaitN   = defaultRegistry.NewGaugeVec("db_connections_wait_count", "Connection waits since start (cumulative; a rising value indicates pool pressure).")
 	dbWaitSec = defaultRegistry.NewGaugeVec("db_connections_wait_seconds", "Time blocked waiting for a connection since start, in seconds (cumulative).")
 
+	// Soak signals (issue #1496): the growth-over-process-lifetime series the
+	// long-run harness (internal/soak) fits a slope to. RSS and open fds are
+	// Linux /proc readings (absent elsewhere, so the gauges are simply not
+	// set); the limiter gauge counts every tracked key of every in-memory
+	// rate-limit map, which is the only per-IP/per-account state that grows
+	// with distinct clients.
+	processRSS     = defaultRegistry.NewGaugeVec("process_resident_memory_bytes", "Resident set size of the process in bytes (Linux only).")
+	processOpenFDs = defaultRegistry.NewGaugeVec("process_open_fds", "Number of open file descriptors (Linux only).")
+	limiterEntries = defaultRegistry.NewGaugeVec("mycorrhizal_ratelimiter_entries", "Keys currently tracked by an in-memory rate limiter.", "limiter")
+
 	storageBytes = defaultRegistry.NewGaugeVec("mycorrhizal_storage_bytes", "On-disk size of a storage area in bytes.", "kind")
 	fsFreeBytes  = defaultRegistry.NewGaugeVec("filesystem_free_bytes", "Free bytes on the filesystem holding the database.")
 	fsSizeBytes  = defaultRegistry.NewGaugeVec("filesystem_size_bytes", "Total bytes on the filesystem holding the database.")
@@ -122,11 +134,64 @@ func SetRuntimeGauges() {
 	goSysBytes.With().Set(float64(ms.Sys))
 	goInfo.With(runtime.Version()).Set(1)
 
+	if rss, ok := ProcessRSSBytes(procRoot); ok {
+		processRSS.With().Set(rss)
+	}
+	if n, ok := ProcessOpenFDs(procRoot); ok {
+		processOpenFDs.With().Set(float64(n))
+	}
+
 	processUptime.With().Set(time.Since(processStart).Seconds())
 	processStartT.With().Set(float64(processStart.Unix()))
 
 	bi := buildinfo.Get()
 	buildInfo.With(bi.Version, bi.Commit).Set(1)
+}
+
+// procRoot is the procfs mount SetRuntimeGauges reads RSS and open fds from.
+const procRoot = "/proc/self"
+
+// pageSize is the kernel page size /proc/<pid>/statm counts in.
+var pageSize = float64(os.Getpagesize())
+
+// ProcessRSSBytes reads the resident set size from <root>/statm (field 2, in
+// pages). ok is false when the file is unreadable or malformed — every
+// non-Linux host — so the caller leaves the gauge unset rather than exporting
+// a misleading zero. root is a parameter so the parser is testable against a
+// fixture directory.
+func ProcessRSSBytes(root string) (float64, bool) {
+	b, err := os.ReadFile(filepath.Join(root, "statm")) // #nosec G304 -- root is the constant /proc/self (a fixture dir in tests)
+	if err != nil {
+		return 0, false
+	}
+	fields := strings.Fields(string(b))
+	if len(fields) < 2 {
+		return 0, false
+	}
+	pages, err := strconv.ParseFloat(fields[1], 64)
+	if err != nil || pages < 0 {
+		return 0, false
+	}
+	return pages * pageSize, true
+}
+
+// ProcessOpenFDs counts the entries of <root>/fd. ok is false when the
+// directory is unreadable (non-Linux, or a sandbox hiding /proc).
+func ProcessOpenFDs(root string) (int, bool) {
+	entries, err := os.ReadDir(filepath.Join(root, "fd"))
+	if err != nil {
+		return 0, false
+	}
+	return len(entries), true
+}
+
+// SetLimiterGauges publishes the tracked-key count of each named in-memory
+// rate limiter (issue #1496). Called per scrape by the /metrics handler with
+// middleware.RateLimiterEntryCounts().
+func SetLimiterGauges(counts map[string]int) {
+	for name, n := range counts {
+		limiterEntries.With(name).Set(float64(n))
+	}
 }
 
 // SetDBGauges refreshes the connection-pool gauges from a sql.DBStats snapshot.
@@ -146,6 +211,14 @@ func SetDBGauges(s sql.DBStats) {
 // this endpoint does not cross for a self-hosted single-process app.
 func SetStorageGauges(dbPath string) {
 	storageBytes.With("database").Set(float64(DatabaseBytes(dbPath)))
+	// The write-ahead log alone (issue #1496): a WAL that never checkpoints
+	// (a reader pinning it, a disabled autocheckpoint) grows without bound
+	// while the "database" total hides it among the main file.
+	var walBytes int64
+	if fi, err := os.Stat(dbPath + "-wal"); err == nil {
+		walBytes = fi.Size()
+	}
+	storageBytes.With("wal").Set(float64(walBytes))
 
 	if free, size, ok := FilesystemBytes(filepath.Dir(dbPath)); ok {
 		fsFreeBytes.With().Set(free)

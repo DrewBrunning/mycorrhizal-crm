@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
@@ -630,7 +631,18 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 		}
 		for _, r := range rows {
 			lastID = r.ID
-			card := strings.TrimSpace(r.Card)
+			// The column is ciphertext whenever at-rest encryption is armed
+			// (always, in a running server), and this raw scan bypasses the
+			// GORM serializer — so decrypt here. Without it every contact on
+			// an encrypted instance read as invalid JSON (found by the soak,
+			// issue #1496). Legacy plaintext passes through unchanged; a value
+			// the key cannot open is as unreadable as corrupt JSON.
+			plain, decErr := atrest.Decrypt(r.Card)
+			if decErr != nil {
+				malformed[r.UserID]++
+				continue
+			}
+			card := strings.TrimSpace(plain)
 			if card == "" || card == "{}" {
 				continue
 			}

@@ -67,6 +67,7 @@ jobs:
           - release-dry-run.yml
           - reproducibility.yml
           - sast.yml
+          - soak.yml
           - schemathesis.yml
           - scorecard.yml
           - security-cadence.yml

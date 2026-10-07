@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/metrics"
+	"mycorrhizal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -39,6 +40,7 @@ func MetricsHandler(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 			metrics.SetDBGauges(sqlDB.Stats())
 		}
 		metrics.SetStorageGauges(cfg.DBPath)
+		metrics.SetLimiterGauges(middleware.RateLimiterEntryCounts())
 
 		c.Header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 		c.Status(http.StatusOK)

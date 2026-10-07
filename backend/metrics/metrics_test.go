@@ -164,3 +164,47 @@ func TestFilesystemBytes_RealDirAndBogusPath(t *testing.T) {
 	_, _, ok = FilesystemBytes(filepath.Join(t.TempDir(), "no", "such", "path"))
 	assert.False(t, ok, "Statfs on a missing path reports not-ok")
 }
+
+func TestProcessRSSAndFDs_ParseProcFixture(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "statm"), []byte("100 25 3 1 0 5 0\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "fd"), 0o750))
+	for _, n := range []string{"0", "1", "2"} {
+		require.NoError(t, os.WriteFile(filepath.Join(root, "fd", n), nil, 0o600))
+	}
+
+	rss, ok := ProcessRSSBytes(root)
+	require.True(t, ok)
+	assert.Equal(t, 25*float64(os.Getpagesize()), rss)
+	n, ok := ProcessOpenFDs(root)
+	require.True(t, ok)
+	assert.Equal(t, 3, n)
+
+	// Missing, short and garbled inputs leave the gauge unset rather than zero.
+	_, ok = ProcessRSSBytes(t.TempDir())
+	assert.False(t, ok)
+	_, ok = ProcessOpenFDs(t.TempDir())
+	assert.False(t, ok)
+	for _, bad := range []string{"7\n", "1 x\n", "1 -4\n"} {
+		d := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(d, "statm"), []byte(bad), 0o600))
+		_, ok = ProcessRSSBytes(d)
+		assert.False(t, ok, bad)
+	}
+}
+
+func TestSetLimiterGauges_AndWALStorageGauge(t *testing.T) {
+	SetLimiterGauges(map[string]int{"api": 3, "account": 9})
+	db := filepath.Join(t.TempDir(), "x.db")
+	require.NoError(t, os.WriteFile(db, make([]byte, 10), 0o600))
+	require.NoError(t, os.WriteFile(db+"-wal", make([]byte, 7), 0o600))
+	SetStorageGauges(db)
+	out := dump(t)
+	assert.Contains(t, out, `mycorrhizal_ratelimiter_entries{limiter="api"} 3`)
+	assert.Contains(t, out, `mycorrhizal_ratelimiter_entries{limiter="account"} 9`)
+	assert.Contains(t, out, `mycorrhizal_storage_bytes{kind="wal"} 7`)
+
+	require.NoError(t, os.Remove(db+"-wal"))
+	SetStorageGauges(db)
+	assert.Contains(t, dump(t), `mycorrhizal_storage_bytes{kind="wal"} 0`)
+}
