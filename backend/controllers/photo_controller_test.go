@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -308,6 +309,7 @@ func TestGetProfilePicture_LegacyFileBasedThumbnailUnsupported(t *testing.T) {
 }
 
 func TestGetProfilePicture_MalformedThumbnailDataURL(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
@@ -326,6 +328,7 @@ func TestGetProfilePicture_MalformedThumbnailDataURL(t *testing.T) {
 }
 
 func TestGetProfilePicture_InvalidBase64Thumbnail(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
@@ -617,6 +620,7 @@ func TestAddPhotoToContact_UnsupportedFormatFailsProcessing(t *testing.T) {
 }
 
 func TestAddPhotoToContact_SaveErrorCleansUpNewlyWrittenFile(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	dir := t.TempDir()
 	cfg := &config.Config{ProfilePhotoDir: dir}
 	db, router := setupRouter(t)
@@ -665,6 +669,7 @@ func TestProxyImage_MissingURLParam(t *testing.T) {
 }
 
 func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to fetch image from URL")
 	_, router := setupRouter(t)
 	router.GET("/proxy", ProxyImage)
 
@@ -678,6 +683,7 @@ func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
 }
 
 func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to fetch image from URL")
 	_, router := setupRouter(t)
 	router.GET("/proxy", ProxyImage)
 

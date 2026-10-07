@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -155,6 +156,7 @@ func TestSaveDeliveryPersistsSuccessRecord(t *testing.T) {
 // branch: saveDelivery must not panic when persistence fails, and still
 // returns the (unsaved) delivery value to its caller.
 func TestSaveDeliveryLogsAndReturnsOnCreateError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to save webhook delivery")
 	db := setupWebhookRetryTestDB(t)
 	// Drop the table out from under saveDelivery so db.Create fails.
 	require.NoError(t, db.Migrator().DropTable(&models.WebhookDelivery{}))
@@ -387,6 +389,7 @@ func TestDeliverWebhookNon2xxSchedulesRetryAndRecordsStatus(t *testing.T) {
 }
 
 func TestDeliverWebhookFinalAttemptDoesNotScheduleRetry(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery will not be retried")
 	db := setupWebhookRetryTestDB(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -456,6 +459,7 @@ func TestDeliverWebhookSetsCorrelationHeader(t *testing.T) {
 }
 
 func TestDeliverWebhookConnectionErrorSchedulesRetry(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery transport error")
 	db := setupWebhookRetryTestDB(t)
 
 	// Port 1 on loopback: nothing listens there, so the client.Do call fails
@@ -474,6 +478,7 @@ func TestDeliverWebhookConnectionErrorSchedulesRetry(t *testing.T) {
 }
 
 func TestDeliverWebhookMalformedURLSchedulesRetry(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery: could not build request from configured URL")
 	db := setupWebhookRetryTestDB(t)
 
 	// Malformed enough that http.NewRequest itself fails (invalid IPv6
@@ -597,6 +602,7 @@ func TestTriggerWebhooksNoActiveSubscriptionsDeliversNothing(t *testing.T) {
 // branch: if the initial query fails, TriggerWebhooks must log and return
 // without attempting any delivery, rather than panicking on a nil/empty slice.
 func TestTriggerWebhooksDBQueryErrorIsNoop(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to load webhooks for triggering")
 	db := setupWebhookRetryTestDB(t)
 	// Drop the table out from under the lookup query so it errors.
 	require.NoError(t, db.Migrator().DropTable(&models.Webhook{}))
@@ -610,6 +616,7 @@ func TestTriggerWebhooksDBQueryErrorIsNoop(t *testing.T) {
 // error branch: TriggerWebhooks must log and return without dispatching to
 // any webhook rather than panicking or sending a broken payload.
 func TestTriggerWebhooksPayloadMarshalFailureIsNoop(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to build webhook payload")
 	db := setupWebhookRetryTestDB(t)
 
 	var hits int32
@@ -681,6 +688,7 @@ func TestTestWebhookDeliverySendsTestPayloadAndPersists(t *testing.T) {
 }
 
 func TestTestWebhookDeliveryRecordsFailureOnUnreachableURL(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery transport error")
 	db := setupWebhookRetryTestDB(t)
 
 	wh := models.Webhook{UserID: 1, Name: "test", URL: "http://127.0.0.1:1/hook", Events: []string{}, Secret: "s1", IsActive: true}

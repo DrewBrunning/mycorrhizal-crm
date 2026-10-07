@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -191,6 +192,7 @@ func TestOIDCLoginHandler_NoClientCookieWithoutAndroidParam(t *testing.T) {
 // PKCE challenge must fail closed — the exchange flow cannot bind a code to
 // nothing, and the old deep-link-token shape is exactly what #965 removed.
 func TestOIDCLoginHandler_AndroidRequiresNativePKCEBinding(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC login: android client without native state/PKCE binding")
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
@@ -243,6 +245,7 @@ func TestOIDCLoginHandler_AndroidSetsNativePKCECookies(t *testing.T) {
 }
 
 func TestOIDCLoginHandler_AndroidRejectsNonS256Challenge(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC login: android client without native state/PKCE binding")
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
@@ -432,6 +435,7 @@ func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: missing state cookie")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -444,6 +448,7 @@ func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingNonceCookie(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: missing nonce cookie")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -456,6 +461,7 @@ func TestOIDCCallbackHandler_MissingNonceCookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingPKCECookie(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: missing PKCE verifier cookie")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -468,6 +474,7 @@ func TestOIDCCallbackHandler_MissingPKCECookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_StateMismatch(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: state mismatch")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -480,6 +487,7 @@ func TestOIDCCallbackHandler_StateMismatch(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingCode(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: missing code")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -495,6 +503,7 @@ func TestOIDCCallbackHandler_MissingCode(t *testing.T) {
 // outcome -- verified once here since every other test only checks the
 // redirect.
 func TestOIDCCallbackHandler_ClearsCookiesEvenOnFailure(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: state mismatch")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -520,6 +529,7 @@ func TestOIDCCallbackHandler_ClearsCookiesEvenOnFailure(t *testing.T) {
 // --- OIDCCallbackHandler: real exchange against the fake IdP ---
 
 func TestOIDCCallbackHandler_ExchangeFailsOnForgedSignature(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC token exchange/verification failed")
 	idp := newFakeCallbackIDP(t, "test-client")
 	forgedKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
@@ -543,6 +553,7 @@ func TestOIDCCallbackHandler_ExchangeFailsOnForgedSignature(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_NonceMismatch(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: nonce mismatch")
 	idp := newFakeCallbackIDP(t, "test-client")
 	idp.IDTokenClaims["nonce"] = "nonce-from-idp"
 
@@ -560,6 +571,7 @@ func TestOIDCCallbackHandler_NonceMismatch(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_ClaimsRejectsMultipleAudienceWithoutAzp(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC: failed to extract claims")
 	idp := newFakeCallbackIDP(t, "test-client")
 	idp.IDTokenClaims["nonce"] = "matching-nonce"
 	idp.IDTokenClaims["aud"] = []string{"test-client", "some-other-client"}
@@ -601,6 +613,7 @@ func TestOIDCCallbackHandler_NoAccountAndAutoProvisionDisabled(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_NoEmailWithAutoProvisionEnabled(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC: UserInfo lookup failed; OIDC: provider returned no email; check that the 'email' scope is granted and the UserInfo endpoint is reachable")
 	idp := newFakeCallbackIDP(t, "test-client")
 	idp.IDTokenClaims["nonce"] = "matching-nonce"
 	delete(idp.IDTokenClaims, "email")
@@ -811,6 +824,7 @@ func TestOIDCCallbackHandler_AndroidProviderDeniedUsesDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: state mismatch")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -829,6 +843,7 @@ func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: missing PKCE verifier cookie")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -848,6 +863,7 @@ func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
 // is missing the app's native state/PKCE cookies must fail closed rather than
 // emit a code that cannot be bound to a verifier.
 func TestOIDCCallbackHandler_AndroidMissingNativeBinding(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: android flow missing native state/PKCE binding")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
@@ -869,6 +885,7 @@ func TestOIDCCallbackHandler_AndroidMissingNativeBinding(t *testing.T) {
 // (an impossible-but-defensive config), a fully valid android callback still
 // must not hand back a code — it redirects to the app's error target instead.
 func TestOIDCCallbackHandler_AndroidMintFailureRedirectsToError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC: failed to mint native exchange code")
 	idp := newFakeCallbackIDP(t, "test-client")
 	idp.IDTokenClaims["nonce"] = "matching-nonce"
 	idp.IDTokenClaims["sub"] = "existing-subject"

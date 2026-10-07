@@ -7,6 +7,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/faults"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,7 @@ func TestWebhookDelivery_InjectedFaultRecordsAndSchedulesRetry(t *testing.T) {
 // attempt there is no further retry scheduled — the failure hands off to #467's
 // terminal state rather than retrying forever.
 func TestWebhookDelivery_TerminalAtMaxAttempts(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery will not be retried")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 
@@ -72,6 +74,7 @@ func TestWebhookDelivery_TerminalAtMaxAttempts(t *testing.T) {
 // row and does not mark the reminder sent for that channel, so the next run
 // retries it — no silent drop, no double-send.
 func TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 
@@ -117,6 +120,7 @@ func TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue(t *
 // recorded failed, and the subscription is *kept* (a fault is not a 404/410,
 // so it is not a reason to drop the device).
 func TestNotificationDelivery_InjectedFaultOnWebPushKeepsSubscription(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 

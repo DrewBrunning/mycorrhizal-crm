@@ -1,0 +1,47 @@
+[
+  {
+    "message": "No Mails to be sent since Resend configuration is not set",
+    "max_count": 1,
+    "reason": "The E2E / deploy-smoke / reference-client stacks deliberately leave mail unconfigured, so the embedded server logs this once at startup (embedded/server.go). It is the expected state for a mail-less install, not a failure; a misconfigured Resend account on a real deployment surfaces through the integration health and delivery rows, not this line."
+  },
+  {
+    "message": "TRUSTED_PROXIES is empty; trusting loopback (127.0.0.1/32, ::1/128) for the bundled nginx. If an external reverse proxy fronts this instance, add its address to TRUSTED_PROXIES — otherwise every client shares the proxy's rate-limit bucket and logged IP.",
+    "max_count": 1,
+    "reason": "Every CI stack uses the shipped bundled-nginx deployment, where the only proxy is the loopback nginx and trusting loopback is correct (embedded/server.go). The line is a startup advisory for operators who front the instance with an external proxy; there is no configuration in these stacks that would silence it without diverging from the documented deployment."
+  },
+  {
+    "message": "HTTP request",
+    "max_count": 5,
+    "reason": "The access log (middleware/logging.go) emits a warn/error line only for a 5xx. e2e/immich.spec.ts deliberately configures an unreachable Immich (https://immich.example and http://127.0.0.1:54321) and opens the contact thumbnail and the people picker, so the backend proxies answer EXTERNAL_SERVICE_ERROR/503 and degrade as designed. Those are the only 5xx the suite drives; a regression that produces more trips this bound."
+  },
+  {
+    "message": "Request error",
+    "max_count": 5,
+    "reason": "errors.LogError (errors/middleware.go) logs a 5xx at error; the same two deliberately-unreachable-Immich e2e calls (immich.spec.ts) are the only 5xx the E2E suite drives, and each logs once here alongside its access-log line. The bound keeps the gate sensitive to any additional 5xx."
+  },
+  {
+    "message": "Immich test connection: ping failed",
+    "max_count": 5,
+    "reason": "e2e/immich.spec.ts clicks the Settings \"Test connection\" button with an unreachable https://immich.example; the service logs the ping failure and returns the diagnostic to the caller (the UI is what the test asserts). The same class of user-triggered diagnostic the #1474 triage downgraded elsewhere; bounded to this suite's immich spec."
+  },
+  {
+    "message": "Meerkat upload rejected",
+    "max_count": 5,
+    "reason": "e2e/meerkatImport.spec.ts feeds a non-Meerkat file and asserts the wizard reports the rejection inline; the controller logs the rejected upload before returning the 4xx. Environment-inherent to the negative test, not a server fault."
+  },
+  {
+    "message": "Monica connect failed",
+    "max_count": 5,
+    "reason": "e2e/monicaImport.spec.ts submits an unreachable Monica connection and asserts the inline error; the controller logs the client's failed connect before returning the 4xx. Environment-inherent to the negative test."
+  },
+  {
+    "message": "Test notification channel failed",
+    "max_count": 5,
+    "reason": "e2e/notifications.spec.ts exercises the \"send test notification\" failure path against an unreachable channel; the controller logs the client-triggered test result before returning it. Environment-inherent to the negative test."
+  },
+  {
+    "message": "webhook delivery will not be retried",
+    "max_count": 150,
+    "reason": "e2e/systemEvents.spec.ts registers one webhook pointed at a permanent-404 receiver and fires it ~101 times to fill the admin log's 100-row window, so this warn (and the integration_failed system event it records) is raised once per fire. This is the intended, bounded signal that test asserts on; the bound leaves headroom for the one test's full page-fill."
+  }
+]
