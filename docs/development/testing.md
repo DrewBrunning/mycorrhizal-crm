@@ -566,6 +566,41 @@ locally with `npx playwright test --project=webkit` (needs
 `npx playwright install --with-deps webkit` first); the `e2e-webkit-smoke` job
 in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
 
+### Firefox smoke + nightly full suite (issue #1479)
+
+Firefox is the engine most self-hosters on Linux run, and it already bit this
+project once (registering a service worker against the SPA-fallback
+`index.html` fails with "The operation is insecure"; see CLAUDE.md's
+`frontend-dev` note). `playwright.config.ts` therefore has a `firefox` project
+with two scopes:
+
+- **Every PR — smoke.** `frontend/e2e/firefoxSmoke.spec.ts`, run by the
+  `e2e-firefox-smoke` job (a parallel job on the same `docker-compose.test.yml`
+  stack as `e2e`, so it adds nothing to the critical path). Six flows where
+  engines disagree: login sets a `HttpOnly` + `SameSite=Strict` cookie that
+  script cannot read (and logout ends the session); contact create + edit in
+  the UI; a birthday rendered in the date format chosen in Settings;
+  service-worker registration on the **production build** (the script is served
+  as JavaScript and the registration survives a reload); the CSV export
+  download; logout. It authenticates as the per-worker user from #1480.
+- **Nightly — full suite.** With `E2E_ALL_BROWSERS=1` the `firefox` project's
+  `testMatch` widens to every spec the `chromium` project runs (still excluding
+  `sw-upgrade/`, which has its own config that already covers Firefox, and
+  `webkitSmoke`). Only the scheduled `e2e-firefox-full` job sets it, so the
+  per-PR path never pays for it; the scheduled run has zero retries, and
+  `nightly-failure-alert.yml` already watches `e2e-tests.yml`. A spec that only
+  makes sense on Chromium (screenshot baselines are Chromium-on-Linux only,
+  CDP-only APIs) opts out with
+  `test.skip(({ browserName }) => browserName !== 'chromium', '<reason>')`;
+  a genuine Firefox-only defect is `test.fixme` with a reason and a tracking
+  issue, never a silent skip.
+
+Run locally against the stack with `npx playwright install --with-deps firefox`
+once, then `npx playwright test --project=firefox` (smoke) or
+`E2E_ALL_BROWSERS=1 npx playwright test --project=firefox` (everything). The
+smoke leg's service-worker test is verified to fail when registration breaks
+(route `/service-worker.js` to HTML and the registration poll goes red).
+
 ## Release/install smoke (DEPLOY-01, issue #450)
 
 - **Responsible for** a clean install that proves the **workflow**, not the boot.
