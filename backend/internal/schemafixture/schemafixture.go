@@ -9,6 +9,7 @@ import (
 
 	"mycorrhizal/database"
 	"mycorrhizal/internal/canonicalfixture"
+	"mycorrhizal/models"
 
 	"gorm.io/gorm"
 )
@@ -102,6 +103,10 @@ func populateCurrentSchema(tb testing.TB, release Release) (map[string]tableData
 	if err != nil {
 		return nil, nil, err // # pragma: no cover — the committed manifest is always present and valid under the repo root
 	}
+	// The fixture's data is the canonical manifest, not manifest + whatever
+	// audit rows the model hooks would append: keep the build audit-silent
+	// (an unarmed DB records by default under a test binary, issue #1493).
+	models.DisableAudit(srcDB)
 	ds, err := canonicalfixture.Populate(srcDB, m)
 	if err != nil {
 		return nil, nil, err // # pragma: no cover — the manifest is validated to fit a migrated current schema

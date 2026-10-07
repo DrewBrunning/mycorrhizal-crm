@@ -105,8 +105,10 @@ func RecomputeAuditChain(db *gorm.DB) error {
 		return nil
 	}
 
-	auditRecorder.chainMu.Lock()
-	defer auditRecorder.chainMu.Unlock()
+	if rec, ok := AuditRecorderFor(db).(*auditLogger); ok {
+		rec.chainMu.Lock()
+		defer rec.chainMu.Unlock()
+	}
 
 	var events []AuditEvent
 	if err := db.Order("id asc").Find(&events).Error; err != nil {

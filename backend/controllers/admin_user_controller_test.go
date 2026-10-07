@@ -698,11 +698,6 @@ func TestUpdateUser_PasswordReset_IncrementsTokenVersion(t *testing.T) {
 // acting admin.
 func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	actor := models.User{Username: "adminactor", Password: "password123!A", Email: "adminactor@example.com", IsAdmin: true}
 	require.NoError(t, db.Create(&actor).Error)
@@ -729,8 +724,6 @@ func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-	models.AuditFlush()
 
 	var ops []string
 	require.NoError(t, db.Model(&models.AuditEvent{}).
@@ -931,11 +924,6 @@ func TestResetUserTwoFactor_NonAdmin_Forbidden(t *testing.T) {
 // CLAUDE.md's backend trap #1 warns about.
 func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	actor := models.User{Username: "adminactor", Password: "password123!A", Email: "adminactor@example.com", IsAdmin: true}
 	require.NoError(t, db.Create(&actor).Error)
@@ -962,8 +950,6 @@ func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-	models.AuditFlush()
 
 	var events []models.AuditEvent
 	require.NoError(t, db.

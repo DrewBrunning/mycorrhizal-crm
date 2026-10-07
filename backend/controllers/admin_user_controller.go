@@ -365,7 +365,7 @@ func CreateUser(c *gin.Context) {
 
 	// T18 audit: admin created an account (issue #381). The acting admin is
 	// the actor; the new account is the subject.
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpCreate, actingAdminID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpCreate, actingAdminID)
 
 	c.JSON(http.StatusCreated, models.AdminUserResponse{
 		ID:         user.ID,
@@ -509,12 +509,12 @@ func UpdateUser(c *gin.Context) {
 
 	// T18 audit: admin user edit, with the security-relevant deltas spelled
 	// out (issue #381). The acting admin is the actor.
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpUpdate, currentUserID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpUpdate, currentUserID)
 	if input.IsAdmin != nil && *input.IsAdmin != wasAdmin {
-		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRoleChange, currentUserID)
+		models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRoleChange, currentUserID)
 	}
 	if input.Password != nil {
-		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, currentUserID)
+		models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, currentUserID)
 	}
 
 	c.JSON(http.StatusOK, models.AdminUserResponse{
@@ -618,7 +618,7 @@ func ResetUserTwoFactor(c *gin.Context) {
 
 	// Issue #592 audit: admin-initiated 2FA reset, attributed to the acting
 	// admin, distinct from the self-service AuditOpTOTPDisable.
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTwoFactorAdminReset, currentUserID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTwoFactorAdminReset, currentUserID)
 
 	c.JSON(http.StatusOK, models.AdminUserResponse{
 		ID:         user.ID,
@@ -715,7 +715,7 @@ func DeleteUser(c *gin.Context) {
 	// T18 audit: admin deleted an account (issue #381). Recorded after the
 	// transaction so the event itself (UserID = acting admin) survives the
 	// target's hard-delete cascade.
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", id), models.AuditOpDelete, currentUserID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", id), models.AuditOpDelete, currentUserID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }

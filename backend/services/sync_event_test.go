@@ -16,8 +16,6 @@ import (
 
 func TestRecordSyncEvent_Success(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	ctx := logger.WithCorrelationID(context.Background(), "corr-sync-1")
 	recordSyncEvent(ctx, db, logger.ComponentContactSync, 7, time.Now().Add(-2*time.Second), nil, "created=1 updated=2")
@@ -39,8 +37,6 @@ func TestRecordSyncEvent_Success(t *testing.T) {
 
 func TestRecordSyncEvent_Failure(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	recordSyncEvent(context.Background(), db, logger.ComponentCalendarSync, 0, time.Now(), errors.New("dav 401"), "")
 

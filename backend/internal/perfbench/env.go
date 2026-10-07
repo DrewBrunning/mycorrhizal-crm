@@ -129,6 +129,8 @@ func NewEnv(opts EnvOptions) (*Env, error) {
 		return nil, fmt.Errorf("perfbench: opening migrated schema: %w", err)
 	}
 
+	models.DisableAudit(seedDB) // population must not write audit rows (#1493; see below)
+
 	base, err := canonicalfixture.Read()
 	if err != nil { // # pragma: no cover — the checked-in manifest always loads from inside the repo
 		return nil, fmt.Errorf("perfbench: reading canonical manifest: %w", err)
@@ -144,6 +146,11 @@ func NewEnv(opts EnvOptions) (*Env, error) {
 	if err != nil { // # pragma: no cover — the file seedDB just migrated reopens
 		return nil, fmt.Errorf("perfbench: opening counting connection: %w", err)
 	}
+
+	// The baselines were measured without an audit recorder; an unarmed DB in a
+	// test binary now records by default (issue #1493), so keep the measured
+	// connection audit-silent to leave the committed query counts unchanged.
+	models.DisableAudit(countDB)
 
 	photoDir := filepath.Join(opts.WorkDir, "photos")
 	if err := os.MkdirAll(photoDir, 0o750); err != nil { // # pragma: no cover — mkdir under a writable temp dir
@@ -291,6 +298,9 @@ func (e *Env) forkForDestructive(workDir string) (*Env, error) {
 		_ = closeGormNow(countDB)
 		return nil, err
 	}
+
+	models.DisableAudit(countDB) // see NewEnv: baselines are audit-silent (#1493)
+	models.DisableAudit(seedDB)
 
 	photoDir := filepath.Join(workDir, "photos")
 	if err := os.MkdirAll(photoDir, 0o750); err != nil { // # pragma: no cover — mkdir under a writable temp dir

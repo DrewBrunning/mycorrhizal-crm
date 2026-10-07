@@ -83,7 +83,7 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		// T18 audit: account creation is an auth lifecycle event (issue #381).
-		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRegister, user.ID)
+		models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRegister, user.ID)
 
 		// Create the user's default self-contact.
 		if err := services.EnsureSelfContact(db, &user); err != nil {
@@ -179,7 +179,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		// Unknown-identifier failures are intentionally not audited — the
 		// account id is unknown and the design deliberately cannot
 		// distinguish them (anti-enumeration); they stay in the request log.
-		models.RecordAuditEvent(models.AuditEntityAuth, foundUser.Username, models.AuditOpLoginFailed, foundUser.ID)
+		models.RecordAuditEvent(db, models.AuditEntityAuth, foundUser.Username, models.AuditOpLoginFailed, foundUser.ID)
 		// Record failed attempt for password mismatch
 		isLocked, lockoutSecs := accountLimiter.RecordLoginFailure(identifier, clientIP)
 		if isLocked {
@@ -243,7 +243,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	// the session token is actually minted. For 2FA accounts the session is
 	// not minted until Complete2FALogin succeeds, which records the same
 	// event, so "login" here always means a real session was issued.
-	models.RecordAuditEvent(models.AuditEntityAuth, foundUser.Username, models.AuditOpLogin, foundUser.ID)
+	models.RecordAuditEvent(db, models.AuditEntityAuth, foundUser.Username, models.AuditOpLogin, foundUser.ID)
 
 	// Set httpOnly cookie with the JWT token
 	maxAge := cfg.JWTExpiryHours * 3600 // Convert hours to seconds
@@ -424,7 +424,7 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	// T18/issue #411 audit: reset requested for a known account. This is an
 	// operator-only audit line, not part of the response.
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
 
 	if err := services.SendPasswordResetEmail(user.Email, token, user.Language, cfg); err != nil {
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to send password reset email")
@@ -534,7 +534,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	}
 
 	// T18 audit: password changed via the recovery path (issue #381).
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, user.ID)
 
 	// Issue #411: a reset is the recovery path for a suspected compromise, so
 	// standing API tokens must not survive it either -- TokenVersion above
@@ -857,7 +857,7 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 	}
 
 	// T18 audit: self-service password change (issue #381).
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordChange, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordChange, user.ID)
 
 	// Issue #722: a self-service password change also revokes every device
 	// grant. Unlike API tokens (deliberately left standing here — see the

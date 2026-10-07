@@ -223,7 +223,7 @@ func ConfirmTwoFactor(c *gin.Context) {
 		logger.FromContext(c).Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke sessions after 2FA enrollment") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
 	}
 	// T18 audit: 2FA enabled (issue #381).
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPEnable, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPEnable, user.ID)
 	reissueSessionToken(c, user)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -314,7 +314,7 @@ func DisableTwoFactor(c *gin.Context) {
 		logger.FromContext(c).Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke sessions after disabling 2FA") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
 	}
 	// T18 audit: 2FA disabled (issue #381).
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPDisable, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPDisable, user.ID)
 	reissueSessionToken(c, user)
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
 }
@@ -389,7 +389,7 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 	}
 
 	// T18 audit: recovery codes regenerated — the old set is dead (issue #381).
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRecoveryRegen, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRecoveryRegen, user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"recovery_codes": recoveryCodes})
 }
@@ -461,7 +461,7 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 
 	if !valid2FAProof(db, &user, input.Code, currentConfig(c).JWTSecretKey) {
 		// T18 audit: failed 2FA step for a known account (issue #381).
-		models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
+		models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
 		_, lockoutSecs := accountLimiter.RecordLoginFailure(username, clientIP)
 		if lockoutSecs > 0 {
 			c.JSON(http.StatusTooManyRequests, gin.H{
@@ -492,7 +492,7 @@ func issueLoginSession(c *gin.Context, cfg *config.Config, db *gorm.DB, user mod
 
 	// T18 audit: fully authenticated (password step + 2FA step) — only after
 	// the session token is actually minted (issue #381).
-	models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 
 	// Clear the one-time challenge and issue the real session.
 	// Issue #392: Strict — only ever read/set by same-origin XHR.

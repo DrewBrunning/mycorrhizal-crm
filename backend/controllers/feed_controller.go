@@ -131,7 +131,7 @@ func CreateFeed(cfg *config.Config) gin.HandlerFunc {
 			return                                                       // # pragma: no cover — DB failure only
 		}
 
-		models.RecordAuditEvent(models.AuditEntityFeed, feed.ID, models.AuditOpCreate, userID)
+		models.RecordAuditEvent(db, models.AuditEntityFeed, feed.ID, models.AuditOpCreate, userID)
 
 		c.JSON(http.StatusCreated, models.FeedCreateResponse{
 			Feed: feed,
@@ -190,8 +190,8 @@ func RotateFeed(cfg *config.Config) gin.HandlerFunc {
 			return                                                                             // # pragma: no cover — DB failure only
 		}
 
-		models.RecordAuditEvent(models.AuditEntityFeed, oldFeed.ID, models.AuditOpRevoke, userID)
-		models.RecordAuditEvent(models.AuditEntityFeed, newFeed.ID, models.AuditOpCreate, userID)
+		models.RecordAuditEvent(db, models.AuditEntityFeed, oldFeed.ID, models.AuditOpRevoke, userID)
+		models.RecordAuditEvent(db, models.AuditEntityFeed, newFeed.ID, models.AuditOpCreate, userID)
 
 		c.JSON(http.StatusCreated, models.FeedCreateResponse{
 			Feed: newFeed,
@@ -222,7 +222,7 @@ func DeleteFeed(c *gin.Context) {
 		return                                                       // # pragma: no cover — DB failure only
 	}
 
-	models.RecordAuditEvent(models.AuditEntityFeed, feed.ID, models.AuditOpRevoke, userID)
+	models.RecordAuditEvent(db, models.AuditEntityFeed, feed.ID, models.AuditOpRevoke, userID)
 
 	c.Status(http.StatusNoContent)
 }
@@ -252,7 +252,7 @@ func RevokeAllFeeds(c *gin.Context) {
 	}
 
 	for _, id := range ids {
-		models.RecordAuditEvent(models.AuditEntityFeed, id, models.AuditOpRevoke, userID)
+		models.RecordAuditEvent(db, models.AuditEntityFeed, id, models.AuditOpRevoke, userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"revoked": revoked})

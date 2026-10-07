@@ -40,6 +40,8 @@ func newCascadeAuditEnv(t *testing.T) *cascadeAuditEnv {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 	db := dbtest.New(t)
+	// Seeding must not record events; arm() installs the real recorder after.
+	models.DisableAudit(db)
 	user := models.User{Username: "cascadeaudit", Password: "password123!A", Email: "cascadeaudit@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -72,11 +74,7 @@ func (e *cascadeAuditEnv) seedChildren(t *testing.T, name string) models.Contact
 // don't queue events whose completion races the assertions.
 func (e *cascadeAuditEnv) arm(t *testing.T) *bytes.Buffer {
 	t.Helper()
-	models.RegisterAuditDB(e.db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
+	models.NewAuditRecorder(e.db, models.WithSync())
 	return captureTestLogger(t)
 }
 
@@ -99,7 +97,6 @@ var cascadeChildTypes = []string{
 
 func (e *cascadeAuditEnv) assertClean(t *testing.T, buf *bytes.Buffer, wantContactDeletes, wantChildEvents int64) {
 	t.Helper()
-	models.AuditFlush()
 	var n int64
 	require.NoError(t, e.db.Model(&models.AuditEvent{}).
 		Where("entity_type = ? AND operation = ?", models.AuditEntityContact, models.AuditOpDelete).Count(&n).Error)
@@ -173,7 +170,6 @@ func TestSingleRowChildDelete_StillAudited(t *testing.T) {
 	buf := e.arm(t)
 
 	require.NoError(t, e.db.Delete(&note).Error)
-	models.AuditFlush()
 
 	var events []models.AuditEvent
 	require.NoError(t, e.db.Where("entity_type = ?", models.AuditEntityNote).Find(&events).Error)

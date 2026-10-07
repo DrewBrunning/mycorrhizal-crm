@@ -29,11 +29,6 @@ func deleteAccountTestEnv(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config) 
 	gin.SetMode(gin.ReleaseMode)
 
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
 
 	router := gin.New()
@@ -317,8 +312,6 @@ func TestDeleteOwnAccount_NoAuditEventPersisted(t *testing.T) {
 	req := deleteAccountRequest(token, map[string]string{"current_password": strongPassword})
 	w, _ := doRequest(router, req)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-	models.AuditFlush()
 
 	var after int64
 	require.NoError(t, db.Model(&models.AuditEvent{}).Count(&after).Error)

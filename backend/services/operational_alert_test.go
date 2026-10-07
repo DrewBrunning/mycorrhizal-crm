@@ -44,8 +44,6 @@ func newAlertUser(t *testing.T, db *gorm.DB, name string, isAdmin bool, ntfyURL 
 // every user of a shared instance about (issue #428).
 func TestDeliverOperationalAlert_AdminOnly(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	srv := newFakeChannelServer(t, nil)
 
@@ -74,8 +72,6 @@ func TestDeliverOperationalAlert_AdminOnly(t *testing.T) {
 // silently reinstate the lost-raise bug.
 func TestOperationalAlertDeliveryOutcome(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	okSrv := newFakeChannelServer(t, nil)
 	failSrv := newFakeChannelServer(t, map[string]int{"/": http.StatusInternalServerError})
@@ -133,8 +129,6 @@ func TestOperationalAlertDeliveryOutcome(t *testing.T) {
 // or re-page an already-delivered alert (always undelivered).
 func TestOperationalAlertDeliveryPerChannel(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	okSrv := newFakeChannelServer(t, nil)
 	failSrv := newFakeChannelServer(t, map[string]int{"/": http.StatusInternalServerError})

@@ -16,19 +16,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// newAuditTestDB builds a real migrated schema (CLAUDE.md backend trap 1) and
-// registers the audit recorder against it so hooks persist events.
+// newAuditTestDB builds a real migrated schema (CLAUDE.md backend trap 1) with
+// its own synchronous audit recorder, so hooks persist events inline and the
+// test reads them with no flush. The recorder is bound to this DB alone: there
+// is nothing to unregister and no state shared with any other test.
 func newAuditTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db := dbtest.New(t)
-	RegisterAuditDB(db)
-	// AuditFlush drains in-flight writes, then unregister the recorder so a
-	// later test in this package (which has no audit DB of its own) does not
-	// fire hooks into this test's already-deleted temp-dir DB.
-	t.Cleanup(func() {
-		AuditFlush()
-		RegisterAuditDB(nil)
-	})
+	NewAuditRecorder(db, WithSync())
 	return db
 }
 
@@ -54,7 +49,6 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	contact.Lastname = "Byron"
 	require.NoError(t, db.Save(&contact).Error)
 	require.NoError(t, db.Delete(&contact).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityContact, contact.VCardUID))
 
 	note := Note{UserID: user.ID, ContactID: &contact.ID, Content: "note"}
@@ -62,7 +56,6 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	note.Content = "edited"
 	require.NoError(t, db.Save(&note).Error)
 	require.NoError(t, db.Delete(&note).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityNote, uintToStr(note.ID)))
 
 	activity := Activity{UserID: user.ID, Title: "a"}
@@ -70,7 +63,6 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	activity.Title = "b"
 	require.NoError(t, db.Save(&activity).Error)
 	require.NoError(t, db.Delete(&activity).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityActivity, activity.UUID))
 
 	le := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: "moved"}
@@ -78,13 +70,11 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	le.Type = "graduated"
 	require.NoError(t, db.Save(&le).Error)
 	require.NoError(t, db.Delete(&le).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityLifeEvent, le.ID))
 
 	gift := Gift{UserID: user.ID, EntityID: contact.VCardUID}
 	require.NoError(t, db.Create(&gift).Error)
 	require.NoError(t, db.Delete(&gift).Error)
-	AuditFlush()
 	assert.EqualValues(t, 2, countAuditEvents(t, db, AuditEntityGift, gift.ID))
 
 	circle := Circle{UserID: user.ID, Name: "c"}
@@ -92,13 +82,11 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	circle.Name = "c2"
 	require.NoError(t, db.Save(&circle).Error)
 	require.NoError(t, db.Delete(&circle).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityCircle, circle.ID))
 
 	tag := Tag{UserID: user.ID, Name: "t"}
 	require.NoError(t, db.Create(&tag).Error)
 	require.NoError(t, db.Delete(&tag).Error)
-	AuditFlush()
 	assert.EqualValues(t, 2, countAuditEvents(t, db, AuditEntityTag, tag.ID))
 
 	household := Household{UserID: user.ID, Name: "h", Type: "family_unit"}
@@ -106,13 +94,11 @@ func TestAudit_EveryEntityCreateUpdateDeleteProducesOneEvent(t *testing.T) {
 	household.Name = "h2"
 	require.NoError(t, db.Save(&household).Error)
 	require.NoError(t, db.Delete(&household).Error)
-	AuditFlush()
 	assert.EqualValues(t, 3, countAuditEvents(t, db, AuditEntityHousehold, household.ID))
 
 	reminder := Reminder{UserID: user.ID, ContactID: &contact.ID, Message: "r", RemindAt: time.Now(), Recurrence: "once"}
 	require.NoError(t, db.Create(&reminder).Error)
 	require.NoError(t, db.Delete(&reminder).Error)
-	AuditFlush()
 	assert.EqualValues(t, 2, countAuditEvents(t, db, AuditEntityReminder, uintToStr(reminder.ID)))
 }
 
@@ -126,7 +112,6 @@ func TestAudit_TableRejectsMutation(t *testing.T) {
 
 	contact := Contact{UserID: user.ID, Firstname: "A"}
 	require.NoError(t, db.Create(&contact).Error)
-	AuditFlush()
 
 	require.Error(t, db.Model(&AuditEvent{}).Where("entity_type = ?", AuditEntityContact).Update("operation", "create").Error,
 		"audit_events must reject UPDATE")
@@ -161,7 +146,6 @@ func TestAudit_UpdateEventStoresBeforeSnapshot(t *testing.T) {
 	require.NoError(t, db.Create(&contact).Error)
 	contact.Firstname = "After"
 	require.NoError(t, db.Save(&contact).Error)
-	AuditFlush()
 
 	var event AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -186,7 +170,6 @@ func TestAudit_BeforeSnapshotQueryFailureIsLogged(t *testing.T) {
 	require.NoError(t, db.Create(&user).Error)
 	contact := Contact{UserID: user.ID, Firstname: "Before"}
 	require.NoError(t, db.Create(&contact).Error)
-	AuditFlush()
 
 	buf := &bytes.Buffer{}
 	oldLogger := logger.Logger
@@ -222,15 +205,44 @@ func TestAudit_HookFailureDoesNotRollBackTheRealWrite(t *testing.T) {
 	brokenSQL, err := brokenDB.DB()
 	require.NoError(t, err)
 	require.NoError(t, brokenSQL.Close())
-	RegisterAuditDB(brokenDB)
+	rec := &auditLogger{db: brokenDB}
+	installAuditRecorder(db, rec)
 
 	// The audit write now fails (logged, ignored); the contact must still save.
 	contact := Contact{UserID: user.ID, Firstname: "Survivor"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	// Restore a working session for the rest of the test process.
-	RegisterAuditDB(db)
-	AuditFlush()
+	rec.Flush()
+	assert.EqualValues(t, 1, rec.FailedWrites(), "the audit write failed (and was counted), the real write did not")
+}
+
+// TestAudit_HookGuardsAndMarshalFailures covers the defensive early returns the
+// hook helpers take when a hook fires without a usable statement (a nil tx), on
+// a zero-identity bulk-hook model, or when a snapshot cannot be marshaled. The
+// refactor in issue #1493 moved the recorder out of audit.go; these branches
+// stayed behind and would otherwise go untested there.
+func TestAudit_HookGuardsAndMarshalFailures(t *testing.T) {
+	db := newAuditTestDB(t)
+	user := User{Username: "auditguards", Password: "password123!A", Email: "auditguards@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	// A nil tx is a no-op for both hooks (some unit tests call them directly).
+	auditAfterSave(nil, AuditEntityContact, "1", user.ID)
+	auditAfterDelete(nil, AuditEntityContact, "1", user.ID, &Contact{})
+
+	// Zero-identity bulk-hook models are skipped, not recorded.
+	tx := db.Session(&gorm.Session{})
+	auditAfterSave(tx, AuditEntityContact, "0", user.ID)
+	auditAfterDelete(tx, AuditEntityContact, "0", user.ID, &Contact{})
+
+	// An unmarshalable snapshot makes auditAfterDelete give up silently.
+	auditAfterDelete(tx, AuditEntityContact, "1", user.ID, make(chan int))
+
+	// The redaction helpers surface their own marshal/unmarshal errors.
+	_, err := redactJSON([]byte("{not json"))
+	require.Error(t, err)
+	_, err = redactedJSON(make(chan int))
+	require.Error(t, err)
 }
 
 func uintToStr(id uint) string {

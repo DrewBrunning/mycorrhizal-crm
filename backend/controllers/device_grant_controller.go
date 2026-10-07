@@ -70,7 +70,7 @@ func ExchangeDeviceGrant(c *gin.Context, cfg *config.Config) {
 	// #381) — same event the password path records, so the trail reads the
 	// same way; the grant id is lost here by design (last_used_at carries the
 	// activity).
-	models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 
 	// Issue #392: Strict, matching the cookie as set at login. Secure is set
 	// unconditionally here (not just when cfg.CookieSecure is on): this
@@ -176,7 +176,7 @@ func RevokeDeviceGrant(c *gin.Context) {
 	}
 
 	// T18 audit: device-grant revocation, under the auth lifecycle entity.
-	models.RecordAuditEvent(models.AuditEntityAuth, fmt.Sprintf("device_grant:%d", grant.ID), models.AuditOpRevoke, userID)
+	models.RecordAuditEvent(db, models.AuditEntityAuth, fmt.Sprintf("device_grant:%d", grant.ID), models.AuditOpRevoke, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Device grant revoked successfully"})
 }
@@ -205,7 +205,7 @@ func RevokeAllDeviceGrants(c *gin.Context) {
 	}
 
 	for _, id := range ids {
-		models.RecordAuditEvent(models.AuditEntityAuth, fmt.Sprintf("device_grant:%d", id), models.AuditOpRevoke, userID)
+		models.RecordAuditEvent(db, models.AuditEntityAuth, fmt.Sprintf("device_grant:%d", id), models.AuditOpRevoke, userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"revoked": revoked})

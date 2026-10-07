@@ -107,7 +107,7 @@ func CreateApiToken(c *gin.Context) {
 	}
 
 	// T18 audit: API-token issuance (issue #381).
-	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpCreate, userID)
+	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpCreate, userID)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
 		ApiTokenResponse: models.ApiTokenResponse{
@@ -150,7 +150,7 @@ func RevokeApiToken(c *gin.Context) {
 	}
 
 	// T18 audit: API-token revocation (issue #381).
-	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpRevoke, userID)
+	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpRevoke, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Token revoked successfully"})
 }
@@ -189,7 +189,7 @@ func RevokeAllApiTokens(c *gin.Context) {
 	// per-token event so the audit trail names every affected token
 	// individually rather than one opaque bulk event.
 	for _, id := range ids {
-		models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", id), models.AuditOpRevoke, userID)
+		models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", id), models.AuditOpRevoke, userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"revoked": revoked})
@@ -254,8 +254,8 @@ func RotateApiToken(c *gin.Context) {
 
 	// T18 audit: same two events CreateApiToken/RevokeApiToken each fire
 	// individually, both recorded here since rotation does both at once.
-	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", oldToken.ID), models.AuditOpRevoke, userID)
-	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", newToken.ID), models.AuditOpCreate, userID)
+	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", oldToken.ID), models.AuditOpRevoke, userID)
+	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", newToken.ID), models.AuditOpCreate, userID)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
 		ApiTokenResponse: models.ApiTokenResponse{
