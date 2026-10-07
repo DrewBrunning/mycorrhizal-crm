@@ -45,6 +45,7 @@ unleash:
         - ^idempotency_purge_service\.go$
         - ^immich_client\.go$
         - ^immich_service\.go$
+        - ^import_row_failure\.go$
         - ^import_session\.go$
         - ^import_source_bundle\.go$
         - ^import_source_idmap\.go$

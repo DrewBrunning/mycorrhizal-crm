@@ -288,9 +288,20 @@ jobs:
       pull-requests: read
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  arm64-tests:
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',arm64-tests,') }}
+    uses: ./.github/workflows/arm64-tests.yml
+    permissions:
+      contents: read
   carddav-e2e:
     if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',carddav-e2e,') }}
     uses: ./.github/workflows/carddav-e2e.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  integration-real-servers:
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',integration-real-servers,') }}
+    uses: ./.github/workflows/integration-real-servers.yml
     permissions:
       contents: read
       pull-requests: read
@@ -366,7 +377,9 @@ jobs:
       - container-hardening
       - min-version-tests
       - migration-tests
+      - arm64-tests
       - carddav-e2e
+      - integration-real-servers
       - chaos-tests
       - schemathesis
       - differential-e2e

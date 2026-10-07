@@ -44,18 +44,14 @@ import (
 // (promoting another user to admin in DeleteOwnAccount) runs before this
 // call, not through it.
 //
-// Every per-table `return err` below is deliberately `# pragma: no cover`
-// (docs/development/coverage.md's override path): each one only fires on a
-// genuine SQLite/disk-level failure, never on a bad request — every FK from
-// another table to `users` is either swept here or carries `ON DELETE
-// CASCADE`, and controllers/delete_cascade_coverage_test.go proves that
-// structurally, so a mid-cascade failure can never come from an orphaned
-// reference this cascade forgot to clean up. One representative failure
-// (TestDeleteUser_ReportsTransactionFailure /
-// TestDeleteOwnAccount_CascadeTransactionFails, both via a dropped table)
-// already proves the pattern — abort the whole transaction, roll back,
-// 500 — generically; fault-injecting each of the ~50 other tables
-// individually would just re-prove the same Go idiom fifty times over.
+// Every per-table `return err` below is exercised by the DB-fault sweep
+// (routes/db_fault_sweep_test.go, issue #1476), which fails each statement of
+// DELETE /account in turn and asserts the transaction rolled back and the
+// response leaks no SQL — so these arms carry no coverage pragma. A failure
+// here only ever means a genuine SQLite/disk-level error, never an orphaned
+// reference: every FK from another table to `users` is either swept here or
+// carries `ON DELETE CASCADE`, which controllers/delete_cascade_coverage_test.go
+// proves structurally.
 //
 // Every model here that carries gorm.DeletedAt is deleted with Unscoped()
 // (backend trap #7: DeleteUser is a hard delete). A plain Delete would only
@@ -66,7 +62,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 
 	// Delete attachments (N7 — hard: account gone, no tombstoning needed).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Attachment{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete reminders (hard — user account gone, no tombstoning needed).
@@ -75,10 +71,10 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	// cover it — this explicit pass keeps the manual-cascade checklist
 	// complete rather than relying on the constraint).
 	if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)", userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Reminder{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete contact shares where the user is either party (hard —
@@ -86,12 +82,12 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	// tombstoning once the account is gone). ContactShare has no soft
 	// delete of its own, so no Unscoped() needed here.
 	if err := tx.Where("from_user_id = ? OR to_user_id = ?", userID, userID).Delete(&models.ContactShare{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete notes (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Note{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete activity_contacts associations (many-to-many)
@@ -101,143 +97,143 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 
 	// Delete activities (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Activity{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete webhook deliveries, then webhooks (child before parent;
 	// WebhookDelivery has no direct UserID, only WebhookID)
 	if err := tx.Exec("DELETE FROM webhook_deliveries WHERE webhook_id IN (SELECT id FROM webhooks WHERE user_id = ?)", userID).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Webhook{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete CardDAV contact sync links, then subscriptions (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactSyncLink{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ContactSubscription{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete household memberships, then households (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.HouseholdMember{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Household{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete circle memberships, then circles (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.CircleMember{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Circle{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete contact tags, then tags (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactTag{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Tag{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete custom field values, then field definitions (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.FieldValue{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.FieldDefinition{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete CardDAV sync token
 	if err := tx.Where("user_id = ?", userID).Delete(&models.CardDAVSync{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete API tokens
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ApiToken{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete private feed credentials (issue #382, ADR 0030 decision 6) —
 	// hard delete, because token_hash is unique and a lingering row would
 	// block nothing but serves no audit purpose once the owner is gone.
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Feed{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete device grants (issue #722) — the biometric-login credentials
 	// die with the account, exactly like API tokens.
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DeviceGrant{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete session rows (issue #866) — hard delete; the FK is ON DELETE
 	// CASCADE but the manual enumeration is the convention (backend trap #6).
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Session{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete reminder completions
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ReminderCompletion{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete calendar event links, then calendar subscriptions (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.CalendarEventLink{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.CalendarSubscription{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete relationship-graph edges
 	if err := tx.Where("user_id = ?", userID).Delete(&models.RelationshipEdge{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete life events (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LifeEvent{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete life-event-suggestion resolution memory (ADR 0023, hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LifeEventSuggestionResolution{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete preferences (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Preference{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete cadence policies (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.CadencePolicy{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete data decay policies (hard) — issue #352, docs/adrs/0027-data-decay.md
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete conversation agenda items (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ConversationAgenda{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete gift records (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Gift{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete occasion obligations (hard) — docs/adrs/0024-occasions.md, issue #387, ticket #1222
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionObligation{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete occasion event attendees, then occasion events (child before
@@ -245,83 +241,83 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	// soft-deleted content, so the FK cascade from the hard-deleted user row
 	// never fires for them; the manual enumeration is the convention.
 	if err := tx.Where("user_id = ?", userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionEvent{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete external integration links and enrichment events (T14 —
 	// hard delete, edge/join-shaped)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalIdentity{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalActivity{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete reach-out suggestions and the detection watermark (issue
 	// #177 — hard delete, system-generated/cursor-shaped)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ReachOutCursor{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete CardDAV sync conflicts (issue #395 — hard delete,
 	// system-generated; nothing left to review once the account is gone)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactSyncConflict{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete the user's Immich connection config (T15/T16)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImmichConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete the user's file-integration connection configs (P2a/P2b/P2c —
 	// Paperless-ngx, Seafile, Nextcloud/ownCloud WebDAV)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PaperlessConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	// GeoPulse location-history connection config (issue #160, ADR 0033)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.GeoPulseConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.SeafileConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.WebDAVConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete the user's notification channel config and push device
 	// subscriptions (N9 — hard: account gone, no tombstoning needed)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NotificationConfig{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PushSubscription{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Mobile push device registrations (M2 — account gone, no tombstoning
 	// needed; matches PushSubscription above)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DeviceRegistration{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete link field types (hard — user account gone, no
 	// tombstoning needed; matches the other DeletedAt-bearing entities
 	// above, e.g. CadencePolicy/Preference/LifeEvent)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LinkFieldType{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// T93: duplicate-pair dismissal memory (hard, edge/join-shaped — account
 	// gone, no tombstoning needed)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// N8: hashed 2FA recovery codes (hard, join-shaped — a code is its
@@ -329,36 +325,36 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	// the manual-cascade checklist stays complete rather than relying on
 	// the constraint)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.RecoveryCode{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Issue #593: WebAuthn passkeys (hard, join-shaped — natural key
 	// (user_id, credential_id); FK cascade would cover it, but the manual
 	// checklist stays complete rather than relying on the constraint)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.WebAuthnCredential{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete import run history (issue #651 — hard, user-scoped
 	// operational bookkeeping; the account is gone, nothing to keep).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImportRun{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete idempotency-key replay records (issue #459, CON-04 — hard,
 	// user-scoped, transient dedup bookkeeping).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.IdempotencyKey{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete contacts (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	// Delete the user row itself (hard — accounts must be re-registerable, T26)
 	if err := tx.Unscoped().Delete(&models.User{}, userID).Error; err != nil {
-		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+		return err
 	}
 
 	return nil

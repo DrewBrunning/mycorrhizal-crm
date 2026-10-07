@@ -1,0 +1,38 @@
+# Real-server contract stack: Immich (issue #1490). Mirrors the official
+# release docker-compose.yml minus the machine-learning container (the contract
+# tests assign faces through the API instead of waiting for ML) and with the
+# upload/db locations on anonymous volumes. Images pinned by digest/tag;
+# Dependabot's docker entry for this directory proposes bumps and a bump that
+# breaks the client *is* the signal.
+#
+#   docker compose -f backend/integrations/realserver/stack/docker-compose.immich.yml up -d
+#   MYCORRHIZAL_RS_IMMICH_URL=http://127.0.0.1:18085 go test ./integrations/realserver/ -run Immich
+name: mycorrhizal-rs-immich
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:v3.2.4@sha256:d317916b28090c33eb36b308464ea391f8b7df1d850fcfea227a39ec879718c2
+    environment:
+      DB_HOSTNAME: database
+      DB_USERNAME: postgres
+      DB_PASSWORD: contract-db-pass
+      DB_DATABASE_NAME: immich
+      REDIS_HOSTNAME: redis
+      IMMICH_MACHINE_LEARNING_ENABLED: "false"
+    volumes: ["immich-upload:/data"]
+    depends_on: [redis, database]
+    ports: ["127.0.0.1:18085:2283"]
+
+  redis:
+    image: docker.io/valkey/valkey:9@sha256:70739f85ad2ee01a726a965584a0f94895f01b0c60b3cc8b0aeef11eaa6888cf
+
+  database:
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    environment:
+      POSTGRES_PASSWORD: contract-db-pass
+      POSTGRES_USER: postgres
+      POSTGRES_DB: immich
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    shm_size: 128mb
+
+volumes:
+  immich-upload:
