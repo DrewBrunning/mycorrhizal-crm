@@ -16,7 +16,15 @@ import { createTestContact, deleteTestContact, expect, test, waitForLoading } fr
 test.describe('Contact field linking', () => {
   test('phone/email/address fields are tappable per their type, with copy buttons throughout', async ({
     page,
+    browserName,
   }) => {
+    // Issue #1479: Playwright's Firefox rejects the `clipboard-read` permission
+    // ("Unknown permission"), so the copy-button assertions that read the
+    // clipboard back cannot run there. Unit tests still cover the copy buttons.
+    test.fixme(
+      browserName === 'firefox',
+      'Firefox has no clipboard-read permission to grant, so the clipboard read-back cannot run',
+    );
     const contact = await createTestContact(page.request, {
       phones: [
         { type: '', value: '+15551234001', features: ['cell'] },

@@ -85,7 +85,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       dependencies: ['setup'],
-      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/],
+      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/, /firefoxSmoke/],
     },
     // Issue #992: the only WebKit coverage in this repo. Deliberately its own
     // project rather than folded into 'chromium' -- webkitSmoke.spec.ts logs
@@ -100,6 +100,23 @@ export default defineConfig({
         ...devices['Desktop Safari'],
       },
       testMatch: /webkitSmoke\.spec\.ts/,
+    },
+    // Issue #1479: Firefox coverage. By default (every PR) this is only
+    // firefoxSmoke.spec.ts -- the six engine-sensitive flows. With
+    // E2E_ALL_BROWSERS=1 (the nightly `schedule` run of e2e-tests.yml's
+    // `e2e-firefox-full` job) it widens to the whole chromium suite, which then
+    // authenticates via the same per-worker users; specs that only make sense
+    // on Chromium opt out with `test.skip(browserName !== 'chromium', reason)`.
+    // Unlike webkit it depends on `setup`: the per-worker fixtures clean their
+    // accounts up through the shared admin's storageState.
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+      },
+      dependencies: ['setup'],
+      testMatch: process.env.E2E_ALL_BROWSERS ? /.*\.spec\.ts/ : /firefoxSmoke\.spec\.ts/,
+      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/],
     },
   ],
 

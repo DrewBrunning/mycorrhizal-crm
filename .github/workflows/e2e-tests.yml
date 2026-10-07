@@ -659,3 +659,244 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
+
+  # Issue #1479: Firefox is the engine most self-hosters on Linux use, and the
+  # only other-engine coverage was the single WebKit spec. This is the PR-tier
+  # leg: just firefoxSmoke.spec.ts (login cookie, contact create/edit, date
+  # format, service worker on the production build, CSV download, logout) on
+  # the same docker-compose.test.yml stack -- a parallel job, so it adds no
+  # wall-clock to the critical path. The nightly `e2e-firefox-full` job below
+  # widens it to the whole suite.
+  e2e-firefox-smoke:
+    permissions:
+      contents: read
+      packages: read
+    name: Run E2E Firefox Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #1484: composed into the release battery, the image under test is
+      # the ONE candidate release-validate.yml built, pulled by digest and
+      # tagged under the name the rest of this job expects -- not a from-source
+      # rebuild. The build step below is skipped in that case; per-PR,
+      # push and schedule runs (no image_digest) still build from source.
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-test:latest
+
+      - name: Build all-in-one image
+        if: ${{ inputs.image_digest == '' }}
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        # chromium too: the `setup` project (auth.setup.ts, which `firefox`
+        # depends on) runs on the default Chromium engine.
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Run Playwright Firefox smoke test
+        working-directory: frontend
+        run: npx playwright test --project=firefox
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report-firefox
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: test-results-firefox
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs (nginx + backend under supervisord) ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  # Issue #1479: the nightly widening -- the WHOLE chromium suite re-run on
+  # Firefox (E2E_ALL_BROWSERS=1 makes playwright.config.ts's `firefox` project
+  # match every spec). Schedule-only: the full suite on a second engine is too
+  # slow for every PR, and the scheduled run is already zero-retry, so a red
+  # here is a real engine difference (nightly-failure-alert.yml covers this
+  # workflow). Chromium-only specs opt out in-source with
+  # `test.skip(browserName !== 'chromium', reason)`.
+  e2e-firefox-full:
+    permissions:
+      contents: read
+      packages: read
+    name: Run E2E Firefox Full Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: changes
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #1484: composed into the release battery, the image under test is
+      # the ONE candidate release-validate.yml built, pulled by digest and
+      # tagged under the name the rest of this job expects -- not a from-source
+      # rebuild. The build step below is skipped in that case; per-PR,
+      # push and schedule runs (no image_digest) still build from source.
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-test:latest
+
+      - name: Build all-in-one image
+        if: ${{ inputs.image_digest == '' }}
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        # chromium too: the `setup` project (auth.setup.ts, which `firefox`
+        # depends on) runs on the default Chromium engine.
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Run Playwright suite on Firefox
+        working-directory: frontend
+        run: npx playwright test --project=firefox
+        env:
+          CI: true
+          E2E_ALL_BROWSERS: '1'
+          MYCORRHIZAL_REQUIRE_REFERENCES: '1'
+          RUN_PERF_HEAVY: ''
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report-firefox-full
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: test-results-firefox-full
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs (nginx + backend under supervisord) ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
