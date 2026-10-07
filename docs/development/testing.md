@@ -160,6 +160,14 @@ Detail and the hard-won traps for each layer follow.
     round-trips every migration
     up → down → up against a populated fixture, and gates on every migration
     shipping its `.down.sql`. A release without a dump fails CI.
+  - **Real-release data (issue #1489):** `internal/realrelease` +
+    `cmd/realrelease` + `scripts/realrelease-leg.sh` boot the *published image*
+    of each supported release, seed it through its public API, upgrade the data it
+    wrote with the current boot path, compare the API read-back, run
+    doctor/audit-chain, then roll back to the pre-migration backup with the old
+    image. The `real-release-upgrade` job in `migration-tests.yml` runs it per
+    `SupportedReleases` entry (main/nightly/dispatch; needs the network). See
+    `docs/upgrade-compatibility.md#how-upgrades-are-tested`.
 - **Must not be used for** current-schema application behavior (DB/integration)
   or deploy sequencing (release/install smoke).
 - **Runs via** `go test ./...` (the `database` package lands in the `rest` leg)

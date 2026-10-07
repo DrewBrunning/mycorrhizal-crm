@@ -292,6 +292,33 @@ database by any refusal.
   migration up → down → up against a populated fixture and gates on every
   migration shipping its `.down.sql`. A new release without a fixture fails CI
   (the completeness test plus the docker-publish gate).
+- **Data written by the real old release (issue #1489):** every fixture above
+  is synthetic: a schema dump populated by the *current* models, so no row was
+  ever produced by an old release's code (its `BeforeSave` flat columns, its
+  buggy write paths, its audit hash chain, its at-rest ciphertext, its 2FA
+  secrets and API-token hashes). The `Real-release data` jobs in
+  `migration-tests.yml` close that gap: per `SupportedReleases` entry,
+  `scripts/realrelease-leg.sh` boots the **published image** for the tag
+  (`ghcr.io/drewbrunning/mycorrhizal-crm:<version>`), drives it through its public API
+  with `go run ./cmd/realrelease seed` (contacts, notes, activities, circles,
+  tags, an edge, a life event, an attachment, favorite/archive, an audit undo of
+  an update, a merge, soft-deleted contact/note/activity, an API token, TOTP
+  enrolment), stops it, then `realrelease verify` upgrades that data directory
+  with the **current** server boot (migrations plus the at-rest, NFC and
+  audit-chain backfills), logs in with the password and the recovery code and
+  TOTP secret the old release minted, calls the API with the old API token,
+  re-reads everything through the current API and requires
+  `realrelease.Compare` (every scalar the old API reported must be unchanged;
+  new fields are allowed) to be clean, then runs the doctor's storage/data
+  checks and the audit-chain verification. The leg's second half is the
+  supported rollback: restore the pre-migration backup, start the **old image**
+  over it again, read back and compare to the original read-back. The snapshots
+  are generated in the job (never committed); all data is synthetic. It needs
+  the network, so it runs on main merge, nightly and dispatch, not per PR, and
+  fails (rather than skips) if a registered release has no published image.
+  Proven by hand: a migration that blanks `firstname` for rows whose flat
+  `emails` JSON carries `"type":""` (what the old code wrote) passes the whole
+  transplant suite and fails this job.
 - **Full-stack upgrades (DEPLOY-02, issue #451):**
   `internal/schemafixture`'s `deploy02_test.go` upgrades a real three-piece
   install — the database file beside real `PROFILE_PHOTO_DIR` /
@@ -329,6 +356,17 @@ database by any refusal.
   foreign-key violations, no torn writes). This is the automated backing for
   the roll-back-a-bad-release procedure in
   `docs/operations/migration-recovery.md`.
+
+## Prod-shaped rehearsal (maintainer-run, per release)
+
+No automated fixture can contain the maintainer's real data, and none should.
+Before cutting a release that carries a migration, rehearse it on a **copy** of
+the real instance; nothing leaves the maintainer's machine:
+
+1. Take a backup of the live instance (`docs/deployment.md`), copy it to a scratch directory.
+2. `cd backend && SQLITE_DB_PATH=<copy> go run ./cmd/doctor` - must report OK on the copy *before* the migration.
+3. Run the candidate against the copy (`make migrate-up` with `SQLITE_DB_PATH` pointing at it, or boot the candidate image over it) and re-run `go run ./cmd/doctor` plus `go run ./cmd/audit-verify`.
+4. Record the doctor output and the migration step timings in the release PR, and tick the rehearsal in the manual-gates ledger issue. A finding blocks the release until it is understood.
 
 ## Document consistency
 
