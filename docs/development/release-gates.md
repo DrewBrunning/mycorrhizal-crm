@@ -101,6 +101,156 @@ push-triggered run produces the provenance.
 asserts its absence with an `::error::` (`backend/internal/releasegates/dispatchpath.go`). Today only
 `apk-provenance` is allowlisted, compensated by `verify-release-assets`.
 
+### Build once: the tested image is the shipped image (issue #1484)
+
+Before #1484 the artifact the gates ran was not the artifact that shipped: `e2e-tests.yml` built
+`mycorrhizal-crm-test:latest` from source, and `docker-publish.yml` built the release image again
+later, so a green battery said nothing about the bytes published. Now:
+
+1. **`build-candidate`** (a job inside `release-validate.yml`) builds the all-in-one image **once** —
+   same Dockerfile, build args, OCI labels, `SOURCE_DATE_EPOCH` and multi-arch platforms as the release
+   build; the stamp arithmetic is the shared `.github/scripts/release-image-stamp.sh` so the two cannot
+   disagree — and pushes it to GHCR as `ghcr.io/<repo>:candidate-<sha7>` (a non-release tag; no `latest`,
+   no version tag). Its **digest** is the workflow's `candidate_digest` output.
+2. Every gate that runs the image — `e2e-tests.yml` (all three jobs), `container-hardening.yml`,
+   `zap-dast.yml`, and the new release-tier `deploy-smoke.yml` — takes an optional `image_digest`
+   input. Set (only the release composition sets it), the gate **pulls that digest** with
+   `.github/scripts/candidate-image.sh pull` (which refuses anything but a `sha256:` digest and
+   verifies the pulled image carries it) and skips its from-source build; every gate's log shows the
+   same digest. Per-PR, `push: main`, nightly and dispatch runs pass nothing and keep building from
+   source. `deploy-smoke.yml` boots it through `docker-compose.yml` + `docker-compose.candidate.yml`
+   (`build: !reset null`, so Compose cannot silently rebuild). `chaos-tests.yml` does not run the
+   container image (Go tests only) and is unaffected.
+3. **`docker-publish.yml`'s `build-and-push`** receives the digest from its `release-gate` job and,
+   for the all-in-one image, **re-tags it by digest** (`docker buildx imagetools create`, the
+   `promote-rc.yml` pattern) instead of rebuilding; each resulting tag is resolved back and asserted
+   equal to the tested digest, then cosign/attestation/SBOM run against that digest as before. The
+   backend and frontend images (which no gate runs) still build in that job.
+4. **`verify-release-assets`** asserts `published digest == tested digest` and fails with an
+   `::error::` otherwise (or if the gate passed but exported no digest).
+5. `post-publish-smoke` stays as defense in depth, but it is no longer the first time the published
+   image is exercised.
+
+Two honest limits. **(a)** `release.yml` validates the release commit *before* the fixture commit and
+tag exist, so its pre-tag battery tests a candidate built from that commit; `docker-publish.yml`'s
+`release-gate` then builds and tests a candidate from the **tagged** commit, and *that* digest is what
+publishes. `release.yml` records its own candidate in `release-readiness.json` (`validated_candidate`)
+for comparison; the two coincide whenever the fixture commit does not change the image build context.
+When the tag-time battery is *reused* (issue #1487, below), the carried gates cover the pre-tag candidate's
+tree and only `deploy-smoke` boots the digest that publishes.
+**(b)** With the gate overridden (`override_reason`) there is no tested candidate, so the all-in-one
+image builds from source and `verify-release-assets` only warns that digest equality cannot be asserted.
+
+`go run ./cmd/releasegatecheck` enforces the wiring (`releaseworkflow.CheckCandidate`): `build-candidate`
+exists and exports the digest, every image-running gate declares `image_digest`, is called with
+the digest and `needs: build-candidate`, and pulls through the script; the candidate and
+`build-and-push` agree on build args and the shared stamp; and the retag and digest-equality
+assertions are present. A candidate tag is left in GHCR per release attempt (including dry runs);
+prune old `candidate-*` package versions periodically.
+
+## Flake exposure: ledger, reuse, rerun, retries (issue #1487)
+
+Release reliability data (the last 50 `release.yml` runs as of 2026-10-05: 19 success, 18 failure,
+8 cancelled, 5 `startup_failure`) showed the failures after `preflight` were almost all flakes in
+individually-gating suites, not defects in the candidate — and the battery gave every flaky suite
+**two** rolls per release (once in `release.yml`'s `validate`, again in `docker-publish.yml`'s
+`release-gate` after the tag exists, where a failure leaves a tag with no artifacts) and re-ran the
+**whole** battery on any failure. Four mechanisms cut that exposure without weakening what a gate
+means. The decision logic is unit-tested Go (`backend/internal/releaseplan`, front end
+`cd backend && go run ./cmd/releaseplan`), not inline shell.
+
+### The per-gate ledger
+
+`release-validate.yml`'s `results` job writes `release-gate-ledger.json` into the
+`release-gate-results` artifact: one row per composed gate (every job that calls a reusable
+workflow; `build-candidate` is not a gate).
+
+```json
+{"sha": "<commit the battery ran against>", "release_tag": "v1.2.3", "gate": "e2e-tests",
+ "conclusion": "success", "run_id": "123", "carried_from_run": "98"}
+```
+
+`carried_from_run` appears only on a gate this run did **not** execute but carried from an earlier
+run; `run_id` is then the current run and `carried_from_run` the run that earned the success. A
+carried row keeps the *earning* commit's `sha`, so the ledger can never claim a commit it did not
+test. A gate that did not run for any other reason records `skipped`, which no later carry or reuse
+ever accepts. `release.yml` folds the ledger into `release-readiness.json` as `gate_ledger`.
+
+### Tag-time reuse (`docker-publish.yml`'s `reuse-decision`)
+
+The tag push used to re-run the entire battery that `release.yml` had just passed. Now a
+`reuse-decision` job reads the ledger from the `release-readiness-<tag>` artifact and runs
+`releaseplan reuse`. The pre-tag battery is **accepted** only when **all** hold:
+
+1. every composed gate is a recorded `success` for this tag, and the ledger covers exactly **one**
+   validated commit;
+2. that commit is an ancestor of the tag (`git merge-base --is-ancestor`); and
+3. the tree diff from the validated commit to the tag (`git diff --name-only`) is a subset of the
+   fixture allowlist — exactly the two files `release.yml`'s fixture commit may change:
+   `backend/database/testdata/schemas/<tag>.sql` and `backend/internal/schemafixture/releases.go`
+   (an RC tag *is* the validated commit: empty diff).
+
+Anything else — no artifact (a hand-pushed tag, expired, pre-ledger), a gate not green, a stray file,
+an unreadable diff — is `reuse=false` and the **full battery runs, exactly as before**: the tool never
+errors toward reuse, and the job is `continue-on-error` so it can only ever cost the reuse, never block
+a release. On reuse, `release-gate` is called with `skip_gates` (every gate except the retest floor)
+and the carried rows; the composer's per-gate `if:` skips them. The decision — reuse or not, the
+reason, the changed files, which gates were carried — is written to the run summary and recorded in
+the attached `release-readiness.json` as `tag_time_battery`.
+
+**The retest floor is `deploy-smoke`.** `build-candidate` still builds the image from the **tag** (its
+digest is what `build-and-push` re-tags and `verify-release-assets` compares), and that fresh build
+differs from the pre-tag candidate by its stamped commit and the inert fixture files, so under reuse
+the exact published digest was *not* exercised by the carried gates. The clean-install smoke is cheap
+and boots exactly those bytes, so it always re-runs (`releaseplan.RetestOnReuse`). This is the
+honest weakening of #1484's "tested image == shipped image" under reuse: the carried gates vouch for
+the **tree** (identical but for the allowlisted fixture), the smoke for the **bytes**. A partial
+policy ("run only the gates whose inputs differ" when the diff is *not* fixture-only) was deliberately
+not built: a hand-kept path-to-gate map is exactly the kind of table that silently goes stale, and a
+source change in the diff simply runs everything.
+
+### `rerun_gates` on `release.yml`
+
+`release.yml` accepts `rerun_gates` — a comma list of gate ids (the job ids in
+`release-validate.yml`) or the word `failed` — and optional `rerun_from_run`. `preflight` finds the
+newest `release-gate-results` ledger recorded for the release commit (or the named run's), runs
+`releaseplan rerun`, and `validate` is called with `skip_gates` and the carried rows. Rules, all
+pinned by `releaseplan`'s tests: only a recorded `success` for **exactly this commit and this version**
+is carried; a gate with no such row re-runs even if not named; an unknown id, or a request with
+nothing left to run, fails in `preflight` before any gate; a ledger for a different commit carries
+nothing. `build-candidate` always rebuilds (cache-warm) so re-run image gates test the digest the
+readiness record names. Ledgers live in a 5-day artifact; past that, dispatch without `rerun_gates`.
+Dependent gates are handled explicitly: `reference-clients-e2e` needs `android-tests`, so its `if:`
+accepts a *skipped* (carried) `android-tests` while a *failed* one still blocks it.
+
+### Flake policy: what is retried, what is not
+
+Evidence first (failed gate step on each of the failing runs, from the Actions API):
+
+| Suite | Failure | Class | Policy |
+|---|---|---|---|
+| ZAP `zapgate` (2 runs) | `self-test: no High/Medium alert for plugin 40012 found on the canary — the scan is blind` | **Scanner flake** (ZAP's JVM drops in-progress alert data under memory pressure, issue #1278); the app was not judged | `zapgate` exits `3` for *exactly* this case; `.github/scripts/zap-scan-gate.sh` re-scans **once**. An unaccepted High/Medium **app** finding exits `1` and is **never** retried. |
+| Schemathesis `schemagate` (2 runs) | `1 unaccepted finding(s)`, a randomized-fuzz `Server error` (5xx) | **A real finding**, not infra: `schemagate` already gates on a committed ignore list and failed on a *new* finding | **Not retried.** Re-rolling a fuzzer until it stops finding a 500 hides a defect; fix the 5xx or add a justified ignore entry. |
+| `min-version-tests` Go floor (3 runs, 2026-09-19..22) | a different timing-sensitive test each time: `TestCheckDBIntegrityScheduledFiresWebhookOnCorruption` (SQLITE_BUSY lock-release race, with `services` taking 2–3 min under a contended runner), `TestDetectReachOutSuggestions_OrganizationChange`, and a `schemafixture` 10 min timeout (since raised to 25 min) | **Timing flakes, not floor-specific** — the same packages pass at the current toolchain in the same battery | `.github/scripts/go-test-retry-failed.sh` re-runs **only the failed packages, once**, with a `::warning::` naming each retried package and test. A build/vet failure, more than 3 failed packages, or a package that fails twice still fails the leg. |
+| Playwright E2E, DAVx5 / Android emulator legs, zizmor, large-dataset migration | already retried in-job (the emulator legs run a "retry, fresh emulator" attempt) or one-off | — | unchanged; the ledger + `rerun_gates` bound their cost to one gate instead of the battery |
+
+The two retries are *bounded* on purpose: a retry that can mask a real finding turns a gate into a
+suggestion. The structural wiring (the scripts are what the workflows run; `zapgate`'s exit code and
+the script's agree) is pinned by `releaseworkflow.CheckResilience` and the shell tests
+`.github/scripts/tests/zap-scan-gate.test.sh` / `go-test-retry-failed.test.sh` (CI: `actionlint.yml`).
+
+`go run ./cmd/releasegatecheck` enforces the wiring (`releaseworkflow.CheckResilience`): every
+composed gate carries a `skip_gates` condition naming itself, dependent gates tolerate a skipped
+need, `build-candidate` is never conditional, the `results` job records and uploads the ledger,
+`release.yml` plans the rerun and passes it to `validate`, `docker-publish.yml`'s `reuse-decision`
+exists, is `continue-on-error`, checks ancestry and feeds `release-gate`, and the two retry wrappers
+are what `zap-dast.yml` and `min-version-tests.yml` run.
+
+**Not done here.** PR and push CI still retry once and nightly retries zero, so a flaky test is masked
+(PR) or loud-then-closed (nightly) with no longitudinal signal; a flake-rate record per suite is a
+separate piece of work. The "release success rate over the next 10 dispatches" in the issue's verify
+criteria can only be measured after this lands and is reported on the gate issue.
+
 ## The Android decision (issue #527)
 
 **A release hard-blocks on a green, keystore-signed, `apksigner`-verified APK that lands on the
@@ -141,7 +291,10 @@ tracked.
 server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
 process exec, Keystore-wrapped secrets, readiness handshake, `/health` over the socket) is an
 `assumeTrue` **skip** on the x86_64 `Android E2E (emulator)` gate. A skip is not evidence, so that
-green check says nothing about local mode. Two things cover it instead:
+green check says nothing about local mode. The skip is now *accounted for* (issue #1483): the job
+fails unless the skipped tests are exactly those in `android/e2e-expected-skips.txt`
+(`backend/cmd/androidskipcheck`; see [`testing.md`](testing.md#e2e-android-instrumented)), so a
+new silent skip cannot hide behind this accepted one. Things that cover local mode instead:
 
 - **Automated, per-PR:** `backend/main_test.go` builds the real backend binary for the CI host,
   execs it with `--embedded-host`, and asserts the readiness handshake, `/health` over the Unix
@@ -157,13 +310,15 @@ green check says nothing about local mode. Two things cover it instead:
   finished artifact contains `lib/arm64-v8a/libmycorrhizal.so` (`base/lib/arm64-v8a/…` in the
   AAB); `verify-release-assets` re-checks the APK attached to the GitHub Release. The F-Droid
   FOSS build does not carry it yet (see [`fdroid.md`](fdroid.md)).
-- **Manual, per release candidate:** before dispatching `release.yml`, run
-  `./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest` on a real
-  **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) with
-  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the
-  test skips) and confirm the test *ran* (not "skipped"). Do not install over the production package
-  `com.mycorrhizal.crm`; use a suffixed debug appId (e.g. a temporary `applicationIdSuffix`), because
-  `connectedAndroidTest` uninstalls the app it installed.
+- **Manual, per release candidate, now enforced and recorded (issue #1486):** run
+  `scripts/android-local-mode-device-test.sh --record` on a real **arm64 device** (the Pixel 8a runbook
+  in [`README-developer.md`](../../README-developer.md)). It wraps the Gradle command with
+  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the test
+  skips) and a suffixed debug appId (`-PMYCORRHIZAL_APP_ID_SUFFIX=.devicetest`, so
+  `connectedAndroidTest`'s uninstall can never touch the production package `com.mycorrhizal.crm` and its
+  data), refuses to call a *skip* a pass, and records the result in the manual-gate ledger. Dispatching
+  `release.yml` then requires `attest_manual_gates` to address the gate; see
+  [Manual gates](#manual-gates-issue-1486) below.
 
   Separately confirm the **release-built** APK contains the binary:
   `unzip -Z1 app-obtainium-release.apk | grep -x lib/arm64-v8a/libmycorrhizal.so` (the release
@@ -171,6 +326,71 @@ green check says nothing about local mode. Two things cover it instead:
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.
+
+## Manual gates (issue #1486)
+
+Some obligations only a human can discharge: today, running `LocalOnlyModeE2eTest` on a real arm64
+device (it skips on every CI emulator). A gate with no CI job has nothing that can go red, so before
+#1486 forgetting one was silent and `release-readiness.json` could not show whether it happened. The
+model mirrors `release.yml`'s `ack_*` inputs (skipping is a *recorded, reasoned act*), but the input is
+**required**, so doing nothing is not an option.
+
+**The ledger, `.github/manual-gates.json`** (script-appended; validated by
+`go run ./cmd/releasegatecheck` and `go run ./cmd/manualgatecheck validate`). One entry per gate:
+`id`, `applies_to` (`final` / `rc`), `max_age_days`, `watch_paths` (globs; `**` spans directories),
+`require_abi`, `evidence_marker`, `run` (the command that discharges it) and `attestations`. An
+attestation is a *verifiable* record, not a claim: the date, the **commit** the run exercised, the
+attester, the device and ABI, the JUnit `tests`/`skipped`/`failures` counts, the `junit_sha256` of the
+XML, and `evidence`, the retained XML under `.github/manual-gates-evidence/<id>/`. The format itself
+rejects an attestation with `tests < 1`, `skipped != 0`, `failures != 0` or the wrong ABI, and the checker
+re-hashes the retained XML, re-reads its counts and requires the gate's `evidence_marker` class name in
+it, so the ledger cannot say "ran, 0 skipped" about an XML that says otherwise. (An `evidence` that is a
+URL or a note is accepted as a note but proves nothing to the checker.)
+
+**Discharging it:** `scripts/android-local-mode-device-test.sh --record` (clean tracked tree required,
+because the attestation names `HEAD`), then commit the ledger change and the evidence XML
+(`git commit -s`) and get them onto the branch you will release from. The attestation records the
+commit it ran against, so landing it in a later commit does not invalidate it; only a change to a watched
+path does. `go run ./cmd/manualgatecheck status -kind rc -facts <file>` (facts from
+`.github/scripts/manual-gate-facts.sh <HEAD> $(go run ./cmd/manualgatecheck commits)`) answers "is my
+attestation still good?" locally.
+
+**Enforcing it: `release.yml`'s required `attest_manual_gates` input.** `;`-separated, one entry per
+gate that applies to the release (an RC and a final may differ via `applies_to`):
+
+| Entry | Meaning |
+|---|---|
+| `android-local-mode-device` | "the ledger holds a fresh attestation"; **verified**, not trusted |
+| `android-local-mode-device=skip:<reason>` | a recorded skip; the reason (at least 8 characters, no `;`) lands in the artifact |
+
+`preflight`'s unconditional `manual` step runs `go run ./cmd/manualgatecheck check` against the facts
+from `.github/scripts/manual-gate-facts.sh`, **before any expensive gate**. It fails, naming the gate,
+when a gate that applies is not addressed; an id is unknown or does not apply to this kind of release; or
+a bare-id attestation is **stale**: older than `max_age_days`, the attested commit is not an ancestor of
+the release commit (or unknown to the checkout), or a `watch_paths` file changed between the attested
+commit and the release commit (for the Android gate: `backend/embedded/**`, `backend/main.go`, the
+`LocalServer*` host/transport sources, `LocalOnlyModeE2eTest.kt`, `android/app/build.gradle.kts`). A skip
+never fails the check.
+
+**What a release records.** `release-readiness.json` gains `manual_gates`: per applicable gate the
+`mode` (`attested` / `skipped`), the `reason`, `attested_by` (the dispatching GitHub actor), the
+`ledger_state` (`fresh`, or why the ledger entry does not qualify, so a skip shows what was skipped),
+the ledger attestation relied on, and `checked_at`. It is attached to the GitHub Release like the rest
+of the record and echoed in the run summary. The weekly dry-run rehearsal (`release-dry-run.yml`) skips
+every final-release gate with a fixed reason: it cuts no release and has no device.
+
+**Pinned against rot.** `releaseworkflow.CheckManualGates` (part of `releasegatecheck`, per PR) fails if
+the input stops being required, the preflight step gains an `if:` or `continue-on-error`, drops the
+facts or the release kind, interpolates the free-text input into the script instead of `env:`, or the
+decisions stop reaching `release-readiness.json` or the dry-run dispatch.
+
+**Scope notes.** `promote-rc.yml` copies an RC and does not re-attest; the RC cut already recorded the
+decision for the same commit. The DAVx5 / Apple / Thunderbird rows of
+[`reference-client-matrix.md`](reference-client-matrix.md) and the section 8 ASVS pass are the other
+human-only obligations: the ASVS row already has its own gate (`release-obligations.sh`), and the
+reference-client rows can be added to the ledger as further `gates[]` entries without code changes. The
+longer-term replacement for the device run is a hosted real-device job (Firebase Test Lab arm64),
+tracked separately.
 
 ## The gates
 
@@ -200,10 +420,11 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
 | `release-gate` | release-internal | yes | calls the reusable `release-validate.yml` and blocks publication unless it passes: every `release_gate:true` per-PR check and every release-tier suite is composed with `needs:` (ADR 0021, issue #1165), so the tag-triggered path cannot drift from `release.yml`'s cut-time composition. A `workflow_dispatch` run with a non-empty `override_reason` skips the composed gate and the sibling `release-gate-override` job records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
-| `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
+| `build-candidate` | release-internal | yes | a job inside the composer `release-validate.yml` ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)): builds the all-in-one image once (multi-arch, the release's own build args, labels and `SOURCE_DATE_EPOCH`), pushes it as a non-release `candidate-<sha>` tag and exports its digest. Every image-running gate pulls that digest instead of rebuilding; a failed build blocks the battery. | `release-validate.yml` |
+| `build-and-push` | release-internal | yes | the multi-arch images publish; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. The all-in-one image is **not rebuilt**: its release tags are created by re-tagging the candidate digest the release-gate tested ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)); only the backend/frontend images, and the all-in-one image when the gate was overridden, build from source. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |
 | `apk-provenance` | release-internal | yes | the `slsa-github-generator` reusable workflow signs the APK subject and emits `mycorrhizal-apk.intoto.jsonl` (SLSA build provenance) as a workflow artifact (issue #355). | `docker-publish.yml` |
-| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-obtainium-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry. | `docker-publish.yml` |
+| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-obtainium-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry; and that the published all-in-one image digest equals the digest the release gates tested ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484)), failing with an `::error::` otherwise. | `docker-publish.yml` |
 | `Test minimum supported versions` | release-tier | yes | the app builds and the suite passes against each declared minimum runtime (COMPAT-02, #473). | `min-version-tests.yml` |
 | `Android E2E (emulator, minSdk 26)` | release-tier | yes | the same instrumented suite as `Android E2E (emulator)` passes against the docker-compose.test.yml backend on an API-26 emulator — the declared minSdk floor (COMPAT-02, #473). Runs on push:main, nightly, and dispatch so the floor is exercised pre-tag, not just a number in a build file (issue #927). | `android-tests.yml` |
 | `Migration at scale (large dataset)` | release-tier | yes | with MYCORRHIZAL_LARGE_TESTS=1, every supported release migrates to current at ~134x the canonical manifest with row counts and integrity intact (#495). | `migration-tests.yml` |
@@ -213,6 +434,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Differential E2E (calcard)` | release-tier | yes | our JSContact / iCalendar output matches the pinned reference implementations (#680). | `differential-e2e.yml` |
 | `Reference-clients E2E` | release-tier | yes | vdirsyncer round-trips against our server with no data loss (#681); a real DAVx5 client discovers, syncs, and lands the canonical pathological fixture in Android's ContactsContract with no divergence (#917). | `reference-clients-e2e.yml` |
 | `ZAP DAST` | release-tier | yes | the baseline scan raises no new high-risk dynamic finding. | `zap-dast.yml` |
+| `Clean-install smoke (candidate image)` | release-tier | yes | the candidate release image (pulled by digest, never rebuilt) boots from nothing via the documented compose path: startup ordering (config validated, empty-DB migrations, then serving), the end-to-end register/login/contact/photo/search/export workflow, CORS withheld from a foreign origin, and the blank-`JWT_SECRET_KEY` / empty-`FRONTEND_URL` misconfigurations fail naming the variable (DEPLOY-01, #450; made a release gate by [#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484) -- it used to run only per-PR on `infra` changes, on `push: main` and nightly). | `deploy-smoke.yml` |
 | `OpenSSF Scorecard` | advisory | no | informational supply-chain posture; a score drop is reviewed, never release-blocking. | `scorecard.yml` |
 | `CodeQL` | advisory | no | SARIF is uploaded; a new alert is triaged in the Security tab, not release-blocking. | `codeql.yml` |
 | `Grype vulnerability scan` | advisory | no | second-opinion CVE scan; the critical/high hard gate is on main + nightly, advisory at release time. | `grype.yml` |

@@ -1,0 +1,97 @@
+name: Flake ledger
+
+# Issue #1488. Flakes were retry-and-forget: gotestsum --rerun-fails,
+# Playwright retries and the Android second emulator boot each turned a failed
+# first attempt into a green check, with no longitudinal record. Once a day
+# this collects the last 14 days of runs of the suites below, reads each run's
+# small `flake-*` artifacts (flake-go-<leg>, flake-playwright-<job>,
+# flake-android-<leg>, flake-signals-*; uploaded with 14-day retention by the
+# suites themselves), and builds a per-test ledger
+# {runs, failed-first-attempt, passed-on-retry, failed} ranked by flake rate.
+#
+#   - The ledger is the job summary and the `flake-ledger` artifact (the
+#     tool is `backend/cmd/flakeledger`; format pinned by a golden test).
+#   - A test with >= 3 passed-on-retry events in the window gets a
+#     `flaky-test` + `p1` issue in the in-flight milestone, naming the test and
+#     linking the runs. Closing it requires a root-cause note; events before
+#     the close do not count towards re-opening.
+#
+# Advisory: this workflow never gates a PR, and its own failures surface
+# through nightly-failure-alert.yml like any other scheduled workflow (it is
+# registered there and in nightly-failure-reconcile.yml; `go run
+# ./cmd/nightlyalertcheck` enforces both).
+#
+# Any other retry mechanism can feed the ledger without a parser by uploading
+# a `flake-signals-<name>` artifact holding a JSON file named
+# `flake-signals-*.json`: {"suite":"go/floor","tests":[{"test":"pkg.TestX",
+# "outcome":"passed_on_retry"}]} (docs/development/testing.md, "Flake ledger").
+on:
+  schedule:
+    - cron: '15 6 * * *' # 06:15 UTC, after the 05:30 alert reconciliation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flake-ledger
+  cancel-in-progress: false
+
+jobs:
+  ledger:
+    name: Build flake ledger
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Workflows whose runs carry flake-* artifacts. Keep in step with the
+      # `flake-*` upload steps in those workflows.
+      LEDGER_WORKFLOWS: unit-tests.yml,e2e-tests.yml,android-tests.yml
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Collect the last 14 days of flake artifacts
+        working-directory: backend
+        run: go run ./cmd/flakeledger collect -data "$RUNNER_TEMP/flake-data" -workflows "$LEDGER_WORKFLOWS" -window 14
+
+      - name: Build the ledger
+        working-directory: backend
+        run: >
+          go run ./cmd/flakeledger report
+          -data "$RUNNER_TEMP/flake-data"
+          -md "$RUNNER_TEMP/flake-ledger.md"
+          -candidates "$RUNNER_TEMP/flake-candidates.json"
+          -window 14 -threshold 3
+
+      - name: Publish the ledger (job summary)
+        run: cat "$RUNNER_TEMP/flake-ledger.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the ledger
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ledger-report
+          path: |
+            ${{ runner.temp }}/flake-ledger.md
+            ${{ runner.temp }}/flake-candidates.json
+          retention-days: 30
+
+      # At most 5 new issues per run so a first run over a backlog of flakes
+      # does not flood the tracker; the rest follow on later days.
+      - name: Open flaky-test issues
+        working-directory: backend
+        run: >
+          go run ./cmd/flakeledger issues
+          -candidates "$RUNNER_TEMP/flake-candidates.json"
+          -window 14 -threshold 3 -limit 5

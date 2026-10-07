@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"mycorrhizal/internal/releaseworkflow"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +31,11 @@ func copyRepoTree(t *testing.T) string {
 	copyFile(t, filepath.Join(root, registryFile), filepath.Join(dst, registryFile))
 	copyFile(t, filepath.Join(root, docFile), filepath.Join(dst, docFile))
 	copyDir(t, filepath.Join(root, workflowsDir), filepath.Join(dst, workflowsDir))
+	// Issue #1487: the retry script and zapgate source CheckResilience reads.
+	copyFile(t, filepath.Join(root, releaseworkflow.ZapScript), filepath.Join(dst, releaseworkflow.ZapScript))
+	copyFile(t, filepath.Join(root, releaseworkflow.ZapgateSource), filepath.Join(dst, releaseworkflow.ZapgateSource))
+	// Issue #1486: the manual-gate attestation ledger.
+	copyFile(t, filepath.Join(root, releaseworkflow.ManualGatesFile), filepath.Join(dst, releaseworkflow.ManualGatesFile))
 
 	return dst
 }
@@ -171,6 +178,33 @@ func TestRunAtFailsOnMissingPromoteWorkflow(t *testing.T) {
 	assert.Equal(t, 2, code)
 }
 
+// TestRunAtFailsOnMissingImageGateWorkflow: the build-once check (#1484) reads
+// every image-running gate workflow; a missing one is a checker failure, not a
+// silent skip.
+func TestRunAtFailsOnMissingImageGateWorkflow(t *testing.T) {
+	dst := copyRepoTree(t)
+	require.NoError(t, os.Remove(filepath.Join(dst, workflowsDir, "deploy-smoke.yml")))
+
+	var out bytes.Buffer
+	assert.Equal(t, 2, runAt(&out, dst))
+}
+
+// TestRunAtFailsWhenAGateStopsUsingTheCandidate is the #1484 regression gate
+// end to end: an image gate that goes back to building from source (its pull
+// of the candidate digest removed) fails releasegatecheck.
+func TestRunAtFailsWhenAGateStopsUsingTheCandidate(t *testing.T) {
+	dst := copyRepoTree(t)
+	p := filepath.Join(dst, workflowsDir, "zap-dast.yml")
+	b, err := os.ReadFile(p) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	require.Contains(t, string(b), "candidate-image.sh pull")
+	require.NoError(t, os.WriteFile(p, []byte(strings.ReplaceAll(string(b), "candidate-image.sh pull", "echo pull")), 0o644))
+
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "zap-dast.yml never runs")
+}
+
 // TestRunAtFailsOnMissingDockerPublish: docker-publish.yml is read for the
 // dispatch-path check (#1396); missing is a checker failure.
 func TestRunAtFailsOnMissingDockerPublish(t *testing.T) {
@@ -268,4 +302,96 @@ func TestMainExitsZero(t *testing.T) {
 	buf, err := io.ReadAll(r)
 	require.NoError(t, err)
 	assert.Contains(t, string(buf), "release gates OK")
+}
+
+// Issue #1487: each file CheckResilience reads is required; a missing one is a
+// checker failure (exit 2), never a silent skip.
+func TestRunAtFailsOnMissingResilienceInputs(t *testing.T) {
+	for _, rel := range []string{
+		filepath.Join(workflowsDir, "zap-dast.yml"),
+		filepath.Join(workflowsDir, "min-version-tests.yml"),
+		releaseworkflow.ZapScript,
+		releaseworkflow.ZapgateSource,
+	} {
+		t.Run(rel, func(t *testing.T) {
+			dst := copyRepoTree(t)
+			require.NoError(t, os.Remove(filepath.Join(dst, rel)))
+			var out bytes.Buffer
+			assert.Equal(t, 2, runAt(&out, dst))
+		})
+	}
+}
+
+// TestRunAtFailsWhenAGateLosesItsSkipCondition is the #1487 regression gate end
+// to end: a composed gate that stops honouring skip_gates is re-run on every
+// rerun and tag-time reuse -- silently -- unless releasegatecheck goes red.
+func TestRunAtFailsWhenAGateLosesItsSkipCondition(t *testing.T) {
+	dst := copyRepoTree(t)
+	p := filepath.Join(dst, workflowsDir, "release-validate.yml")
+	b, err := os.ReadFile(p) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	const cond = "    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',sast,') }}\n"
+	require.Contains(t, string(b), cond)
+	require.NoError(t, os.WriteFile(p, []byte(strings.Replace(string(b), cond, "", 1)), 0o644))
+
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "gate `sast` must carry an `if:`")
+}
+
+// Issue #1486: the manual-gate ledger and its enforcement are release-gate
+// inputs; a missing file is a checker failure (exit 2), never a silent skip.
+func TestRunAtFailsOnMissingManualGateInputs(t *testing.T) {
+	for _, rel := range []string{
+		releaseworkflow.ManualGatesFile,
+		filepath.Join(workflowsDir, releaseworkflow.DryRunFile),
+	} {
+		t.Run(rel, func(t *testing.T) {
+			dst := copyRepoTree(t)
+			require.NoError(t, os.Remove(filepath.Join(dst, rel)))
+			var out bytes.Buffer
+			assert.Equal(t, 2, runAt(&out, dst))
+		})
+	}
+}
+
+func rewrite(t *testing.T, path, old, repl string) {
+	t.Helper()
+	b, err := os.ReadFile(path) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	require.Contains(t, string(b), old)
+	require.NoError(t, os.WriteFile(path, []byte(strings.Replace(string(b), old, repl, 1)), 0o644))
+}
+
+// A structurally broken ledger fails the gate (and skips the evidence check,
+// which would only repeat the noise).
+func TestRunAtFailsOnInvalidManualGateLedger(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), `"max_age_days": 14`, `"max_age_days": 0`)
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "max_age_days must be positive")
+}
+
+// An attestation claiming retained evidence that is not there is caught.
+func TestRunAtFailsOnMissingManualGateEvidence(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), `"attestations": []`, `"attestations": [{
+	  "date": "2026-10-01", "commit": "1111111111111111111111111111111111111111", "attester": "Drew",
+	  "evidence": ".github/manual-gates-evidence/android-local-mode-device/gone.xml", "device": "Pixel 8a",
+	  "abi": "arm64-v8a", "tests": 1, "skipped": 0, "failures": 0,
+	  "junit_sha256": "abababababababababababababababababababababababababababababababab"}]`)
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "does not exist")
+}
+
+// The #1486 regression gate end to end: a release.yml whose preflight stops
+// enforcing the attestations must turn releasegatecheck red.
+func TestRunAtFailsWhenReleaseStopsEnforcingManualGates(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, workflowsDir, "release.yml"), "go run ./cmd/manualgatecheck check", "go run ./cmd/manualgatecheck noop")
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "must enforce with `go run ./cmd/manualgatecheck check`")
 }

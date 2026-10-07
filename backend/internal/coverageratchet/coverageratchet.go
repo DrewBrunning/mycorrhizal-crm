@@ -10,8 +10,7 @@
 // doesn't otherwise edit trips no status at all.
 //
 // This package reads the same merged coverprofile the `backend` job in
-// .github/workflows/unit-tests.yml already produces (backend/coverage.out,
-// the sum of all seven backend-tests legs), computes each file's covered
+// .github/workflows/unit-tests.yml already produces (backend/coverage.out), computes each file's covered
 // statement percentage, and compares it against a committed baseline
 // (testdata/baseline.json). A file whose percentage drops by more than the
 // baseline's tolerance fails; an improved, new, or removed/renamed file
@@ -56,17 +55,70 @@ var blockLineRE = regexp.MustCompile(`^(.+):(\d+)\.\d+,(\d+)\.\d+ (\d+) (\d+)$`)
 // already-merged profile (as backend/coverage.out already is, per the
 // `backend` job's "Merge coverage profiles" step) get one entry per block.
 func ParseCoverprofile(r io.Reader) ([]Block, error) {
+	var blocks []Block
+	err := scanCoverprofile(r, func(b Block) { blocks = append(blocks, b) })
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
+// blockKey identifies one statement block across profiles: the same source
+// range with the same statement count is the same block, whichever test
+// binary instrumented it.
+type blockKey struct {
+	File      string
+	StartLine int
+	EndLine   int
+	NumStmt   int
+}
+
+// ParseMergedCoverprofile is ParseCoverprofile for a profile in which the
+// same block may appear more than once -- a `-coverpkg=./...` run, or several
+// profiles concatenated (issue #1477). Counts of a repeated block are summed
+// (atomic/count mode semantics), so a block is covered if ANY occurrence ran.
+// Without this PerFileStats would double-count the statements. It merges while
+// scanning, so the (very large) raw profile is never held in memory whole.
+// The result is sorted for deterministic output.
+func ParseMergedCoverprofile(r io.Reader) ([]Block, error) {
+	merged := map[blockKey]int64{}
+	err := scanCoverprofile(r, func(b Block) {
+		merged[blockKey{b.File, b.StartLine, b.EndLine, b.NumStmt}] += b.Count
+	})
+	if err != nil {
+		return nil, err
+	}
+	blocks := make([]Block, 0, len(merged))
+	for k, c := range merged {
+		blocks = append(blocks, Block{File: k.File, StartLine: k.StartLine, EndLine: k.EndLine, NumStmt: k.NumStmt, Count: c})
+	}
+	sort.Slice(blocks, func(i, j int) bool {
+		a, b := blocks[i], blocks[j]
+		if a.File != b.File {
+			return a.File < b.File
+		}
+		if a.StartLine != b.StartLine {
+			return a.StartLine < b.StartLine
+		}
+		if a.EndLine != b.EndLine {
+			return a.EndLine < b.EndLine
+		}
+		return a.NumStmt < b.NumStmt
+	})
+	return blocks, nil
+}
+
+func scanCoverprofile(r io.Reader, emit func(Block)) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	if !scanner.Scan() {
-		return nil, fmt.Errorf("coverprofile is empty")
+		return fmt.Errorf("coverprofile is empty")
 	}
 	if !strings.HasPrefix(scanner.Text(), "mode:") {
-		return nil, fmt.Errorf("coverprofile does not start with a mode: line, got %q", scanner.Text())
+		return fmt.Errorf("coverprofile does not start with a mode: line, got %q", scanner.Text())
 	}
 
-	var blocks []Block
 	lineNo := 1
 	for scanner.Scan() {
 		lineNo++
@@ -76,25 +128,28 @@ func ParseCoverprofile(r io.Reader) ([]Block, error) {
 		}
 		m := blockLineRE.FindStringSubmatch(line)
 		if m == nil {
-			return nil, fmt.Errorf("coverprofile line %d does not match the expected format: %q", lineNo, line)
+			return fmt.Errorf("coverprofile line %d does not match the expected format: %q", lineNo, line)
 		}
+		// blockLineRE constrains these to digit strings, but a value wider than
+		// the destination still overflows and errors -- reachable, not a
+		// no-cover line (pinned by TestParseMergedCoverprofile_OutOfRangeNumbers).
 		startLine, err := strconv.Atoi(m[2])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
-			return nil, err
+		if err != nil {
+			return err
 		}
 		endLine, err := strconv.Atoi(m[3])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
-			return nil, err
+		if err != nil {
+			return err
 		}
 		numStmt, err := strconv.Atoi(m[4])
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
-			return nil, err
+		if err != nil {
+			return err
 		}
 		count, err := strconv.ParseInt(m[5], 10, 64)
-		if err != nil { // # pragma: no cover — the regex already constrains this to digits
-			return nil, err
+		if err != nil {
+			return err
 		}
-		blocks = append(blocks, Block{
+		emit(Block{
 			File:      m[1],
 			StartLine: startLine,
 			EndLine:   endLine,
@@ -103,9 +158,9 @@ func ParseCoverprofile(r io.Reader) ([]Block, error) {
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("reading coverprofile: %w", err)
+		return fmt.Errorf("reading coverprofile: %w", err)
 	}
-	return blocks, nil
+	return nil
 }
 
 // FileStat is one file's statement coverage: how many of its NumStmt-weighted
@@ -232,7 +287,7 @@ type Baseline struct {
 }
 
 const baselineComment = "Generated by `go run ./cmd/coverageratchet -update` (or `make gen-coverage-baseline`) " +
-	"from the merged backend/coverage.out. Per-file statement coverage %. A drop past " +
+	"from the cross-package backend/coverage-cross.out (go test ./... -coverpkg=./...). Per-file statement coverage %. A drop past " +
 	"tolerancePercentPoints percentage points fails CI. Commit the diff -- it is the review."
 
 // BuildBaseline turns per-file stats into the committed Baseline shape,

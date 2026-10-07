@@ -221,3 +221,7 @@ reference-clients:
 
 workflows:
   - '.github/**'
+  # Issue #1486: the device-run attestation script + its shell tests live outside
+  # .github/ but are linted/tested by actionlint.yml.
+  - 'scripts/android-local-mode-device-test.sh'
+  - 'scripts/tests/**'

@@ -141,6 +141,18 @@ android {
     }
 
     buildTypes {
+        // Issue #1486: scripts/android-local-mode-device-test.sh installs the
+        // debug + androidTest APKs on a real device, and `connectedAndroidTest`
+        // UNINSTALLS the package it installed -- which would wipe a production
+        // `com.mycorrhizal.crm` install and its local-mode data. Passing
+        // -PMYCORRHIZAL_APP_ID_SUFFIX=.devicetest installs as a different
+        // package instead. Unset (every CI and ordinary build), nothing changes.
+        debug {
+            providers.gradleProperty("MYCORRHIZAL_APP_ID_SUFFIX").orNull
+                ?.takeIf { it.isNotBlank() }
+                ?.let { applicationIdSuffix = it }
+        }
+
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -244,6 +256,8 @@ dependencies {
     // already on the androidTest runtime classpath, so the seeding helper can
     // reuse them for its API calls.
     androidTestImplementation(libs.junit)
+    // Issue #1483: assumeOrFailInCi (skip locally, fail in CI).
+    androidTestImplementation(project(":core:testing"))
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

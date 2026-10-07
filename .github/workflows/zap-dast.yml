@@ -22,6 +22,16 @@ on:
     - cron: '50 1 * * *' # 01:50 UTC nightly (issue #578: moved off the weekly cadence)
   workflow_dispatch:
   workflow_call:
+    inputs:
+      # Issue #1484: digest of the candidate image release-validate.yml built
+      # once (sha256:<64 hex>). When set, the all-in-one image is pulled by
+      # digest instead of built from source. Empty (every non-composed run:
+      # per-PR, push, schedule, dispatch) keeps the from-source build.
+      image_digest:
+        description: 'Candidate image digest to test instead of building from source (release composition only).'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -37,6 +47,7 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,7 +66,27 @@ jobs:
 
       # Build the same all-in-one image e2e-tests.yml builds (the shipped
       # artifact), so ZAP attacks what actually ships.
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Issue #1484: composed into the release battery, the image under test is
+      # the ONE candidate release-validate.yml built, pulled by digest and
+      # tagged under the name the rest of this job expects -- not a from-source
+      # rebuild. The build step below is skipped in that case; per-PR,
+      # push and schedule runs (no image_digest) still build from source.
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-test:latest
+
       - name: Build all-in-one image
+        if: ${{ inputs.image_digest == '' }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -148,60 +179,22 @@ jobs:
       # comfortably inside the ~16GB a GitHub-hosted runner reports (see the
       # same run's "Available memory: 15989 MB" line) with room left for the
       # app + canary containers.
-      - name: Run ZAP scan
+      # Scan + gate live in one script so a BLIND scan (zapgate exit 3: only the
+      # canary self-test missing, the issue #1278 JVM-pressure symptom) can be
+      # re-scanned once -- and nothing else is retried: a real app finding is a
+      # verdict, never re-rolled (issue #1487). The script carries the scan
+      # invocation's own commentary (exit-code handling, the zap/ chmod).
+      - name: Run ZAP scan and gate on findings (zapgate)
         env:
           ZAP_AUTH_HEADER: Authorization
           ZAP_AUTH_HEADER_VALUE: "Bearer ${{ env.DAST_TOKEN }}"
           ZAP_AUTH_HEADER_SITE: localhost:7300
-        run: |
-          # The zaproxy image runs as uid 1000 (`zap`); the checkout is owned
-          # by the runner user, so the container could read the plan out of
-          # the bind mount but not create report.json in it.
-          # ZAP reported that only at the end -- "Job report failed to generate
-          # report: AccessDeniedException /zap/wrk/report.json" -- after a full
-          # six-minute active scan, so the scan ran, emitted nothing, and
-          # zapgate never got a report to gate on.
-          chmod a+rwx zap
-
-          rc=0
-          docker run --rm --network host \
-            -e ZAP_AUTH_HEADER \
-            -e ZAP_AUTH_HEADER_VALUE \
-            -e ZAP_AUTH_HEADER_SITE \
-            -v "$PWD/zap:/zap/wrk:rw" \
-            -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
-            ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
-            zap.sh -Xmx6g -cmd -autorun /zap/wrk/zap-dast.yaml || rc=$?
-
-          # zap.sh -autorun exit codes: 0 clean, 1 the plan had *failures*,
-          # 2 the plan had *warnings* and no failure. A warning must not fail
-          # the build here -- zapgate is the gate, and letting an unrelated
-          # plan warning preempt it means the security verdict never gets
-          # computed. (Observed: a 404 on the canary's site root made the
-          # spider warn, exit 2, and skip zapgate entirely even though both
-          # reports had been written.)
-          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
-            echo "::error::ZAP exited $rc (automation plan failure)"
-            exit "$rc"
-          fi
-
-          # An exit code is not evidence the report exists: ZAP reports a
-          # failed report-generation job at the very end, so a plan can run a
-          # full active scan and still leave zapgate nothing to read. Fail
-          # here, where the cause is obvious, rather than in the gate.
-          test -s zap/report.json || {
-            echo "::error::ZAP produced no report.json -- gate cannot run"
-            exit 1
-          }
-
-      # The gate: apply zap/dast.ignore, fail on unaccepted High/Medium app
-      # findings, and assert the canary self-test (planted XSS) was seen.
-      - name: Gate on findings (zapgate)
-        working-directory: backend
-        run: go run ./cmd/zapgate
-        env:
+          ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+          # The gate: apply zap/dast.ignore, fail on unaccepted High/Medium
+          # app findings, assert the canary self-test (planted XSS) was seen.
           ZAPGATE_REPORT: ../zap/report.json
           ZAPGATE_IGNORE: ../zap/dast.ignore
+        run: bash .github/scripts/zap-scan-gate.sh
 
       # DAST findings are not uploaded to code scanning. GitHub anchors every
       # SARIF result to a source line inside the checkout; ZAP locates findings

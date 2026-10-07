@@ -154,6 +154,7 @@ run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatec
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
 run "nightlyalertcheck (scheduled workflows registered for failure alerts)" backend go run ./cmd/nightlyalertcheck
+run "androidskipcheck (Android E2E expected-skips allowlist resolves)" backend go run ./cmd/androidskipcheck -static
 
 if [ "$changelog_relevant" = true ]; then
   echo ""

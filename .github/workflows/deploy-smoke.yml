@@ -26,6 +26,16 @@ on:
     branches: [main]
   schedule:
     - cron: '40 3 * * *' # 03:40 UTC nightly
+  # Issue #1484: composed into the release battery (release-validate.yml) as a
+  # release-tier gate, run against the ONE candidate image that battery built
+  # instead of a from-source `docker compose up --build`.
+  workflow_call:
+    inputs:
+      image_digest:
+        description: 'Candidate image digest (sha256:<64 hex>) to boot instead of building from source (release composition only).'
+        required: false
+        type: string
+        default: ''
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -46,6 +56,9 @@ jobs:
       pull-requests: read
     name: Detect Changes
     runs-on: ubuntu-latest
+    # Composed into the release battery there is no diff to gate on: the smoke
+    # always runs (issue #1484).
+    if: ${{ inputs.image_digest == '' }}
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
       workflows: ${{ steps.filter.outputs.workflows }}
@@ -73,11 +86,14 @@ jobs:
   smoke:
     permissions:
       contents: read
+      packages: read
     name: Clean-install smoke test
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: changes
-    if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    # `changes` is skipped when composed (image_digest set), so `always()` +
+    # an explicit not-failed check replaces the default needs-success rule.
+    if: ${{ always() && needs.changes.result != 'failure' && needs.changes.result != 'cancelled' && (inputs.image_digest != '' || github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true') }}
 
     steps:
       - name: Checkout repository
@@ -89,6 +105,29 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
+
+      # Issue #1484: composed into the release battery, boot the candidate image
+      # (pulled by digest; docker-compose.candidate.yml swaps docker-compose.yml's
+      # `build: .` for it via MYCORRHIZAL_IMAGE/COMPOSE_FILE, which the pull step
+      # exports for every later step, including the misconfig script's own
+      # `docker compose` calls). Everything below is otherwise the documented
+      # path, unchanged.
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-candidate:pulled
+          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.candidate.yml" >> "$GITHUB_ENV"
 
       # --- Clean-install setup: exactly what docs/getting-started.md tells a
       # new operator to do. No reused volumes (fresh checkout), no config
@@ -112,7 +151,9 @@ jobs:
           # blocks on the image HEALTHCHECK (/health/live), which the server
           # only answers after InitDB's migrations and route registration
           # complete (backend/main.go) — so a healthy container already
-          # implies migrations ran on the empty database.
+          # implies migrations ran on the empty database. With the candidate
+          # override (COMPOSE_FILE) there is no `build:` left, so --build is a
+          # no-op and Compose boots the pulled image by digest.
           docker compose up -d --build --wait --wait-timeout 240
 
       - name: Assert startup ordering (config + empty-DB migrations precede serving)

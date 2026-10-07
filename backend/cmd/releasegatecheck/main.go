@@ -24,7 +24,27 @@
 //     cannot silently reintroduce the dispatch-and-poll path; and the composer
 //     (`release-validate.yml`) calls exactly that set — no omission, no extra.
 //
-//  5. No mandatory release-internal gate of docker-publish.yml is push-only
+//  5. The build-once release image wiring holds (issue #1484,
+//     releaseworkflow.CheckCandidate): release-validate.yml builds the candidate
+//     and exports its digest, every image-running gate pulls that digest instead
+//     of rebuilding, and docker-publish.yml re-tags it and asserts published ==
+//     tested.
+//
+//  6. The release battery's flake-exposure wiring holds (issue #1487,
+//     releaseworkflow.CheckResilience): every composed gate honours the
+//     composer's skip_gates input, the results job records the per-gate
+//     ledger, release.yml's rerun_gates and docker-publish.yml's tag-time reuse
+//     are wired through `cmd/releaseplan`, and the DAST and Go-floor bounded
+//     retries run through their scripts (whose exit codes agree with zapgate).
+//
+//  7. The manual-gate attestation ledger holds (issue #1486): .github/manual-gates.json
+//     is structurally valid, every attestation proves the test RAN (and any
+//     retained JUnit evidence hashes to what it claims), and release.yml's
+//     required `attest_manual_gates` input is enforced by an unconditional
+//     preflight step, recorded in release-readiness.json, and passed by the
+//     dry-run rehearsal (releaseworkflow.CheckManualGates).
+//
+//  8. No mandatory release-internal gate of docker-publish.yml is push-only
 //     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
 //     workflow_dispatch fallback while the run still concludes success, unless
 //     the gate is allowlisted with a reason and a defined failing check on the
@@ -41,6 +61,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"mycorrhizal/internal/manualgates"
 	"mycorrhizal/internal/releasegates"
 	"mycorrhizal/internal/releaseworkflow"
 )
@@ -125,6 +146,65 @@ func runAt(w io.Writer, root string) int {
 		return 2
 	}
 	findings = append(findings, releasegates.CheckDispatchPath(reg, string(publishBytes))...)
+	// Issue #1484: the build-once wiring across the composer, the image-running
+	// gates and docker-publish.yml's re-tag + digest-equality assertion.
+	gateTexts := map[string]string{}
+	for _, name := range releaseworkflow.ImageGateFiles {
+		// #nosec G304 -- name is one of a fixed list of workflow basenames under the repo root
+		b, readErr := os.ReadFile(filepath.Join(root, workflowsDir, name))
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "releasegatecheck: read", name, readErr)
+			return 2
+		}
+		gateTexts[name] = string(b)
+	}
+	findings = append(findings, releaseworkflow.CheckCandidate(string(composerBytes), string(publishBytes), gateTexts)...)
+	// Issue #1487: the flake-exposure wiring (per-gate ledger + skip conditions,
+	// rerun_gates, tag-time reuse, the two bounded retries).
+	res := releaseworkflow.ResilienceFiles{Composer: string(composerBytes), Release: string(releaseBytes), Publish: string(publishBytes)}
+	for _, in := range []struct {
+		dst  *string
+		rel  string
+		name string
+	}{
+		{&res.Zap, filepath.Join(workflowsDir, releaseworkflow.ZapFile), releaseworkflow.ZapFile},
+		{&res.MinVersion, filepath.Join(workflowsDir, releaseworkflow.MinVersionFile), releaseworkflow.MinVersionFile},
+		{&res.ZapScript, releaseworkflow.ZapScript, releaseworkflow.ZapScript},
+		{&res.ZapgateSrc, releaseworkflow.ZapgateSource, releaseworkflow.ZapgateSource},
+	} {
+		// #nosec G304 -- fixed repo-relative paths under the repository root
+		b, readErr := os.ReadFile(filepath.Join(root, in.rel))
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "releasegatecheck: read", in.name, readErr)
+			return 2
+		}
+		*in.dst = string(b)
+	}
+	findings = append(findings, releaseworkflow.CheckResilience(res)...)
+	// Issue #1486: the manual-gate attestation ledger is structurally valid with
+	// verifiable evidence, and release.yml / the dry-run rehearsal enforce it.
+	// #nosec G304 -- fixed repo-relative path under the repository root
+	ledgerBytes, err := os.ReadFile(filepath.Join(root, releaseworkflow.ManualGatesFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read", releaseworkflow.ManualGatesFile, err)
+		return 2
+	}
+	ledger, ledgerFindings := manualgates.ParseLedger(ledgerBytes)
+	findings = append(findings, ledgerFindings...)
+	if len(ledgerFindings) == 0 {
+		findings = append(findings, manualgates.VerifyEvidence(ledger, func(p string) ([]byte, bool) {
+			// #nosec G304 -- p is an evidence path recorded in the committed ledger, resolved under the repo root
+			b, readErr := os.ReadFile(filepath.Join(root, p))
+			return b, readErr == nil
+		})...)
+	}
+	// #nosec G304 -- fixed workflow basename under the repository root
+	dryRunBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, releaseworkflow.DryRunFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read", releaseworkflow.DryRunFile, err)
+		return 2
+	}
+	findings = append(findings, releaseworkflow.CheckManualGates(string(releaseBytes), string(dryRunBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

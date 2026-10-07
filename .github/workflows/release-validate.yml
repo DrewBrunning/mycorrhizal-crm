@@ -24,6 +24,35 @@ on:
         required: false
         type: boolean
         default: true
+      release_tag:
+        description: 'The release tag the candidate image is stamped and labelled as (issue #1484). Empty is not allowed: the candidate must be built exactly as the release image would be.'
+        required: true
+        type: string
+      source_ref:
+        description: 'Commit-ish the candidate image is built from. Empty builds the commit this workflow was called at; docker-publish.yml passes the tag so a manual dispatch builds the TAG''s tree, not the dispatching branch''s.'
+        required: false
+        type: string
+        default: ''
+      skip_gates:
+        description: 'Comma list of gate job ids NOT to run because a recorded success for this commit is carried instead (issue #1487): release.yml''s rerun_gates, or docker-publish.yml''s tag-time reuse. Empty runs every gate. Built by `go run ./cmd/releaseplan`, never by hand.'
+        required: false
+        type: string
+        default: ''
+      carried_ledger:
+        description: 'JSON gate ledger holding the carried successes for skip_gates (issue #1487); the results job re-records them with the run that earned them.'
+        required: false
+        type: string
+        default: ''
+    # The digest of the one image every image-running gate below exercised
+    # (issue #1484). docker-publish.yml's build-and-push re-tags exactly this
+    # digest for the release instead of rebuilding.
+    outputs:
+      candidate_digest:
+        description: 'sha256 digest of the multi-arch candidate image built once and tested by every image-running gate.'
+        value: ${{ jobs.build-candidate.outputs.digest }}
+      candidate_image:
+        description: 'The candidate image reference by digest (ghcr.io/<repo>@sha256:...).'
+        value: ${{ jobs.build-candidate.outputs.image }}
     # The only non-automatic secret any member check needs. Passed explicitly
     # rather than `secrets: inherit` — least privilege, and zizmor's
     # secrets-inherit audit is a hard-gate finding. `GITHUB_TOKEN` is automatic
@@ -61,6 +90,7 @@ permissions:
 jobs:
   # --- mandatory per-PR gates (release_gate: true) ------------------------
   unit-tests:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',unit-tests,') }}
     uses: ./.github/workflows/unit-tests.yml
     permissions:
       contents: read
@@ -73,13 +103,133 @@ jobs:
       statuses: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  # --- build-once candidate image (issue #1484) ----------------------------
+  # The release's all-in-one image is built HERE, once, and pushed to GHCR
+  # under a non-release `candidate-<sha>` tag. Every gate that runs the image
+  # (e2e-tests, container-hardening, deploy-smoke, zap-dast) pulls it by this
+  # digest instead of rebuilding from source, and docker-publish.yml re-tags
+  # the same digest for the release -- so the artifact the gates tested is the
+  # artifact that ships, and `verify-release-assets` asserts it. Per-PR runs
+  # of those workflows keep building from source (no image_digest input).
+  # Build args, labels, stamp and cache scope mirror docker-publish.yml's
+  # all-in-one leg; releaseworkflow.CheckCandidate pins that they agree.
+  build-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # push the candidate tag; also granted by both callers (a called
+      # workflow cannot exceed its caller's permissions).
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      image: ${{ steps.record.outputs.image }}
+    steps:
+      - name: Checkout the commit to release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+
+      # Same pinned BuildKit builder as docker-publish.yml's build-and-push
+      # (issue #1109).
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8 # v0.32.2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute build stamp
+        id: stamp
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: bash .github/scripts/release-image-stamp.sh "$RELEASE_TAG"
+
+      - name: Compute lowercase candidate reference
+        id: ref
+        env:
+          SHA7: ${{ steps.stamp.outputs.sha7 }}
+        run: |
+          set -eu
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "tag=candidate-${SHA7}" >> "$GITHUB_OUTPUT"
+
+      # Identity labels pinned explicitly, identical to docker-publish.yml's
+      # metadata step (REL-04, #448) -- plus metadata-action's repo-derived
+      # defaults, so the candidate carries every label the release image does.
+      - name: Extract metadata (labels)
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.ref.outputs.repo }}
+          tags: |
+            type=raw,value=${{ steps.ref.outputs.tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.stamp.outputs.sha_full }}
+            org.opencontainers.image.version=${{ inputs.release_tag }}
+            org.opencontainers.image.created=${{ steps.stamp.outputs.created }}
+
+      - name: Build and push the candidate image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          # REL-04 (#448): same deterministic timestamp as the release build.
+          SOURCE_DATE_EPOCH: ${{ steps.stamp.outputs.source_date_epoch }}
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.stamp.outputs.display_version }}
+            APP_COMMIT=${{ steps.stamp.outputs.commit }}
+            APP_BUILD_DATE=${{ steps.stamp.outputs.created }}
+          # Same cache scope as docker-publish.yml's all-in-one leg, so the
+          # from-source override fallback there and this build warm each other.
+          cache-from: type=gha,scope=docker-publish
+          cache-to: type=gha,mode=max,scope=docker-publish
+          # SBOM + SLSA provenance ride in the pushed index as referrers; the
+          # release re-tags this index verbatim, so they ship with it.
+          provenance: true
+          sbom: true
+
+      - name: Record the candidate digest
+        id: record
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          REPO: ${{ steps.ref.outputs.repo }}
+        run: |
+          set -eu
+          bash .github/scripts/candidate-image.sh check-digest "$DIGEST"
+          image="${REPO}@${DIGEST}"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Candidate image (tested by every image-running gate, re-tagged by the release): $image"
+          echo "### Candidate image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$image\`" >> "$GITHUB_STEP_SUMMARY"
+
+
   e2e-tests:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',e2e-tests,') }}
+    needs: build-candidate
     uses: ./.github/workflows/e2e-tests.yml
+    with:
+      image_digest: ${{ needs.build-candidate.outputs.digest }}
     permissions:
       contents: read
       pull-requests: read
       actions: read
+      packages: read
   android-tests:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',android-tests,') }}
     uses: ./.github/workflows/android-tests.yml
     # Skip its non-gating advisory jobs (the macrobenchmark) during a release
     # cut, so it does not add another emulator to an already-contended run
@@ -93,6 +243,7 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   sast:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',sast,') }}
     uses: ./.github/workflows/sast.yml
     permissions:
       contents: read
@@ -102,6 +253,7 @@ jobs:
       # upload step itself is skipped when composed).
       security-events: write
   zizmor:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',zizmor,') }}
     uses: ./.github/workflows/zizmor.yml
     permissions:
       contents: read
@@ -109,22 +261,27 @@ jobs:
       actions: read
       security-events: write
   container-hardening:
+    if: ${{ !contains(format(',{0},', inputs.skip_gates), ',container-hardening,') }}
+    needs: build-candidate
     uses: ./.github/workflows/container-hardening.yml
+    with:
+      image_digest: ${{ needs.build-candidate.outputs.digest }}
     permissions:
       contents: read
       pull-requests: read
       security-events: write
+      packages: read
 
   # --- release-tier suites -------------------------------------------------
   # android-tests above already carries the "Android E2E (emulator, minSdk 26)"
   # release-tier gate, so it is not called twice.
   min-version-tests:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',min-version-tests,') }}
     uses: ./.github/workflows/min-version-tests.yml
     permissions:
       contents: read
   migration-tests:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',migration-tests,') }}
     uses: ./.github/workflows/migration-tests.yml
     permissions:
       contents: read
@@ -132,31 +289,34 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   carddav-e2e:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',carddav-e2e,') }}
     uses: ./.github/workflows/carddav-e2e.yml
     permissions:
       contents: read
       pull-requests: read
   chaos-tests:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',chaos-tests,') }}
     uses: ./.github/workflows/chaos-tests.yml
     permissions:
       contents: read
       pull-requests: read
   schemathesis:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',schemathesis,') }}
     uses: ./.github/workflows/schemathesis.yml
     permissions:
       contents: read
       pull-requests: read
   differential-e2e:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',differential-e2e,') }}
     uses: ./.github/workflows/differential-e2e.yml
     permissions:
       contents: read
       pull-requests: read
   reference-clients-e2e:
-    if: inputs.release_tier
+    # `!cancelled()` + explicit results: when android-tests is skipped (its
+    # success carried by skip_gates, issue #1487) a plain `needs` would skip
+    # this job too; a FAILED android-tests still blocks it, as before.
+    if: ${{ !cancelled() && inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',reference-clients-e2e,') && (needs.android-tests.result == 'success' || needs.android-tests.result == 'skipped') }}
     # Serialize the emulator-heavy suites: the DAVx5 leg and android-tests'
     # emulator jobs must not compete for nested-virtualization capacity, which
     # is what produced the RC2 launcher-ANR flake (issue #1174).
@@ -166,10 +326,28 @@ jobs:
       contents: read
       pull-requests: read
   zap-dast:
-    if: inputs.release_tier
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',zap-dast,') }}
+    needs: build-candidate
     uses: ./.github/workflows/zap-dast.yml
+    with:
+      image_digest: ${{ needs.build-candidate.outputs.digest }}
     permissions:
       contents: read
+      packages: read
+  # Issue #1484: the clean-install smoke (empty DB, documented install path,
+  # startup ordering, misconfiguration diagnostics) was never a release gate.
+  # Composed here against the candidate image, so a release whose image cannot
+  # boot is blocked before any tag is pushed or anything published.
+  deploy-smoke:
+    if: ${{ inputs.release_tier && !contains(format(',{0},', inputs.skip_gates), ',deploy-smoke,') }}
+    needs: build-candidate
+    uses: ./.github/workflows/deploy-smoke.yml
+    with:
+      image_digest: ${{ needs.build-candidate.outputs.digest }}
+    permissions:
+      contents: read
+      pull-requests: read
+      packages: read
 
   # ADR 0021 (issue #1164): the per-gate result record. Runs `always()` so it
   # still reports when a composed gate failed, and uploads a small JSON the
@@ -179,6 +357,7 @@ jobs:
   results:
     if: always()
     needs:
+      - build-candidate
       - unit-tests
       - e2e-tests
       - android-tests
@@ -193,11 +372,27 @@ jobs:
       - differential-e2e
       - reference-clients-e2e
       - zap-dast
+      - deploy-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
     steps:
+      # The ledger tool is Go; the results job needs the tree it describes.
+      - name: Checkout the commit under validation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          # zizmor cache-poisoning: this job's output decides what a release may
+          # skip later, so no earlier run's build cache is restored into it.
+          cache: false
+
       - name: Collect per-gate results
         env:
           NEEDS: ${{ toJSON(needs) }}
@@ -205,15 +400,57 @@ jobs:
           set -eu
           printf '%s' "$NEEDS" | jq 'with_entries(.value = .value.result)' > release-gate-results.json
           cat release-gate-results.json
+          # Issue #1484: the digest every image-running gate exercised, for the
+          # durable readiness record (and so a human can compare it with the
+          # digest docker-publish.yml publishes).
+          printf '%s' "$NEEDS" | jq '{digest: .["build-candidate"].outputs.digest, image: .["build-candidate"].outputs.image}' > release-candidate.json
+          cat release-candidate.json
           {
             echo "### Composed gate results"
             echo '```json'
             cat release-gate-results.json
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+      # Issue #1487: the per-gate LEDGER -- {sha, release_tag, gate, conclusion,
+      # run_id} for every composed gate -- is what lets a later run prove which
+      # gates already passed for which commit: release.yml's `rerun_gates`
+      # carries unchanged gates forward from it, and docker-publish.yml's
+      # tag-time battery reuses it when the tag differs from the validated
+      # commit only by the schema-fixture registration. A carried (skipped)
+      # gate is re-recorded as success with `carried_from_run`, never as this
+      # run's own. continue-on-error: a ledger that cannot be written costs only
+      # that later reuse (the consumers fall back to running every gate), never
+      # this battery's verdict.
+      - name: Record the per-gate ledger
+        continue-on-error: true
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SKIP_GATES: ${{ inputs.skip_gates }}
+          CARRIED_LEDGER: ${{ inputs.carried_ledger }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -eu
+          sha="$(git rev-parse HEAD)"
+          (cd backend && go run ./cmd/releaseplan ledger \
+            -composer ../.github/workflows/release-validate.yml \
+            -results ../release-gate-results.json \
+            -sha "$sha" -tag "$RELEASE_TAG" -run-id "$RUN_ID" \
+            -skip "$SKIP_GATES" -carried "$CARRIED_LEDGER" \
+            -out ../release-gate-ledger.json)
+          cat release-gate-ledger.json
+          {
+            echo "### Gate ledger (commit ${sha:0:12})"
+            echo '```json'
+            cat release-gate-ledger.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload per-gate results (for the readiness artifact)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-gate-results
-          path: release-gate-results.json
+          path: |
+            release-gate-results.json
+            release-candidate.json
+            release-gate-ledger.json
           retention-days: 5

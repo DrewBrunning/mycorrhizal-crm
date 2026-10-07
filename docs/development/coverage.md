@@ -244,15 +244,16 @@ same non-absolute philosophy as the patch gate and as
 tolerance, never on an existing low number by itself.
 
 - **Backend**: `backend/cmd/coverageratchet` (logic in
-  `backend/internal/coverageratchet`) reads the same merged
-  `coverage.out` the `backend` job in `unit-tests.yml` already
-  produces for Codecov, computes each file's statement-coverage percentage,
-  and compares it against the committed
+  `backend/internal/coverageratchet`) reads a **cross-package** profile
+  (`coverage-cross.out`, see below), computes each file's statement-coverage
+  percentage, and compares it against the committed
   `backend/internal/coverageratchet/testdata/baseline.json`. It honors the
   `// # pragma: no cover` marker (CLAUDE.md's Override path) at the
   coverprofile's own block granularity — a marked line anywhere inside a
   block excludes that whole block — so a deliberately-excluded line doesn't
-  masquerade as a real drop.
+  masquerade as a real drop. Blocks that appear more than once in the profile
+  are merged (counts summed) while reading, so a file is covered if any
+  occurrence ran.
 - **Frontend**: `frontend/scripts/check-coverage-ratchet.mjs` reads
   `coverage/coverage-summary.json` (the `json-summary` reporter added to
   `vitest.config.ts` alongside the existing `text`/`html`/`lcov` reporters)
@@ -273,18 +274,41 @@ Both sides share the same rules:
 - A **removed or renamed** file drops out silently (reported, not failed) —
   the baseline is simply stale for that entry until the next regeneration.
 
+**Two different questions (issue #1477).** The backend ratchet and the
+Codecov patch gate deliberately measure different things:
+
+- The **ratchet** asks *"is any test exercising this file?"* Its profile is
+  one non-sharded, non-race `go test ./... -coverpkg=./...` run
+  (`unit-tests.yml`'s "Collect cross-package coverage" step in the `backend`
+  job, `schemafixture` excluded as in every leg), so a file is credited for a
+  test living in **any** package. Before this, the ratchet used the per-leg
+  profiles (no `-coverpkg`), which credit a file only for its own package's
+  tests: 25 files sat baselined at 0–50% while integration tests elsewhere
+  covered them fully (`services/api_token_service.go`: 0% → 100% via
+  `routes/session_lifecycle_test.go`). A file baselined at 0 could never
+  regress, and the baseline pointed reviewers at the wrong gaps. Files that
+  stay low in the cross-package baseline are the real backlog.
+- The **patch gate** (`codecov/patch/backend`) asks *"does this package's own
+  suite cover the changed line?"* The Codecov upload stays on the merged
+  per-package profile, so its semantics are unchanged — which still nudges
+  authors toward a same-package test for new lines.
+
+The cross-package run is heavy (whole suite, a few minutes, hundreds of MB raw
+before merge), which is why it runs **once**, on `pull_request`, in the `backend` gate
+job rather than per leg.
+
 **Regenerating the baseline** (a deliberate, reviewed act — the diff *is* the
 review, same convention as `bundle-budget.json`):
 
 ```bash
-cd backend && make gen-coverage-baseline    # needs backend's coverage.out from a full-suite run
+cd backend && make gen-coverage-baseline    # runs the whole suite once with -coverpkg=./... (heavy), then rewrites the baseline
 cd frontend && yarn coverage:ratchet:update # needs frontend/coverage/coverage-summary.json from `yarn test:coverage`
 ```
 
 Both regenerate in place, keeping the existing `tolerancePercentPoints` /
 `tolerancePct` unless you edit it by hand.
 
-**Tolerance rationale.** The backend's seven coverage-producing legs include
+**Tolerance rationale.** The backend suite includes
 property/generative tests (TEST-07, issue #435) whose iteration budget
 (`RAPID_CHECKS`) is tiered by trigger — 200 on a PR, 1000 on a push, 8000 on
 the nightly schedule — and whose generators use randomized inputs. A

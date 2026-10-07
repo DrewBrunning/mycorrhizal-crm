@@ -20,7 +20,15 @@ registry, and workflow artifacts.
 `release/vX.Y.0` for an RC); `dry_run` (run every gate + regenerate the fixture, make no
 commit/push/tag — this is how the workflow is exercised without cutting a release, including
 against the last shipped version); `ack_asvs_current` (a reason to proceed when the ASVS/MASVS
-re-verification row is absent — recorded, not silent). `release-dry-run.yml` dispatches it with
+re-verification row is absent — recorded, not silent); `attest_manual_gates` (**required**: how the
+release addresses each human-only gate in `.github/manual-gates.json` — today the real-device
+`LocalOnlyModeE2eTest` run — either `<id>`, verified against the ledger's attestation for freshness,
+ancestry and unchanged watched paths, or `<id>=skip:<reason>`, a recorded skip; the decisions land in
+`release-readiness.json` as `manual_gates`; see
+[release-gates.md](../development/release-gates.md#manual-gates-issue-1486), issue #1486); `rerun_gates` / `rerun_from_run` (re-run only
+the named — or, with `failed`, only the not-green — composed gates against the same commit and carry
+every other gate's recorded success from the prior battery's ledger; see "Re-running a flaked gate"
+below, issue #1487). `release-dry-run.yml` dispatches it with
 `dry_run: true` against the last shipped version weekly and on demand, so this rehearsal is
 actually run by CI rather than only documented (issue #929).
 
@@ -28,7 +36,9 @@ It, in three jobs (ADR 0021, [composition](../adrs/0021-release-validation-compo
 
 1. **`preflight`** — validates the version string, that no such tag exists (a registered-but-untagged
    version is *resumed*, issue #1142), that the checkout is the true tip of `ref`, and runs
-   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck`.
+   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck`, then enforces the manual-gate
+   attestations (`go run ./cmd/manualgatecheck check`, issue #1486) — a missing, stale or
+   unverifiable attestation fails here, naming the gate, before any expensive gate runs.
 2. **`validate`** — calls the reusable
    [`release-validate.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release-validate.yml),
    which **composes every gate** — the `release_gate: true` per-PR checks and the release-tier suites —
@@ -54,6 +64,20 @@ another workflow. The App token is scoped to `contents: write` and is used by th
 Because the tag points at a real commit on `main` (the one carrying the dump), the
 `schema-fixture-gate` in `docker-publish.yml` passes and source↔release correspondence (below)
 is exact — there is no post-review "move the tag" step.
+
+**Re-running a flaked gate (issue #1487).** A red release battery used to mean re-dispatching all of
+it. Every `validate` run now records a per-gate **ledger** (`release-gate-ledger.json`, in the
+`release-gate-results` artifact, kept 5 days): one `{sha, release_tag, gate, conclusion, run_id}` row
+per composed gate. Re-dispatch `release.yml` with `rerun_gates=<id,id>` (gate ids are the job ids in
+`release-validate.yml`, e.g. `e2e-tests,zap-dast`) or `rerun_gates=failed`, and `preflight` plans the
+rerun with `go run ./cmd/releaseplan rerun`: only a **recorded `success` for exactly this commit and
+this version** is carried forward; a gate with no such row is re-run even if not named, an unknown
+gate id or a request with nothing left to run fails in `preflight`, and a ledger for a different commit
+(for example after a fix landed on `main`) carries nothing, so the whole battery re-runs. Carried
+gates are re-recorded as `success` with `carried_from_run` pointing at the run that earned them, and
+`release-readiness.json` records `gate_rerun` and the full `gate_ledger`. The build-once candidate
+image is always rebuilt (cache-warm), so image-running gates that do re-run test the digest the
+readiness record names.
 
 **The workflow is re-entrant before the tag exists (issue #1142).** If a run fails after the
 schema fixture is committed but before the tag is pushed — the common case being a composed gate that
@@ -112,7 +136,7 @@ are a deliberate, reviewed tag change.
 | Android release APK | SLSA build provenance from the `slsa-github-generator` reusable workflow (`apk-provenance` job) | A verifiable in-toto SLSA statement over the APK's sha256, signed keyless; what Scorecard's `Signed-Releases` check counts for the **10/10** tier | No — attached to the Release as `mycorrhizal-apk.intoto.jsonl` |
 | All release assets | `SHA256SUMS` — a plain `sha256sum` manifest over every asset on the Release, generated last by `verify-release-assets` | One file to check the integrity of everything you downloaded from the Release | No — attached to the Release as `SHA256SUMS` |
 | The release run itself | `release-metadata.json` — version, migration version, source revision, dry-run/resumed flags, gate results, and the residual-risk statement (open accept items, dependency-exception expiry, ASVS/MASVS exception counts) | Which commit `release.yml` cut the release from, which gates it verified, and what was accepted on the way (issue #953) | No — attached to the Release (also a 90-day workflow artifact) |
-| The candidate decision | `release-readiness.json` — version, source commit/ref, migration version, per-gate results, `fixture_registered`, the two ASVS/adversarial acknowledgement reasons, and the residual-risk statement (issue #1164) | What `release.yml`'s composed `validate` battery recorded before it tagged; the durable state a re-dispatch resumes from | No — attached to the Release by `docker-publish.yml` (also a 90-day workflow artifact) |
+| The candidate decision | `release-readiness.json` — version, source commit/ref, migration version, per-gate results, `gate_ledger` (the per-gate `{sha, gate, conclusion, run_id}` record the tag-time battery reuses, issue #1487), `validated_candidate` (the digest of the one candidate image the pre-tag battery's image-running gates tested, issue #1484), `fixture_registered`, the two ASVS/adversarial acknowledgement reasons, and the residual-risk statement (issue #1164) | What `release.yml`'s composed `validate` battery recorded before it tagged; the durable state a re-dispatch resumes from. `docker-publish.yml` adds `tag_time_battery` when it attaches it: whether the tag-time battery was reused from this record or re-run in full, and why | No — attached to the Release by `docker-publish.yml` (also a 90-day workflow artifact) |
 
 The one "expires" row is a workflow *run* artifact (`actions/upload-artifact`), not a GitHub
 Release asset — it is only downloadable from the specific `docker-publish.yml` run's Actions

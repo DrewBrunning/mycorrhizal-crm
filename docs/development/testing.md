@@ -37,8 +37,8 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
-| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra` |
-| Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push |
+| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra`; also a release-tier gate run against the build-once candidate image ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484), [release-gates.md](release-gates.md#build-once-the-tested-image-is-the-shipped-image-issue-1484)) |
+| Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed; the pre-publish gates are the release battery, which tests the same digest that publishes -- #1484) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
 | Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
 
@@ -217,6 +217,27 @@ Detail and the hard-won traps for each layer follow.
   **off the PR path** (issue #578, B5): push:main + nightly + manual, so an
   Android PR is gated by Robolectric only and the emulator signal lands
   post-merge and nightly.
+- **Skips are gated, not trusted (issue #1483).** A JUnit `Assume` failure is a
+  *skip* and a skip reports green, so on this required job it would otherwise be
+  a silent loss of coverage. Two mechanisms close that:
+  - Tests that need a **CI-provided** dependency (the `docker-compose.compat-test.yml`
+    backends: `ForceUpdateGateE2ETest`, `OldServerCompatibilityE2ETest`) use
+    `com.mycorrhizal.crm.testing.assumeOrFailInCi` (`android/core/testing`), the
+    Android analogue of Go's `citest.SkipOrRequire`: it skips locally but **fails**
+    when the workflow passes `-Pandroid.testInstrumentationRunnerArguments.requireReferences=true`
+    (every `android-tests.yml` E2E run does). Use it for any condition CI always satisfies.
+  - Tests whose condition is **legitimately false on the x86_64 CI emulator** (the
+    arm64-only embedded server, ADR 0028: `LocalOnlyModeE2eTest`,
+    `LocalBundleRoundTripE2eTest`) keep a plain `assumeTrue` and are listed, with a
+    reason, in `android/e2e-expected-skips.txt` (`fully.qualified.Class#method | reason`).
+    After the run, `cd backend && go run ./cmd/androidskipcheck -results
+    ../android/app/build/outputs/androidTest-results/connected` parses AGP's JUnit XML
+    and fails unless the skipped set **equals** the allowlist: a new skip, a listed
+    test that stopped skipping (delete its entry), a listed test that did not run, or
+    a run with zero test cases all fail. The skip count and per-test reasons land in
+    the job summary. `androidskipcheck -static` runs on every PR (`docs-citations`
+    job, pre-commit hook) and fails if an entry no longer names a real test method.
+    Do **not** allowlist a test because its dependency is flaky -- use `assumeOrFailInCi`.
 - **Known gap, accepted:** this suite (and every other instrumented job) runs
   the **debug** build only. Neither a release/R8-minified APK nor an
   install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
@@ -287,6 +308,42 @@ no `PLAYWRIGHT_WORKERS=1` pin on the release run (CI runs 4 workers).
   see each other's contacts or settings.
 - A spec that must read the worker's credentials (e.g. `sessionExpiry`'s in-place
   re-auth) takes the `workerUser` fixture.
+
+### Feature-seam specs and the route-coverage guard (issue #1481)
+
+Four features had backend deep tests and mocked component tests but no spec
+driving the real bundle against the real server. Each now has one thin
+happy-path-plus-one-failure spec (the lower layers own the matrix):
+
+| Spec | Drives |
+|---|---|
+| `occasions.spec.ts` | gift obligation created on a contact page → "Needed" on `/occasions` → a purchased gift flips it → deactivating it (the "handled" switch; there is no separate done button) removes it → bad anchor rejected → contact delete takes the obligation |
+| `passkeys.spec.ts` | Chromium CDP **virtual authenticator** (`WebAuthn.enable` + `addVirtualAuthenticator`): register in Settings → log out → passkey is the second factor → wrong-code removal refused → recovery-code removal. Skipped on non-Chromium (no CDP WebAuthn domain; #1479) |
+| `systemEvents.spec.ts` | a webhook receiver answering 404 makes the delivery path record an `integration_failed` event; asserts severity/component/result on `/system-events`, detail, a server-side filter, and "Load more" growing past the first 100 rows; also `/system-status` and the non-admin 403 |
+| `apiTokens.spec.ts` | create → one-time secret + clipboard → bearer-only client gets 200 (cookie-less 401) → secret absent after reload → revoke → same bearer 401 |
+| `legacyRedirects.spec.ts` | `/api-tokens` → `/settings`, `/tags` → `/circles?tab=tags` |
+
+**Intentionally E2E-exempt: GeoPulse (#160).** It is an outbound integration to
+a user-hosted GeoPulse server; the default test stack has none and the feature
+has no UI beyond the connection form, so a spec would only test a stub. The
+client and service are owned by `services/geopulse_client_test.go` and `geopulse_service_test.go`, the
+form/suggestions by `useGeoPulse.test.ts`/`ActivitiesPage.test.tsx`.
+
+**Route-coverage guard.** `frontend/scripts/check-e2e-routes.mjs`
+(`yarn e2e:routes`) parses the `<Route path>` table in `src/App.tsx` and fails
+if a path is not mentioned as a whole path literal in some `e2e/*.spec.ts`
+(`/contacts` is not satisfied by `/contacts/${id}/prep`), unless it is in
+`e2e/route-exemptions.json` (`{ "/path": "reason" }`, reason ≥ 15 chars). A
+*stale* exemption (route gone, or a spec now covers it) also fails, so the list
+only shrinks. It is enforced in the required Vitest job by
+`scripts/check-e2e-routes.test.mjs`, whose last case runs it against the real
+repo. The first run left the exemption file empty: every route was or became
+covered. Adding a page therefore means adding a spec (or a reasoned exemption).
+
+These specs run the automatic per-test axe scan (`fixtures.ts`), which found
+three real light-mode contrast/naming defects on the admin pages — outlined
+`success`/`error` chip text and error text on a hovered row, and an unnamed
+storage `progressbar` — fixed via `src/utils/statusText.ts` and an `aria-label`.
 
 ### Failure-mode specs (issue #1478)
 
@@ -852,6 +909,62 @@ since `.github/filters.yaml` maps a workflow-only change to `workflows`, not
 workflow that nobody registered would otherwise alert on nothing, and a
 renamed or de-scheduled workflow would leave a dead entry.
 
+## Flake ledger (issue #1488)
+
+Retry-and-forget hid flakes: `gotestsum --rerun-fails` (PR/push), Playwright
+`retries: 1` and the Android second emulator boot each turn a failed first
+attempt into a green check, and the only trace used to be a log line. A test
+failing 1-in-5 was invisible until it failed twice in a row on someone's PR.
+The flake ledger is the longitudinal record.
+
+**Inputs.** Each suite uploads a small `flake-*` artifact (14-day retention,
+separate from the bulky 7-day report artifacts):
+
+| Artifact | Producer | Contents |
+|---|---|---|
+| `flake-go-<leg>` | `unit-tests.yml` backend legs | `junit-<leg>.xml` (the `-race` pass) + gotestsum's `rerun-fails-<leg>.txt` |
+| `flake-playwright-<job>` | `e2e-tests.yml` (`e2e`, `prod-defaults`, `webkit`) | `playwright-results/results.json` (Playwright's JSON reporter, now always on; `status: flaky` = failed then passed) |
+| `flake-android-<leg>` | `android-tests.yml` (API 35, API 26) | final-attempt JUnit + the preserved `flaky-attempt-*` XML |
+| `flake-signals-<name>` | anything else that retries | a `flake-signals-*.json` in the neutral format below |
+
+The neutral format lets a new retry mechanism feed the ledger without a new
+parser: `{"suite":"go/floor","tests":[{"test":"pkg.TestX","outcome":"passed_on_retry"}]}`
+with `outcome` one of `passed`, `passed_on_retry`, `failed`. (The Go
+failed-package re-run script and the ZAP re-scan proposed in #1487 are the
+intended users: emit that file and upload it as `flake-signals-<name>`.)
+
+**The ledger.** `flake-ledger.yml` runs daily (06:15 UTC; also
+`workflow_dispatch`), lists the last 14 days of runs of `unit-tests.yml`,
+`e2e-tests.yml` and `android-tests.yml`, downloads their `flake-*` artifacts
+and runs `backend/cmd/flakeledger` (`collect` -> `report` -> `issues`). Per
+`(suite, test)` it records `{runs, failed-first-attempt, passed-on-retry,
+failed}` and ranks by flake rate (failed-first-attempt / runs). The rendered
+markdown is the job summary and the `ledger-report` artifact; it is not
+committed (a daily commit to protected `main` would only add noise). The
+renderer's output format is pinned by a golden test
+(`backend/internal/flakeledger/testdata/ledger.golden.md`;
+`go test ./internal/flakeledger -update` regenerates it).
+
+**Policy.** A test with **3 or more passed-on-retry events in 14 days** gets an
+auto-opened issue titled `Flaky test: <suite> <test>`, labelled `flaky-test`
+and `p1`, in the in-flight milestone (the open milestone with the earliest due
+date), naming the test and linking the runs. At most 5 are opened per day; an
+open issue with the same title suppresses a duplicate. **Closing requires a
+root-cause note** (what was racing or leaking, and the fix) — raising a retry
+count or timeout is not a resolution. Events at or before an issue's close time
+do not count towards re-opening it, so a closed issue is not undone by the
+same events still inside the window; a recurrence opens a fresh one.
+
+**Advisory.** The ledger never fails a PR and is not a required check. Its own
+failures (API outage, missing artifacts) are warnings in the log; a red
+`flake-ledger.yml` run is reported by `nightly-failure-alert.yml` like any
+scheduled workflow.
+
+**Verify it.** Run it with `workflow_dispatch` against the repository's recent
+history and confirm known flaky suites (the `credentialStorage` IndexedDB spec,
+the Android emulator leg) rank near the top; a deliberately `time.Sleep`-flaky
+test on a branch appears within a day of its third passed-on-retry run.
+
 ## Anti-goal: coverage percentage is not the acceptance criterion
 
 The milestone states it verbatim, and this project means it: **coverage is
@@ -886,7 +999,18 @@ criterion.**
     data-integrity invariants (`atrest`), delete cascade (the two files
     `contact_controller.go`/`admin_user_controller.go` name in backend trap
     6), import ingestion (`services`' import-source files), and the three
-    exporters (`vcard3`, `vcard4`, `jscontact`). The complete scope and each
+    exporters (`vcard3`, `vcard4`, `jscontact`). Issue #1491 added the
+    decision-heavy code whose silent breakage is worst: auth middleware
+    (`middleware-auth`: `auth.go`, `admin.go`, `idempotency.go`,
+    `login_lockout.go`), the SSRF guard (`ssrf`: all of `httputil`), merge
+    (`services-merge`, `controllers-merge`), date/threshold arithmetic
+    (`schedule-math`: cadence, reminder, data-decay, occasion), and sync
+    reconcile (`sync-reconcile`: `contact_sync_service.go`;
+    `carddav-backend`, `caldav-backend`: the DAV backends). gremlins v0.6.0
+    mutates comparisons, arithmetic and increments only — it does not delete
+    an `if !ok` arm or an `AND user_id = ?` SQL fragment, so ownership
+    scoping stays covered by `routes/ownership_matrix_test.go`, not by a
+    mutation leg. The complete scope and each
     leg's threshold (with the baseline run it ratchets from) live in
     `backend/internal/mutationscope.Scopes`, generated into
     `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after
