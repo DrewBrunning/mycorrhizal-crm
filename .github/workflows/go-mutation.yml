@@ -64,6 +64,8 @@ jobs:
             package: controllers
           - scope: services-import
             package: services
+          - scope: services-delete-cascade
+            package: services
           - scope: vcard3
             package: vcard3
           - scope: vcard4

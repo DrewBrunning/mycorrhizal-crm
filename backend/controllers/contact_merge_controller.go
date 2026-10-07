@@ -256,7 +256,7 @@ func CommitContactMerge(c *gin.Context) {
 
 		// ContactSyncLink cleanup (never re-pointed) + a defense-in-depth
 		// no-op sweep of anything RepointContactAssociations already moved.
-		if err := deleteContactAssociations(tx, loser, userID, clock.FromContext(c).Now()); err != nil {
+		if err := services.DeleteContactAssociations(tx, loser, userID, clock.FromContext(c).Now()); err != nil {
 			return err
 		}
 

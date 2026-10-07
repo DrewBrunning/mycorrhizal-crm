@@ -41,7 +41,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   purge (`DELETED_RETENTION_DAYS=0` is the documented "keep soft-deleted rows forever" value); a
   negative value is rejected at startup (`config.Validate`).
 - **Deletion / propagation**: `DeleteContact` (`backend/controllers/contact_controller.go:829-886`)
-  cascades every dependent row via `deleteContactAssociations`
+  cascades every dependent row via `services.DeleteContactAssociations`
   (`backend/controllers/contact_controller.go:686+`) inside one transaction; `DeleteUser`
   (`backend/controllers/admin_user_controller.go`) does the account-wide equivalent. After the retention
   window, `PurgeSoftDeletedRows` (`backend/services/purge_service.go:119-243`) hard-deletes the row and
@@ -69,11 +69,11 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   to that bug cannot be recovered. Pinned per table by
   `backend/services/purge_user_scope_test.go`, which iterates the same slice the purge executes and
   fails on any VCardUID-columned table that is neither cleaned up nor excluded with a reason.
-  `deleteContactAssociations` needs no equivalent change: it is `user_id`-scoped and only ever runs on
+  `services.DeleteContactAssociations` needs no equivalent change: it is `user_id`-scoped and only ever runs on
   a live contact, and a same-user dead contact's join rows were already removed when it was deleted.
 - **Contact merge (issue #1309)**: a merge is not a delete. `RepointContactAssociations`
   (`backend/services/contact_merge_service.go`) moves every contact-keyed row from the merged-away contact
-  onto the survivor *before* the `deleteContactAssociations` sweep runs, so the sweep only ever removes
+  onto the survivor *before* the `services.DeleteContactAssociations` sweep runs, so the sweep only ever removes
   what is deliberately dropped (CardDAV sync links/conflicts and duplicate-pair dismissals). Unique-key
   collisions (event attendance, suggestion resolutions) keep the survivor's row. Contact feeds and import
   provenance links follow the survivor; `audit_events` keep naming the merged-away contact. Pinned by
@@ -127,7 +127,7 @@ hard-deleted per T26; ADR 0025), `FieldValue`, `activity_contacts`, `Notificatio
 - **Retention**: none — CLAUDE.md trap #7 hard-deletes these immediately (a natural-key unique index
   would otherwise block re-creating the same edge after a soft-delete ghost).
 - **Deletion / propagation**: removed synchronously in the same transaction as the owning entity's delete
-  (`deleteContactAssociations`, `PurgeSoftDeletedRows`'s `cleanups` slice for anything that outlives a
+  (`services.DeleteContactAssociations`, `PurgeSoftDeletedRows`'s `cleanups` slice for anything that outlives a
   purged contact as defense-in-depth).
 - **Backups**: no — gone before any subsequent backup is taken (unless a backup predates the delete, in
   which case restoring it resurrects the edge along with its endpoints — see §10).
@@ -164,7 +164,7 @@ audit trail, ages with it").
   window, both `pending` and `dismissed`; it runs inside the `audit_purge` job under that same job lock,
   so a suggestion can never outlive the audit window it is documented against (issue
   [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978)). Deleting the contact also removes
-  its suggestions synchronously (`deleteContactAssociations`). No external mirror.
+  its suggestions synchronously (`services.DeleteContactAssociations`). No external mirror.
 - **Backups**: yes until purged — the row is in the SQLite file, so a snapshot taken inside the window
   carries it.
 - **Verification**: `backend/services/audit_purge_service_test.go`

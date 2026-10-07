@@ -138,7 +138,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	require.NoError(t, db.Create(&syncLink).Error)
 
 	// T107: the five association types that previously fell through
-	// RepointContactAssociations straight into deleteContactAssociations'
+	// RepointContactAssociations straight into services.DeleteContactAssociations'
 	// delete calls, silently destroyed on every merge. All Bob-only (no
 	// conflict) here -- the conflict/dedupe cases get their own dedicated
 	// tests below.
@@ -155,7 +155,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 
 	// NotificationDelivery is keyed only by ReminderID, not by contact -- it
 	// must survive untouched once its owning Reminder is repointed (T107
-	// closes out every table deleteContactAssociations touches; this is the
+	// closes out every table services.DeleteContactAssociations touches; this is the
 	// one that's neither repointed nor dropped by name, since it rides along
 	// with the Reminder).
 	notificationDelivery := models.NotificationDelivery{ReminderID: reminder.ID, Channel: "email", Status: "pending"}
@@ -304,7 +304,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assert.Equal(t, alice.VCardUID, repointedActivity.EntityID)
 
 	// NotificationDelivery rides along with its Reminder -- untouched by the
-	// merge, not swept up by deleteContactAssociations' ContactSyncLink-only
+	// merge, not swept up by services.DeleteContactAssociations' ContactSyncLink-only
 	// cleanup pass.
 	var survivingDelivery models.NotificationDelivery
 	require.NoError(t, db.Where("id = ?", notificationDelivery.ID).First(&survivingDelivery).Error)

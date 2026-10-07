@@ -1,7 +1,7 @@
 package controllers
 
 // DB-03 (issue #494), action 4 — the two operations whose faithful run needs
-// the unexported deleteContactAssociations: contact merge (#433) and the
+// services.DeleteContactAssociations: contact merge (#433) and the
 // delete cascade. (Import / migration / restore are in
 // services/data_integrity_operations_test.go.)
 //
@@ -105,7 +105,7 @@ func TestDataIntegrity_HoldsAfterDeleteCascade(t *testing.T) {
 	contact := seedContactWithAssociations(t, db, user.ID)
 
 	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
-		return deleteContactAssociations(tx, contact, user.ID, time.Now())
+		return services.DeleteContactAssociations(tx, contact, user.ID, time.Now())
 	}))
 	require.NoError(t, db.Delete(&contact).Error)
 

@@ -273,7 +273,7 @@ func TestDeleteContact_NullsSelfContactPointer(t *testing.T) {
 
 // The ticket's second dangling-pointer hazard, end-to-end through the real
 // merge commit path: when "Me" is the merge loser, RepointContactAssociations
-// moves the pointer onto the keeper, and the deleteContactAssociations sweep
+// moves the pointer onto the keeper, and the services.DeleteContactAssociations sweep
 // that follows must not clobber it back to NULL. The service-level repoint
 // test pins the function; this pins the controller's ordering of the two.
 func TestContactMerge_RepointsSelfContactPointerToKeeper(t *testing.T) {

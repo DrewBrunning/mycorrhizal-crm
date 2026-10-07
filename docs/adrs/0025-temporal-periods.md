@@ -218,7 +218,7 @@ A dated period often *looks like* a life event — an address start reads as "mo
   in a separate issue — extending the rule table is a code change, not a schema change.
 - **No linkage means no drift, and no cleanup.** Because the accepted event is plain user data, later
   period edits never rewrite it, and deleting the period never deletes it. The resolution row is
-  hard-deleted with the contact (`deleteContactAssociations` / `deleteUserCascade`).
+  hard-deleted with the contact (`services.DeleteContactAssociations` / `deleteUserCascade`).
 
 Schema impact: one table, `life_event_suggestion_resolutions` (migration 000060), hard-delete per T26.
 It holds no contact-file data and has no standards surface, so the correspondence table and the DATA-01

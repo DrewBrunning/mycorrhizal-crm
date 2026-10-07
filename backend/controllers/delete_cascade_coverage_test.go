@@ -60,7 +60,7 @@ type cascadeBucket int
 const (
 	// goCascadeUser: the table's rows are deleted by DeleteUser's enumeration.
 	goCascadeUser cascadeBucket = iota
-	// goCascadeContact: the table's rows are deleted by deleteContactAssociations.
+	// goCascadeContact: the table's rows are deleted by services.ContactCascadeRegistry.
 	goCascadeContact
 	// fkCascadeUser: the table's rows are removed by the `ON DELETE CASCADE`
 	// foreign key from the hard-deleted `users` row (DeleteUser's Unscoped),
@@ -78,7 +78,7 @@ const (
 //
 // The `users` row itself is goCascadeUser (DeleteUser's Unscoped removes it);
 // `contacts` is goCascadeUser because its rows are hard-deleted by DeleteUser
-// and soft-deleted by DeleteContact — neither is "deleteContactAssociations",
+// and soft-deleted by DeleteContact — neither is "services.DeleteContactAssociations",
 // which removes a contact's *associations*, never the contact row.
 //
 // Soft-delete note: `contacts` is the only soft-deleted parent a cascade could
@@ -122,7 +122,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"webdav_configs":         goCascadeUser,
 	"webhooks":               goCascadeUser,
 	"webhook_deliveries":     goCascadeUser,
-	// --- contact-scoped, enumerated in deleteContactAssociations ---------
+	// --- contact-scoped, enumerated in services.ContactCascadeRegistry ---------
 	"activity_contacts":                 goCascadeContact,
 	"attachments":                       goCascadeContact,
 	"cadence_policies":                  goCascadeContact,
@@ -264,6 +264,33 @@ func TestDeleteCascadeCoverage(t *testing.T) {
 	}
 }
 
+// TestDeleteCascadeCoverage_ContactBucketMatchesRegistry pins the two
+// independent descriptions of the contact cascade to each other (issue #1495,
+// ADR 0035): every table declared goCascadeContact here must be a delete step
+// in services.ContactCascadeRegistry, and every delete step must be declared
+// goCascadeContact. Dropping a table from the registry fails here even before
+// the behavioral sweep runs.
+func TestDeleteCascadeCoverage_ContactBucketMatchesRegistry(t *testing.T) {
+	registryDeletes := map[string]bool{}
+	for _, step := range services.ContactCascadeRegistry() {
+		if step.Mode != services.CascadeMutate {
+			registryDeletes[step.Table] = true
+		}
+	}
+	declared := map[string]bool{}
+	for tb, bucket := range declaredCascadeCoverage {
+		if bucket == goCascadeContact {
+			declared[tb] = true
+		}
+	}
+	for tb := range declared {
+		assert.True(t, registryDeletes[tb], "%s is declared go-cascade-contact but is not a delete step in services.ContactCascadeRegistry", tb)
+	}
+	for tb := range registryDeletes {
+		assert.True(t, declared[tb], "%s is a ContactCascadeRegistry delete step but is not declared go-cascade-contact", tb)
+	}
+}
+
 // schemaTables returns every real table in the migrated schema, excluding
 // SQLite's internal sqlite_* tables.
 func schemaTables(t *testing.T, db *gorm.DB) map[string]bool {
@@ -318,8 +345,8 @@ func tableHasColumn(t *testing.T, db *gorm.DB, table, column string) bool {
 
 // TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable seeds
 // one contact with one row in every go-cascade-contact table, runs the real
-// deleteContactAssociations, and asserts every declared contact-scoped table
-// is emptied. Deleting one line from deleteContactAssociations leaves that
+// services.DeleteContactAssociations, and asserts every declared contact-scoped table
+// is emptied. Deleting one registry step from services.ContactCascadeRegistry leaves that
 // table's row behind and fails here — which is the point.
 func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
@@ -405,7 +432,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	assertSeeded(t, db, seeded)
 
 	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
-		return deleteContactAssociations(tx, contact, user.ID, time.Now())
+		return services.DeleteContactAssociations(tx, contact, user.ID, time.Now())
 	}))
 	require.NoError(t, db.Delete(&contact).Error)
 
@@ -450,7 +477,7 @@ func assertContactSweepExpectations(t *testing.T, db *gorm.DB, rows []seedRow) {
 		assert.Equal(t, hasDeletedAt, soft,
 			"%s: contactSweepSoft disagrees with the model (soft iff it carries gorm.DeletedAt)", r.table)
 
-		assert.Zero(t, r.run(t, db), "%s still has a LIVE row after DeleteContact — deleteContactAssociations misses it", r.table)
+		assert.Zero(t, r.run(t, db), "%s still has a LIVE row after DeleteContact — the registry misses it", r.table)
 		if n := r.hard().run(t, db); soft {
 			assert.NotZero(t, n, "%s is declared soft-delete but has no tombstone — it was hard-deleted", r.table)
 		} else {
@@ -722,7 +749,7 @@ func assertEmptied(t *testing.T, db *gorm.DB, rows []seedRow, phase string) {
 	t.Helper()
 	for _, r := range rows {
 		if n := r.run(t, db); n != 0 {
-			t.Errorf("table %s still has %d row(s) %s — deleteContactAssociations or DeleteUser misses it", r.table, n, phase)
+			t.Errorf("table %s still has %d row(s) %s — services.DeleteContactAssociations or DeleteUser misses it", r.table, n, phase)
 		}
 	}
 }
