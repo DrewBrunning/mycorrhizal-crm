@@ -286,7 +286,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-coverage
           path: android/build/reports/jacoco/jacocoTestReportAggregated/
@@ -295,7 +295,7 @@ jobs:
       # Issue #268: JUnit XML consumed by test-report.yml.
       - name: Upload unit test results (JUnit)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-unit-test-results
           path: |
@@ -482,7 +482,7 @@ jobs:
       # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,
       # kept 14 days (the bulky reports in the artifact below keep 7).
       - name: Upload flake-ledger input (Android JUnit)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: flake-android-api35
@@ -493,7 +493,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload E2E results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: android-e2e-results
@@ -650,7 +650,7 @@ jobs:
       # plus the preserved attempt-1 XML (flaky-attempt-*), a few hundred KB,
       # kept 14 days (the bulky reports in the artifact below keep 7).
       - name: Upload flake-ledger input (Android JUnit)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: flake-android-api26
@@ -661,7 +661,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload E2E results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: android-e2e-min-sdk-results
@@ -850,7 +850,7 @@ jobs:
             ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload macrobenchmark results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: android-macrobenchmark-results
