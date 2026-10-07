@@ -83,8 +83,15 @@ jobs:
         run: |
           set -eu
           since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # Issue #1486: release.yml requires every applicable manual gate to be
+          # addressed. The rehearsal cuts no release and has no device, so it
+          # records a skip for each final-release gate in the ledger (derived,
+          # so a newly added gate cannot make the rehearsal fail for the wrong
+          # reason); the attested path is covered by manualgatecheck's tests.
+          attest="$(jq -r '[.gates[] | select(.applies_to | index("final")) | "\(.id)=skip:scheduled dry-run rehearsal - no release is cut"] | join(";")' .github/manual-gates.json)"
           gh workflow run release.yml --ref main \
-            -f "version=${VERSION}" -f "ref=main" -f "dry_run=true"
+            -f "version=${VERSION}" -f "ref=main" -f "dry_run=true" \
+            -f "attest_manual_gates=${attest}"
 
           # `gh workflow run` does not return the run it created, so find it
           # by timestamp -- the same cutoff trick release.yml itself uses

@@ -1,0 +1,30 @@
+{
+  "_comment": "Issue #1486: the manual-gate attestation ledger -- release obligations only a human can discharge (no CI job exists to go red). release.yml's required `attest_manual_gates` input must address every gate that applies to the release: a bare id is VERIFIED against the newest attestation here (max_age_days, the attested commit an ancestor of the release commit, and no watch_paths file changed since it); `<id>=skip:<reason>` is a recorded, reasoned skip. Attestations are appended by the gate's `run` script (--record) and committed -- never hand-edited: each carries the JUnit counts and sha256 proving the test RAN (tests>=1, skipped=0, failures=0) on the required ABI. Validated by `go run ./cmd/releasegatecheck` and `go run ./cmd/manualgatecheck validate`; enforced at dispatch by `go run ./cmd/manualgatecheck check`. Policy + rationale: docs/development/release-gates.md, 'Manual gates'.",
+  "gates": [
+    {
+      "id": "android-local-mode-device",
+      "name": "Android local-only mode on a real arm64 device (LocalOnlyModeE2eTest)",
+      "applies_to": [
+        "final",
+        "rc"
+      ],
+      "max_age_days": 14,
+      "watch_paths": [
+        "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/**",
+        "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/di/LocalServerModule.kt",
+        "android/core/network/src/main/kotlin/com/mycorrhizal/crm/network/LocalServerTransport.kt",
+        "android/core/network/src/main/kotlin/com/mycorrhizal/crm/network/NetworkFactory.kt",
+        "android/app/src/main/kotlin/com/mycorrhizal/crm/di/LocalServerHostEntryPoint.kt",
+        "android/app/src/main/kotlin/com/mycorrhizal/crm/di/AppNetworkModule.kt",
+        "android/app/src/androidTest/kotlin/com/mycorrhizal/crm/e2e/LocalOnlyModeE2eTest.kt",
+        "android/app/build.gradle.kts",
+        "backend/embedded/**",
+        "backend/main.go"
+      ],
+      "require_abi": "arm64-v8a",
+      "evidence_marker": "LocalOnlyModeE2eTest",
+      "run": "scripts/android-local-mode-device-test.sh --record",
+      "attestations": []
+    }
+  ]
+}
