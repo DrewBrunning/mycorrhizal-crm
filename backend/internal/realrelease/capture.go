@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Snapshot is the API read-back of one instance: a JSON document keyed by
@@ -62,9 +63,64 @@ func (c *Client) listAll(ctx context.Context, path, key, extra string) ([]any, e
 	return nil, fmt.Errorf("GET %s: pagination did not terminate", path)
 }
 
-// Capture reads the seeded account's data back through the API.
+// Audit-settle tuning (vars so a test can shorten them). Every release this
+// harness drives records audit events asynchronously: the HTTP response returns
+// before the event row exists. Capturing immediately after seeding raced those
+// writes — the "pre" snapshot missed events that landed ~200 ms later, and the
+// post-upgrade read-back then reported "audit_events: list length 25 before, 33
+// after" on a random version leg.
+var (
+	auditSettleInterval = 250 * time.Millisecond
+	auditSettlePolls    = 3 // consecutive identical reads that count as settled
+	auditSettleTimeout  = 30 * time.Second
+)
+
+// awaitAuditSettled waits until the newest audit event id stops changing for
+// auditSettlePolls consecutive reads, so a capture sees every event the
+// preceding requests produced.
+func awaitAuditSettled(ctx context.Context, c *Client) error {
+	deadline := time.Now().Add(auditSettleTimeout)
+	last, same := int64(-1), 0
+	for {
+		var page struct {
+			AuditEvents []struct {
+				ID int64 `json:"id"`
+			} `json:"audit_events"`
+		}
+		if err := c.call(ctx, http.MethodGet, "/audit?limit=1", nil, &page); err != nil {
+			return fmt.Errorf("await audit settle: %w", err)
+		}
+		newest := int64(0)
+		if len(page.AuditEvents) > 0 {
+			newest = page.AuditEvents[0].ID
+		}
+		if newest == last {
+			same++
+			if same >= auditSettlePolls {
+				return nil
+			}
+		} else {
+			last, same = newest, 1
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("await audit settle: newest audit event still changing after %s", auditSettleTimeout)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(auditSettleInterval):
+		}
+	}
+}
+
+// Capture reads the seeded account's data back through the API, once the
+// account's asynchronous audit writes have settled.
 func Capture(ctx context.Context, c *Client) (Snapshot, error) {
 	snap := Snapshot{}
+
+	if err := awaitAuditSettled(ctx, c); err != nil {
+		return nil, err
+	}
 
 	contacts, err := c.listAll(ctx, "/contacts", "contacts", "include_archived=true")
 	if err != nil {

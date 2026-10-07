@@ -145,6 +145,7 @@ class ContactListViewModel @Inject constructor(
         state.circleFilter != null || state.includeArchived || state.includeFavorites || state.searchQuery.isNotBlank()
 
     private var loadJob: Job? = null
+    private var nextPageJob: Job? = null
 
     /**
      * Cancel-and-restart, not a reentrancy guard that drops the new call: this method has
@@ -168,9 +169,20 @@ class ContactListViewModel @Inject constructor(
      */
     fun loadContacts(keepItems: Boolean = false) {
         loadJob?.cancel()
+        // A page-2 request for the previous filters must not land on top of this
+        // load's results: it would append rows of the old query (and, where they
+        // overlap the new results, duplicate ids — a LazyColumn crash, "Key … was
+        // already used", seen in CrossTaskIntentE2eTest). Cancel it and clear its
+        // in-flight flag so the new list can paginate.
+        nextPageJob?.cancel()
         loadJob = viewModelScope.launch {
             _uiState.update {
-                it.copy(isLoading = true, error = null, contacts = if (keepItems) it.contacts else emptyList())
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    contacts = if (keepItems) it.contacts else emptyList(),
+                    pagination = it.pagination.copy(isLoadingMore = false),
+                )
             }
             val page = contactRepository.listContacts(
                 cursor = null,
@@ -230,7 +242,7 @@ class ContactListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading || state.pagination.isLoadingMore || !state.pagination.hasMore) return
         _uiState.update { it.copy(pagination = it.pagination.copy(isLoadingMore = true)) }
-        viewModelScope.launch {
+        nextPageJob = viewModelScope.launch {
             val page = contactRepository.listContacts(
                 cursor = state.pagination.nextCursor,
                 limit = state.pagination.limit,
@@ -242,8 +254,12 @@ class ContactListViewModel @Inject constructor(
             page.foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
+                        // Keyset pagination can re-serve a row whose sort key changed
+                        // between the two page fetches; the list is keyed by id, so a
+                        // repeat must be dropped rather than rendered twice.
+                        val seen = it.contacts.mapTo(HashSet()) { c -> c.id }
                         it.copy(
-                            contacts = it.contacts + result.contacts,
+                            contacts = it.contacts + result.contacts.filter { c -> seen.add(c.id) },
                             pagination = it.pagination.copy(
                                 nextCursor = result.nextCursor,
                                 isLoadingMore = false,

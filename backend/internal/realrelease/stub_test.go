@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -29,10 +30,14 @@ func (s *stubAPI) RoundTrip(req *http.Request) (*http.Response, error) {
 		_, _ = rec.WriteString(`{"error":"boom"}`)
 	} else {
 		rec.Header().Set("Content-Type", "application/json")
+		auditID := s.calls
+		if req.URL.RawQuery == "limit=1" {
+			auditID = 1 // a stable newest event, so Capture's audit-settle wait completes
+		}
 		_, _ = rec.WriteString(`{"contact":{"id":1,"uid":"u1"},"note":{"ID":1},"activity":{"ID":1},` +
 			`"circle":{"id":"c"},"tag":{"id":"t"},"token":"tok","secret":"JBSWY3DPEHPK3PXP",` +
 			`"recovery_codes":["a","b","c"],"two_factor_required":false,` +
-			`"audit_events":[{"id":` + strconv.Itoa(s.calls) + `,"operation":"update","entity_type":"contact"}],` +
+			`"audit_events":[{"id":` + strconv.Itoa(auditID) + `,"operation":"update","entity_type":"contact"}],` +
 			`"contacts":[{"id":1}],"notes":[],"activities":[],"circles":[],"tags":[],` +
 			`"relationship_edges":[],"life_events":[],"attachments":[{"id":1}],"next_cursor":""}`)
 	}
@@ -51,7 +56,17 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
+// fastAuditSettle shortens Capture's audit-settle polling for stub-driven
+// tests, whose stub has no asynchronous writes to wait for.
+func fastAuditSettle(t *testing.T) {
+	t.Helper()
+	iv, polls, to := auditSettleInterval, auditSettlePolls, auditSettleTimeout
+	auditSettleInterval, auditSettlePolls, auditSettleTimeout = time.Millisecond, 2, time.Second
+	t.Cleanup(func() { auditSettleInterval, auditSettlePolls, auditSettleTimeout = iv, polls, to })
+}
+
 func TestSeedAndCaptureSurfaceEveryStepFailure(t *testing.T) {
+	fastAuditSettle(t)
 	ctx := context.Background()
 
 	ok := &stubAPI{}
@@ -161,4 +176,70 @@ func TestUndoSurfacesUndoFailure(t *testing.T) {
 	_ = rt
 	err := undoAnUpdate(context.Background(), NewClient("http://stub", rt2), 1)
 	require.ErrorContains(t, err, "audit undo")
+}
+
+// auditFeed serves /audit?limit=1 from ids (repeating the last one), and an
+// empty-but-valid document for every other path.
+func auditFeed(ids ...int) roundTripFunc {
+	n := 0
+	return func(req *http.Request) (*http.Response, error) {
+		rec := httptest.NewRecorder()
+		id := ids[len(ids)-1]
+		if n < len(ids) {
+			id = ids[n]
+		}
+		n++
+		_, _ = rec.WriteString(`{"audit_events":[{"id":` + strconv.Itoa(id) + `}]}`)
+		return rec.Result(), nil
+	}
+}
+
+func TestAwaitAuditSettled_WaitsForLateEvents(t *testing.T) {
+	fastAuditSettle(t)
+	// Events still landing (1, 2, 3) must not count as settled; the wait ends
+	// only once the newest id has held for auditSettlePolls reads.
+	calls := 0
+	feed := auditFeed(1, 2, 3, 3)
+	c := NewClient("http://stub", roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		return feed(r)
+	}))
+	require.NoError(t, awaitAuditSettled(context.Background(), c))
+	require.Equal(t, 4, calls, "settled only after the newest id repeated")
+}
+
+func TestAwaitAuditSettled_EmptyLogSettles(t *testing.T) {
+	fastAuditSettle(t)
+	c := NewClient("http://stub", roundTripFunc(func(*http.Request) (*http.Response, error) {
+		rec := httptest.NewRecorder()
+		_, _ = rec.WriteString(`{"audit_events":[]}`)
+		return rec.Result(), nil
+	}))
+	require.NoError(t, awaitAuditSettled(context.Background(), c))
+}
+
+func TestAwaitAuditSettled_GivesUpWhenNeverSettled(t *testing.T) {
+	fastAuditSettle(t)
+	auditSettleTimeout = 20 * time.Millisecond
+	n := 0
+	c := NewClient("http://stub", roundTripFunc(func(*http.Request) (*http.Response, error) {
+		n++
+		rec := httptest.NewRecorder()
+		_, _ = rec.WriteString(`{"audit_events":[{"id":` + strconv.Itoa(n) + `}]}`)
+		return rec.Result(), nil
+	}))
+	err := awaitAuditSettled(context.Background(), c)
+	require.ErrorContains(t, err, "still changing")
+}
+
+func TestAwaitAuditSettled_HonoursContextCancellation(t *testing.T) {
+	fastAuditSettle(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	c := NewClient("http://stub", roundTripFunc(func(*http.Request) (*http.Response, error) {
+		cancel() // cancelled while waiting for the next poll
+		rec := httptest.NewRecorder()
+		_, _ = rec.WriteString(`{"audit_events":[{"id":1}]}`)
+		return rec.Result(), nil
+	}))
+	require.ErrorIs(t, awaitAuditSettled(ctx, c), context.Canceled)
 }
