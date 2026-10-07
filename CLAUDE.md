@@ -310,7 +310,8 @@ needs running per worktree, not just once per clone.
   `README-developer.md`), fail-closed on a missing `gitleaks` binary.
 - **Staged `backend/` files:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned
   to the same v2.14.0 `unit-tests.yml` uses; errcheck/errorlint/staticcheck/unused on non-test code),
-  `gormerrcheck` (discarded GORM `.Error`, trap #4), plus the contract-fixtures/DATA-01/INT-01/API-baseline
+  `gormerrcheck` (discarded GORM `.Error`, trap #4), `rawtimecheck` (raw `time.Now()`/`Since`/`Until`
+  in controllers/services/middleware — read the injected clock instead, issue #1494), plus the contract-fixtures/DATA-01/INT-01/API-baseline
   generated-artifact drift tests (incl. generated TS types; targeted `go test -run`, not the full
   suite).
 - **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
@@ -529,6 +530,19 @@ These are real bugs that shipped, not hypotheticals.
    under 5ms. `openDSN` sets `_txlock=immediate` so transactions take the write lock up front, which
    *is* a case the busy handler retries; WAL keeps readers unaffected. Pinned by
    `database/concurrent_write_test.go`. Don't remove the flag.
+
+10. **Never call `time.Now()` (or `time.Since`/`time.Until`) in `controllers`, `services` or `middleware`
+   — read the injected clock** (issue #1494; `backend/internal/clock`). A raw wall-clock read makes an
+   expiry / day-boundary / window decision untestable except by sleeping. Handlers and middleware:
+   `clock.FromContext(c).Now()` (`routes.go` installs `clock.System{}`; a test pre-installs a
+   `clock.Fake` on its router with `clock.Install`). Services (free functions): `services.Now()`, swapped
+   in tests with `defer services.SetClock(fake)()`. Rate limiters carry their own `SetClock`. An
+   elapsed-duration measurement, a `net.Conn` deadline or a PRNG seed may stay raw with an inline
+   `// rawtime:allow <reason>`; a bulk of sites that can't move yet goes in
+   `internal/lint/rawtime/allowlist.go` with a reason and an exact count. `go run ./cmd/rawtimecheck ./...`
+   (CI `Backend (Go)` + pre-commit) enforces it. JWT `exp`/`iat`/`nbf` are validated against the clock too
+   (`middleware.ValidateTimeClaims`, parsers built with `jwt.WithoutClaimsValidation()`), not jwt's global
+   `TimeFunc`.
 
 ### Backend conventions
 

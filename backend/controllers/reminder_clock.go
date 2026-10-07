@@ -3,19 +3,17 @@ package controllers
 import (
 	"time"
 
+	"mycorrhizal/internal/clock"
+
 	"github.com/gin-gonic/gin"
 )
 
-// timeNow is the controllers' source of "now". The indirection exists so the
-// date-boundary tests can pin a fixed instant (DATE-02 / issue #483): every
-// handler that decides which calendar day is "today" must go through
-// reminderNow below, never through a raw time.Now() whose zone is the
-// server's own local zone.
-//
-// Tests replace it and restore it in a defer; controller tests are sequential
-// (no t.Parallel), so the swap cannot leak across tests.
-var timeNow = time.Now
-
+// The controllers' source of "now" is the request's injected clock
+// (internal/clock, issue #1494): every handler that decides which calendar day
+// is "today" must go through reminderNow below, never through a raw
+// time.Now() whose zone is the server's own local zone. Tests pin an instant
+// by installing a clock.Fake on the router (clock.Install) — no package-level
+// swap, so nothing can leak across tests.
 // reminderNow returns the current instant localized to the operator's single
 // reminder clock (REMINDER_TIME + REMINDER_TIMEZONE) — the zone every
 // day-boundary decision in the product is made in (docs/adrs/0015-temporal-
@@ -30,5 +28,5 @@ var timeNow = time.Now
 // calendar day is today" is answered in the reminder zone.
 func reminderNow(c *gin.Context) time.Time {
 	cfg := currentConfig(c)
-	return timeNow().In(cfg.GetReminderLocation())
+	return clock.FromContext(c).Now().In(cfg.GetReminderLocation())
 }

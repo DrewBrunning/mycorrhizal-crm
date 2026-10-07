@@ -205,7 +205,7 @@ func backupStaleCondition(ctx context.Context, db *gorm.DB, cfg config.Config) a
 		return r
 	}
 
-	age := time.Since(evs[0].OccurredAt)
+	age := Now().Sub(evs[0].OccurredAt)
 	if age > time.Duration(maxAgeHours)*time.Hour {
 		r.firing = true
 		r.detail = fmt.Sprintf("Last successful operator backup (make backup) was %s ago (threshold %dh).",
@@ -240,7 +240,7 @@ func syncCondition(key, title string, h SubsystemHealth, threshold int) alertCon
 func integrationsCondition(h SubsystemHealth, cfg config.Config) alertConditionResult {
 	r := alertConditionResult{key: alertConditionKeyIntegrations, title: "Integrations", failureCount: h.ConsecutiveFailures}
 	quiet := time.Duration(cfg.AlertIncidentQuietHours) * time.Hour
-	if h.Status == SubsystemStatusFailing && h.LastFailureAt != nil && time.Since(*h.LastFailureAt) <= quiet {
+	if h.Status == SubsystemStatusFailing && h.LastFailureAt != nil && Now().Sub(*h.LastFailureAt) <= quiet {
 		r.firing = true
 		r.detail = fmt.Sprintf("%d webhook delivery failures; last at %s",
 			h.ConsecutiveFailures, h.LastFailureAt.UTC().Format(time.RFC3339))
@@ -368,7 +368,7 @@ func jobStoppedCondition(ctx context.Context, db *gorm.DB, cfg config.Config) al
 		if len(rows) == 0 || rows[0].LastRunAt.IsZero() {
 			continue // never run yet — not stale
 		}
-		if age := time.Since(rows[0].LastRunAt); age > j.interval*mult {
+		if age := Now().Sub(rows[0].LastRunAt); age > j.interval*mult {
 			stale = append(stale, fmt.Sprintf("%s (last completed %s ago)", j.name, age.Round(time.Minute)))
 		}
 	}

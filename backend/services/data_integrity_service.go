@@ -128,7 +128,7 @@ func dataIntegrityChecks() []dataIntegrityCheck {
 // probe could not complete; violations found by a probe that ran cleanly are
 // in the report, and Report.OK is false.
 func RunDataIntegrityChecks(ctx context.Context, db *gorm.DB, cfg config.Config) (DataIntegrityReport, error) {
-	report := DataIntegrityReport{Timestamp: time.Now().UTC().Format(time.RFC3339)}
+	report := DataIntegrityReport{Timestamp: Now().UTC().Format(time.RFC3339)}
 	var runErrs []string
 
 	for _, c := range dataIntegrityChecks() {

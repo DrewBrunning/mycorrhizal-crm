@@ -405,7 +405,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	assertSeeded(t, db, seeded)
 
 	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
-		return deleteContactAssociations(tx, contact, user.ID)
+		return deleteContactAssociations(tx, contact, user.ID, time.Now())
 	}))
 	require.NoError(t, db.Delete(&contact).Error)
 

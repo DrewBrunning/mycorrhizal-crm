@@ -150,7 +150,7 @@ func RecordWebAuthnUse(db *gorm.DB, userID uint, c *webauthn.Credential) error {
 		Updates(map[string]any{
 			"sign_count":   c.Authenticator.SignCount,
 			"backup_state": c.Flags.BackupState,
-			"last_used_at": time.Now(),
+			"last_used_at": Now(),
 		}).Error
 }
 
@@ -209,7 +209,7 @@ type CeremonyStore struct {
 
 // NewCeremonyStore returns an empty store.
 func NewCeremonyStore() *CeremonyStore {
-	return &CeremonyStore{entries: map[string]ceremonyEntry{}, now: time.Now}
+	return &CeremonyStore{entries: map[string]ceremonyEntry{}, now: Now}
 }
 
 // DefaultCeremonies is the process-wide store used by the controllers.

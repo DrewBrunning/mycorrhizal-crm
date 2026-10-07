@@ -33,7 +33,7 @@ func PurgeExpiredSystemEvents(ctx context.Context, db *gorm.DB, cfg config.Confi
 		// every row.
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.SystemEventRetentionDays) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.SystemEventRetentionDays) * 24 * time.Hour)
 
 	result := db.Exec("DELETE FROM system_events WHERE occurred_at < ?", cutoff)
 	if result.Error != nil {

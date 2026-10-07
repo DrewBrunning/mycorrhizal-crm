@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/models"
 	"net/http"
 	"strconv"
@@ -86,7 +87,7 @@ func UndoAuditEvent(c *gin.Context) {
 
 	// Reject events past the retention window (a purged event is unrecoverable).
 	retention := time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour
-	if retention > 0 && time.Since(event.CreatedAt) > retention {
+	if retention > 0 && clock.FromContext(c).Now().Sub(event.CreatedAt) > retention {
 		apperrors.AbortWithError(c, apperrors.ErrGone("This audit event is past its retention window and can no longer be undone"))
 		return
 	}

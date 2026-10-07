@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
 
@@ -74,7 +74,7 @@ func ExportAccountBundle(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-account-%s.json", time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-account-%s.json", clock.FromContext(c).Now().Format("2006-01-02"))
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json; charset=utf-8")

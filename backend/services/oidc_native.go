@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -60,7 +61,7 @@ func MintOIDCNativeExchangeCode(user models.User, codeChallenge string, cfg *con
 		return "", err // # pragma: no cover — crypto/rand only fails on catastrophic OS entropy exhaustion
 	}
 
-	now := time.Now()
+	now := Now()
 	claims := jwt.MapClaims{
 		"purpose":        OIDCNativeExchangePurpose,
 		"user_id":        user.ID,
@@ -82,10 +83,15 @@ func ParseOIDCNativeExchangeCode(raw string, cfg *config.Config) (userID uint, c
 		return 0, "", false
 	}
 
-	parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
+	// exp is checked against the injected clock (issue #1494), not jwt's
+	// process-global TimeFunc.
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}), jwt.WithoutClaimsValidation())
 	token, err := parser.Parse(raw, func(t *jwt.Token) (any, error) {
 		return []byte(cfg.JWTSecretKey), nil
 	})
+	if err == nil && token != nil {
+		err = middleware.ValidateTimeClaims(token.Claims, Now())
+	}
 	if err != nil || token == nil || !token.Valid {
 		return 0, "", false
 	}

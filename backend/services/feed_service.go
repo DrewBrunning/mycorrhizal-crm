@@ -18,13 +18,13 @@ const feedTouchInterval = time.Hour
 // feedTouchInterval. It mirrors middleware.TouchAPIToken's fire-and-forget
 // shape: failure is logged, never fatal to the request.
 func TouchFeed(db *gorm.DB, feed *models.Feed) {
-	if feed.LastAccessedAt != nil && time.Since(*feed.LastAccessedAt) < feedTouchInterval {
+	if feed.LastAccessedAt != nil && Now().Sub(*feed.LastAccessedAt) < feedTouchInterval {
 		return
 	}
 	feedID := feed.ID
 	go func(id string) {
 		if err := db.Model(&models.Feed{}).Where("id = ?", id).
-			Update("last_accessed_at", time.Now()).Error; err != nil {
+			Update("last_accessed_at", Now()).Error; err != nil {
 			logger.Logger.Warn().Err(err).Str("feed_id", id).Msg("Failed to update feed last_accessed_at") // # pragma: no cover — background best-effort write; only a failing store trips this
 		}
 	}(feedID)
@@ -44,6 +44,6 @@ func TouchFeed(db *gorm.DB, feed *models.Feed) {
 func RevokeAllFeeds(db *gorm.DB, userID uint) (int64, error) {
 	result := db.Model(&models.Feed{}).
 		Where("user_id = ? AND revoked_at IS NULL", userID).
-		Update("revoked_at", time.Now())
+		Update("revoked_at", Now())
 	return result.RowsAffected, result.Error
 }

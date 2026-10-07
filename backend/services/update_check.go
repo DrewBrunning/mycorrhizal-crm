@@ -130,7 +130,7 @@ func BuildUpdateCheckStatus(ctx context.Context, cfg config.Config) UpdateCheckS
 		logger.Warn().Err(err).Msg("update check: latest release lookup failed")
 		return out
 	}
-	now := time.Now().UTC()
+	now := Now().UTC()
 	out.Latest = tag
 	out.CheckedAt = &now
 	out.UpdateAvailable = isUpdateAvailable(out.Current, tag)
@@ -144,7 +144,7 @@ func latestRelease(ctx context.Context) (string, error) {
 	updateCheckCache.mu.Lock()
 	defer updateCheckCache.mu.Unlock()
 
-	if !updateCheckCache.at.IsZero() && time.Since(updateCheckCache.at) < updateCheckCacheTTL {
+	if !updateCheckCache.at.IsZero() && Now().Sub(updateCheckCache.at) < updateCheckCacheTTL {
 		return updateCheckCache.tag, nil
 	}
 
@@ -152,7 +152,7 @@ func latestRelease(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	updateCheckCache.at = time.Now()
+	updateCheckCache.at = Now()
 	updateCheckCache.tag = tag
 	return tag, nil
 }

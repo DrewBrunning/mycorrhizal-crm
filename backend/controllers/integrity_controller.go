@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
 
@@ -46,7 +47,7 @@ func RunIntegrityCheck(c *gin.Context) {
 	db, _ := dbFromContext(c)
 	cfg := currentConfig(c)
 
-	out := integrityCheckResponse{Timestamp: time.Now().UTC().Format(time.RFC3339)}
+	out := integrityCheckResponse{Timestamp: clock.FromContext(c).Now().UTC().Format(time.RFC3339)}
 
 	if db == nil {
 		out.OK = false

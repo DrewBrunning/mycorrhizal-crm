@@ -3,10 +3,10 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -250,7 +250,7 @@ func DiscussConversationAgenda(c *gin.Context) {
 		}
 	}
 
-	now := time.Now()
+	now := clock.FromContext(c).Now()
 	item.DiscussedAt = &now
 	if input.ActivityID != nil {
 		item.ActivityID = input.ActivityID

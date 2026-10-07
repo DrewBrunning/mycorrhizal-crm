@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -315,7 +316,7 @@ func CompleteReminder(c *gin.Context) {
 	// Mark as completed
 	reminder.Completed = true
 	reminder.LastSent = new(time.Time)
-	*reminder.LastSent = time.Now()
+	*reminder.LastSent = clock.FromContext(c).Now()
 
 	// Create a completion record for the timeline (unless skipping)
 	if !skip {
@@ -324,7 +325,7 @@ func CompleteReminder(c *gin.Context) {
 			ReminderID:  &reminder.ID,
 			ContactID:   *reminder.ContactID,
 			Message:     reminder.Message,
-			CompletedAt: time.Now(),
+			CompletedAt: clock.FromContext(c).Now(),
 		}
 		if err := db.Create(&completion).Error; err != nil {
 			logger.FromContext(c).Error().Err(err).Msg("Failed to create reminder completion record")

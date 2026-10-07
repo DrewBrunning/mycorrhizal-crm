@@ -1,8 +1,6 @@
 package services
 
 import (
-	"time"
-
 	"mycorrhizal/models"
 
 	"github.com/pquerna/otp"
@@ -41,7 +39,7 @@ func ValidateTOTPStep(secret, code string) (step int64, ok bool) {
 		return 0, false
 	}
 	opts := hotp.ValidateOpts{Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1}
-	current := time.Now().UTC().Unix() / totpStepSeconds
+	current := Now().UTC().Unix() / totpStepSeconds
 	// Oldest first, so a match is deterministic if (impossibly, for distinct
 	// codes) more than one candidate step validated.
 	for _, candidate := range []int64{current - 1, current, current + 1} {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -70,10 +71,12 @@ func TestReminderCatchup_RestartTwiceInWindow_OneDeliveryPerChannel(t *testing.T
 	defer func() { sendReminderEmailFn = origSender }()
 
 	cfg := reminderCatchupCfg()
+	clk := clock.NewFake(time.Now())
+	defer SetClock(clk)()
 
 	// Two "restarts" inside the window: each fires the reminder job.
 	for i := 0; i < 2; i++ {
-		time.Sleep(2 * time.Millisecond) // clear the 1ms lock window
+		clk.Advance(2 * time.Millisecond) // clear the 1ms lock window
 		_, err := SendRemindersWithRateLimit(db, cfg)
 		require.NoError(t, err, "run %d", i)
 	}

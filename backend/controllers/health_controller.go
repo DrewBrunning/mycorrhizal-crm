@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
 
@@ -233,7 +234,7 @@ func HealthCheck(c *gin.Context) {
 	}
 	c.JSON(httpStatus, HealthResponse{
 		Status:             deep.Status,
-		Timestamp:          time.Now().UTC().Format(time.RFC3339),
+		Timestamp:          clock.FromContext(c).Now().UTC().Format(time.RFC3339),
 		Database:           dbHealth,
 		Version:            build.Version,
 		Commit:             build.Commit,
@@ -259,7 +260,7 @@ func dbFromContext(c *gin.Context) (*gorm.DB, bool) {
 
 // checkDatabaseHealth checks if the database is accessible and responsive
 func checkDatabaseHealth(db *gorm.DB) DatabaseHealth {
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -271,7 +272,7 @@ func checkDatabaseHealth(db *gorm.DB) DatabaseHealth {
 
 	// Ping the database
 	err = sqlDB.Ping()
-	duration := time.Since(start).Milliseconds()
+	duration := time.Since(start).Milliseconds() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	if err != nil {
 		return DatabaseHealth{

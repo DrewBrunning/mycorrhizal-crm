@@ -84,7 +84,7 @@ type notificationDeliveryKey struct {
 // vanishes: the aggregate error propagates so the reminder job run is recorded
 // as failed (issue #391).
 func SendReminders(db *gorm.DB, config config.Config) (int, error) {
-	return sendRemindersAt(db, config, time.Now().In(config.GetReminderLocation()))
+	return sendRemindersAt(db, config, Now().In(config.GetReminderLocation()))
 }
 
 // sendRemindersAt is SendReminders with the "now" instant pinned by the caller
@@ -475,7 +475,7 @@ func sendReminderEmail(user models.User, reminders []models.Reminder, config con
 	}
 
 	// Build birthday items
-	now := time.Now().In(config.GetReminderLocation())
+	now := Now().In(config.GetReminderLocation())
 	birthdays, birthdayErr := GetUpcomingBirthdays(db, user.ID, now)
 	if birthdayErr != nil {
 		logger.Warn().Err(birthdayErr).Uint("user_id", user.ID).Msg("Failed to fetch birthdays for email, continuing without them")
@@ -569,7 +569,7 @@ func addYears(t time.Time, years int) time.Time {
 // All calculations are done in UTC to ensure consistency.
 func CalculateNextReminderTime(reminder models.Reminder) time.Time {
 	// Normalize to UTC for consistent calculations
-	now := time.Now().UTC()
+	now := Now().UTC()
 	remindAtUTC := reminder.RemindAt.UTC()
 
 	var baseTime time.Time

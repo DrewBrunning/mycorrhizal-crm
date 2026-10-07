@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -95,6 +96,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 		}
 
 		db := c.MustGet("db").(*gorm.DB)
+		clk := clock.FromContext(c)
 
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -106,7 +108,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 
 		fingerprint := fingerprintRequest(c.Request.Method, c.FullPath(), body)
 
-		now := time.Now().UTC()
+		now := clk.Now().UTC()
 		row := models.IdempotencyKey{
 			UserID:             userID,
 			Key:                key,
@@ -143,7 +145,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 				// committed, so this is terminal — never 409 "retry shortly"
 				// forever, and never a re-run (issue #995).
 				if existing.State == models.IdempotencyStatePending &&
-					time.Since(existing.CreatedAt) <= idempotencyPendingTimeout {
+					now.Sub(existing.CreatedAt) <= idempotencyPendingTimeout {
 					apperrors.AbortWithError(c, apperrors.ErrIdempotencyInProgress())
 					return
 				}
@@ -177,11 +179,11 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 						"state":           models.IdempotencyStateCompleted,
 						"response_status": status,
 						"response_body":   rc.body.String(),
-						"updated_at":      time.Now().UTC(),
+						"updated_at":      clk.Now().UTC(),
 					})
 				if upd.Error != nil {
 					logger.FromContext(c).Error().Err(upd.Error).Msg("idempotency: failed to store response for replay")
-					markTerminalUnreplayable(c, db, row.ID)
+					markTerminalUnreplayable(c, db, row.ID, clk.Now())
 				}
 				return
 			}
@@ -191,7 +193,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 			// instead of caching the oversized body.
 			logger.FromContext(c).Warn().Int("bytes", rc.body.Len()).
 				Msg("idempotency: response too large to cache; marking key terminal")
-			markTerminalUnreplayable(c, db, row.ID)
+			markTerminalUnreplayable(c, db, row.ID, clk.Now())
 			return
 		}
 
@@ -217,10 +219,10 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 // the UPDATE committed but the driver still returned an error). Best-effort: if
 // it also fails the row stays pending, and the bounded pending-timeout read path
 // above still refuses to re-run it.
-func markTerminalUnreplayable(c *gin.Context, db *gorm.DB, id uint) {
+func markTerminalUnreplayable(c *gin.Context, db *gorm.DB, id uint, now time.Time) {
 	res := db.Exec(
 		"UPDATE idempotency_keys SET state = ?, response_status = 0, response_body = '', updated_at = ? WHERE id = ? AND response_status = 0",
-		models.IdempotencyStateCompleted, time.Now().UTC(), id)
+		models.IdempotencyStateCompleted, now.UTC(), id)
 	if res.Error != nil {
 		logger.FromContext(c).Error().Err(res.Error).Msg("idempotency: failed to mark key terminal after response-store failure")
 	}

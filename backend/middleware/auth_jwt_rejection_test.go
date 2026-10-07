@@ -304,7 +304,7 @@ func TestAuthMiddleware_CookieTokenUsesSameVerifier(t *testing.T) {
 
 func TestLookupAPIToken_RejectsWrongPrefix(t *testing.T) {
 	db := dbtest.New(t)
-	tok, ok := LookupAPIToken(db, "not_a_mycorrhizal_token")
+	tok, ok := LookupAPIToken(db, "not_a_mycorrhizal_token", time.Now())
 	assert.False(t, ok)
 	assert.Nil(t, tok)
 }

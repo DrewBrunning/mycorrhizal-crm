@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/models"
 	"strconv"
 	"strings"
@@ -516,7 +517,7 @@ func CheckFeedCursorAge(c *gin.Context, params CursorParams) *apperrors.AppError
 	if !params.Since || params.Cursor == nil {
 		return nil
 	}
-	cutoff := time.Now().AddDate(0, 0, -currentConfig(c).DeleteRetentionDays)
+	cutoff := clock.FromContext(c).Now().AddDate(0, 0, -currentConfig(c).DeleteRetentionDays)
 	if params.Cursor.UpdatedAt.Before(cutoff) {
 		return apperrors.ErrGone(
 			"cursor is older than the retention window (DELETED_RETENTION_DAYS); " +

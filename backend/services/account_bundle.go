@@ -50,7 +50,7 @@ func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.Acco
 	bundle := &models.AccountBundle{
 		Format:     models.AccountBundleFormat,
 		Version:    models.AccountBundleVersion,
-		ExportedAt: time.Now().UTC().Truncate(time.Second),
+		ExportedAt: Now().UTC().Truncate(time.Second),
 		Omitted:    models.AccountBundleOmissions{Attachments: true},
 	}
 

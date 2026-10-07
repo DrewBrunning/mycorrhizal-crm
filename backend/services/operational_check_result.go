@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"time"
 
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -21,7 +20,7 @@ import (
 // acquireJobLock rather than a DB-specific upsert clause (this repo has no
 // clause.OnConflict precedent).
 func RecordOperationalCheckResult(db *gorm.DB, checkName, status, detail string) {
-	now := time.Now()
+	now := Now()
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var row models.OperationalCheckResult

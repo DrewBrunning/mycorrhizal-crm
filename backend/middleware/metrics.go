@@ -17,7 +17,7 @@ import (
 // (404 with no route) is labelled "unmatched" for the same reason.
 func MetricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		start := time.Now()
+		start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		metrics.HTTPInFlightInc()
 		defer metrics.HTTPInFlightDec()
 
@@ -29,6 +29,6 @@ func MetricsMiddleware() gin.HandlerFunc {
 		}
 		method := c.Request.Method
 		metrics.HTTPRequest(method, route, strconv.Itoa(c.Writer.Status()))
-		metrics.HTTPObserve(method, route, time.Since(start).Seconds())
+		metrics.HTTPObserve(method, route, time.Since(start).Seconds()) // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	}
 }

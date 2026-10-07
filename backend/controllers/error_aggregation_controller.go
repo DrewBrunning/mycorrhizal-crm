@@ -6,6 +6,7 @@ import (
 	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,7 @@ func GetErrorAggregation(c *gin.Context) {
 		windowHours = n
 	}
 
-	until := time.Now().UTC()
+	until := clock.FromContext(c).Now().UTC()
 	since := until.Add(-time.Duration(windowHours) * time.Hour)
 
 	buckets, total, err := services.AggregateOperationalErrors(c.Request.Context(), db, since)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tokenString string
+		now := clock.FromContext(c).Now()
 
 		// First, try to get token from httpOnly cookie
 		if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
@@ -45,7 +47,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// Handle API tokens (mycorrhizal_ prefix)
 		if strings.HasPrefix(tokenString, "mycorrhizal_") {
 			db := c.MustGet("db").(*gorm.DB)
-			apiToken, ok := LookupAPIToken(db, tokenString)
+			apiToken, ok := LookupAPIToken(db, tokenString, now)
 			if !ok {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 				c.Abort()
@@ -58,17 +60,23 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			}
 			c.Set("userID", apiToken.UserID)
 			c.Set("isAPIToken", true)
-			TouchAPIToken(db, apiToken.ID)
+			TouchAPIToken(db, apiToken.ID, now)
 			c.Next()
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		// Claims (exp / iat / nbf) are validated below against the injected
+		// clock, not jwt's process-global TimeFunc (issue #1494), so the
+		// parser's own time check is skipped.
+		token, err := jwt.NewParser(jwt.WithoutClaimsValidation()).Parse(tokenString, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method")
 			}
 			return []byte(cfg.JWTSecretKey), nil
 		})
+		if err == nil {
+			err = ValidateTimeClaims(token.Claims, now)
+		}
 
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
@@ -176,7 +184,6 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		now := time.Now()
 		idle := time.Duration(cfg.SessionIdleTimeoutHours) * time.Hour
 		if session.RevokedAt != nil ||
 			!session.ExpiresAt.After(now) ||
@@ -217,7 +224,7 @@ func TouchSession(db *gorm.DB, sid string, at time.Time) {
 // against the database, returning the matching row if it exists, isn't
 // revoked, and hasn't expired. Shared by AuthMiddleware's bearer-token
 // branch and carddav/auth.go's Basic-Auth fallback.
-func LookupAPIToken(db *gorm.DB, raw string) (*models.ApiToken, bool) {
+func LookupAPIToken(db *gorm.DB, raw string, now time.Time) (*models.ApiToken, bool) {
 	if !strings.HasPrefix(raw, "mycorrhizal_") {
 		return nil, false
 	}
@@ -227,7 +234,7 @@ func LookupAPIToken(db *gorm.DB, raw string) (*models.ApiToken, bool) {
 	// predating that column; tokens minted through the API always carry one.
 	if err := db.Where(
 		"token_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)",
-		hash, time.Now(),
+		hash, now,
 	).First(&apiToken).Error; err != nil {
 		return nil, false
 	}
@@ -235,9 +242,9 @@ func LookupAPIToken(db *gorm.DB, raw string) (*models.ApiToken, bool) {
 }
 
 // TouchAPIToken asynchronously updates last_used_at for a validated token.
-func TouchAPIToken(db *gorm.DB, id uint) {
+func TouchAPIToken(db *gorm.DB, id uint, at time.Time) {
 	go func(id uint) {
-		if err := db.Model(&models.ApiToken{}).Where("id = ?", id).Update("last_used_at", time.Now()).Error; err != nil {
+		if err := db.Model(&models.ApiToken{}).Where("id = ?", id).Update("last_used_at", at).Error; err != nil {
 			logger.Logger.Warn().Err(err).Uint("api_token_id", id).Msg("Failed to update api token last_used_at")
 		}
 	}(id)
@@ -268,4 +275,35 @@ func uintClaim(claims jwt.MapClaims, key string) (uint, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// ValidateTimeClaims applies the standard exp / iat / nbf checks of
+// jwt.MapClaims.Valid, but against now rather than the jwt library's
+// process-global TimeFunc, so token expiry is driven by the injected clock
+// (issue #1494). Like the library, it compares whole unix seconds: a token is
+// valid until its exp second begins and expired from then on.
+// A claims value that is not MapClaims is left to the caller.
+func ValidateTimeClaims(claims jwt.Claims, now time.Time) error {
+	mc, ok := claims.(jwt.MapClaims)
+	if !ok {
+		return nil
+	}
+	ts := now.Unix()
+	vErr := &jwt.ValidationError{}
+	if !mc.VerifyExpiresAt(ts, false) {
+		vErr.Inner = jwt.ErrTokenExpired
+		vErr.Errors |= jwt.ValidationErrorExpired
+	}
+	if !mc.VerifyIssuedAt(ts, false) {
+		vErr.Inner = jwt.ErrTokenUsedBeforeIssued
+		vErr.Errors |= jwt.ValidationErrorIssuedAt
+	}
+	if !mc.VerifyNotBefore(ts, false) {
+		vErr.Inner = jwt.ErrTokenNotValidYet
+		vErr.Errors |= jwt.ValidationErrorNotValidYet
+	}
+	if vErr.Errors == 0 {
+		return nil
+	}
+	return vErr
 }
