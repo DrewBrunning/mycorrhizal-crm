@@ -622,7 +622,7 @@ jobs:
       # expects.
       - name: Upload test parts (coverage + JUnit + flake report)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-test-parts-${{ matrix.leg }}
           path: |
@@ -637,7 +637,7 @@ jobs:
       # only the JUnit + gotestsum's rerun report, a few hundred KB.
       - name: Upload flake-ledger input (Go JUnit + rerun report)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flake-go-${{ matrix.leg }}
           path: |
@@ -834,7 +834,7 @@ jobs:
 
       - name: Upload coverage report
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-coverage
           path: |
@@ -846,7 +846,7 @@ jobs:
       # needs no per-leg wiring.
       - name: Upload test results (JUnit + flake report)
         if: needs.backend-tests.result == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-junit-results
           path: |
@@ -922,7 +922,7 @@ jobs:
       # gate is the diff-based codecov/patch status (issue #267).
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -933,7 +933,7 @@ jobs:
       # separately by the github-actions reporter's job summary.
       - name: Upload test results (JUnit)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: frontend-junit-results
           path: frontend/junit.xml
