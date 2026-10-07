@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/clock"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -212,12 +213,15 @@ const sessionTouchInterval = time.Minute
 // TouchSession advances a session's last_seen_at in the background. Failure is
 // logged, never fatal to the request — an unwritable DB is surfaced elsewhere.
 func TouchSession(db *gorm.DB, sid string, at time.Time) {
-	go func(sid string) {
+	// Tracked via fireandforget so a test's dbtest cleanup drains this write
+	// before t.TempDir removes the database file (issue #703); a bare
+	// goroutine held the DB connection past cleanup and raced the delete.
+	fireandforget.Run(func() {
 		if err := db.Model(&models.Session{}).Where("id = ?", sid).
 			Update("last_seen_at", at).Error; err != nil {
 			logger.Logger.Warn().Err(err).Str("session_id", sid).Msg("Failed to update session last_seen_at") // # pragma: no cover — background best-effort write; only a failing store trips this
 		}
-	}(sid)
+	})
 }
 
 // LookupAPIToken validates a raw "mycorrhizal_"-prefixed API token string
@@ -243,11 +247,13 @@ func LookupAPIToken(db *gorm.DB, raw string, now time.Time) (*models.ApiToken, b
 
 // TouchAPIToken asynchronously updates last_used_at for a validated token.
 func TouchAPIToken(db *gorm.DB, id uint, at time.Time) {
-	go func(id uint) {
+	// Tracked via fireandforget for the same t.TempDir-cleanup reason as
+	// TouchSession above.
+	fireandforget.Run(func() {
 		if err := db.Model(&models.ApiToken{}).Where("id = ?", id).Update("last_used_at", at).Error; err != nil {
 			logger.Logger.Warn().Err(err).Uint("api_token_id", id).Msg("Failed to update api token last_used_at")
 		}
-	}(id)
+	})
 }
 
 // uintClaim reads a numeric claim as uint. JSON round-tripping makes every
