@@ -37,7 +37,14 @@
 //     are wired through `cmd/releaseplan`, and the DAST and Go-floor bounded
 //     retries run through their scripts (whose exit codes agree with zapgate).
 //
-//  7. No mandatory release-internal gate of docker-publish.yml is push-only
+//  7. The manual-gate attestation ledger holds (issue #1486): .github/manual-gates.json
+//     is structurally valid, every attestation proves the test RAN (and any
+//     retained JUnit evidence hashes to what it claims), and release.yml's
+//     required `attest_manual_gates` input is enforced by an unconditional
+//     preflight step, recorded in release-readiness.json, and passed by the
+//     dry-run rehearsal (releaseworkflow.CheckManualGates).
+//
+//  8. No mandatory release-internal gate of docker-publish.yml is push-only
 //     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
 //     workflow_dispatch fallback while the run still concludes success, unless
 //     the gate is allowlisted with a reason and a defined failing check on the
@@ -54,6 +61,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"mycorrhizal/internal/manualgates"
 	"mycorrhizal/internal/releasegates"
 	"mycorrhizal/internal/releaseworkflow"
 )
@@ -173,6 +181,30 @@ func runAt(w io.Writer, root string) int {
 		*in.dst = string(b)
 	}
 	findings = append(findings, releaseworkflow.CheckResilience(res)...)
+	// Issue #1486: the manual-gate attestation ledger is structurally valid with
+	// verifiable evidence, and release.yml / the dry-run rehearsal enforce it.
+	// #nosec G304 -- fixed repo-relative path under the repository root
+	ledgerBytes, err := os.ReadFile(filepath.Join(root, releaseworkflow.ManualGatesFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read", releaseworkflow.ManualGatesFile, err)
+		return 2
+	}
+	ledger, ledgerFindings := manualgates.ParseLedger(ledgerBytes)
+	findings = append(findings, ledgerFindings...)
+	if len(ledgerFindings) == 0 {
+		findings = append(findings, manualgates.VerifyEvidence(ledger, func(p string) ([]byte, bool) {
+			// #nosec G304 -- p is an evidence path recorded in the committed ledger, resolved under the repo root
+			b, readErr := os.ReadFile(filepath.Join(root, p))
+			return b, readErr == nil
+		})...)
+	}
+	// #nosec G304 -- fixed workflow basename under the repository root
+	dryRunBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, releaseworkflow.DryRunFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read", releaseworkflow.DryRunFile, err)
+		return 2
+	}
+	findings = append(findings, releaseworkflow.CheckManualGates(string(releaseBytes), string(dryRunBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

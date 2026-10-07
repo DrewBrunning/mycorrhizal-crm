@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/jscontact"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -13,7 +14,6 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -341,7 +341,7 @@ func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	now := time.Now()
+	now := clock.FromContext(c).Now()
 	share.Status = models.ContactShareStatusAccepted
 	share.RespondedAt = &now
 	if err := db.Save(share).Error; err != nil {
@@ -372,7 +372,7 @@ func DeclineContactShare(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
+	now := clock.FromContext(c).Now()
 	share.Status = models.ContactShareStatusDeclined
 	share.RespondedAt = &now
 	if err := db.Save(share).Error; err != nil {

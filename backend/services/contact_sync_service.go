@@ -197,16 +197,16 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	start := time.Now()
+	start := Now()
 	stats, newToken, err := s.syncSubscription(ctx, db, cfg, sub)
-	runDuration := time.Since(start)
+	runDuration := Now().Sub(start)
 	err = redactURLPassword(err, sub.URL)
 
 	recordSyncEvent(ctx, db, logger.ComponentContactSync, sub.UserID, start, err,
 		fmt.Sprintf("created=%d updated=%d archived=%d skipped=%d",
 			stats.Created, stats.Updated, stats.Archived, stats.Skipped))
 
-	now := time.Now().UTC()
+	now := Now().UTC()
 	sub.LastSyncedAt = &now
 	updates := map[string]interface{}{
 		"last_synced_at": sub.LastSyncedAt,

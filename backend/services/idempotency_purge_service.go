@@ -37,7 +37,7 @@ func PurgeExpiredIdempotencyKeys(db *gorm.DB, cfg config.Config) error {
 	if cfg.IdempotencyKeyRetentionHours <= 0 {
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.IdempotencyKeyRetentionHours) * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.IdempotencyKeyRetentionHours) * time.Hour)
 
 	result := db.Exec("DELETE FROM idempotency_keys WHERE created_at < ?", cutoff)
 	if result.Error != nil {

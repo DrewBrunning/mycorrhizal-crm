@@ -151,4 +151,120 @@ var Scopes = []Scope{
 			"0 timed out (efficacy 83.0%, mcover 99.0%); floor set below " +
 			"measured to absorb CI-runner timeout variance",
 	},
+	{
+		Name:           "middleware-auth",
+		PackageDir:     "middleware",
+		TargetFiles:    []string{"auth.go", "admin.go", "idempotency.go", "login_lockout.go"},
+		Efficacy:       95,
+		MutantCoverage: 93,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"auth.go (JWT/API-token/purpose-claim decisions), admin.go, " +
+			"idempotency.go and login_lockout.go: 69 killed / 0 lived / 1 " +
+			"not covered / 0 timed out (efficacy 100.0%, mcover 98.6%, " +
+			"28s). The one uncovered mutant is a const-arithmetic " +
+			"expression in idempotency.go. Measured on main without the " +
+			"open rejection-arm tests of PR #1511, so the number is if " +
+			"anything pessimistic. gremlins v0.6.0 does not delete `if !ok` " +
+			"arms or SQL filters, only comparison/arithmetic/increment " +
+			"mutants; floor set 5+ points below measured to absorb " +
+			"CI-runner timeout variance",
+	},
+	{
+		Name:           "ssrf",
+		PackageDir:     "httputil",
+		Efficacy:       95,
+		MutantCoverage: 85,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"the SSRF guard (httputil: ipguard, safedial, fetch): first run " +
+			"32 killed / 1 lived / 3 not covered / 1 timed out; the " +
+			"survivor (buildImageClient 15s Timeout arithmetic) was killed " +
+			"by httputil/bounds_test.go, leaving 32 killed / 0 lived / 3 " +
+			"not covered / 2 timed out (efficacy 100.0%, mcover 91.4%, " +
+			"10s). The not-covered mutants are const-expression arithmetic " +
+			"(maxImageSize, DialTimeout) gremlins cannot attribute to a " +
+			"covered line; the values are pinned by direct assertions " +
+			"instead; floor set 5+ points below measured to absorb " +
+			"CI-runner timeout variance",
+	},
+	{
+		Name:           "services-merge",
+		PackageDir:     "services",
+		TargetFiles:    []string{"contact_merge_service.go", "duplicate_service.go"},
+		Efficacy:       95,
+		MutantCoverage: 82,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"contact_merge_service.go and duplicate_service.go " +
+			"(irreversible merge): 144 killed / 0 lived / 21 not covered / " +
+			"0 timed out (efficacy 100.0%, mcover 87.3%, 5m19s). The " +
+			"not-covered mutants are sort comparators over short slices, " +
+			"tx.Save/tx.Delete error arms and tie-break arms; no covered " +
+			"mutant survives; floor set 5+ points below measured to absorb " +
+			"CI-runner timeout variance",
+	},
+	{
+		Name:           "controllers-merge",
+		PackageDir:     "controllers",
+		TargetFiles:    []string{"contact_merge_controller.go"},
+		Efficacy:       95,
+		MutantCoverage: 89,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"contact_merge_controller.go: 33 killed / 0 lived / 2 not " +
+			"covered / 0 timed out (efficacy 100.0%, mcover 94.3%, 1m25s); " +
+			"floor set 5+ points below measured to absorb CI-runner timeout " +
+			"variance",
+	},
+	{
+		Name:           "schedule-math",
+		PackageDir:     "services",
+		TargetFiles:    []string{"cadence_service.go", "reminder_service.go", "data_decay_service.go", "occasion_service.go"},
+		Efficacy:       95,
+		MutantCoverage: 90,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"cadence, reminder, data-decay and occasion date/threshold " +
+			"arithmetic: 243 killed / 0 lived / 11 not covered / 0 timed " +
+			"out (efficacy 100.0%, mcover 95.7%, 7m48s); floor set 5+ " +
+			"points below measured to absorb CI-runner timeout variance",
+	},
+	{
+		Name:           "sync-reconcile",
+		PackageDir:     "services",
+		TargetFiles:    []string{"contact_sync_service.go"},
+		Efficacy:       95,
+		MutantCoverage: 80,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"contact_sync_service.go (reconcileContactSync, full-overwrite " +
+			"by design): 51 killed / 0 lived / 9 not covered / 0 timed out " +
+			"(efficacy 100.0%, mcover 85.0%, 2m27s); floor set 5+ points " +
+			"below measured to absorb CI-runner timeout variance",
+	},
+	{
+		Name:           "carddav-backend",
+		PackageDir:     "carddav",
+		TargetFiles:    []string{"backend.go"},
+		Efficacy:       95,
+		MutantCoverage: 91,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"carddav/backend.go: 49 killed / 0 lived / 2 not covered / 0 " +
+			"timed out (efficacy 100.0%, mcover 96.1%, 19s); floor set 5+ " +
+			"points below measured to absorb CI-runner timeout variance",
+	},
+	{
+		Name:           "caldav-backend",
+		PackageDir:     "caldav",
+		TargetFiles:    []string{"backend.go"},
+		Efficacy:       95,
+		MutantCoverage: 85,
+		Reason: "baseline 2026-10-06 (issue #1491; workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0) on " +
+			"caldav/backend.go: 56 killed / 0 lived / 6 not covered / 0 " +
+			"timed out (efficacy 100.0%, mcover 90.3%, 12s); floor set 5+ " +
+			"points below measured to absorb CI-runner timeout variance",
+	},
 }

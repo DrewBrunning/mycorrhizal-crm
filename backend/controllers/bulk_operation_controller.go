@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -135,7 +137,7 @@ func BulkContactOperation(c *gin.Context) {
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: "contact not found or not owned"})
 			continue
 		}
-		if err := runBulkContactAction(db, userID, contact, input.Action, circle, tag); err != nil {
+		if err := runBulkContactAction(db, userID, contact, input.Action, circle, tag, clock.FromContext(c).Now()); err != nil {
 			result.Failed++
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: err.Error()})
 			continue
@@ -166,7 +168,7 @@ func BulkContactOperation(c *gin.Context) {
 // runBulkContactAction applies one bulk action to a single owned contact.
 // Every action is idempotent: it returns nil when the desired end state
 // already holds.
-func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag) error {
+func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag, now time.Time) error {
 	switch action {
 	case "add_circle":
 		var existing models.CircleMember
@@ -215,7 +217,7 @@ func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, acti
 		// completes for this contact or rolls back cleanly, so a mid-batch
 		// failure never leaves one contact half-cleaned (N5 trap).
 		return db.Transaction(func(tx *gorm.DB) error {
-			if err := deleteContactAssociations(tx, contact, userID); err != nil {
+			if err := deleteContactAssociations(tx, contact, userID, now); err != nil {
 				return err
 			}
 			return tx.Delete(&contact).Error

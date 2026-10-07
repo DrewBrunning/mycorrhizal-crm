@@ -44,7 +44,7 @@ func NewGeocoder(cfg *config.Config) (*Geocoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Geocoder{client: client, cache: newGeocodeCache(geocodeCacheMaxEntries, geocodeCacheTTL, time.Now)}, nil
+	return &Geocoder{client: client, cache: newGeocodeCache(geocodeCacheMaxEntries, geocodeCacheTTL, Now)}, nil
 }
 
 // Enabled reports whether a provider is configured.

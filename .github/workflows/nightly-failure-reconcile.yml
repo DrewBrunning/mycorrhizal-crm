@@ -47,6 +47,7 @@ jobs:
         workflow_file:
           - android-tests.yml
           - asvs-staleness.yml
+          - arm64-tests.yml
           - carddav-e2e.yml
           - chaos-tests.yml
           - codeql.yml
@@ -56,6 +57,7 @@ jobs:
           - docker-pin-check.yml
           - e2e-tests.yml
           - flake-ledger.yml
+          - integration-real-servers.yml
           - go-mutation.yml
           - governance-drift.yml
           - grype.yml

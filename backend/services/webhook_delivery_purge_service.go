@@ -47,7 +47,7 @@ func PurgeExpiredWebhookDeliveries(db *gorm.DB, cfg config.Config) error {
 		// deleting every delivery.
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.WebhookDeliveryRetentionDays) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.WebhookDeliveryRetentionDays) * 24 * time.Hour)
 
 	result := db.Exec("DELETE FROM webhook_deliveries WHERE created_at < ?", cutoff)
 	if result.Error != nil {

@@ -34,7 +34,7 @@ func PurgeExpiredAuditEvents(db *gorm.DB, cfg config.Config) error {
 		// deleting every audit row.
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour)
 
 	result := db.Exec("DELETE FROM audit_events WHERE created_at < ?", cutoff)
 	if result.Error != nil {
@@ -71,7 +71,7 @@ func PurgeExpiredReachOutSuggestions(db *gorm.DB, cfg config.Config) error {
 	if cfg.AuditRetentionDays <= 0 {
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour)
 
 	result := db.Where("created_at < ?", cutoff).Delete(&models.ReachOutSuggestion{})
 	if result.Error != nil {

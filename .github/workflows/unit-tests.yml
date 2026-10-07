@@ -386,6 +386,16 @@ jobs:
         working-directory: backend
         run: go run ./cmd/gormerrcheck ./...
 
+      # Issue #1494: time-dependent logic must read "now" from the injected
+      # clock (backend/internal/clock), not the wall clock, so tests can pin
+      # time instead of sleeping. This repo-local analyzer
+      # (backend/internal/lint/rawtime) flags time.Now/Since/Until in
+      # controllers, services and middleware outside a `// rawtime:allow
+      # <reason>` marker or the reason-bearing file allowlist.
+      - name: Lint (rawtimecheck — raw time.Now outside the injected clock)
+        working-directory: backend
+        run: go run ./cmd/rawtimecheck ./...
+
   backend-tests:
     permissions:
       contents: read
@@ -739,19 +749,6 @@ jobs:
           ' $files > coverage.out
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
-      # Issue #294: informational only -- a failed upload must not fail the
-      # build (fail_ci_if_error: false). disable_search so only the merged
-      # profile is sent, not the per-leg parts alongside it (#639).
-      - name: Upload coverage to Codecov
-        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: backend/coverage.out
-          disable_search: true
-          flags: backend
-          fail_ci_if_error: false
-
       # Issue #251: the project-wide number stays informational. The hard
       # gate is the diff-based codecov/patch status (issue #267) — new
       # uncovered lines in the changed files fail the PR.
@@ -760,18 +757,15 @@ jobs:
         working-directory: backend
         run: go tool cover -func=coverage.out
 
-      # Per-file no-regression ratchet (frontend counterpart below):
-      # codecov/patch/backend only judges lines a PR actually changed, so a
-      # file already at 0% trips nothing. Compares a CROSS-PACKAGE profile
-      # against internal/coverageratchet/testdata/baseline.json (issue
-      # #1477): the per-leg profiles above credit a file only for tests in
-      # its own package (no -coverpkg), so 25 files looked 0-50% covered while
-      # tests elsewhere covered them fully, and deleting that test tripped
-      # nothing. One extra non-sharded, non-race `-coverpkg=./...` run credits a
-      # file for ANY package's tests; the Codecov upload above stays on the
-      # per-package profile, so the patch gate's semantics are unchanged
-      # (docs/development/coverage.md). The cmd merges repeated blocks itself.
-      # PR-only: RAPID_CHECKS is tiered by trigger (pinned to the PR tier
+      # The cross-package profile is BOTH the per-file ratchet's input and — as
+      # the "any test exercising the changed line" profile — the patch gate's
+      # (issue #1477): the per-leg profiles above credit a file only for tests in
+      # its own package (no -coverpkg), so a line proven only by an integration
+      # test in another package (routes' DB-fault sweep, a routes service test)
+      # was invisible to codecov/patch/backend, pushing authors toward duplicate
+      # same-package tests. One extra non-sharded, non-race `-coverpkg=./...` run
+      # credits a file for ANY package's tests. The cmd merges repeated blocks
+      # itself. PR-only: RAPID_CHECKS is tiered by trigger (pinned to the PR tier
       # here), so push/schedule numbers aren't comparable to the baseline.
       # Test failures here are not this step's concern (the legs gate them,
       # with retries) -- a package that fails to build or crashes just loses
@@ -787,7 +781,46 @@ jobs:
         run: |
           pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"
           # shellcheck disable=SC2086 # $pkgs is a controlled space-joined list
-          go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross.out || echo "::warning::cross-package coverage run had failing tests/packages; ratchet judges what was collected"
+          go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross-raw.out || echo "::warning::cross-package coverage run had failing tests/packages; ratchet judges what was collected"
+          # A -coverpkg profile repeats every block once per test binary (~180 MB
+          # raw). The ratchet merges while reading; Codecov wants one line per
+          # block and the raw upload would be needless, so merge by summing
+          # counts -- the same block-merge the per-leg "Merge coverage profiles"
+          # step does. The merged profile is what the ratchet and Codecov read.
+          awk '
+            FNR == 1 { print; next }
+            { if (!($1 in stmt)) { order[++n] = $1; stmt[$1] = $2 }
+              count[$1] += $3 }
+            END { for (i = 1; i <= n; i++) print order[i], stmt[order[i]], count[order[i]] }
+          ' coverage-cross-raw.out > coverage-cross.out
+          rm -f coverage-cross-raw.out
+
+      # Issue #1477's patch-gate half: codecov/patch/backend reads the same
+      # cross-package profile the ratchet does. Fall back to the per-package
+      # merge on push/schedule, where the (expensive) cross run does not happen.
+      - name: Select the Codecov profile
+        id: covprofile
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        working-directory: backend
+        run: |
+          if [ -s coverage-cross.out ]; then
+            echo "file=coverage-cross.out" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=coverage.out" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Issue #294: informational only -- a failed upload must not fail the
+      # build (fail_ci_if_error: false). disable_search so only the selected
+      # profile is sent, not the per-leg parts alongside it (#639).
+      - name: Upload coverage to Codecov
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/${{ steps.covprofile.outputs.file }}
+          disable_search: true
+          flags: backend
+          fail_ci_if_error: false
 
       - name: Per-file coverage ratchet (pull_request only)
         if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success'

@@ -20,7 +20,7 @@ type fakePaperlessDoc struct {
 
 // fakePaperlessServer is a permanent, real-protocol test double for the
 // Paperless-ngx REST API. It serves the same wire shapes the real Paperless
-// does for the endpoints this integration relies on — /api/, /api/auth/me/,
+// does for the endpoints this integration relies on — /api/documents/?page_size=1 (probe), /api/ui_settings/,
 // /api/documents/, and /api/documents/:id/ — so the client is exercised
 // against the real HTTP protocol, not a mocked boundary.
 type fakePaperlessServer struct {
@@ -77,12 +77,12 @@ func (f *fakePaperlessServer) handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
-	case r.URL.Path == "/api/auth/me/":
+	case r.URL.Path == "/api/ui_settings/":
 		me := f.Me
 		if me == nil {
-			me = map[string]any{"user_name": "admin", "id": 1}
+			me = map[string]any{"username": "admin", "id": 1}
 		}
-		writeFakeJSON(w, me)
+		writeFakeJSON(w, map[string]any{"user": me, "settings": map[string]any{}})
 	case r.URL.Path == "/api/documents/":
 		f.handleListDocuments(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/documents/") && strings.HasSuffix(r.URL.Path, "/"):
@@ -97,7 +97,7 @@ func (f *fakePaperlessServer) handle(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		writeFakeJSON(w, map[string]any{"id": id, "title": doc.Title, "file_name": doc.FileName, "created": doc.Created, "added": doc.Added})
+		writeFakeJSON(w, map[string]any{"id": id, "title": doc.Title, "original_file_name": doc.FileName, "created": doc.Created, "added": doc.Added})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -129,7 +129,7 @@ func (f *fakePaperlessServer) handleListDocuments(w http.ResponseWriter, r *http
 			continue
 		}
 		results = append(results, map[string]any{
-			"id": id, "title": doc.Title, "file_name": doc.FileName,
+			"id": id, "title": doc.Title, "original_file_name": doc.FileName,
 			"created": doc.Created, "added": doc.Added,
 		})
 	}

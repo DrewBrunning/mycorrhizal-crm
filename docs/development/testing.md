@@ -38,7 +38,8 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
 | Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra`; also a release-tier gate run against the build-once candidate image ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484), [release-gates.md](release-gates.md#build-once-the-tested-image-is-the-shipped-image-issue-1484)) |
-| Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed; the pre-publish gates are the release battery, which tests the same digest that publishes -- #1484) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push |
+| Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed; the pre-publish gates are the release battery, which tests the same digest that publishes -- #1484) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push (amd64 **and** arm64 matrix legs, issue #1485) |
+| ARM64 Go suite | `vet` + `go test` (no `-race`, no coverage) of the `rest` and `controllers` legs natively on `ubuntu-24.04-arm`: architecture-sensitive code (build tags, atomics alignment, `unsafe`, seccomp) and `main_test.go`'s host-arch embedded handshake | Race detection and coverage (amd64 owns both); Android's `GOOS=android` cross-compile (`android-tests.yml`'s embedded-server step) | `.github/workflows/arm64-tests.yml` | `cd backend && go test $(go list ./... \| grep -vE 'mycorrhizal/(controllers\|services\|database\|internal/(schemafixture\|propertytest\|largedata\|contactgen))$')` on an arm64 host | `arm64-tests.yml` (release-tier; `rest` leg per backend PR, `controllers` on main/nightly) |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
 | Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
 
@@ -61,6 +62,43 @@ Detail and the hard-won traps for each layer follow.
   DB/integration tests — the layer is a property of what the test *touches*, not
   which command runs it.
 
+#### Time-dependent logic: the injected clock (issue #1494)
+
+Expiry, lockout windows, reminder scheduling, retention cutoffs and day-boundary
+decisions are pinned with a **fake clock, never a sleep**. `backend/internal/clock`
+provides `Clock` (`Now()`), `clock.System`, and `clock.Fake` (`NewFake`, `Set`,
+`Advance`; concurrency-safe).
+
+| Layer | Production source | Test seam |
+|---|---|---|
+| Controllers, middleware handlers | `clock.FromContext(c).Now()` (`routes.go` installs `clock.System{}` via `clockMiddleware`) | `router.Use(func(c){ clock.Install(c, fake); c.Next() })` before registering routes; `clock.InstallIfAbsent` keeps it |
+| Services (free functions) | `services.Now()` | `defer services.SetClock(fake)()` |
+| `AccountRateLimiter` / `IPRateLimiter` | their own `clk` field | `limiter.SetClock(fake)` |
+| JWT `exp`/`iat`/`nbf` | `middleware.ValidateTimeClaims(claims, now)` (parsers use `jwt.WithoutClaimsValidation()`) | the same fakes above |
+
+Write the boundary table for the area you touch: token valid at `exp-1ns` and
+invalid at `exp`; session `expires_at` and idle timeout at `==` and `+1ns`; a
+purge row at exactly the cutoff; midnight in the reminder zone, DST, leap day.
+Pick instants far from the real clock (the suites use 2030) so a call that
+bypasses the seam fails rather than passing by coincidence. Examples:
+`middleware/clock_boundary_test.go`, `services/clock_test.go`,
+`controllers/clock_boundary_test.go`, `controllers/date_02_reminder_zone_test.go`.
+
+**Enforcement.** `go run ./cmd/rawtimecheck ./...` (analyzer
+`internal/lint/rawtime`; a step in the required `Backend (Go)` job and the
+pre-commit hook) fails on any `time.Now`/`time.Since`/`time.Until` in
+`controllers`, `services` or `middleware`. Three ways out, in order of
+preference: migrate the site to the clock; for an elapsed-duration measurement,
+a `net.Conn` deadline or a PRNG seed, put `// rawtime:allow <reason>` on the line
+(a marker with no reason is itself a finding, like `# pragma: no cover`); for a
+bulk that cannot move in the same change, add a `rawtime.Allowlist` entry with a
+`Reason` and an **exact** `Count` — `TestAllowlistIsExact` fails when the count
+is stale in either direction, so the list can only shrink. Hand-verify the gate
+by adding a raw `time.Now()` to a controller and watching it fail. Real sleeps
+that remain in tests are for waiting on a *different goroutine/process* (e.g.
+asserting a background webhook did **not** fire), not for waiting out a
+time-based rule.
+
 ### DB/integration
 
 - **Responsible for** everything that persists to or reads from the **real
@@ -75,8 +113,35 @@ Detail and the hard-won traps for each layer follow.
     (`database/concurrent_write_test.go`, trap #9);
   - services that orchestrate multi-row operations: CardDAV/CalDAV sync,
     backup/restore (`database/backup_test.go`), import.
+  - **mid-request database failure** (issue #1476): the DB-fault sweep,
+    below.
 - **Must not be used for** pure logic (unit), the JSON wire contract (API
   contract), or format bytes (interop).
+- **The DB-fault sweep** (`routes/db_fault_sweep_test.go`, issue #1476) reaches
+  the `if err := tx.X().Error; err != nil { return ErrDatabase(...) }` arms no
+  HTTP test can trigger. `dbtest.New(t, dbtest.WithFaults())` registers the
+  `internal/dbfault` GORM callback plugin (idle until armed, test-only); for
+  each route in `faultScenarios()` the sweep records the K statements the
+  request issues on its own goroutine (fire-and-forget audit/webhook
+  goroutines are deliberately invisible to the injector), then re-runs on a
+  fresh identical database K times failing statement *i*. Every run must
+  produce a well-formed 4xx/5xx envelope that leaks no SQL (marker, `sqlite`,
+  `SQL`, table names), **and** leave every table's row count + checksum
+  byte-identical to before the request — a mid-request failure that leaves a
+  partial write fails the sweep. An outcome that is legitimately best-effort
+  (a post-commit response read, the audit snapshot, per-row import errors)
+  must be declared in `faultAllowlist` with a written reason; an entry that
+  no longer matches fails as stale, and an allowlisted 2xx body is still
+  leak-checked. Statements the auth middleware issues first are covered by
+  `TestDBFaultSweep_AuthMiddlewareFailure`. Failing `COMMIT`/`BEGIN` is out of
+  scope (they are not GORM statements). **Adding a mutating route that writes
+  more than one row** means adding a scenario; **a `# pragma: no cover — DB
+  failure only`** on a branch the sweep reaches should be removed (the sweep
+  already removed those in `user_delete_cascade.go`). Hand-verify: removing
+  the `db.Transaction` wrapper from `DeleteContact`, `CompleteReminder` or
+  `ChangePassword` fails the sweep. The sweep's first run found and fixed two
+  partial-write bugs (reminder completion, password-change revocation) and a
+  SQL-text leak in import row errors.
 - **The non-negotiable fixture rule** (CLAUDE.md trap #1): test against the real
   migrated schema, never `AutoMigrate`. Prefer `internal/dbtest.New(t)`, which
   builds the migrated template once per test binary and hands each test an
@@ -160,6 +225,14 @@ Detail and the hard-won traps for each layer follow.
     round-trips every migration
     up → down → up against a populated fixture, and gates on every migration
     shipping its `.down.sql`. A release without a dump fails CI.
+  - **Real-release data (issue #1489):** `internal/realrelease` +
+    `cmd/realrelease` + `scripts/realrelease-leg.sh` boot the *published image*
+    of each supported release, seed it through its public API, upgrade the data it
+    wrote with the current boot path, compare the API read-back, run
+    doctor/audit-chain, then roll back to the pre-migration backup with the old
+    image. The `real-release-upgrade` job in `migration-tests.yml` runs it per
+    `SupportedReleases` entry (main/nightly/dispatch; needs the network). See
+    `docs/upgrade-compatibility.md#how-upgrades-are-tested`.
 - **Must not be used for** current-schema application behavior (DB/integration)
   or deploy sequencing (release/install smoke).
 - **Runs via** `go test ./...` (the `database` package lands in the `rest` leg)
@@ -829,6 +902,68 @@ The **manual client matrix** (Apple Contacts macOS/iOS, Thunderbird,
 Android native, DAVx5) — the clients that cannot be scripted — is a documented
 checklist with last-run dates in `docs/development/reference-client-matrix.md`.
 
+## Real-server integration contract tests (issue #1490)
+
+Every external integration other than CardDAV used to be tested only against
+a hand-written `httptest` fake, which encodes *our reading* of the other
+side's API — the "shared misconception" failure ADR-0003 names for formats.
+INT-02's failure-behavior suite proves what we do when an integration fails;
+`backend/integrations/realserver` proves we speak its protocol when it
+succeeds, against the actual server:
+
+| Server (pinned in `backend/integrations/realserver/stack/`) | Test file | What it proves |
+|---|---|---|
+| Keycloak 26 (OIDC) | `oidc_test.go` | full authorization-code + PKCE (S256) login through our real `/auth/oidc/*` handlers, PKCE verifier enforced, RP-initiated logout (`end_session_endpoint`, `id_token_hint`, `post_logout_redirect_uri`) ends the IdP session, signing-key rotation after the JWKS was cached |
+| ntfy, Gotify | `notifications_test.go` | a notification sent through our delivery code is read back from the server's own API with the title/message we meant; a rejected request / bad token surfaces as an error |
+| Mailpit (SMTP) | `smtp_test.go` | `SendEmail`'s SMTP transport delivers; envelope, Q-encoded UTF-8 subject and HTML body read back from the server |
+| Nextcloud (WebDAV) | `webdav_test.go` | `Ping`/`ListDir` against a real PROPFIND: dir vs file, decoded non-ASCII names, `oc:fileid`, 401/404 sentinels |
+| Paperless-ngx | `paperless_test.go` | Test Connection (`Ping`/`GetMe`), `ListDocuments` (listing + full-text query) and `GetDocument` over a real consumed document |
+| Immich | `immich_test.go` | `Ping`/`GetMyUser`/`ListPeople`/`GetStatistics`/`RecentAssets` (`POST /api/search/metadata`) and both thumbnail fetches over a real uploaded asset and person |
+| Seafile 11 | `seafile_test.go` | `Ping`/`PingAuth`/`ListLibraries`/`ListDir` over a real library, folder and file |
+
+It earned its keep on the first run: it found that ntfy was being sent a JSON
+body at `/<topic>` (a real ntfy displays that raw JSON as the message, with no
+title — ntfy's JSON API posts to the server root), that Paperless Test
+Connection could never succeed (`GET /api/` is a 302 and `/api/auth/me/` is not
+an endpoint) and that Paperless's file name was read from a field the API does
+not serve. The fakes had all agreed with the code.
+
+**Running it.** `.github/workflows/integration-real-servers.yml` runs nightly,
+on dispatch, and on a PR only when the `realservers` filter in
+`.github/filters.yaml` fires; it is a release-tier gate composed by
+`release-validate.yml`. It sets `MYCORRHIZAL_REQUIRE_REFERENCES=1`, and every
+test goes through `internal/citest.SkipOrRequire`, so a server that fails to
+provision fails the job rather than skipping green. Locally, bring up one stack
+at a time and export the `MYCORRHIZAL_RS_*` variables the workflow lists:
+
+```bash
+cd backend/integrations/realserver/stack
+docker compose -f docker-compose.light.yml up -d        # ntfy, Gotify, Mailpit, Keycloak
+cd ../../.. && MYCORRHIZAL_RS_OIDC_ISSUER=http://127.0.0.1:18082/realms/mycorrhizal \
+  MYCORRHIZAL_RS_NTFY_URL=http://127.0.0.1:18080 \
+  go test ./integrations/realserver/ -run 'Ntfy|OIDC' -v
+```
+
+The ports and credentials in the workflow's `env:` block are the ones each
+`docker-compose.*.yml` publishes; the heavy stacks (`paperless`, `immich`,
+`seafile`) are separate files so only one runs at a time, and Nextcloud reuses
+`.github/scripts/carddav-reference/provision-nextcloud.sh`. Images are pinned
+by `tag@digest`; Dependabot's `docker` entry for the `stack/` directory
+proposes bumps, and a bump that breaks a client *is* the signal.
+
+**Coverage map.** `backend/integrations/realserver_coverage_test.go` has a row
+for every `Registry()` integration: real-server tests that exist, or a reasoned
+`Exclusion` (hosted vendor APIs — geocoder, Resend, HIBP, the update check,
+browser push services — webhooks whose "server" is the user's own receiver, and
+the not-yet-wired CalDAV and GeoPulse legs). A new integration cannot land
+without one or the other, and the same file asserts every `MYCORRHIZAL_RS_*`
+variable the tests read is set by the workflow.
+
+**Hand-verifying a leg:** break the client and watch it fail — e.g. rename the
+`username` JSON tag on `PaperlessUser`, or change `sendNtfyMessage` to POST to
+`/<topic>` again — the unit tests stay green (the fakes follow the code) and
+the real-server leg goes red.
+
 ## Layers vs CI path gating
 
 Each layer maps onto an existing area of `.github/filters.yaml` (issue #264) —
@@ -848,6 +983,7 @@ protection.
 | API contract | `openapi` (drift tests ride `backend`; fixture consumers ride `frontend`/`android`; spec fuzz + `cmd/schemagate` ride `openapi`) |
 | Import/export interop | `backend` |
 | CardDAV real-server interop | `carddav` (the fake-based CardDAV suite rides `backend` on every PR; the real-server Radicale job runs on the schedule + manual dispatch, and on a PR only when the `carddav` filter fires — issue #496) |
+| Integration real-server contract | `realservers` (nightly + dispatch always; on a PR only when the clients, the suite or its stacks change — issue #1490) |
 | Migration | `backend` |
 | Frontend unit | `frontend` |
 | Android unit/Robolectric | `android` |
@@ -1003,7 +1139,18 @@ criterion.**
     data-integrity invariants (`atrest`), delete cascade (the two files
     `contact_controller.go`/`admin_user_controller.go` name in backend trap
     6), import ingestion (`services`' import-source files), and the three
-    exporters (`vcard3`, `vcard4`, `jscontact`). The complete scope and each
+    exporters (`vcard3`, `vcard4`, `jscontact`). Issue #1491 added the
+    decision-heavy code whose silent breakage is worst: auth middleware
+    (`middleware-auth`: `auth.go`, `admin.go`, `idempotency.go`,
+    `login_lockout.go`), the SSRF guard (`ssrf`: all of `httputil`), merge
+    (`services-merge`, `controllers-merge`), date/threshold arithmetic
+    (`schedule-math`: cadence, reminder, data-decay, occasion), and sync
+    reconcile (`sync-reconcile`: `contact_sync_service.go`;
+    `carddav-backend`, `caldav-backend`: the DAV backends). gremlins v0.6.0
+    mutates comparisons, arithmetic and increments only — it does not delete
+    an `if !ok` arm or an `AND user_id = ?` SQL fragment, so ownership
+    scoping stays covered by `routes/ownership_matrix_test.go`, not by a
+    mutation leg. The complete scope and each
     leg's threshold (with the baseline run it ratchets from) live in
     `backend/internal/mutationscope.Scopes`, generated into
     `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after

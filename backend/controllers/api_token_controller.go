@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -86,7 +87,7 @@ func CreateApiToken(c *gin.Context) {
 	if input.ExpiresInDays != nil {
 		expiryDays = *input.ExpiresInDays
 	}
-	expiresAt := time.Now().Add(time.Duration(expiryDays) * 24 * time.Hour)
+	expiresAt := clock.FromContext(c).Now().Add(time.Duration(expiryDays) * 24 * time.Hour)
 
 	scope := models.DefaultApiTokenScope
 	if input.Scope != "" {
@@ -142,7 +143,7 @@ func RevokeApiToken(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
+	now := clock.FromContext(c).Now()
 	if err := db.Model(&token).Update("revoked_at", now).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return
@@ -231,7 +232,7 @@ func RotateApiToken(c *gin.Context) {
 
 	// A rotated token gets a fresh default expiry window, not the old
 	// token's remaining time -- reissuing resets the countdown.
-	expiresAt := time.Now().Add(time.Duration(models.DefaultApiTokenExpiryDays) * 24 * time.Hour)
+	expiresAt := clock.FromContext(c).Now().Add(time.Duration(models.DefaultApiTokenExpiryDays) * 24 * time.Hour)
 
 	newToken := models.ApiToken{
 		UserID:    userID,
@@ -245,7 +246,7 @@ func RotateApiToken(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
+	now := clock.FromContext(c).Now()
 	if err := db.Model(&oldToken).Update("revoked_at", now).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return

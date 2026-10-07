@@ -11,6 +11,7 @@ import (
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -141,7 +142,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 			"error":          "Account temporarily locked",
 			"message":        "Too many failed login attempts. Please try again later.",
 			"retry_after":    remainingSecs,
-			"retry_after_at": time.Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
+			"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
 		})
 		context.Abort()
 		return
@@ -186,7 +187,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 				"error":          "Account temporarily locked",
 				"message":        "Too many failed login attempts. Please try again later.",
 				"retry_after":    lockoutSecs,
-				"retry_after_at": time.Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
+				"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
 			})
 			context.Abort()
 			return
@@ -399,8 +400,8 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	expires := services.PasswordResetExpiry()
-	requested := time.Now()
+	requested := clock.FromContext(context).Now()
+	expires := services.PasswordResetExpiryFrom(requested)
 
 	user.PasswordResetTokenHash = &hash
 	user.PasswordResetExpiresAt = &expires
@@ -488,7 +489,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	if user.PasswordResetExpiresAt == nil || time.Now().After(*user.PasswordResetExpiresAt) {
+	if user.PasswordResetExpiresAt == nil || clock.FromContext(context).Now().After(*user.PasswordResetExpiresAt) {
 		user.PasswordResetTokenHash = nil
 		user.PasswordResetExpiresAt = nil
 		user.PasswordResetRequestedAt = nil
@@ -849,30 +850,51 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 	// someone who learned the old password.
 	user.TokenVersion++
 
-	if err := db.Save(&user).Error; err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password change")
-		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
+	// Issue #1476: the password write and the two revocations are one unit.
+	// The DB-fault sweep found that a failing revocation was logged and
+	// swallowed — the request returned 200 "Password updated" with the new
+	// password stored but the device grants (which let biometric unlock mint a
+	// fresh session with no password) and session rows still standing. Now a
+	// revocation failure rolls the password change back and surfaces as a 500,
+	// so a changed password always means the old credentials are gone.
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&user).Error; err != nil {
+			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password change")
+			return apperrors.ErrDatabase("update user").WithError(err)
+		}
+
+		// Issue #722: a self-service password change also revokes every device
+		// grant. Unlike API tokens (deliberately left standing here — see the
+		// comment in ConfirmPasswordReset), a device grant is the thing that lets
+		// *biometric* unlock mint a fresh session without any password, so one
+		// that outlives a password change would let anyone who learned the old
+		// password keep an unlocked door. The caller re-enrolls on next login.
+		if _, err := services.RevokeAllDeviceGrants(tx, user.ID); err != nil {
+			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke device grants after password change")
+			return apperrors.ErrDatabase("revoke device grants").WithError(err)
+		}
+		// Issue #866: revoke the server-side session rows alongside the
+		// TokenVersion bump, so a password change signs out other devices at the
+		// row level too (the caller's own row is re-created by the re-issue below).
+		if _, err := services.RevokeAllSessions(tx, user.ID); err != nil {
+			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke sessions after password change")
+			return apperrors.ErrDatabase("revoke sessions").WithError(err)
+		}
+		return nil
+	})
+	if txErr != nil {
+		var appErr *apperrors.AppError
+		if errors.As(txErr, &appErr) {
+			apperrors.AbortWithError(context, appErr)
+		} else {
+			apperrors.AbortWithError(context, apperrors.ErrDatabase("change password").WithError(txErr)) // # pragma: no cover — the closure only returns *AppError; Transaction's own begin/commit failure is not injectable
+		}
 		return
 	}
 
-	// T18 audit: self-service password change (issue #381).
+	// T18 audit: self-service password change (issue #381). Recorded only once
+	// the transaction has committed, so a rolled-back change leaves no event.
 	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordChange, user.ID)
-
-	// Issue #722: a self-service password change also revokes every device
-	// grant. Unlike API tokens (deliberately left standing here — see the
-	// comment in ConfirmPasswordReset), a device grant is the thing that lets
-	// *biometric* unlock mint a fresh session without any password, so one
-	// that outlives a password change would let anyone who learned the old
-	// password keep an unlocked door. The caller re-enrolls on next login.
-	if _, err := services.RevokeAllDeviceGrants(db, user.ID); err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke device grants after password change") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
-	}
-	// Issue #866: revoke the server-side session rows alongside the
-	// TokenVersion bump, so a password change signs out other devices at the
-	// row level too (the caller's own row is re-created by the re-issue below).
-	if _, err := services.RevokeAllSessions(db, user.ID); err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke sessions after password change") // # pragma: no cover — best-effort post-success revocation; only a failing store trips this
-	}
 
 	// The bump above also invalidated the caller's own token. Re-issue it so
 	// changing your password signs out your *other* sessions rather than
@@ -1023,14 +1045,13 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 		}
 	}
 
-	// The three lines below are marked no-cover: soleAdminPromotionCandidates
-	// only fails on the same class of DB failure its own pragma-marked queries
-	// document, and this call site is not independently isolatable from those.
+	// A failing candidate lookup is reached by the DB-fault sweep
+	// (routes/db_fault_sweep_test.go, issue #1476).
 	candidates, err := soleAdminPromotionCandidates(db, userID)
 	if err != nil {
-		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement") // # pragma: no cover — see the comment above soleAdminPromotionCandidates's call
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))               // # pragma: no cover — see above
-		return                                                                                               // # pragma: no cover — see above
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))
+		return
 	}
 
 	var promoteUser *models.User

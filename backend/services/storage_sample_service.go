@@ -270,7 +270,7 @@ func persistStorageThreshold(ctx context.Context, db *gorm.DB, tier string) {
 		return
 	}
 	if len(rows) == 0 {
-		row := models.AlertState{ConditionKey: alertConditionKeyStorageThreshold, State: state, Since: time.Now().UTC(), Detail: detail}
+		row := models.AlertState{ConditionKey: alertConditionKeyStorageThreshold, State: state, Since: Now().UTC(), Detail: detail}
 		if err := db.WithContext(ctx).Create(&row).Error; err != nil {
 			logger.Ctx(ctx).Error().Err(err).Msg("storage threshold: failed to persist tier")
 		}
@@ -281,7 +281,7 @@ func persistStorageThreshold(ctx context.Context, db *gorm.DB, tier string) {
 	}
 	if err := db.WithContext(ctx).Model(&models.AlertState{}).
 		Where("condition_key = ?", alertConditionKeyStorageThreshold).
-		Updates(map[string]interface{}{"state": state, "detail": detail, "updated_at": time.Now().UTC()}).Error; err != nil {
+		Updates(map[string]interface{}{"state": state, "detail": detail, "updated_at": Now().UTC()}).Error; err != nil {
 		logger.Ctx(ctx).Error().Err(err).Msg("storage threshold: failed to persist tier")
 	}
 }
@@ -316,7 +316,7 @@ func RecordStorageSampleScheduled(db *gorm.DB, cfg config.Config) {
 // lock. Reuses the same sizing helpers as the point-in-time block (issue #388):
 // metrics.DatabaseBytes / metrics.FilesystemBytes / services.StorageUsage.
 func RecordStorageSample(ctx context.Context, db *gorm.DB, cfg config.Config) {
-	now := time.Now().UTC()
+	now := Now().UTC()
 
 	used, total := int64(0), int64(0)
 	if free, tot, ok := metrics.FilesystemBytes(filepath.Dir(cfg.DBPath)); ok {
@@ -380,7 +380,7 @@ func pruneStorageSamples(ctx context.Context, db *gorm.DB, cfg config.Config) {
 	if days <= 0 {
 		days = config.DefaultStorageSampleRetentionDays
 	}
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(days) * 24 * time.Hour)
 
 	result := db.WithContext(ctx).Exec("DELETE FROM storage_samples WHERE taken_at < ?", cutoff)
 	if result.Error != nil {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -675,7 +676,7 @@ func ExportData(c *gin.Context) {
 	}
 
 	// Generate filename with timestamp
-	filename := fmt.Sprintf("mycorrhizal-export-%s.csv", time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-export-%s.csv", clock.FromContext(c).Now().Format("2006-01-02"))
 
 	// Set headers for file download
 	c.Header("Content-Description", "File Transfer")
@@ -782,7 +783,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	}
 
 	// Generate filename with timestamp
-	filename := fmt.Sprintf("mycorrhizal-contacts-%s.vcf", time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-contacts-%s.vcf", clock.FromContext(c).Now().Format("2006-01-02"))
 
 	// Set headers for file download
 	c.Header("Content-Description", "File Transfer")
@@ -861,7 +862,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-contacts-%s.jscontact.json", time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-contacts-%s.jscontact.json", clock.FromContext(c).Now().Format("2006-01-02"))
 
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
@@ -1028,7 +1029,7 @@ func ExportAuditLog(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-audit-log-%s.csv", time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-audit-log-%s.csv", clock.FromContext(c).Now().Format("2006-01-02"))
 
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))

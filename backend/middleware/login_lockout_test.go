@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"mycorrhizal/internal/clock"
 )
 
 const (
@@ -156,16 +158,18 @@ func TestRecordLoginSuccess_ResetsGlobalCounter(t *testing.T) {
 // TestCleanup_PrunesGlobalAndKnownGoodIP: stale global entries and expired
 // known-good IPs are removed by the periodic sweep.
 func TestCleanup_PrunesGlobalAndKnownGoodIP(t *testing.T) {
+	clk := clock.NewFake(clockT0)
 	a := NewAccountRateLimiter(time.Millisecond)
+	a.SetClock(clk)
 	a.RecordLoginFailure(victim, ipA) // creates accounts + global entries
 	a.RecordLoginSuccess("other@example.com", ipB)
 
 	// Age the known-good entry past KnownGoodIPTTL.
 	a.mu.Lock()
-	a.knownGoodIPs["other@example.com"][ipB] = time.Now().Add(-KnownGoodIPTTL - time.Hour)
+	a.knownGoodIPs["other@example.com"][ipB] = clk.Now().Add(-KnownGoodIPTTL - time.Hour)
 	a.mu.Unlock()
 
-	time.Sleep(3 * time.Millisecond) // past the 1ms accounts/global TTL
+	clk.Advance(3 * time.Millisecond) // past the 1ms accounts/global TTL
 	a.CleanupStaleAccountEntries()
 
 	if a.GlobalEntryCount() != 0 {

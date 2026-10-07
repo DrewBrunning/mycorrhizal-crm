@@ -208,7 +208,7 @@ func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string,
 	if err != nil {
 		return fmt.Errorf("smtp dial: %w", err)
 	}
-	_ = conn.SetDeadline(time.Now().Add(smtpDeadline))
+	_ = conn.SetDeadline(time.Now().Add(smtpDeadline)) // rawtime:allow net.Conn deadlines are absolute wall-clock instants consumed by the OS, not by app logic
 
 	client, err := smtp.NewClient(conn, cfg.SMTPHost)
 	if err != nil {
@@ -241,7 +241,7 @@ func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to stri
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
-	_ = conn.SetDeadline(time.Now().Add(smtpDeadline))
+	_ = conn.SetDeadline(time.Now().Add(smtpDeadline)) // rawtime:allow net.Conn deadlines are absolute wall-clock instants consumed by the OS, not by app logic
 
 	client, err := smtp.NewClient(conn, cfg.SMTPHost)
 	if err != nil { // # pragma: no cover — smtp.NewClient only fails if the server never sends a 220 greeting; the dial+deadline already covers a non-responsive server

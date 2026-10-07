@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -73,7 +74,7 @@ func ValidateTOTP(secret, code string) bool {
 	if secret == "" || code == "" {
 		return false
 	}
-	valid, err := totp.ValidateCustom(code, secret, time.Now().UTC(), totp.ValidateOpts{
+	valid, err := totp.ValidateCustom(code, secret, Now().UTC(), totp.ValidateOpts{
 		Period:    30,
 		Skew:      1,
 		Digits:    otp.DigitsSix,
@@ -201,7 +202,7 @@ func Generate2FAChallengeToken(user models.User, cfg *config.Config) (string, er
 		"username":   user.Username,
 		"user_id":    user.ID,
 		"purpose":    twoFactorChallengePurpose,
-		"exp":        time.Now().Add(twoFactorChallengeTTL).Unix(),
+		"exp":        Now().Add(twoFactorChallengeTTL).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.JWTSecretKey))
@@ -214,12 +215,17 @@ func Parse2FAChallengeToken(raw string, cfg *config.Config) (userID uint, userna
 	if raw == "" || cfg == nil {
 		return 0, "", false
 	}
-	token, err := jwt.Parse(raw, func(token *jwt.Token) (any, error) {
+	// exp is checked against the injected clock (ValidateTimeClaims), not
+	// jwt's process-global TimeFunc (issue #1494).
+	token, err := jwt.NewParser(jwt.WithoutClaimsValidation()).Parse(raw, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(cfg.JWTSecretKey), nil
 	})
+	if err == nil {
+		err = middleware.ValidateTimeClaims(token.Claims, Now())
+	}
 	if err != nil || !token.Valid {
 		return 0, "", false
 	}

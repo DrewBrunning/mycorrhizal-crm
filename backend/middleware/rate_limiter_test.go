@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/clock"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
@@ -196,6 +198,8 @@ func TestAPIRateLimitMiddleware(t *testing.T) {
 func TestCleanupStaleEntries(t *testing.T) {
 	// Create limiter with very short TTL for testing
 	limiter := NewIPRateLimiterWithTTL(rate.Every(time.Second), 10, 50*time.Millisecond)
+	clk := clock.NewFake(clockT0)
+	limiter.SetClock(clk)
 
 	// Add some limiters
 	limiter.GetLimiter("192.168.1.1")
@@ -213,8 +217,8 @@ func TestCleanupStaleEntries(t *testing.T) {
 		t.Errorf("Expected 3 limiters after immediate cleanup, got %d", count)
 	}
 
-	// Wait for TTL to expire
-	time.Sleep(60 * time.Millisecond)
+	// Move past the TTL
+	clk.Advance(60 * time.Millisecond)
 
 	// Cleanup (all should be removed as they're past TTL)
 	limiter.CleanupStaleEntries()
@@ -229,6 +233,8 @@ func TestCleanupStaleEntries_PartiallyUsedLimiters(t *testing.T) {
 	// This test verifies the fix for the memory leak issue:
 	// Limiters that consumed tokens but then went inactive should be cleaned up
 	limiter := NewIPRateLimiterWithTTL(rate.Every(time.Second), 10, 50*time.Millisecond)
+	clk := clock.NewFake(clockT0)
+	limiter.SetClock(clk)
 
 	// Get a limiter and consume some tokens
 	rateLimiter := limiter.GetLimiter("192.168.1.1")
@@ -245,8 +251,8 @@ func TestCleanupStaleEntries_PartiallyUsedLimiters(t *testing.T) {
 		t.Errorf("Expected 1 limiter, got %d", count)
 	}
 
-	// Wait for TTL to expire
-	time.Sleep(60 * time.Millisecond)
+	// Move past the TTL
+	clk.Advance(60 * time.Millisecond)
 
 	// Cleanup should remove the entry even though tokens aren't at max
 	limiter.CleanupStaleEntries()
@@ -258,17 +264,19 @@ func TestCleanupStaleEntries_PartiallyUsedLimiters(t *testing.T) {
 
 func TestCleanupStaleEntries_ActiveLimitersSurvive(t *testing.T) {
 	limiter := NewIPRateLimiterWithTTL(rate.Every(time.Second), 10, 50*time.Millisecond)
+	clk := clock.NewFake(clockT0)
+	limiter.SetClock(clk)
 
 	// Add two IPs
 	limiter.GetLimiter("192.168.1.1")
 	limiter.GetLimiter("192.168.1.2")
 
 	// Wait a bit, but re-access one IP
-	time.Sleep(30 * time.Millisecond)
+	clk.Advance(30 * time.Millisecond)
 	limiter.GetLimiter("192.168.1.1") // Refresh access time for IP 1
 
 	// Wait a bit more so IP 2's TTL expires but IP 1's doesn't
-	time.Sleep(30 * time.Millisecond)
+	clk.Advance(30 * time.Millisecond)
 
 	limiter.CleanupStaleEntries()
 
@@ -464,6 +472,8 @@ func TestAccountRateLimiter_SeparateAccounts(t *testing.T) {
 
 func TestAccountRateLimiter_CleanupStaleEntries(t *testing.T) {
 	limiter := NewAccountRateLimiter(50 * time.Millisecond)
+	clk := clock.NewFake(clockT0)
+	limiter.SetClock(clk)
 
 	// Add some entries
 	limiter.RecordFailedAttempt("user1@example.com")
@@ -473,8 +483,8 @@ func TestAccountRateLimiter_CleanupStaleEntries(t *testing.T) {
 		t.Errorf("Expected 2 entries, got %d", limiter.EntryCount())
 	}
 
-	// Wait for TTL to expire
-	time.Sleep(60 * time.Millisecond)
+	// Move past the TTL
+	clk.Advance(60 * time.Millisecond)
 
 	limiter.CleanupStaleAccountEntries()
 
@@ -485,6 +495,8 @@ func TestAccountRateLimiter_CleanupStaleEntries(t *testing.T) {
 
 func TestAccountRateLimiter_CleanupPreservesLockedAccounts(t *testing.T) {
 	limiter := NewAccountRateLimiter(50 * time.Millisecond)
+	clk := clock.NewFake(clockT0)
+	limiter.SetClock(clk)
 
 	// Lock an account
 	for i := 0; i < MaxLoginAttempts; i++ {
@@ -494,18 +506,19 @@ func TestAccountRateLimiter_CleanupPreservesLockedAccounts(t *testing.T) {
 	// Add another entry that's not locked
 	limiter.RecordFailedAttempt("unlocked@example.com")
 
-	// Wait for TTL
-	time.Sleep(60 * time.Millisecond)
+	// Past the TTL, but well inside the BaseLockoutDuration lockout.
+	clk.Advance(60 * time.Millisecond)
 
-	// The locked account should still be preserved if lockout is active
+	// The locked account must be preserved while its lockout is active, and
+	// the idle (unlocked, past-TTL) one must be swept.
 	limiter.CleanupStaleAccountEntries()
 
-	// Check if locked account still exists (it should if lockout hasn't expired)
 	isLocked, _ := limiter.IsLocked("locked@example.com")
-
-	// If still locked, entry should exist
-	if isLocked && limiter.EntryCount() < 1 {
-		t.Error("Expected locked account entry to be preserved during lockout")
+	if !isLocked {
+		t.Fatal("Expected the account to still be locked 60ms into a 1 minute lockout")
+	}
+	if limiter.EntryCount() != 1 {
+		t.Errorf("Expected only the locked entry to survive cleanup, got %d entries", limiter.EntryCount())
 	}
 }
 

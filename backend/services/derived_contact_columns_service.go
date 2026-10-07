@@ -61,7 +61,7 @@ var derivedColumnsRebuildMu sync.Mutex
 // between pages, leaving every page it already committed correct.
 func RebuildDerivedContactColumns(ctx context.Context, db *gorm.DB) (DerivedColumnsRebuildStats, error) {
 	stats := DerivedColumnsRebuildStats{ColumnUpdates: map[string]int64{}}
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	var lastID uint
 
 	for {
@@ -145,7 +145,7 @@ func RebuildDerivedContactColumns(ctx context.Context, db *gorm.DB) (DerivedColu
 		Int64("contacts_scanned", stats.ContactsScanned).
 		Int64("contacts_updated", stats.ContactsUpdated).
 		Str("columns", summarizeColumnUpdates(stats.ColumnUpdates)).
-		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Int64("duration_ms", time.Since(start).Milliseconds()). // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		Msg("derived contact columns rebuilt")
 	return stats, nil
 }

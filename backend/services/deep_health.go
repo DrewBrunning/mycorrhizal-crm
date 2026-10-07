@@ -157,7 +157,7 @@ func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
 	deepHealthCache.mu.Lock()
 	defer deepHealthCache.mu.Unlock()
 
-	if !deepHealthCache.at.IsZero() && time.Since(deepHealthCache.at) < deepHealthCacheTTL {
+	if !deepHealthCache.at.IsZero() && Now().Sub(deepHealthCache.at) < deepHealthCacheTTL {
 		return deepHealthCache.val
 	}
 
@@ -174,7 +174,7 @@ func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
 		integrations: probeServerIntegrations(cfg),
 	}
 
-	deepHealthCache.at = time.Now()
+	deepHealthCache.at = Now()
 	deepHealthCache.val = val
 	return val
 }
@@ -202,7 +202,7 @@ func liveDatabaseReadCheck(db *gorm.DB) HealthCheckDetail {
 // operational_check_results under a reserved key (no user data, bounded) — so a
 // read-only or full disk is caught. Runs at most once per deepHealthCacheTTL.
 func dbWriteProbe(db *gorm.DB) HealthCheckDetail {
-	now := time.Now()
+	now := Now()
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var row models.OperationalCheckResult
 		e := tx.Where("check_name = ?", opCheckWriteProbe).First(&row).Error
@@ -265,7 +265,7 @@ func backgroundJobsCheck(db *gorm.DB) BackgroundJobsCheck {
 
 	out := BackgroundJobsCheck{Status: DeepStatusOK}
 	var stuck []string
-	now := time.Now()
+	now := Now()
 	for _, r := range rows {
 		lastRun := r.LastRunAt
 		js := BackgroundJobStatus{Name: r.JobName, LastRunAt: &lastRun, Locked: r.LockedAt != nil}
@@ -310,9 +310,9 @@ func persistedCheckDetail(db *gorm.DB, checkName string, enabled bool, intervalH
 			Reason: "the last run reported " + row.Status}
 	}
 	staleAfter := time.Duration(intervalHours) * time.Hour * 2
-	if staleAfter > 0 && time.Since(row.CheckedAt) > staleAfter {
+	if staleAfter > 0 && Now().Sub(row.CheckedAt) > staleAfter {
 		return HealthCheckDetail{Status: DeepStatusDegraded,
-			Reason: fmt.Sprintf("last ok result is stale (%s ago)", time.Since(row.CheckedAt).Round(time.Minute))}
+			Reason: fmt.Sprintf("last ok result is stale (%s ago)", Now().Sub(row.CheckedAt).Round(time.Minute))}
 	}
 	return HealthCheckDetail{Status: DeepStatusOK}
 }

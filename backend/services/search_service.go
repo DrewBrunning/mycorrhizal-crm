@@ -471,7 +471,7 @@ func RebuildSearchIndex(db *gorm.DB) error {
 // targets (docs/operations/search-index.md).
 func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 	var stats SearchIndexRebuildStats
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		// Issue #434/#498 failure-injection seam: an armed fault fails the
@@ -529,7 +529,7 @@ func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 		Int64("contacts", stats.Contacts).
 		Int64("notes", stats.Notes).
 		Int64("activities", stats.Activities).
-		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Int64("duration_ms", time.Since(start).Milliseconds()). // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		Msg("search index rebuilt")
 	return stats, nil
 }

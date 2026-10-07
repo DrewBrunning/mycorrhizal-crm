@@ -70,6 +70,23 @@ jobs:
             package: vcard4
           - scope: jscontact
             package: jscontact
+          # Issue #1491: auth/SSRF/merge/schedule/sync scopes.
+          - scope: middleware-auth
+            package: middleware
+          - scope: ssrf
+            package: httputil
+          - scope: services-merge
+            package: services
+          - scope: controllers-merge
+            package: controllers
+          - scope: schedule-math
+            package: services
+          - scope: sync-reconcile
+            package: services
+          - scope: carddav-backend
+            package: carddav
+          - scope: caldav-backend
+            package: caldav
 
     steps:
       - name: Checkout repository

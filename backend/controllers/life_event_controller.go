@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -176,7 +177,7 @@ func CreateLifeEvent(c *gin.Context) {
 
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
-	now := time.Now().In(loc)
+	now := clock.FromContext(c).Now().In(loc)
 
 	var event models.LifeEvent
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -370,7 +371,7 @@ func UpdateLifeEvent(c *gin.Context) {
 
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
-	now := time.Now().In(loc)
+	now := clock.FromContext(c).Now().In(loc)
 
 	event.EntityID = input.EntityID
 	event.Type = input.Type

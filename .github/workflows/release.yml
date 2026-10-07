@@ -19,7 +19,8 @@ name: Release
 #   1. `preflight` -- validates the version string and that it's unshipped
 #      (registered-but-untagged is an interrupted release, RESUMED per
 #      #1142; an existing tag is a hard refusal); verifies the checkout is
-#      the true tip of `ref`; runs citecheck + releasegatecheck.
+#      the true tip of `ref`; runs citecheck + releasegatecheck; enforces the
+#      manual-gate attestations (`attest_manual_gates`, #1486).
 #   2. `validate` -- calls the reusable release-validate.yml, which composes
 #      every mandatory + release-tier gate with real `needs:` -- the ONE
 #      definition of "is this commit releasable" (docker-publish.yml calls
@@ -93,6 +94,10 @@ on:
         required: false
         type: string
         default: ''
+      attest_manual_gates:
+        description: 'Manual gates (.github/manual-gates.json) this release attests, `;`-separated: `<id>` = the ledger holds a fresh attestation (verified: age, ancestry, watched paths), `<id>=skip:<reason>` = a recorded, reasoned skip. EVERY gate that applies to the release must be named, e.g. `android-local-mode-device` (issue #1486)'
+        required: true
+        type: string
       rerun_gates:
         description: 'Re-run ONLY these gates (comma list of release-validate.yml gate ids, or "failed") on the same commit; every other gate''s recorded success is carried from the prior battery''s ledger (issue #1487). Blank runs the full battery.'
         required: false
@@ -135,6 +140,8 @@ jobs:
       carried_ledger: ${{ steps.rerun.outputs.carried }}
       rerun_gates: ${{ steps.rerun.outputs.rerun_gates }}
       carried_from_runs: ${{ steps.rerun.outputs.carried_from_runs }}
+      # Issue #1486: the manual-gate decisions, recorded in release-readiness.json.
+      manual_gates: ${{ steps.manual.outputs.manual_gates }}
     steps:
       - name: Checkout the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -311,6 +318,35 @@ jobs:
       - name: Gate - release-gate registry is coherent
         working-directory: backend
         run: go run ./cmd/releasegatecheck
+
+      # Issue #1486: gates only a human can discharge (today: LocalOnlyModeE2eTest
+      # on a real arm64 device) have no CI job that can go red, so forgetting one
+      # was silent. Every gate in .github/manual-gates.json that applies to this
+      # release must be named in the `attest_manual_gates` input -- as a bare id,
+      # VERIFIED against the ledger (fresh, the attested commit an ancestor of the
+      # release commit, no watched path changed since), or `id=skip:<reason>`, a
+      # recorded skip. A missing, stale or unverifiable gate fails HERE, before any
+      # expensive gate runs; the decisions land in release-readiness.json
+      # (`manual_gates`). The input arrives through env, never interpolated.
+      - name: Gate - manual-gate attestations
+        id: manual
+        env:
+          ATTEST_MANUAL_GATES: ${{ inputs.attest_manual_gates }}
+          IS_RC: ${{ steps.validate.outputs.is_rc }}
+          RELEASE_COMMIT: ${{ steps.verify.outputs.release_commit }}
+          DISPATCHER: ${{ github.triggering_actor }}
+        run: |
+          set -eu
+          kind=final
+          if [ "$IS_RC" = "true" ]; then kind=rc; fi
+          commits="$(cd backend && go run ./cmd/manualgatecheck commits -ledger ../.github/manual-gates.json -root ..)"
+          # commits are 40-hex SHAs, one per line, so word splitting is intended
+          # shellcheck disable=SC2086
+          bash .github/scripts/manual-gate-facts.sh "$RELEASE_COMMIT" $commits > "${RUNNER_TEMP}/manual-gate-facts.json"
+          (cd backend && go run ./cmd/manualgatecheck check \
+            -ledger ../.github/manual-gates.json -root .. \
+            -attest "$ATTEST_MANUAL_GATES" -kind "$kind" -actor "$DISPATCHER" \
+            -facts "${RUNNER_TEMP}/manual-gate-facts.json" -out "$GITHUB_OUTPUT")
 
 
   # Job 2 (ADR 0021, #1162): the reusable workflow that composes the
@@ -589,6 +625,8 @@ jobs:
           RERUN_GATES: ${{ needs.preflight.outputs.rerun_gates }}
           SKIP_GATES: ${{ needs.preflight.outputs.skip_gates }}
           CARRIED_FROM_RUNS: ${{ needs.preflight.outputs.carried_from_runs }}
+          # Issue #1486: who attested/skipped which manual gate, and why.
+          MANUAL_GATES: ${{ needs.preflight.outputs.manual_gates }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -eu
@@ -620,8 +658,9 @@ jobs:
             --arg rerun_gates "$RERUN_GATES" \
             --arg skip_gates "$SKIP_GATES" \
             --arg carried_from_runs "$CARRIED_FROM_RUNS" \
+            --argjson manual_gates "${MANUAL_GATES:-[]}" \
             --slurpfile residual "$residual" \
-            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], validated_candidate:$candidate[0], gate_ledger:$ledger[0], gate_rerun:{rerun_gates:$rerun_gates, skip_gates:$skip_gates, carried_from_runs:$carried_from_runs}, ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
+            '{version:$version, source_commit:$source_commit, source_ref:$source_ref, rc:$rc, resumed:$resumed, resumed_from_run:$resumed_from_run, migration_version:$migration_version, workflow_run:$workflow_run, generated_at:$generated_at, fixture_registered:$fixture_registered, gates:$gates[0], validated_candidate:$candidate[0], gate_ledger:$ledger[0], gate_rerun:{rerun_gates:$rerun_gates, skip_gates:$skip_gates, carried_from_runs:$carried_from_runs}, manual_gates:$manual_gates, ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv, residual_risk:$residual[0]}' \
             | tee release-readiness.json
 
       - name: Upload release-readiness artifact
@@ -666,6 +705,7 @@ jobs:
           REF: ${{ inputs.ref }}
           RELEASE_COMMIT: ${{ env.RELEASE_COMMIT }}
           RESUME: ${{ env.RESUME }}
+          MANUAL_GATES: ${{ needs.preflight.outputs.manual_gates }}
         run: |
           set -eu
           {
@@ -687,6 +727,9 @@ jobs:
                 echo "- **resumed** an interrupted attempt: the fixture was already registered, so no new commit was made; the gates + release-tier suites were re-run at the checked-out tip before tagging"
               fi
             fi
+            echo
+            echo "Manual gates (issue #1486):"
+            printf '%s' "${MANUAL_GATES:-[]}" | jq -r '.[] | "- `\(.id)`: **\(.mode)** by \(.attested_by) (ledger: \(.ledger_state))" + (if .reason != "" then " -- " + .reason else "" end)'
             echo
             echo "\`docker-publish.yml\` is now building + signing the images and APK, minting SBOMs + SLSA provenance + SHA256SUMS, and creating the GitHub Release:"
             echo "<https://github.com/${GITHUB_REPOSITORY}/actions/workflows/docker-publish.yml>"

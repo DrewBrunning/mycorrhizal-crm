@@ -115,7 +115,7 @@ func (m *ImportSessionManager) CleanupExpired() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	now := time.Now()
+	now := Now()
 	for id, data := range m.sessions {
 		if now.After(data.session.ExpiresAt) {
 			delete(m.sessions, id)
@@ -137,7 +137,7 @@ func (m *ImportSessionManager) rememberConfirmed(sessionID string, userID uint, 
 	m.confirmedResults[sessionID] = confirmedImport{
 		userID:    userID,
 		result:    result,
-		expiresAt: time.Now().Add(sessionExpiry),
+		expiresAt: Now().Add(sessionExpiry),
 	}
 }
 
@@ -176,7 +176,7 @@ func (m *ImportSessionManager) replayConfirmed(sessionID string, userID uint) (m
 	if !exists || rec.userID != userID {
 		return models.ImportResult{}, false
 	}
-	if time.Now().After(rec.expiresAt) {
+	if Now().After(rec.expiresAt) {
 		m.mu.Lock()
 		delete(m.confirmedResults, sessionID)
 		m.mu.Unlock()
@@ -199,7 +199,7 @@ func (m *ImportSessionManager) get(sessionID string, userID uint) (*importSessio
 		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
 	}
 
-	if time.Now().After(sessionData.session.ExpiresAt) {
+	if Now().After(sessionData.session.ExpiresAt) {
 		m.mu.Lock()
 		delete(m.sessions, sessionID)
 		m.mu.Unlock()
@@ -228,7 +228,7 @@ func (m *ImportSessionManager) Delete(sessionID string) {
 func (m *ImportSessionManager) CountActive(userID uint) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	now := time.Now()
+	now := Now()
 	count := 0
 	for _, data := range m.sessions {
 		if data.session.UserID == userID && now.Before(data.session.ExpiresAt) {
@@ -241,7 +241,7 @@ func (m *ImportSessionManager) CountActive(userID uint) int {
 // CreateCSVSession stores a freshly parsed CSV upload and returns its session ID.
 func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, rows [][]string) string {
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 
 	m.mu.Lock()
 	m.sessions[sessionID] = &importSessionData{
@@ -294,7 +294,7 @@ func (m *ImportSessionManager) CreateRecordsSession(userID uint, vcfContacts []V
 // records (issue #651).
 func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview, importType, sourceFormat string) string {
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 
 	m.mu.Lock()
 	m.sessions[sessionID] = &importSessionData{
@@ -457,7 +457,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				contact.UserID = userID
 
 				if err := tx.Create(&contact).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to create contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "create contact", err))
 					result.Skipped++
 				} else {
 					// Turn the staged circle/tag names into real Circle/Tag +
@@ -465,7 +465,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					// flat Contact.Circles column that no UI surface reads any
 					// more, so imported groupings were invisible in the app.
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
 					result.Created++
 					if isVCFImport {
@@ -482,7 +482,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 
 				var existing models.Contact
 				if err := tx.First(&existing, preview.DuplicateMatch.ExistingContactID).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to fetch existing contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "fetch existing contact", err))
 					result.Skipped++
 					continue
 				}
@@ -504,11 +504,11 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				MergeImportedContact(&existing, incoming)
 
 				if err := tx.Save(&existing).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "update contact", err))
 					result.Skipped++
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
 					result.Updated++
 					if isVCFImport {
@@ -639,14 +639,14 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 				logImportedFieldPromotionNotes(log, notes)
 
 				if err := tx.Create(&contact).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to create contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "create contact", err))
 					result.Skipped++
 				} else {
 					// T3: materialize circles/tags into real entities. Also
 					// covers P1 contact sharing, which accepts a share through
 					// this exact method.
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
 					result.Created++
 					// Queue photo processing (either embedded data or URL)
@@ -669,7 +669,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 
 				var existing models.Contact
 				if err := tx.First(&existing, preview.DuplicateMatch.ExistingContactID).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to fetch existing contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "fetch existing contact", err))
 					result.Skipped++
 					continue
 				}
@@ -688,11 +688,11 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 				logImportedFieldPromotionNotes(log, notes)
 
 				if err := tx.Save(&existing).Error; err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
+					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "update contact", err))
 					result.Skipped++
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
 					result.Updated++
 					// Queue photo processing only if contact doesn't already have a photo

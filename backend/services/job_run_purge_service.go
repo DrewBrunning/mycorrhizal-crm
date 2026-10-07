@@ -32,7 +32,7 @@ func PurgeExpiredJobRuns(ctx context.Context, db *gorm.DB, cfg config.Config) er
 		// every row.
 		return nil
 	}
-	cutoff := time.Now().Add(-time.Duration(cfg.JobRunRetentionDays) * 24 * time.Hour)
+	cutoff := Now().Add(-time.Duration(cfg.JobRunRetentionDays) * 24 * time.Hour)
 
 	result := db.Exec("DELETE FROM job_runs WHERE started_at < ?", cutoff)
 	if result.Error != nil {

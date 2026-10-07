@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -55,7 +55,7 @@ func ExchangeDeviceGrant(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	if err := db.Model(&grant).Update("last_used_at", time.Now()).Error; err != nil {
+	if err := db.Model(&grant).Update("last_used_at", clock.FromContext(c).Now()).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update").WithError(err)) // # pragma: no cover — a single-row UPDATE failing after two successful reads needs a failing store
 		return
 	}
@@ -170,7 +170,7 @@ func RevokeDeviceGrant(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(&grant).Update("revoked_at", time.Now()).Error; err != nil {
+	if err := db.Model(&grant).Update("revoked_at", clock.FromContext(c).Now()).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update")) // # pragma: no cover — a single-row UPDATE failing after a successful read needs a failing store
 		return
 	}

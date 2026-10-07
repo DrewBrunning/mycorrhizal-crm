@@ -37,7 +37,12 @@ func HashPasswordResetToken(token string) string {
 
 // PasswordResetExpiry returns when a reset token should expire.
 func PasswordResetExpiry() time.Time {
-	return time.Now().Add(passwordResetTTL)
+	return PasswordResetExpiryFrom(Now())
+}
+
+// PasswordResetExpiryFrom returns when a reset token requested at now expires.
+func PasswordResetExpiryFrom(now time.Time) time.Time {
+	return now.Add(passwordResetTTL)
 }
 
 // SendPasswordResetEmail dispatches a reset email when Resend is configured.

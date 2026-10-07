@@ -318,6 +318,64 @@ jobs:
         working-directory: backend
         run: go test ./internal/schemafixture/ -run '^TestFullInstallUpgrade' -count=1 -v
 
+  # Issue #1489: data written by the REAL old release. Every other upgrade
+  # job here upgrades a schema dump populated by the CURRENT models (a
+  # transplant); this one boots the PUBLISHED image for each supported release,
+  # drives it through its public API (register, contacts, notes, activities,
+  # circles, tags, edges, life events, an attachment, merge, soft deletes, an
+  # audit undo, an API token, TOTP 2FA), stops it, upgrades the data directory
+  # it wrote with the current code (the real boot path: migrations + at-rest /
+  # NFC / audit-chain backfills), logs in again (password + the recovery code and
+  # TOTP secret the OLD release minted, the old API token as a bearer), re-reads
+  # everything through the current API and requires it to say what the old
+  # release's API said, then runs the doctor + audit-chain checks. A second half
+  # plays the supported rollback: restore the mandatory pre-migration backup,
+  # start the OLD image over it again, and compare once more.
+  # scripts/realrelease-leg.sh is the whole leg (runnable locally with docker);
+  # the matrix is derived from SupportedReleases like upgrade-matrix.
+  #
+  # Needs the network (pulls ghcr.io images), so it runs on main merge, nightly
+  # and on dispatch -- not per PR -- and is deliberately not a required context.
+  real-release-upgrade:
+    permissions:
+      contents: read
+    name: Real-release data ${{ matrix.entry }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [release-matrix]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include: ${{ fromJSON(needs.release-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # RELEASE via env, never inline (zizmor).
+      - name: Seed ${{ matrix.release }} through its published image, upgrade, roll back
+        env:
+          RELEASE: ${{ matrix.release }}
+        run: scripts/realrelease-leg.sh "$RELEASE" "$RUNNER_TEMP/realrelease-$RELEASE"
+
+      - name: Upload the leg's snapshots on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: realrelease-${{ matrix.release }}
+          path: |
+            ${{ runner.temp }}/realrelease-${{ matrix.release }}/out
+          retention-days: 7
+
   # Issue #495: every supported release's database, populated at 134x the
   # canonical pathological manifest (2,010 contacts incl. soft-delete +
   # vcard-uid-recreate traps at scale), migrates to current with every
