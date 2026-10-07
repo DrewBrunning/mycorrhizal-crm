@@ -55,9 +55,14 @@ test.describe('Date format selection (v0.4.1)', () => {
       await page.getByRole('option', { name: 'Canada (DD/MM/YYYY)' }).click();
 
       // Backend persisted the new format (the e2e can see it via the API).
-      const me = await request.get(`${API_BASE_URL}/users/me`);
-      const meBody = await me.json();
-      expect(meBody.date_format).toBe('ca');
+      // Poll: the PATCH is fired by the click's onChange and is not awaited by
+      // it; Firefox's scheduling made a one-shot read land before it committed
+      // (issue #1479).
+      await expect
+        .poll(
+          async () => (await (await request.get(`${API_BASE_URL}/users/me`)).json()).date_format,
+        )
+        .toBe('ca');
 
       // The contact page renders birthday + wedding anniversary in DD/MM/YYYY.
       await page.goto(`/contacts/${contact.ID}`);

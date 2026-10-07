@@ -370,6 +370,13 @@ async function interceptContactsList(page: Page): Promise<void> {
 // #1480): the fixture fails any test here that writes an account setting.
 test.use({ sharedUser: true });
 
+// Issue #1479: the committed baselines are Chromium-on-Linux renders; Firefox
+// rasterizes text/borders differently, so the nightly all-browsers run would
+// fail every screenshot for a reason that is not a regression.
+test.beforeEach(({ browserName }) => {
+  test.skip(browserName !== 'chromium', 'screenshot baselines are Chromium-on-Linux only');
+});
+
 test.describe('Visual regression (desktop)', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
 
