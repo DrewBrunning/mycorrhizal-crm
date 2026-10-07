@@ -274,24 +274,32 @@ Both sides share the same rules:
 - A **removed or renamed** file drops out silently (reported, not failed) —
   the baseline is simply stale for that entry until the next regeneration.
 
-**Two different questions (issue #1477).** The backend ratchet and the
-Codecov patch gate deliberately measure different things:
+**One profile, two readers (issue #1477).** The backend ratchet and the
+`codecov/patch/backend` status are both judged on the **cross-package** profile
+(`coverage-cross.out`), so both answer *"is any test exercising this line?"*
+rather than *"does this package's own suite cover it?"*:
 
-- The **ratchet** asks *"is any test exercising this file?"* Its profile is
-  one non-sharded, non-race `go test ./... -coverpkg=./...` run
-  (`unit-tests.yml`'s "Collect cross-package coverage" step in the `backend`
-  job, `schemafixture` excluded as in every leg), so a file is credited for a
-  test living in **any** package. Before this, the ratchet used the per-leg
-  profiles (no `-coverpkg`), which credit a file only for its own package's
-  tests: 25 files sat baselined at 0–50% while integration tests elsewhere
-  covered them fully (`services/api_token_service.go`: 0% → 100% via
-  `routes/session_lifecycle_test.go`). A file baselined at 0 could never
-  regress, and the baseline pointed reviewers at the wrong gaps. Files that
-  stay low in the cross-package baseline are the real backlog.
-- The **patch gate** (`codecov/patch/backend`) asks *"does this package's own
-  suite cover the changed line?"* The Codecov upload stays on the merged
-  per-package profile, so its semantics are unchanged — which still nudges
-  authors toward a same-package test for new lines.
+- The **ratchet** compares each file's statement coverage on that profile
+  against the committed baseline.
+- The **patch gate** reads the **same** profile: the `unit-tests.yml` Codecov
+  upload selects `coverage-cross.out` whenever it exists (i.e. on
+  `pull_request`) and falls back to the per-package merge on push/schedule,
+  where the expensive cross run does not happen. A line proven only by an
+  integration test in another package (the routes DB-fault sweep, a routes
+  service test) is now credited.
+
+Before the cross-package profile existed, both used the per-leg profiles (no
+`-coverpkg`), which credit a file only for its own package's tests: 25 files
+sat baselined at 0–50% while integration tests elsewhere covered them fully
+(`services/api_token_service.go`: 0% → 100% via
+`routes/session_lifecycle_test.go`), and the same-package semantics of the
+patch gate nudged authors toward a duplicate same-package test instead of the
+integration test that actually proves the behavior. A file baselined at 0 could
+never regress, and the baseline pointed reviewers at the wrong gaps; files that
+stay low in the cross-package baseline are the real backlog. The per-package
+merge still drives the **informational** `codecov/project` trend and the
+`Merge coverage profiles` step's hard failure when a PR leg produced no
+profile (issue #979).
 
 The cross-package run is heavy (whole suite, a few minutes, hundreds of MB raw
 before merge), which is why it runs **once**, on `pull_request`, in the `backend` gate

@@ -39,9 +39,9 @@ test.describe('Bulk contacts import in Data Settings', () => {
       await dialog.getByRole('button', { name: /resolve all as merged/i }).click();
       await dialog.getByRole('button', { name: /apply decisions/i }).click();
 
-      // Result step reports both created.
-      await expect(dialog.getByText('2 contacts created')).toBeVisible();
-      await dialog.getByRole('button', { name: /done/i }).click();
+      // The Data-settings wizard closes on a successful import
+      // (onImportComplete); clicking the transient result step's Done races
+      // that close transition.
       await expect(dialog).toBeHidden();
 
       // The imported contacts are real: findable via the API.
