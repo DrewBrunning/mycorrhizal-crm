@@ -20,7 +20,12 @@ registry, and workflow artifacts.
 `release/vX.Y.0` for an RC); `dry_run` (run every gate + regenerate the fixture, make no
 commit/push/tag — this is how the workflow is exercised without cutting a release, including
 against the last shipped version); `ack_asvs_current` (a reason to proceed when the ASVS/MASVS
-re-verification row is absent — recorded, not silent); `rerun_gates` / `rerun_from_run` (re-run only
+re-verification row is absent — recorded, not silent); `attest_manual_gates` (**required**: how the
+release addresses each human-only gate in `.github/manual-gates.json` — today the real-device
+`LocalOnlyModeE2eTest` run — either `<id>`, verified against the ledger's attestation for freshness,
+ancestry and unchanged watched paths, or `<id>=skip:<reason>`, a recorded skip; the decisions land in
+`release-readiness.json` as `manual_gates`; see
+[release-gates.md](../development/release-gates.md#manual-gates-issue-1486), issue #1486); `rerun_gates` / `rerun_from_run` (re-run only
 the named — or, with `failed`, only the not-green — composed gates against the same commit and carry
 every other gate's recorded success from the prior battery's ledger; see "Re-running a flaked gate"
 below, issue #1487). `release-dry-run.yml` dispatches it with
@@ -31,7 +36,9 @@ It, in three jobs (ADR 0021, [composition](../adrs/0021-release-validation-compo
 
 1. **`preflight`** — validates the version string, that no such tag exists (a registered-but-untagged
    version is *resumed*, issue #1142), that the checkout is the true tip of `ref`, and runs
-   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck`.
+   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck`, then enforces the manual-gate
+   attestations (`go run ./cmd/manualgatecheck check`, issue #1486) — a missing, stale or
+   unverifiable attestation fails here, naming the gate, before any expensive gate runs.
 2. **`validate`** — calls the reusable
    [`release-validate.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release-validate.yml),
    which **composes every gate** — the `release_gate: true` per-PR checks and the release-tier suites —

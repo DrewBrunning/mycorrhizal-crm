@@ -197,6 +197,14 @@ time-based rule.
     round-trips every migration
     up → down → up against a populated fixture, and gates on every migration
     shipping its `.down.sql`. A release without a dump fails CI.
+  - **Real-release data (issue #1489):** `internal/realrelease` +
+    `cmd/realrelease` + `scripts/realrelease-leg.sh` boot the *published image*
+    of each supported release, seed it through its public API, upgrade the data it
+    wrote with the current boot path, compare the API read-back, run
+    doctor/audit-chain, then roll back to the pre-migration backup with the old
+    image. The `real-release-upgrade` job in `migration-tests.yml` runs it per
+    `SupportedReleases` entry (main/nightly/dispatch; needs the network). See
+    `docs/upgrade-compatibility.md#how-upgrades-are-tested`.
 - **Must not be used for** current-schema application behavior (DB/integration)
   or deploy sequencing (release/install smoke).
 - **Runs via** `go test ./...` (the `database` package lands in the `rest` leg)
@@ -1028,7 +1036,18 @@ criterion.**
     data-integrity invariants (`atrest`), delete cascade (the two files
     `contact_controller.go`/`admin_user_controller.go` name in backend trap
     6), import ingestion (`services`' import-source files), and the three
-    exporters (`vcard3`, `vcard4`, `jscontact`). The complete scope and each
+    exporters (`vcard3`, `vcard4`, `jscontact`). Issue #1491 added the
+    decision-heavy code whose silent breakage is worst: auth middleware
+    (`middleware-auth`: `auth.go`, `admin.go`, `idempotency.go`,
+    `login_lockout.go`), the SSRF guard (`ssrf`: all of `httputil`), merge
+    (`services-merge`, `controllers-merge`), date/threshold arithmetic
+    (`schedule-math`: cadence, reminder, data-decay, occasion), and sync
+    reconcile (`sync-reconcile`: `contact_sync_service.go`;
+    `carddav-backend`, `caldav-backend`: the DAV backends). gremlins v0.6.0
+    mutates comparisons, arithmetic and increments only — it does not delete
+    an `if !ok` arm or an `AND user_id = ?` SQL fragment, so ownership
+    scoping stays covered by `routes/ownership_matrix_test.go`, not by a
+    mutation leg. The complete scope and each
     leg's threshold (with the baseline run it ratchets from) live in
     `backend/internal/mutationscope.Scopes`, generated into
     `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after

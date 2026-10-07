@@ -180,7 +180,16 @@ canonical checklist files), import ingestion (the import-source files in `servic
 exporters (`vcard3`, `vcard4`, `jscontact`). The scope and each leg's threshold live in
 `backend/internal/mutationscope.Scopes` — the single source for both go-mutation.yml's matrix and each
 leg's generated config (`backend/.gremlins/<scope>.yaml`, `cd backend && go run
-./cmd/genmutationscope` or `make gen-mutation-scope`). Delete-cascade and import scope narrow the much
+./cmd/genmutationscope` or `make gen-mutation-scope`). Issue #1491 added eight legs (fifteen total):
+`middleware-auth` (auth/admin/idempotency/login-lockout), `ssrf` (`httputil`), `services-merge` +
+`controllers-merge`, `schedule-math` (cadence/reminder/data-decay/occasion), `sync-reconcile`
+(`contact_sync_service.go`), `carddav-backend`, `caldav-backend` — all measured 100% efficacy at
+adoption (one survivor in `ssrf` killed by `httputil/bounds_test.go`); the legs are advisory, promotion
+of `middleware-auth`/`ssrf` to a release gate waits on 30 stable nightly days. gremlins v0.6.0 only mutates
+comparisons/arithmetic/increments — it will not delete an `if !ok` arm or a `user_id` SQL filter, so
+ownership scoping is guarded by the route ownership matrix, not a mutation leg. A new scope also needs
+its leg added by hand to go-mutation.yml's matrix (`TestWorkflowMatrixMatchesScopes` enforces parity).
+Delete-cascade and import scope narrow the much
 larger `controllers`/`services` packages down to specific files via a **generated** exclude-files list
 — RE2 (the regexp engine gremlins' `exclude-files` patterns use) has no negative lookahead to write
 "everything except these files" by hand, so the exclude list is mechanical and the drift test

@@ -310,13 +310,15 @@ new silent skip cannot hide behind this accepted one. Things that cover local mo
   finished artifact contains `lib/arm64-v8a/libmycorrhizal.so` (`base/lib/arm64-v8a/…` in the
   AAB); `verify-release-assets` re-checks the APK attached to the GitHub Release. The F-Droid
   FOSS build does not carry it yet (see [`fdroid.md`](fdroid.md)).
-- **Manual, per release candidate:** before dispatching `release.yml`, run
-  `./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest` on a real
-  **arm64 device** (the Pixel 8a runbook in [`README-developer.md`](../../README-developer.md)) with
-  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the
-  test skips) and confirm the test *ran* (not "skipped"). Do not install over the production package
-  `com.mycorrhizal.crm`; use a suffixed debug appId (e.g. a temporary `applicationIdSuffix`), because
-  `connectedAndroidTest` uninstalls the app it installed.
+- **Manual, per release candidate, now enforced and recorded (issue #1486):** run
+  `scripts/android-local-mode-device-test.sh --record` on a real **arm64 device** (the Pixel 8a runbook
+  in [`README-developer.md`](../../README-developer.md)). It wraps the Gradle command with
+  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` (otherwise no `libmycorrhizal.so` is packaged and the test
+  skips) and a suffixed debug appId (`-PMYCORRHIZAL_APP_ID_SUFFIX=.devicetest`, so
+  `connectedAndroidTest`'s uninstall can never touch the production package `com.mycorrhizal.crm` and its
+  data), refuses to call a *skip* a pass, and records the result in the manual-gate ledger. Dispatching
+  `release.yml` then requires `attest_manual_gates` to address the gate; see
+  [Manual gates](#manual-gates-issue-1486) below.
 
   Separately confirm the **release-built** APK contains the binary:
   `unzip -Z1 app-obtainium-release.apk | grep -x lib/arm64-v8a/libmycorrhizal.so` (the release
@@ -324,6 +326,71 @@ new silent skip cannot hide behind this accepted one. Things that cover local mo
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.
+
+## Manual gates (issue #1486)
+
+Some obligations only a human can discharge: today, running `LocalOnlyModeE2eTest` on a real arm64
+device (it skips on every CI emulator). A gate with no CI job has nothing that can go red, so before
+#1486 forgetting one was silent and `release-readiness.json` could not show whether it happened. The
+model mirrors `release.yml`'s `ack_*` inputs (skipping is a *recorded, reasoned act*), but the input is
+**required**, so doing nothing is not an option.
+
+**The ledger, `.github/manual-gates.json`** (script-appended; validated by
+`go run ./cmd/releasegatecheck` and `go run ./cmd/manualgatecheck validate`). One entry per gate:
+`id`, `applies_to` (`final` / `rc`), `max_age_days`, `watch_paths` (globs; `**` spans directories),
+`require_abi`, `evidence_marker`, `run` (the command that discharges it) and `attestations`. An
+attestation is a *verifiable* record, not a claim: the date, the **commit** the run exercised, the
+attester, the device and ABI, the JUnit `tests`/`skipped`/`failures` counts, the `junit_sha256` of the
+XML, and `evidence`, the retained XML under `.github/manual-gates-evidence/<id>/`. The format itself
+rejects an attestation with `tests < 1`, `skipped != 0`, `failures != 0` or the wrong ABI, and the checker
+re-hashes the retained XML, re-reads its counts and requires the gate's `evidence_marker` class name in
+it, so the ledger cannot say "ran, 0 skipped" about an XML that says otherwise. (An `evidence` that is a
+URL or a note is accepted as a note but proves nothing to the checker.)
+
+**Discharging it:** `scripts/android-local-mode-device-test.sh --record` (clean tracked tree required,
+because the attestation names `HEAD`), then commit the ledger change and the evidence XML
+(`git commit -s`) and get them onto the branch you will release from. The attestation records the
+commit it ran against, so landing it in a later commit does not invalidate it; only a change to a watched
+path does. `go run ./cmd/manualgatecheck status -kind rc -facts <file>` (facts from
+`.github/scripts/manual-gate-facts.sh <HEAD> $(go run ./cmd/manualgatecheck commits)`) answers "is my
+attestation still good?" locally.
+
+**Enforcing it: `release.yml`'s required `attest_manual_gates` input.** `;`-separated, one entry per
+gate that applies to the release (an RC and a final may differ via `applies_to`):
+
+| Entry | Meaning |
+|---|---|
+| `android-local-mode-device` | "the ledger holds a fresh attestation"; **verified**, not trusted |
+| `android-local-mode-device=skip:<reason>` | a recorded skip; the reason (at least 8 characters, no `;`) lands in the artifact |
+
+`preflight`'s unconditional `manual` step runs `go run ./cmd/manualgatecheck check` against the facts
+from `.github/scripts/manual-gate-facts.sh`, **before any expensive gate**. It fails, naming the gate,
+when a gate that applies is not addressed; an id is unknown or does not apply to this kind of release; or
+a bare-id attestation is **stale**: older than `max_age_days`, the attested commit is not an ancestor of
+the release commit (or unknown to the checkout), or a `watch_paths` file changed between the attested
+commit and the release commit (for the Android gate: `backend/embedded/**`, `backend/main.go`, the
+`LocalServer*` host/transport sources, `LocalOnlyModeE2eTest.kt`, `android/app/build.gradle.kts`). A skip
+never fails the check.
+
+**What a release records.** `release-readiness.json` gains `manual_gates`: per applicable gate the
+`mode` (`attested` / `skipped`), the `reason`, `attested_by` (the dispatching GitHub actor), the
+`ledger_state` (`fresh`, or why the ledger entry does not qualify, so a skip shows what was skipped),
+the ledger attestation relied on, and `checked_at`. It is attached to the GitHub Release like the rest
+of the record and echoed in the run summary. The weekly dry-run rehearsal (`release-dry-run.yml`) skips
+every final-release gate with a fixed reason: it cuts no release and has no device.
+
+**Pinned against rot.** `releaseworkflow.CheckManualGates` (part of `releasegatecheck`, per PR) fails if
+the input stops being required, the preflight step gains an `if:` or `continue-on-error`, drops the
+facts or the release kind, interpolates the free-text input into the script instead of `env:`, or the
+decisions stop reaching `release-readiness.json` or the dry-run dispatch.
+
+**Scope notes.** `promote-rc.yml` copies an RC and does not re-attest; the RC cut already recorded the
+decision for the same commit. The DAVx5 / Apple / Thunderbird rows of
+[`reference-client-matrix.md`](reference-client-matrix.md) and the section 8 ASVS pass are the other
+human-only obligations: the ASVS row already has its own gate (`release-obligations.sh`), and the
+reference-client rows can be added to the ledger as further `gates[]` entries without code changes. The
+longer-term replacement for the device run is a hosted real-device job (Firebase Test Lab arm64),
+tracked separately.
 
 ## The gates
 

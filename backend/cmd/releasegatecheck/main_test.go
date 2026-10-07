@@ -34,6 +34,8 @@ func copyRepoTree(t *testing.T) string {
 	// Issue #1487: the retry script and zapgate source CheckResilience reads.
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapScript), filepath.Join(dst, releaseworkflow.ZapScript))
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapgateSource), filepath.Join(dst, releaseworkflow.ZapgateSource))
+	// Issue #1486: the manual-gate attestation ledger.
+	copyFile(t, filepath.Join(root, releaseworkflow.ManualGatesFile), filepath.Join(dst, releaseworkflow.ManualGatesFile))
 
 	return dst
 }
@@ -335,4 +337,61 @@ func TestRunAtFailsWhenAGateLosesItsSkipCondition(t *testing.T) {
 	var out bytes.Buffer
 	assert.Equal(t, 1, runAt(&out, dst))
 	assert.Contains(t, out.String(), "gate `sast` must carry an `if:`")
+}
+
+// Issue #1486: the manual-gate ledger and its enforcement are release-gate
+// inputs; a missing file is a checker failure (exit 2), never a silent skip.
+func TestRunAtFailsOnMissingManualGateInputs(t *testing.T) {
+	for _, rel := range []string{
+		releaseworkflow.ManualGatesFile,
+		filepath.Join(workflowsDir, releaseworkflow.DryRunFile),
+	} {
+		t.Run(rel, func(t *testing.T) {
+			dst := copyRepoTree(t)
+			require.NoError(t, os.Remove(filepath.Join(dst, rel)))
+			var out bytes.Buffer
+			assert.Equal(t, 2, runAt(&out, dst))
+		})
+	}
+}
+
+func rewrite(t *testing.T, path, old, repl string) {
+	t.Helper()
+	b, err := os.ReadFile(path) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	require.Contains(t, string(b), old)
+	require.NoError(t, os.WriteFile(path, []byte(strings.Replace(string(b), old, repl, 1)), 0o644))
+}
+
+// A structurally broken ledger fails the gate (and skips the evidence check,
+// which would only repeat the noise).
+func TestRunAtFailsOnInvalidManualGateLedger(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), `"max_age_days": 14`, `"max_age_days": 0`)
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "max_age_days must be positive")
+}
+
+// An attestation claiming retained evidence that is not there is caught.
+func TestRunAtFailsOnMissingManualGateEvidence(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), `"attestations": []`, `"attestations": [{
+	  "date": "2026-10-01", "commit": "1111111111111111111111111111111111111111", "attester": "Drew",
+	  "evidence": ".github/manual-gates-evidence/android-local-mode-device/gone.xml", "device": "Pixel 8a",
+	  "abi": "arm64-v8a", "tests": 1, "skipped": 0, "failures": 0,
+	  "junit_sha256": "abababababababababababababababababababababababababababababababab"}]`)
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "does not exist")
+}
+
+// The #1486 regression gate end to end: a release.yml whose preflight stops
+// enforcing the attestations must turn releasegatecheck red.
+func TestRunAtFailsWhenReleaseStopsEnforcingManualGates(t *testing.T) {
+	dst := copyRepoTree(t)
+	rewrite(t, filepath.Join(dst, workflowsDir, "release.yml"), "go run ./cmd/manualgatecheck check", "go run ./cmd/manualgatecheck noop")
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "must enforce with `go run ./cmd/manualgatecheck check`")
 }
