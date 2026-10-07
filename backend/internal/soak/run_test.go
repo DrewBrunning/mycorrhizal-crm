@@ -114,6 +114,20 @@ func TestRun_WALStarvationIsDetected(t *testing.T) {
 	cfg.Duration = 25 * time.Second
 	cfg.Rate = 50
 	cfg.Faults = []Fault{FaultWAL}
+	// The committed 16 MiB ceiling is tuned for the 45 min run. Whether a
+	// 25 s run gets past it depends on how many writes the runner manages
+	// (~37 KiB of WAL per op measured: ~450 ops needed vs ~900-1250 achieved
+	// on an idle machine), so on a contended -race CI runner this "must fail"
+	// test could pass without detecting anything. Judge it against 8 MiB
+	// instead: still 2x the ~4 MiB auto-checkpoint size a healthy run levels
+	// off at (healthy max measured at 4.0-4.75 MiB), so only a starved
+	// checkpoint reaches it, and it needs only ~220 ops.
+	cfg.Budgets = DefaultBudgets()
+	for i := range cfg.Budgets {
+		if cfg.Budgets[i].Signal == SigWALBytes {
+			cfg.Budgets[i].Limit = 8 * mib
+		}
+	}
 	rep, err := Run(context.Background(), cfg)
 	require.NoError(t, err)
 	var wal Verdict
@@ -122,7 +136,9 @@ func TestRun_WALStarvationIsDetected(t *testing.T) {
 			wal = v
 		}
 	}
-	assert.True(t, wal.Breached, "a pinned reader must starve the checkpoint and trip the WAL ceiling: %s", rep.Markdown())
+	assert.True(t, wal.Breached,
+		"a pinned reader must starve the checkpoint and trip the WAL ceiling (observed %.2f MiB after %d ops; too few ops means the runner was too slow, not that detection broke): %s",
+		wal.Observed/mib, rep.Workload.Total, rep.Markdown())
 	assert.False(t, rep.OK())
 }
 
