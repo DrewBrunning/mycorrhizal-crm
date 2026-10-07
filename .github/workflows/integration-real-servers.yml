@@ -1,0 +1,189 @@
+name: Integration Real-Server Contract Tests
+
+# Issue #1490: the real-server complement to every hand-written httptest fake
+# in backend/services. A fake encodes OUR reading of an upstream API, so a
+# fake-only suite reproduces exactly the "shared misconception" failure
+# ADR-0003 names for formats: code and tests consistently, confidently wrong,
+# and green. Only the real server can contradict us. This workflow stands up
+# the actual servers -- Keycloak (OIDC, incl. RP-initiated logout + key
+# rotation), ntfy, Gotify, Mailpit (SMTP), Nextcloud (WebDAV), Paperless-ngx,
+# Immich and Seafile -- and runs backend/integrations/realserver against each.
+#
+# It found, on its first run, three bugs the fakes had agreed with: ntfy was
+# sent a JSON body at /<topic> (shown to users as raw JSON, no title);
+# Paperless "Test connection" probed GET /api/ (a 302) and /api/auth/me/ (not
+# an endpoint), so it could never succeed; and Paperless's file name was read
+# from a field the API does not serve.
+#
+# Shape follows carddav-e2e.yml: scheduled (nightly) and manual dispatch
+# always run; on PR/push it fires only when the `realservers` filter in
+# .github/filters.yaml matches (the clients, the suite, or its stacks) -- NOT
+# on every backend change. The fast fake suites stay the every-PR gate.
+#
+# Each test goes through internal/citest.SkipOrRequire and this workflow sets
+# MYCORRHIZAL_REQUIRE_REFERENCES=1, so a server that fails to provision FAILS
+# the job rather than turning the gate into a green no-op.
+# backend/integrations/realserver_coverage_test.go proves every MYCORRHIZAL_RS_*
+# variable the tests read is set here, and that every Registry() integration
+# has a real-server test or a reasoned exclusion.
+#
+# Images are pinned by digest in backend/integrations/realserver/stack/*.yml and
+# Dependabot's docker entry for that directory proposes bumps: a bump that
+# breaks the client IS the signal this suite exists to give. The release tier
+# (docs/development/release-gates.md) is this workflow's nightly run.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '20 4 * * *' # 04:20 UTC nightly, after the consolidated suite (03:45) and before the 05:30 reconciler
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: integration-real-servers-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264 pattern: path-gated checks -- see unit-tests.yml / carddav-e2e.yml.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      realservers: ${{ steps.filter.outputs.realservers }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      - name: Report gating decision
+        run: |
+          echo "realservers=$REALSERVERS_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          REALSERVERS_CHANGED: ${{ steps.filter.outputs.realservers }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  contract:
+    permissions:
+      contents: read
+    name: Contract tests against real ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    # Scheduled runs and manual dispatch always run (no diff to gate on);
+    # otherwise only when the clients, the suite or its stacks change.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || needs.changes.outputs.realservers == 'true' || needs.changes.outputs.workflows == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ntfy + Gotify + Mailpit (SMTP) + Keycloak (OIDC): the light set.
+          - name: ntfy, Gotify, SMTP and Keycloak (OIDC)
+            id: light
+            stack: docker-compose.light.yml
+            run: '^Test(Ntfy|Gotify|SMTP|OIDC)_'
+          - name: Paperless-ngx
+            id: paperless
+            stack: docker-compose.paperless.yml
+            run: '^TestPaperless_'
+          - name: Immich
+            id: immich
+            stack: docker-compose.immich.yml
+            run: '^TestImmich_'
+          - name: Seafile
+            id: seafile
+            stack: docker-compose.seafile.yml
+            run: '^TestSeafile_'
+          # Nextcloud has no compose stack: occ-based provisioning, shared with
+          # the CardDAV reference-server matrix.
+          - name: Nextcloud (WebDAV)
+            id: nextcloud
+            stack: ''
+            run: '^TestNextcloudWebDAV_'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Start the servers (compose stack)
+        if: matrix.stack != ''
+        working-directory: backend/integrations/realserver/stack
+        run: docker compose -f "$STACK_FILE" up -d
+        env:
+          STACK_FILE: ${{ matrix.stack }}
+
+      - name: Start Nextcloud
+        if: matrix.id == 'nextcloud'
+        run: .github/scripts/carddav-reference/provision-nextcloud.sh rs-nextcloud 18083
+
+      # The Go tests poll each server for readiness themselves (waitReady), so
+      # a slow first boot (Immich/Seafile/Keycloak) is bounded there, not here.
+      - name: Run the real-server contract suite
+        working-directory: backend
+        run: go test ./integrations/realserver/ -run "$RUN_PATTERN" -count=1 -v
+        env:
+          RUN_PATTERN: ${{ matrix.run }}
+          # A server that fails to provision must FAIL the leg, not skip it.
+          MYCORRHIZAL_REQUIRE_REFERENCES: '1'
+          MYCORRHIZAL_RS_NTFY_URL: http://127.0.0.1:18080
+          MYCORRHIZAL_RS_GOTIFY_URL: http://127.0.0.1:18081
+          MYCORRHIZAL_RS_GOTIFY_ADMIN_USER: admin
+          MYCORRHIZAL_RS_GOTIFY_ADMIN_PASSWORD: contract-admin-pass
+          MYCORRHIZAL_RS_OIDC_ISSUER: http://127.0.0.1:18082/realms/mycorrhizal
+          MYCORRHIZAL_RS_MAILPIT_API_URL: http://127.0.0.1:18087
+          MYCORRHIZAL_RS_MAILPIT_SMTP_ADDR: 127.0.0.1:18088
+          MYCORRHIZAL_RS_NEXTCLOUD_URL: http://127.0.0.1:18083
+          MYCORRHIZAL_RS_NEXTCLOUD_USER: syncuser
+          MYCORRHIZAL_RS_NEXTCLOUD_PASSWORD: SynCsecret-8f9a
+          MYCORRHIZAL_RS_PAPERLESS_URL: http://127.0.0.1:18084
+          MYCORRHIZAL_RS_PAPERLESS_ADMIN_USER: admin
+          MYCORRHIZAL_RS_PAPERLESS_ADMIN_PASSWORD: contract-admin-pass
+          MYCORRHIZAL_RS_IMMICH_URL: http://127.0.0.1:18085
+          MYCORRHIZAL_RS_SEAFILE_URL: http://127.0.0.1:18086
+          MYCORRHIZAL_RS_SEAFILE_ADMIN_EMAIL: admin@example.com
+          MYCORRHIZAL_RS_SEAFILE_ADMIN_PASSWORD: contract-admin-pass
+
+      - name: Show server logs on failure
+        if: failure()
+        working-directory: backend/integrations/realserver/stack
+        run: |
+          if [ -n "$STACK_FILE" ]; then docker compose -f "$STACK_FILE" logs --tail=200 || true; fi
+          docker logs rs-nextcloud 2>&1 | tail -100 || true
+        env:
+          STACK_FILE: ${{ matrix.stack }}
+
+      - name: Stop the servers
+        if: always()
+        working-directory: backend/integrations/realserver/stack
+        run: |
+          if [ -n "$STACK_FILE" ]; then docker compose -f "$STACK_FILE" down -v || true; fi
+          docker rm -f rs-nextcloud || true
+        env:
+          STACK_FILE: ${{ matrix.stack }}

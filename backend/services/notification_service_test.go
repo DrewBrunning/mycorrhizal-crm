@@ -208,7 +208,14 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the ntfy topic must receive exactly one POST")
-	assert.Equal(t, "/my-topic", fake.hits[0], "the POST must go to /{topic}")
+	assert.Equal(t, "/", fake.hits[0], "ntfy JSON publishing POSTs to the server root, never to /{topic}")
+	// ntfy's JSON publish API carries the topic in the body (issue #1490: the
+	// old POST-JSON-to-/{topic} shape made a real ntfy display the raw JSON).
+	var published map[string]string
+	require.NoError(t, json.Unmarshal([]byte(fake.lastBody()), &published))
+	assert.Equal(t, "my-topic", published["topic"])
+	assert.NotEmpty(t, published["title"])
+	assert.NotEmpty(t, published["message"])
 
 	var deliveries []models.NotificationDelivery
 	require.NoError(t, db.Where("reminder_id = ? AND channel = ?", reminder.ID, "ntfy").Find(&deliveries).Error)
@@ -229,7 +236,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: notification failed; Error sending notifications")
 	db := setupNotificationTestDB(t)
-	// The ntfy target is /{topic} = /my-topic; the gotify target is {url}/message.
+	// The ntfy target is the server root (JSON publishing); the gotify target is {url}/message.
 	fake := newFakeChannelServer(t, map[string]int{"/message": 500})
 	user := newNotificationUser(t, db, true, true, false, fake.URL(), fake.URL())
 	reminder := newDueReminder(t, db, user, "Isolate failures")
@@ -244,7 +251,7 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	// ntfy succeeded, gotify failed — both delivered independently.
 	var ntfyHits, gotifyHits int
 	for _, p := range fake.hits {
-		if strings.HasPrefix(p, "/my-topic") {
+		if p == "/" {
 			ntfyHits++
 		}
 		if strings.HasPrefix(p, "/message") {
@@ -270,7 +277,7 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 
 	ntfyHits, gotifyHits = 0, 0
 	for _, p := range fake.hits {
-		if strings.HasPrefix(p, "/my-topic") {
+		if p == "/" {
 			ntfyHits++
 		}
 		if strings.HasPrefix(p, "/message") {

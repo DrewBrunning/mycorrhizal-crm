@@ -516,14 +516,11 @@ export default function DataSettingsPage() {
       <ImportContactsDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImportComplete={() => {
-          // Refresh the history table, but do NOT close the dialog here: a
-          // successful import still has a result step (the created/updated/
-          // skipped summary) for the user to read and dismiss with Done.
-          // Closing from onImportComplete raced the Done click and tore the
-          // dialog out from under it (the T96 e2e flake); Done drives onClose.
-          void loadImportHistory();
-        }}
+        // Refresh the history but leave the dialog open: it shows its own
+        // result step (with the Done button) once an import creates or updates
+        // anything. Closing here raced that result step away before the user
+        // could read it (and made the e2e specs' Done click flaky).
+        onImportComplete={() => void loadImportHistory()}
       />
 
       <MonicaImportDialog
