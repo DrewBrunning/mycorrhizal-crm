@@ -13,7 +13,7 @@ import "time"
 // is not user-authored content with an undo button — it is a permanent,
 // deterministic fact, and deleting either contact sweeps its rows in
 // DeleteContact's cascade checklist (backend/controllers/contact_controller.go
-// deleteContactAssociations) and DeleteUser's sweep.
+// services.DeleteContactAssociations) and DeleteUser's sweep.
 //
 // GORM tag priorities mirror the migration's composite unique index column
 // order (user_id, uid_low, uid_high) exactly, so an AutoMigrate-derived schema

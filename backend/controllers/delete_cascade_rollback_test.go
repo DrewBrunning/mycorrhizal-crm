@@ -99,7 +99,7 @@ func TestDeleteUserCascade_RollsBackOnLateFailure(t *testing.T) {
 
 // TestDeleteContactCascade_RollsBackOnLateFailure is the DeleteContact
 // analogue of the test above: a forced failure on the final tx.Delete(&contact)
-// call (contact_controller.go's DeleteContact, after deleteContactAssociations
+// call (contact_controller.go's DeleteContact, after services.DeleteContactAssociations
 // has already run every earlier delete in the same transaction) must roll
 // back the whole cascade, not just leave the contact undeleted while its
 // associations are gone.

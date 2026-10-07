@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Issue #1471: the contact cascade (deleteContactAssociations, shared by
+// Issue #1471: the contact cascade (services.DeleteContactAssociations, shared by
 // DeleteContact, CommitContactMerge and the bulk delete) issues bulk
 // Where(...).Delete(&Model{}) calls whose model hooks fire on a zero-value
 // receiver. GORM's soft-delete clause sets DeletedAt on that receiver, so the

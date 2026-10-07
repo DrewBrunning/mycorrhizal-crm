@@ -76,7 +76,7 @@ type ContactMergeAssociationCounts struct {
 	FieldValues             int64 `json:"field_values"`
 	ContactSyncLinks        int64 `json:"contact_sync_links"` // discarded, not re-pointed
 
-	// T107: previously fell through deleteContactAssociations and were
+	// T107: previously fell through services.DeleteContactAssociations and were
 	// silently destroyed on every merge -- now all re-pointed (or, for
 	// CadencePolicies, adopted/resolved as a conflict). See
 	// services.RepointContactAssociations.

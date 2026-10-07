@@ -624,7 +624,7 @@ func populate(db *gorm.DB, m *Manifest, now time.Time) (*Dataset, error) {
 	}
 
 	// Phase B: cascade every soft-deleted contact's dependent rows exactly the
-	// way DeleteContact's deleteContactAssociations does — user-authored
+	// way DeleteContact's services.DeleteContactAssociations does — user-authored
 	// content is soft-deleted (the undo button), join/edge rows are hard
 	// deleted (the client re-pulls them). This is the realistic post-delete
 	// state the manifest's soft_deleted contacts exist to pin.
@@ -661,7 +661,7 @@ func createContact(db *gorm.DB, userID uint, entry ContactEntry, ds *Dataset, so
 	return contact, nil
 }
 
-// cascadeContact mirrors controllers.deleteContactAssociations for the entity
+// cascadeContact mirrors services.DeleteContactAssociations for the entity
 // types the manifest can create: soft-delete the user-authored content
 // (Note/LifeEvent/Preference/Gift/Attachment), hard-delete the join- and
 // edge-shaped rows (RelationshipEdge/HouseholdMember/CircleMember/ContactTag/
@@ -714,7 +714,7 @@ func cascadeContact(db *gorm.DB, userID uint, contact models.Contact) error {
 	// Cadence policy, data decay policy and occasion obligations are
 	// user-authored content (soft delete); reach-out suggestions and
 	// occasion-event attendee rows are system-generated / join-shaped (hard
-	// delete). Mirrors controllers.deleteContactAssociations for every entity
+	// delete). Mirrors services.DeleteContactAssociations for every entity
 	// the manifest can seed (data decay policies are not seeded yet; the sweep
 	// is here so the cascade doesn't silently skip them once they are).
 	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.CadencePolicy{}).Error; err != nil {

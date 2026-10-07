@@ -367,6 +367,7 @@
     "services/calendar_sync_service.go": 87.9,
     "services/capacity_preflight.go": 91.67,
     "services/clock.go": 100.0,
+    "services/contact_delete.go": 100,
     "services/contact_merge_service.go": 97.47,
     "services/contact_score_service.go": 96.5,
     "services/contact_share_purge_service.go": 100,
