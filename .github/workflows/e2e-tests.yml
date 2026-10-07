@@ -253,6 +253,16 @@ jobs:
           path: frontend/test-results/
           retention-days: 7
 
+      # Issue #1474: a green run can hide a misbehaving server (#1471 shipped
+      # 698 FK-failing audit WARN lines inside one). Fail on any warn/error
+      # server log line that is not in the reason-bearing allowlist
+      # (backend/cmd/logguard/allowlist.json). Checked before the load smoke tests, which hammer the server on purpose.
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          docker compose -f ../docker-compose.test.yml logs --no-log-prefix --no-color mycorrhizal | go run ./cmd/logguard
+
       # Issue #262: a short concurrent-write smoke test against the real
       # deployed artifact, not just the in-process pin
       # (database/concurrent_write_test.go). Runs after Playwright so the
@@ -425,6 +435,21 @@ jobs:
           name: test-results-prod-defaults
           path: frontend/test-results/
           retention-days: 7
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      # Issue #1474: a green run can hide a misbehaving server (#1471 shipped
+      # 698 FK-failing audit WARN lines inside one). Fail on any warn/error
+      # server log line that is not in the reason-bearing allowlist
+      # (backend/cmd/logguard/allowlist.json). Production-default config, so rate-limit rejections are in scope here.
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          docker compose -f ../docker-compose.test.yml -f ../docker-compose.prod-defaults.yml logs --no-log-prefix --no-color mycorrhizal | go run ./cmd/logguard
 
       - name: Show container logs on failure
         if: failure()

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ import (
 // setupUpcomingReminderTestDB opens a real migrated schema (CLAUDE.md backend
 // trap 1 — Reminder's columns must come from migration SQL, not AutoMigrate).
 func setupUpcomingReminderTestDB(t *testing.T) (*gorm.DB, models.User) {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
 	user := models.User{Username: "upcominguser", Password: "password123!A", Email: "upcoming@example.com"}

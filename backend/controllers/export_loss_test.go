@@ -12,6 +12,7 @@ import (
 	"mycorrhizal/correspondence"
 	"mycorrhizal/internal/canonicalfixture"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -135,6 +136,7 @@ func TestExportPreflight_UnknownSection(t *testing.T) {
 // (the milestone v0.6.2 export-failure contract, issue #532): a database
 // failure during preflight is identified, not swallowed.
 func TestExportPreflight_DBError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to fetch contacts for export preflight; Request error")
 	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 

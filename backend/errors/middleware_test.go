@@ -311,3 +311,31 @@ func TestLogError_EmitsExpectedFields(t *testing.T) {
 	assert.Contains(t, out, "Database save operation failed")
 	assert.Contains(t, out, `"table":"contacts"`)
 }
+
+// Issue #1474: a 4xx is the server correctly rejecting a request, so it must
+// not log at warn/error (cmd/logguard and logtest.Guard treat those as server
+// misbehaviour); a 5xx must still log at error.
+func TestLogError_LevelFollowsStatusClass(t *testing.T) {
+	old := logger.Logger
+	defer func() { logger.Logger = old }()
+	gin.SetMode(gin.TestMode)
+
+	for _, tc := range []struct {
+		name  string
+		err   *AppError
+		level string
+	}{
+		{"404 is info", ErrNotFound("contact"), `"level":"info"`},
+		{"409 is info", ErrAlreadyExists("contact"), `"level":"info"`},
+		{"500 is error", ErrDatabase("save"), `"level":"error"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			logger.Logger = zerolog.New(buf)
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+			LogError(c, tc.err)
+			assert.Contains(t, buf.String(), tc.level)
+		})
+	}
+}

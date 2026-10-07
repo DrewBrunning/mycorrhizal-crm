@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -26,6 +27,7 @@ func exportBundleOnce(t *testing.T, router http.Handler) *httptest.ResponseRecor
 // export limit on the real migrated schema: a bundle of exactly the limit is
 // served AND imports; one byte over is a structured 507 before any download.
 func TestExportAccountBundle_SizeCap_Boundary(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Account bundle exceeds the import size limit; export refused; Request error")
 	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
@@ -76,6 +78,7 @@ func TestExportAccountBundle_SizeCap_Boundary(t *testing.T) {
 // than the file, so this fails if the route cap ever drops back to the bare
 // file limit — the exact mismatch that dead-ended a maximal export.
 func TestMycorrhizalUpload_AtAndOverProductionLimit(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Mycorrhizal bundle upload rejected")
 	_, router := setupRouter(t)
 	registerMycorrhizalRoutes(router) // resets the session manager
 	router.POST("/limited/upload", middleware.BodySizeLimitMiddleware(services.MycorrhizalUploadBodyLimit), UploadMycorrhizalBundle)

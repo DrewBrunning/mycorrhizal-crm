@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -80,6 +81,7 @@ func TestOIDCNativeExchangeHandler_Success(t *testing.T) {
 }
 
 func TestOIDCNativeExchangeHandler_ValidationAndRejections(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC native exchange: PKCE verifier mismatch")
 	db, router := setupRouter(t)
 	cfg := exchangeTestConfig()
 	router.POST("/exchange",

@@ -210,6 +210,16 @@ jobs:
         env:
           DEPLOYSMOKE_BASE_URL: http://localhost:7300
 
+      # Issue #1474: a green run can hide a misbehaving server (#1471 shipped
+      # 698 FK-failing audit WARN lines inside one). Fail on any warn/error
+      # server log line that is not in the reason-bearing allowlist
+      # (backend/cmd/logguard/allowlist.json). Clean install via the documented path.
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          docker compose -f ../docker-compose.yml logs --no-log-prefix --no-color mycorrhizal | go run ./cmd/logguard
+
       - name: Assert a non-matching Origin is not granted CORS
         run: |
           set -euo pipefail

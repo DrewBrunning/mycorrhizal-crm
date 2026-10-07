@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -172,6 +173,7 @@ func TestTwoWay_LocalOnlyChangePushesWithIfMatch(t *testing.T) {
 // sync retries it, and the retry PUT targets the same remote object (same UID,
 // same If-Match ETag) — a retry cannot create a duplicate event.
 func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed")
 	db := setupCalendarSyncTestDB(t)
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
