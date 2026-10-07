@@ -74,7 +74,14 @@ echo "== $tag: upgrade in place with the current code, then read back"
   --out "$work/out/post-snapshot.json"
 
 echo "== $tag: rollback - restore the pre-migration backup, run the OLD image again"
-backup="$(ls "$work"/install/data/pre-migration/*.db | head -1)"
+# An already-current release (no pending migration) takes no pre-migration
+# backup by design (database.migrateFileWithPreBackup), so the rollback target
+# is the byte-copy of the data taken before the upgrade.
+backup="$(ls "$work"/install/data/pre-migration/*.db 2>/dev/null | head -1 || true)"
+if [ -z "$backup" ]; then
+  echo "no pre-migration backup (release already at the current schema); rolling back to the pre-upgrade copy"
+  backup="$work/original/data/mycorrhizal.db"
+fi
 rm -rf "$work/rollback"
 mkdir -p "$work/rollback/data"
 cp "$backup" "$work/rollback/data/mycorrhizal.db"
