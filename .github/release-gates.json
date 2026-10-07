@@ -298,6 +298,16 @@
       "criterion": "a full round trip against the real reference servers matches the divergence register (#496)."
     },
     {
+      "name": "Integration real-server contract",
+      "workflow": "integration-real-servers.yml",
+      "check_context": null,
+      "check_kind": "check_run",
+      "tier": "release-tier",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "our clients speak the real OIDC IdP, ntfy, Gotify, SMTP, Nextcloud, Paperless-ngx, Immich and Seafile protocols, not just our fakes of them (#1490)."
+    },
+    {
       "name": "Constrained-resource chaos",
       "workflow": "chaos-tests.yml",
       "check_context": null,

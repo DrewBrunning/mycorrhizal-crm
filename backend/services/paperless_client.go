@@ -115,18 +115,19 @@ func (e *PaperlessRequestError) Unwrap() error {
 type PaperlessDocument struct {
 	ID       int    `json:"id"`
 	Title    string `json:"title"`
-	FileName string `json:"file_name"`
+	FileName string `json:"original_file_name"`
 	// Created is the document's creation date (RFC 3339), Added the date it
 	// entered the archive. Both are dates Paperless renders without time.
 	Created string `json:"created"`
 	Added   string `json:"added"`
 }
 
-// PaperlessUser is the slice of GET /api/auth/me/ this client relies on —
-// used only by "Test connection" (L1) to confirm an API token resolves to a
-// real account.
+// PaperlessUser is the account a token resolves to, read from the "user"
+// object of GET /api/ui_settings/ — used only by "Test connection" (L1) to
+// confirm an API token resolves to a real account. The wire keys are `id` and
+// `username`; UserName keeps its Go name for callers.
 type PaperlessUser struct {
-	UserName string `json:"user_name"`
+	UserName string `json:"username"`
 	ID       int    `json:"id"`
 }
 
@@ -134,9 +135,14 @@ type PaperlessUser struct {
 // #155). It intentionally implements only the endpoints this integration
 // relies on:
 //
-//   - GET /api/               — reachability (Test Connection stage 1)
-//   - GET /api/auth/me/       — token validation (Test Connection stage 2)
-//   - GET /api/documents/     — browse/search documents to link (L1)
+//   - GET /api/documents/     — reachability + auth probe (Test Connection stage 1)
+//     and browse/search documents to link (L1)
+//   - GET /api/ui_settings/   — token owner (Test Connection stage 2)
+//
+// Issue #1490: the real-server contract test found that the original probes
+// were wrong against actual Paperless-ngx — GET /api/ answers 302 (to the
+// schema view) and /api/auth/me/ does not exist — so Test Connection could
+// never succeed. The hand-written fakes had encoded that misreading.
 //
 // "Pin what you rely on and fail gracefully": every parse is defensive, and
 // any unexpected response shape maps to ErrPaperlessInvalidData rather than a
@@ -244,12 +250,14 @@ func decodePaperlessJSON(resp *http.Response, out any) error {
 	return nil
 }
 
-// Ping checks basic reachability of the Paperless server (GET /api/),
-// independent of token validity. If a proxy or version gates the root on auth
-// anyway, an unauthorized response still surfaces as ErrPaperlessUnauthorized
-// so Test Connection can classify by sentinel, not by which call failed.
+// Ping probes reachability and the token with the cheapest authenticated read
+// (GET /api/documents/?page_size=1&fields=id). The API root is not usable for
+// this: real Paperless-ngx redirects GET /api/ to its schema view, and
+// redirects are never followed here (they would forward the credential). An
+// unauthorized response surfaces as ErrPaperlessUnauthorized so Test
+// Connection can classify by sentinel, not by which call failed.
 func (c *PaperlessClient) Ping() error {
-	resp, err := c.do("/api/")
+	resp, err := c.do("/api/documents/?page_size=1&fields=id")
 	if err != nil {
 		return err
 	}
@@ -257,18 +265,21 @@ func (c *PaperlessClient) Ping() error {
 	return nil
 }
 
-// GetMe resolves the token's owning account (GET /api/auth/me/) — used only to
-// validate a token (Test Connection's second stage).
+// GetMe resolves the token's owning account (GET /api/ui_settings/, whose
+// "user" object carries id + username) — used only to validate a token and
+// name the account in Test Connection's second stage.
 func (c *PaperlessClient) GetMe() (*PaperlessUser, error) {
-	resp, err := c.do("/api/auth/me/")
+	resp, err := c.do("/api/ui_settings/")
 	if err != nil {
 		return nil, err
 	}
-	var u PaperlessUser
-	if err := decodePaperlessJSON(resp, &u); err != nil {
+	var settings struct {
+		User PaperlessUser `json:"user"`
+	}
+	if err := decodePaperlessJSON(resp, &settings); err != nil {
 		return nil, err
 	}
-	return &u, nil
+	return &settings.User, nil
 }
 
 // GetDocument fetches one document by id (GET /api/documents/:id/). Used at
@@ -299,7 +310,7 @@ func (c *PaperlessClient) ListDocuments(query string) ([]PaperlessDocument, erro
 	page := 1
 	for page <= maxPaperlessSearchPages {
 		params := url.Values{}
-		params.Set("fields", "id,title,file_name,created,added")
+		params.Set("fields", "id,title,original_file_name,created,added")
 		params.Set("ordering", "-added")
 		params.Set("page_size", "100")
 		params.Set("page", strconv.Itoa(page))

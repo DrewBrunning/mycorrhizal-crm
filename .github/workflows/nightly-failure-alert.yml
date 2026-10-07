@@ -55,6 +55,7 @@ on:
       - Container Hardening (CIS)
       - Clean-install Smoke Test
       - Differential E2E (calcard)
+      - Integration Real-Server Contract Tests
       - Docker image build (cache-busted)
       - E2E Tests
       - Flake ledger
