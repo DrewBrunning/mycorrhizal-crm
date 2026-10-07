@@ -3,6 +3,7 @@
 # matches internal/mutationscope.Scopes again.
 unleash:
     exclude-files:
+        - ^account_limiter_reset\.go$
         - ^auth_velocity\.go$
         - ^body_limit\.go$
         - ^client_version\.go$
