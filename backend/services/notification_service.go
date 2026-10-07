@@ -230,10 +230,19 @@ func (ntfyNotificationSender) Enabled(db *gorm.DB, _ config.Config, user models.
 	return nc != nil && nc.NtfyURL != "" && nc.NtfyTopic != ""
 }
 
-// sendNtfyMessage posts a single ntfy message to the user's configured topic.
+// sendNtfyMessage publishes a single ntfy message to the user's configured
+// topic using ntfy's JSON publishing API: a POST to the server's base URL with
+// {"topic","title","message"} (https://docs.ntfy.sh/publish/#publish-as-json).
+//
+// It must NOT POST a JSON body to /{topic}: there ntfy treats the entire body
+// as the plain-text message, so the real server showed users a notification
+// whose text was the raw JSON object and which had no title. The fake ntfy the
+// unit tests used accepted either shape, so this shipped until the real-server
+// contract test (issue #1490, integrations/realserver) read the message back
+// from an actual ntfy.
 func sendNtfyMessage(cfg config.Config, nc *models.NotificationConfig, title, message string) error {
-	target := strings.TrimRight(nc.NtfyURL, "/") + "/" + url.PathEscape(nc.NtfyTopic)
-	payload, err := json.Marshal(map[string]string{"title": title, "message": message})
+	target := strings.TrimRight(nc.NtfyURL, "/") + "/"
+	payload, err := json.Marshal(map[string]string{"topic": nc.NtfyTopic, "title": title, "message": message})
 	if err != nil {
 		return err
 	}
