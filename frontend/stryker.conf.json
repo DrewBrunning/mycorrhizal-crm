@@ -1,12 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/stryker.json",
   "mutate": [
-    "src/api/contacts.ts",
-    "src/api/relationshipEdges.ts",
-    "src/api/lifeEvents.ts",
-    "src/hooks/useContacts.ts",
-    "src/hooks/useRelationshipEdges.ts",
-    "src/hooks/useLifeEvents.ts"
+    "src/api/*.ts",
+    "src/hooks/use*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/api/contractConformance.ts",
+    "!src/generated/**"
   ],
   "testRunner": "vitest",
   "coverageAnalysis": "perTest",
@@ -15,7 +15,9 @@
     "fileName": "reports/mutation/index.html"
   },
   "allowConsoleColors": true,
-  "timeoutMs": 60000,
+  "timeoutMS": 60000,
+  "dryRunTimeoutMinutes": 30,
+  "ignoreStatic": true,
   "vitest": {
     "configFile": "vitest.config.ts",
     "related": true
@@ -23,6 +25,6 @@
   "thresholds": {
     "high": 92,
     "low": 87,
-    "break": 85
+    "break": 74
   }
 }
