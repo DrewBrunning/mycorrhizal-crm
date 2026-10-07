@@ -718,7 +718,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps firefox
+        # chromium too: the `setup` project (auth.setup.ts, which `firefox`
+        # depends on) runs on the default Chromium engine.
+        run: npx playwright install --with-deps chromium firefox
 
       - name: Run Playwright Firefox smoke test
         working-directory: frontend
@@ -835,7 +837,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps firefox
+        # chromium too: the `setup` project (auth.setup.ts, which `firefox`
+        # depends on) runs on the default Chromium engine.
+        run: npx playwright install --with-deps chromium firefox
 
       - name: Run Playwright suite on Firefox
         working-directory: frontend
