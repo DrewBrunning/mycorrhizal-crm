@@ -6,6 +6,7 @@ import (
 	"errors"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -339,6 +340,7 @@ func TestListUsers_Pagination(t *testing.T) {
 }
 
 func TestListUsers_DatabaseError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to count users; Request error")
 	db, router := setupRouter(t)
 
 	sqlDB, err := db.DB()
@@ -1020,6 +1022,7 @@ func TestUpdateUser_InvalidID(t *testing.T) {
 }
 
 func TestUpdateUser_DuplicateUsername_Conflict(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to update user")
 	db, router := setupRouter(t)
 
 	require.NoError(t, db.Create(&models.User{Username: "taken", Email: "taken@example.com", Password: "password123"}).Error)
@@ -1321,6 +1324,7 @@ func TestTriggerReminders_Success(t *testing.T) {
 }
 
 func TestTriggerReminders_DatabaseError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: failed to persist job run; Failed to trigger reminder emails; Request error")
 	db, router := setupRouter(t)
 
 	sqlDB, err := db.DB()
@@ -1426,6 +1430,7 @@ func TestTriggerPurge(t *testing.T) {
 // job_runs row, instead of the endpoint always claiming "Purge completed" and
 // recording success.
 func TestTriggerPurge_FailureSurfaces(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: purge: failed to delete orphaned activity_contacts; purge: failed to clean up occasion attendees; purge: failed to clean up edge rows; ...")
 	db, router := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30, WebhookDeliveryRetentionDays: 30}

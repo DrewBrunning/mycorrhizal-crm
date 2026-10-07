@@ -40,14 +40,16 @@ func LoggingMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// Create log event
+		// Create log event. A 5xx is server misbehaviour and logs at error; a
+		// 4xx (a rejected request, a 404, a failed login) is the client's
+		// outcome, not a server fault, so it logs at info. This is the same
+		// "a correctly rejected request is not server misbehaviour" rule
+		// issue #1474 applied to errors.LogError and the validation
+		// middleware, extended to the access log so the warn/error log guard
+		// is not permanently red on the negative cases every E2E run drives.
 		event := logger.Logger.Info()
-
-		// Add level based on status code
 		if statusCode >= 500 {
 			event = logger.Logger.Error()
-		} else if statusCode >= 400 {
-			event = logger.Logger.Warn()
 		}
 
 		// Build log entry

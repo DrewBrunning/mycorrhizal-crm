@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/internal/scoring"
 	"mycorrhizal/models"
 
@@ -14,6 +15,7 @@ import (
 )
 
 func setupContactScoreTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	return dbtest.New(t)
 }
