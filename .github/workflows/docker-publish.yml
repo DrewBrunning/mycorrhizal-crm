@@ -720,7 +720,7 @@ jobs:
           exit 1
 
       - name: Upload APK cosign signature + certificate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apk-cosign-signature
           path: |
@@ -1143,7 +1143,7 @@ jobs:
             "sbom${SUFFIX}.cdx.json"
 
       - name: Upload image SBOM signatures
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom-signatures${{ matrix.suffix }}
           path: |
