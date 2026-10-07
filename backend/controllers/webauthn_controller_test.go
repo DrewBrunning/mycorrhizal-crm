@@ -45,6 +45,7 @@ type waEnv struct {
 func newWAEnv(t *testing.T) *waEnv {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
+	isolateAccountLimiter(t)
 	db := dbtest.New(t)
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24, FrontendURL: waTestOrigin}
 

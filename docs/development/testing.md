@@ -566,6 +566,41 @@ locally with `npx playwright test --project=webkit` (needs
 `npx playwright install --with-deps webkit` first); the `e2e-webkit-smoke` job
 in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
 
+### Firefox smoke + nightly full suite (issue #1479)
+
+Firefox is the engine most self-hosters on Linux run, and it already bit this
+project once (registering a service worker against the SPA-fallback
+`index.html` fails with "The operation is insecure"; see CLAUDE.md's
+`frontend-dev` note). `playwright.config.ts` therefore has a `firefox` project
+with two scopes:
+
+- **Every PR — smoke.** `frontend/e2e/firefoxSmoke.spec.ts`, run by the
+  `e2e-firefox-smoke` job (a parallel job on the same `docker-compose.test.yml`
+  stack as `e2e`, so it adds nothing to the critical path). Six flows where
+  engines disagree: login sets a `HttpOnly` + `SameSite=Strict` cookie that
+  script cannot read (and logout ends the session); contact create + edit in
+  the UI; a birthday rendered in the date format chosen in Settings;
+  service-worker registration on the **production build** (the script is served
+  as JavaScript and the registration survives a reload); the CSV export
+  download; logout. It authenticates as the per-worker user from #1480.
+- **Nightly — full suite.** With `E2E_ALL_BROWSERS=1` the `firefox` project's
+  `testMatch` widens to every spec the `chromium` project runs (still excluding
+  `sw-upgrade/`, which has its own config that already covers Firefox, and
+  `webkitSmoke`). Only the scheduled `e2e-firefox-full` job sets it, so the
+  per-PR path never pays for it; the scheduled run has zero retries, and
+  `nightly-failure-alert.yml` already watches `e2e-tests.yml`. A spec that only
+  makes sense on Chromium (screenshot baselines are Chromium-on-Linux only,
+  CDP-only APIs) opts out with
+  `test.skip(({ browserName }) => browserName !== 'chromium', '<reason>')`;
+  a genuine Firefox-only defect is `test.fixme` with a reason and a tracking
+  issue, never a silent skip.
+
+Run locally against the stack with `npx playwright install --with-deps firefox`
+once, then `npx playwright test --project=firefox` (smoke) or
+`E2E_ALL_BROWSERS=1 npx playwright test --project=firefox` (everything). The
+smoke leg's service-worker test is verified to fail when registration breaks
+(route `/service-worker.js` to HTML and the registration poll goes red).
+
 ## Release/install smoke (DEPLOY-01, issue #450)
 
 - **Responsible for** a clean install that proves the **workflow**, not the boot.
@@ -1200,6 +1235,36 @@ developer-specific state:
 - **Deterministic identities.** `global-setup.ts` seeds the `TEST_USER`; tests
   do not depend on local state or ordering (Playwright reuses a `storageState`
   captured in the `setup` project).
+
+### Order-dependence pass (issue #1492)
+
+CI otherwise runs tests in declaration order with `-count=1`, which hides a test that
+only passes because an earlier one left state behind (a package-level global, the
+process-wide metrics registry, a rate limiter) or that cannot run twice in one
+process. The nightly `schedule` run of `unit-tests.yml`'s `backend-tests` job
+therefore adds a second step, **Order-dependence pass (shuffle + count=2, nightly
+only)**, per leg: `go test <leg pkgs> -run <leg shard> -race -shuffle=on -count=2`.
+
+- **Zero retries.** A red pass is the signal; `nightly-failure-alert.yml` opens the
+  issue (`unit-tests.yml` is already a registered scheduled workflow, so
+  `nightlyalertcheck` needs no change).
+- **Reproducing.** `go test` prints `-test.shuffle <seed>`; the step copies the seed,
+  the leg's package list and its `-run` shard regex into the job summary. The
+  sharded legs (`controllers-1/-2`, `services-1/-2`) shuffle within their shard
+  only, so the seed alone does not reproduce — use all three:
+  `cd backend && go test <pkgs> -run '<shard>' -race -shuffle=<seed> -count=2`.
+- **Skipped leg.** `property` (rapid/largedata/contactgen) owns no cross-test state
+  and doubling its 8000-iteration nightly depth would blow the job timeout.
+  `RAPID_CHECKS`/`ADDRESS_PROPERTY_ITERATIONS` are pinned to 200 for this pass —
+  it probes ordering, not search depth.
+- **Fix at the source.** A new failure is fixed with a reset helper, a
+  `t.Cleanup` that restores the global, or injection (#1493) — never by pinning
+  order or `-p 1`. A test asserting on a process-global counter asserts the
+  **delta** across its own actions (see `sample` in `middleware/metrics_test.go`).
+- **Locally:** `cd backend && go test ./<pkg> -shuffle=on -count=2` (one package at
+  a time; the full tree is heavy).
+- **Follow-up (not done here):** after 30 clean nights, add `-shuffle=on` (single
+  count) to the per-PR run so the class stays closed.
 
 ## Bug disposition: a test that catches a bug owns it
 
