@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -926,6 +927,7 @@ func TestRelationshipEdgeDuplicate_DatabaseError(t *testing.T) {
 // non-duplicate path: when the INSERT itself fails for another reason the
 // error stays a 500 rather than being mislabelled a duplicate.
 func TestCreateRelationshipEdge_WriteErrorIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
@@ -951,6 +953,7 @@ func TestCreateRelationshipEdge_WriteErrorIs500(t *testing.T) {
 // TestUpdateRelationshipEdge_WriteErrorIs500 is the PUT counterpart of the
 // test above.
 func TestUpdateRelationshipEdge_WriteErrorIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 

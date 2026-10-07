@@ -2,6 +2,7 @@ package services
 
 import (
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/models"
@@ -12,6 +13,7 @@ import (
 )
 
 func setupHouseholdServiceTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)

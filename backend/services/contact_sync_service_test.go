@@ -8,6 +8,7 @@ import (
 	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +26,7 @@ import (
 )
 
 func setupContactSyncTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)
@@ -418,6 +420,7 @@ func TestSyncSubscriptionFallsBackToFullRefetch(t *testing.T) {
 }
 
 func TestSyncSubscriptionRecordsErrorOnUnauthorized(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -444,6 +447,7 @@ func TestSyncSubscriptionRecordsErrorOnUnauthorized(t *testing.T) {
 // incident_first_failure_at; the next success clears both and stamps
 // last_success_at.
 func TestSyncSubscriptionTracksConsecutiveFailuresAndRecovery(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: subscription sync failed")
 	var healthy atomic.Bool
 	const vcardText = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:ida-uid\r\nFN:Ida Tarbell\r\nN:Tarbell;Ida;;;\r\nEMAIL:ida@example.com\r\nEND:VCARD\r\n"
 

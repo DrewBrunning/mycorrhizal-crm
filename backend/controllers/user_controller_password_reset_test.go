@@ -9,6 +9,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/faults"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -87,6 +88,7 @@ func TestPasswordResetRequest_UnknownEmail_Baseline(t *testing.T) {
 }
 
 func TestPasswordResetRequest_KnownEmail_SendSucceeds_IdenticalToUnknown(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: No email channel configured; password reset email not sent")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	// No mail channel configured: SendPasswordResetEmail is a successful no-op.
@@ -103,6 +105,7 @@ func TestPasswordResetRequest_KnownEmail_SendSucceeds_IdenticalToUnknown(t *test
 }
 
 func TestPasswordResetRequest_KnownEmail_SendFails_IdenticalToUnknown(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Failed to send email via SMTP, Failed to send password reset email")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	faults.ArmError(faultEmailSendSeam, errors.New("injected smtp outage"))
@@ -128,6 +131,7 @@ func TestPasswordResetRequest_KnownEmail_SendFails_IdenticalToUnknown(t *testing
 }
 
 func TestPasswordResetRequest_KnownEmail_SaveFails_IdenticalToUnknown(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Failed to persist password reset token")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	db, do := resetHarness(t, &config.Config{})
@@ -149,6 +153,7 @@ func TestPasswordResetRequest_KnownEmail_SaveFails_IdenticalToUnknown(t *testing
 // A lookup error hits known and unknown emails identically (it happens before
 // the account is resolved), so it is not an oracle and stays a 5xx.
 func TestPasswordResetRequest_LookupFailure_UniformForKnownAndUnknown(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Failed to lookup user for password reset, Request error")
 	db, do := resetHarness(t, &config.Config{})
 	dbtest.HideTable(t, db, "users")
 

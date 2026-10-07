@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -96,6 +97,7 @@ func TestCreateActivity_MissingContactIsNotFound(t *testing.T) {
 }
 
 func TestCreateActivity_DatabaseError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Error saving activity to database; Request error")
 	db, _ := setupRouter(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)

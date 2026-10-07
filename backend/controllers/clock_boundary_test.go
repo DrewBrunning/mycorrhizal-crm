@@ -10,6 +10,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/clock"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -38,6 +39,7 @@ func withClock(router *gin.Engine, clk clock.Clock) {
 // The reset token is stamped, and expires, on the request clock: still
 // redeemable at exactly expires_at, rejected (and cleared) 1ns after.
 func TestPasswordReset_ExpiryBoundaryOnClock(t *testing.T) {
+	logtest.AllowWarnings(t, "no email channel is configured in this test, so the reset and password-changed notifications each log a warn")
 	cfg := config.Config{FrontendURL: "http://localhost:3000"}
 	db, router := setupRouter(t)
 	clk := clock.NewFake(ctrlT0)

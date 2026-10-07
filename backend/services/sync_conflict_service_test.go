@@ -5,6 +5,7 @@ import (
 
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/emersion/go-webdav/carddav"
@@ -363,6 +364,7 @@ func TestReconcileContactSyncMissingBaselineConcurrentEdit(t *testing.T) {
 // for the corrupt-baseline shape: an unparseable stored baseline also falls
 // back to the pre-fetch snapshot instead of silently dropping the edit.
 func TestReconcileContactSyncCorruptBaselineConcurrentEdit(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Sync conflict detection: unparseable synced-values baseline, using pre-sync self-baseline")
 	db := setupContactSyncTestDB(t)
 	cfg := contactSyncTestConfig()
 	user := createContactSyncTestUser(t, db)
@@ -798,6 +800,7 @@ func TestRestoreContactSyncConflict_UnknownFieldFails(t *testing.T) {
 // TestReconcileContactSyncMissingBaselineConcurrentEdit and the pre-fetch
 // capture tests.
 func TestRecordSyncConflicts_NoBaselineAndCorruptBaseline(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Sync conflict detection: unparseable synced-values baseline, using pre-sync self-baseline")
 	db := setupContactSyncTestDB(t)
 	cfg := contactSyncTestConfig()
 	user := createContactSyncTestUser(t, db)
