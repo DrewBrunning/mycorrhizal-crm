@@ -76,7 +76,7 @@ var Scopes = []Scope{
 	{
 		Name:           "controllers-delete-cascade",
 		PackageDir:     "controllers",
-		TargetFiles:    []string{"contact_controller.go", "admin_user_controller.go", "user_delete_cascade.go"},
+		TargetFiles:    []string{"admin_user_controller.go", "user_delete_cascade.go"},
 		Efficacy:       90,
 		MutantCoverage: 90,
 		Reason: "baseline 2026-09-15 (workers=4, timeout-coefficient=30, " +
@@ -92,7 +92,29 @@ var Scopes = []Scope{
 			"DeleteOwnAccount) and added that file here so the checklist " +
 			"this scope targets tracks where the mechanics actually " +
 			"live; a pure extraction with no behavior change, so the " +
-			"floor is carried forward rather than re-measured",
+			"floor is carried forward rather than re-measured. Issue #1495 " +
+			"moved the contact half of the checklist (contact_controller." +
+			"go's deleteContactAssociations) into services/contact_delete." +
+			"go behind a declarative registry, so contact_controller.go " +
+			"left this scope; its mutation coverage is the " +
+			"services-delete-cascade scope below",
+	},
+	{
+		Name:           "services-delete-cascade",
+		PackageDir:     "services",
+		TargetFiles:    []string{"contact_delete.go"},
+		Efficacy:       90,
+		MutantCoverage: 90,
+		Reason: "baseline 2026-10-06 (issue #1495, workers=4, timeout-" +
+			"coefficient=30, cold test cache — see CLAUDE.md's gremlins-" +
+			"timeout trap) on the contact delete-cascade registry runner " +
+			"(services/contact_delete.go, ADR 0035): 6 killed / 0 lived / " +
+			"0 not covered / 0 timed out (efficacy 100.0%, mcover 100.0%); " +
+			"floor set at 90 to match controllers-delete-cascade. Few " +
+			"mutants because the table list is data, not code — the " +
+			"registry's own content is pinned by the completeness, " +
+			"mode-vs-model and per-step failure tests, which mutation " +
+			"testing cannot see",
 	},
 	{
 		Name:       "services-import",

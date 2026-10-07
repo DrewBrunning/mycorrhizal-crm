@@ -368,7 +368,7 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 // RepointContactAssociations moves every association off loser onto keeper,
 // inside tx (must already be inside a db.Transaction). Does NOT touch
 // ContactSyncLink and does NOT delete the loser row itself -- both stay the
-// job of the shared deleteContactAssociations/tx.Delete(&loser) calls the
+// job of the shared DeleteContactAssociations/tx.Delete(&loser) calls the
 // controller makes right after this returns, so ContactSyncLink cleanup is
 // never duplicated and can never drift from DeleteContact's own behavior.
 // fvConflicts/resolutions apply the user's chosen value onto whichever
@@ -608,7 +608,7 @@ func RepointContactAssociations(
 	}
 
 	// Issue #1309: entity_id-keyed tables added after the original repoint
-	// list. Each was added to deleteContactAssociations but not here, so the
+	// list. Each was added to DeleteContactAssociations but not here, so the
 	// merge's defense-in-depth sweep destroyed (or revoked) the loser's rows
 	// instead of moving them. See repointLateEntityKeyedTables.
 	if err := repointLateEntityKeyedTables(tx, userID, keeper, loser); err != nil {

@@ -4,7 +4,7 @@ package controllers
 // delete_cascade_coverage_test.go.
 //
 // CommitContactMerge re-points the loser's associations
-// (services.RepointContactAssociations) and then runs deleteContactAssociations
+// (services.RepointContactAssociations) and then runs services.DeleteContactAssociations
 // as a defense-in-depth sweep. Any contact-keyed table the repoint forgets is
 // therefore silently destroyed (or revoked) on every merge — which shipped for
 // occasion_obligations, occasion_event_attendees and contact feeds, because each
@@ -98,7 +98,7 @@ var mergeCoverage = map[string]mergeClass{
 	"users":                             {disposition: mergeRepointed, keyCol: "self_contact_vcard_uid"},
 	// --- dropped by design ------------------------------------------------
 	"contact_sync_links": {disposition: mergeDroppedByDesign, keyCol: "contact_id", byID: true,
-		reason: "CardDAV href binding of the loser's own remote card; the keeper keeps its own link (deleted by deleteContactAssociations)"},
+		reason: "CardDAV href binding of the loser's own remote card; the keeper keeps its own link (deleted by services.DeleteContactAssociations)"},
 	"contact_sync_conflicts": {disposition: mergeDroppedByDesign, keyCol: "contact_id", byID: true,
 		reason: "pending review rows about the loser's remote card; nothing to review once the loser is gone"},
 	"dismissed_duplicate_pairs": {disposition: mergeDroppedByDesign, keyCol: "uid_low",

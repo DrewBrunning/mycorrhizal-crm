@@ -31,7 +31,7 @@ const (
 // PurgeExpiredContactShares (services/contact_share_purge_service.go, issue
 // #574) — matching the Reminder/Note/Activity hard-delete-on-account-removal
 // precedent there. It is NOT part of contact_controller.go's
-// deleteContactAssociations: Payload has no FK to contacts (it is a frozen
+// services.DeleteContactAssociations: Payload has no FK to contacts (it is a frozen
 // snapshot, not a live reference), so deleting the original Contact
 // correctly leaves an already-shared copy untouched.
 type ContactShare struct {

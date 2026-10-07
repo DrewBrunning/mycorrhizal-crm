@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 	"time"
 
@@ -216,12 +217,7 @@ func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, acti
 		// Per-contact transaction: the full DeleteContact cascade either
 		// completes for this contact or rolls back cleanly, so a mid-batch
 		// failure never leaves one contact half-cleaned (N5 trap).
-		return db.Transaction(func(tx *gorm.DB) error {
-			if err := deleteContactAssociations(tx, contact, userID, now); err != nil {
-				return err
-			}
-			return tx.Delete(&contact).Error
-		})
+		return services.DeleteContact(db, contact, userID, now)
 	}
 	return fmt.Errorf("unknown bulk action %q", action)
 }

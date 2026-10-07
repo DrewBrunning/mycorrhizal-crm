@@ -16,6 +16,7 @@ unleash:
         - ^calendar_controller\.go$
         - ^circle_controller\.go$
         - ^contact_address_controller\.go$
+        - ^contact_controller\.go$
         - ^contact_detail_controller\.go$
         - ^contact_map_controller\.go$
         - ^contact_merge_controller\.go$

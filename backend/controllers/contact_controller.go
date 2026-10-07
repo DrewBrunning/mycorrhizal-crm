@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -738,195 +737,6 @@ func UpdateContact(c *gin.Context) {
 	c.JSON(http.StatusOK, models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db))
 }
 
-// deleteContactAssociations removes every row that references contact via
-// Contact.VCardUID (or, for ContactSyncLink, Contact.ID) -- everything
-// DeleteContact must clean up except the contact row itself. Shared by
-// DeleteContact and CommitContactMerge (contact_merge_controller.go) so the
-// checklist can never drift between the two deletion paths as new
-// association types are added later (see CLAUDE.md's cascade-delete trap).
-// Must run inside an existing transaction (tx); does not delete contact
-// itself -- callers do that.
-func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint, now time.Time) error {
-	// **Ordering note:** reminders are deleted first because LifeEvent-
-	// linked reminders (life_event_id column) reference LifeEvents which
-	// are deleted further down. If the order changes, LifeEvent-owned
-	// reminders would survive the cascade and dangle. Keep reminders
-	// above LifeEvents.
-	// N9: notification delivery state is a hard-deleted accessory of its
-	// reminder, so it must be cleared alongside the reminders (which are
-	// soft-deleted here — the row stays, so the FK cascade never fires).
-	if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE contact_id = ? AND user_id = ?)", contact.ID, userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.Reminder{}).Error; err != nil {
-		return err
-	}
-
-	// Manually delete associated reminder completions
-	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ReminderCompletion{}).Error; err != nil {
-		return err
-	}
-
-	// Manually delete associated notes
-	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.Note{}).Error; err != nil {
-		return err
-	}
-	// Bulk soft deletes skip Note.AfterDelete (the hook fires on a zero-value
-	// model), so advance updated_at on the just-tombstoned notes explicitly —
-	// otherwise a T17 change-feed cursor stored before this delete would miss
-	// the tombstones forever. The contact's own tombstone (bumped by
-	// Contact.AfterDelete) already signals the cascade to a client; this keeps
-	// the notes feed itself convergent too.
-	if err := tx.Model(&models.Note{}).Unscoped().
-		Where("contact_id = ? AND user_id = ? AND deleted_at IS NOT NULL", contact.ID, userID).
-		UpdateColumn("updated_at", now).Error; err != nil {
-		return err
-	}
-
-	// Delete activity associations (many-to-many)
-	if err := tx.Exec("DELETE FROM activity_contacts WHERE contact_id = ? AND activity_id IN (SELECT id FROM activities WHERE user_id = ?)", contact.ID, userID).Error; err != nil {
-		return err
-	}
-
-	// Delete relationship-graph edges referencing this contact (source or target)
-	if err := tx.Where("(source_id = ? OR target_id = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.RelationshipEdge{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's household/circle memberships and tags (not the
-	// household/circle/tag containers themselves -- other contacts may still
-	// belong to them)
-	if err := tx.Where("member_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.HouseholdMember{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("member_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.CircleMember{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ContactTag{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's life events, preferences, and custom field values
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEvent{}).Error; err != nil {
-		return err
-	}
-	// Delete this contact's life-event-suggestion resolution memory (ADR 0023 —
-	// system-generated, join-shaped, hard delete; there is no candidate to
-	// remember a decision about once the contact is gone).
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEventSuggestionResolution{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Preference{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.FieldValue{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's pending reach-out suggestions (issue #177 —
-	// system-generated, hard delete; the companion reminder was already
-	// removed above by the contact_id-scoped Reminder delete).
-	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's conversation agenda items (user-authored content,
-	// soft delete — T21)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ConversationAgenda{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's gift records (user-authored content, soft delete —
-	// T20b)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Gift{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's cadence policy (user-authored content, soft
-	// delete — T19)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.CadencePolicy{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's data decay policy (user-authored content, soft
-	// delete — issue #352, docs/adrs/0027-data-decay.md)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's occasion obligations (user-authored content,
-	// soft delete — docs/adrs/0024-occasions.md, issue #387, ticket #1222)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.OccasionObligation{}).Error; err != nil {
-		return err
-	}
-
-	// Remove this contact from every occasion event's attendee list (join row,
-	// hard delete — docs/adrs/0026-occasions-events.md, issue #1228). The
-	// events themselves survive: another attendee may still be invited, and an
-	// event is not contact-scoped.
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
-		return err
-	}
-
-	// Delete CardDAV contact sync links (a genuine Contact.ID FK, unlike the
-	// VCardUID-based references above)
-	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ContactSyncLink{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's CardDAV sync conflicts (issue #395 —
-	// system-generated, hard delete; nothing left to review once the contact
-	// is gone).
-	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ContactSyncConflict{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's external integration links and enrichment events
-	// (T14 — both are keyed by Contact.VCardUID and hard-delete)
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ExternalIdentity{}).Error; err != nil {
-		return err
-	}
-	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ExternalActivity{}).Error; err != nil {
-		return err
-	}
-
-	// Delete this contact's attachments (N7 — user-authored content, soft
-	// delete; the on-disk files are removed by the caller after the
-	// transaction commits, see deleteContactPhotos' sibling below).
-	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Attachment{}).Error; err != nil {
-		return err
-	}
-
-	// users.self_contact_vcard_uid (T90): the user's "Me" pointer must not
-	// dangle on a soft-deleted row. If it pointed at this contact, clear it.
-	// In the merge path this is a no-op — RepointContactAssociations already
-	// moved the pointer to the keeper before deleteContactAssociations runs.
-	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, contact.VCardUID).
-		Update("self_contact_vcard_uid", nil).Error; err != nil {
-		return err
-	}
-
-	// Revoke this contact's private feed credentials (issue #382, ADR 0030
-	// decision 6). A feed is a copy of the person's data leaving the instance,
-	// so deleting the contact stops it. Revoked, not deleted: the row stays for
-	// the audit trail, and undo does NOT re-arm it -- re-creating a contact does
-	// not silently resume an export. Scoped to kind='contact' so the account's
-	// aggregate feeds are untouched.
-	if err := tx.Model(&models.Feed{}).
-		Where("user_id = ? AND kind = ? AND entity_id = ? AND revoked_at IS NULL", userID, models.FeedKindContact, contact.VCardUID).
-		Update("revoked_at", now).Error; err != nil {
-		return err // # pragma: no cover — DB failure only; the DeleteContact test covers the revocation itself
-	}
-
-	// T93: duplicate-pair dismissals naming this contact (either side of the
-	// ordered uid pair) — hard-delete, join-shaped.
-	if err := tx.Where("(uid_low = ? OR uid_high = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func DeleteContact(c *gin.Context) {
 	id, ok := requirePathUintID(c, "id")
 	if !ok {
@@ -964,20 +774,8 @@ func DeleteContact(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load contact attachments").WithError(err))
 		return
 	}
-	err := db.Transaction(func(tx *gorm.DB) error {
-		if err := deleteContactAssociations(tx, contact, userID, clock.FromContext(c).Now()); err != nil {
-			return err
-		}
-
-		// Finally, delete the contact
-		if err := tx.Delete(&contact).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
+	// The cascade checklist is services.ContactCascadeRegistry (ADR 0035).
+	if err := services.DeleteContact(db, contact, userID, clock.FromContext(c).Now()); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete contact and associated data").WithError(err))
 		return
 	}
