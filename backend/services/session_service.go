@@ -39,7 +39,7 @@ func CreateSession(db *gorm.DB, userID uint, cfg *config.Config, userAgent, ip s
 	}
 	id := base64.RawURLEncoding.EncodeToString(raw)
 
-	now := time.Now()
+	now := Now()
 	session := models.Session{
 		ID:         id,
 		UserID:     userID,
@@ -78,7 +78,7 @@ func RevokeSession(db *gorm.DB, sid string) error {
 	}
 	return db.Model(&models.Session{}).
 		Where("id = ? AND revoked_at IS NULL", sid).
-		Update("revoked_at", time.Now()).Error
+		Update("revoked_at", Now()).Error
 }
 
 // RevokeAllSessions revokes every currently-active session for a user and
@@ -90,7 +90,7 @@ func RevokeSession(db *gorm.DB, sid string) error {
 func RevokeAllSessions(db *gorm.DB, userID uint) (int64, error) {
 	result := db.Model(&models.Session{}).
 		Where("user_id = ? AND revoked_at IS NULL", userID).
-		Update("revoked_at", time.Now())
+		Update("revoked_at", Now())
 	return result.RowsAffected, result.Error
 }
 
@@ -103,7 +103,7 @@ func RevokeAllSessions(db *gorm.DB, userID uint) (int64, error) {
 // a failing purge as `failed` instead of advancing last_run_at as success
 // (issue #975).
 func PurgeExpiredSessions(db *gorm.DB) error {
-	now := time.Now()
+	now := Now()
 	result := db.Exec(
 		"DELETE FROM sessions WHERE expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?)",
 		now, now.Add(-sessionRevokedGrace),

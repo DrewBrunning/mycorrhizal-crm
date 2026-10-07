@@ -5,6 +5,7 @@ import (
 	"mycorrhizal/carddav"
 	"mycorrhizal/config"
 	"mycorrhizal/controllers"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -14,7 +15,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// clockMiddleware installs the production system clock on the request context
+// unless a clock (a test's clock.Fake) is already there (issue #1494).
+func clockMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clock.InstallIfAbsent(c, clock.System{})
+		c.Next()
+	}
+}
+
 func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcProvider *services.OIDCProvider) {
+
+	// Injectable clock (issue #1494): every handler/middleware reads "now"
+	// via clock.FromContext. The production default is the system clock; a
+	// test that pre-installs a clock.Fake on the router (router.Use before
+	// RegisterRoutes) keeps it, since InstallIfAbsent never overwrites.
+	router.Use(clockMiddleware())
 
 	// Health surface (no versioning, standard practice; all unauthenticated,
 	// see health_controller.go for the live/ready/deep split — issue #421).

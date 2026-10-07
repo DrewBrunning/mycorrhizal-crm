@@ -137,6 +137,9 @@ promotion now enforces them (issue #1195).
   ASVS §10 row and the per-release adversarial delta — against the RC commit,
   both from the shared `.github/scripts/release-obligations.sh`; a failure
   aborts with the final tag unpushed (issue #1195);
+- it does **not** re-attest the manual gates (`.github/manual-gates.json`, issue #1486): the RC cut
+  already recorded each gate's decision (`manual_gates` in the RC's `release-readiness.json`) for the
+  same commit that is being promoted;
 - the three container images are re-tagged **by digest**
   (`docker buildx imagetools create`), so `ghcr.io/…:1.0.0` and `ghcr.io/…:1.0.0-rc.N` resolve
   to byte-identical manifests, plus an additional `cosign` signature carrying the

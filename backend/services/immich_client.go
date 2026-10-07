@@ -626,5 +626,5 @@ func assetOccurredAt(a *ImmichAsset) time.Time {
 			return t
 		}
 	}
-	return time.Now()
+	return Now()
 }

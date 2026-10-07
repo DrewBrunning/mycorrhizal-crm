@@ -1,0 +1,35 @@
+{
+  "realm": "mycorrhizal",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 600,
+  "clients": [
+    {
+      "clientId": "mycorrhizal-test",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "mycorrhizal-test-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://127.0.0.1:5173/api/v1/auth/oidc/callback"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:5173/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "oidcuser",
+      "enabled": true,
+      "email": "oidc-user@example.com",
+      "emailVerified": true,
+      "firstName": "Oidc",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "contract-user-pass", "temporary": false }]
+    }
+  ]
+}

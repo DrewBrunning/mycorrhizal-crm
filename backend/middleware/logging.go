@@ -11,7 +11,7 @@ import (
 func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Start timer
-		start := time.Now()
+		start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		// Path and query are user-controlled; sanitize control characters so a
 		// crafted request cannot inject forged lines into the log stream, and
 		// redact sensitive query values (e.g. the OIDC authorization code) so
@@ -23,7 +23,7 @@ func LoggingMiddleware() gin.HandlerFunc {
 		c.Next()
 
 		// Calculate request duration
-		duration := time.Since(start)
+		duration := time.Since(start) // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 		// Get status code
 		statusCode := c.Writer.Status()

@@ -37,7 +37,7 @@ func (a *AccountRateLimiter) IsLoginLocked(identifier, ip string) (bool, int) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	now := time.Now()
+	now := a.now()
 	locked, secs := lockedForLocked(a.accounts, LoginKey(identifier, ip), now)
 
 	if gLocked, gSecs := lockedForLocked(a.global, identifier, now); gLocked && !a.knownGoodIPLocked(identifier, ip, now) {
@@ -84,7 +84,7 @@ func (a *AccountRateLimiter) RecordLoginFailure(identifier, ip string) (bool, in
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	now := time.Now()
+	now := a.now()
 	pairLocked, pairSecs := recordExpBackoffLocked(a.accounts, LoginKey(identifier, ip), now)
 	a.recordGlobalFailureLocked(identifier, now)
 	// Feed the instance-wide velocity signal (issue #940). One failure is
@@ -123,7 +123,7 @@ func (a *AccountRateLimiter) RecordLoginSuccess(identifier, ip string) {
 		ips = make(map[string]time.Time)
 		a.knownGoodIPs[identifier] = ips
 	}
-	now := time.Now()
+	now := a.now()
 	ips[ip] = now
 	// The source is also known-good instance-wide, so the spray throttle
 	// (issue #940) lets it through even for a different identifier.

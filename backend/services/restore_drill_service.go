@@ -260,9 +260,9 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 		}
 	}()
 
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	ok, detail, err := runRestoreDrill(db, cfg)
-	durMS := time.Since(start).Milliseconds()
+	durMS := time.Since(start).Milliseconds() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	if err != nil {
 		logger.Ctx(ctx).Error().Err(err).

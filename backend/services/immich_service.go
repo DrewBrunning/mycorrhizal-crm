@@ -416,7 +416,7 @@ func SyncImmichForUser(db *gorm.DB, cfg config.Config, userID uint) error {
 		return err
 	}
 
-	now := time.Now().UTC()
+	now := Now().UTC()
 	var firstErr error
 
 	for i := range identities {
@@ -514,7 +514,7 @@ func recordImmichSyncResult(db *gorm.DB, userID uint, ok bool, syncErr error) {
 			errMsg = syncErr.Error()
 		}
 	}
-	now := time.Now().UTC()
+	now := Now().UTC()
 	update := map[string]interface{}{
 		"last_synced_at":   &now,
 		"last_sync_status": status,

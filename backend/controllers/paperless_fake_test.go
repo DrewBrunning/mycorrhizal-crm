@@ -80,12 +80,12 @@ func (f *fakePaperlessController) handle(w http.ResponseWriter, r *http.Request)
 	}
 
 	switch {
-	case r.URL.Path == "/api/auth/me/":
+	case r.URL.Path == "/api/ui_settings/":
 		me := f.Me
 		if me == nil {
-			me = map[string]any{"user_name": "admin", "id": 1}
+			me = map[string]any{"username": "admin", "id": 1}
 		}
-		writeControllerJSON(w, me)
+		writeControllerJSON(w, map[string]any{"user": me, "settings": map[string]any{}})
 	case r.URL.Path == "/api/documents/":
 		f.handleListDocuments(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/documents/") && strings.HasSuffix(r.URL.Path, "/"):
@@ -100,7 +100,7 @@ func (f *fakePaperlessController) handle(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		writeControllerJSON(w, map[string]any{"id": id, "title": doc.Title, "file_name": doc.FileName, "created": doc.Created, "added": doc.Added})
+		writeControllerJSON(w, map[string]any{"id": id, "title": doc.Title, "original_file_name": doc.FileName, "created": doc.Created, "added": doc.Added})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -132,7 +132,7 @@ func (f *fakePaperlessController) handleListDocuments(w http.ResponseWriter, r *
 			continue
 		}
 		results = append(results, map[string]any{
-			"id": id, "title": doc.Title, "file_name": doc.FileName,
+			"id": id, "title": doc.Title, "original_file_name": doc.FileName,
 			"created": doc.Created, "added": doc.Added,
 		})
 	}

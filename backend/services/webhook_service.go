@@ -132,7 +132,7 @@ var webhookRetryPolicy = integrations.RetryPolicy{
 var webhookRand = struct {
 	sync.Mutex
 	r *rand.Rand
-}{r: rand.New(rand.NewSource(time.Now().UnixNano()))} //nolint:gosec // G404: retry-backoff jitter, not security-sensitive
+}{r: rand.New(rand.NewSource(time.Now().UnixNano()))} //nolint:gosec // G404: retry-backoff jitter, not security-sensitive // rawtime:allow PRNG seed entropy for retry jitter, not a business-logic instant
 
 func webhookBackoff(attempt int, retryAfter time.Duration) time.Duration {
 	webhookRand.Lock()
@@ -151,7 +151,7 @@ func buildPayloadBody(eventType string, data interface{}) ([]byte, error) {
 	payload := webhookPayload{
 		ID:        uuid.New().String(),
 		Event:     eventType,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Timestamp: Now().UTC().Format(time.RFC3339),
 		Data:      data,
 	}
 	return json.Marshal(payload)
@@ -286,7 +286,7 @@ func TestWebhookDelivery(db *gorm.DB, cfg config.Config, wh models.Webhook) mode
 }
 
 func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh models.Webhook, eventType string, body []byte, attempt int) models.WebhookDelivery {
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	finish := func(d models.WebhookDelivery, errMsg string) models.WebhookDelivery {
 		// integration_failed once a delivery has exhausted its retries and is
 		// still failing — the point at which an operator needs to know an
@@ -384,7 +384,7 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 // budget is exhausted or the status is permanent. Detail carries the event
 // type only, never the webhook URL (#424 non-goal).
 func emitWebhookIntegrationFailed(ctx context.Context, db *gorm.DB, wh models.Webhook, eventType string, attempt int, start time.Time, errMsg string) {
-	durMS := time.Since(start).Milliseconds()
+	durMS := time.Since(start).Milliseconds() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	logger.Ctx(ctx).Warn().
 		Str(logger.FieldEvent, models.SysEventIntegrationFailed).
 		Str(logger.FieldComponent, logger.ComponentWebhook).
@@ -437,7 +437,7 @@ func retryAt(attempt int, retryAfter time.Duration) *time.Time {
 	if !webhookRetryPolicy.HasAttemptsLeft(attempt) {
 		return nil
 	}
-	t := time.Now().Add(webhookBackoff(attempt, retryAfter))
+	t := Now().Add(webhookBackoff(attempt, retryAfter))
 	return &t
 }
 
@@ -483,7 +483,7 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 		}
 	}()
 
-	now := time.Now()
+	now := Now()
 	var deliveries []models.WebhookDelivery
 	// A permanently-failed row has next_retry_at = NULL and so is already
 	// excluded, but the explicit predicate documents the intent (INT-03 #466).

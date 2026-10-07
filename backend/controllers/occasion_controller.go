@@ -5,13 +5,13 @@ import (
 	"encoding/csv"
 	"fmt"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
@@ -143,7 +143,7 @@ func GetOccasionCardListCSV(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", safeDownloadStem(kind), time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", safeDownloadStem(kind), clock.FromContext(c).Now().Format("2006-01-02"))
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "text/csv; charset=utf-8")

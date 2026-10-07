@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/integrations"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
@@ -218,6 +219,8 @@ func TestContactSync_PermanentAuthFailureIsTerminal(t *testing.T) {
 	cfg := syncFailureCfg()
 	user := syncFailureUser(t, db)
 	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Ada"}).Error)
+	clk := clock.NewFake(time.Now())
+	defer SetClock(clk)()
 
 	srv := newStatusServer(t, http.StatusUnauthorized)
 	enc, err := EncryptCredential(cfg.JWTSecretKey, "secret")
@@ -244,7 +247,7 @@ func TestContactSync_PermanentAuthFailureIsTerminal(t *testing.T) {
 
 	// A second run still executes (manual/direct sync always tries) but the
 	// terminal entry time is frozen — it answers "when did this stop working".
-	time.Sleep(10 * time.Millisecond)
+	clk.Advance(10 * time.Millisecond)
 	_, syncErr = NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
 	require.Error(t, syncErr)
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)

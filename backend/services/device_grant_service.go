@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"time"
 
 	"mycorrhizal/models"
 
@@ -62,6 +61,6 @@ func CreateDeviceGrant(db *gorm.DB, userID uint, label string) (*models.DeviceGr
 func RevokeAllDeviceGrants(db *gorm.DB, userID uint) (int64, error) {
 	result := db.Model(&models.DeviceGrant{}).
 		Where("user_id = ? AND revoked_at IS NULL", userID).
-		Update("revoked_at", time.Now())
+		Update("revoked_at", Now())
 	return result.RowsAffected, result.Error
 }

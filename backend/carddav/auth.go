@@ -1,6 +1,7 @@
 package carddav
 
 import (
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -74,7 +75,7 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 
 		var matchedToken *models.ApiToken
 		if !passwordOK {
-			if apiToken, ok := middleware.LookupAPIToken(db, password); ok && apiToken.UserID == user.ID {
+			if apiToken, ok := middleware.LookupAPIToken(db, password, clock.FromContext(c).Now()); ok && apiToken.UserID == user.ID {
 				matchedToken = apiToken
 			}
 		}
@@ -106,7 +107,7 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 		c.Set("user", &user)
 
 		if matchedToken != nil {
-			middleware.TouchAPIToken(db, matchedToken.ID)
+			middleware.TouchAPIToken(db, matchedToken.ID, clock.FromContext(c).Now())
 		}
 
 		c.Next()

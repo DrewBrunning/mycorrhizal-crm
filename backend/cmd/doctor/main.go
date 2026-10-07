@@ -36,6 +36,7 @@ import (
 	"io"
 	"os"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/services"
@@ -104,6 +105,21 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	defer closeDB(db)
 
 	cfg := config.LoadConfig()
+
+	// Contact cards (and other sensitive columns) are encrypted at rest, so the
+	// checker can only read them with the layer armed — the same key resolution
+	// the server uses. No resolvable key means an unencrypted deployment.
+	kek, err := atrest.ResolveMasterKey(cfg.DataEncryptionKey, cfg.DataEncryptionKeyFile, cfg.JWTSecretKey)
+	if err != nil {
+		fmt.Fprintf(stderr, "doctor: resolving the at-rest master key: %v\n", err)
+		return 2
+	}
+	if kek != nil {
+		if err := atrest.Initialize(db, kek); err != nil {
+			fmt.Fprintf(stderr, "doctor: initializing at-rest encryption: %v\n", err)
+			return 2
+		}
+	}
 
 	if *repair {
 		return runRepair(context.Background(), db, *confirm, *asJSON, stdout, stderr)

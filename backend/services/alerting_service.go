@@ -98,7 +98,7 @@ func loadAlertStates(ctx context.Context, db *gorm.DB) (map[string]models.AlertS
 // raise was never accepted by any delivery path, in which case it re-attempts
 // that raise (issue #973).
 func transitionAlertState(ctx context.Context, db *gorm.DB, cfg config.Config, res alertConditionResult, prev models.AlertState) {
-	now := time.Now().UTC()
+	now := Now().UTC()
 	hadRow := prev.ConditionKey != ""
 
 	want := models.AlertStateOK

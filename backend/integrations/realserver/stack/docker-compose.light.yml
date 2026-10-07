@@ -1,0 +1,51 @@
+# Real-server contract stack, "light" set (issue #1490): ntfy, Gotify, Keycloak.
+#
+# These three boot in seconds and are tiny, so they share one compose file;
+# the heavy servers (Paperless-ngx, Immich, Seafile) each get their own file so
+# a developer can start exactly one heavy set at a time. Nextcloud reuses
+# .github/scripts/carddav-reference/provision-nextcloud.sh.
+#
+# Every image is pinned by digest (docs/development/testing.md "Real-server
+# integration contract tests"); Dependabot's `docker` ecosystem entry for this
+# directory proposes a bump, and a bump that breaks us *is* the signal this
+# suite exists to give.
+#
+#   docker compose -f backend/integrations/realserver/stack/docker-compose.light.yml up -d --wait
+name: mycorrhizal-rs-light
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0@sha256:4a7d0f0adc6d5d9fc36e64ab55ef676e76e124a2bdd50ce115b6d9c1c7430294
+    command: ["serve"]
+    ports: ["127.0.0.1:18080:80"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/v1/health | grep -q '\"healthy\":true'"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  gotify:
+    image: gotify/server:2.6.1@sha256:04f4c4bb7cdde8c84e5a89d1287bd1f766c02c1cd477dc01c47acae80bff3c77
+    environment:
+      GOTIFY_DEFAULTUSER_NAME: admin
+      GOTIFY_DEFAULTUSER_PASS: contract-admin-pass
+    # No healthcheck: the image ships no shell tools; the tests poll /health.
+    ports: ["127.0.0.1:18081:80"]
+
+  # Mailpit: a real SMTP server (and capture API) for the email-smtp contract.
+  mailpit:
+    image: axllent/mailpit:v1.27.8@sha256:6abc8e633df15eaf785cfcf38bae48e66f64beecdc03121e249d0f9ec15f0707
+    ports: ["127.0.0.1:18087:8025", "127.0.0.1:18088:1025"]
+
+  # Keycloak, not Dex: the OIDC contract must cover RP-Initiated Logout
+  # (end_session_endpoint) and signing-key rotation, and Dex (through v2.45)
+  # advertises no end_session_endpoint. start-dev boots in ~20-40s.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7@sha256:4388e2379b7e870a447adbe7b80bd61f5fbf04e925832b19669fda4957f05a81
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: contract-admin-pass
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+    volumes: ["./keycloak-realm.json:/opt/keycloak/data/import/realm.json:ro"]
+    ports: ["127.0.0.1:18082:8080"]

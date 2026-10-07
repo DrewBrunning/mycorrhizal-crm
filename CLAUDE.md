@@ -180,7 +180,16 @@ canonical checklist files), import ingestion (the import-source files in `servic
 exporters (`vcard3`, `vcard4`, `jscontact`). The scope and each leg's threshold live in
 `backend/internal/mutationscope.Scopes` — the single source for both go-mutation.yml's matrix and each
 leg's generated config (`backend/.gremlins/<scope>.yaml`, `cd backend && go run
-./cmd/genmutationscope` or `make gen-mutation-scope`). Delete-cascade and import scope narrow the much
+./cmd/genmutationscope` or `make gen-mutation-scope`). Issue #1491 added eight legs (fifteen total):
+`middleware-auth` (auth/admin/idempotency/login-lockout), `ssrf` (`httputil`), `services-merge` +
+`controllers-merge`, `schedule-math` (cadence/reminder/data-decay/occasion), `sync-reconcile`
+(`contact_sync_service.go`), `carddav-backend`, `caldav-backend` — all measured 100% efficacy at
+adoption (one survivor in `ssrf` killed by `httputil/bounds_test.go`); the legs are advisory, promotion
+of `middleware-auth`/`ssrf` to a release gate waits on 30 stable nightly days. gremlins v0.6.0 only mutates
+comparisons/arithmetic/increments — it will not delete an `if !ok` arm or a `user_id` SQL filter, so
+ownership scoping is guarded by the route ownership matrix, not a mutation leg. A new scope also needs
+its leg added by hand to go-mutation.yml's matrix (`TestWorkflowMatrixMatchesScopes` enforces parity).
+Delete-cascade and import scope narrow the much
 larger `controllers`/`services` packages down to specific files via a **generated** exclude-files list
 — RE2 (the regexp engine gremlins' `exclude-files` patterns use) has no negative lookahead to write
 "everything except these files" by hand, so the exclude list is mechanical and the drift test
@@ -310,7 +319,8 @@ needs running per worktree, not just once per clone.
   `README-developer.md`), fail-closed on a missing `gitleaks` binary.
 - **Staged `backend/` files:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned
   to the same v2.14.0 `unit-tests.yml` uses; errcheck/errorlint/staticcheck/unused on non-test code),
-  `gormerrcheck` (discarded GORM `.Error`, trap #4), plus the contract-fixtures/DATA-01/INT-01/API-baseline
+  `gormerrcheck` (discarded GORM `.Error`, trap #4), `rawtimecheck` (raw `time.Now()`/`Since`/`Until`
+  in controllers/services/middleware — read the injected clock instead, issue #1494), plus the contract-fixtures/DATA-01/INT-01/API-baseline
   generated-artifact drift tests (incl. generated TS types; targeted `go test -run`, not the full
   suite).
 - **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
@@ -529,6 +539,19 @@ These are real bugs that shipped, not hypotheticals.
    under 5ms. `openDSN` sets `_txlock=immediate` so transactions take the write lock up front, which
    *is* a case the busy handler retries; WAL keeps readers unaffected. Pinned by
    `database/concurrent_write_test.go`. Don't remove the flag.
+
+10. **Never call `time.Now()` (or `time.Since`/`time.Until`) in `controllers`, `services` or `middleware`
+   — read the injected clock** (issue #1494; `backend/internal/clock`). A raw wall-clock read makes an
+   expiry / day-boundary / window decision untestable except by sleeping. Handlers and middleware:
+   `clock.FromContext(c).Now()` (`routes.go` installs `clock.System{}`; a test pre-installs a
+   `clock.Fake` on its router with `clock.Install`). Services (free functions): `services.Now()`, swapped
+   in tests with `defer services.SetClock(fake)()`. Rate limiters carry their own `SetClock`. An
+   elapsed-duration measurement, a `net.Conn` deadline or a PRNG seed may stay raw with an inline
+   `// rawtime:allow <reason>`; a bulk of sites that can't move yet goes in
+   `internal/lint/rawtime/allowlist.go` with a reason and an exact count. `go run ./cmd/rawtimecheck ./...`
+   (CI `Backend (Go)` + pre-commit) enforces it. JWT `exp`/`iat`/`nbf` are validated against the clock too
+   (`middleware.ValidateTimeClaims`, parsers built with `jwt.WithoutClaimsValidation()`), not jwt's global
+   `TimeFunc`.
 
 ### Backend conventions
 

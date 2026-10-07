@@ -6,6 +6,7 @@ import (
 	"mycorrhizal/attachments"
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -745,7 +746,7 @@ func UpdateContact(c *gin.Context) {
 // association types are added later (see CLAUDE.md's cascade-delete trap).
 // Must run inside an existing transaction (tx); does not delete contact
 // itself -- callers do that.
-func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint) error {
+func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint, now time.Time) error {
 	// **Ordering note:** reminders are deleted first because LifeEvent-
 	// linked reminders (life_event_id column) reference LifeEvents which
 	// are deleted further down. If the order changes, LifeEvent-owned
@@ -778,7 +779,7 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	// the notes feed itself convergent too.
 	if err := tx.Model(&models.Note{}).Unscoped().
 		Where("contact_id = ? AND user_id = ? AND deleted_at IS NOT NULL", contact.ID, userID).
-		UpdateColumn("updated_at", time.Now()).Error; err != nil {
+		UpdateColumn("updated_at", now).Error; err != nil {
 		return err
 	}
 
@@ -913,7 +914,7 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	// aggregate feeds are untouched.
 	if err := tx.Model(&models.Feed{}).
 		Where("user_id = ? AND kind = ? AND entity_id = ? AND revoked_at IS NULL", userID, models.FeedKindContact, contact.VCardUID).
-		Update("revoked_at", time.Now()).Error; err != nil {
+		Update("revoked_at", now).Error; err != nil {
 		return err // # pragma: no cover — DB failure only; the DeleteContact test covers the revocation itself
 	}
 
@@ -964,7 +965,7 @@ func DeleteContact(c *gin.Context) {
 		return
 	}
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if err := deleteContactAssociations(tx, contact, userID); err != nil {
+		if err := deleteContactAssociations(tx, contact, userID, clock.FromContext(c).Now()); err != nil {
 			return err
 		}
 

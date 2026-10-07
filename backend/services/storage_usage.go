@@ -57,7 +57,7 @@ func StorageUsage(dirs []string) []DirectoryUsage {
 	storageUsageCache.mu.Lock()
 	defer storageUsageCache.mu.Unlock()
 
-	if !storageUsageCache.at.IsZero() && time.Since(storageUsageCache.at) < storageUsageCacheTTL {
+	if !storageUsageCache.at.IsZero() && Now().Sub(storageUsageCache.at) < storageUsageCacheTTL {
 		return storageUsageCache.val
 	}
 
@@ -69,7 +69,7 @@ func StorageUsage(dirs []string) []DirectoryUsage {
 		out = append(out, walkDirUsage(dir))
 	}
 
-	storageUsageCache.at = time.Now()
+	storageUsageCache.at = Now()
 	storageUsageCache.val = out
 	return out
 }

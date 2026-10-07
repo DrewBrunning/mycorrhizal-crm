@@ -372,7 +372,7 @@ func createReachOutSuggestion(ctx context.Context, db *gorm.DB, cfg config.Confi
 		reminder := models.Reminder{
 			UserID:     userID,
 			Message:    fmt.Sprintf("Reach out — %s changed: %s (%s → %s)", reachOutKindLabel(ch.Kind), contactName, ch.OldValue, ch.NewValue),
-			RemindAt:   time.Now(),
+			RemindAt:   Now(),
 			Recurrence: "once",
 			ContactID:  &contact.ID,
 		}

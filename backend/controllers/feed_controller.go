@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"strings"
-	"time"
 
 	apperrors "mycorrhizal/errors"
 
@@ -173,7 +173,7 @@ func RotateFeed(cfg *config.Config) gin.HandlerFunc {
 			Detail:    oldFeed.Detail,
 			TokenHash: hash,
 		}
-		now := time.Now()
+		now := clock.FromContext(c).Now()
 		txErr := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Create(&newFeed).Error; err != nil {
 				return err // # pragma: no cover — DB failure only inside the rotate transaction
@@ -217,7 +217,7 @@ func DeleteFeed(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(&feed).Update("revoked_at", time.Now()).Error; err != nil {
+	if err := db.Model(&feed).Update("revoked_at", clock.FromContext(c).Now()).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update")) // # pragma: no cover — DB failure only; the 204 revoke path is covered
 		return                                                       // # pragma: no cover — DB failure only
 	}
@@ -343,7 +343,7 @@ func ServeFeed(cfg *config.Config) gin.HandlerFunc {
 			Feed:    &feed,
 			User:    &user,
 			Contact: contact,
-			Now:     time.Now(),
+			Now:     clock.FromContext(c).Now(),
 		})
 		if err != nil {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to render feed").WithError(err)) // # pragma: no cover — DB failure only; the 200/304/miss paths are covered

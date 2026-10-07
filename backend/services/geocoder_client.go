@@ -358,7 +358,7 @@ type rateGate struct {
 var errRateGateFull = errors.New("rate gate queue is full")
 
 func newRateGate(interval, maxWait time.Duration) *rateGate {
-	return &rateGate{interval: interval, maxWait: maxWait, now: time.Now, sleep: sleepContext}
+	return &rateGate{interval: interval, maxWait: maxWait, now: Now, sleep: sleepContext}
 }
 
 // Wait blocks until this caller's slot, or returns ctx's error, or

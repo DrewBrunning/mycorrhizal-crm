@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
@@ -128,7 +129,7 @@ func dataIntegrityChecks() []dataIntegrityCheck {
 // probe could not complete; violations found by a probe that ran cleanly are
 // in the report, and Report.OK is false.
 func RunDataIntegrityChecks(ctx context.Context, db *gorm.DB, cfg config.Config) (DataIntegrityReport, error) {
-	report := DataIntegrityReport{Timestamp: time.Now().UTC().Format(time.RFC3339)}
+	report := DataIntegrityReport{Timestamp: Now().UTC().Format(time.RFC3339)}
 	var runErrs []string
 
 	for _, c := range dataIntegrityChecks() {
@@ -630,11 +631,23 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 		}
 		for _, r := range rows {
 			lastID = r.ID
-			card := strings.TrimSpace(r.Card)
-			if card == "" || card == "{}" {
+			// The column is encrypted at rest (atrest serializer on
+			// Contact.Card), and this raw read bypasses GORM, so decrypt it
+			// here: without that every encrypted card is mis-reported as
+			// not-valid-JSON (found by the issue #1489 real-release harness
+			// against data written by a real v1.0.0 instance). A value the
+			// key cannot open stays a violation, as the derived-column
+			// check's comment below already assumes.
+			plain, decErr := atrest.Decrypt(r.Card)
+			card := strings.TrimSpace(plain)
+			if decErr == nil && (card == "" || card == "{}") {
 				continue
 			}
 			var top map[string]json.RawMessage
+			if decErr != nil {
+				malformed[r.UserID]++
+				continue
+			}
 			if err := json.Unmarshal([]byte(card), &top); err != nil {
 				malformed[r.UserID]++
 				continue

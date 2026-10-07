@@ -128,7 +128,7 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 		types = models.TimelineTypes
 	}
 	if q.Now.IsZero() {
-		q.Now = time.Now()
+		q.Now = Now()
 	}
 
 	tc := &timelineComposer{

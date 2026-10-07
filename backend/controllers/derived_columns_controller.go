@@ -31,7 +31,7 @@ import (
 func RebuildDerivedColumnsHandler(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	ctx := c.Request.Context()
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	stats, err := services.RebuildDerivedContactColumnsExclusive(ctx, db)
 	if errors.Is(err, services.ErrJobSkipped) {

@@ -1,0 +1,34 @@
+# Real-server contract stack: Seafile 11 (issue #1490) with MariaDB + Memcached,
+# the topology the seafile-mc image documents. Cold boot is ~1-2 minutes
+# (database bootstrap + first-run setup); the tests poll /api2/ping/. Images
+# pinned by digest; Dependabot's docker entry for this directory proposes bumps.
+#
+#   docker compose -f backend/integrations/realserver/stack/docker-compose.seafile.yml up -d
+#   MYCORRHIZAL_RS_SEAFILE_URL=http://127.0.0.1:18086 \
+#   MYCORRHIZAL_RS_SEAFILE_ADMIN_EMAIL=admin@example.com MYCORRHIZAL_RS_SEAFILE_ADMIN_PASSWORD=contract-admin-pass \
+#     go test ./integrations/realserver/ -run Seafile
+name: mycorrhizal-rs-seafile
+services:
+  db:
+    image: mariadb:10.11@sha256:7db29378d4fdab73f8123bbc2b48905c90d1a4b00cf848b028f1e81e623257f2
+    environment:
+      MYSQL_ROOT_PASSWORD: contract-db-root
+      MYSQL_LOG_CONSOLE: "true"
+
+  memcached:
+    image: memcached:1.6.18@sha256:4ab520657d9919221f752771bb013d632c9b39cea9dfae9162244b2e39885bcd
+    entrypoint: memcached -m 256
+
+  seafile:
+    image: seafileltd/seafile-mc:11.0-latest@sha256:1239b087aa4bdf1b60a3802e80855f230736ac5d5fa3325a40b15d4c598f422c
+    depends_on: [db, memcached]
+    environment:
+      DB_HOST: db
+      DB_ROOT_PASSWD: contract-db-root
+      TIME_ZONE: UTC
+      SEAFILE_ADMIN_EMAIL: admin@example.com
+      SEAFILE_ADMIN_PASSWORD: contract-admin-pass
+      SEAFILE_SERVER_LETSENCRYPT: "false"
+      SEAFILE_SERVER_HOSTNAME: 127.0.0.1:18086
+      FORCE_HTTPS_IN_CONF: "false"
+    ports: ["127.0.0.1:18086:80"]

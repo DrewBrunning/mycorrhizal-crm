@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -27,6 +28,8 @@ func freshDB(t *testing.T, name string) *gorm.DB {
 
 func TestRecordOperationalCheckResult_InsertThenUpsert(t *testing.T) {
 	db := freshDB(t, "opcheck.db")
+	clk := clock.NewFake(time.Now())
+	defer SetClock(clk)()
 
 	RecordOperationalCheckResult(db, "widget_check", models.OpCheckStatusFailed, "boom")
 
@@ -36,7 +39,7 @@ func TestRecordOperationalCheckResult_InsertThenUpsert(t *testing.T) {
 	assert.Equal(t, "boom", row.Detail)
 	firstCheckedAt := row.CheckedAt
 
-	time.Sleep(5 * time.Millisecond)
+	clk.Advance(5 * time.Millisecond)
 	RecordOperationalCheckResult(db, "widget_check", models.OpCheckStatusOK, "")
 
 	var rows []models.OperationalCheckResult
@@ -44,7 +47,7 @@ func TestRecordOperationalCheckResult_InsertThenUpsert(t *testing.T) {
 	require.Len(t, rows, 1, "must upsert in place, not append a second row")
 	assert.Equal(t, models.OpCheckStatusOK, rows[0].Status)
 	assert.Empty(t, rows[0].Detail)
-	assert.True(t, rows[0].CheckedAt.After(firstCheckedAt), "checked_at must advance on upsert")
+	assert.True(t, rows[0].CheckedAt.Equal(firstCheckedAt.Add(5*time.Millisecond)), "checked_at must advance to the clock's new instant on upsert")
 }
 
 // The scheduled integrity check records its outcome so deep /health can report

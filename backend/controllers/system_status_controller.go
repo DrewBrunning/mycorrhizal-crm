@@ -191,7 +191,7 @@ func systemStatusUptime() SystemStatusUptime {
 	start := metrics.ProcessStart()
 	return SystemStatusUptime{
 		StartedAt:     start.UTC().Format(time.RFC3339),
-		UptimeSeconds: int64(time.Since(start).Seconds()),
+		UptimeSeconds: int64(time.Since(start).Seconds()), // rawtime:allow process uptime is elapsed wall time since process start; reported as a duration, not compared to a stored instant
 	}
 }
 
@@ -269,7 +269,7 @@ func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
 
 	// Storage-growth trend from the persisted samples (issue #652). Best-effort
 	// reads: a diagnostic endpoint degrades to nulls, not a 500.
-	trend := services.ComputeStorageTrend(context.Background(), db, time.Now())
+	trend := services.ComputeStorageTrend(context.Background(), db, services.Now())
 	out.Growth7DBytes = trend.Growth7DBytes
 	out.Growth30DBytes = trend.Growth30DBytes
 	out.Growth90DBytes = trend.Growth90DBytes

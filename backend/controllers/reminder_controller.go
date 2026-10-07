@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -315,22 +316,7 @@ func CompleteReminder(c *gin.Context) {
 	// Mark as completed
 	reminder.Completed = true
 	reminder.LastSent = new(time.Time)
-	*reminder.LastSent = time.Now()
-
-	// Create a completion record for the timeline (unless skipping)
-	if !skip {
-		completion := models.ReminderCompletion{
-			UserID:      userID,
-			ReminderID:  &reminder.ID,
-			ContactID:   *reminder.ContactID,
-			Message:     reminder.Message,
-			CompletedAt: time.Now(),
-		}
-		if err := db.Create(&completion).Error; err != nil {
-			logger.FromContext(c).Error().Err(err).Msg("Failed to create reminder completion record")
-			// Don't fail the entire operation if completion record fails
-		}
-	}
+	*reminder.LastSent = clock.FromContext(c).Now()
 
 	action := "completed"
 	if skip {
@@ -355,49 +341,75 @@ func CompleteReminder(c *gin.Context) {
 			Msg("Reminder processed, next occurrence scheduled")
 	}
 
-	// Delete "once" reminders after completion
-	if reminder.Recurrence == "once" {
-		// N9: clear this occurrence's delivery state so no channel re-sends it
-		if err := services.DeleteNotificationDeliveries(db, []uint{reminder.ID}); err != nil {
-			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for completed reminder")
+	deleted := reminder.Recurrence == "once"
+
+	// Issue #1476: the completion record and the reminder's own delete/save
+	// are one unit. The DB-fault sweep found that a failing reminder delete
+	// returned 500 but left the completion record behind, so a retry logged
+	// the completion twice. The record, the delivery clean-up and the reach-out
+	// dismissal remain best-effort (logged, not fatal) as before; only the
+	// delete/save decides whether the transaction commits.
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		// Create a completion record for the timeline (unless skipping)
+		if !skip {
+			completion := models.ReminderCompletion{
+				UserID:      userID,
+				ReminderID:  &reminder.ID,
+				ContactID:   *reminder.ContactID,
+				Message:     reminder.Message,
+				CompletedAt: clock.FromContext(c).Now(),
+			}
+			if err := tx.Create(&completion).Error; err != nil {
+				logger.FromContext(c).Error().Err(err).Msg("Failed to create reminder completion record")
+				// Don't fail the entire operation if completion record fails
+			}
 		}
-		if err := db.Delete(&reminder).Error; err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete 'once' reminder").WithError(err))
-			return
+
+		// Delete "once" reminders after completion
+		if deleted {
+			// N9: clear this occurrence's delivery state so no channel re-sends it
+			if err := services.DeleteNotificationDeliveries(tx, []uint{reminder.ID}); err != nil {
+				logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for completed reminder")
+			}
+			if err := tx.Delete(&reminder).Error; err != nil {
+				return apperrors.ErrDatabase("Failed to delete 'once' reminder").WithError(err)
+			}
+		} else if err := tx.Save(&reminder).Error; err != nil {
+			return apperrors.ErrDatabase("Failed to update reminder").WithError(err)
 		}
 
 		// Issue #177: dismiss the linked ReachOutSuggestion only now that the
-		// reminder itself is confirmed deleted — firing this before the
+		// reminder itself is confirmed deleted/saved — firing this before the
 		// delete/save could succeed would dismiss a suggestion for a
 		// completion that then failed and left the reminder untouched.
-		if err := services.DismissReachOutSuggestionByReminderID(db, userID, reminder.ID); err != nil {
+		if err := services.DismissReachOutSuggestionByReminderID(tx, userID, reminder.ID); err != nil {
 			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to dismiss reach-out suggestion for reminder")
 		}
 
+		// N9: a rescheduled occurrence is a fresh reminder — clear the previous
+		// occurrence's delivery records so every enabled channel notifies again
+		// (mirrors the email_sent=false reset above).
+		if rescheduled {
+			if err := services.DeleteNotificationDeliveries(tx, []uint{reminder.ID}); err != nil {
+				logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for rescheduled reminder")
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		var appErr *apperrors.AppError
+		if errors.As(txErr, &appErr) {
+			apperrors.AbortWithError(c, appErr)
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to complete reminder").WithError(txErr)) // # pragma: no cover — the closure only returns *AppError; Transaction's own begin/commit failure is not injectable
+		}
+		return
+	}
+
+	if deleted {
 		logger.FromContext(c).Info().Uint("reminder_id", reminder.ID).Str("action", action).Msg("Deleted 'once' reminder")
 		c.JSON(http.StatusOK, gin.H{"message": "Reminder " + action + " and deleted"})
 		return
-	}
-
-	// Save the updated reminder
-	if err := db.Save(&reminder).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to update reminder").WithError(err))
-		return
-	}
-
-	// Issue #177: same ordering rule as the "once" branch above — only
-	// dismiss once the save actually succeeded.
-	if err := services.DismissReachOutSuggestionByReminderID(db, userID, reminder.ID); err != nil {
-		logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to dismiss reach-out suggestion for reminder")
-	}
-
-	// N9: a rescheduled occurrence is a fresh reminder — clear the previous
-	// occurrence's delivery records so every enabled channel notifies again
-	// (mirrors the email_sent=false reset above).
-	if rescheduled {
-		if err := services.DeleteNotificationDeliveries(db, []uint{reminder.ID}); err != nil {
-			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for rescheduled reminder")
-		}
 	}
 
 	// Clear the Contact association to avoid including it in the response

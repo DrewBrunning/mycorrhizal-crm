@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -128,7 +129,7 @@ func CreateOccasionObligation(c *gin.Context) {
 
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
-	now := time.Now().In(loc)
+	now := clock.FromContext(c).Now().In(loc)
 
 	var obligation models.OccasionObligation
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -332,7 +333,7 @@ func UpdateOccasionObligation(c *gin.Context) {
 
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
-	now := time.Now().In(loc)
+	now := clock.FromContext(c).Now().In(loc)
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(&obligation).Error; err != nil {

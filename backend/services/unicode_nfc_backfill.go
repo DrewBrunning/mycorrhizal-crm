@@ -86,7 +86,7 @@ func NormalizeContactRecordsToNFC(db *gorm.DB) (*NFCBackfillStats, error) {
 		return stats, nil
 	}
 
-	start := time.Now()
+	start := time.Now() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 	var lastID uint
 	for {
 		var ids []uint
@@ -134,7 +134,7 @@ func NormalizeContactRecordsToNFC(db *gorm.DB) (*NFCBackfillStats, error) {
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		return tx.Exec(
 			`INSERT INTO data_backfills (name, version, completed_at) VALUES (?, ?, ?)`,
-			ContactNFCBackfillName, ContactNFCBackfillVersion, time.Now().UTC(),
+			ContactNFCBackfillName, ContactNFCBackfillVersion, Now().UTC(),
 		).Error
 	}); err != nil {
 		return stats, fmt.Errorf("unicode NFC backfill (record completion): %w", err)
@@ -143,7 +143,7 @@ func NormalizeContactRecordsToNFC(db *gorm.DB) (*NFCBackfillStats, error) {
 	logger.Info().
 		Int64("contacts_scanned", stats.ContactsScanned).
 		Int64("contacts_normalized", stats.ContactsNormalized).
-		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Int64("duration_ms", time.Since(start).Milliseconds()). // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		Msg("unicode NFC normalization backfill complete")
 	return stats, nil
 }

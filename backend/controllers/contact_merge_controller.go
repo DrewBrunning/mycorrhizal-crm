@@ -3,12 +3,12 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"sort"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -256,7 +256,7 @@ func CommitContactMerge(c *gin.Context) {
 
 		// ContactSyncLink cleanup (never re-pointed) + a defense-in-depth
 		// no-op sweep of anything RepointContactAssociations already moved.
-		if err := deleteContactAssociations(tx, loser, userID); err != nil {
+		if err := deleteContactAssociations(tx, loser, userID, clock.FromContext(c).Now()); err != nil {
 			return err
 		}
 
@@ -266,7 +266,7 @@ func CommitContactMerge(c *gin.Context) {
 
 		noteContent = services.BuildContactMergeNoteContent(&loser, resolution, input.Resolutions, counts, edgesDropped)
 		if noteContent != "" {
-			note := models.Note{UserID: userID, ContactID: &keeper.ID, Content: noteContent, Date: time.Now()}
+			note := models.Note{UserID: userID, ContactID: &keeper.ID, Content: noteContent, Date: clock.FromContext(c).Now()}
 			if err := tx.Create(&note).Error; err != nil {
 				return err
 			}

@@ -106,7 +106,7 @@ jobs:
       # block in reference-clients-e2e.yml, one level removed from anything
       # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh .github/scripts/tests/reference-client-davx5.test.sh .github/scripts/candidate-image.sh .github/scripts/release-image-stamp.sh .github/scripts/tests/candidate-image.test.sh .github/scripts/zap-scan-gate.sh .github/scripts/tests/zap-scan-gate.test.sh .github/scripts/go-test-retry-failed.sh .github/scripts/tests/go-test-retry-failed.test.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh .github/scripts/tests/reference-client-davx5.test.sh .github/scripts/candidate-image.sh .github/scripts/release-image-stamp.sh .github/scripts/tests/candidate-image.test.sh .github/scripts/zap-scan-gate.sh .github/scripts/tests/zap-scan-gate.test.sh .github/scripts/go-test-retry-failed.sh .github/scripts/tests/go-test-retry-failed.test.sh .github/scripts/manual-gate-facts.sh .github/scripts/tests/manual-gate-facts.test.sh scripts/android-local-mode-device-test.sh scripts/tests/android-local-mode-device-test.test.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -152,3 +152,16 @@ jobs:
       # re-runs once; a build error, a wide failure or a repeat failure still fails.
       - name: Test go-test-retry-failed script
         run: bash .github/scripts/tests/go-test-retry-failed.test.sh
+
+      # Issue #1486: pins the manual-gate facts script -- an attested commit that
+      # is not an ancestor of the release commit (diverged branch, or unknown to
+      # the checkout) must read as a non-ancestor so the attestation fails
+      # closed, and changed paths are listed exactly.
+      - name: Test manual-gate facts script
+        run: bash .github/scripts/tests/manual-gate-facts.test.sh
+
+      # Issue #1486: pins the device-run script -- a SKIPPED run is never a pass,
+      # nor a failed run, wrong test class, non-arm64 device or dirty tree; a good
+      # run records a complete attestation naming HEAD with the retained XML's digest.
+      - name: Test android-local-mode-device-test script
+        run: bash scripts/tests/android-local-mode-device-test.test.sh

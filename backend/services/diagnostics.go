@@ -98,7 +98,7 @@ var (
 // checklist. db may be nil (the endpoint then reports the database check as an
 // error and continues); cfg must be non-nil.
 func RunDiagnostics(ctx context.Context, db *gorm.DB, cfg config.Config) Diagnostics {
-	out := Diagnostics{Timestamp: time.Now().UTC().Format(time.RFC3339)}
+	out := Diagnostics{Timestamp: Now().UTC().Format(time.RFC3339)}
 
 	out.Checks = append(out.Checks,
 		diagnosticsConfig(cfg),
@@ -356,7 +356,7 @@ func diagnosticsAtRestKey(db *gorm.DB) DiagnosticCheck {
 		return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusOK, Message: "no wrapped at-rest key stored yet"}
 	}
 	changed := times.LastChanged()
-	age := time.Since(changed)
+	age := Now().Sub(changed)
 	if age < 0 {
 		age = 0
 	}

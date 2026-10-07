@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -24,17 +25,21 @@ import (
 // bare time.Now(). On a host whose local zone differs from REMINDER_TIMEZONE
 // the UI could disagree with the email by a day. reminderNow(c) is now the one
 // source of "today" for every handler, and every test below drives it with a
-// fixed injected instant (the timeNow seam), so they pass on any calendar day.
+// fixed injected instant (the injected clock), so they pass on any calendar day.
 
 // setTimeNow pins the controllers' clock to a fixed instant for the duration of
 // the test. Controller tests are sequential (no t.Parallel), so the swap cannot
 // leak across tests.
 func setTimeNow(t *testing.T, instant time.Time) {
 	t.Helper()
-	orig := timeNow
-	timeNow = func() time.Time { return instant }
-	t.Cleanup(func() { timeNow = orig })
+	orig := pinnedClock
+	pinnedClock = clock.NewFake(instant)
+	t.Cleanup(func() { pinnedClock = orig })
 }
+
+// pinnedClock is the Fake zoneRouter installs on its routers (nil = system
+// clock). It is a test-only hand-off between setTimeNow and zoneRouter.
+var pinnedClock *clock.Fake
 
 // swapLocal rotates the process's Local zone for the duration of the test, to
 // prove a behavior does not depend on the server's own zone. It restores the
@@ -60,6 +65,9 @@ func zoneRouter(t *testing.T, db *gorm.DB, tz string) *gin.Engine {
 		c.Set("db", db)
 		c.Set("userID", user.ID)
 		c.Set("cfg", config.Config{ReminderTimezone: tz})
+		if pinnedClock != nil {
+			clock.Install(c, pinnedClock)
+		}
 		c.Next()
 	})
 	return router
