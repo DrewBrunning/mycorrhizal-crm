@@ -119,6 +119,9 @@ jobs:
           PROFILE_PHOTO_DIR: /tmp/e2e/photos
           ATTACHMENTS_DIR: /tmp/e2e/attachments
           FRONTEND_URL: http://localhost:7300
+          # JSON logs (a non-release GIN_MODE forces console format) so
+          # cmd/logguard can parse them (issue #1474).
+          GIN_MODE: release
           CARDDAV_ENABLED: "true"
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
@@ -139,6 +142,13 @@ jobs:
         env:
           MYCORRHIZAL_OUR_CARDDAV_URL: http://127.0.0.1:7300
           MYCORRHIZAL_VDIRSYNCER_CMD: vdirsyncer
+
+      # Issue #1474: fail on any unexpected warn/error line the real server
+      # logged while the reference client talked to it
+      # (backend/cmd/logguard/allowlist.json).
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: go run ./cmd/logguard < /tmp/e2e/server.log
 
       - name: Show server logs on failure
         if: failure()
@@ -213,9 +223,23 @@ jobs:
           PROFILE_PHOTO_DIR: /tmp/e2e/photos
           ATTACHMENTS_DIR: /tmp/e2e/attachments
           FRONTEND_URL: http://localhost:7300
+          # JSON logs (a non-release GIN_MODE forces console format) so
+          # cmd/logguard can parse them (issue #1474).
+          GIN_MODE: release
           CARDDAV_ENABLED: "true"
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
+          # Unlike the vdirsyncer leg above, this leg seeds the canonical
+          # fixture, which by design stores attachment METADATA with no bytes
+          # on disk (internal/canonicalfixture/manifest.go's AttachmentEntry
+          # doc). The live-DB integrity check and the backup-restore drill both
+          # correctly flag those dangling references, but that has nothing to
+          # do with DAVx5 interoperability and would otherwise trip the
+          # logguard step below on every run. Disabled here with the same
+          # throwaway-data rationale docker-compose.test.yml uses for the
+          # drill; the e2e leg keeps the integrity check on against a real DB.
+          DB_INTEGRITY_CHECK_ENABLED: "false"
+          DB_RESTORE_DRILL_ENABLED: "false"
         run: |
           /tmp/mycorrhizal-backend > /tmp/e2e/server.log 2>&1 &
           for _ in $(seq 1 60); do
@@ -300,6 +324,13 @@ jobs:
           path: /tmp/davx5-diag/
           retention-days: 7
           if-no-files-found: ignore
+
+      # Issue #1474: fail on any unexpected warn/error line the real server
+      # logged while the reference client talked to it
+      # (backend/cmd/logguard/allowlist.json).
+      - name: Assert no unexpected server warn/error logs
+        working-directory: backend
+        run: go run ./cmd/logguard < /tmp/e2e/server.log
 
       - name: Show server logs on failure
         if: failure()

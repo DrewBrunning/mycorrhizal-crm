@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +57,7 @@ func TestListReachOutSuggestions(t *testing.T) {
 }
 
 func TestListReachOutSuggestions_EmptyAndOtherUsers(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: audit: failed to persist audit event (real write is unaffected); audit: failed to read last chain hash, appending from genesis")
 	db := setupReachOutTestDB(t)
 	user := models.User{Username: "reachoutempty", Password: "password123!A", Email: "empty@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -78,6 +80,7 @@ func TestListReachOutSuggestions_EmptyAndOtherUsers(t *testing.T) {
 }
 
 func TestListReachOutSuggestions_ArchivedContactDropped(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: audit: failed to persist audit event (real write is unaffected); audit: failed to read last chain hash, appending from genesis")
 	db := setupReachOutTestDB(t)
 	user := models.User{Username: "reachoutarch", Password: "password123!A", Email: "arch@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -92,6 +95,7 @@ func TestListReachOutSuggestions_ArchivedContactDropped(t *testing.T) {
 }
 
 func TestDismissReachOutSuggestion(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: audit: failed to persist audit event (real write is unaffected); audit: failed to read last chain hash, appending from genesis")
 	db := setupReachOutTestDB(t)
 	user := models.User{Username: "reachoutdismiss", Password: "password123!A", Email: "dismiss@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -110,6 +114,7 @@ func TestDismissReachOutSuggestion(t *testing.T) {
 }
 
 func TestDismissReachOutSuggestion_NotFound(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: audit: failed to persist audit event (real write is unaffected); audit: failed to read last chain hash, appending from genesis")
 	db := setupReachOutTestDB(t)
 	user := models.User{Username: "reachoutmiss", Password: "password123!A", Email: "miss@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -128,6 +133,7 @@ func TestDismissReachOutSuggestion_NotFound(t *testing.T) {
 }
 
 func TestDismissReachOutSuggestionByReminderID(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: audit: failed to persist audit event (real write is unaffected); audit: failed to read last chain hash, appending from genesis")
 	db := setupReachOutTestDB(t)
 	user := models.User{Username: "reachoutrem", Password: "password123!A", Email: "rem@example.com"}
 	require.NoError(t, db.Create(&user).Error)

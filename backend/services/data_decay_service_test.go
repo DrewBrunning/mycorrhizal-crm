@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 )
 
 func setupDataDecayServiceTestDB(t *testing.T) (*gorm.DB, models.User, models.Contact) {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 
 	db := dbtest.New(t)

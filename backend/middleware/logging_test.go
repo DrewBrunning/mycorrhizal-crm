@@ -154,6 +154,44 @@ func TestLoggingMiddlewareRedactsSensitiveQueryValues(t *testing.T) {
 	}
 }
 
+// TestLoggingMiddlewareStatusLevels pins issue #1474's access-log rule: a 5xx
+// is server misbehaviour and logs at error; a 4xx is the client's rejected
+// request and logs at info (so the warn/error log guard is not permanently red
+// on the negative cases every E2E run drives); 2xx stays info.
+func TestLoggingMiddlewareStatusLevels(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cases := []struct {
+		name   string
+		status int
+		want   string
+	}{
+		{"ok is info", http.StatusOK, `"level":"info"`},
+		{"bad request is info", http.StatusBadRequest, `"level":"info"`},
+		{"not found is info", http.StatusNotFound, `"level":"info"`},
+		{"server error is error", http.StatusInternalServerError, `"level":"error"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			captureLogger(t, buf, false) // JSON is the parseable form
+
+			router := gin.New()
+			router.Use(LoggingMiddleware())
+			router.GET("/x", func(c *gin.Context) { c.Status(tc.status) })
+
+			req := httptest.NewRequest(http.MethodGet, "/x", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, tc.status, w.Code)
+			out := buf.String()
+			require.Contains(t, out, `"message":"HTTP request"`)
+			require.Contains(t, out, tc.want)
+		})
+	}
+}
+
 // requireControlFree asserts the log output contains no control characters
 // other than the single trailing newline that terminates the log record.
 func requireControlFree(t *testing.T, out string) {

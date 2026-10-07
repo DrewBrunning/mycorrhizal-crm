@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 // seeded, so webhook fixtures (newTestWebhook's UserID 1, the fan-out test's
 // userID+1) satisfy the real webhooks.user_id foreign key.
 func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
+	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
 	for i := 1; i <= 2; i++ {
@@ -82,6 +84,7 @@ func TestProcessWebhookRetriesAcquiresAndReleasesLock(t *testing.T) {
 // next_retry_at must be cleared so it isn't picked up again forever, rather
 // than left set on a delivery that can never be retried.
 func TestProcessWebhookRetriesOrphanedDeliveryClearsNextRetryAt(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Webhook not found or inactive for retry")
 	db := setupWebhookRetryTestDB(t)
 	whID := seedTestWebhookID(t, db)
 	require.NoError(t, db.Model(&models.Webhook{}).Where("id = ?", whID).Update("is_active", false).Error)
@@ -104,6 +107,7 @@ func TestProcessWebhookRetriesOrphanedDeliveryClearsNextRetryAt(t *testing.T) {
 // this pins that ProcessWebhookRetries does not panic and still finishes
 // (releases the job lock) even when that Update fails.
 func TestProcessWebhookRetriesOrphanedDeliveryUpdateFailureIsLogged(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Webhook not found or inactive for retry; Failed to clear next_retry_at for an orphaned delivery")
 	db := setupWebhookRetryTestDB(t)
 	whID := seedTestWebhookID(t, db)
 	require.NoError(t, db.Model(&models.Webhook{}).Where("id = ?", whID).Update("is_active", false).Error)

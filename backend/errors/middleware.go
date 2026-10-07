@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 	"mycorrhizal/logger"
+	"net/http"
 	"runtime/debug"
 	"time"
 
@@ -88,7 +89,15 @@ func RespondWithError(c *gin.Context, err *AppError) {
 func LogError(c *gin.Context, err *AppError) {
 	log := logger.FromContext(c)
 
-	event := log.Error().
+	// Issue #1474: a 4xx is the server correctly rejecting a bad request, not
+	// the server misbehaving, so it logs at info. Only 5xx is an error-level
+	// event. This keeps "any warn/error line is unexpected" a usable CI
+	// signal (cmd/logguard, internal/logtest.Guard).
+	event := log.Error()
+	if err.HTTPStatus < http.StatusInternalServerError {
+		event = log.Info()
+	}
+	event = event.
 		Str("code", err.Code).
 		Int("status", err.HTTPStatus).
 		Str("error", err.Message)

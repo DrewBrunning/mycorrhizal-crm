@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -54,6 +55,7 @@ func TestGuardedClientBlocksInternalAddresses(t *testing.T) {
 // port-scan / service-existence oracle. The stored Error must be generic and
 // carry no host, port, or refused/timeout/no-host wording.
 func TestDeliverWebhookTransportErrorIsNotAPortScanOracle(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery transport error")
 	db := setupWebhookRetryTestDB(t)
 
 	// Nothing listens on 127.0.0.1:1, so clientFor(cfg).Do fails with a
@@ -87,6 +89,7 @@ func TestDeliverWebhookTransportErrorIsNotAPortScanOracle(t *testing.T) {
 // construction itself fails) must likewise not echo the raw parser error,
 // which repeats the offending URL back to the caller.
 func TestDeliverWebhookInvalidURLErrorIsGeneric(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: webhook delivery: could not build request from configured URL")
 	db := setupWebhookRetryTestDB(t)
 
 	wh := newTestWebhook("http://[::1", "secret") // unbalanced IPv6 bracket

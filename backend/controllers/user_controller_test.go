@@ -13,6 +13,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -452,6 +453,7 @@ func TestLoginUser_InvalidInput(t *testing.T) {
 }
 
 func TestRequestPasswordReset_Succeeds(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password reset email not sent")
 	cfg := config.Config{
 		FrontendURL: "http://localhost:3000",
 		UseResend:   false,
@@ -492,6 +494,7 @@ func TestRequestPasswordReset_Succeeds(t *testing.T) {
 }
 
 func TestConfirmPasswordReset_Succeeds(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -529,6 +532,7 @@ func TestConfirmPasswordReset_Succeeds(t *testing.T) {
 }
 
 func TestChangePassword_Succeeds(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to re-issue token after password change")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -774,6 +778,7 @@ func TestConfirmPasswordReset_HIBPCheckEnabled_RejectsBreachedPassword(t *testin
 // return the identical status and body regardless of whether the email
 // belongs to a real account.
 func TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password reset email not sent")
 	cfg := &config.Config{}
 	db, router := setupRouter(t)
 
@@ -808,6 +813,7 @@ func TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown(t *testing.T) {
 // reset token is consumed on first confirm, so replaying it must fail and
 // must not touch the password set by the first confirm.
 func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -896,6 +902,7 @@ func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
 // previously-issued JWT stop validating (middleware/auth_lifecycle_test.go
 // covers the middleware side of that contract).
 func TestConfirmPasswordReset_BumpsTokenVersion(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -934,6 +941,7 @@ func TestConfirmPasswordReset_BumpsTokenVersion(t *testing.T) {
 // suspected compromise, so standing API tokens (which carry no TokenVersion
 // of their own) must be revoked too, not just JWTs.
 func TestConfirmPasswordReset_RevokesExistingAPITokens(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -984,6 +992,7 @@ func TestConfirmPasswordReset_RevokesExistingAPITokens(t *testing.T) {
 // off an enrolled second factor -- doing so would let compromised email
 // access alone strip 2FA protection from the account.
 func TestConfirmPasswordReset_DoesNotDisableTOTP(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
 	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -1031,6 +1040,7 @@ func TestConfirmPasswordReset_DoesNotDisableTOTP(t *testing.T) {
 // attacker requested earlier can't later be used to reset the password the
 // legitimate owner just changed.
 func TestChangePassword_ClearsPendingPasswordResetToken(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Failed to re-issue token after password change")
 	db, router := setupRouter(t)
 
 	hashed, _ := services.HashPassword(strongPassword)

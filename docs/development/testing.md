@@ -657,6 +657,39 @@ smoke leg's service-worker test is verified to fail when registration breaks
 - Runs once per release, inside the tag-triggered `docker-publish.yml` — not a
   separate schedule, since there is nothing to smoke-test between releases.
 
+## Cross-cutting: unexpected server logs (issue #1474)
+
+A passing test can hide a server that is quietly misbehaving: issue #1471's
+FK-failing audit hooks emitted 698 `WARN` lines inside a green E2E run and were
+found only by a person reading the log. The convention is therefore **any
+`warn`-or-above server log line in a happy-path run is a failure unless it is
+explicitly allowed with a reason.** A 4xx is the server working as designed, so
+`errors.LogError` and the validation middleware log client errors at `info`;
+only a 5xx (or a genuinely swallowed internal failure) is `error`/`warn`.
+
+- **Go tests: `internal/logtest`.** `logtest.Capture(t)` swaps the global
+  logger for an in-memory JSON sink (`Records()`, `Warnings()`,
+  `AssertNoWarnings(t, allowedMessages...)`). `logtest.Guard(t)` is Capture plus
+  an automatic end-of-test `AssertNoWarnings`; it is wired into the controllers'
+  `setupRouter(t)` and every `services` `setup*TestDB(t)` helper, so a new
+  happy-path test inherits it. A test that deliberately drives a logging path
+  (an injected DB failure, a rejected upload) opts out with
+  `logtest.AllowWarnings(t, "<reason>")` -- the reason is mandatory and covers
+  the test's subtests. The swap is process-global, so it is not safe with
+  `t.Parallel()`; a test that installs its **own** logger capture must do so
+  *after* calling the helper (the helper's Guard would otherwise replace it).
+- **E2E / deploy smoke: `cmd/logguard`.** `cd backend && go run ./cmd/logguard`
+  reads the server's JSON log on stdin and fails on any warn-or-above line whose
+  `message` is not in `backend/cmd/logguard/allowlist.json`
+  (`{message, max_count, reason}`; every field required), or on an allowlisted
+  message above its `max_count`. Non-JSON lines (nginx, gin text) are ignored.
+  It runs after the Playwright suite in `e2e-tests.yml` (`e2e` and
+  `e2e-prod-defaults`), after the workflow in `deploy-smoke.yml`, and over the
+  server log in both `reference-clients-e2e.yml` legs (which set
+  `GIN_MODE=release`, since a non-release mode forces console-format logs).
+  Adding an allowlist entry is a reviewed, reasoned weakening of the gate, like
+  any other (CLAUDE.md "Gates are not silently weakened").
+
 ## Cross-cutting: performance/load and security
 
 Two sets are **not** pyramid layers in the "write a test here" sense, but they

@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -126,6 +127,7 @@ func TestGetContactScore_Unauthorized(t *testing.T) {
 // non-ErrRecordNotFound error, exercising the 500 branch distinct from the
 // 404 branch TestGetContactScore_NotFound already covers.
 func TestGetContactScore_DatabaseError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
 	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
