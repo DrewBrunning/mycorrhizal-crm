@@ -62,10 +62,9 @@ test.describe('Import merge review', () => {
       // Merge is the default; apply the single decision.
       await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
 
-      // The Data-settings wizard closes on a successful import
-      // (onImportComplete); clicking the transient result step's Done races
-      // that close transition. The merge itself is verified through the API.
-      await expect(dialog).toBeHidden();
+      // Result step reports one update.
+      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact gained the new phone (additive union) and the
       // title changed — and no second contact was created.
@@ -133,9 +132,8 @@ test.describe('Import merge review', () => {
       await dialog.getByRole('button', { name: 'Keep Both' }).click();
       await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
 
-      // Data Settings closes the wizard on a successful import; the new pair
-      // is verified through the API below.
-      await expect(dialog).toBeHidden();
+      await expect(dialog.getByText('1 contacts created')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact is untouched, and a second one now exists.
       const detail = await request.get(`${API_BASE_URL}/contacts/${existing.ID}`);
@@ -257,10 +255,8 @@ test.describe('Import merge review', () => {
       await expect(dialog.getByText('1 to update')).toBeVisible();
 
       await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
-
-      // Data Settings closes the wizard on a successful import; the merge is
-      // verified through the API below.
-      await expect(dialog).toBeHidden();
+      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact gained the CSV's phone; no second contact exists.
       const detail = await request.get(`${API_BASE_URL}/contacts/${existing.ID}`);
@@ -319,10 +315,8 @@ test.describe('Import merge review', () => {
       await expect(dialog.getByText('1 to skip')).toBeVisible();
 
       await dialog.getByRole('button', { name: /apply decisions \(2\)/i }).click();
-
-      // Data Settings closes the wizard on a successful import; the collapsed
-      // twin is verified through the API below.
-      await expect(dialog).toBeHidden();
+      await expect(dialog.getByText('1 contacts created')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
 
       const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
       const matches = count.contacts.filter(
