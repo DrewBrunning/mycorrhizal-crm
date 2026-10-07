@@ -12,6 +12,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// newFaultDB is a fault-injectable migrated DB with audit disabled: dbtest arms
+// audit recording with the synchronous recorder by default (#1493), whose
+// audit_events statements would land on the goroutine the injector counts.
+func newFaultDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := dbtest.New(t, dbtest.WithFaults())
+	models.DisableAudit(db)
+	return db
+}
+
 // newUser makes the owner row the tags/circles below reference. Call it before
 // arming the injector: its own INSERT is a statement too.
 func newUser(t *testing.T, db *gorm.DB) uint {
@@ -26,7 +36,7 @@ func TestFor_NilWithoutOption(t *testing.T) {
 }
 
 func TestIdleInjectorPassesThroughAndRecordsNothing(t *testing.T) {
-	db := dbtest.New(t, dbtest.WithFaults())
+	db := newFaultDB(t)
 	inj := dbfault.For(db)
 	require.NotNil(t, inj)
 	require.Equal(t, dbfault.PluginName, inj.Name())
@@ -39,7 +49,7 @@ func TestIdleInjectorPassesThroughAndRecordsNothing(t *testing.T) {
 }
 
 func TestRecordThenFailNth(t *testing.T) {
-	db := dbtest.New(t, dbtest.WithFaults())
+	db := newFaultDB(t)
 	inj := dbfault.For(db)
 	u := newUser(t, db)
 
@@ -72,7 +82,7 @@ func TestRecordThenFailNth(t *testing.T) {
 }
 
 func TestFailMatchingFiresOnceOnFirstMatch(t *testing.T) {
-	db := dbtest.New(t, dbtest.WithFaults())
+	db := newFaultDB(t)
 	inj := dbfault.For(db)
 	u := newUser(t, db)
 
@@ -83,7 +93,7 @@ func TestFailMatchingFiresOnceOnFirstMatch(t *testing.T) {
 }
 
 func TestRowAndRawStatementsAreInterceptedAndRawTableParsed(t *testing.T) {
-	db := dbtest.New(t, dbtest.WithFaults())
+	db := newFaultDB(t)
 	inj := dbfault.For(db)
 	u := newUser(t, db)
 
@@ -99,7 +109,7 @@ func TestRowAndRawStatementsAreInterceptedAndRawTableParsed(t *testing.T) {
 }
 
 func TestInjectorIgnoresOtherGoroutines(t *testing.T) {
-	db := dbtest.New(t, dbtest.WithFaults())
+	db := newFaultDB(t)
 	inj := dbfault.For(db)
 	u := newUser(t, db)
 	inj.FailNth(1)

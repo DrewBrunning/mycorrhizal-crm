@@ -91,8 +91,6 @@ func seedErr(t *testing.T, db *gorm.DB, component, eventType string, occurredAt 
 // services package sits near the CI -race timeout.
 func TestAggregateOperationalErrors(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	reset := func(t *testing.T) {
 		t.Helper()

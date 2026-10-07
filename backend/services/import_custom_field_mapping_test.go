@@ -34,7 +34,6 @@ func createImportFieldMapTestUser(t *testing.T, db *gorm.DB) models.User {
 	suffix := fmt.Sprintf("%d", importFieldMapUserSeq)
 	user := models.User{Username: "cfmuser" + suffix, Password: "password123!A", Email: "cfm" + suffix + "@example.com"}
 	require.NoError(t, db.Create(&user).Error)
-	models.AuditFlush()
 	return user
 }
 

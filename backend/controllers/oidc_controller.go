@@ -285,7 +285,7 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		// flow completes when the app redeems its code at
 		// OIDCNativeExchangeHandler, which records the same event.
 		if !android {
-			models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
+			models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 		}
 
 		if android {
@@ -388,7 +388,7 @@ func OIDCNativeExchangeHandler(cfg *config.Config) gin.HandlerFunc {
 		// T18 audit: the native flow completes here, so the login event is
 		// recorded at the point the session actually exists (the callback left
 		// it unrecorded for this client — see OIDCCallbackHandler).
-		models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
+		models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 
 		c.JSON(http.StatusOK, models.OIDCNativeExchangeResponse{
 			Token:      tokenString,

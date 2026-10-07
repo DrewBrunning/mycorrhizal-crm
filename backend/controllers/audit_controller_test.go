@@ -24,13 +24,11 @@ import (
 func setupAuditRouter(t *testing.T, cfg config.Config) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
 	// The audit recorder is a package-level global. Leaving it pointing at this
 	// test's temp-dir DB would make every later test (which has no audit DB of
 	// its own) fire audit hooks into a file the testing framework has already
 	// deleted — the source of intermittent, order-dependent failures. Reset it
 	// when this test finishes so unrelated tests skip audit wiring again.
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	user := models.User{Username: "auditctrl", Password: "password123!A", Email: "auditctrl@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -50,13 +48,11 @@ func setupAuditRouter(t *testing.T, cfg config.Config) (*gorm.DB, *gin.Engine, m
 
 func TestUndoAuditEvent_RestoresContact(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
-	models.AuditFlush()
 
 	contact := models.Contact{UserID: user.ID, Firstname: "Original", Lastname: "Name"}
 	require.NoError(t, db.Create(&contact).Error)
 	contact.Firstname = "Changed"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	var event models.AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -81,18 +77,15 @@ func TestUndoAuditEvent_RestoresContact(t *testing.T) {
 // Card-only data through.
 func TestUndoAuditEvent_PreservesCardOnlyData(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
-	models.AuditFlush()
 
 	contact := &models.Contact{UserID: user.ID}
 	models.ApplyRecordToContact(contact, richCardOnlyRecordCtrl(), "")
 	require.NoError(t, db.Create(contact).Error)
-	models.AuditFlush()
 
 	// A flat-only edit produces an update event whose snapshot can express
 	// only flat fields.
 	contact.Firstname = "Changed"
 	require.NoError(t, db.Save(contact).Error)
-	models.AuditFlush()
 
 	var event models.AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -115,7 +108,6 @@ func TestUndoAuditEvent_RejectsDeleteOperation(t *testing.T) {
 	contact := models.Contact{UserID: user.ID, Firstname: "To Delete"}
 	require.NoError(t, db.Create(&contact).Error)
 	require.NoError(t, db.Delete(&contact).Error)
-	models.AuditFlush()
 
 	var event models.AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -134,7 +126,6 @@ func TestUndoAuditEvent_RejectsPastRetention(t *testing.T) {
 	require.NoError(t, db.Create(&contact).Error)
 	contact.Firstname = "Newer"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	var event models.AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -167,7 +158,6 @@ func TestUndoAuditEvent_RejectsAnotherUsersEvent(t *testing.T) {
 	require.NoError(t, db.Create(&contact).Error)
 	contact.Firstname = "Edited"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	var event models.AuditEvent
 	require.NoError(t, db.Where("entity_id = ?", contact.VCardUID).First(&event).Error)
@@ -187,7 +177,6 @@ func TestListAuditEvents_ScopedToUser(t *testing.T) {
 	theirs := models.Contact{UserID: other.ID, Firstname: "Theirs"}
 	require.NoError(t, db.Create(&mine).Error)
 	require.NoError(t, db.Create(&theirs).Error)
-	models.AuditFlush()
 
 	req, _ := http.NewRequest("GET", "/audit?entity_type="+models.AuditEntityContact+"&entity_id="+mine.VCardUID, nil)
 	w := httptest.NewRecorder()

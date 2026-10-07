@@ -1,8 +1,8 @@
 package controllers
 
 // Issue #416: ExportAuditLog tests. Uses setupAuditRouter (audit_controller_test.go),
-// the real database.InitDB-migrated schema plus models.RegisterAuditDB, so
-// audit events are recorded by the real hooks (models.AuditFlush) exactly as
+// the real database.InitDB-migrated schema plus the per-DB audit recorder, so
+// audit events are recorded by the real hooks (sync recorder) exactly as
 // they would be in production, not constructed by hand.
 
 import (
@@ -27,7 +27,6 @@ func registerAuditExportRoute(router *gin.Engine) {
 func TestExportAuditLog_ScopedToUser(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
-	models.AuditFlush()
 
 	other := models.User{Username: "auditexportother", Password: "password123!A", Email: "auditexportother@example.com"}
 	require.NoError(t, db.Create(&other).Error)
@@ -36,7 +35,6 @@ func TestExportAuditLog_ScopedToUser(t *testing.T) {
 	theirs := models.Contact{UserID: other.ID, Firstname: "Theirs"}
 	require.NoError(t, db.Create(&mine).Error)
 	require.NoError(t, db.Create(&theirs).Error)
-	models.AuditFlush()
 
 	req, _ := http.NewRequest("GET", "/audit/export", nil)
 	w := httptest.NewRecorder()
@@ -51,14 +49,12 @@ func TestExportAuditLog_ScopedToUser(t *testing.T) {
 func TestExportAuditLog_DefaultOmitsBeforeSnapshot_OptInIncludesIt(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
-	models.AuditFlush()
 
 	const distinctiveOldName = "DistinctivePreUpdateName"
 	contact := models.Contact{UserID: user.ID, Firstname: distinctiveOldName, Lastname: "Name"}
 	require.NoError(t, db.Create(&contact).Error)
 	contact.Firstname = "Changed"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	// Default: no snapshot column at all, and its content is absent.
 	req, _ := http.NewRequest("GET", "/audit/export", nil)
@@ -91,12 +87,10 @@ func TestExportAuditLog_DefaultOmitsBeforeSnapshot_OptInIncludesIt(t *testing.T)
 func TestExportAuditLog_CredentialFieldsStayRedactedEvenWithOptIn(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
-	models.AuditFlush()
 
 	const distinctivePassword = "S3cretPassw0rd!DistinctiveMarker"
 	user.Password = distinctivePassword
 	require.NoError(t, db.Save(&user).Error)
-	models.AuditFlush()
 
 	req, _ := http.NewRequest("GET", "/audit/export?include_snapshots=true", nil)
 	w := httptest.NewRecorder()
@@ -108,7 +102,6 @@ func TestExportAuditLog_CredentialFieldsStayRedactedEvenWithOptIn(t *testing.T) 
 func TestExportAuditLog_CSVFormulaInjectionNeutralized(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
-	models.AuditFlush()
 
 	// A hostile entity_id (an attacker-controlled string an audit event can
 	// legitimately carry, e.g. from a CardDAV-synced VCardUID) must be
@@ -155,7 +148,6 @@ func TestExportAuditLog_RejectsOverCap(t *testing.T) {
 
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
-	models.AuditFlush()
 
 	makeEvents := func(n int) []models.AuditEvent {
 		rows := make([]models.AuditEvent, n)

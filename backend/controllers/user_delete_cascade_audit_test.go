@@ -32,11 +32,10 @@ import (
 // Households/Reminders reliably logged four "constraint failed: FOREIGN KEY
 // constraint failed" warnings from models/audit.go on every single call.
 //
-// models.RegisterAuditDB is deliberately called *after* seeding each target
-// user's owned entities, not before: registering it earlier would also queue
-// async audit_events for those setup-time Creates, whose own completion race
-// against the test's own timing (not deleteUserCascade's) and would make
-// this test flaky for a reason unrelated to what it pins. This test asserts
+// The recorder is deliberately armed (models.NewAuditRecorder) *after* seeding
+// each target user's owned entities, with auditing disabled
+// (models.DisableAudit) until then: recording the setup-time Creates would
+// add events unrelated to what this test pins. This test asserts
 // only that deleteUserCascade itself, mid-transaction, fires nothing.
 //
 // Hand-verified: reverting the `tx = tx.Session(&gorm.Session{SkipHooks:
@@ -47,16 +46,13 @@ func TestDeleteUserCascade_DoesNotFireSpuriousAuditHooks(t *testing.T) {
 	t.Run("DeleteUser", func(t *testing.T) {
 		gin.SetMode(gin.ReleaseMode)
 		db := dbtest.New(t)
+		models.DisableAudit(db) // seeding must not record; the recorder is armed after
 
 		admin := seedCascadeUser(t, db, "audit-hook-admin")
 		target := seedCascadeUser(t, db, "audit-hook-target")
 		seedAuditHookOwnedEntities(t, db, target.ID)
 
-		models.RegisterAuditDB(db)
-		t.Cleanup(func() {
-			models.AuditFlush()
-			models.RegisterAuditDB(nil)
-		})
+		models.NewAuditRecorder(db, models.WithSync())
 		buf := captureTestLogger(t)
 
 		router := gin.New()
@@ -71,13 +67,13 @@ func TestDeleteUserCascade_DoesNotFireSpuriousAuditHooks(t *testing.T) {
 		router.ServeHTTP(w, req)
 		require.Equal(t, http.StatusOK, w.Code, "DeleteUser: %s", w.Body.String())
 
-		models.AuditFlush()
 		assertNoAuditFKWarning(t, buf)
 	})
 
 	t.Run("DeleteOwnAccount", func(t *testing.T) {
 		gin.SetMode(gin.ReleaseMode)
 		db := dbtest.New(t)
+		models.DisableAudit(db) // seeding must not record; the recorder is armed after
 		cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
 
 		user := seedDeleteAccountUser(t, db, "audit-hook-self", false)
@@ -85,11 +81,7 @@ func TestDeleteUserCascade_DoesNotFireSpuriousAuditHooks(t *testing.T) {
 		token, err := services.IssueSession(db, user, cfg, "", "")
 		require.NoError(t, err)
 
-		models.RegisterAuditDB(db)
-		t.Cleanup(func() {
-			models.AuditFlush()
-			models.RegisterAuditDB(nil)
-		})
+		models.NewAuditRecorder(db, models.WithSync())
 		buf := captureTestLogger(t)
 
 		router := gin.New()
@@ -108,7 +100,6 @@ func TestDeleteUserCascade_DoesNotFireSpuriousAuditHooks(t *testing.T) {
 		w, _ := doRequest(router, req)
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-		models.AuditFlush()
 		assertNoAuditFKWarning(t, buf)
 	})
 }

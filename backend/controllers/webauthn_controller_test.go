@@ -47,11 +47,6 @@ func newWAEnv(t *testing.T) *waEnv {
 	gin.SetMode(gin.ReleaseMode)
 	isolateAccountLimiter(t)
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24, FrontendURL: waTestOrigin}
 
 	username := strings.ToLower("wa_" + strings.ReplaceAll(strings.TrimPrefix(t.Name(), "Test"), "/", "_"))
@@ -213,7 +208,6 @@ func (e *waEnv) recoveryCount() int64 {
 }
 
 func (e *waEnv) auditCount(op string) int64 {
-	models.AuditFlush()
 	var n int64
 	require.NoError(e.t, e.db.Model(&models.AuditEvent{}).Where("user_id = ? AND operation = ?", e.user.ID, op).Count(&n).Error)
 	return n

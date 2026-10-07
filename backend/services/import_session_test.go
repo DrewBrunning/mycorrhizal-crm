@@ -41,6 +41,10 @@ func setupImportSessionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db := dbtest.New(t)
+	// These tests drive the import engine as a bare user id with no users row;
+	// a recorded audit event would trip the audit_events.user_id foreign key
+	// and warn. None of them assert on audit, so opt this DB out.
+	models.DisableAudit(db)
 	return db
 }
 

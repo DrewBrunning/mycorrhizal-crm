@@ -50,11 +50,6 @@ import (
 func smpRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	user := models.User{Username: "smp-user", Password: "password123!A", Email: "smp@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -341,16 +336,13 @@ func TestSearchMutationREST_Merge(t *testing.T) {
 func TestSearchMutationREST_AuditUndo(t *testing.T) {
 	db, router, user := smpRouter(t)
 	router.POST("/audit/:id/undo", UndoAuditEvent)
-	models.AuditFlush()
 
 	contact := models.Contact{UserID: user.ID, Firstname: "Fenchurch", Organization: "Islington"}
 	require.NoError(t, db.Create(&contact).Error)
-	models.AuditFlush()
 
 	// A searchable-field edit that produces an update audit event.
 	contact.Organization = "Hampstead"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 	require.True(t, smpContains(smpSearchIDs(t, router, "Hampstead", "contacts"), contact.ID), "the edited org is findable")
 	require.False(t, smpContains(smpSearchIDs(t, router, "Islington", "contacts"), contact.ID))
 

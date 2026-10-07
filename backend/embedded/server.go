@@ -181,7 +181,7 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 			Msg(warning.String())
 	}
 
-	models.RegisterAuditDB(db)
+	models.NewAuditRecorder(db)
 
 	// Field-level at-rest encryption (issue #380). In embedded mode the host
 	// supplies the master key through Config, so the HKDF-from-JWT fallback is
@@ -357,7 +357,9 @@ func (s *Server) stop(ctx context.Context) error {
 
 	// Fire-and-forget audit-chain goroutines (models.RecordAuditEvent, entity
 	// hooks) hold this DB handle too; drain them so none writes after Close.
-	models.AuditFlush()
+	if rec := models.AuditRecorderFor(s.db); rec != nil {
+		rec.Flush()
+	}
 
 	logger.Info().Msg("Closing database connection...")
 	if sqlDB, err := s.db.DB(); err == nil {
@@ -421,7 +423,7 @@ func (s *Server) provisionLocalUser() error {
 		if err := s.db.Create(&user).Error; err != nil {
 			return err
 		}
-		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRegister, user.ID)
+		models.RecordAuditEvent(s.db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRegister, user.ID)
 		if err := services.EnsureSelfContact(s.db, &user); err != nil {
 			return err
 		}

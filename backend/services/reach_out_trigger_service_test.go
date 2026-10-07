@@ -28,8 +28,6 @@ func setupReachOutTestDB(t *testing.T) *gorm.DB {
 	logtest.Guard(t) // issue #1474: happy-path tests fail on unexpected warn/error logs
 	t.Helper()
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// DetectReachOutSuggestions fires reach_out_suggested webhooks via
 	// TriggerWebhooksAsync; drain those goroutines before this test's DB /
 	// t.TempDir() are torn down (registered last → runs first, LIFO).
@@ -43,7 +41,6 @@ func createTestUserAndContact(t *testing.T, db *gorm.DB, org, jobTitle string) (
 	require.NoError(t, db.Create(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Smith", Organization: org, JobTitle: jobTitle}
 	require.NoError(t, db.Create(&contact).Error)
-	models.AuditFlush()
 	return user, contact
 }
 
@@ -65,7 +62,6 @@ func TestDetectReachOutSuggestions_OrganizationChange(t *testing.T) {
 
 	contact.Organization = "NewCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -123,7 +119,6 @@ func TestDetectReachOutSuggestions_TitleChange(t *testing.T) {
 
 	contact.JobTitle = "Senior Engineer"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -143,7 +138,6 @@ func TestDetectReachOutSuggestions_AddressMove(t *testing.T) {
 	oldAddr := models.ContactAddress{Street: "1 Old Rd", City: "Springfield", Region: "IL", Country: "USA"}
 	contact.Addresses = []models.ContactAddress{oldAddr}
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	// Seed the cursor past this first update (as if a prior run already
 	// processed it) so the batch below contains only the second update,
@@ -158,7 +152,6 @@ func TestDetectReachOutSuggestions_AddressMove(t *testing.T) {
 	newAddr := models.ContactAddress{Street: "2 New Ave", City: "Shelbyville", Region: "IL", Country: "USA"}
 	contact.Addresses = []models.ContactAddress{newAddr}
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -184,7 +177,6 @@ func TestDetectReachOutSuggestions_AddressPostalOnlyChangeFires(t *testing.T) {
 	oldAddr := models.ContactAddress{Street: "1 Main St", City: "Springfield", Postal: "12345", Country: "USA"}
 	contact.Addresses = []models.ContactAddress{oldAddr}
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	var firstEvent models.AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -195,7 +187,6 @@ func TestDetectReachOutSuggestions_AddressPostalOnlyChangeFires(t *testing.T) {
 	newAddr := models.ContactAddress{Street: "1 Main St", City: "Springfield", Postal: "54321", Country: "USA"}
 	contact.Addresses = []models.ContactAddress{newAddr}
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -216,7 +207,6 @@ func TestDetectReachOutSuggestions_UnchangedValueDoesNotFire(t *testing.T) {
 	// Touch an unrelated field; organization stays identical.
 	contact.Lastname = "Jones"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -232,7 +222,6 @@ func TestDetectReachOutSuggestions_ClearedValueDoesNotFire(t *testing.T) {
 
 	contact.Organization = ""
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -261,10 +250,8 @@ func TestDetectReachOutSuggestions_DeletedContactSkipped(t *testing.T) {
 
 	contact.Organization = "NewCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	require.NoError(t, db.Delete(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -297,11 +284,9 @@ func TestDetectReachOutSuggestions_DeceasedContactSkipped(t *testing.T) {
 		},
 	}, "")
 	require.NoError(t, db.Create(&contact).Error)
-	models.AuditFlush()
 
 	contact.Organization = "NewCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -317,7 +302,6 @@ func TestDetectReachOutSuggestions_CursorPreventsDoubleFire(t *testing.T) {
 
 	contact.Organization = "NewCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 	DetectReachOutSuggestions(db, cfg)
@@ -334,7 +318,6 @@ func TestDetectReachOutSuggestions_JobLockSkipsRapidRerun(t *testing.T) {
 
 	contact.Organization = "NewCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 
@@ -347,7 +330,6 @@ func TestDetectReachOutSuggestions_JobLockSkipsRapidRerun(t *testing.T) {
 	// yet (it will be on the next real run, once the lock clears).
 	contact.Organization = "ThirdCo"
 	require.NoError(t, db.Save(&contact).Error)
-	models.AuditFlush()
 
 	DetectReachOutSuggestions(db, cfg)
 

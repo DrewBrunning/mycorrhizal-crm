@@ -221,7 +221,7 @@ func WebAuthnRegisterFinish(c *gin.Context) {
 		return
 	}
 
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpWebAuthnRegister, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpWebAuthnRegister, user.ID)
 	if firstFactor {
 		endOtherSessions(c, db, user.ID)
 	}
@@ -325,7 +325,7 @@ func WebAuthnLoginFinish(c *gin.Context, cfg *config.Config) {
 		err = errCloneWarning
 	}
 	if err != nil {
-		models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
+		models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
 		if _, lockoutSecs := accountLimiter.RecordLoginFailure(username, clientIP); lockoutSecs > 0 {
 			abortLoginLocked(c, lockoutSecs)
 			return
@@ -516,7 +516,7 @@ func DeleteWebAuthnCredential(c *gin.Context) {
 		return
 	}
 
-	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpWebAuthnRevoke, user.ID)
+	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpWebAuthnRevoke, user.ID)
 	if lastFactor {
 		endOtherSessions(c, db, user.ID)
 	}

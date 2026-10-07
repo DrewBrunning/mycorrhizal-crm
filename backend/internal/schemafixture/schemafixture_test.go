@@ -9,6 +9,7 @@ import (
 	"mycorrhizal/database"
 	"mycorrhizal/internal/canonicalfixture"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,6 +67,7 @@ func TestFixtureManifestDataRowCounts(t *testing.T) {
 func referenceCounts(t *testing.T) map[string]int64 {
 	t.Helper()
 	db := dbtest.New(t)
+	models.DisableAudit(db) // compare manifest data only, not recorder-written audit rows (#1493)
 	m, err := canonicalfixture.Read()
 	require.NoError(t, err)
 	_, err = canonicalfixture.Populate(db, m)
