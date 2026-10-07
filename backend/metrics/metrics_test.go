@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -19,40 +20,76 @@ func dump(t *testing.T) string {
 	return sb.String()
 }
 
+// delta returns a func reporting how much the exposition sample that starts
+// with series (name plus label set) has grown since delta was called; an
+// absent series reads as 0.
+//
+// Default() is process-global, so under -shuffle/-count=2 (issue #1492) an
+// earlier test, or this test's own first run, has already incremented the same
+// series. Tests assert the change across their own calls, never an absolute
+// value.
+func delta(t *testing.T, series string) func() float64 {
+	t.Helper()
+	read := func() float64 {
+		for _, line := range strings.Split(dump(t), "\n") {
+			if rest, ok := strings.CutPrefix(line, series+" "); ok {
+				v, err := strconv.ParseFloat(strings.TrimSpace(rest), 64)
+				require.NoError(t, err, "unparseable sample %q", line)
+				return v
+			}
+		}
+		return 0
+	}
+	before := read()
+	return func() float64 { return read() - before }
+}
+
 func TestJobRun_RecordsCountAndDuration(t *testing.T) {
+	okRuns := delta(t, `job_runs_total{job="test-job-ok",result="success"}`)
+	badRuns := delta(t, `job_runs_total{job="test-job-bad",result="failure"}`)
+	okCount := delta(t, `job_duration_seconds_count{job="test-job-ok"}`)
+	okSum := delta(t, `job_duration_seconds_sum{job="test-job-ok"}`)
+
 	JobRun("test-job-ok", "success", 2.5)
 	JobRun("test-job-ok", "success", 7.0)
 	JobRun("test-job-bad", "failure", 0.2)
 
-	out := dump(t)
-	assert.Contains(t, out, `job_runs_total{job="test-job-ok",result="success"} 2`+"\n")
-	assert.Contains(t, out, `job_runs_total{job="test-job-bad",result="failure"} 1`+"\n")
-	assert.Contains(t, out, `job_duration_seconds_count{job="test-job-ok"} 2`+"\n")
-	assert.Contains(t, out, `job_duration_seconds_sum{job="test-job-ok"} 9.5`+"\n")
+	assert.Equal(t, 2.0, okRuns())
+	assert.Equal(t, 1.0, badRuns())
+	assert.Equal(t, 2.0, okCount())
+	assert.Equal(t, 9.5, okSum())
 }
 
 func TestHTTPHelpers_RecordOnExpectedFamilies(t *testing.T) {
+	reqs := delta(t, `http_requests_total{method="GET",route="/api/v1/thing/:id",status="200"}`)
+	durs := delta(t, `http_request_duration_seconds_count{method="GET",route="/api/v1/thing/:id"}`)
+	inflight := delta(t, `http_requests_in_flight`)
+
 	HTTPRequest("GET", "/api/v1/thing/:id", "200")
 	HTTPObserve("GET", "/api/v1/thing/:id", 0.02)
 	HTTPInFlightInc()
 	HTTPInFlightInc()
 	HTTPInFlightDec()
+	// Put the process-global gauge back so no later test sees a leaked request.
+	t.Cleanup(HTTPInFlightDec)
 
-	out := dump(t)
-	assert.Contains(t, out, `http_requests_total{method="GET",route="/api/v1/thing/:id",status="200"} 1`+"\n")
-	assert.Contains(t, out, `http_request_duration_seconds_count{method="GET",route="/api/v1/thing/:id"} 1`+"\n")
-	assert.Contains(t, out, "http_requests_in_flight 1\n")
+	assert.Equal(t, 1.0, reqs())
+	assert.Equal(t, 1.0, durs())
+	assert.Equal(t, 1.0, inflight())
 }
 
 func TestSystemEvent_FoldsUnknownLabelsToBoundedSet(t *testing.T) {
+	sync := delta(t, `system_events_total{event_type="sync_failed",component="contact_sync",result="failure"}`)
+	other := delta(t, `system_events_total{event_type="other",component="other",result="none"}`)
+	sent := delta(t, `system_events_total{event_type="notification_sent",component="notification",result="success"}`)
+
 	SystemEvent("sync_failed", "contact_sync", "failure")
 	SystemEvent("totally-made-up", "some-plugin-name", "")
 	SystemEvent("notification_sent", "notification", "success")
 
-	out := dump(t)
-	assert.Contains(t, out, `system_events_total{event_type="sync_failed",component="contact_sync",result="failure"} 1`+"\n")
-	assert.Contains(t, out, `system_events_total{event_type="other",component="other",result="none"} 1`+"\n")
-	assert.Contains(t, out, `system_events_total{event_type="notification_sent",component="notification",result="success"} 1`+"\n")
+	assert.Equal(t, 1.0, sync())
+	assert.Equal(t, 1.0, other())
+	assert.Equal(t, 1.0, sent())
 }
 
 func TestFoldHelpers(t *testing.T) {
