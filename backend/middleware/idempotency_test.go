@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -29,6 +30,19 @@ import (
 // reproduce from the model tags) plus a POST handler that mints one Note row
 // and echoes a body, and increments a side-effect counter.
 func idempotencyTestRouter(t *testing.T) (*gin.Engine, *gorm.DB, *int64) {
+	return newIdempotencyTestRouter(t, nil)
+}
+
+// idempotencyTestRouterWithClock is idempotencyTestRouter on a clock.Fake
+// pinned at start (issue #1494); the Fake is returned so a test can move time.
+func idempotencyTestRouterWithClock(t *testing.T, start time.Time) (*gin.Engine, *gorm.DB, *int64, *clock.Fake) {
+	clk := clock.NewFake(start)
+	r, db, se := newIdempotencyTestRouter(t, clk)
+	return r, db, se, clk
+}
+
+// newIdempotencyTestRouter installs clk on every request when non-nil.
+func newIdempotencyTestRouter(t *testing.T, clk clock.Clock) (*gin.Engine, *gorm.DB, *int64) {
 	t.Helper()
 	db := dbtest.New(t)
 	user := models.User{Username: "idem", Password: "password123!A", Email: "idem@example.com"}
@@ -40,6 +54,9 @@ func idempotencyTestRouter(t *testing.T) (*gin.Engine, *gorm.DB, *int64) {
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("userID", user.ID)
+		if clk != nil {
+			clock.Install(c, clk)
+		}
 		c.Next()
 	})
 	r.Use(IdempotencyMiddleware())

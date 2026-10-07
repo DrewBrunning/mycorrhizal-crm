@@ -115,7 +115,7 @@ func (m *ImportSessionManager) CleanupExpired() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	now := time.Now()
+	now := Now()
 	for id, data := range m.sessions {
 		if now.After(data.session.ExpiresAt) {
 			delete(m.sessions, id)
@@ -137,7 +137,7 @@ func (m *ImportSessionManager) rememberConfirmed(sessionID string, userID uint, 
 	m.confirmedResults[sessionID] = confirmedImport{
 		userID:    userID,
 		result:    result,
-		expiresAt: time.Now().Add(sessionExpiry),
+		expiresAt: Now().Add(sessionExpiry),
 	}
 }
 
@@ -176,7 +176,7 @@ func (m *ImportSessionManager) replayConfirmed(sessionID string, userID uint) (m
 	if !exists || rec.userID != userID {
 		return models.ImportResult{}, false
 	}
-	if time.Now().After(rec.expiresAt) {
+	if Now().After(rec.expiresAt) {
 		m.mu.Lock()
 		delete(m.confirmedResults, sessionID)
 		m.mu.Unlock()
@@ -199,7 +199,7 @@ func (m *ImportSessionManager) get(sessionID string, userID uint) (*importSessio
 		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
 	}
 
-	if time.Now().After(sessionData.session.ExpiresAt) {
+	if Now().After(sessionData.session.ExpiresAt) {
 		m.mu.Lock()
 		delete(m.sessions, sessionID)
 		m.mu.Unlock()
@@ -228,7 +228,7 @@ func (m *ImportSessionManager) Delete(sessionID string) {
 func (m *ImportSessionManager) CountActive(userID uint) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	now := time.Now()
+	now := Now()
 	count := 0
 	for _, data := range m.sessions {
 		if data.session.UserID == userID && now.Before(data.session.ExpiresAt) {
@@ -241,7 +241,7 @@ func (m *ImportSessionManager) CountActive(userID uint) int {
 // CreateCSVSession stores a freshly parsed CSV upload and returns its session ID.
 func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, rows [][]string) string {
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 
 	m.mu.Lock()
 	m.sessions[sessionID] = &importSessionData{
@@ -294,7 +294,7 @@ func (m *ImportSessionManager) CreateRecordsSession(userID uint, vcfContacts []V
 // records (issue #651).
 func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview, importType, sourceFormat string) string {
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 
 	m.mu.Lock()
 	m.sessions[sessionID] = &importSessionData{

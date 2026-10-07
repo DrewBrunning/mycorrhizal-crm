@@ -2,6 +2,7 @@ package services
 
 import (
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"testing"
@@ -508,10 +509,13 @@ func TestSendRemindersWithRateLimit_RateLimited(t *testing.T) {
 func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 	db, _ := setupRouter(t)
 
-	// Set a very short interval
+	// Set a very short interval, driven by a fake clock (issue #1494) so the
+	// test advances time instead of sleeping.
 	originalInterval := ReminderMinInterval
 	ReminderMinInterval = 50 * time.Millisecond
 	defer func() { ReminderMinInterval = originalInterval }()
+	clk := clock.NewFake(time.Now())
+	defer SetClock(clk)()
 
 	user := models.User{Username: "rate-limit-user3", Password: "password123", Email: "ratelimit3@example.com"}
 	db.Create(&user)
@@ -559,8 +563,8 @@ func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 	db.Where("job_name = ?", models.JobNameDailyReminders).First(&job)
 	firstRunTime := job.LastRunAt
 
-	// Wait for interval to pass
-	time.Sleep(100 * time.Millisecond)
+	// Let the interval pass
+	clk.Advance(100 * time.Millisecond)
 
 	// Create another reminder that's due now (since the first one was updated)
 	reminder2 := models.Reminder{

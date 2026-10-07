@@ -117,7 +117,7 @@ func NewMonicaImportManager() *MonicaImportManager {
 func (m *MonicaImportManager) CleanupExpired() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	now := time.Now()
+	now := Now()
 	for id, s := range m.sessions {
 		s.mu.Lock()
 		expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
@@ -136,7 +136,7 @@ func (m *MonicaImportManager) CountActive(userID uint) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	n := 0
-	now := time.Now()
+	now := Now()
 	for _, s := range m.sessions {
 		if s.userID != userID {
 			continue
@@ -163,7 +163,7 @@ func (m *MonicaImportManager) get(sessionID string, userID uint) (*monicaImportS
 		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
 	}
 	s.mu.Lock()
-	now := time.Now()
+	now := Now()
 	expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
 	if !expired {
 		s.expiresAt = now.Add(monicaSessionExpiry)
@@ -275,7 +275,7 @@ func (m *MonicaImportManager) Connect(ctx context.Context, userID uint, req mode
 	}
 
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 	session := &monicaImportSession{
 		id:         sessionID,
 		userID:     userID,
@@ -421,7 +421,7 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 	}
 
 	s.setPhase(models.MonicaPhaseBuildingPreview, 0, len(snapshot.Contacts))
-	plan := MapMonicaSnapshot(snapshot, time.Now())
+	plan := MapMonicaSnapshot(snapshot, Now())
 	previews := buildSourceImportPreview(db, s.userID, plan)
 
 	s.mu.Lock()

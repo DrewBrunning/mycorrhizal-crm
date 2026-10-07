@@ -3,6 +3,8 @@ package middleware
 import (
 	"sort"
 	"time"
+
+	"mycorrhizal/internal/clock"
 )
 
 // Instance-wide failed-authentication velocity detection (issue #940).
@@ -180,7 +182,7 @@ func newAuthVelocityState(cfg AuthVelocityConfig, now func() time.Time) *authVel
 		cfg.IncidentHold = cfg.Throttle
 	}
 	if now == nil {
-		now = time.Now
+		now = clock.System{}.Now
 	}
 	return &authVelocityState{
 		cfg:        cfg,

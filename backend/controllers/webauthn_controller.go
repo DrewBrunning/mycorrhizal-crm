@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -376,7 +377,7 @@ func abortLocked(c *gin.Context, secs int, message string) {
 		"error":          "Account temporarily locked",
 		"message":        message,
 		"retry_after":    secs,
-		"retry_after_at": time.Now().Add(time.Duration(secs) * time.Second).Format(time.RFC3339),
+		"retry_after_at": clock.FromContext(c).Now().Add(time.Duration(secs) * time.Second).Format(time.RFC3339),
 	})
 	c.Abort()
 }

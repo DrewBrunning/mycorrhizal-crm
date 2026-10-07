@@ -328,7 +328,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 		}
 	}()
 
-	now := time.Now().In(cfg.GetReminderLocation())
+	now := Now().In(cfg.GetReminderLocation())
 
 	var policies []models.CadencePolicy
 	if err := db.Find(&policies).Error; err != nil {

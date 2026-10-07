@@ -106,7 +106,7 @@ func recordNotificationDelivery(ctx context.Context, db *gorm.DB, reminderID uin
 	)
 	if sent {
 		status = "sent"
-		now := time.Now()
+		now := Now()
 		sentAt = &now
 	} else if errMsg != "" {
 		msg := errMsg
@@ -199,7 +199,7 @@ func (emailNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config
 	}
 
 	for _, r := range eligible {
-		now := time.Now()
+		now := Now()
 		r.EmailSent = true
 		r.LastSent = &now
 		if err := db.Save(&r).Error; err != nil {
@@ -800,7 +800,7 @@ func fcmAccessToken(cfg config.Config, sa *fcmServiceAccount) (string, error) {
 		return "", fmt.Errorf("FCM service account private key is not an RSA key")
 	}
 
-	now := time.Now()
+	now := Now()
 	claims := jwt.MapClaims{
 		"iss":   sa.ClientEmail,
 		"scope": fcmMessagingScope,

@@ -36,7 +36,7 @@ func recordManualJobRun(ctx context.Context, db *gorm.DB, jobName string, start 
 		JobName:        jobName,
 		Trigger:        models.JobTriggerManual,
 		StartedAt:      start,
-		FinishedAt:     time.Now(),
+		FinishedAt:     services.Now(),
 		Result:         result,
 		Error:          errStr,
 		ItemsProcessed: items,
@@ -48,7 +48,7 @@ func TriggerReminders(c *gin.Context, cfg config.Config) {
 	log := logger.FromContext(c)
 	db := c.MustGet("db").(*gorm.DB)
 
-	start := time.Now()
+	start := services.Now()
 	sent, err := services.SendReminders(db, cfg)
 	recordManualJobRun(c.Request.Context(), db, models.JobNameDailyReminders, start, &sent, err)
 	if err != nil {
@@ -66,7 +66,7 @@ func TriggerReminders(c *gin.Context, cfg config.Config) {
 // 500, rather than the endpoint always claiming success (issue #975).
 func TriggerPurge(c *gin.Context, cfg config.Config) {
 	db := c.MustGet("db").(*gorm.DB)
-	start := time.Now()
+	start := services.Now()
 	err := errors.Join(
 		services.PurgeSoftDeletedRows(db, cfg),
 		services.PurgeExpiredContactShares(db, cfg),

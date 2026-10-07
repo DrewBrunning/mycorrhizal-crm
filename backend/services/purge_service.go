@@ -148,7 +148,7 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		// the whole undo window.
 		return nil
 	}
-	cutoff := time.Now().AddDate(0, 0, -cfg.DeleteRetentionDays)
+	cutoff := Now().AddDate(0, 0, -cfg.DeleteRetentionDays)
 
 	var errs []error
 

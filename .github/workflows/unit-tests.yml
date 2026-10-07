@@ -386,6 +386,16 @@ jobs:
         working-directory: backend
         run: go run ./cmd/gormerrcheck ./...
 
+      # Issue #1494: time-dependent logic must read "now" from the injected
+      # clock (backend/internal/clock), not the wall clock, so tests can pin
+      # time instead of sleeping. This repo-local analyzer
+      # (backend/internal/lint/rawtime) flags time.Now/Since/Until in
+      # controllers, services and middleware outside a `// rawtime:allow
+      # <reason>` marker or the reason-bearing file allowlist.
+      - name: Lint (rawtimecheck — raw time.Now outside the injected clock)
+        working-directory: backend
+        run: go run ./cmd/rawtimecheck ./...
+
   backend-tests:
     permissions:
       contents: read

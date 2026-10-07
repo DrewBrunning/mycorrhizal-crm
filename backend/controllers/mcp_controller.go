@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -176,9 +177,9 @@ func mcpTimelineWindow(since, until string, now time.Time) (cutoff, notAfter tim
 // newMCPServer builds the tool set for one request, bound to the already
 // authenticated user. A fresh server per request (stateless transport) keeps
 // the user identity out of any shared state.
-func newMCPServer(db *gorm.DB, userID uint, cfg config.Config) *mcp.Server {
+func newMCPServer(db *gorm.DB, userID uint, cfg config.Config, clk clock.Clock) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "mycorrhizal-crm", Version: buildinfo.Get().Version}, nil)
-	now := func() time.Time { return timeNow().In(cfg.GetReminderLocation()) }
+	now := func() time.Time { return clk.Now().In(cfg.GetReminderLocation()) }
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_contacts",
@@ -313,8 +314,9 @@ func MCPHandler() gin.HandlerFunc {
 			return
 		}
 		cfg := currentConfig(c)
+		clk := clock.FromContext(c)
 		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
-			return newMCPServer(db, userID, cfg)
+			return newMCPServer(db, userID, cfg, clk)
 		}, &mcp.StreamableHTTPOptions{
 			Stateless:    true,
 			JSONResponse: true,

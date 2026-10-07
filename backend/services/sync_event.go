@@ -16,7 +16,7 @@ import (
 // never the subscription URL or contact IDs (#424 non-goal); the error string
 // is sanitized and length-capped by RecordSystemEvent.
 func recordSyncEvent(ctx context.Context, db *gorm.DB, component string, userID uint, start time.Time, err error, detail string) {
-	durMS := time.Since(start).Milliseconds()
+	durMS := time.Since(start).Milliseconds() // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 
 	ev := models.SystemEvent{
 		Component:  component,

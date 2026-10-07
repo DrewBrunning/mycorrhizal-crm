@@ -109,7 +109,7 @@ func NewMeerkatImportManager() *MeerkatImportManager {
 func (m *MeerkatImportManager) CleanupExpired() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	now := time.Now()
+	now := Now()
 	for id, s := range m.sessions {
 		s.mu.Lock()
 		expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
@@ -136,7 +136,7 @@ func (m *MeerkatImportManager) CountActive(userID uint) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	n := 0
-	now := time.Now()
+	now := Now()
 	for _, s := range m.sessions {
 		if s.userID != userID {
 			continue
@@ -162,7 +162,7 @@ func (m *MeerkatImportManager) get(sessionID string, userID uint) (*meerkatImpor
 		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
 	}
 	s.mu.Lock()
-	now := time.Now()
+	now := Now()
 	expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
 	if !expired {
 		s.expiresAt = now.Add(meerkatSessionExpiry)
@@ -272,7 +272,7 @@ func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader)
 	}
 
 	sessionID := generateSessionID()
-	now := time.Now()
+	now := Now()
 	session := &meerkatImportSession{
 		id:           sessionID,
 		userID:       userID,

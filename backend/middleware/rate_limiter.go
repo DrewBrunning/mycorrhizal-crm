@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
+
+	"mycorrhizal/internal/clock"
 )
 
 // Account lockout configuration
@@ -66,18 +68,34 @@ type AccountRateLimiter struct {
 	velocity *authVelocityState
 	mu       sync.RWMutex
 	ttl      time.Duration
+	// clk is the source of "now" for every lockout window (issue #1494); nil
+	// means the system clock. Set it with SetClock before the limiter is used.
+	clk clock.Clock
 }
+
+// SetClock replaces the limiter's clock (the velocity tracker shares it) so
+// tests can drive lockout windows without real sleeps. Call it before the
+// limiter is used concurrently.
+func (a *AccountRateLimiter) SetClock(c clock.Clock) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.clk = c
+}
+
+// now is the limiter's current instant.
+func (a *AccountRateLimiter) now() time.Time { return clock.Or(a.clk).Now() }
 
 // NewAccountRateLimiter creates a new account-based rate limiter
 func NewAccountRateLimiter(ttl time.Duration) *AccountRateLimiter {
-	return &AccountRateLimiter{
+	a := &AccountRateLimiter{
 		accounts:           make(map[string]*AccountLockoutEntry),
 		global:             make(map[string]*AccountLockoutEntry),
 		knownGoodIPs:       make(map[string]map[string]time.Time),
 		knownGoodGlobalIPs: make(map[string]time.Time),
-		velocity:           newAuthVelocityState(DefaultAuthVelocityConfig(), time.Now),
 		ttl:                ttl,
 	}
+	a.velocity = newAuthVelocityState(DefaultAuthVelocityConfig(), a.now)
+	return a
 }
 
 // ConfigureAuthVelocity installs the instance-wide failed-auth velocity
@@ -87,7 +105,7 @@ func NewAccountRateLimiter(ttl time.Duration) *AccountRateLimiter {
 func ConfigureAuthVelocity(cfg AuthVelocityConfig) {
 	accountLimiter.mu.Lock()
 	defer accountLimiter.mu.Unlock()
-	accountLimiter.velocity = newAuthVelocityState(cfg, time.Now)
+	accountLimiter.velocity = newAuthVelocityState(cfg, accountLimiter.now)
 }
 
 // IsLocked checks if an account is currently locked out
@@ -95,7 +113,7 @@ func ConfigureAuthVelocity(cfg AuthVelocityConfig) {
 func (a *AccountRateLimiter) IsLocked(identifier string) (bool, int) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	return lockedForLocked(a.accounts, identifier, time.Now())
+	return lockedForLocked(a.accounts, identifier, a.now())
 }
 
 // lockedForLocked reports whether m[key] carries an unexpired lockout. Caller
@@ -116,7 +134,7 @@ func lockedForLocked(m map[string]*AccountLockoutEntry, key string, now time.Tim
 func (a *AccountRateLimiter) RecordFailedAttempt(identifier string) (bool, int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return recordExpBackoffLocked(a.accounts, identifier, time.Now())
+	return recordExpBackoffLocked(a.accounts, identifier, a.now())
 }
 
 // recordExpBackoffLocked bumps the failure counter for m[key] and, at or over
@@ -176,7 +194,7 @@ func (a *AccountRateLimiter) CleanupStaleAccountEntries() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	now := time.Now()
+	now := a.now()
 	stale := func(m map[string]*AccountLockoutEntry) {
 		for key, entry := range m {
 			// Remove entries where:
@@ -235,7 +253,17 @@ type IPRateLimiter struct {
 	r   rate.Limit    // requests per second
 	b   int           // burst size
 	ttl time.Duration // time-to-live for inactive entries
+	clk clock.Clock   // source of "now" for lastAccess/cleanup (issue #1494); nil = system clock
 }
+
+// SetClock replaces the limiter's clock; call it before concurrent use.
+func (i *IPRateLimiter) SetClock(c clock.Clock) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.clk = c
+}
+
+func (i *IPRateLimiter) now() time.Time { return clock.Or(i.clk).Now() }
 
 // NewIPRateLimiter creates a new IP-based rate limiter
 // r: requests per second (e.g., 10 = 10 requests per second)
@@ -270,12 +298,12 @@ func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
 	if !exists {
 		entry = &limiterEntry{
 			limiter:    rate.NewLimiter(i.r, i.b),
-			lastAccess: time.Now(),
+			lastAccess: i.now(),
 		}
 		i.ips[ip] = entry
 	} else {
 		// Update last access time on each access
-		entry.lastAccess = time.Now()
+		entry.lastAccess = i.now()
 	}
 
 	return entry.limiter
@@ -287,7 +315,7 @@ func (i *IPRateLimiter) CleanupStaleEntries() {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	now := time.Now()
+	now := i.now()
 	for ip, entry := range i.ips {
 		// Remove entries that haven't been accessed within the TTL
 		if now.Sub(entry.lastAccess) > i.ttl {

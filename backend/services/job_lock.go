@@ -130,7 +130,7 @@ func getInstanceID() string {
 // that never mislabels a normal cadence run); otherwise `running`, which
 // releaseJobLock finalises to `ran` / `failed`.
 func acquireJobLock(db *gorm.DB, jobName string, minInterval time.Duration) (bool, error) {
-	now := time.Now()
+	now := Now()
 	instanceID := getInstanceID()
 	lockTimeout := 5 * time.Minute // Consider locks stale after 5 minutes
 
@@ -220,7 +220,7 @@ func acquireJobLock(db *gorm.DB, jobName string, minInterval time.Duration) (boo
 // the outcome recorded by acquireJobLock: a `running` marker becomes `ran`, a
 // `caught_up` marker is kept, and any outcome on a failed run becomes `failed`.
 func releaseJobLock(db *gorm.DB, jobName string, success bool) error {
-	now := time.Now()
+	now := Now()
 	instanceID := getInstanceID()
 
 	return retryJobLockOnBusy(func() error {

@@ -61,6 +61,43 @@ Detail and the hard-won traps for each layer follow.
   DB/integration tests — the layer is a property of what the test *touches*, not
   which command runs it.
 
+#### Time-dependent logic: the injected clock (issue #1494)
+
+Expiry, lockout windows, reminder scheduling, retention cutoffs and day-boundary
+decisions are pinned with a **fake clock, never a sleep**. `backend/internal/clock`
+provides `Clock` (`Now()`), `clock.System`, and `clock.Fake` (`NewFake`, `Set`,
+`Advance`; concurrency-safe).
+
+| Layer | Production source | Test seam |
+|---|---|---|
+| Controllers, middleware handlers | `clock.FromContext(c).Now()` (`routes.go` installs `clock.System{}` via `clockMiddleware`) | `router.Use(func(c){ clock.Install(c, fake); c.Next() })` before registering routes; `clock.InstallIfAbsent` keeps it |
+| Services (free functions) | `services.Now()` | `defer services.SetClock(fake)()` |
+| `AccountRateLimiter` / `IPRateLimiter` | their own `clk` field | `limiter.SetClock(fake)` |
+| JWT `exp`/`iat`/`nbf` | `middleware.ValidateTimeClaims(claims, now)` (parsers use `jwt.WithoutClaimsValidation()`) | the same fakes above |
+
+Write the boundary table for the area you touch: token valid at `exp-1ns` and
+invalid at `exp`; session `expires_at` and idle timeout at `==` and `+1ns`; a
+purge row at exactly the cutoff; midnight in the reminder zone, DST, leap day.
+Pick instants far from the real clock (the suites use 2030) so a call that
+bypasses the seam fails rather than passing by coincidence. Examples:
+`middleware/clock_boundary_test.go`, `services/clock_test.go`,
+`controllers/clock_boundary_test.go`, `controllers/date_02_reminder_zone_test.go`.
+
+**Enforcement.** `go run ./cmd/rawtimecheck ./...` (analyzer
+`internal/lint/rawtime`; a step in the required `Backend (Go)` job and the
+pre-commit hook) fails on any `time.Now`/`time.Since`/`time.Until` in
+`controllers`, `services` or `middleware`. Three ways out, in order of
+preference: migrate the site to the clock; for an elapsed-duration measurement,
+a `net.Conn` deadline or a PRNG seed, put `// rawtime:allow <reason>` on the line
+(a marker with no reason is itself a finding, like `# pragma: no cover`); for a
+bulk that cannot move in the same change, add a `rawtime.Allowlist` entry with a
+`Reason` and an **exact** `Count` — `TestAllowlistIsExact` fails when the count
+is stale in either direction, so the list can only shrink. Hand-verify the gate
+by adding a raw `time.Now()` to a controller and watching it fail. Real sleeps
+that remain in tests are for waiting on a *different goroutine/process* (e.g.
+asserting a background webhook did **not** fire), not for waiting out a
+time-based rule.
+
 ### DB/integration
 
 - **Responsible for** everything that persists to or reads from the **real

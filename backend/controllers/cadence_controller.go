@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -25,7 +26,7 @@ type cadencePolicyWithHealth struct {
 // clock (the same location reminders run in).
 func cadenceNow(c *gin.Context) time.Time {
 	cfg := currentConfig(c)
-	return time.Now().In(cfg.GetReminderLocation())
+	return clock.FromContext(c).Now().In(cfg.GetReminderLocation())
 }
 
 // policyHealth derives health for one policy, embedding it in the response

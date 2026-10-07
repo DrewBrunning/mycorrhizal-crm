@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"mycorrhizal/config"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"time"
 
@@ -45,6 +46,8 @@ func GenerateToken(user models.User, cfg *config.Config, sid string) (string, er
 		return "", errors.New("JWT expiry hours is invalid")
 	}
 
+	now := Now()
+
 	// Note: is_admin is intentionally NOT included in the JWT (AdminMiddleware handles this)
 	claims := jwt.MapClaims{
 		"authorized": true,
@@ -57,8 +60,8 @@ func GenerateToken(user models.User, cfg *config.Config, sid string) (string, er
 		// minted before migration 000053; AuthMiddleware rejects those,
 		// forcing one re-login, the same way it treats a missing token_version.
 		"sid": sid,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Hour * time.Duration(JWTExpiryHours)).Unix(),
+		"iat": now.Unix(),
+		"exp": now.Add(time.Hour * time.Duration(JWTExpiryHours)).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -80,10 +83,15 @@ func SessionIDFromToken(tokenString string, cfg *config.Config) string {
 	if tokenString == "" {
 		return ""
 	}
-	parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
+	// Claims are validated below against the injected clock, not jwt's
+	// process-global TimeFunc (issue #1494).
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}), jwt.WithoutClaimsValidation())
 	token, err := parser.Parse(tokenString, func(t *jwt.Token) (any, error) {
 		return []byte(cfg.JWTSecretKey), nil
 	})
+	if err == nil && token != nil {
+		err = middleware.ValidateTimeClaims(token.Claims, Now())
+	}
 	if token == nil { // # pragma: no cover — jwt.Parse yields a non-nil token even on a malformed string in this version; defensive
 		return "" // # pragma: no cover — see above
 	}

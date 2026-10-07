@@ -75,7 +75,7 @@ func RenderAtomFeed(db *gorm.DB, cfg *config.Config, in AtomRenderInput) ([]byte
 	}
 	now := in.Now
 	if now.IsZero() {
-		now = time.Now()
+		now = Now()
 	}
 
 	q := TimelineQuery{

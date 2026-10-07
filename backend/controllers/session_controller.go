@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"net/http"
-	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -35,7 +35,7 @@ func ListSessions(c *gin.Context) {
 	}
 
 	var sessions []models.Session
-	if err := db.Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", userID, time.Now()).
+	if err := db.Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", userID, clock.FromContext(c).Now()).
 		Order("last_seen_at DESC").
 		Find(&sessions).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
@@ -99,7 +99,7 @@ func RevokeOtherSessions(c *gin.Context) {
 	current := currentSessionID(c)
 	result := db.Model(&models.Session{}).
 		Where("user_id = ? AND revoked_at IS NULL AND id <> ?", userID, current).
-		Update("revoked_at", time.Now())
+		Update("revoked_at", clock.FromContext(c).Now())
 	if result.Error != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return

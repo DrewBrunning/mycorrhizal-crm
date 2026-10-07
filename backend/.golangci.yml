@@ -17,7 +17,9 @@
 #                   so the GORM half of trap #4 is the separate custom
 #                   analyzer `go run ./cmd/gormerrcheck ./...`
 #                   (internal/lint/gormerr), run next to this in CI and the
-#                   pre-commit hook.
+#                   pre-commit hook. Likewise `go run ./cmd/rawtimecheck ./...`
+#                   (internal/lint/rawtime, issue #1494) flags a raw
+#                   time.Now/Since/Until in controllers/services/middleware.
 #   - errorlint   — `==` / type assertions on errors that may be wrapped
 #                   (gorm.ErrRecordNotFound, *apperrors.AppError, migrate
 #                   sentinels). See the `errorf: false` note below.

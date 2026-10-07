@@ -207,15 +207,15 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	start := time.Now()
+	start := Now()
 	stats, err := s.syncSubscription(ctx, db, cfg, sub)
-	runDuration := time.Since(start)
+	runDuration := Now().Sub(start)
 	err = redactURLPassword(err, sub.URL)
 
 	recordSyncEvent(ctx, db, logger.ComponentCalendarSync, sub.UserID, start, err,
 		fmt.Sprintf("created=%d updated=%d skipped=%d", stats.Created, stats.Updated, stats.Skipped))
 
-	now := time.Now().UTC()
+	now := Now().UTC()
 	sub.LastSyncedAt = &now
 	if err != nil {
 		sub.LastSyncStatus = models.CalendarSyncStatusError
@@ -283,8 +283,8 @@ func (s *CalendarSyncService) syncSubscription(ctx context.Context, db *gorm.DB,
 		return CalendarSyncStats{}, fmt.Errorf("%w: %v", ErrCalendarUnauthorized, err)
 	}
 
-	windowStart := time.Now().AddDate(0, 0, -sub.PastDays).UTC()
-	windowEnd := time.Now().AddDate(0, 0, sub.FutureDays).UTC()
+	windowStart := Now().AddDate(0, 0, -sub.PastDays).UTC()
+	windowEnd := Now().AddDate(0, 0, sub.FutureDays).UTC()
 
 	events, err := s.fetchEvents(ctx, parsedURL, sub.Username, password, windowStart, windowEnd)
 	if err != nil {
@@ -848,7 +848,7 @@ func activityToICalendar(remoteUID string, a *models.Activity) *ical.Calendar {
 	event := ical.NewEvent()
 	event.Props.SetText(ical.PropUID, remoteUID)
 	event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
-	event.Props.SetDateTime(ical.PropDateTimeStamp, time.Now().UTC())
+	event.Props.SetDateTime(ical.PropDateTimeStamp, Now().UTC())
 	event.Props.SetText(ical.PropSummary, a.Title)
 	if a.Description != "" {
 		event.Props.SetText(ical.PropDescription, a.Description)

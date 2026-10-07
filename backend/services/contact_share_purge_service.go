@@ -4,7 +4,6 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -47,7 +46,7 @@ func PurgeExpiredContactShares(db *gorm.DB, cfg config.Config) error {
 		// deleting every share.
 		return nil
 	}
-	cutoff := time.Now().AddDate(0, 0, -cfg.ContactShareRetentionDays)
+	cutoff := Now().AddDate(0, 0, -cfg.ContactShareRetentionDays)
 
 	result := db.Exec(
 		`DELETE FROM contact_shares WHERE

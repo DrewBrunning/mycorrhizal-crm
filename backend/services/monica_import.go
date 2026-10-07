@@ -159,7 +159,7 @@ func MapMonicaSnapshot(snap *monica.Snapshot, now time.Time) *ImportSourcePlan {
 		}
 		date := n.CreatedAt
 		if !monicaTimeUsable(date) {
-			date = time.Now().Format(time.RFC3339)
+			date = Now().Format(time.RFC3339)
 		}
 		plan.Notes = append(plan.Notes, MappedNote{
 			Ref:     SourceRef{System: "monica", ExternalID: monicaNoteRef(n.ID)},
@@ -194,7 +194,7 @@ func MapMonicaSnapshot(snap *monica.Snapshot, now time.Time) *ImportSourcePlan {
 		content := strings.TrimSpace(c.Content)
 		date := c.CalledAt
 		if !monicaTimeUsable(date) {
-			date = time.Now().Format(time.RFC3339)
+			date = Now().Format(time.RFC3339)
 		}
 		title := "Call"
 		if content != "" {
@@ -237,7 +237,7 @@ func MapMonicaSnapshot(snap *monica.Snapshot, now time.Time) *ImportSourcePlan {
 		if t.CompletedAt != nil && monicaTimeUsable(*t.CompletedAt) {
 			date = *t.CompletedAt
 		} else if !monicaTimeUsable(date) {
-			date = time.Now().Format(time.RFC3339)
+			date = Now().Format(time.RFC3339)
 		}
 		plan.Notes = append(plan.Notes, MappedNote{
 			Ref:     SourceRef{System: "monica", ExternalID: monicaTaskRef(t.ID)},
@@ -268,7 +268,7 @@ func MapMonicaSnapshot(snap *monica.Snapshot, now time.Time) *ImportSourcePlan {
 		}
 		date := d.CreatedAt
 		if !monicaTimeUsable(date) {
-			date = time.Now().Format(time.RFC3339)
+			date = Now().Format(time.RFC3339)
 		}
 		plan.Notes = append(plan.Notes, MappedNote{
 			Ref:     SourceRef{System: "monica", ExternalID: monicaDebtRef(d.ID)},

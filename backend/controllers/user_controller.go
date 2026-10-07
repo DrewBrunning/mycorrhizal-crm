@@ -11,6 +11,7 @@ import (
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -141,7 +142,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 			"error":          "Account temporarily locked",
 			"message":        "Too many failed login attempts. Please try again later.",
 			"retry_after":    remainingSecs,
-			"retry_after_at": time.Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
+			"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
 		})
 		context.Abort()
 		return
@@ -186,7 +187,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 				"error":          "Account temporarily locked",
 				"message":        "Too many failed login attempts. Please try again later.",
 				"retry_after":    lockoutSecs,
-				"retry_after_at": time.Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
+				"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
 			})
 			context.Abort()
 			return
@@ -399,8 +400,8 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	expires := services.PasswordResetExpiry()
-	requested := time.Now()
+	requested := clock.FromContext(context).Now()
+	expires := services.PasswordResetExpiryFrom(requested)
 
 	user.PasswordResetTokenHash = &hash
 	user.PasswordResetExpiresAt = &expires
@@ -488,7 +489,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	if user.PasswordResetExpiresAt == nil || time.Now().After(*user.PasswordResetExpiresAt) {
+	if user.PasswordResetExpiresAt == nil || clock.FromContext(context).Now().After(*user.PasswordResetExpiresAt) {
 		user.PasswordResetTokenHash = nil
 		user.PasswordResetExpiresAt = nil
 		user.PasswordResetRequestedAt = nil

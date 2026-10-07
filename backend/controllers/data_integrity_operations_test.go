@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
@@ -104,7 +105,7 @@ func TestDataIntegrity_HoldsAfterDeleteCascade(t *testing.T) {
 	contact := seedContactWithAssociations(t, db, user.ID)
 
 	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
-		return deleteContactAssociations(tx, contact, user.ID)
+		return deleteContactAssociations(tx, contact, user.ID, time.Now())
 	}))
 	require.NoError(t, db.Delete(&contact).Error)
 
