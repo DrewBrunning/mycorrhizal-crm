@@ -219,8 +219,12 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
       await dialog.getByRole('button', { name: /resolve all as merged/i }).click();
       await dialog.getByRole('button', { name: /apply decisions/i }).click();
 
-      // The Data-settings wizard closes the dialog on a successful import
-      // (onImportComplete); the merge itself is verified through the API.
+      // The wizard shows its result step and stays open until Done is clicked
+      // (the Data page refreshes its history on completion but no longer
+      // closes the dialog out from under the result step); the merge itself
+      // is verified through the API.
+      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
       await expect(dialog).toBeHidden({ timeout: 10000 });
 
       // The merge applied the incoming flat data AND preserved the Card-only.

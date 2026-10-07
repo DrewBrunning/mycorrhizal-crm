@@ -112,8 +112,35 @@ time-based rule.
     (`database/concurrent_write_test.go`, trap #9);
   - services that orchestrate multi-row operations: CardDAV/CalDAV sync,
     backup/restore (`database/backup_test.go`), import.
+  - **mid-request database failure** (issue #1476): the DB-fault sweep,
+    below.
 - **Must not be used for** pure logic (unit), the JSON wire contract (API
   contract), or format bytes (interop).
+- **The DB-fault sweep** (`routes/db_fault_sweep_test.go`, issue #1476) reaches
+  the `if err := tx.X().Error; err != nil { return ErrDatabase(...) }` arms no
+  HTTP test can trigger. `dbtest.New(t, dbtest.WithFaults())` registers the
+  `internal/dbfault` GORM callback plugin (idle until armed, test-only); for
+  each route in `faultScenarios()` the sweep records the K statements the
+  request issues on its own goroutine (fire-and-forget audit/webhook
+  goroutines are deliberately invisible to the injector), then re-runs on a
+  fresh identical database K times failing statement *i*. Every run must
+  produce a well-formed 4xx/5xx envelope that leaks no SQL (marker, `sqlite`,
+  `SQL`, table names), **and** leave every table's row count + checksum
+  byte-identical to before the request — a mid-request failure that leaves a
+  partial write fails the sweep. An outcome that is legitimately best-effort
+  (a post-commit response read, the audit snapshot, per-row import errors)
+  must be declared in `faultAllowlist` with a written reason; an entry that
+  no longer matches fails as stale, and an allowlisted 2xx body is still
+  leak-checked. Statements the auth middleware issues first are covered by
+  `TestDBFaultSweep_AuthMiddlewareFailure`. Failing `COMMIT`/`BEGIN` is out of
+  scope (they are not GORM statements). **Adding a mutating route that writes
+  more than one row** means adding a scenario; **a `# pragma: no cover — DB
+  failure only`** on a branch the sweep reaches should be removed (the sweep
+  already removed those in `user_delete_cascade.go`). Hand-verify: removing
+  the `db.Transaction` wrapper from `DeleteContact`, `CompleteReminder` or
+  `ChangePassword` fails the sweep. The sweep's first run found and fixed two
+  partial-write bugs (reminder completion, password-change revocation) and a
+  SQL-text leak in import row errors.
 - **The non-negotiable fixture rule** (CLAUDE.md trap #1): test against the real
   migrated schema, never `AutoMigrate`. Prefer `internal/dbtest.New(t)`, which
   builds the migrated template once per test binary and hands each test an
