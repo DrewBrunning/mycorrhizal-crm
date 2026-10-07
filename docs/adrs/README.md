@@ -40,3 +40,4 @@ ticket backlog moved to GitHub Issues.
 | [0032](0032-mcp-server.md) | MCP server — streamable-HTTP, read-only high-level tools, opt-in sensitivity | accepted |
 | [0033](0033-geopulse-location-correlation.md) | GeoPulse location-history correlation — on-demand lookup, no schema change to Activity | accepted |
 | [0034](0034-android-passkeys.md) | Android passkeys — native Credential Manager, an operator opt-in gated on Digital Asset Links | accepted |
+| [0035](0035-service-boundary-and-delete-cascade-registry.md) | Controller-to-service boundary and a declarative delete-cascade registry | accepted |

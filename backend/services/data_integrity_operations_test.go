@@ -9,7 +9,7 @@ package services
 //
 // Merge (#433) and the delete cascade are driven from package controllers
 // (controllers/data_integrity_operations_test.go) because a faithful run needs
-// the unexported deleteContactAssociations. This file covers import, migration
+// DeleteContactAssociations. This file covers import, migration
 // re-run, and backup/restore, all reachable from package services.
 
 import (

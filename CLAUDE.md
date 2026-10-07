@@ -175,7 +175,7 @@ count). `stryker.yml` (frontend: `src/api/{contacts,relationshipEdges,lifeEvents
 now sets `thresholds.break` in `frontend/stryker.conf.json`, so `npx stryker run` itself fails below the
 committed baseline. `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
 paths coverage alone can't prove: migration/upgrade + backup/restore (`database`), data-integrity
-invariants (`atrest`), delete cascade (`contact_controller.go`/`admin_user_controller.go`, the trap 6
+invariants (`atrest`), delete cascade (`services/contact_delete.go`'s registry, ADR 0035, plus `admin_user_controller.go`/`user_delete_cascade.go`, the trap 6
 canonical checklist files), import ingestion (the import-source files in `services`), and the three
 exporters (`vcard3`, `vcard4`, `jscontact`). The scope and each leg's threshold live in
 `backend/internal/mutationscope.Scopes` — the single source for both go-mutation.yml's matrix and each
@@ -488,8 +488,12 @@ These are real bugs that shipped, not hypotheticals.
  + graph entities). There are zero IDOR holes today — keep it that way.
 
 6. **Cascade deletes are manual.** Soft delete does not fire SQL `CASCADE`. `DeleteContact` and
-   `DeleteUser` enumerate every dependent table explicitly — if you add an entity, add it there. Use
-   `contact_controller.go`'s `DeleteContact` as the canonical checklist.
+   `DeleteUser` enumerate every dependent table explicitly — if you add an entity, add it there. The
+   contact side is the declarative `services.ContactCascadeRegistry` (`services/contact_delete.go`,
+   ADR 0035): add a `CascadeStep` (table, soft/hard, reason) and the completeness test in
+   `services/contact_delete_test.go` fails until any table that references a contact is registered.
+   `DeleteUser`'s `deleteUserCascade` is still a hand-written list (the user-scope registry is a
+   follow-up to issue #1495).
 
    Note `admin_user_controller_test.go`'s `assertGone` helper counts with `db.Model(...).Count()`, which
    **excludes soft-deleted rows** — so it passes whether a row is gone or merely marked. If you need the

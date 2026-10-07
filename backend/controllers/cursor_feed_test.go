@@ -758,7 +758,7 @@ func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
 
 // TestAfterDeleteSkipsBulkDelete proves that bulk soft deletes (which fire
 // AfterDelete with a zero-value model — DeletedAt.Valid == false) do NOT bump
-// updated_at. The explicit bump in deleteContactAssociations exists precisely
+// updated_at. The explicit bump in services.DeleteContactAssociations exists precisely
 // because this path is skipped.
 func TestAfterDeleteSkipsBulkDelete(t *testing.T) {
 	db, _ := setupRouterWithRetention(t, 30)
