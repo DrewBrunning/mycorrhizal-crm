@@ -303,7 +303,8 @@ func TestInterruptedStartupPreMigrationBackupSurvivesAndRestores(t *testing.T) {
 	// The upgrade is interrupted mid-migration: the pre-migration snapshot was
 	// written before the first statement, then the statement fault fired.
 	faults.ArmError(faultMigrationStatement, &faults.ErrInjected{Name: faultMigrationStatement})
-	require.Error(t, MigrateUp(dbPath))
+	require.ErrorContains(t, MigrateUp(dbPath), faultMigrationStatement,
+		"the upgrade must be interrupted by the injected statement fault, not fail for another reason")
 
 	snaps := preMigrationSnapshots(t, dir)
 	require.Len(t, snaps, 1, "exactly one pre-migration snapshot for the hop")
@@ -327,7 +328,8 @@ func TestInterruptedStartupPreMigrationBackupSurvivesAndRestores(t *testing.T) {
 	// the idempotent-per-hop path never rewrites the existing rollback point.
 	for i := 0; i < 3; i++ {
 		_, err := InitDB(dbPath)
-		require.Error(t, err)
+		var dirtyErr *ErrDirtyMigration
+		require.ErrorAs(t, err, &dirtyErr, "each restart must be refused for the dirty flag")
 	}
 	assert.Equal(t, sumBefore, fileSHA256(t, snap),
 		"the pre-migration snapshot must be reused across restarts, not rewritten")
@@ -370,10 +372,11 @@ func TestInterruptedStartupIntegrityHoldsAfterEveryRecovery(t *testing.T) {
 	dbPath := filepath.Join(dir, "a.db")
 	floorDBWithUser(t, dbPath)
 	faults.ArmError(faultMigrationStatement, &faults.ErrInjected{Name: faultMigrationStatement})
-	require.Error(t, MigrateUp(dbPath))
+	require.ErrorContains(t, MigrateUp(dbPath), faultMigrationStatement)
 	faults.Disarm(faultMigrationStatement)
 	_, err := InitDB(dbPath)
-	require.Error(t, err)
+	var dirtyErr *ErrDirtyMigration
+	require.ErrorAs(t, err, &dirtyErr, "the interrupted database must be refused as dirty before force")
 	require.NoError(t, MigrateForce(dbPath))
 	assert.Equal(t, "ok", integrityCheck(t, dbPath))
 	// TODO(#460): assert the mycorrhizal-doctor deep check passes here too.
@@ -390,7 +393,7 @@ func TestInterruptedStartupIntegrityHoldsAfterEveryRecovery(t *testing.T) {
 	dbPath = filepath.Join(dir, "c.db")
 	floorDBWithUser(t, dbPath)
 	faults.ArmError(faultMigrationBeforeBatch, &faults.ErrInjected{Name: faultMigrationBeforeBatch})
-	require.Error(t, MigrateUp(dbPath))
+	require.ErrorIs(t, MigrateUp(dbPath), &faults.ErrInjected{Name: faultMigrationBeforeBatch})
 	faults.Disarm(faultMigrationBeforeBatch)
 	closeInitDB(t, dbPath)()
 	assert.Equal(t, "ok", integrityCheck(t, dbPath))
@@ -408,6 +411,28 @@ func TestInterruptedStartupIntegrityHoldsAfterEveryRecovery(t *testing.T) {
 // "Failed to initialize database".
 func TestInitDBReturnsNoHandleOnEveryInterruptedState(t *testing.T) {
 	latest := mustLatestVersion(t)
+
+	// Each state must be refused for ITS OWN reason, not merely refused.
+	wantErr := map[string]func(t *testing.T, err error){
+		"dirty": func(t *testing.T, err error) {
+			var e *ErrDirtyMigration
+			require.ErrorAs(t, err, &e)
+		},
+		"ahead_of_binary": func(t *testing.T, err error) {
+			var e *ErrSchemaAheadOfBinary
+			require.ErrorAs(t, err, &e)
+			assert.EqualValues(t, latest+3, e.Version)
+		},
+		"sub_floor": func(t *testing.T, err error) {
+			var e *ErrSubFloorMigration
+			require.ErrorAs(t, err, &e)
+			assert.EqualValues(t, SupportedUpgradeFloorVersion-1, e.Version)
+		},
+		"interrupted_mid_migration": func(t *testing.T, err error) {
+			var e *ErrDirtyMigration
+			require.ErrorAs(t, err, &e)
+		},
+	}
 
 	cases := map[string]func(t *testing.T, dbPath string){
 		"dirty": func(t *testing.T, dbPath string) {
@@ -437,6 +462,7 @@ func TestInitDBReturnsNoHandleOnEveryInterruptedState(t *testing.T) {
 			db, err := InitDB(dbPath)
 			require.Error(t, err, "InitDB must fail closed on the %s state", name)
 			assert.Nil(t, db, "InitDB must not hand main() a usable DB handle for the %s state", name)
+			wantErr[name](t, err)
 		})
 	}
 }

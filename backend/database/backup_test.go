@@ -229,6 +229,8 @@ func TestBackupSnapshotFailureLeavesNoLitter(t *testing.T) {
 
 	err := database.BackupSnapshot(srcPath, outPath)
 	require.Error(t, err, "backing up a non-database must fail")
+	assert.ErrorContains(t, err, "wal_checkpoint(PASSIVE)")
+	assert.ErrorContains(t, err, "file is not a database")
 
 	// Nothing may be left at the target path or anywhere else in the dir.
 	assert.NoFileExists(t, outPath, "a failed backup must not leave an output file")

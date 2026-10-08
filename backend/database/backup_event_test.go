@@ -70,4 +70,6 @@ func TestRecordOperatorBackupCompletedMissingDatabaseErrors(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "no-such-dir", "db.db")
 	err := database.RecordOperatorBackupCompleted(dbPath, "snap.db")
 	require.Error(t, err)
+	assert.ErrorContains(t, err, "record backup heartbeat: insert system event")
+	assert.ErrorContains(t, err, "unable to open database file")
 }

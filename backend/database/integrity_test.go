@@ -23,7 +23,7 @@ func TestIntegrityCheckFailsOnMissingFile(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "does-not-exist.db")
 	_, err := IntegrityCheck(path)
-	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestIntegrityCheckFailsOnCorruptFile(t *testing.T) {
@@ -35,7 +35,9 @@ func TestIntegrityCheckFailsOnCorruptFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, make([]byte, 512), 0o600))
 
 	result, err := IntegrityCheck(path)
-	assert.Error(t, err, "a corrupt file must fail, never report ok")
+	require.Error(t, err, "a corrupt file must fail, never report ok")
+	assert.ErrorContains(t, err, "integrity check on")
+	assert.ErrorContains(t, err, "file is not a database")
 	if err == nil {
 		assert.NotEqual(t, "ok", result)
 	}
