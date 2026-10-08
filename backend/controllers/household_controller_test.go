@@ -63,7 +63,7 @@ func TestCreateHousehold(t *testing.T) {
 }
 
 func TestCreateHouseholdRejectsInvalidType(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	// Use the real validation middleware (not withValidated) so the `oneof`
 	// tag on HouseholdInput.Type is actually enforced.
 	router.POST("/households", middleware.ValidateJSONMiddleware(&models.HouseholdInput{}), CreateHousehold)
@@ -76,7 +76,10 @@ func TestCreateHouseholdRejectsInvalidType(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertValidation(t, w, "Type")
+	var n int64
+	require.NoError(t, db.Model(&models.Household{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert a household")
 }
 
 func TestGetHouseholdIncludesMembers(t *testing.T) {
@@ -110,7 +113,7 @@ func TestGetHouseholdNotFoundForUnknownID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestGetHouseholdRejectsAnotherUsersHousehold(t *testing.T) {
@@ -248,7 +251,10 @@ func TestAddHouseholdMemberRejectsDuplicate(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var n int64
+	require.NoError(t, db.Model(&models.HouseholdMember{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "a duplicate add must not create a second membership row")
 }
 
 func TestAddHouseholdMemberRejectsContactFromAnotherUser(t *testing.T) {
@@ -328,12 +334,18 @@ func TestRemoveHouseholdMemberNotFound(t *testing.T) {
 	db.First(&user)
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	db.Create(&household)
+	contact := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	require.NoError(t, db.Create(&contact).Error)
+	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID}).Error)
 
 	req, _ := http.NewRequest("DELETE", "/households/"+household.ID+"/members/nonexistent-uid", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.HouseholdMember{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "removing an unknown member must not remove another membership")
 }
 
 // TestSuggestHouseholdRelationships is the ticket's core round-trip against
@@ -416,7 +428,7 @@ func TestSuggestHouseholdRelationshipsRejectsAnotherUsersHousehold(t *testing.T)
 
 // T1: UpdateHousehold returns 404 for unknown ID.
 func TestUpdateHouseholdNotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	payload := models.HouseholdInput{Name: "Test", Type: models.HouseholdTypeFamilyUnit}
@@ -426,7 +438,10 @@ func TestUpdateHouseholdNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Household{}).Count(&n).Error)
+	assert.Zero(t, n, "a 404 update must not create a household")
 }
 
 // T2: UpdateHousehold returns 404 for another user's household.
@@ -453,14 +468,20 @@ func TestUpdateHouseholdCrossUser(t *testing.T) {
 
 // T3: DeleteHousehold returns 404 for unknown ID.
 func TestDeleteHouseholdNotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	require.NoError(t, db.Create(&models.Household{UserID: user.ID, Name: "Keep", Type: models.HouseholdTypeFamilyUnit}).Error)
 
 	req, _ := http.NewRequest("DELETE", "/households/nonexistent-id", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Household{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "deleting an unknown id must not remove another household")
 }
 
 // T4: DeleteHousehold returns 404 for another user's household.
@@ -499,7 +520,10 @@ func TestAddHouseholdMemberNonexistentContact(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.HouseholdMember{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected add must not create a membership row")
 }
 
 // T6: RemoveHouseholdMember returns 404 for another user's household.
