@@ -109,7 +109,10 @@ func TestSaveSeafileConfig_CreateWithoutTokenIsRejected(t *testing.T) {
 	router := seafileTestRouter(t, db)
 
 	w := seafileDoJSON(t, router, "PUT", "/seafile/config", models.SeafileConfigInput{BaseURL: "https://seafile.example"})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "api_token")
+	var count int64
+	require.NoError(t, db.Model(&models.SeafileConfig{}).Where("user_id = ?", uint(1)).Count(&count).Error)
+	assert.Zero(t, count, "a rejected save must not persist a config")
 }
 
 // TestListSeafileLibraries_NoConfigIs400 and TestListSeafileDir_NoConfigIs400
@@ -121,7 +124,7 @@ func TestListSeafileLibraries_NoConfigIs400(t *testing.T) {
 	router := seafileTestRouter(t, db)
 
 	w := seafileDoJSON(t, router, "GET", "/seafile/libraries", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 func TestListSeafileDir_NoConfigIs400(t *testing.T) {
@@ -129,7 +132,7 @@ func TestListSeafileDir_NoConfigIs400(t *testing.T) {
 	router := seafileTestRouter(t, db)
 
 	w := seafileDoJSON(t, router, "GET", "/seafile/libraries/some-repo/dir", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 // TestTestSeafileConnection_NoConfigIs400 covers issue #524: no Seafile
@@ -141,7 +144,7 @@ func TestTestSeafileConnection_NoConfigIs400(t *testing.T) {
 	router := seafileTestRouter(t, db)
 
 	w := seafileDoJSON(t, router, "POST", "/seafile/test-connection", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 func TestTestSeafileConnection_SuccessAndFailure(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // mockMonicaAPI serves the minimal Monica list API the connect probe needs
@@ -39,20 +40,39 @@ func mockMonicaAPI(t *testing.T) *httptest.Server {
 
 func monicaRouter(t *testing.T, userID uint) *gin.Engine {
 	t.Helper()
+	_, router := monicaRouterDB(t, userID)
+	return router
+}
+
+// monicaRouterDB is monicaRouter plus the backing DB, for tests that assert
+// a rejected request wrote nothing.
+func monicaRouterDB(t *testing.T, userID uint) (*gorm.DB, *gin.Engine) {
+	t.Helper()
 	monica.DisableRateLimitForTesting()
 	gin.SetMode(gin.ReleaseMode)
 	db := dbtest.New(t)
 	router := routerForUser(db, userID)
 	registerImportRoutes(router, &config.Config{ProfilePhotoDir: t.TempDir()})
-	return router
+	return db, router
+}
+
+// mzAssertNoImportWrites asserts the Monica import wrote no contacts.
+func mzAssertNoImportWrites(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected Monica import request must not create contacts")
 }
 
 func TestConnectMonicaImport_RejectsEmptyBody(t *testing.T) {
-	router := monicaRouter(t, 1)
+	db, router := monicaRouterDB(t, 1)
 	req := newJSONRequest(t, "/contacts/import/monica/connect", map[string]string{})
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Details, "BaseURL")
+	assert.Contains(t, env.Error.Details, "APIToken")
+	mzAssertNoImportWrites(t, db)
 }
 
 func TestConnectMonicaImport_Succeeds(t *testing.T) {
@@ -77,13 +97,14 @@ func TestConnectMonicaImport_BadTokenIsFieldError(t *testing.T) {
 	srv := mockMonicaAPI(t)
 	defer srv.Close()
 
-	router := monicaRouter(t, 1)
+	db, router := monicaRouterDB(t, 1)
 	req := newJSONRequest(t, "/contacts/import/monica/connect", models.MonicaConnectRequest{
 		BaseURL: srv.URL, APIToken: "nope",
 	})
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "api_token")
+	mzAssertNoImportWrites(t, db)
 }
 
 func TestGetMonicaImportStatus_UnknownSessionIs404(t *testing.T) {
@@ -91,7 +112,7 @@ func TestGetMonicaImportStatus_UnknownSessionIs404(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/contacts/import/monica/status?session_id=nope", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestGetMonicaImportStatus_MissingSessionIDIs400(t *testing.T) {
@@ -99,14 +120,14 @@ func TestGetMonicaImportStatus_MissingSessionIDIs400(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/contacts/import/monica/status", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "session_id")
 }
 
 func TestConnectMonicaImport_SessionCapReturns429(t *testing.T) {
 	srv := mockMonicaAPI(t)
 	defer srv.Close()
 
-	router := monicaRouter(t, 1)
+	db, router := monicaRouterDB(t, 1)
 	body := models.MonicaConnectRequest{BaseURL: srv.URL, APIToken: "good"}
 	for i := 0; i < 3; i++ {
 		w := httptest.NewRecorder()
@@ -115,7 +136,8 @@ func TestConnectMonicaImport_SessionCapReturns429(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/monica/connect", body))
-	assert.Equal(t, http.StatusTooManyRequests, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED")
+	mzAssertNoImportWrites(t, db)
 }
 
 // pollMonicaPhase hits GET /status until phase == want (or a short timeout).
@@ -207,18 +229,19 @@ func TestCancelMonicaImport_MissingAndUnknownSession(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/contacts/import/monica/cancel", nil))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "session_id")
 
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost,
 		"/contacts/import/monica/cancel?session_id=nope", nil))
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestStartMonicaFetch_UnknownSessionIs404(t *testing.T) {
-	router := monicaRouter(t, 1)
+	db, router := monicaRouterDB(t, 1)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/monica/fetch",
 		models.MonicaFetchRequest{SessionID: "nope"}))
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	mzAssertNoImportWrites(t, db)
 }
