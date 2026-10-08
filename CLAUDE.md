@@ -329,6 +329,10 @@ needs running per worktree, not just once per clone.
 - **Always:** the docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
   `docscheck`, `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`) — CI runs these unconditionally too, since
   `docs/**` maps to nothing in `.github/filters.yaml`.
+- **`pre-merge-commit`:** runs the same `pre-commit` checks on a clean `git merge`/`git pull` merge
+  commit (git skips `pre-commit` there), so merging `main` into a branch re-checks the generated
+  artifacts the merge may have made stale — the merge-skew class that broke `main` twice
+  (issue #1552).
 - **`commit-msg`:** rejects a commit with no `Signed-off-by:` trailer matching your `user.email`
   (DCO) — use `git commit -s`.
 - **Reminder only, never blocks:** staging a migration, `backend/config/config.go`, or `.env.example`
