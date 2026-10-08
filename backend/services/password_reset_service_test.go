@@ -209,3 +209,24 @@ func TestSendPasswordChangedEmail(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// Issue #1569: the cooldown boundary. A request made exactly at the cutoff no
+// longer blocks; one made after it does.
+func TestPasswordResetThrottled_Boundary(t *testing.T) {
+	now := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	cutoff := PasswordResetCooldownCutoff(now)
+	if !cutoff.Equal(now.Add(-2 * time.Minute)) {
+		t.Fatalf("cutoff = %v, want now-2m", cutoff)
+	}
+	if PasswordResetThrottled(nil, now) {
+		t.Fatal("no earlier request must not throttle")
+	}
+	at := cutoff
+	if PasswordResetThrottled(&at, now) {
+		t.Fatal("a request exactly at the cutoff must not throttle")
+	}
+	after := cutoff.Add(time.Nanosecond)
+	if !PasswordResetThrottled(&after, now) {
+		t.Fatal("a request after the cutoff must throttle")
+	}
+}

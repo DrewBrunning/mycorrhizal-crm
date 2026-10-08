@@ -10,6 +10,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/clock"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -57,6 +58,8 @@ func TestPasswordReset_ExpiryBoundaryOnClock(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/password-reset/request", nil)
 	router.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
+	// The token write runs in the background (issues #1554/#1569); drain it.
+	fireandforget.Wait()
 
 	var stored models.User
 	require.NoError(t, db.First(&stored, user.ID).Error)
