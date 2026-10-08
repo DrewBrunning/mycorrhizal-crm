@@ -3,6 +3,8 @@ package middleware
 import (
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCalculatePasswordEntropy(t *testing.T) {
@@ -325,30 +327,37 @@ func TestPassphraseVsComplexPassword(t *testing.T) {
 }
 
 func TestPasswordEntropyExamples(t *testing.T) {
-	examples := []struct {
-		password    string
-		description string
-	}{
-		{"password", "Common weak password"},
-		{"P@ssw0rd", "Short complex (8 chars, all types)"},
-		{"MySecurePassword", "Medium mixed case"},
-		{"MySecurePassword2024", "Medium mixed case with numbers"},
-		{"correct horse battery", "Passphrase (3 words)"},
-		{"correcthorsebatterystaple", "Passphrase (4 words, no spaces)"},
-		{"CorrectHorseBatteryStaple", "Passphrase (mixed case)"},
-		{"i love my cat very much today", "Long natural sentence"},
+	eval := func(pw string) PasswordStrength { return EvaluatePasswordStrength(pw) }
+
+	// A common dictionary password is invalid and below the threshold.
+	weak := eval("password")
+	assert.False(t, weak.IsValid, "\"password\" must not be accepted")
+	assert.Less(t, weak.Entropy, MinEntropyBits)
+
+	// Every other example clears the minimum.
+	valid := []string{
+		"P@ssw0rd", "MySecurePassword", "MySecurePassword2024",
+		"correct horse battery", "correcthorsebatterystaple",
+		"CorrectHorseBatteryStaple", "i love my cat very much today",
+	}
+	for _, pw := range valid {
+		s := eval(pw)
+		assert.True(t, s.IsValid, pw)
+		assert.GreaterOrEqual(t, s.Entropy, MinEntropyBits, pw)
 	}
 
-	t.Log("\n=== Password Entropy Comparison ===")
-	for _, ex := range examples {
-		strength := EvaluatePasswordStrength(ex.password)
-		t.Logf("%-35s | Length: %2d | Entropy: %6.2f bits | Score: %d | Valid: %v | %s",
-			ex.password,
-			len(ex.password),
-			strength.Entropy,
-			strength.Score,
-			strength.IsValid,
-			ex.description,
-		)
+	// Documented ordering: the long passphrases outscore the short complex one,
+	// and the weak one scores lowest of all.
+	short := eval("P@ssw0rd")
+	assert.Less(t, weak.Entropy, short.Entropy)
+	assert.Less(t, weak.Score, short.Score)
+	for _, pw := range []string{"correct horse battery", "correcthorsebatterystaple", "CorrectHorseBatteryStaple", "i love my cat very much today"} {
+		assert.Greater(t, eval(pw).Entropy, short.Entropy, pw)
 	}
+
+	// Longer beats shorter within the same character classes, and adding a
+	// character class raises entropy at equal length.
+	assert.Greater(t, eval("i love my cat very much today").Entropy, eval("correct horse battery").Entropy)
+	assert.Greater(t, eval("CorrectHorseBatteryStaple").Entropy, eval("correcthorsebatterystaple").Entropy)
+	assert.Greater(t, eval("MySecurePassword2024").Entropy, eval("MySecurePassword").Entropy)
 }

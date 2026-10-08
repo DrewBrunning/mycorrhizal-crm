@@ -122,6 +122,24 @@ func TestComputeImportMergeDiff_PredictsMergeImportedContact(t *testing.T) {
 
 	diff := ComputeImportMergeDiff(existing, incoming)
 
+	// Pin the expected diff up front, derived from the fixture: only the
+	// scalars with a non-empty, different incoming value are updates (Nickname
+	// blank->"Jay", JobTitle changed; Firstname/Lastname identical; Email and
+	// Phone are projections of the arrays, so they are reported as additions,
+	// not scalar updates), in importMergeDiffScalars order. Additions are the
+	// incoming array values the existing contact lacks, in kind order
+	// email, phone, address, url, impp. Without this, an empty diff would
+	// satisfy every convergence loop below vacuously.
+	assert.Equal(t, []models.ImportScalarChange{
+		{Field: "nickname", Label: "Nickname", Old: "", New: "Jay"},
+		{Field: "job_title", Label: "Job Title", Old: "Engineer", New: "Staff Engineer"},
+	}, diff.Updated)
+	assert.Equal(t, []models.ImportAddedValue{
+		{Kind: "email", Value: "jane+work@example.com"},
+		{Kind: "phone", Value: "555-2222"},
+		{Kind: "url", Value: "https://jane.dev"},
+	}, diff.Added)
+
 	// Apply the merge the way the confirm path does.
 	applied := *existing
 	MergeImportedContact(&applied, incoming)

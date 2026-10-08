@@ -3,11 +3,13 @@ package services
 import (
 	"bytes"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/meerkatfixture"
 	"mycorrhizal/models"
 
@@ -227,6 +229,12 @@ func TestMeerkatImportSession_RejectsOversized(t *testing.T) {
 	h.Size = MaxMeerkatDBSize + 1
 	_, appErr := mgr.Upload(1, h)
 	require.NotNil(t, appErr)
+	// The guard is an invalid-input 400 (not a 413 and not a generic 500) whose
+	// reason names the size limit, so the client can tell the user why.
+	assert.Equal(t, http.StatusBadRequest, appErr.HTTPStatus)
+	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
+	assert.Equal(t, "file", appErr.Details["field"])
+	assert.Equal(t, "The database file is empty or larger than the 100 MB limit", appErr.Details["reason"])
 }
 
 func TestMeerkatImportSession_CancelRemovesTempDir(t *testing.T) {

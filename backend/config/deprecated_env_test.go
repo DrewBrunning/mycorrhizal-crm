@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"log"
 	"strings"
 	"testing"
 )
@@ -61,8 +63,22 @@ func TestValidateOrPanic_RunsDeprecatedEnvVarCheck(t *testing.T) {
 	t.Cleanup(func() { deprecatedEnvVars = restore })
 	t.Setenv("OLD_BOOT", "1")
 
+	// config logs through the stdlib logger (not the zerolog one internal/logtest
+	// captures), so capture that stream and restore it afterwards.
+	var buf bytes.Buffer
+	oldOut, oldFlags := log.Writer(), log.Flags()
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	t.Cleanup(func() { log.SetOutput(oldOut); log.SetFlags(oldFlags) })
+
 	// Should not panic on a valid configuration.
 	validConfig().ValidateOrPanic()
+
+	// ...and the boot path must actually have run the deprecated-env check.
+	want := "WARN: OLD_BOOT is deprecated (since v0.7.0); use NEW_BOOT instead"
+	if !strings.Contains(buf.String(), want) {
+		t.Fatalf("ValidateOrPanic did not log %q; got:\n%s", want, buf.String())
+	}
 }
 
 // TestCheckDeprecatedEnvVars_UnsetIsSilent is the narrow guarantee the policy
