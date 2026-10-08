@@ -141,7 +141,10 @@ func (in *injector) Tick() {
 		in.retain = append(in.retain, b)
 	}
 	if in.has(FaultFDs) {
-		for i := 0; i < 3; i++ {
+		// Large enough to stand clear of keep-alive connection churn: on a
+		// contended -race runner the FD count swings by ~50 on its own, which
+		// buried a 3-per-tick leak (~40 over a 14 s run).
+		for i := 0; i < 12; i++ {
 			if f, err := os.Open(os.DevNull); err == nil {
 				in.files = append(in.files, f)
 			}

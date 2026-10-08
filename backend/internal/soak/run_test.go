@@ -26,7 +26,7 @@ func TestInjector_EachFaultLeaksAndCloseReleases(t *testing.T) {
 	in.Tick()
 	in.Tick()
 	assert.Len(t, in.retain, 2)
-	assert.Len(t, in.files, 6)
+	assert.Len(t, in.files, 24)
 	assert.True(t, in.has(FaultHeap))
 	assert.False(t, in.has(FaultWAL))
 	in.Close()
