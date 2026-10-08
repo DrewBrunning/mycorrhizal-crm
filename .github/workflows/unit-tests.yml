@@ -181,6 +181,14 @@ jobs:
         working-directory: backend
         run: go run ./cmd/nightlyalertcheck
 
+      # mainalertcheck fails the build when a workflow carrying a mandatory
+      # per-pr gate (.github/release-gates.json) is missing from
+      # main-failure-alert.yml's registration list, so a red post-merge
+      # push:main run can't silently go unwatched (issue #1568).
+      - name: Verify main-failure-alert.yml registration matches per-pr gates
+        working-directory: backend
+        run: go run ./cmd/mainalertcheck
+
       # Issue #1483: every android/e2e-expected-skips.txt entry must name a
       # real androidTest method (the emulator job that enforces the skip set
       # itself is not on the PR path, so a rename is caught here).
