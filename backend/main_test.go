@@ -33,9 +33,26 @@ import (
 
 var (
 	binOnce sync.Once
+	binDir  string // set as soon as the build directory exists, so a failed build is cleaned up too
 	binPath string
 	binErr  string
 )
+
+// TestMain removes the binary hostBinary built: it lives in a MkdirTemp dir
+// created inside a sync.Once, so no t.Cleanup can own it (issue #1555).
+func TestMain(m *testing.M) {
+	code := m.Run()
+	removeHostBinary()
+	os.Exit(code)
+}
+
+// removeHostBinary deletes hostBinary's build directory, if one was created —
+// including when the build itself failed and binPath was never set.
+func removeHostBinary() {
+	if binDir != "" {
+		_ = os.RemoveAll(binDir)
+	}
+}
 
 // hostBinary builds the backend binary once per test run.
 func hostBinary(t *testing.T) string {
@@ -49,6 +66,7 @@ func hostBinary(t *testing.T) string {
 			binErr = err.Error()
 			return
 		}
+		binDir = dir
 		out := filepath.Join(dir, "mycorrhizal")
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 		defer cancel()
@@ -71,6 +89,26 @@ func shortTempDir(t *testing.T) string {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return dir
+}
+
+func TestRemoveHostBinaryDeletesBuildDir(t *testing.T) {
+	dir := shortTempDir(t)
+	f := filepath.Join(dir, "mycorrhizal")
+	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
+	old := binDir
+	defer func() { binDir = old }()
+
+	binDir = ""
+	removeHostBinary() // no-op: must not remove anything
+	_, err := os.Stat(f)
+	require.NoError(t, err)
+
+	// A failed build leaves binPath empty but the directory created: it is
+	// still removed (issue #1555 review).
+	binDir = dir
+	removeHostBinary()
+	_, err = os.Stat(dir)
+	require.True(t, os.IsNotExist(err))
 }
 
 func hostConfigJSON(t *testing.T, dir string) (embedded.HostConfig, []byte) {

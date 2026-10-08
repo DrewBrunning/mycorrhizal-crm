@@ -125,6 +125,8 @@ if [ "$backend_changed" = true ]; then
     go test -run '^TestMatrixReproducesCommittedDoc$' ./correspondence/... ./integrations/...
   run "backend: API baseline drift (MAINT-02, issue #491)" backend \
     go test -run '^TestContractBaselineHolds$|^TestContractBaselineIsCurrent$' ./internal/apibaseline/...
+  run "backend: mutation-scope generated configs drift (issue #915)" backend \
+    bash -c "go test ./internal/mutationscope -run 'TestGeneratedConfigsAreCurrent|TestWorkflowMatrixMatchesScopes' -count=1 || { echo '    fix: cd backend && go run ./cmd/genmutationscope'; exit 1; }"
 fi
 
 if [ "$frontend_changed" = true ]; then

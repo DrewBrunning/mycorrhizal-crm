@@ -18,7 +18,8 @@ USER="syncuser"
 PASSWORD="SynCsecret-8f9a"
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" -p "$PORT:80" -e SQLITE_DATABASE=nextcloud nextcloud:stable >/dev/null
+"$(dirname "$0")/../docker-pull-retry.sh" nextcloud:stable
+docker run -d --pull never --name "$NAME" -p "$PORT:80" -e SQLITE_DATABASE=nextcloud nextcloud:stable >/dev/null
 
 # Wait for the web server, then run the first-time install.
 for _ in $(seq 1 120); do

@@ -132,10 +132,27 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # Issue #1550: a registry rate limit (toomanyrequests) during the pull
+      # failed whole legs. Pull with a bounded backoff, then start with
+      # --pull never so `up` can never trigger a second, unretried pull.
+      - name: Pull images (compose stack)
+        if: matrix.stack != ''
+        timeout-minutes: 15
+        working-directory: backend/integrations/realserver/stack
+        run: |
+          for attempt in 1 2 3 4; do
+            docker compose -f "$STACK_FILE" pull --quiet && exit 0
+            echo "::warning::image pull attempt $attempt failed; retrying in $((attempt * 20))s"
+            sleep $((attempt * 20))
+          done
+          exit 1
+        env:
+          STACK_FILE: ${{ matrix.stack }}
+
       - name: Start the servers (compose stack)
         if: matrix.stack != ''
         working-directory: backend/integrations/realserver/stack
-        run: docker compose -f "$STACK_FILE" up -d
+        run: docker compose -f "$STACK_FILE" up -d --pull never
         env:
           STACK_FILE: ${{ matrix.stack }}
 
@@ -175,15 +192,18 @@ jobs:
         working-directory: backend/integrations/realserver/stack
         run: |
           if [ -n "$STACK_FILE" ]; then docker compose -f "$STACK_FILE" logs --tail=200 || true; fi
-          docker logs rs-nextcloud 2>&1 | tail -100 || true
+          # Only the Nextcloud leg has an rs-nextcloud container (issue #1550).
+          if [ "$MATRIX_ID" = nextcloud ]; then docker logs rs-nextcloud 2>&1 | tail -100 || true; fi
         env:
           STACK_FILE: ${{ matrix.stack }}
+          MATRIX_ID: ${{ matrix.id }}
 
       - name: Stop the servers
         if: always()
         working-directory: backend/integrations/realserver/stack
         run: |
           if [ -n "$STACK_FILE" ]; then docker compose -f "$STACK_FILE" down -v || true; fi
-          docker rm -f rs-nextcloud || true
+          if [ "$MATRIX_ID" = nextcloud ]; then docker rm -f rs-nextcloud || true; fi
         env:
           STACK_FILE: ${{ matrix.stack }}
+          MATRIX_ID: ${{ matrix.id }}

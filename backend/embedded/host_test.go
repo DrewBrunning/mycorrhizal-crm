@@ -28,7 +28,7 @@ func hostConfigForTest(t *testing.T) HostConfig {
 	return HostConfig{
 		JWTSecret:         "embedded-host-secret-key-that-is-long-enough",
 		DataEncryptionKey: base64.StdEncoding.EncodeToString(key),
-		SocketPath:        filepath.Join(dir, "local-server", "sock"),
+		SocketPath:        filepath.Join(shortTempDir(t), "sock"),
 		DBPath:            filepath.Join(dir, "local-server", "mycorrhizal.db"),
 		ProfilePhotoDir:   filepath.Join(dir, "local-server", "photos"),
 		AttachmentsDir:    filepath.Join(dir, "local-server", "attachments"),
@@ -181,7 +181,7 @@ func TestEmbeddedSession_SurvivesOldIdleAndExpiryLimits(t *testing.T) {
 func TestRunHosted_ServesEmbeddedHealthOverUnixSocket(t *testing.T) {
 	dir := t.TempDir()
 	hc := hostConfigForTest(t)
-	hc.SocketPath = filepath.Join(dir, "sock")
+	hc.SocketPath = filepath.Join(shortTempDir(t), "sock")
 	hc.DBPath = filepath.Join(dir, "myco.db")
 	hc.ProfilePhotoDir = filepath.Join(dir, "photos")
 	hc.AttachmentsDir = filepath.Join(dir, "attachments")
@@ -230,7 +230,7 @@ func TestRunHosted_ServesEmbeddedHealthOverUnixSocket(t *testing.T) {
 func TestRunHosted_RemovesStaleSocket(t *testing.T) {
 	dir := t.TempDir()
 	hc := hostConfigForTest(t)
-	hc.SocketPath = filepath.Join(dir, "sock")
+	hc.SocketPath = filepath.Join(shortTempDir(t), "sock")
 	hc.DBPath = filepath.Join(dir, "myco.db")
 	hc.ProfilePhotoDir = filepath.Join(dir, "photos")
 	hc.AttachmentsDir = filepath.Join(dir, "attachments")

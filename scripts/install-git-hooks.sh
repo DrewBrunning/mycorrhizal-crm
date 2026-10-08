@@ -14,7 +14,7 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-chmod +x .githooks/pre-commit .githooks/commit-msg
+chmod +x .githooks/pre-commit .githooks/pre-merge-commit .githooks/commit-msg
 git config core.hooksPath .githooks
 
 # A git worktree can carry its own core.hooksPath override in

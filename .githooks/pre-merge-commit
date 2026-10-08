@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#
+# Run the pre-commit checks on merge commits too (issue #1552 review). git runs
+# pre-merge-commit, not pre-commit, when `git merge` (or `git pull`) records a
+# clean merge, so merging main into a branch skipped every local gate. That is
+# exactly where the generated-artifact drift class bites: two PRs each
+# consistent on their own (e.g. each regenerating backend/.gremlins/*.yaml)
+# whose merge is not. During a merge the index holds the merge result, so
+# `git diff --cached` in pre-commit sees what the merge brings in. A conflicted
+# merge is concluded with `git commit`, which runs pre-commit itself.
+exec "$(dirname "$0")/pre-commit" "$@"
