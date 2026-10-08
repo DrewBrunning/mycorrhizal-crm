@@ -12,6 +12,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -170,6 +171,8 @@ func TestAuthAuditEvents_PasswordReset(t *testing.T) {
 
 	w := auditDoJSON(router, "POST", "/password-reset/request", models.PasswordResetRequestInput{Email: user.Email})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	// The token write runs in the background (issues #1554/#1569); drain it.
+	fireandforget.Wait()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested))
 

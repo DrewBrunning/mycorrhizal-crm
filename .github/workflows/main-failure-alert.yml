@@ -1,0 +1,171 @@
+name: Main failure alert
+
+# Issue #1568. Required checks don't protect `main` when a PR is merged
+# before they finish (or via an admin bypass): the "Cancel remaining runs for
+# the branch" reaper kills the still-running required jobs when the branch is
+# deleted at merge, so the gate job reports `failure`, and the post-merge
+# `push` run on `main` becomes the first -- and often only -- full
+# verification the change ever gets. When that push run is red, nothing
+# alerted anyone: nightly-failure-alert.yml opens issues only for `schedule`
+# runs, so a red `main` was visible only to whoever happened to open the
+# Actions tab.
+#
+# This is deliberately a *separate* workflow from nightly-failure-alert.yml,
+# not an extension of it: that file's `workflows:` list must equal the set of
+# workflow `name:`s with a top-level `schedule:` trigger (`go run
+# ./cmd/nightlyalertcheck` fails the build otherwise), and its security
+# posture depends on reacting only to `schedule` runs. This one reacts only to
+# `push` runs on `main` instead.
+#
+# Reacts to the completion of every workflow that runs on `push: main` and
+# carries (or is otherwise release-relevant to) a required gate -- listed
+# below by `name:`. The mandatory per-pr subset of this list is derived from
+# `.github/release-gates.json` and enforced by `go run ./cmd/mainalertcheck`
+# (wired into unit-tests.yml's docs-citations job and .githooks/pre-commit):
+# it fails the build if a workflow carrying a mandatory per-pr gate is missing
+# here. The non-per-pr entries (`ARM64 Tests`, `Docker Build Check`) are added
+# deliberately because nothing else watches their `push: main` runs either.
+# This workflow:
+#
+#   - on failure/timed_out/startup_failure/cancelled: opens a
+#     `nightly-failure`+`p1`-labelled issue titled `Main failure: <workflow
+#     name>`, or comments on the one already open for it, linking the run, the
+#     head SHA, and the PR the commit came from;
+#   - on success: comments on that workflow's open `Main failure:` issue (if
+#     any) and closes it -- the alarm clears itself once `main` is green again.
+#
+on:
+  # zizmor: ignore[dangerous-triggers] workflow_run is the entire point of this
+  # workflow, same rationale as nightly-failure-alert.yml and test-report.yml:
+  # the job below runs only when the triggering run was a `push` to `main`
+  # (never a PR), and it executes no code from the triggering run -- it only
+  # reads the Actions API for that run's own id/conclusion/jobs (already
+  # computed by GitHub, not attacker-controlled) and writes an issue/comment
+  # through `gh api`. The checkout below fetches this workflow's own
+  # ensure-alert.sh, not anything from the triggering run: a
+  # `workflow_run`-triggered job's default checkout resolves to the ref this
+  # workflow file itself lives on (the repository's default branch), never the
+  # triggering run's head_sha, so this is still main-branch-authored script
+  # content. No PR-controlled code ever executes in this workflow's context.
+  workflow_run:
+    workflows:
+      # Mandatory per-pr gates (derived from .github/release-gates.json;
+      # cmd/mainalertcheck fails CI if one is missing here).
+      - Unit Tests
+      - E2E Tests
+      - Migration Tests
+      - Android Tests
+      - Container Hardening (CIS)
+      - GitHub Actions Security (zizmor)
+      - SAST (mobsfscan + hadolint + semgrep)
+      - Reproducible builds
+      # Release-relevant, not mandatory per-pr: watched here because nothing
+      # else alerts on their push:main runs either.
+      - ARM64 Tests
+      - Docker Build Check
+    types: [completed]
+
+  # Manual test path (issue #1568 acceptance): dispatch this workflow against
+  # a real completed run id to exercise the exact script the event-driven job
+  # runs. `dry_run` defaults to true, so a dispatch logs the issue/comment it
+  # *would* write and mutates nothing; set it false to actually open an issue
+  # (dispatch again with `conclusion: success` to watch it close).
+  workflow_dispatch:
+    inputs:
+      workflow_name:
+        description: 'Workflow name to simulate a run for'
+        required: true
+        default: 'Unit Tests'
+      run_id:
+        description: 'A real Actions run id to link (its head SHA/PR are resolved from the API)'
+        required: true
+      conclusion:
+        description: 'failure or success'
+        type: choice
+        options:
+          - failure
+          - success
+        default: failure
+      dry_run:
+        description: 'Log intended actions without creating/closing issues'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    name: Alert on main push failure/recovery
+    runs-on: ubuntu-latest
+    # Only react to a `push` run whose branch is main -- the same workflow's
+    # pull_request/schedule/dispatch runs are not the post-merge tier this
+    # workflow exists to watch, and would otherwise double-report every red PR
+    # check here too.
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Open/update or close the main-failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          # Every field below comes from the workflow_run event, which for a
+          # `push` run on main (the only event this job's `if:` admits)
+          # describes a run of a workflow file already committed to the
+          # default branch -- there is no PR-controlled content here. Still
+          # routed through env, never inlined into a script, per this repo's
+          # zizmor convention for any event-derived value.
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: .github/scripts/main-alert/ensure-alert.sh
+
+  manual-test:
+    name: Manual main-failure alert test (workflow_dispatch)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Inputs are passed through env, never inlined into the script, so
+      # zizmor's template-injection audit has nothing to flag.
+      - name: Resolve the run and exercise the alert script
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          WORKFLOW_NAME: ${{ inputs.workflow_name }}
+          RUN_ID: ${{ inputs.run_id }}
+          CONCLUSION: ${{ inputs.conclusion }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}")"
+          {
+            echo "RUN_URL=$(jq -r '.html_url' <<<"$run_json")"
+            echo "RUN_ATTEMPT=$(jq -r '.run_attempt' <<<"$run_json")"
+            echo "HEAD_SHA=$(jq -r '.head_sha' <<<"$run_json")"
+            echo "HEAD_BRANCH=$(jq -r '.head_branch' <<<"$run_json")"
+          } >> "$GITHUB_ENV"
+          .github/scripts/main-alert/ensure-alert.sh
+

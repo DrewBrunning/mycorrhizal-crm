@@ -174,6 +174,7 @@ func AllowWarnings(t testing.TB, reason string) {
 	allowSet[name] = true
 	allowMu.Unlock()
 	// Deliberately never removed: Guard's own cleanup runs after any cleanup
-	// registered here (LIFO) and must still see the opt-out. Test names are
-	// unique per run, so the entry cannot leak onto another test.
+	// registered here (LIFO) and must still see the opt-out. Real test names are
+	// unique, and a -count=N repeat re-opts the same test out; a test double
+	// must therefore not reuse one name across tests (logtest_test.go's fakeT).
 }

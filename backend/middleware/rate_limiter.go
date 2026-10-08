@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -237,6 +238,34 @@ func (a *AccountRateLimiter) EntryCount() int {
 	return len(a.accounts)
 }
 
+// TrackedKeys returns the total number of keys held across every map the
+// account limiter keeps (lockout entries, instance-wide entries, and both
+// known-good-IP maps) — the soak harness's growth signal (issue #1496).
+// EntryCount reports only the per-identifier lockout map and would hide a
+// leak in the others.
+func (a *AccountRateLimiter) TrackedKeys() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	n := len(a.accounts) + len(a.global) + len(a.knownGoodGlobalIPs)
+	for _, ips := range a.knownGoodIPs {
+		n += 1 + len(ips)
+	}
+	return n
+}
+
+// RateLimiterEntryCounts snapshots the tracked-key count of every
+// process-wide in-memory limiter, keyed by a bounded label (issue #1496). The
+// /metrics handler publishes it as mycorrhizal_ratelimiter_entries.
+func RateLimiterEntryCounts() map[string]int {
+	return map[string]int{
+		"auth":    authLimiter.EntryCount(),
+		"api":     apiLimiter.EntryCount(),
+		"carddav": cardDAVLimiter.EntryCount(),
+		"feed":    feedLimiter.EntryCount(),
+		"account": accountLimiter.TrackedKeys(),
+	}
+}
+
 // Default TTL for rate limiter entries (10 minutes of inactivity)
 const defaultLimiterTTL = 10 * time.Minute
 
@@ -336,7 +365,7 @@ var (
 	// Rate limiter for authentication endpoints (login, register)
 	// Higher limits since per-account lockout handles brute force protection
 	// 2 requests per second with burst of 50 (allows rapid legitimate logins, e.g., E2E tests)
-	authLimiter = NewIPRateLimiter(rate.Every(500*time.Millisecond), 50)
+	authLimiter = newAtomicIPLimiter(rate.Every(500*time.Millisecond), 50)
 
 	// General API rate limiter, per client IP: 100 requests per minute
 	// sustained, burst of 1000 by default.
@@ -349,16 +378,16 @@ var (
 	// when several people share one egress IP (a household behind NAT, or a
 	// reverse proxy that does not set X-Forwarded-For) they share a single
 	// bucket, and a busy contact page alone fires ~18 requests.
-	apiLimiter = NewIPRateLimiter(rate.Every(600*time.Millisecond), 1000)
+	apiLimiter = newAtomicIPLimiter(rate.Every(600*time.Millisecond), 1000)
 
 	// CardDAV rate limiter — higher burst to accommodate bulk sync from clients like vdirsyncer
 	// 10 requests per second sustained, burst of 2500 for initial address book sync
-	cardDAVLimiter = NewIPRateLimiter(rate.Every(100*time.Millisecond), 2500)
+	cardDAVLimiter = newAtomicIPLimiter(rate.Every(100*time.Millisecond), 2500)
 
 	// Feed rate limiter — its own bucket so a reader polling many feeds from
 	// one host cannot starve the web UI on the same IP, and the reverse (ADR
 	// 0030 decision 7). 0.5 req/s sustained, burst of 60.
-	feedLimiter = NewIPRateLimiter(rate.Every(2*time.Second), 60)
+	feedLimiter = newAtomicIPLimiter(rate.Every(2*time.Second), 60)
 
 	// Per-account rate limiter for login attempts
 	// Tracks failed attempts per username/email with exponential backoff
@@ -370,6 +399,24 @@ var (
 	// cleanupMu protects cleanupDone from concurrent access
 	cleanupMu sync.Mutex
 )
+
+// newAtomicIPLimiter wraps a fresh IPRateLimiter in an atomic pointer so the
+// sweeper, /metrics readers and ConfigureAPIRateLimiter can touch the global
+// concurrently without a data race (issue #1565).
+func newAtomicIPLimiter(r rate.Limit, b int) *atomic.Pointer[IPRateLimiter] {
+	p := &atomic.Pointer[IPRateLimiter]{}
+	p.Store(NewIPRateLimiter(r, b))
+	return p
+}
+
+// sweepLimiters is one tick of the stale-entry sweeper.
+func sweepLimiters() {
+	authLimiter.Load().CleanupStaleEntries()
+	apiLimiter.Load().CleanupStaleEntries()
+	cardDAVLimiter.Load().CleanupStaleEntries()
+	feedLimiter.Load().CleanupStaleEntries()
+	accountLimiter.CleanupStaleAccountEntries()
+}
 
 // GetAccountRateLimiter returns the global account rate limiter for login attempts
 func GetAccountRateLimiter() *AccountRateLimiter {
@@ -384,7 +431,7 @@ func ConfigureAPIRateLimiter(interval time.Duration, burst int) {
 	if interval <= 0 || burst <= 0 {
 		return
 	}
-	apiLimiter = NewIPRateLimiter(rate.Every(interval), burst)
+	apiLimiter.Store(NewIPRateLimiter(rate.Every(interval), burst))
 }
 
 // StartCleanupRoutine starts the background cleanup goroutine.
@@ -406,11 +453,7 @@ func StartCleanupRoutine() {
 		for {
 			select {
 			case <-ticker.C:
-				authLimiter.CleanupStaleEntries()
-				apiLimiter.CleanupStaleEntries()
-				cardDAVLimiter.CleanupStaleEntries()
-				feedLimiter.CleanupStaleEntries() // # pragma: no cover — 5-minute ticker, not unit-testable; IPRateLimiter.CleanupStaleEntries is covered directly by TestCleanupStaleEntries
-				accountLimiter.CleanupStaleAccountEntries()
+				sweepLimiters()
 			case <-done:
 				// Read the goroutine's own channel, not the package global:
 				// StopCleanupRoutine nils the global under cleanupMu while this
@@ -497,20 +540,20 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 
 // AuthRateLimitMiddleware applies strict rate limiting for authentication endpoints
 func AuthRateLimitMiddleware() gin.HandlerFunc {
-	limit := RateLimitMiddleware(authLimiter)
+	limit := RateLimitMiddleware(authLimiter.Load())
 	return func(c *gin.Context) { limit(c) }
 }
 
 // APIRateLimitMiddleware applies general rate limiting for API endpoints
 func APIRateLimitMiddleware() gin.HandlerFunc {
-	limit := RateLimitMiddleware(apiLimiter)
+	limit := RateLimitMiddleware(apiLimiter.Load())
 	return func(c *gin.Context) { limit(c) }
 }
 
 // CardDAVRateLimitMiddleware applies rate limiting for CardDAV endpoints.
 // Uses a higher burst than auth endpoints to allow bulk sync from clients like vdirsyncer.
 func CardDAVRateLimitMiddleware() gin.HandlerFunc {
-	limit := RateLimitMiddleware(cardDAVLimiter)
+	limit := RateLimitMiddleware(cardDAVLimiter.Load())
 	return func(c *gin.Context) { limit(c) }
 }
 
@@ -519,6 +562,6 @@ func CardDAVRateLimitMiddleware() gin.HandlerFunc {
 // cannot exhaust each other's budget on a shared egress IP (ADR 0030 decision
 // 7).
 func FeedRateLimitMiddleware() gin.HandlerFunc {
-	limit := RateLimitMiddleware(feedLimiter)
+	limit := RateLimitMiddleware(feedLimiter.Load())
 	return func(c *gin.Context) { limit(c) }
 }

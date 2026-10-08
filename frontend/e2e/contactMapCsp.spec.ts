@@ -17,7 +17,19 @@ import { expect, test, waitForLoading } from './fixtures';
 const TILE_ORIGIN = 'https://tiles.openfreemap.org';
 
 test.describe('contact map CSP (#1286)', () => {
-  test('the map page loads its style and worker with no CSP violations', async ({ page }) => {
+  test('the map page loads its style and worker with no CSP violations', async ({
+    page,
+    browserName,
+  }) => {
+    // The nightly Firefox project runs headless in CI without WebGL, so
+    // maplibre throws at construction and ContactMap renders its "map
+    // unavailable" alert instead of the `contact-map` region this asserts on.
+    // The CSP itself is server-side and engine-independent: Chromium covers
+    // the violation probe and the header test below runs on every engine.
+    test.skip(
+      browserName === 'firefox',
+      'headless CI Firefox has no WebGL, so the map never mounts',
+    );
     const violations: string[] = [];
     await page.exposeFunction('__recordCspViolation', (v: string) => violations.push(v));
     await page.addInitScript(() => {

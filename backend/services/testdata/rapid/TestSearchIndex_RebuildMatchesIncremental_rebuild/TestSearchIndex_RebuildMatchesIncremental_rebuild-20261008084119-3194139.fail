@@ -1,0 +1,12 @@
+# 2026/10/08 08:41:19.527467 [TestSearchIndex_RebuildMatchesIncremental/rebuild] 
+# 	Error Trace:	/home/drew/github/mycorrhizal-crm/.claude/worktrees/milestone-30-adversarial-review-7a835e/backend/services/search_index_property_test.go:49
+# 	            				/home/drew/go/pkg/mod/pgregory.net/rapid@v1.3.0/engine.go:458
+# 	            				/home/drew/go/pkg/mod/pgregory.net/rapid@v1.3.0/engine.go:467
+# 	            				/home/drew/go/pkg/mod/pgregory.net/rapid@v1.3.0/engine.go:292
+# 	            				/home/drew/go/pkg/mod/pgregory.net/rapid@v1.3.0/engine.go:227
+# 	            				/home/drew/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.1.linux-amd64/src/runtime/asm_amd64.s:1264
+# 	Error:      	Received unexpected error:
+# 	            	contactgen: creating test db dir: stat /home/drew/t: no such file or directory
+# 	Test:       	TestSearchIndex_RebuildMatchesIncremental/rebuild
+# 
+v0.4.8#4618907073938683347

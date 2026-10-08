@@ -19,6 +19,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
 )
@@ -192,7 +193,7 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	// batch that runs for twenty minutes logs nothing until it finishes — a
 	// long startup migration is indistinguishable from a hung one. See
 	// migrationProgressLogger.
-	m.Log = migrationProgressLogger{}
+	m.Log = migrationProgressLogger{log: logger.Logger}
 	return m, nil
 }
 
@@ -210,22 +211,27 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 // migration_completed / migration_failed events so a log stream can tell a
 // per-step heartbeat from the whole-run outcome. Both step lines are INFO so
 // they are visible at the default log level, not buried behind verbose.
-type migrationProgressLogger struct{}
+//
+// log is a snapshot of the package logger taken when the migrator is built, not
+// a read of the logger.Logger global per line: golang-migrate's reader
+// goroutine can outlive Up() on a failed migration, and a late Printf reading
+// the global raced with a test restoring it (nightly #1572).
+type migrationProgressLogger struct{ log zerolog.Logger }
 
 // Verbose is true so golang-migrate emits the "Read and execute" (starting)
 // line; it is false by default, which would leave only the finish line.
 func (migrationProgressLogger) Verbose() bool { return true }
 
-func (migrationProgressLogger) Printf(format string, v ...interface{}) {
+func (l migrationProgressLogger) Printf(format string, v ...interface{}) {
 	switch {
 	case strings.HasPrefix(format, "Read and execute"):
-		logger.Info().
+		l.log.Info().
 			Str(logger.FieldEvent, "migration_step_started").
 			Str(logger.FieldComponent, "migration").
 			Str("migration", migrationLogName(v)).
 			Msg("migration step started")
 	case strings.HasPrefix(format, "Finished "):
-		logger.Info().
+		l.log.Info().
 			Str(logger.FieldEvent, "migration_step_completed").
 			Str(logger.FieldComponent, "migration").
 			Str("migration", migrationLogName(v)).
@@ -234,7 +240,7 @@ func (migrationProgressLogger) Printf(format string, v ...interface{}) {
 	default:
 		// "Start buffering"/"Scheduled"/"Closing source and database" and the
 		// golang-migrate "error: ..." lines — noise for the operator heartbeat.
-		logger.Debug().
+		l.log.Debug().
 			Str(logger.FieldComponent, "migration").
 			Msg(strings.TrimSpace(fmt.Sprintf(format, v...)))
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -373,6 +374,39 @@ func TestDataIntegrity_INV_D8_InvalidCardJSON(t *testing.T) {
 	require.True(t, ok, "expected INV-D8 finding, got: %+v", r.Findings)
 	assert.Equal(t, "INV-D8", f.Invariant)
 	assert.False(t, r.OK)
+}
+
+// Regression (found by the soak harness, issue #1496): with at-rest encryption
+// armed — always, in a running server — the card column is ciphertext, and the
+// canonical-record check scans it raw. It used to JSON-parse the ciphertext, so
+// EVERY contact on an encrypted instance read as invalid JSON and the scheduled
+// data-integrity job reported a violation per user forever.
+func TestDataIntegrity_INV_D8_EncryptedCardIsNotInvalidJSON(t *testing.T) {
+	db, cfg := integrityTestDB(t)
+	kek := make([]byte, 32)
+	for i := range kek {
+		kek[i] = byte(0x11 + i)
+	}
+	require.NoError(t, atrest.Initialize(db, kek))
+	t.Cleanup(atrest.ResetForTest)
+
+	u := mkUser(t, db, "alice")
+	c := mkContact(t, db, u.ID, "A")
+
+	var raw struct{ Card string }
+	require.NoError(t, db.Raw("SELECT card FROM contacts WHERE id = ?", c.ID).Scan(&raw).Error)
+	require.True(t, strings.HasPrefix(raw.Card, "encv1:"), "precondition: the card column is ciphertext, got %q", raw.Card)
+
+	r := runDataChecks(t, db, cfg)
+	_, bad := findingFor(r, "canonical_record.invalid_json", u.ID)
+	assert.False(t, bad, "a validly encrypted card is not invalid JSON: %+v", r.Findings)
+
+	// A ciphertext the key cannot open is as unreadable as corrupt JSON and
+	// must still be reported, not skipped.
+	require.NoError(t, db.Exec("UPDATE contacts SET card = ? WHERE id = ?", "encv1:main:AAAA", c.ID).Error)
+	r = runDataChecks(t, db, cfg)
+	_, bad = findingFor(r, "canonical_record.invalid_json", u.ID)
+	assert.True(t, bad, "an undecryptable card must still be a violation: %+v", r.Findings)
 }
 
 func TestDataIntegrity_INV_D8_DuplicateElementID(t *testing.T) {

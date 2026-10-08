@@ -383,15 +383,33 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	db := context.MustGet("db").(*gorm.DB)
 
+	// Issue #1473: the response MUST NOT branch on whether the account exists,
+	// on the outcome of the persist or the send, or (#1569) on the cooldown.
+	// Every path answers this same 200.
+	const resetAccepted = "If an account exists, password reset instructions were sent"
+
 	var user models.User
 	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			context.JSON(http.StatusOK, gin.H{"message": "If an account exists, password reset instructions were sent"})
+			context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
 			return
 		}
 
 		log.Error().Err(err).Msg("Failed to lookup user for password reset")
 		apperrors.AbortWithError(context, apperrors.ErrDatabase("query user").WithError(err))
+		return
+	}
+
+	now := clock.FromContext(context).Now()
+
+	// Issue #1569: at most one reset email per account per cooldown. The
+	// endpoint is only per-IP rate limited, so a caller spread over several
+	// IPs could otherwise mail one victim repeatedly. The authoritative check
+	// is repeated inside the background transaction below (two requests can
+	// both pass this one); this early return just skips the token work.
+	if services.PasswordResetThrottled(user.PasswordResetRequestedAt, now) {
+		log.Info().Uint("user_id", user.ID).Msg("Password reset request throttled by the per-account cooldown")
+		context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
 		return
 	}
 
@@ -401,41 +419,56 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate password reset token").WithError(err))
 		return
 	}
+	expires := services.PasswordResetExpiryFrom(now)
 
-	requested := clock.FromContext(context).Now()
-	expires := services.PasswordResetExpiryFrom(requested)
-
-	user.PasswordResetTokenHash = &hash
-	user.PasswordResetExpiresAt = &expires
-	user.PasswordResetRequestedAt = &requested
-
-	// Issue #1473: from here on the response MUST NOT branch on the outcome of
-	// the persist or the send. Both can only fail for a *known* account, so a
-	// 5xx here would answer "this email is registered" to anyone (a mail
-	// transport that is down, misconfigured or rate-limited is common for
-	// self-hosters). Failures are logged at ERROR and recorded as a
-	// system_event so the operator still sees them.
-	const resetAccepted = "If an account exists, password reset instructions were sent"
-
-	if err := db.Save(&user).Error; err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password reset token")
-		recordPasswordResetFailure(context.Request.Context(), db, user.ID, "persist_token", err)
-		context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
-		return
-	}
-
-	// T18/issue #411 audit: reset requested for a known account. This is an
-	// operator-only audit line, not part of the response.
-	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
-
-	// Issue #1554: the send is off the request path. A synchronous SMTP/Resend
-	// call takes seconds (or the client timeout) for a known account while an
-	// unknown email answers immediately, so the latency alone would be the
-	// account-existence oracle #1473 removed from the body. Capture what the
-	// goroutine needs now: the request context is cancelled once the handler
-	// returns, so failures are recorded under context.Background().
-	userID, userEmail, userLang := user.ID, user.Email, user.Language
+	// Issues #1554 and #1569: everything that touches the database or the mail
+	// transport for a known account runs off the request path. An unknown,
+	// throttled or fresh request then does the same work before answering (one
+	// SELECT), so neither a slow mail send (#1554) nor the token write's WAL
+	// fsync (#1569) is a timing oracle for "this email is registered". The
+	// request context is cancelled once the handler returns, so failures are
+	// recorded under context.Background(). Persist and send failures are
+	// logged at ERROR and recorded as a system_event so the operator still
+	// sees them (#1473).
+	userID := user.ID
 	fireandforget.Run(func() {
+		var (
+			claimed             bool
+			userEmail, userLang string
+		)
+		// _txlock=immediate makes BEGIN take the write lock, so concurrent
+		// requests for one account serialize here: the second re-reads the
+		// first's password_reset_requested_at and is throttled.
+		err := db.Transaction(func(tx *gorm.DB) error {
+			var u models.User
+			if err := tx.First(&u, userID).Error; err != nil {
+				return err
+			}
+			if services.PasswordResetThrottled(u.PasswordResetRequestedAt, now) {
+				return nil
+			}
+			if err := tx.Model(&u).UpdateColumns(map[string]any{
+				"password_reset_token_hash":   hash,
+				"password_reset_expires_at":   expires,
+				"password_reset_requested_at": now,
+			}).Error; err != nil {
+				return err
+			}
+			// T18/issue #411 audit: reset requested for a known account
+			// (operator-only, never part of the response).
+			models.RecordAuditEvent(tx, models.AuditEntityUser, fmt.Sprintf("%d", userID), models.AuditOpPasswordResetRequested, userID)
+			claimed, userEmail, userLang = true, u.Email, u.Language
+			return nil
+		})
+		if err != nil {
+			log.Error().Err(err).Uint("user_id", userID).Msg("Failed to persist password reset token")
+			recordPasswordResetFailure(stdcontext.Background(), db, userID, "persist_token", err)
+			return
+		}
+		if !claimed {
+			log.Info().Uint("user_id", userID).Msg("Password reset request throttled by the per-account cooldown")
+			return
+		}
 		if err := services.SendPasswordResetEmail(userEmail, token, userLang, cfg); err != nil {
 			log.Error().Err(err).Uint("user_id", userID).Msg("Failed to send password reset email")
 			recordPasswordResetFailure(stdcontext.Background(), db, userID, "send_email", err)

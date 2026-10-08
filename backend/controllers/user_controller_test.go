@@ -13,6 +13,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -479,6 +480,8 @@ func TestRequestPasswordReset_Succeeds(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	// The token write runs in the background (issues #1554/#1569); drain it.
+	fireandforget.Wait()
 
 	var updated models.User
 	db.Where("email = ?", "reset@example.com").First(&updated)

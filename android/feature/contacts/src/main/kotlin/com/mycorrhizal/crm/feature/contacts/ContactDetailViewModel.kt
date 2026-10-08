@@ -237,9 +237,13 @@ class ContactDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+            // Issue #1567: a fetch that began before a star toggle carries the
+            // pre-toggle flag; remember the epoch so it can't undo the toggle.
+            val epochAtStart = favoriteEpoch
             val lookupKey = contactRepository.getDeviceLookupKey(contactId)
             contactRepository.getContact(contactId).foldApiError(
-                onSuccess = { contact ->
+                onSuccess = { fetched ->
+                    val contact = fetched.withFavoriteFrom(_uiState.value.contact, epochAtStart)
                     _uiState.update {
                         it.copy(isLoading = false, contact = contact, deviceLookupKey = lookupKey)
                     }
@@ -827,6 +831,18 @@ class ContactDetailViewModel @Inject constructor(
     // --- Issue #212: favorite toggle (web #173) ---
 
     /**
+     * Bumped when a star toggle starts and again when it settles. A [load]
+     * that started under an older epoch fetched the flag before (or during)
+     * the toggle, so its copy of `isFavorite` is stale and must not overwrite
+     * the toggle's state (issue #1567: the E2E saw the star snap back to
+     * filled after a successful un-star).
+     */
+    private var favoriteEpoch = 0
+
+    private fun ContactRecordResponse.withFavoriteFrom(current: ContactRecordResponse?, epochAtStart: Int) =
+        if (current != null && epochAtStart != favoriteEpoch) copy(isFavorite = current.isFavorite) else this
+
+    /**
      * Toggles the contact's favorite flag in the detail header, mirroring web
      * `ContactDetailPage.handleToggleFavorite`: optimistic into state, with a
      * rollback on failure so the star can never silently disagree with the
@@ -836,13 +852,15 @@ class ContactDetailViewModel @Inject constructor(
     fun toggleFavorite() {
         val contact = _uiState.value.contact ?: return
         val wasFavorite = contact.isFavorite
+        favoriteEpoch++
         viewModelScope.launch {
-            _uiState.update { it.copy(contact = contact.copy(isFavorite = !wasFavorite)) }
+            _uiState.update { it.copy(contact = it.contact?.copy(isFavorite = !wasFavorite)) }
             val result = if (wasFavorite) {
                 contactRepository.unfavoriteContact(contactId)
             } else {
                 contactRepository.favoriteContact(contactId)
             }
+            favoriteEpoch++
             result.foldApiError(
                 onSuccess = {},
                 onError = { error ->

@@ -114,7 +114,7 @@ if [ "$backend_changed" = true ]; then
   run "backend: go build ./..." backend go build ./...
   run "backend: go vet ./..." backend go vet ./...
   run "backend: golangci-lint (gosec + bodyclose + correctness set)" backend \
-    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...
+    go tool -modfile=tools.mod golangci-lint run ./...
   run "backend: gormerrcheck (unchecked GORM .Error, CLAUDE.md trap #4)" backend \
     go run ./cmd/gormerrcheck ./...
   run "backend: rawtimecheck (raw time.Now outside the injected clock, issue #1494)" backend \
@@ -158,6 +158,7 @@ run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatec
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
 run "nightlyalertcheck (scheduled workflows registered for failure alerts)" backend go run ./cmd/nightlyalertcheck
+run "mainalertcheck (per-pr workflows registered for main failure alerts)" backend go run ./cmd/mainalertcheck
 run "androidskipcheck (Android E2E expected-skips allowlist resolves)" backend go run ./cmd/androidskipcheck -static
 
 if [ "$changelog_relevant" = true ]; then

@@ -119,9 +119,13 @@ func TestProcessOverdueCadencesEmitsWebhookForOverduePolicy(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "exactly one emission (only the overdue policy)")
 
+	// The delivery row is recorded after the receiver has answered, so the
+	// hit counter can lead it on a slow runner.
 	var deliveries []models.WebhookDelivery
-	require.NoError(t, db.Find(&deliveries).Error)
-	require.Len(t, deliveries, 1)
+	require.Eventually(t, func() bool {
+		deliveries = nil
+		return db.Find(&deliveries).Error == nil && len(deliveries) == 1
+	}, 3*time.Second, 10*time.Millisecond, "the delivery must be recorded")
 	assert.Equal(t, wh.ID, deliveries[0].WebhookID)
 	assert.Equal(t, "cadence.overdue", deliveries[0].EventType)
 

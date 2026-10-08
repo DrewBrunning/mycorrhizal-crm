@@ -573,3 +573,27 @@ func TestGetAccountRateLimiter(t *testing.T) {
 		t.Error("Expected same global rate limiter instance")
 	}
 }
+
+func TestRateLimiterEntryCounts_AndAccountTrackedKeys(t *testing.T) {
+	a := NewAccountRateLimiter(time.Hour)
+	if a.TrackedKeys() != 0 {
+		t.Fatal("empty limiter must track nothing")
+	}
+	a.RecordFailedAttempt("alice")
+	a.mu.Lock()
+	a.global["g"] = &AccountLockoutEntry{}
+	a.knownGoodGlobalIPs["1.1.1.1"] = time.Now()
+	a.knownGoodIPs["bob"] = map[string]time.Time{"2.2.2.2": time.Now(), "3.3.3.3": time.Now()}
+	a.mu.Unlock()
+	// accounts(1) + global(1) + known-good-global(1) + bob's identifier(1) + 2 ips.
+	if n := a.TrackedKeys(); n != 6 {
+		t.Fatalf("TrackedKeys = %d, want 6", n)
+	}
+
+	counts := RateLimiterEntryCounts()
+	for _, k := range []string{"auth", "api", "carddav", "feed", "account"} {
+		if _, ok := counts[k]; !ok {
+			t.Errorf("missing limiter %q", k)
+		}
+	}
+}
