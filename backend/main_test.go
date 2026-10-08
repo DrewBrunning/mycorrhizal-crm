@@ -33,6 +33,7 @@ import (
 
 var (
 	binOnce sync.Once
+	binDir  string // set as soon as the build directory exists, so a failed build is cleaned up too
 	binPath string
 	binErr  string
 )
@@ -45,10 +46,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// removeHostBinary deletes the directory holding the built binary, if any.
+// removeHostBinary deletes hostBinary's build directory, if one was created —
+// including when the build itself failed and binPath was never set.
 func removeHostBinary() {
-	if binPath != "" {
-		_ = os.RemoveAll(filepath.Dir(binPath))
+	if binDir != "" {
+		_ = os.RemoveAll(binDir)
 	}
 }
 
@@ -64,6 +66,7 @@ func hostBinary(t *testing.T) string {
 			binErr = err.Error()
 			return
 		}
+		binDir = dir
 		out := filepath.Join(dir, "mycorrhizal")
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 		defer cancel()
@@ -92,15 +95,17 @@ func TestRemoveHostBinaryDeletesBuildDir(t *testing.T) {
 	dir := shortTempDir(t)
 	f := filepath.Join(dir, "mycorrhizal")
 	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
-	old := binPath
-	defer func() { binPath = old }()
+	old := binDir
+	defer func() { binDir = old }()
 
-	binPath = ""
+	binDir = ""
 	removeHostBinary() // no-op: must not remove anything
 	_, err := os.Stat(f)
 	require.NoError(t, err)
 
-	binPath = f
+	// A failed build leaves binPath empty but the directory created: it is
+	// still removed (issue #1555 review).
+	binDir = dir
 	removeHostBinary()
 	_, err = os.Stat(dir)
 	require.True(t, os.IsNotExist(err))
