@@ -71,7 +71,7 @@ func TestBackupSigningKeyResolvesFromEnv(t *testing.T) {
 	t.Run("a malformed DATA_ENCRYPTION_KEY is an error, not a silent nil", func(t *testing.T) {
 		t.Setenv("DATA_ENCRYPTION_KEY", "not-base64!!")
 		got, err := BackupSigningKey()
-		require.Error(t, err)
+		require.ErrorIs(t, err, ErrInvalidKey)
 		assert.Nil(t, got)
 	})
 }

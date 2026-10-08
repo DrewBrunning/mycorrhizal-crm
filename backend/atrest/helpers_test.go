@@ -34,7 +34,7 @@ func TestIdAsString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := idAsString(tc.in)
 			if tc.wantErr {
-				require.Error(t, err)
+				require.ErrorContains(t, err, "unexpected id type")
 				return
 			}
 			require.NoError(t, err)

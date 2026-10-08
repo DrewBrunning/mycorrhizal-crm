@@ -110,7 +110,8 @@ func TestDecrypt_WrongKeyFailsClosed(t *testing.T) {
 	armWith(t, other)
 
 	_, err = Decrypt(ct)
-	require.Error(t, err, "decryption with a wrong key must fail closed")
+	require.ErrorIs(t, err, ErrAuthFailed, "decryption with a wrong key must fail closed")
+	require.NotErrorIs(t, err, ErrMalformed, "a wrong key is an authentication failure, not a malformed value")
 }
 
 func TestDecrypt_CorruptedCiphertextFailsClosed(t *testing.T) {
@@ -129,7 +130,7 @@ func TestDecrypt_CorruptedCiphertextFailsClosed(t *testing.T) {
 		buf[mid] = 'A'
 	}
 	_, err = Decrypt(string(buf))
-	require.Error(t, err, "tampered ciphertext must fail authentication")
+	require.ErrorIs(t, err, ErrAuthFailed, "tampered ciphertext must fail authentication")
 }
 
 func TestDecrypt_MalformedValueFailsClosed(t *testing.T) {
@@ -137,7 +138,8 @@ func TestDecrypt_MalformedValueFailsClosed(t *testing.T) {
 
 	for _, bad := range []string{"encv1:main:%%%notbase64", "encv1:other:AAAA", "encv1:main:", "encv1:"} {
 		_, err := Decrypt(bad)
-		require.Error(t, err, "malformed value %q must fail closed", bad)
+		require.ErrorIs(t, err, ErrMalformed, "malformed value %q must fail closed", bad)
+		require.NotErrorIs(t, err, ErrAuthFailed)
 	}
 }
 
@@ -150,7 +152,7 @@ func TestDecrypt_EncryptedValueWhenUninitializedFailsClosed(t *testing.T) {
 	// rather than return ciphertext as if it were plaintext.
 	ResetForTest()
 	_, err = Decrypt(ct)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNotInitialized)
 }
 
 func TestVerifyBackupDecryptable_NoKeyConfiguredPasses(t *testing.T) {
@@ -206,12 +208,12 @@ func TestVerifyBackupDecryptable_WrongKeyFailsClosed(t *testing.T) {
 	wrong := make([]byte, keySize)
 	wrong[0] = 0xFF
 	err := VerifyBackupDecryptable(db, wrong)
-	require.Error(t, err, "a backup keyed under a different master key must fail restore verification")
+	require.ErrorIs(t, err, ErrAuthFailed, "a backup keyed under a different master key must fail restore verification")
 	assert.Contains(t, err.Error(), "does not unwrap under the current master key")
 }
 
 func TestVerifyBackupDecryptable_NilDBWithKeyErrors(t *testing.T) {
-	require.Error(t, VerifyBackupDecryptable(nil, testKEK(t)))
+	require.ErrorIs(t, VerifyBackupDecryptable(nil, testKEK(t)), ErrDBRequired)
 }
 
 func TestEncrypt_NonceUniqueness(t *testing.T) {
@@ -274,7 +276,7 @@ func TestEncryptionKey_NoneConfigured(t *testing.T) {
 func TestEncryptionKey_InvalidBase64Rejected(t *testing.T) {
 	t.Setenv("DATA_ENCRYPTION_KEY", "not-valid-base64!!!")
 	_, err := EncryptionKey()
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidKey)
 }
 
 func TestEncryptionKey_FileDoesNotExist(t *testing.T) {
@@ -283,7 +285,7 @@ func TestEncryptionKey_FileDoesNotExist(t *testing.T) {
 	t.Setenv("DATA_ENCRYPTION_KEY_FILE", filepath.Join(t.TempDir(), "does-not-exist"))
 
 	_, err := EncryptionKey()
-	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 	require.Contains(t, err.Error(), "DATA_ENCRYPTION_KEY_FILE")
 }
 
@@ -297,7 +299,7 @@ func TestEncryptionKey_FileInvalidContent(t *testing.T) {
 	t.Setenv("DATA_ENCRYPTION_KEY_FILE", path)
 
 	_, err := EncryptionKey()
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidKey)
 	require.Contains(t, err.Error(), "DATA_ENCRYPTION_KEY_FILE")
 }
 
@@ -341,12 +343,12 @@ func TestResolveMasterKey_Precedence(t *testing.T) {
 
 	t.Run("invalid DataKey errors even with a valid file and JWT fallback available", func(t *testing.T) {
 		_, err := ResolveMasterKey("not-valid-base64!!!", filePath, "a-jwt-secret-that-is-long-enough-12345")
-		require.Error(t, err)
+		require.ErrorIs(t, err, ErrInvalidKey)
 	})
 
 	t.Run("nonexistent file errors even with a JWT fallback available", func(t *testing.T) {
 		_, err := ResolveMasterKey("", filepath.Join(dir, "does-not-exist"), "a-jwt-secret-that-is-long-enough-12345")
-		require.Error(t, err)
+		require.ErrorIs(t, err, os.ErrNotExist)
 	})
 }
 
@@ -370,7 +372,7 @@ func TestEncryptionKey_MatchesResolveMasterKey(t *testing.T) {
 func TestInitialize_NilDBWithKeyErrors(t *testing.T) {
 	t.Cleanup(ResetForTest)
 	err := Initialize(nil, testKEK(t))
-	require.Error(t, err, "a configured key requires a db handle to load/seed the wrapped DEK")
+	require.ErrorIs(t, err, ErrDBRequired, "a configured key requires a db handle to load/seed the wrapped DEK")
 }
 
 func TestDecodeMasterKey(t *testing.T) {
@@ -379,5 +381,5 @@ func TestDecodeMasterKey(t *testing.T) {
 	require.Equal(t, testKEK(t), kek)
 
 	_, err = DecodeMasterKey("tooshort")
-	require.Error(t, err, "must reject a non-base64 / non-32-byte key")
+	require.ErrorIs(t, err, ErrInvalidKey, "must reject a non-base64 / non-32-byte key")
 }

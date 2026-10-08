@@ -78,7 +78,7 @@ const (
 // or when the data_encryption_keys table does not exist yet.
 func Backfill(db *gorm.DB) error {
 	if db == nil {
-		return fmt.Errorf("atrest: backfill requires a db handle")
+		return classify(ErrDBRequired, "atrest: backfill requires a db handle", nil)
 	}
 	engine.mu.RLock()
 	on := engine.on
@@ -90,7 +90,7 @@ func Backfill(db *gorm.DB) error {
 	for _, spec := range EncryptedColumns {
 		table, column, ok := splitSpec(spec)
 		if !ok {
-			return fmt.Errorf("atrest: malformed encrypted-column spec %q", spec)
+			return classify(ErrMalformedSpec, fmt.Sprintf("atrest: malformed encrypted-column spec %q", spec), nil)
 		}
 		if err := backfillColumn(db, table, column); err != nil {
 			return fmt.Errorf("atrest: backfill %s.%s: %w", table, column, err)
