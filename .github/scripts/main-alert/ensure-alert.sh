@@ -11,15 +11,28 @@
 # to `Nightly failure:` titles so the two alarms can never close each other's
 # issues.
 #
+# A `cancelled` conclusion is ambiguous (issue #1618): GitHub also marks a
+# `push` run cancelled when a newer push run of the same workflow supersedes
+# it -- push runs share a concurrency group, and a group's older *pending* run
+# is cancelled when a newer one queues even without `cancel-in-progress`. That
+# is not a failure: the newer run is coming to report the truth. Only a
+# cancelled run with no newer run of the same workflow on the branch (cancelled
+# by hand, or by the branch reaper) is a real alert.
+#
 # Required env: GH_REPO, GH_TOKEN, WORKFLOW_NAME, RUN_ID, RUN_URL,
 # CONCLUSION, RUN_ATTEMPT, HEAD_SHA, HEAD_BRANCH.
 #
 # Optional env: DRY_RUN=1 makes every read-only lookup (the existing issue,
-# the run's jobs, the originating PR) still run, but logs the issue/comment it
-# *would* create, comment on or close instead of mutating anything. The
-# `workflow_dispatch` test path in main-failure-alert.yml drives it this way by
-# default, so the alarm can be exercised against a real run without touching
-# the issue tracker.
+# the run's jobs, the originating PR, and the newer-run check) still run, but
+# logs the issue/comment it *would* create, comment on or close instead of
+# mutating anything. The `workflow_dispatch` test path in
+# main-failure-alert.yml drives it this way by default, so the alarm can be
+# exercised against a real run without touching the issue tracker.
+#
+# Optional env: NEWER_RUN_EXISTS=1|0 overrides the superseded-run lookup for
+# the `workflow_dispatch` manual-test path, so both `cancelled` branches
+# (superseded -> no action, lone -> alert) can be exercised without a live API
+# coincidence. Unset in the event-driven path, where the lookup runs for real.
 set -euo pipefail
 
 : "${GH_REPO:?GH_REPO required}"
@@ -64,8 +77,44 @@ else
 	echo "No existing open issue for '${WORKFLOW_NAME}'."
 fi
 
+# run_was_superseded returns 0 when a newer push run of the same workflow on
+# the same branch exists (so this run's cancellation is GitHub cancelling a
+# superseded pending run), 1 otherwise -- including when the ordering cannot be
+# established, which fails toward alerting rather than toward silence.
+run_was_superseded() {
+	# Manual-test override: let workflow_dispatch exercise both branches.
+	if [ -n "${NEWER_RUN_EXISTS:-}" ]; then
+		[ "$NEWER_RUN_EXISTS" = "1" ]
+		return
+	fi
+
+	local this_json workflow_id this_number newer
+	this_json="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}")"
+	workflow_id="$(jq -r '.workflow_id // empty' <<<"$this_json")"
+	this_number="$(jq -r '.run_number // empty' <<<"$this_json")"
+	if [ -z "$workflow_id" ] || [ -z "$this_number" ]; then
+		echo "Could not resolve the workflow id/run number for run ${RUN_ID} -- treating the cancellation as a real failure."
+		return 1
+	fi
+
+	# run_number is monotonic within a workflow, so any higher number from a
+	# newer push run on the same branch means this one was superseded.
+	newer="$(gh api "repos/${GH_REPO}/actions/workflows/${workflow_id}/runs?branch=${HEAD_BRANCH}&event=push&per_page=5" \
+		| jq --argjson n "$this_number" '[.workflow_runs[] | select((.run_number // 0) > $n)] | length')"
+	[ "${newer:-0}" -gt 0 ]
+}
+
 case "$CONCLUSION" in
 failure | timed_out | startup_failure | cancelled)
+	label="$CONCLUSION"
+	if [ "$CONCLUSION" = "cancelled" ]; then
+		if run_was_superseded; then
+			echo "Run of '${WORKFLOW_NAME}' on '${HEAD_BRANCH}' was cancelled but superseded by a newer push run -- no alert (the newer run reports the truth)."
+			exit 0
+		fi
+		label="cancelled (not superseded)"
+	fi
+
 	failed="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/jobs" --paginate \
 		--jq '[.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != null) | .name] | join(", ")')"
 	if [ -z "$failed" ]; then
@@ -82,7 +131,7 @@ failure | timed_out | startup_failure | cancelled)
 		origin="no associated pull request (direct push to \`${HEAD_BRANCH}\`)"
 	fi
 
-	body="Push run of **${WORKFLOW_NAME}** on \`${HEAD_BRANCH}\` ended \`${CONCLUSION}\` (attempt ${RUN_ATTEMPT}): ${RUN_URL}
+	body="Push run of **${WORKFLOW_NAME}** on \`${HEAD_BRANCH}\` ended \`${label}\` (attempt ${RUN_ATTEMPT}): ${RUN_URL}
 
 Head commit: \`${HEAD_SHA}\` -- ${origin}
 
