@@ -39,9 +39,6 @@ on:
 permissions:
   contents: read
 
-env:
-  GREMLINS_VERSION: v0.6.0
-
 jobs:
   mutate:
     name: Mutation test (${{ matrix.scope }})
@@ -101,6 +98,14 @@ jobs:
         with:
           go-version-file: backend/go.mod
 
+      # Issue #1551: dev tools (gotestsum/govulncheck/golangci-lint/actionlint/
+      # gremlins) are `tool` directives in backend/go.mod, so they resolve from
+      # go.sum + the module cache instead of a live proxy/sum.golang.org fetch
+      # per run. This retried download is the only network step left.
+      - name: Download Go modules
+        working-directory: backend
+        run: for _ in 1 2 3; do go mod download && break; sleep 10; done
+
       - name: Mutation config is current
         working-directory: backend
         run: |
@@ -146,7 +151,7 @@ jobs:
           # standard GitHub-hosted Linux runner's total RAM.
           ulimit -v 8000000
 
-          go run github.com/go-gremlins/gremlins/cmd/gremlins@${{ env.GREMLINS_VERSION }} unleash \
+          go tool gremlins unleash \
             --workers 4 \
             --timeout-coefficient 30 \
             --config .gremlins/${{ matrix.scope }}.yaml \

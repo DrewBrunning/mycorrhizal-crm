@@ -7,9 +7,9 @@ name: Workflow Lint (actionlint + shellcheck)
 # `workflows` filter; a workflow change can break any check, so .github/**
 # changes re-run the whole stack (issue #264 pattern).
 #
-# Run via `go run ...@version` per the repo convention (tool via the module
-# proxy, not a raw release download — see unit-tests.yml's golangci-lint /
-# govulncheck steps). shellcheck is a C binary, so it comes from apt. A clean
+# Installed via a version-pinned, retried `go install` (not a raw release
+# download; unlike unit-tests.yml's golangci-lint / govulncheck it cannot be a
+# go.mod tool directive — see the step comment, issue #1551). shellcheck is a C binary, so it comes from apt. A clean
 # baseline means the step exits non-zero on any finding — that is the gate.
 
 on:
@@ -82,21 +82,34 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
 
-      # actionlint itself is Go, so it comes from the module proxy pinned to a
-      # version, matching the repo's tooling convention. The Go version that
-      # builds it comes from the backend module, same as every other `go run`
-      # step in this repo.
+      # actionlint itself is Go; the Go version that builds it comes from the
+      # backend module, same as every other Go step in this repo.
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # Issue #1551: NOT a go.mod `tool` directive, unlike gotestsum/
+      # govulncheck/golangci-lint/gremlins. actionlint v1.7.12 needs
+      # go.yaml.in/yaml/v4 rc.3, but golangci-lint (gosec) pulls rc.6 into
+      # backend/go.mod and rc.6 has a breaking API change, so actionlint fails
+      # to compile inside the backend module. It stays a version-pinned
+      # `go install`, wrapped in a 3-attempt retry so a transient module-proxy
+      # / sum.golang.org failure doesn't redden the check.
+      - name: Install actionlint (retried)
+        run: |
+          for _ in 1 2 3; do
+            go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && break
+            sleep 10
+          done
+
       # Lints every workflow under .github/workflows/ and, with shellcheck on
       # PATH, every `run:` block too. Exits non-zero on any finding — the
       # baseline is clean, so that is the gate.
       - name: Run actionlint (with shellcheck)
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
+        run: |
+          "$(go env GOPATH)/bin/actionlint" -color
 
       # The fuzz runner is a committed script that unit-tests.yml calls, so
       # actionlint's shellcheck of `run:` blocks cannot see it — shellcheck

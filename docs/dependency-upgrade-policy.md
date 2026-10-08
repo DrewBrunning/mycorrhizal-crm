@@ -116,13 +116,26 @@ re-opened by Dependabot rather than left to rot indefinitely.
 
 ## Pinning rules
 
-Three pinning rules exist today, and all three are enforced mechanically, not
+Four pinning rules exist today, and all four are enforced mechanically, not
 just by habit:
 
 - **The Go toolchain is pinned deliberately** (`backend/go.mod`'s `go` and
   `toolchain` directives) per the security posture in `CLAUDE.md` — it is not
   floated, and a bump is a deliberate edit to that one file, reviewable in
   the normal diff.
+- **Go CI tools are `tool` directives in `backend/go.mod`** (`gotestsum`,
+  `govulncheck`, `golangci-lint`, `gremlins`; issue #1551), run as
+  `go tool <name>` — never `go run <module>@<version>`, which re-fetches from
+  the module proxy and `sum.golang.org` on every CI run with no retry. The pin
+  is the `go.mod` requirement, checksum-verified from the committed `go.sum`
+  and covered by the module cache `actions/setup-go` restores; each job's
+  retried `go mod download` step is the only network fetch left. Dependabot's
+  `gomod` ecosystem therefore proposes tool bumps like any other module
+  (golangci-lint stays on the individually-reviewed track: see its
+  version note in `unit-tests.yml`). `actionlint` is the one exception: its
+  required `go.yaml.in/yaml/v4` (rc.3) conflicts with the rc.6 that
+  golangci-lint pulls into the module, so it stays a version-pinned, retried
+  `go install` in `actionlint.yml` and is bumped by hand.
 - **GitHub Actions are pinned by commit SHA**, not a floating tag — every
   `uses:` line across `.github/workflows/*.yml` names a 40-character SHA with
   the human-readable version as a trailing comment (`actions/checkout@3d3c42e…
