@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"mycorrhizal/androidpasskey"
+	"mycorrhizal/models"
 	"mycorrhizal/services"
 
 	"github.com/stretchr/testify/assert"
@@ -100,8 +101,23 @@ func TestWebAuthnAndroid_WebCeremonyUnchangedWhenEnabled(t *testing.T) {
 	web := e.auth() // https FRONTEND_URL origin
 	e.enroll(web, "Laptop", e.session())
 	pending, _ := e.passwordStep()
-	w, _ := e.passkeyLogin(web, pending)
+	w, cookies := e.passkeyLogin(web, pending)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// The web ceremony yields a live session for the enrolled user and the
+	// pending-2FA challenge cookie is consumed.
+	require.NotNil(t, cookies["auth_token"], "a successful web passkey login must mint a session")
+	assert.NotEmpty(t, cookies["auth_token"].Value)
+	require.NotNil(t, cookies["2fa_pending"])
+	assert.Empty(t, cookies["2fa_pending"].Value, "challenge cookie must be cleared")
+	status, _ := e.do("GET", "/users/2fa/status", nil, cookies["auth_token"].Value)
+	assert.Equal(t, http.StatusOK, status.Code, "the minted token must be a live session")
+
+	// The passkey that signed in is the one enrolled, and its use was recorded.
+	assert.Equal(t, int64(1), e.credentialCount())
+	var row models.WebAuthnCredential
+	require.NoError(t, e.db.Where("user_id = ?", e.user.ID).First(&row).Error)
+	require.NotNil(t, row.LastUsedAt, "a successful login records last use on the credential")
 }
 
 func TestNewWebAuthn_AndroidOriginsOnlyWhenEffective(t *testing.T) {

@@ -170,12 +170,19 @@ func TestGetLifeEvent(t *testing.T) {
 	db.Create(&contact)
 	event := models.LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: models.LifeEventTypeRetired}
 	db.Create(&event)
+	// A sibling event the handler must not return in its place.
+	require.NoError(t, db.Create(&models.LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: models.LifeEventTypeMoved}).Error)
 
 	req, _ := http.NewRequest("GET", "/life-events/"+event.ID, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var got models.LifeEvent
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, event.ID, got.ID)
+	assert.Equal(t, contact.VCardUID, got.EntityID)
+	assert.Equal(t, models.LifeEventTypeRetired, got.Type)
 }
 
 func TestListLifeEventsFiltersByEntityID(t *testing.T) {
