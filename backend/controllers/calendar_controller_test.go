@@ -138,7 +138,10 @@ func TestCreateCalendarSubscriptionRejectsInvalidURL(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	var stored int64
+	require.NoError(t, db.Model(&models.CalendarSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
+	assert.Zero(t, stored, "a rejected create must not persist a subscription")
 }
 
 func TestCreateCalendarSubscriptionLimit(t *testing.T) {
@@ -160,7 +163,10 @@ func TestCreateCalendarSubscriptionLimit(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	assertAppErrorResponse(t, w, http.StatusConflict, apperrors.ErrCodeConflict, "")
+	var stored int64
+	require.NoError(t, db.Model(&models.CalendarSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
+	assert.EqualValues(t, maxCalendarSubscriptionsPerUser, stored, "the over-limit create must not add a row")
 }
 
 func TestUpdateCalendarSubscription(t *testing.T) {
@@ -277,7 +283,11 @@ func TestUpdateCalendarSubscription_RejectsInvalidURL(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	var stored models.CalendarSubscription
+	require.NoError(t, db.First(&stored, sub.ID).Error)
+	assert.Equal(t, sub.URL, stored.URL, "a rejected update must not change the stored URL")
+	assert.Equal(t, sub.Name, stored.Name, "a rejected update must not change the stored name")
 }
 
 func TestDeleteCalendarSubscription(t *testing.T) {
@@ -324,7 +334,10 @@ func TestCalendarSubscriptionUserIsolation(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assertAppErrorResponse(t, w, http.StatusNotFound, apperrors.ErrCodeNotFound, "")
+	var still models.CalendarSubscription
+	require.NoError(t, db.First(&still, sub.ID).Error, "another user's subscription must survive the cross-user delete")
+	assert.Equal(t, user1.ID, still.UserID)
 }
 
 // --- SyncCalendarSubscription: the manual-sync HTTP route ---
@@ -502,8 +515,7 @@ func TestCalendarSubscriptionHandlers_NoAuth_Unauthorized(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.NotEqual(t, http.StatusOK, w.Code, "%s %s should not succeed without auth", req.Method, req.URL.Path)
-		assert.NotEqual(t, http.StatusCreated, w.Code, "%s %s should not succeed without auth", req.Method, req.URL.Path)
+		assertUnauthorizedEnvelope(t, w, req.Method+" "+req.URL.Path)
 	}
 }
 
@@ -521,7 +533,7 @@ func TestFindCalendarSubscription_NonNumericID_InvalidInput(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "id")
 }
 
 // TestListCalendarSubscriptions_DBError exercises the db.Find error branch by

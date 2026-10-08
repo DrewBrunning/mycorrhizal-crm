@@ -104,7 +104,10 @@ func TestCreateContactSubscriptionRejectsInvalidURL(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	var stored int64
+	require.NoError(t, db.Model(&models.ContactSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
+	assert.Zero(t, stored, "a rejected create must not persist a subscription")
 }
 
 func TestCreateContactSubscriptionLimit(t *testing.T) {
@@ -126,7 +129,10 @@ func TestCreateContactSubscriptionLimit(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	assertAppErrorResponse(t, w, http.StatusConflict, apperrors.ErrCodeConflict, "")
+	var stored int64
+	require.NoError(t, db.Model(&models.ContactSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
+	assert.EqualValues(t, maxContactSubscriptionsPerUser, stored, "the over-limit create must not add a row")
 }
 
 func TestUpdateContactSubscription(t *testing.T) {
@@ -208,7 +214,10 @@ func TestContactSubscriptionUserIsolation(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assertAppErrorResponse(t, w, http.StatusNotFound, apperrors.ErrCodeNotFound, "")
+	var still models.ContactSubscription
+	require.NoError(t, db.First(&still, sub.ID).Error, "another user's subscription must survive the cross-user delete")
+	assert.Equal(t, user1.ID, still.UserID)
 }
 
 // --- SyncContactSubscription: the manual-sync HTTP route ---
@@ -471,7 +480,11 @@ func TestUpdateContactSubscription_RealValidation_MissingRequiredFields(t *testi
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeValidation, "")
+	var stored models.ContactSubscription
+	require.NoError(t, db.First(&stored, sub.ID).Error)
+	assert.Equal(t, sub.Name, stored.Name, "a rejected update must not change the subscription")
+	assert.Equal(t, sub.URL, stored.URL)
 }
 
 // TestContactSyncError_AllSentinelsMapped exercises every branch of
@@ -522,8 +535,27 @@ func TestContactSubscriptionHandlers_NoAuth_Unauthorized(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.NotEqual(t, http.StatusOK, w.Code, "%s %s should not succeed without auth", req.Method, req.URL.Path)
-		assert.NotEqual(t, http.StatusCreated, w.Code, "%s %s should not succeed without auth", req.Method, req.URL.Path)
+		assertUnauthorizedEnvelope(t, w, req.Method+" "+req.URL.Path)
+	}
+}
+
+// assertUnauthorizedEnvelope pins the currentUserID !ok rejection: 401 plus the
+// UNAUTHORIZED error code (not merely "some non-200").
+func assertUnauthorizedEnvelope(t *testing.T, w *httptest.ResponseRecorder, what string) {
+	t.Helper()
+	require.Equal(t, http.StatusUnauthorized, w.Code, "%s: %s", what, w.Body.String())
+	assert.Equal(t, apperrors.ErrCodeUnauthorized, decodeError(t, w).Error.Code, what)
+}
+
+// assertAppErrorResponse pins an error response's status, error code and (when
+// non-empty) details.field -- the 4xx contract, not just "some 4xx".
+func assertAppErrorResponse(t *testing.T, w *httptest.ResponseRecorder, status int, code, field string) {
+	t.Helper()
+	require.Equal(t, status, w.Code, w.Body.String())
+	env := decodeError(t, w)
+	assert.Equal(t, code, env.Error.Code, w.Body.String())
+	if field != "" {
+		assert.Equal(t, field, env.Error.Details["field"], w.Body.String())
 	}
 }
 
@@ -549,7 +581,7 @@ func TestFindContactSubscription_NonNumericID_InvalidInput(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "id")
 }
 
 // TestUpdateContactSubscription_ClearPassword exercises UpdateContactSubscription's
@@ -640,7 +672,11 @@ func TestUpdateContactSubscription_RejectsInvalidURL(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	var stored models.ContactSubscription
+	require.NoError(t, db.First(&stored, sub.ID).Error)
+	assert.Equal(t, sub.URL, stored.URL, "a rejected update must not change the stored URL")
+	assert.Equal(t, sub.Name, stored.Name, "a rejected update must not change the stored name")
 }
 
 // TestCreateContactSubscription_RealValidation_MissingRequiredFields wires the
