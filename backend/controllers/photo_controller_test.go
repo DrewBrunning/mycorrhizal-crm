@@ -259,7 +259,7 @@ func TestGetProfilePicture_InvalidContactID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 func TestGetProfilePicture_ContactNotFound(t *testing.T) {
@@ -271,7 +271,7 @@ func TestGetProfilePicture_ContactNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestGetProfilePicture_ThumbnailNotSet(t *testing.T) {
@@ -474,19 +474,31 @@ func newMultipartPhotoRequest(t *testing.T, url, fieldName, filename string, dat
 }
 
 func TestAddPhotoToContact_DemoModeDisabled(t *testing.T) {
-	cfg := &config.Config{ProfilePhotoDir: t.TempDir(), DemoMode: true}
-	_, router := setupRouter(t)
+	dir := t.TempDir()
+	cfg := &config.Config{ProfilePhotoDir: dir, DemoMode: true}
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Demo", Lastname: "Photo"}
+	require.NoError(t, db.Create(&contact).Error)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
-	req := newMultipartPhotoRequest(t, "/contacts/1/photo", "photo", "photo.png", newPNGBytes(t, 10, 10))
+	req := newMultipartPhotoRequest(t, "/contacts/"+strconv.Itoa(int(contact.ID))+"/photo", "photo", "photo.png", newPNGBytes(t, 10, 10))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	mzErrorCode(t, w, http.StatusForbidden, "FORBIDDEN")
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "demo mode must not write any photo file")
+	var after models.Contact
+	require.NoError(t, db.First(&after, contact.ID).Error)
+	assert.Empty(t, after.Photo)
 }
 
 func TestAddPhotoToContact_InvalidContactID(t *testing.T) {
-	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
+	dir := t.TempDir()
+	cfg := &config.Config{ProfilePhotoDir: dir}
 	_, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
@@ -494,11 +506,15 @@ func TestAddPhotoToContact_InvalidContactID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "a rejected upload must not write a file")
 }
 
 func TestAddPhotoToContact_ContactNotFound(t *testing.T) {
-	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
+	dir := t.TempDir()
+	cfg := &config.Config{ProfilePhotoDir: dir}
 	_, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
@@ -506,7 +522,10 @@ func TestAddPhotoToContact_ContactNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "a rejected upload must not write a file")
 }
 
 func TestAddPhotoToContact_NoFileUploadedSavesContactUnchanged(t *testing.T) {
@@ -665,7 +684,7 @@ func TestProxyImage_MissingURLParam(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "url")
 }
 
 func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
@@ -679,7 +698,7 @@ func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
 
 	// issue #524: an unfetchable/blocked caller-supplied url is the caller's
 	// own bad input, not a server malfunction — 400, not 503.
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "url")
 }
 
 func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
@@ -693,5 +712,5 @@ func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
 
 	// issue #524: an unfetchable/blocked caller-supplied url is the caller's
 	// own bad input, not a server malfunction — 400, not 503.
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "url")
 }
