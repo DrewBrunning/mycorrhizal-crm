@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	stdcontext "context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
 	"mycorrhizal/internal/clock"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -417,7 +419,7 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	if err := db.Save(&user).Error; err != nil {
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password reset token")
-		recordPasswordResetFailure(context, db, user.ID, "persist_token", err)
+		recordPasswordResetFailure(context.Request.Context(), db, user.ID, "persist_token", err)
 		context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
 		return
 	}
@@ -426,10 +428,19 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 	// operator-only audit line, not part of the response.
 	models.RecordAuditEvent(db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
 
-	if err := services.SendPasswordResetEmail(user.Email, token, user.Language, cfg); err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to send password reset email")
-		recordPasswordResetFailure(context, db, user.ID, "send_email", err)
-	}
+	// Issue #1554: the send is off the request path. A synchronous SMTP/Resend
+	// call takes seconds (or the client timeout) for a known account while an
+	// unknown email answers immediately, so the latency alone would be the
+	// account-existence oracle #1473 removed from the body. Capture what the
+	// goroutine needs now: the request context is cancelled once the handler
+	// returns, so failures are recorded under context.Background().
+	userID, userEmail, userLang := user.ID, user.Email, user.Language
+	fireandforget.Run(func() {
+		if err := services.SendPasswordResetEmail(userEmail, token, userLang, cfg); err != nil {
+			log.Error().Err(err).Uint("user_id", userID).Msg("Failed to send password reset email")
+			recordPasswordResetFailure(stdcontext.Background(), db, userID, "send_email", err)
+		}
+	})
 
 	context.JSON(http.StatusOK, gin.H{"message": resetAccepted})
 }
@@ -437,9 +448,9 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 // recordPasswordResetFailure records an operator-visible system_event for a
 // password-reset request that could not be completed for a known account,
 // without altering the (non-enumerating) HTTP response (issue #1473).
-func recordPasswordResetFailure(c *gin.Context, db *gorm.DB, userID uint, stage string, err error) {
+func recordPasswordResetFailure(ctx stdcontext.Context, db *gorm.DB, userID uint, stage string, err error) {
 	uid := userID
-	models.RecordSystemEvent(c.Request.Context(), db, models.SystemEvent{
+	models.RecordSystemEvent(ctx, db, models.SystemEvent{
 		EventType: models.SysEventIntegrationFailed,
 		Component: logger.ComponentEmail,
 		Operation: "password_reset_request",
