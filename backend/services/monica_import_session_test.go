@@ -421,8 +421,14 @@ func TestMonicaImportSession_FetchFailureSurfaces(t *testing.T) {
 	mgr := NewMonicaImportManager()
 	_, appErr := mgr.Connect(context.Background(), 1,
 		models.MonicaConnectRequest{BaseURL: srv.URL, APIToken: monicaTestToken}, false)
-	// Connect itself fails because CountEntities hits the 500s.
+	// Connect itself fails because the upstream answers 500s. That is an
+	// external-service failure (503, service=monica), distinct from the 400
+	// invalid-input errors a bad token or URL produces.
 	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusServiceUnavailable, appErr.HTTPStatus)
+	assert.Equal(t, apperrors.ErrCodeExternal, appErr.Code)
+	assert.Equal(t, "monica", appErr.Details["service"])
+	assert.Contains(t, appErr.Message, "monica service error")
 }
 
 func TestMonicaImportSession_FetchFailsAfterConnect(t *testing.T) {

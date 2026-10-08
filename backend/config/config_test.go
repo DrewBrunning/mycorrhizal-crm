@@ -1521,7 +1521,13 @@ func TestPublicExposureWarnings_CookieSecureAloneImpliesPublic(t *testing.T) {
 	// legal combination (see TestValidate_CookieSecureTrueAlwaysAllowed) —
 	// it alone must still be read as "this deployment intends HTTPS".
 	cfg := &Config{FrontendURL: "http://localhost:7300", CookieSecure: true}
-	assert.NotEmpty(t, cfg.PublicExposureWarnings())
+	warnings := cfg.PublicExposureWarnings()
+	require.Len(t, warnings, 1, "one combined warning")
+	assert.Contains(t, warnings[0], "these SSRF guards are still off:")
+	// No guard is set on this config, so every guard env var is named.
+	for _, f := range cfg.blockPrivateURLsFlags() {
+		assert.Contains(t, warnings[0], f.env)
+	}
 }
 
 func TestPublicExposureWarnings_AllGuardsOnIsQuiet(t *testing.T) {

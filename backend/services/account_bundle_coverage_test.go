@@ -3,10 +3,12 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
@@ -292,10 +294,18 @@ func TestMycorrhizalImportManager_UploadGuards(t *testing.T) {
 	// Not JSON.
 	_, appErr := mgr.Upload(user.ID, bundleMultipartHeader(t, []byte("nope")))
 	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusBadRequest, appErr.HTTPStatus)
+	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
+	assert.Equal(t, "file", appErr.Details["field"])
+	assert.Equal(t, "That file is not a Mycorrhizal account bundle", appErr.Details["reason"])
 
 	// Empty file.
 	_, appErr = mgr.Upload(user.ID, bundleMultipartHeader(t, nil))
 	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusBadRequest, appErr.HTTPStatus)
+	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
+	assert.Equal(t, "file", appErr.Details["field"])
+	assert.Equal(t, "The bundle is empty or larger than the 64 MiB limit", appErr.Details["reason"])
 }
 
 func testBundleJSON(t *testing.T) []byte {
