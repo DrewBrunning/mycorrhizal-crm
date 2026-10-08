@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -145,6 +146,26 @@ func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
 		Label:    "Annual summer BBQ",
 	})
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var createdResp struct {
+		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &createdResp))
+	created := createdResp.OccasionObligation
+	require.NotEmpty(t, created.ID)
+	assert.Equal(t, "Annual summer BBQ", created.Label)
+	assert.Nil(t, created.AnchorMonth)
+	assert.Nil(t, created.AnchorDay)
+
+	// The persisted row (not just the echoed response) has a NULL anchor.
+	var anchorMonthNull, anchorDayNull int64
+	require.NoError(t, db.Model(&models.OccasionObligation{}).
+		Where("id = ? AND user_id = ? AND entity_id = ? AND anchor_month IS NULL", created.ID, user.ID, contact.VCardUID).
+		Count(&anchorMonthNull).Error)
+	require.NoError(t, db.Model(&models.OccasionObligation{}).
+		Where("id = ? AND anchor_day IS NULL", created.ID).Count(&anchorDayNull).Error)
+	assert.EqualValues(t, 1, anchorMonthNull, "anchor_month must be NULL in the database")
+	assert.EqualValues(t, 1, anchorDayNull, "anchor_day must be NULL in the database")
 }
 
 func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testing.T) {
@@ -174,13 +195,26 @@ func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testin
 }
 
 func TestUpdateOccasionObligationNotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+	existing := models.OccasionObligation{UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Untouched"}
+	require.NoError(t, db.Create(&existing).Error)
+
 	w := doOccasionJSON(router, "PUT", "/occasion-obligations/no-such-id", models.OccasionObligationInput{
-		EntityID: "irrelevant", Kind: "card", Label: "x",
+		EntityID: contact.VCardUID, Kind: "card", Label: "x",
 	})
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusNotFound, apperrors.ErrCodeNotFound, "")
+
+	var count int64
+	require.NoError(t, db.Model(&models.OccasionObligation{}).Count(&count).Error)
+	assert.EqualValues(t, 1, count, "a not-found update must not create a row")
+	var reloaded models.OccasionObligation
+	require.NoError(t, db.First(&reloaded, "id = ?", existing.ID).Error)
+	assert.Equal(t, "Untouched", reloaded.Label)
 }
 
 func TestUpdateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
@@ -208,11 +242,21 @@ func TestUpdateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestDeleteOccasionObligationNotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+	existing := models.OccasionObligation{UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Keep me"}
+	require.NoError(t, db.Create(&existing).Error)
+
 	w := doOccasionJSON(router, "DELETE", "/occasion-obligations/no-such-id", nil)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	assertAppErrorResponse(t, w, http.StatusNotFound, apperrors.ErrCodeNotFound, "")
+
+	var count int64
+	require.NoError(t, db.Model(&models.OccasionObligation{}).Where("id = ?", existing.ID).Count(&count).Error)
+	assert.EqualValues(t, 1, count, "a not-found delete must not remove other rows")
 }
 
 func TestListOccasionObligationsFiltersByEntity(t *testing.T) {

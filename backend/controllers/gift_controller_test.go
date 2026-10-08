@@ -191,12 +191,19 @@ func TestGetGift(t *testing.T) {
 	db.Create(&contact)
 	gift := models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Description: "A candle"}
 	db.Create(&gift)
+	// A sibling gift the handler must not return in its place.
+	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Description: "A scarf"}).Error)
 
 	req, _ := http.NewRequest("GET", "/gifts/"+gift.ID, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var got models.Gift
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, gift.ID, got.ID)
+	assert.Equal(t, contact.VCardUID, got.EntityID)
+	assert.Equal(t, "A candle", got.Description)
 }
 
 func TestGetGiftScopedToUser(t *testing.T) {

@@ -44,13 +44,35 @@ func doProbe(t *testing.T, router *gin.Engine, clientVersion string) *httptest.R
 
 // --- no-floor default posture (the policy default: everything passes) -----
 
+// assertProbePassed asserts the request reached the downstream handler.
+func assertProbePassed(t *testing.T, rec *httptest.ResponseRecorder, msg string) {
+	t.Helper()
+	assert.Equal(t, http.StatusOK, rec.Code, msg)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body), msg)
+	assert.Equal(t, true, body["passed"], "downstream handler must have run: "+msg)
+}
+
+// assertProbeRefused asserts a 403 CLIENT_NOT_SUPPORTED and that the handler
+// did not run.
+func assertProbeRefused(t *testing.T, rec *httptest.ResponseRecorder, msg string) {
+	t.Helper()
+	assert.Equal(t, http.StatusForbidden, rec.Code, msg)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body), msg)
+	assert.NotContains(t, body, "passed", "downstream handler must not have run: "+msg)
+	errObj, ok := body["error"].(map[string]any)
+	require.True(t, ok, msg)
+	assert.Equal(t, "CLIENT_NOT_SUPPORTED", errObj["code"], msg)
+}
+
 func TestEnforceMinClientVersion_NoFloorIsInert(t *testing.T) {
 	cfg := &config.Config{MinClientVersion: ""}
 	router, _ := newClientVersionTestRouter(cfg)
 
 	for _, clientVersion := range []string{"", "0.5.0", "0.6.0", "0.9.9", "garbage", "v0.6.0", "0.6.0-rc.1"} {
 		rec := doProbe(t, router, clientVersion)
-		assert.Equal(t, http.StatusOK, rec.Code, "client version %q must pass when no floor is declared", clientVersion)
+		assertProbePassed(t, rec, "client version "+clientVersion+" must pass when no floor is declared")
 	}
 }
 
@@ -77,7 +99,7 @@ func TestEnforceMinClientVersion_AcceptsAtOrAboveFloor(t *testing.T) {
 
 	for _, clientVersion := range []string{"0.6.0", "0.6.1", "0.7.0", "1.0.0", "10.0.0"} {
 		rec := doProbe(t, router, clientVersion)
-		assert.Equal(t, http.StatusOK, rec.Code, "client %q must pass at/above floor 0.6.0", clientVersion)
+		assertProbePassed(t, rec, "client "+clientVersion+" must pass at/above floor 0.6.0")
 	}
 }
 
@@ -107,7 +129,7 @@ func TestEnforceMinClientVersion_InvalidVersionStringsAreRejected(t *testing.T) 
 	}
 	for _, clientVersion := range invalid {
 		rec := doProbe(t, router, clientVersion)
-		assert.Equal(t, http.StatusForbidden, rec.Code, "client version %q must be treated as invalid", clientVersion)
+		assertProbeRefused(t, rec, "client version "+clientVersion+" must be treated as invalid")
 	}
 }
 
@@ -117,9 +139,9 @@ func TestEnforceMinClientVersion_LooseFloorFormat(t *testing.T) {
 	cfg := &config.Config{MinClientVersion: "0.6"}
 	router, _ := newClientVersionTestRouter(cfg)
 
-	assert.Equal(t, http.StatusOK, doProbe(t, router, "0.6.0").Code)
-	assert.Equal(t, http.StatusOK, doProbe(t, router, "0.6.9").Code)
-	assert.Equal(t, http.StatusForbidden, doProbe(t, router, "0.5.9").Code)
+	assertProbePassed(t, doProbe(t, router, "0.6.0"), "0.6.0")
+	assertProbePassed(t, doProbe(t, router, "0.6.9"), "0.6.9")
+	assertProbeRefused(t, doProbe(t, router, "0.5.9"), "0.5.9")
 }
 
 // --- strict parsing helpers ------------------------------------------------

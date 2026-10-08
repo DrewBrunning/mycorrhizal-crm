@@ -69,12 +69,19 @@ func TestGetConversationAgenda(t *testing.T) {
 	db.Create(&contact)
 	item := models.ConversationAgenda{UserID: user.ID, EntityID: contact.VCardUID, Content: "Ask about the trip"}
 	db.Create(&item)
+	// A sibling item the handler must not return in its place.
+	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: user.ID, EntityID: contact.VCardUID, Content: "Ask about the dog"}).Error)
 
 	req, _ := http.NewRequest("GET", "/conversation-agenda/"+item.ID, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var got models.ConversationAgenda
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, item.ID, got.ID)
+	assert.Equal(t, contact.VCardUID, got.EntityID)
+	assert.Equal(t, "Ask about the trip", got.Content)
 }
 
 func TestGetConversationAgendaScopedToUser(t *testing.T) {

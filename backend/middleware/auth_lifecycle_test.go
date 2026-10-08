@@ -100,6 +100,7 @@ func TestAuthMiddleware_RejectsPurposeScopedTokens(t *testing.T) {
 
 			assert.Equal(t, http.StatusUnauthorized, w.Code,
 				"a token carrying purpose=%q must never authenticate a session route", purpose)
+			assert.Equal(t, "Invalid token", rejectedBody(t, w))
 		})
 	}
 }
@@ -150,6 +151,7 @@ func TestAuthMiddleware_JWTWithoutTokenVersionClaimRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
 func TestAuthMiddleware_JWTForMissingUserRejected(t *testing.T) {
@@ -163,6 +165,7 @@ func TestAuthMiddleware_JWTForMissingUserRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
 // Issue #866: a token minted before migration 000053 carries no `sid` and is
@@ -182,6 +185,7 @@ func TestAuthMiddleware_JWTWithoutSidClaimRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
 // Issue #866: a token whose `sid` names no row (e.g. the row was purged, or
@@ -254,10 +258,16 @@ func TestAuthMiddleware_JWTRejectedAfterIdleTimeout(t *testing.T) {
 	}
 
 	stale := seedSession(t, db, user.ID, time.Now().Add(-2*time.Hour))
-	assert.Equal(t, http.StatusUnauthorized, jwtRequest(router, signJWT(t, claims(stale))).Code)
+	wStale := jwtRequest(router, signJWT(t, claims(stale)))
+	assert.Equal(t, http.StatusUnauthorized, wStale.Code)
+	assert.Equal(t, "Session expired, please sign in again", rejectedBody(t, wStale))
 
 	fresh := seedSession(t, db, user.ID, time.Now().Add(-30*time.Minute))
-	assert.Equal(t, http.StatusOK, jwtRequest(router, signJWT(t, claims(fresh))).Code)
+	wFresh := jwtRequest(router, signJWT(t, claims(fresh)))
+	assert.Equal(t, http.StatusOK, wFresh.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(wFresh.Body.Bytes(), &body))
+	assert.Equal(t, float64(user.ID), body["user_id"])
 }
 
 func TestAuthMiddleware_ExpiredApiTokenRejected(t *testing.T) {

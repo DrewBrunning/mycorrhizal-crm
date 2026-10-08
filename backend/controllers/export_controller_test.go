@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -701,7 +702,7 @@ func TestExportContactsAsVCF_NoAuth_Unauthorized(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.NotEqual(t, http.StatusOK, w.Code)
+	assertUnauthorizedEnvelope(t, w, "GET /export/vcf")
 }
 
 // TestExportContactsAsVCF_DBError exercises the db.Find error branch by
@@ -933,7 +934,7 @@ func TestExportContactsAsJSContact_NoAuth_Unauthorized(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.NotEqual(t, http.StatusOK, w.Code)
+	assertUnauthorizedEnvelope(t, w, "GET /export/jscontact")
 }
 
 // TestExportContactsAsJSContact_DBError exercises the db.Find error branch
@@ -1107,7 +1108,12 @@ func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/export/vcf?sections=emails,bogus_section", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeValidation, "")
+	env := decodeError(t, w)
+	assert.Contains(t, env.Error.Message, "bogus_section", "the error must name the offending token")
+	assert.Equal(t, exportOpVCard4, env.Error.Details["operation"])
+	assert.Equal(t, exportCatValidation, env.Error.Details["category"])
+	assert.NotContains(t, w.Body.String(), "BEGIN:VCARD", "no partial export body on a rejected request")
 }
 
 // The opt-in override flows through the HTTP surface: a secret edge is

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBodySizeLimitMiddleware(t *testing.T) {
@@ -79,10 +82,14 @@ func TestJSONBodySizeLimitMiddleware(t *testing.T) {
 
 	router := gin.New()
 	router.Use(JSONBodySizeLimitMiddleware())
+	handlerRan := false
+	sawTooLarge := false
 	router.POST("/test", func(c *gin.Context) {
+		handlerRan = true
 		body := make([]byte, MaxJSONBodySize+1)
 		_, err := c.Request.Body.Read(body)
 		if err != nil && err.Error() == "http: request body too large" {
+			sawTooLarge = true
 			c.AbortWithStatus(http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -99,11 +106,13 @@ func TestJSONBodySizeLimitMiddleware(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+		assert.True(t, handlerRan, "handler must run for an in-limit body")
 	})
 
 	// Test body exceeding 1MB limit
 	t.Run("exceeds limit", func(t *testing.T) {
 		// Create a body larger than 1MB
+		handlerRan, sawTooLarge = false, false
 		largeBody := bytes.Repeat([]byte("x"), MaxJSONBodySize+1)
 		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(largeBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -112,6 +121,34 @@ func TestJSONBodySizeLimitMiddleware(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		// No Content-Length header (httptest does not set one), so the
+		// MaxBytesReader wrapper is what rejects: the handler ran and saw the
+		// "too large" read error.
+		assert.True(t, handlerRan)
+		assert.True(t, sawTooLarge, "the read must fail with the MaxBytesReader error")
+	})
+
+	t.Run("exceeds limit by Content-Length header", func(t *testing.T) {
+		handlerRan = false
+		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(bytes.Repeat([]byte("x"), MaxJSONBodySize+1)))
+		req.Header.Set("Content-Length", strconv.Itoa(MaxJSONBodySize+1))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		assert.Equal(t, "request body too large", body["error"])
+		assert.False(t, handlerRan, "handler must not run when the header already exceeds the limit")
+	})
+
+	// A body exactly at the limit is accepted.
+	t.Run("at limit", func(t *testing.T) {
+		handlerRan = false
+		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(bytes.Repeat([]byte("x"), MaxJSONBodySize)))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.True(t, handlerRan)
 	})
 }
 
@@ -152,10 +189,16 @@ func TestDefaultBodySizeLimitMiddleware_ExemptPathBypassesDefaultLimit(t *testin
 	router.Use(DefaultBodySizeLimitMiddleware())
 	// The exempt path applies its own, larger limit -- exactly like
 	// routes.go does for the real import upload routes.
+	var exemptReadBytes int
 	router.POST("/api/v1/contacts/import/vcf/upload", BodySizeLimitMiddleware(50<<20), func(c *gin.Context) {
+		n, err := io.Copy(io.Discard, c.Request.Body)
+		require.NoError(t, err)
+		exemptReadBytes = int(n)
 		c.Status(http.StatusOK)
 	})
+	otherRan := false
 	router.POST("/api/v1/other", func(c *gin.Context) {
+		otherRan = true
 		c.Status(http.StatusOK)
 	})
 
@@ -175,11 +218,16 @@ func TestDefaultBodySizeLimitMiddleware_ExemptPathBypassesDefaultLimit(t *testin
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newOversizedRequest("/api/v1/contacts/import/vcf/upload"))
 		assert.Equal(t, http.StatusOK, w.Code, "an allowlisted route must not be capped by the engine-wide default")
+		assert.Equal(t, len(oversized), exemptReadBytes, "the handler must run and read the entire over-default body")
 	})
 
 	t.Run("a non-exempt path still enforces the default limit", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newOversizedRequest("/api/v1/other"))
 		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code, "the exemption must not leak to routes outside the allowlist")
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		assert.Equal(t, "request body too large", body["error"])
+		assert.False(t, otherRan, "the handler must not run for a rejected body")
 	})
 }

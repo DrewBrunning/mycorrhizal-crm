@@ -52,6 +52,18 @@ func setupAuthTestRouterWithIdle(t testing.TB, idleHours int) (*gorm.DB, *gin.En
 	return db, router
 }
 
+// rejectedBody decodes a middleware rejection body and asserts the protected
+// handler did NOT run (its payload carries user_id; a rejection never does).
+func rejectedBody(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.NotContains(t, body, "user_id", "protected handler must not have run")
+	assert.NotContains(t, body, "is_api_token", "protected handler must not have run")
+	msg, _ := body["error"].(string)
+	return msg
+}
+
 func hashToken(plaintext string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(plaintext)))
 }
@@ -103,6 +115,7 @@ func TestAuthMiddleware_RevokedApiToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
 func TestAuthMiddleware_UnknownApiToken(t *testing.T) {
@@ -114,6 +127,7 @@ func TestAuthMiddleware_UnknownApiToken(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
 func TestAuthMiddleware_ApiToken_UpdatesLastUsedAt(t *testing.T) {
@@ -171,6 +185,10 @@ func TestAuthMiddleware_FullScopeApiTokenAuthenticates(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, float64(user.ID), body["user_id"], "token must resolve to its owner")
+	assert.Equal(t, true, body["is_api_token"])
 }
 
 func TestAuthMiddleware_DefaultScopeApiTokenAuthenticates(t *testing.T) {
@@ -194,6 +212,10 @@ func TestAuthMiddleware_DefaultScopeApiTokenAuthenticates(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, float64(user.ID), body["user_id"], "token must resolve to its owner")
+	assert.Equal(t, true, body["is_api_token"])
 }
 
 func TestAuthMiddleware_CardDAVScopeApiTokenRejected(t *testing.T) {
@@ -230,6 +252,7 @@ func TestAuthMiddleware_MissingAuthorizationHeader(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, "Authorization token required", rejectedBody(t, w))
 }
 
 func TestAdminMiddleware_BlocksApiToken(t *testing.T) {
@@ -283,7 +306,8 @@ func TestAdminMiddleware_AllowsAdminUser(t *testing.T) {
 	router.Use(AdminMiddleware())
 
 	router.GET("/admin/users", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
+		uid, _ := c.Get("userID")
+		c.JSON(http.StatusOK, gin.H{"ok": true, "user_id": uid})
 	})
 
 	req, _ := http.NewRequest("GET", "/admin/users", nil)
@@ -291,6 +315,10 @@ func TestAdminMiddleware_AllowsAdminUser(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, true, body["ok"], "handler must have run")
+	assert.Equal(t, float64(user.ID), body["user_id"], "handler must run as the admin")
 }
 
 func TestAdminMiddleware_BlocksNonAdminUser(t *testing.T) {
@@ -318,4 +346,8 @@ func TestAdminMiddleware_BlocksNonAdminUser(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "Admin access required", body["error"])
+	assert.NotContains(t, body, "ok", "admin handler must not have run")
 }

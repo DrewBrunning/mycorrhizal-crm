@@ -10,6 +10,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/correspondence"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/canonicalfixture"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/logtest"
@@ -112,7 +113,9 @@ func TestExportPreflight_UnknownFormat(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/export/preflight?format=bogus", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "format")
+	assert.Equal(t, exportOpPreflight, decodeError(t, w).Error.Details["operation"])
+	assert.Equal(t, exportCatValidation, decodeError(t, w).Error.Details["category"])
 }
 
 // TestExportPreflight_UnknownSection pins that an unknown sections token is a
@@ -129,7 +132,11 @@ func TestExportPreflight_UnknownSection(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/export/preflight?format=vcard4&sections=emails,bogus_section", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeValidation, "")
+	env := decodeError(t, w)
+	assert.Contains(t, env.Error.Message, "bogus_section", "the error must name the offending token")
+	assert.Equal(t, exportOpPreflight, env.Error.Details["operation"])
+	assert.Equal(t, exportCatValidation, env.Error.Details["category"])
 }
 
 // TestExportPreflight_DBError pins the 500 path with operation/category details
@@ -162,7 +169,7 @@ func TestExportPreflight_NoAuth_Unauthorized(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/export/preflight?format=vcard4", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.NotEqual(t, http.StatusOK, w.Code)
+	assertUnauthorizedEnvelope(t, w, "GET /export/preflight")
 }
 
 // TestExportPreflight_CanonicalFixtureReportsCorrespondToMatrix is the
