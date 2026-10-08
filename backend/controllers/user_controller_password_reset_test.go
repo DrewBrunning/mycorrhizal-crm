@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/faults"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -97,6 +99,7 @@ func TestPasswordResetRequest_KnownEmail_SendSucceeds_IdenticalToUnknown(t *test
 	unknown := do("nobody1473@example.com")
 	known := do(resetKnownEmail)
 	assertIndistinguishable(t, unknown, known, "send ok")
+	fireandforget.Wait() // the send runs in the background (issue #1554)
 	assert.Zero(t, countResetFailureEvents(t, db))
 
 	var u models.User
@@ -116,6 +119,9 @@ func TestPasswordResetRequest_KnownEmail_SendFails_IdenticalToUnknown(t *testing
 	known := do(resetKnownEmail)
 	assert.Equal(t, http.StatusOK, known.code, "a mail failure must never surface as 5xx")
 	assertIndistinguishable(t, unknown, known, "send fails")
+
+	// The send runs in the background (issue #1554); drain it before asserting.
+	fireandforget.Wait()
 
 	// The operator still gets the signal.
 	var ev models.SystemEvent
@@ -161,4 +167,39 @@ func TestPasswordResetRequest_LookupFailure_UniformForKnownAndUnknown(t *testing
 	unknown := do("nobody1473@example.com")
 	assert.GreaterOrEqual(t, known.code, 500)
 	assert.Equal(t, known.code, unknown.code)
+}
+
+// Issue #1554: a slow mail transport must not make a known-email request
+// slower than an unknown one, or latency becomes the account-existence oracle
+// that #1473 removed from the body. The send runs off the request path, so the
+// handler answers while the transport is still stuck.
+func TestPasswordResetRequest_KnownEmail_SlowTransport_DoesNotBlockResponse(t *testing.T) {
+	// The guard is off for the whole test (AllowWarnings has no per-message
+	// filter): the seam logs its pause marker, and after the pause the real
+	// send dials the unreachable armedMailCfg host and logs the SMTP failure
+	// plus "Failed to send password reset email" from the background
+	// goroutine. TestPasswordResetRequest_KnownEmail_SendFails_IdenticalToUnknown
+	// pins that failure path, so nothing here goes unasserted.
+	logtest.AllowWarnings(t, "the paused seam logs its marker, and the post-pause background send to the unreachable test SMTP host logs its failure")
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+	// A synchronous send would take at least slowTransport to answer; the
+	// deadline is shorter, so it can only pass if the send is off the request
+	// path. dbtest's cleanup drains the background send, so the pause is also
+	// this test's whole extra runtime (keep it short: it runs on every PR).
+	const slowTransport, deadline = 3 * time.Second, 2 * time.Second
+	faults.ArmPause(faultEmailSendSeam, slowTransport)
+
+	_, do := resetHarness(t, armedMailCfg())
+
+	done := make(chan resetResp, 1)
+	go func() { done <- do(resetKnownEmail) }()
+
+	select {
+	case got := <-done:
+		assert.Equal(t, http.StatusOK, got.code)
+		assert.Contains(t, got.body, "If an account exists")
+	case <-time.After(deadline):
+		t.Fatal("known-email reset request blocked on the mail transport (latency oracle, issue #1554)")
+	}
 }
