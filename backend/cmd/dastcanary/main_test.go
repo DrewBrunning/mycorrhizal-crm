@@ -33,6 +33,12 @@ func TestIndexHandlerNotFoundForUnknownPath(t *testing.T) {
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("GET /no-such-path status = %d, want %d", rr.Code, http.StatusNotFound)
 	}
+	if got := strings.TrimSpace(rr.Body.String()); got != "404 page not found" {
+		t.Fatalf("GET /no-such-path body = %q, want the stock 404 body", got)
+	}
+	if strings.Contains(rr.Body.String(), "<h1>dastcanary</h1>") {
+		t.Fatal("an unknown path must not serve the index page")
+	}
 }
 
 func TestHealthHandler(t *testing.T) {
