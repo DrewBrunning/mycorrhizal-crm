@@ -53,6 +53,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	dbPath := fs.String("db", "", "with -target: the server's SQLite file, if visible, for the end-of-run integrity/FTS checks")
 	jsonOut := fs.String("json", "", "write the full report (every series) as JSON to this file")
 	mdOut := fs.String("md", "", "write the markdown report to this file (e.g. $GITHUB_STEP_SUMMARY)")
+	advisoryLatency := fs.Bool("advisory-latency", false, "report latency-degradation budgets without failing on them (for runs too short, or too contended, for a head/tail p95 ratio to mean anything)")
 	quiet := fs.Bool("quiet", false, "suppress per-sample progress lines")
 	budgetsDoc := fs.String("write-budgets-doc", "", "regenerate the budget table in this markdown file (docs/development/soak-baseline.md) and exit")
 	if err := fs.Parse(args); err != nil {
@@ -85,6 +86,14 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	cfg := soak.Config{
 		Duration: *duration, SampleEvery: *sample, Users: *users, Rate: *rate, Seed: *seed,
 		MinOps: *minOps, Faults: faults,
+	}
+	if *advisoryLatency {
+		cfg.Budgets = soak.DefaultBudgets()
+		for i := range cfg.Budgets {
+			if cfg.Budgets[i].Kind == soak.KindDegradation {
+				cfg.Budgets[i].Advisory = true
+			}
+		}
 	}
 	if !*quiet {
 		cfg.Progress = func(s string) { fmt.Fprintln(stdout, s) }

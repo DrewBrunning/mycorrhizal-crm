@@ -78,6 +78,7 @@ type injector struct {
 	retain  [][]byte
 	files   []*os.File
 	pinConn *sql.Conn
+	db      *gorm.DB
 	tick    int
 	closeMu sync.Once
 }
@@ -95,7 +96,7 @@ func (in *injector) has(f Fault) bool {
 // newInjector prepares faults against db. WAL pinning needs the live pool;
 // every other fault is self-contained.
 func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, error) {
-	in := &injector{faults: faults, stop: make(chan struct{})}
+	in := &injector{faults: faults, stop: make(chan struct{}), db: db}
 	if in.has(FaultWAL) {
 		if db == nil {
 			return nil, fmt.Errorf("fault %q needs an in-process database handle", FaultWAL)
@@ -156,7 +157,18 @@ func (in *injector) Tick() {
 			rl.RecordFailedAttempt(fmt.Sprintf("soak-fault-%d-%d", in.tick, i))
 		}
 	}
-	// FaultWAL pins its snapshot at construction; nothing per tick.
+	// FaultWAL pins its snapshot at construction. It also writes ballast every
+	// tick: the pinned reader only starves the checkpoint, so the WAL still
+	// has to be fed, and feeding it from the workload made detection depend
+	// on how many writes a contended runner managed (7.98 MiB observed
+	// against an 8 MiB ceiling after 197 ops). 1 MiB per tick reaches the
+	// ceiling in a few seconds whatever the throughput.
+	if in.has(FaultWAL) && in.db != nil {
+		// Best effort: a failed write just means less ballast this tick.
+		if err := in.db.Exec("CREATE TABLE IF NOT EXISTS soak_fault_ballast (b BLOB)").Error; err == nil {
+			_ = in.db.Exec("INSERT INTO soak_fault_ballast (b) VALUES (zeroblob(1048576))").Error
+		}
+	}
 }
 
 // Close releases everything the fault holds.

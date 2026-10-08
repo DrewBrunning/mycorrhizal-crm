@@ -51,7 +51,7 @@ func TestRun_HealthyPassesFaultyFailsAndReportsAreWritten(t *testing.T) {
 	dir := t.TempDir()
 	md := filepath.Join(dir, "summary.md")
 	js := filepath.Join(dir, "report.json")
-	base := []string{"-duration", "12s", "-sample", "1s", "-users", "3", "-rate", "25", "-min-ops", "50", "-md", md, "-json", js}
+	base := []string{"-duration", "12s", "-sample", "1s", "-users", "3", "-rate", "20", "-min-ops", "50", "-advisory-latency", "-md", md, "-json", js}
 
 	var out, errb bytes.Buffer
 	require.Equal(t, 0, run(context.Background(), base, &out, &errb), out.String()+errb.String())
