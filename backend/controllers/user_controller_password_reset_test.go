@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -270,13 +271,26 @@ func TestPasswordResetRequest_PerAccountCooldown(t *testing.T) {
 
 // Concurrent requests for one account all pass the handler's early check
 // (none has written yet); the background transaction re-checks under the
-// write lock, so exactly one claims the reset and sends.
+// write lock, so exactly one claims the reset and sends. The test holds
+// SQLite's write lock from another connection while all requests are
+// answered, so every handler really does read "not yet requested" and every
+// background transaction queues behind the lock. Only the in-transaction
+// re-check can then keep it to one send.
 func TestPasswordResetRequest_ConcurrentRequestsSendOnce(t *testing.T) {
 	logtest.AllowWarnings(t, "every send is armed to fail: the path logs Failed to send email via SMTP / Failed to send password reset email")
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	faults.ArmError(faultEmailSendSeam, errors.New("injected smtp outage"))
 	db, do := resetHarnessWithClock(t, armedMailCfg(), clock.NewFake(ctrlT0))
+
+	ctx := context.Background()
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	lock, err := sqlDB.Conn(ctx)
+	require.NoError(t, err)
+	defer func() { _ = lock.Close() }()
+	_, err = lock.ExecContext(ctx, "BEGIN IMMEDIATE")
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
@@ -286,7 +300,10 @@ func TestPasswordResetRequest_ConcurrentRequestsSendOnce(t *testing.T) {
 			assert.Equal(t, http.StatusOK, do(resetKnownEmail).code)
 		}()
 	}
-	wg.Wait()
+	wg.Wait() // every handler has answered; no background write could land yet
+
+	_, err = lock.ExecContext(ctx, "COMMIT")
+	require.NoError(t, err)
 	fireandforget.Wait()
 	assert.EqualValues(t, 1, countResetFailureEvents(t, db), "exactly one of the concurrent requests may send")
 }
