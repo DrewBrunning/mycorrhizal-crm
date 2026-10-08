@@ -133,5 +133,5 @@ func TestGetImportHistory_Unauthenticated(t *testing.T) {
 	importHistoryRouter(db, 0).ServeHTTP(w,
 		httptest.NewRequest(http.MethodGet, "/contacts/import/history", nil))
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }

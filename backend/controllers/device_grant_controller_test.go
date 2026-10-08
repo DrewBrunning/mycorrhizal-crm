@@ -192,13 +192,16 @@ func TestDeviceGrant_PasswordChangeRevokesAllGrants(t *testing.T) {
 // --- Error paths / edge branches ----------------------------------------
 
 func TestDeviceGrant_InvalidJsonIsRejected(t *testing.T) {
-	_, router := deviceGrantRouter(t, models.User{Username: "erinx", Email: "erinx@example.com", Password: "x"}, testConfig())
+	db, router := deviceGrantRouter(t, models.User{Username: "erinx", Email: "erinx@example.com", Password: "x"}, testConfig())
 
 	bad := postJSON(t, router, "/auth/device/session", `{"device_token":`)
-	require.Equal(t, http.StatusBadRequest, bad.Code)
+	alAssertError(t, bad, http.StatusBadRequest, "INVALID_INPUT", "")
 
 	badCreate := postJSON(t, router, "/auth/device/grants", `not-json`)
-	require.Equal(t, http.StatusBadRequest, badCreate.Code)
+	alAssertError(t, badCreate, http.StatusBadRequest, "INVALID_INPUT", "")
+	var n int64
+	require.NoError(t, db.Model(&models.DeviceGrant{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not mint a grant")
 }
 
 func TestDeviceGrant_RevokeOwnGrantAndInvalidId(t *testing.T) {
@@ -254,6 +257,10 @@ func TestDeviceGrant_ExchangeForDeletedUserIsRejected(t *testing.T) {
 func TestDeviceGrant_HandlersRequireAuthentication(t *testing.T) {
 	db := dbtest.New(t)
 	gin.SetMode(gin.ReleaseMode)
+	user := models.User{Username: "dgunauth", Email: "dgunauth@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	grant := models.DeviceGrant{UserID: user.ID, TokenHash: "dgunauth-hash", Label: "keep"}
+	require.NoError(t, db.Create(&grant).Error)
 	router := gin.New()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() })
 	router.GET("/auth/device/grants", ListDeviceGrants)
@@ -261,10 +268,26 @@ func TestDeviceGrant_HandlersRequireAuthentication(t *testing.T) {
 	router.DELETE("/auth/device/grants/:id", RevokeDeviceGrant)
 	router.POST("/auth/device/grants/revoke-all", RevokeAllDeviceGrants)
 
-	req, _ := http.NewRequest(http.MethodGet, "/auth/device/grants", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusUnauthorized, w.Code)
+	for _, tc := range []struct{ method, path, body string }{
+		{http.MethodGet, "/auth/device/grants", ""},
+		{http.MethodPost, "/auth/device/grants", `{"label":"x"}`},
+		{http.MethodDelete, "/auth/device/grants/" + strconv.Itoa(int(grant.ID)), ""},
+		{http.MethodPost, "/auth/device/grants/revoke-all", ""},
+	} {
+		req, _ := http.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+		if tc.body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	}
+	var n int64
+	require.NoError(t, db.Model(&models.DeviceGrant{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "unauthenticated requests must not create grants")
+	var after models.DeviceGrant
+	require.NoError(t, db.First(&after, grant.ID).Error)
+	assert.Nil(t, after.RevokedAt, "unauthenticated requests must not revoke grants")
 }
 
 func TestDeviceGrant_ClosedDatabaseErrorsSurface(t *testing.T) {

@@ -162,7 +162,7 @@ func TestSuggestContactAddresses_Unauthenticated(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }
 
 func TestSuggestContactAddresses_ServiceError(t *testing.T) {
@@ -208,6 +208,10 @@ func TestApplyContactAddressSuggestion_InvalidInput(t *testing.T) {
 func TestApplyContactAddressSuggestion_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
 	gin.SetMode(gin.ReleaseMode)
+	user := models.User{Username: "addrunauth", Password: "password123!A", Email: "addrunauth@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
 	router.POST("/apply", withValidated(func() any { return &models.ApplyContactAddressSuggestionInput{} }), ApplyContactAddressSuggestion)
@@ -217,7 +221,10 @@ func TestApplyContactAddressSuggestion_Unauthenticated(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var after models.Contact
+	require.NoError(t, db.First(&after, contact.ID).Error)
+	assert.Empty(t, after.Addresses, "an unauthenticated apply must not add an address")
 }
 
 func TestApplyContactAddressSuggestion_ServiceDatabaseError(t *testing.T) {

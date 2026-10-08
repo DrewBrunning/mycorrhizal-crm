@@ -260,7 +260,7 @@ func TestGetGraph_Unauthorized(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }
 
 // TestGetGraph_ScoringFailureDegradesGracefully proves issue #383's

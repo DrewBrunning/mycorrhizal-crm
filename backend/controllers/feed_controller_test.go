@@ -145,11 +145,14 @@ func TestCreateFeed_AnotherUsersContact_Returns404(t *testing.T) {
 }
 
 func TestCreateFeed_AggregateWithEntityID_Returns400(t *testing.T) {
-	_, router, owner, _ := newFeedTestEnv(t, "https://crm.example")
+	db, router, owner, _ := newFeedTestEnv(t, "https://crm.example")
 	_ = owner
 
 	w := postFeed(router, models.FeedInput{Name: "Bad", Kind: models.FeedKindAggregate, EntityID: "11111111-1111-4111-8111-111111111111"})
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "entity_id")
+	var n int64
+	require.NoError(t, db.Model(&models.Feed{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert a feed")
 }
 
 func TestCreateFeed_FiftyFirst_Returns422(t *testing.T) {
@@ -476,6 +479,11 @@ func TestFeedHandlers_RequireAuthenticatedUser(t *testing.T) {
 	db := dbtest.New(t)
 	cfg := &config.Config{FrontendURL: "https://crm.example"}
 
+	owner := models.User{Username: "feedunauth", Email: "feedunauth@example.com", Password: "password123"}
+	require.NoError(t, db.Create(&owner).Error)
+	feed := models.Feed{UserID: owner.ID, Name: "keep", Kind: models.FeedKindAggregate, Detail: "headlines", TokenHash: "feedunauth-hash"}
+	require.NoError(t, db.Create(&feed).Error)
+
 	// A router with the DB but no authenticated userID in context.
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -502,8 +510,15 @@ func TestFeedHandlers_RequireAuthenticatedUser(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equalf(t, http.StatusUnauthorized, w.Code, "%s %s", tc.method, tc.path)
+		alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 	}
+	var n int64
+	require.NoError(t, db.Model(&models.Feed{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "unauthenticated requests must not create feeds")
+	var after models.Feed
+	require.NoError(t, db.First(&after, "id = ?", feed.ID).Error)
+	assert.Nil(t, after.RevokedAt, "unauthenticated requests must not revoke feeds")
+	assert.Equal(t, feed.TokenHash, after.TokenHash, "unauthenticated requests must not rotate feeds")
 }
 
 func TestCreateFeed_MissingValidatedInput(t *testing.T) {

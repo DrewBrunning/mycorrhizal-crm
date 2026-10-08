@@ -312,7 +312,7 @@ func TestChangeFeedMalformedCursor400(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/contacts?since=!!!not-a-cursor!!!", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "since")
 }
 
 // TestChangeFeedNotesTombstones covers the same tombstone trap for the notes

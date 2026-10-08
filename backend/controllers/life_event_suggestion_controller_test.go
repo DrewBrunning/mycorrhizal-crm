@@ -136,13 +136,16 @@ func TestLifeEventSuggestions_TitleSourceKindIsAccepted(t *testing.T) {
 }
 
 func TestLifeEventSuggestions_UnknownContactIs404(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/life-event-suggestions", GetLifeEventSuggestions)
 
 	req, _ := http.NewRequest("GET", "/contacts/9999/life-event-suggestions", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.LifeEvent{}).Count(&n).Error)
+	assert.Zero(t, n, "a suggestions read must not create life events")
 }
 
 func TestResolveLifeEventSuggestionRoutes(t *testing.T) {

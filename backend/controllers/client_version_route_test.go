@@ -135,7 +135,14 @@ func TestClientVersionEnforcement_LoginNoFloorIsInert(t *testing.T) {
 	// including a headerless and a garbage-header request.
 	for _, clientVersion := range []string{"0.5.0", "", "garbage"} {
 		rec := authDoJSON(router, "POST", "/api/v1/login", clientVersion, map[string]string{"identifier": "clientveruser", "password": strongPassword})
-		assert.Equal(t, http.StatusOK, rec.Code, "client version %q with no floor declared must pass: %s", clientVersion, rec.Body.String())
+		require.Equal(t, http.StatusOK, rec.Code, "client version %q with no floor declared must pass: %s", clientVersion, rec.Body.String())
+		var session bool
+		for _, ck := range rec.Result().Cookies() {
+			if ck.Name == "auth_token" && ck.Value != "" {
+				session = true
+			}
+		}
+		assert.True(t, session, "client version %q: a successful login must set the session cookie", clientVersion)
 	}
 }
 

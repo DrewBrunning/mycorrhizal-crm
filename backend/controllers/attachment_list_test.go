@@ -102,5 +102,5 @@ func TestListContactAttachments_InvalidContactID(t *testing.T) {
 	_, router, _, _ := setupAttachmentRouter(t)
 
 	rec := listAttachments(t, router, "not-a-number")
-	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
+	alAssertError(t, rec, http.StatusBadRequest, "VALIDATION_ERROR", "")
 }

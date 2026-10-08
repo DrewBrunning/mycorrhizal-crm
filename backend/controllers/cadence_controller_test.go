@@ -66,7 +66,10 @@ func TestCreateCadencePolicyRejectsDuplicate(t *testing.T) {
 	w := doCadenceJSON(t, router, "POST", "/cadence-policies", models.CadencePolicyInput{
 		EntityID: contact.VCardUID, TargetIntervalDays: 60,
 	})
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var n int64
+	require.NoError(t, db.Model(&models.CadencePolicy{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "a rejected duplicate must not add a policy")
 }
 
 func TestCreateCadencePolicyRejectsForeignContact(t *testing.T) {
@@ -91,7 +94,7 @@ func TestGetCadencePolicyNotFound(t *testing.T) {
 	router.GET("/cadence-policies/:id", GetCadencePolicy)
 
 	w := doCadenceJSON(t, router, "GET", "/cadence-policies/does-not-exist", nil)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestGetCadencePolicyHappyPath(t *testing.T) {
@@ -272,7 +275,11 @@ func TestUpdateCadencePolicyRejectsEntityChangeToExisting(t *testing.T) {
 	w := doCadenceJSON(t, router, "PUT", "/cadence-policies/"+policyB.ID, models.CadencePolicyInput{
 		EntityID: alice.VCardUID, TargetIntervalDays: 90,
 	})
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var after models.CadencePolicy
+	require.NoError(t, db.First(&after, "id = ?", policyB.ID).Error)
+	assert.Equal(t, bob.VCardUID, after.EntityID, "a rejected update must not retarget the policy")
+	assert.Equal(t, 60, after.TargetIntervalDays, "a rejected update must not change the interval")
 }
 
 func TestDeleteCadencePolicySoftDeletesAndAllowsRecreate(t *testing.T) {

@@ -187,16 +187,24 @@ func TestCircleController_GetUpdateDelete_NotFoundForUnknownID(t *testing.T) {
 	owner, _ := createCircleTestUsers(t, db)
 	router := newCircleRealDBRouter(db, owner.ID)
 
+	keep := models.Circle{UserID: owner.ID, Name: "keep"}
+	require.NoError(t, db.Create(&keep).Error)
+
 	const bogusID = "does-not-exist"
 
 	getResp := circleDoJSON(t, router, "GET", "/circles/"+bogusID, nil)
-	require.Equal(t, http.StatusNotFound, getResp.Code, getResp.Body.String())
+	alAssertError(t, getResp, http.StatusNotFound, "NOT_FOUND", "")
 
 	putResp := circleDoJSON(t, router, "PUT", "/circles/"+bogusID, models.CircleInput{Name: "whatever"})
-	require.Equal(t, http.StatusNotFound, putResp.Code, putResp.Body.String())
+	alAssertError(t, putResp, http.StatusNotFound, "NOT_FOUND", "")
 
 	deleteResp := circleDoJSON(t, router, "DELETE", "/circles/"+bogusID, nil)
-	require.Equal(t, http.StatusNotFound, deleteResp.Code, deleteResp.Body.String())
+	alAssertError(t, deleteResp, http.StatusNotFound, "NOT_FOUND", "")
+
+	var circles []models.Circle
+	require.NoError(t, db.Find(&circles).Error)
+	require.Len(t, circles, 1, "404 PUT/DELETE must neither create nor remove circles")
+	require.Equal(t, "keep", circles[0].Name, "404 PUT must not rename another circle")
 }
 
 // TestCircleController_AddCircleMember_CircleNotFound pins the "circle
@@ -222,8 +230,15 @@ func TestCircleController_RemoveCircleMember_CircleNotFound(t *testing.T) {
 	owner, _ := createCircleTestUsers(t, db)
 	router := newCircleRealDBRouter(db, owner.ID)
 
+	circle := models.Circle{UserID: owner.ID, Name: "keep"}
+	require.NoError(t, db.Create(&circle).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: circle.ID, UserID: owner.ID, MemberVCardUID: "some-uid"}).Error)
+
 	resp := circleDoJSON(t, router, "DELETE", "/circles/does-not-exist/members/some-uid", nil)
-	require.Equal(t, http.StatusNotFound, resp.Code, resp.Body.String())
+	alAssertError(t, resp, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.CircleMember{}).Count(&n).Error)
+	require.EqualValues(t, 1, n, "a 404 removal must not delete another circle's member")
 }
 
 // TestCircleController_CreateCircle_Success is the real-router happy path,

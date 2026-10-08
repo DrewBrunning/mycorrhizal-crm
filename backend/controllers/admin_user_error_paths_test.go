@@ -46,18 +46,23 @@ func TestGetCurrentUser_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/users/me", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }
 
 func TestUpdateSelfContact_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	seed := models.User{Username: "selfunauth", Password: "password123!A", Email: "selfunauth@example.com"}
+	require.NoError(t, db.Create(&seed).Error)
 	router := adminRouter(db, false)
 	router.PUT("/users/me/self-contact", withValidated(func() any { return &models.SelfContactInput{} }), UpdateSelfContact)
 	req, _ := http.NewRequest(http.MethodPut, "/users/me/self-contact", bytes.NewBufferString(`{"vcard_uid":"x"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var after models.User
+	require.NoError(t, db.First(&after, seed.ID).Error)
+	assert.Equal(t, seed.SelfContactVCardUID, after.SelfContactVCardUID, "an unauthenticated request must not set the self contact")
 }
 
 func TestUpdateSelfContact_MissingValidation(t *testing.T) {
@@ -69,7 +74,7 @@ func TestUpdateSelfContact_MissingValidation(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "request")
 }
 
 func TestUpdateSelfContact_ClearDatabaseError(t *testing.T) {
@@ -97,28 +102,40 @@ func TestUpdateSelfContact_ClearDatabaseError(t *testing.T) {
 func TestCreateUser_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
 	router := adminRouter(db, false)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
 	req, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBufferString(`{"username":"u","email":"u@example.com","password":"brandNewPassw0rd!"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter, "a rejected create must not insert a user")
 }
 
 func TestCreateUser_MissingValidation(t *testing.T) {
 	db := dbtest.New(t)
 	router := adminRouter(db, true)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 	router.POST("/users", CreateUser)
 	req, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBufferString(`{"username":"u","email":"u@example.com","password":"brandNewPassw0rd!"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "request")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter, "a rejected create must not insert a user")
 }
 
 func TestCreateUser_OverlongPasswordRejected(t *testing.T) {
 	db := dbtest.New(t)
 	router := adminRouter(db, true)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
 
 	long := strings.Repeat("a", 73)
@@ -126,7 +143,10 @@ func TestCreateUser_OverlongPasswordRejected(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "VALIDATION_ERROR", "")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter, "a rejected create must not insert a user")
 }
 
 func TestCreateUser_DatabaseError(t *testing.T) {
@@ -153,24 +173,34 @@ func TestCreateUser_DatabaseError(t *testing.T) {
 
 func TestResetUserTwoFactor_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	target := models.User{Username: "tfaunauth", Password: "password123!A", Email: "tfaunauth@example.com", TOTPEnabled: true}
+	require.NoError(t, db.Create(&target).Error)
 	router := adminRouter(db, false)
 	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
 	req, _ := http.NewRequest(http.MethodPost, "/users/1/reset-2fa", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var after models.User
+	require.NoError(t, db.First(&after, target.ID).Error)
+	assert.True(t, after.TOTPEnabled, "an unauthenticated request must not reset 2FA")
 }
 
 // --- DeleteUser branches ---
 
 func TestDeleteUser_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	target := models.User{Username: "delunauth", Password: "password123!A", Email: "delunauth@example.com"}
+	require.NoError(t, db.Create(&target).Error)
 	router := adminRouter(db, false)
 	router.DELETE("/users/:id", DeleteUser)
 	req, _ := http.NewRequest(http.MethodDelete, "/users/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var survivors int64
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", target.ID).Count(&survivors).Error)
+	assert.EqualValues(t, 1, survivors, "an unauthenticated request must not delete a user")
 }
 
 // TestDeleteUser_ReportsPluckFailure covers the attachment-name capture step:

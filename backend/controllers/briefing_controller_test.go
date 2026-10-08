@@ -450,5 +450,5 @@ func TestGetContactBriefing_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }

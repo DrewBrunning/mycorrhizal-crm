@@ -264,7 +264,10 @@ func TestAcceptContactShare_WrongUserNotFound(t *testing.T) {
 
 	thirdRouter := contactShareRouterFor(db, cfg, third.ID)
 	w := doJSON(t, thirdRouter, "POST", "/contact-shares/"+share.ID+"/accept", nil)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var after models.ContactShare
+	require.NoError(t, db.First(&after, "id = ?", share.ID).Error)
+	assert.Equal(t, models.ContactShareStatusPending, after.Status, "a non-recipient must not be able to accept the share")
 }
 
 func TestAcceptContactShare_AlreadyRespondedConflict(t *testing.T) {

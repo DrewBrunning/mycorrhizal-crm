@@ -51,7 +51,7 @@ func TestListApiTokens_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/api-tokens", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }
 
 func TestListApiTokens_DatabaseError(t *testing.T) {
@@ -75,6 +75,7 @@ func TestListApiTokens_DatabaseError(t *testing.T) {
 
 func TestCreateApiToken_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	tok := alSeedApiToken(t, db)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
@@ -84,7 +85,8 @@ func TestCreateApiToken_Unauthenticated(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 func TestCreateApiToken_InvalidScopeRejectedByRealMiddleware(t *testing.T) {
@@ -93,7 +95,7 @@ func TestCreateApiToken_InvalidScopeRejectedByRealMiddleware(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertValidation(t, w, "Scope")
 }
 
 func TestCreateApiToken_DatabaseError(t *testing.T) {
@@ -118,6 +120,7 @@ func TestCreateApiToken_DatabaseError(t *testing.T) {
 
 func TestRevokeApiToken_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	tok := alSeedApiToken(t, db)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
@@ -126,7 +129,8 @@ func TestRevokeApiToken_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, "/api-tokens/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 func TestRevokeApiToken_NonNumericID(t *testing.T) {
@@ -134,11 +138,12 @@ func TestRevokeApiToken_NonNumericID(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, "/api-tokens/not-a-number", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 }
 
 func TestRevokeAllApiTokens_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	tok := alSeedApiToken(t, db)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
@@ -147,7 +152,8 @@ func TestRevokeAllApiTokens_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/api-tokens/revoke-all", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 func TestRevokeAllApiTokens_DatabaseError(t *testing.T) {
@@ -171,6 +177,7 @@ func TestRevokeAllApiTokens_DatabaseError(t *testing.T) {
 
 func TestRotateApiToken_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	tok := alSeedApiToken(t, db)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
@@ -179,7 +186,8 @@ func TestRotateApiToken_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/api-tokens/1/rotate", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 // TestCreateApiToken_PersistsHashNotPlaintext pins the security core of

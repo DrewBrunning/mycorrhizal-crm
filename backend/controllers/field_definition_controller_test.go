@@ -115,7 +115,7 @@ func TestGetFieldDefinitionNotFoundForUnknownID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestListFieldDefinitions(t *testing.T) {
@@ -302,7 +302,7 @@ func TestReplaceContactFieldValues_RoundTrip(t *testing.T) {
 }
 
 func TestReplaceContactFieldValues_TypeMismatchIs400(t *testing.T) {
-	_, router, _, contact, def := setupFieldValueRoutes(t)
+	db, router, _, contact, def := setupFieldValueRoutes(t)
 
 	// def is a string field; a JSON number must be rejected as a 400.
 	payload := models.ContactFieldValuesInput{
@@ -316,7 +316,10 @@ func TestReplaceContactFieldValues_TypeMismatchIs400(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "value")
+	var n int64
+	require.NoError(t, db.Model(&models.FieldValue{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected replace must not write field values")
 }
 
 func TestReplaceContactFieldValues_RejectsNotOwnedDefinition(t *testing.T) {
@@ -442,7 +445,7 @@ func TestListContactFieldValues_ContactNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestReplaceContactFieldValues_EmptyPayloadClearsAll(t *testing.T) {
@@ -478,7 +481,7 @@ func TestReplaceContactFieldValues_EmptyPayloadClearsAll(t *testing.T) {
 }
 
 func TestReplaceContactFieldValues_ContactNotFound(t *testing.T) {
-	_, router, _, _, def := setupFieldValueRoutes(t)
+	db, router, _, _, def := setupFieldValueRoutes(t)
 
 	payload := models.ContactFieldValuesInput{
 		FieldValues: []models.FieldValueInput{
@@ -491,7 +494,10 @@ func TestReplaceContactFieldValues_ContactNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.FieldValue{}).Count(&n).Error)
+	assert.Zero(t, n, "a 404 replace must not write field values")
 }
 
 // --- Display order / reorder (issue #1210) ---
@@ -685,13 +691,16 @@ func TestReorderFieldDefinitions(t *testing.T) {
 
 func TestReorderFieldDefinitionsRejectsIncompleteSet(t *testing.T) {
 	db, router, user := reorderRoutes(t)
-	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
-	makeOrderedDefinition(t, db, user.ID, "b", 1)
+	makeOrderedDefinition(t, db, user.ID, "a", 0)
+	b := makeOrderedDefinition(t, db, user.ID, "b", 1)
 
 	// Missing "b": a valid but partial set must be rejected, not silently
 	// reorder a subset and leave b colliding.
-	w := putReorder(t, router, []string{a.ID})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	w := putReorder(t, router, []string{b.ID})
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "order")
+	var after models.FieldDefinition
+	require.NoError(t, db.First(&after, "id = ?", b.ID).Error)
+	assert.Equal(t, 1, after.Position, "a rejected reorder must not move definitions")
 }
 
 func TestReorderFieldDefinitionsRejectsForeignID(t *testing.T) {
@@ -713,22 +722,32 @@ func TestReorderFieldDefinitionsRejectsForeignID(t *testing.T) {
 
 func TestReorderFieldDefinitionsRejectsDuplicateID(t *testing.T) {
 	db, router, user := reorderRoutes(t)
-	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
-	makeOrderedDefinition(t, db, user.ID, "b", 1)
+	makeOrderedDefinition(t, db, user.ID, "a", 0)
+	b := makeOrderedDefinition(t, db, user.ID, "b", 1)
 
 	// [a, a]: two entries but only one distinct owned row, so the count check
 	// fails.
-	w := putReorder(t, router, []string{a.ID, a.ID})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	w := putReorder(t, router, []string{b.ID, b.ID})
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "order")
+	var after models.FieldDefinition
+	require.NoError(t, db.First(&after, "id = ?", b.ID).Error)
+	assert.Equal(t, 1, after.Position, "a rejected reorder must not move definitions")
 }
 
 func TestReorderFieldDefinitionsEmptySetIsRejected(t *testing.T) {
 	// The min=1 rule lives in the DTO tag, enforced by the real validation
 	// middleware — wire it directly so the empty payload is actually rejected
 	// (the withValidated helper the other reorder tests use skips it).
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	router.PUT("/field-definitions/reorder", middleware.ValidateJSONMiddleware(&models.FieldDefinitionReorderInput{}), ReorderFieldDefinitions)
 
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	def := makeOrderedDefinition(t, db, user.ID, "a", 3)
+
 	w := putReorder(t, router, []string{})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertValidation(t, w, "Order")
+	var after models.FieldDefinition
+	require.NoError(t, db.First(&after, "id = ?", def.ID).Error)
+	assert.Equal(t, 3, after.Position, "a rejected reorder must not move definitions")
 }

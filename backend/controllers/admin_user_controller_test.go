@@ -272,7 +272,7 @@ func TestGetCurrentUser_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 // --- ListUsers ---
@@ -389,7 +389,7 @@ func TestGetUser_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestGetUser_InvalidID(t *testing.T) {
@@ -401,7 +401,7 @@ func TestGetUser_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 }
 
 // --- CreateUser (T39) ---
@@ -537,7 +537,9 @@ func TestCreateUser_DuplicateUsername_Conflict(t *testing.T) {
 // Reuses the same validators as self-registration (models.UserRegistrationInput)
 // rather than a parallel set — a short password must be rejected the same way.
 func TestCreateUser_WeakPassword_Rejected(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 
 	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
 
@@ -548,11 +550,16 @@ func TestCreateUser_WeakPassword_Rejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertValidation(t, w, "Password")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter, "a rejected create must not insert a user")
 }
 
 func TestCreateUser_MissingFields_Rejected(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 
 	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
 
@@ -563,7 +570,10 @@ func TestCreateUser_MissingFields_Rejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertValidation(t, w, "Username")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter, "a rejected create must not insert a user")
 }
 
 // Every other success-path test above uses withValidated, a bare
@@ -857,7 +867,9 @@ func TestResetUserTwoFactor_Idempotent_NoOp(t *testing.T) {
 }
 
 func TestResetUserTwoFactor_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 
 	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
 
@@ -865,7 +877,10 @@ func TestResetUserTwoFactor_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter)
 }
 
 func TestResetUserTwoFactor_InvalidID(t *testing.T) {
@@ -877,7 +892,7 @@ func TestResetUserTwoFactor_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 }
 
 // TestResetUserTwoFactor_NonAdmin_Forbidden mirrors
@@ -974,7 +989,9 @@ func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
 }
 
 func TestUpdateUser_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var usersBefore int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersBefore).Error)
 
 	router.PATCH("/users/:id", withValidated(func() any { return &models.AdminUserUpdateInput{} }), UpdateUser)
 
@@ -987,11 +1004,17 @@ func TestUpdateUser_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var usersAfter int64
+	require.NoError(t, db.Model(&models.User{}).Count(&usersAfter).Error)
+	assert.Equal(t, usersBefore, usersAfter)
+	var renamed int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "renamed").Count(&renamed).Error)
+	assert.Zero(t, renamed, "a 404 update must not rename anyone")
 }
 
 func TestUpdateUser_InvalidID(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
 	router.PATCH("/users/:id", withValidated(func() any { return &models.AdminUserUpdateInput{} }), UpdateUser)
 
@@ -1004,7 +1027,10 @@ func TestUpdateUser_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
+	var renamed int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "renamed").Count(&renamed).Error)
+	assert.Zero(t, renamed, "a rejected update must not rename anyone")
 }
 
 func TestUpdateUser_DuplicateUsername_Conflict(t *testing.T) {

@@ -172,7 +172,11 @@ func TestGeocodeContactAddress_NormalAndExplicitNormalAreNotGated(t *testing.T) 
 		db, router, uid := geocodeRouter(t, fake)
 		c := seedGeocodeContact(t, db, uid, sensitivity)
 		w := postGeocode(router, fmt.Sprint(c.ID), c.Addresses[0].ID, "")
-		assert.Equal(t, http.StatusOK, w.Code, "sensitivity %q: %s", sensitivity, w.Body.String())
+		require.Equal(t, http.StatusOK, w.Code, "sensitivity %q: %s", sensitivity, w.Body.String())
+		assert.Len(t, fake.calls, 1, "sensitivity %q must reach the geocoder", sensitivity)
+		var stored models.Contact
+		require.NoError(t, db.First(&stored, c.ID).Error)
+		assert.Equal(t, "geo:5,5", stored.Addresses[0].Coordinates, "sensitivity %q: coordinates must be persisted", sensitivity)
 	}
 }
 
@@ -469,11 +473,13 @@ func TestGeocodeContactAddressDraft_DoesNotLeakProviderText(t *testing.T) {
 func TestGeocodeContactAddressDraft_RequiresAuthenticatedUser(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	db, _ := setupRouter(t)
+	fake := &fakeAddressGeocoder{uri: "geo:1,1"}
 	router := gin.New()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // a db, but no userID: as if AuthMiddleware were bypassed
-	router.POST("/contacts/:id/addresses/geocode", withValidated(func() any { return &models.GeocodeDraftInput{} }), GeocodeContactAddressDraft(&fakeAddressGeocoder{uri: "geo:1,1"}))
+	router.POST("/contacts/:id/addresses/geocode", withValidated(func() any { return &models.GeocodeDraftInput{} }), GeocodeContactAddressDraft(fake))
 	w := sendJSON(router, http.MethodPost, "/contacts/1/addresses/geocode", models.GeocodeDraftInput{Street: "1 Main St"})
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	assert.Empty(t, fake.calls, "an unauthenticated request must never reach the geocoder")
 }
 
 // --- GET /api/v1/config/map -------------------------------------------------
@@ -612,11 +618,13 @@ func TestUpdateContact_RoundTrippedAddressKeepsIDAndCoordinates(t *testing.T) {
 func TestGeocodeContactAddress_RequiresAuthenticatedUser(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	db, _ := setupRouter(t)
+	fake := &fakeAddressGeocoder{uri: "geo:1,1"}
 	router := gin.New()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // a db, but no userID: as if AuthMiddleware were bypassed
-	router.POST("/contacts/:id/addresses/:addressId/geocode", GeocodeContactAddress(&fakeAddressGeocoder{uri: "geo:1,1"}))
+	router.POST("/contacts/:id/addresses/:addressId/geocode", GeocodeContactAddress(fake))
 	w := postGeocode(router, "1", "x", "")
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	assert.Empty(t, fake.calls, "an unauthenticated request must never reach the geocoder")
 }
 
 func TestGeocodeContactAddress_ContactLookupFailureIs500(t *testing.T) {

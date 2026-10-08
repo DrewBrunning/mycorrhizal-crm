@@ -36,6 +36,8 @@ func activityRouterNoUser(db *gorm.DB) *gin.Engine {
 
 func TestActivityHandlers_Unauthenticated(t *testing.T) {
 	db, _ := setupRouter(t)
+	var before int64
+	require.NoError(t, db.Model(&models.Activity{}).Count(&before).Error)
 	router := activityRouterNoUser(db)
 	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
 	router.GET("/activities/:id", GetActivity)
@@ -63,12 +65,15 @@ func TestActivityHandlers_Unauthenticated(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusUnauthorized, w.Code, "%s %s: %s", tc.method, tc.path, w.Body.String())
+		alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 	}
+	var after int64
+	require.NoError(t, db.Model(&models.Activity{}).Count(&after).Error)
+	assert.Equal(t, before, after, "unauthenticated writes must not create or delete activities")
 }
 
 func TestCreateActivity_ValidationError(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	router.POST("/activities", middleware.ValidateJSONMiddleware(&models.ActivityInput{}), CreateActivity)
 
 	// Missing required title/date fails validation.
@@ -76,7 +81,10 @@ func TestCreateActivity_ValidationError(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertValidation(t, w, "Title")
+	var n int64
+	require.NoError(t, db.Model(&models.Activity{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert an activity")
 }
 
 func TestCreateActivity_MissingContactIsNotFound(t *testing.T) {
@@ -120,7 +128,7 @@ func TestGetActivity_NotFound(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/activities/999999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestGetActivity_InvalidID(t *testing.T) {
@@ -129,7 +137,7 @@ func TestGetActivity_InvalidID(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/activities/not-a-number", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 }
 
 func TestGetActivities_InvalidCursor(t *testing.T) {
@@ -138,7 +146,7 @@ func TestGetActivities_InvalidCursor(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/activities?cursor=not-base64url", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "cursor")
 }
 
 func TestGetActivities_FeedCursorOlderThanRetention(t *testing.T) {
@@ -157,7 +165,7 @@ func TestGetActivities_FeedCursorOlderThanRetention(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/activities?since="+old, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusGone, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusGone, "GONE", "")
 }
 
 // TestGetActivities_SinceFeed returns soft-deleted activities as tombstones
@@ -264,13 +272,16 @@ func TestGetActivities_NextCursorOnFullPage(t *testing.T) {
 }
 
 func TestUpdateActivity_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	router.PUT("/activities/:id", withValidated(func() any { return &models.ActivityInput{} }), UpdateActivity)
 	req, _ := http.NewRequest(http.MethodPut, "/activities/999999", bytes.NewBufferString(`{"title":"x","date":"2026-01-02T00:00:00Z"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Activity{}).Count(&n).Error)
+	assert.Zero(t, n, "a 404 update must not create an activity")
 }
 
 func TestUpdateActivity_MissingContactIsNotFound(t *testing.T) {
@@ -293,12 +304,19 @@ func TestUpdateActivity_MissingContactIsNotFound(t *testing.T) {
 }
 
 func TestDeleteActivity_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	keep := models.Activity{UserID: user.ID, Title: "Keep", Date: time.Now()}
+	require.NoError(t, db.Create(&keep).Error)
 	router.DELETE("/activities/:id", DeleteActivity)
 	req, _ := http.NewRequest(http.MethodDelete, "/activities/999999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Activity{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "deleting an unknown id must not remove another activity")
 }
 
 func TestGetActivitiesForContact_MalformedCursor(t *testing.T) {
