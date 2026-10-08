@@ -75,7 +75,7 @@ func TestListJobRuns_RejectsBadTimestamp(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/admin/job-runs?since=not-a-time", nil)
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "since")
 }
 
 func TestGetJobRunHealth_ShapeAndFold(t *testing.T) {

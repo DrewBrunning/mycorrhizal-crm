@@ -42,7 +42,9 @@ func TestDeleteUser_CannotDeleteSelf(t *testing.T) {
 }
 
 func TestDeleteUser_InvalidID(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var before int64
+	require.NoError(t, db.Model(&models.User{}).Count(&before).Error)
 
 	router.DELETE("/users/:id", DeleteUser)
 
@@ -50,11 +52,16 @@ func TestDeleteUser_InvalidID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
+	var after int64
+	require.NoError(t, db.Model(&models.User{}).Count(&after).Error)
+	assert.Equal(t, before, after, "a rejected delete must not remove any user")
 }
 
 func TestDeleteUser_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var before int64
+	require.NoError(t, db.Model(&models.User{}).Count(&before).Error)
 
 	router.DELETE("/users/:id", DeleteUser)
 
@@ -62,7 +69,10 @@ func TestDeleteUser_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var after int64
+	require.NoError(t, db.Model(&models.User{}).Count(&after).Error)
+	assert.Equal(t, before, after, "a rejected delete must not remove any user")
 }
 
 func TestDeleteUser_LastAdminProtected(t *testing.T) {

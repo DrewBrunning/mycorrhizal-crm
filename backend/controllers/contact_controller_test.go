@@ -112,13 +112,16 @@ func TestGetContacts_RejectsOversizedSearchTerm(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/contacts?search="+long, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "search")
 
 	exact := strings.Repeat("a", services.MaxSearchTermLen)
 	req2, _ := http.NewRequest("GET", "/contacts?search="+exact, nil)
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
-	assert.Equal(t, http.StatusOK, w2.Code)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var page map[string]any
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &page))
+	assert.Contains(t, page, "contacts", "the at-limit search must return a normal contact page")
 }
 
 // TestGetContacts_SummaryHasNicknameNoCircles is T108's regression test

@@ -119,7 +119,7 @@ func TestGetContactScore_Unauthorized(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 }
 
 // TestGetContactScore_DatabaseError mirrors TestCreateActivity_DatabaseError:

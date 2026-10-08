@@ -9,6 +9,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/middleware"
+	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -116,7 +117,9 @@ func TestOIDCLoginHandler_StateCookies_RemainSameSiteLax(t *testing.T) {
 // call with no session cookie attached — and it must be rejected.
 func TestProtectedEndpoint_RejectsRequestWithNoSessionCookie(t *testing.T) {
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var userBefore models.User
+	require.NoError(t, db.First(&userBefore).Error)
 	protected := router.Group("/")
 	protected.Use(middleware.AuthMiddleware(cfg))
 	protected.PATCH("/users/language", UpdateLanguage)
@@ -127,5 +130,14 @@ func TestProtectedEndpoint_RejectsRequestWithNoSessionCookie(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	// AuthMiddleware's own 401 is a bare {"error": "<message>"}, not the
+	// apperrors envelope; pin the actual body so a different 401 source
+	// cannot satisfy this test.
+	require.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	var denial map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &denial))
+	assert.Equal(t, "Authorization token required", denial["error"])
+	var userAfter models.User
+	require.NoError(t, db.First(&userAfter, userBefore.ID).Error)
+	assert.Equal(t, userBefore.Language, userAfter.Language, "a rejected request must not change the language")
 }
