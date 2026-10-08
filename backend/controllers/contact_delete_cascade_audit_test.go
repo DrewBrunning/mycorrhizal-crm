@@ -29,6 +29,11 @@ import (
 //
 // Hand-verified: removing the skipZeroIdentityAudit calls in
 // models/audit.go makes every cascade subtest here fail on the log assertion.
+//
+// Follow-up: the cascade now records each audited child's real delete event
+// (services.deleteCascadeRows → models.RecordCascadeDelete), so a cascaded
+// note/reminder/life event/gift's audit history ends with its delete instead
+// of stopping as if the row still existed.
 
 type cascadeAuditEnv struct {
 	db     *gorm.DB
@@ -105,7 +110,7 @@ func (e *cascadeAuditEnv) assertClean(t *testing.T, buf *bytes.Buffer, wantConta
 	var children int64
 	require.NoError(t, e.db.Model(&models.AuditEvent{}).
 		Where("entity_type IN ?", cascadeChildTypes).Count(&children).Error)
-	assert.Equal(t, wantChildEvents, children, "cascade children must produce no audit events (not undoable; the contact's own event is the record)")
+	assert.Equal(t, wantChildEvents, children, "child audit events")
 
 	var zeroIdentity int64
 	require.NoError(t, e.db.Model(&models.AuditEvent{}).
@@ -117,18 +122,56 @@ func (e *cascadeAuditEnv) assertClean(t *testing.T, buf *bytes.Buffer, wantConta
 	assert.NotContains(t, logged, "FOREIGN KEY constraint failed")
 }
 
-func TestDeleteContactCascade_NoSpuriousChildAuditEvents(t *testing.T) {
+// childIdentities is the (entity type, entity id) of every audited child of c
+// that the cascade deletes, read before the delete.
+func (e *cascadeAuditEnv) childIdentities(t *testing.T, c models.Contact) map[string]string {
+	t.Helper()
+	var note models.Note
+	var rem models.Reminder
+	var le models.LifeEvent
+	var gift models.Gift
+	require.NoError(t, e.db.Where("contact_id = ?", c.ID).First(&note).Error)
+	require.NoError(t, e.db.Where("contact_id = ?", c.ID).First(&rem).Error)
+	require.NoError(t, e.db.Where("entity_id = ?", c.VCardUID).First(&le).Error)
+	require.NoError(t, e.db.Where("entity_id = ?", c.VCardUID).First(&gift).Error)
+	return map[string]string{
+		models.AuditEntityNote:      strconv.FormatUint(uint64(note.ID), 10),
+		models.AuditEntityReminder:  strconv.FormatUint(uint64(rem.ID), 10),
+		models.AuditEntityLifeEvent: le.ID,
+		models.AuditEntityGift:      gift.ID,
+	}
+}
+
+// assertChildDeletes requires exactly one delete event, with a before-snapshot,
+// for each child identity in want.
+func (e *cascadeAuditEnv) assertChildDeletes(t *testing.T, want ...map[string]string) {
+	t.Helper()
+	for _, ids := range want {
+		for typ, id := range ids {
+			var events []models.AuditEvent
+			require.NoError(t, e.db.Where("entity_type = ? AND entity_id = ?", typ, id).Find(&events).Error)
+			require.Lenf(t, events, 1, "%s %s: want exactly one audit event", typ, id)
+			assert.Equalf(t, models.AuditOpDelete, events[0].Operation, "%s %s", typ, id)
+			assert.Equalf(t, e.user.ID, events[0].UserID, "%s %s", typ, id)
+			assert.NotEmptyf(t, events[0].BeforeSnapshot, "%s %s: the delete must carry the row's before-snapshot", typ, id)
+		}
+	}
+}
+
+func TestDeleteContactCascade_AuditsEachChildDelete(t *testing.T) {
 	e := newCascadeAuditEnv(t)
 	c := e.seedChildren(t, "Del")
+	children := e.childIdentities(t, c)
 	buf := e.arm(t)
 
 	w := e.do(t, "DELETE", "/contacts/"+strconv.FormatUint(uint64(c.ID), 10), nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-	e.assertClean(t, buf, 1, 0)
+	e.assertClean(t, buf, 1, int64(len(children)))
+	e.assertChildDeletes(t, children)
 }
 
-func TestMergeCascade_NoSpuriousChildAuditEvents(t *testing.T) {
+func TestMergeCascade_RepointedChildrenAreNotDeleted(t *testing.T) {
 	e := newCascadeAuditEnv(t)
 	keeper := e.seedChildren(t, "Keep")
 	loser := e.seedChildren(t, "Lose")
@@ -141,15 +184,18 @@ func TestMergeCascade_NoSpuriousChildAuditEvents(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	// The gift/life-event re-point is the "gift create" bulk-update source.
-	// The single child event allowed is the real merge-summary note the
-	// handler creates on the keeper (a genuine single-row create).
+	// The loser's children are re-pointed to the keeper before the loser's
+	// cascade runs, so it deletes (and audits) none of them. The single child
+	// event allowed is the real merge-summary note the handler creates on the
+	// keeper (a genuine single-row create).
 	e.assertClean(t, buf, 1, 1)
 }
 
-func TestBulkDeleteCascade_NoSpuriousChildAuditEvents(t *testing.T) {
+func TestBulkDeleteCascade_AuditsEachChildDelete(t *testing.T) {
 	e := newCascadeAuditEnv(t)
 	a := e.seedChildren(t, "A")
 	b := e.seedChildren(t, "B")
+	aChildren, bChildren := e.childIdentities(t, a), e.childIdentities(t, b)
 	buf := e.arm(t)
 
 	w := e.do(t, "POST", "/contacts/bulk", models.BulkContactOperationInput{
@@ -157,7 +203,8 @@ func TestBulkDeleteCascade_NoSpuriousChildAuditEvents(t *testing.T) {
 	})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-	e.assertClean(t, buf, 2, 0)
+	e.assertClean(t, buf, 2, int64(len(aChildren)+len(bChildren)))
+	e.assertChildDeletes(t, aChildren, bChildren)
 }
 
 // A single-row delete of a real child must still be audited: the central
