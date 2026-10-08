@@ -253,7 +253,10 @@ func TestCreateWebhookLimit(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	var count int64
+	require.NoError(t, db.Model(&models.Webhook{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(maxWebhooksPerUser), count, "the over-limit create must not insert a row")
 }
 
 func TestGetWebhook(t *testing.T) {
@@ -289,7 +292,7 @@ func TestGetWebhookNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestUpdateWebhook(t *testing.T) {
@@ -431,6 +434,12 @@ func TestWebhookUserIsolation(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusNotFound, w.Code, "method %s should return 404 for wrong user", tc.method)
+		require.Equal(t, http.StatusNotFound, w.Code, "method %s should return 404 for wrong user", tc.method)
+		assert.Equal(t, "NOT_FOUND", mzDecode(t, w).Error.Code, "method %s", tc.method)
 	}
+
+	var after models.Webhook
+	require.NoError(t, db.First(&after, wh.ID).Error, "another user's webhook must survive the rejected DELETE")
+	assert.Equal(t, wh.Name, after.Name, "another user's PUT must not rename the webhook")
+	assert.Equal(t, wh.URL, after.URL, "another user's PUT must not change the URL")
 }

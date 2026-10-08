@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // TestMalformedPathID_Returns400NotServerError is a regression test for
@@ -109,7 +107,7 @@ func TestMalformedPathID_Returns400NotServerError(t *testing.T) {
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusBadRequest, w.Code, "%s %s: got %d, body %s", tc.method, tc.path, w.Code, w.Body.String())
+			mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 		})
 	}
 }

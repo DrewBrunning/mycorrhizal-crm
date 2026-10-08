@@ -308,7 +308,7 @@ func TestGetRelationshipEdge_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestGetRelationshipEdge_WrongUser404s(t *testing.T) {
@@ -484,7 +484,10 @@ func TestUpdateRelationshipEdge(t *testing.T) {
 }
 
 func TestUpdateRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var owner models.User
+	require.NoError(t, db.First(&owner).Error)
+	edge := mzSeedEdge(t, db, owner.ID)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	payload := models.RelationshipEdgeInput{SourceID: "x", TargetID: "y", Type: "friend_of"}
@@ -494,7 +497,8 @@ func TestUpdateRelationshipEdge_NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	mzAssertEdgeUntouched(t, db, edge)
 }
 
 func TestUpdateRelationshipEdge_WrongUser404s(t *testing.T) {
@@ -588,14 +592,18 @@ func TestDeleteRelationshipEdge(t *testing.T) {
 }
 
 func TestDeleteRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var owner models.User
+	require.NoError(t, db.First(&owner).Error)
+	edge := mzSeedEdge(t, db, owner.ID)
 	router.DELETE("/relationship-edges/:id", DeleteRelationshipEdge)
 
 	req, _ := http.NewRequest("DELETE", "/relationship-edges/nonexistent", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	mzAssertEdgeUntouched(t, db, edge)
 }
 
 func TestDeleteRelationshipEdge_WrongUser404s(t *testing.T) {
@@ -674,14 +682,18 @@ func TestAcceptRelationshipEdge_AlreadyConfirmedConflict(t *testing.T) {
 }
 
 func TestAcceptRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var owner models.User
+	require.NoError(t, db.First(&owner).Error)
+	edge := mzSeedEdge(t, db, owner.ID)
 	router.PATCH("/relationship-edges/:id/accept", AcceptRelationshipEdge)
 
 	req, _ := http.NewRequest("PATCH", "/relationship-edges/nonexistent/accept", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	mzAssertEdgeUntouched(t, db, edge)
 }
 
 func TestAcceptRelationshipEdge_WrongUser404s(t *testing.T) {
