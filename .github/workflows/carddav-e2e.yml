@@ -140,7 +140,8 @@ jobs:
           filesystem_folder = /data/collections
           EOF
           printf 'syncuser:syncsecret\n' > /tmp/radicale/config/users
-          docker run -d --name radicale \
+          .github/scripts/docker-pull-retry.sh tomsquest/docker-radicale@sha256:89fa44d02b134f0ac37cad809883327af8424499d913eec74f95085c458a93b7
+          docker run -d --pull never --name radicale \
             -p 5232:5232 \
             -v /tmp/radicale/config:/config \
             -v /tmp/radicale/data:/data \

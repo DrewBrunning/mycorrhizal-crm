@@ -8,14 +8,17 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,9 +61,20 @@ func newTestConfig(t *testing.T, deployment string) *config.Config {
 	return cfg
 }
 
+// shortTempDir is for any directory that will hold a Unix socket. Not
+// t.TempDir(): it embeds the long test name and, under a long TMPDIR,
+// overflows the ~104-byte sun_path limit (issue #1555).
+func shortTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "emb")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
 func listenUnix(t *testing.T, name string) (net.Listener, string) {
 	t.Helper()
-	socket := filepath.Join(t.TempDir(), name)
+	socket := filepath.Join(shortTempDir(t), name)
 	ln, err := net.Listen("unix", socket)
 	require.NoError(t, err)
 	return ln, socket
@@ -275,4 +289,39 @@ func TestStart_ServerModeDefaultsToTCPWhenNoListener(t *testing.T) {
 
 	require.NotNil(t, srv.Addr())
 	require.Equal(t, port, srv.Addr().(*net.TCPAddr).Port)
+}
+
+// Issue #1554: Stop gives tracked background work (a password-reset mail send
+// started by a finished request) a bounded chance to finish before it closes
+// the database.
+func TestStop_DrainsTrackedBackgroundWorkBeforeClosingDB(t *testing.T) {
+	cfg := newTestConfig(t, config.DeploymentServer)
+	ln, _ := listenUnix(t, "drain.sock")
+	srv, err := Start(context.Background(), cfg, Options{Listener: ln, disableInitialTriggers: true})
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	var dbUsableAtEnd error
+	fireandforget.Run(func() {
+		<-release
+		// Still inside Stop's drain window: the database must not be closed yet.
+		dbUsableAtEnd = srv.DB().Exec("SELECT 1").Error
+	})
+
+	stopped := make(chan error, 1)
+	go func() { stopped <- srv.Stop(context.Background()) }()
+
+	select {
+	case err := <-stopped:
+		t.Fatalf("Stop returned (%v) while tracked background work was still running", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case err := <-stopped:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("Stop did not return after the background work finished")
+	}
+	assert.NoError(t, dbUsableAtEnd, "the drained work must run against an open database")
 }

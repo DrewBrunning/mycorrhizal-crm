@@ -146,11 +146,6 @@ func (e *faultEnv) do(t *testing.T, r faultReq) *httptest.ResponseRecorder {
 // authored lives in them.
 var faultVolatileTables = map[string]string{
 	"sessions": "AuthMiddleware stamps last-used on the session row on every authenticated request, success or failure",
-	// Known production bug, not bookkeeping: the async audit recorder persists
-	// an event for a write whose transaction rolled back. Surfaced by running
-	// this sweep with the production-shaped recorder (dbtest.WithAsyncAudit,
-	// #1493). Remove this entry as part of fixing issue #1547.
-	"audit_events": "issue #1547: async audit recorder persists events for rolled-back writes; remove when fixed",
 }
 
 // snapshotDB returns table -> "count:sha256(all rows)" for every real table,

@@ -37,6 +37,10 @@ func (*Default) Name() string { return PluginName }
 // an async recorder can be bound to it rather than to a hook's transaction.
 func (d *Default) Initialize(db *gorm.DB) error {
 	d.root = db
+	// The async recorder defers its inserts to transaction commit (issue
+	// #1547) and needs the transaction-aware pool; wrapping is transparent to
+	// everything else, so every armed DB gets it.
+	Wrap(db)
 	return nil
 }
 
