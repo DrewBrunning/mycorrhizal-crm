@@ -182,7 +182,10 @@ func TestLinkFieldTypeController_UpdateLinkFieldType_NotFound(t *testing.T) {
 	resp := linkFieldTypeDoJSON(t, router, "PUT", "/link-field-types/does-not-exist", models.LinkFieldTypeInput{
 		Name: "Whatever", Category: models.LinkFieldTypeCategoryOther,
 	})
-	require.Equal(t, http.StatusNotFound, resp.Code, resp.Body.String())
+	alAssertError(t, resp, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.LinkFieldType{}).Where("user_id = ?", owner.ID).Count(&n).Error)
+	require.Zero(t, n, "a 404 update must not create a row")
 }
 
 // TestLinkFieldTypeController_UpdateLinkFieldType_DuplicateNameConflict
@@ -216,7 +219,10 @@ func TestLinkFieldTypeController_DeleteLinkFieldType_NotFound(t *testing.T) {
 	router := newLinkFieldTypeRealDBRouter(db, owner.ID)
 
 	resp := linkFieldTypeDoJSON(t, router, "DELETE", "/link-field-types/does-not-exist", nil)
-	require.Equal(t, http.StatusNotFound, resp.Code, resp.Body.String())
+	alAssertError(t, resp, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.LinkFieldType{}).Where("user_id = ?", owner.ID).Count(&n).Error)
+	require.Zero(t, n, "a 404 delete must not touch other rows")
 }
 
 // TestLinkFieldTypeController_DatabaseErrorBranches mirrors

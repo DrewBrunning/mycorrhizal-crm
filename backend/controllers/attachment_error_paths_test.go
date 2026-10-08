@@ -75,9 +75,12 @@ func userScopedRouter(db *gorm.DB, userID uint, cfg config.Config) *gin.Engine {
 }
 
 func TestUploadAttachment_InvalidContactID(t *testing.T) {
-	_, router, _ := setupBareAttachmentRouter(t)
+	db, router, _ := setupBareAttachmentRouter(t)
 	rec := uploadFile(t, router, "not-a-number", "a.txt", "text/plain", []byte("x"))
-	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
+	alAssertError(t, rec, http.StatusBadRequest, "VALIDATION_ERROR", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Attachment{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected upload must not record an attachment")
 }
 
 func TestUploadAttachment_Unauthenticated(t *testing.T) {
@@ -97,9 +100,12 @@ func TestUploadAttachment_Unauthenticated(t *testing.T) {
 }
 
 func TestUploadAttachment_ContactNotFound(t *testing.T) {
-	_, router, _ := setupBareAttachmentRouter(t)
+	db, router, _ := setupBareAttachmentRouter(t)
 	rec := uploadFile(t, router, "999999", "a.txt", "text/plain", []byte("x"))
-	assert.Equal(t, http.StatusNotFound, rec.Code, rec.Body.String())
+	alAssertError(t, rec, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Attachment{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected upload must not record an attachment")
 }
 
 func TestUploadAttachment_NoFile(t *testing.T) {
@@ -255,13 +261,20 @@ func TestDownloadAttachment_MissingFileOnDisk(t *testing.T) {
 
 func TestDeleteAttachment_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
+	user := models.User{Username: "attunauth", Password: "password123!A", Email: "attunauth@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	att := models.Attachment{UserID: user.ID, ContactVCardUID: "x", StoredName: "s", OriginalName: "a.txt", ContentType: "text/plain", SizeBytes: 1}
+	require.NoError(t, db.Create(&att).Error)
 	router := userScopedRouter(db, 0, config.Config{})
 	router.DELETE("/attachments/:id", func(c *gin.Context) { DeleteAttachment(c, &config.Config{}) })
 
-	req, _ := http.NewRequest(http.MethodDelete, "/attachments/1", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/attachments/"+strconv.Itoa(int(att.ID)), nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+	var n int64
+	require.NoError(t, db.Model(&models.Attachment{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "an unauthenticated delete must not remove the attachment")
 }
 
 func TestDeleteAttachment_DatabaseError(t *testing.T) {

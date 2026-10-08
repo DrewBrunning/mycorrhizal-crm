@@ -63,23 +63,37 @@ func TestUnfavoriteContact_ClearsFlag(t *testing.T) {
 }
 
 func TestFavoriteContact_UnknownID_404(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	other := models.Contact{UserID: user.ID, Firstname: "Other"}
+	require.NoError(t, db.Create(&other).Error)
 	router.POST("/contacts/:id/favorite", FavoriteContact)
 
 	req, _ := http.NewRequest("POST", "/contacts/999999/favorite", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var after models.Contact
+	require.NoError(t, db.First(&after, other.ID).Error)
+	assert.Equal(t, false, after.IsFavorite, "an unknown id must not toggle another contact")
 }
 
 func TestUnfavoriteContact_UnknownID_404(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	other := models.Contact{UserID: user.ID, Firstname: "Other", IsFavorite: true}
+	require.NoError(t, db.Create(&other).Error)
 	router.POST("/contacts/:id/unfavorite", UnfavoriteContact)
 
 	req, _ := http.NewRequest("POST", "/contacts/999999/unfavorite", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var after models.Contact
+	require.NoError(t, db.First(&after, other.ID).Error)
+	assert.Equal(t, true, after.IsFavorite, "an unknown id must not toggle another contact")
 }
 
 func TestFavoriteContact_ScopedToOwner(t *testing.T) {
