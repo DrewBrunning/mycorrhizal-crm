@@ -398,11 +398,16 @@ func TestSoleAdminPromotionCandidates(t *testing.T) {
 func TestDeleteOwnAccount_Unauthenticated(t *testing.T) {
 	db := dbtest.New(t)
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	user := seedDeleteAccountUser(t, db, "unauthdelete", false)
 	router := selfDeleteRouter(db, cfg, 0, false)
 
 	req := deleteAccountRequest("", map[string]string{"current_password": strongPassword})
-	w, _ := doRequest(router, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	w, cookies := doRequest(router, req)
+	mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Nil(t, cookies["auth_token"], "an unauthenticated delete must not touch the session cookie")
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&models.User{}).Where("id = ?", user.ID).Count(&n).Error)
+	assert.Equal(t, int64(1), n, "an unauthenticated delete must not remove any account")
 }
 
 // TestDeleteOwnAccount_UserLookupError mirrors TestDeleteUser_UserLookupError

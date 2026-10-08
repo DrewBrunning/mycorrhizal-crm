@@ -508,27 +508,27 @@ func TestGetContactTimeline_WalkCrossesLifeEvents(t *testing.T) {
 func TestGetContactTimeline_Validation(t *testing.T) {
 	env := newTimelineTestEnv(t)
 
-	cases := []string{
-		"type=banana",
-		"type=note,banana",
-		"bucket=yesterday",
-		"cursor=not-base64url",
+	cases := []struct{ query, field string }{
+		{"type=banana", "type"},
+		{"type=note,banana", "type"},
+		{"bucket=yesterday", "bucket"},
+		{"cursor=not-base64url", "cursor"},
 	}
-	for _, q := range cases {
-		w := env.get(t, "/contacts/"+idString(env.contact.ID)+"/timeline?"+q)
-		assert.Equalf(t, http.StatusBadRequest, w.Code, "query %q must 400", q)
+	for _, tc := range cases {
+		w := env.get(t, "/contacts/"+idString(env.contact.ID)+"/timeline?"+tc.query)
+		mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", tc.field)
 	}
 
 	// A well-formed base64url body with a valid type but an invalid id for a
 	// uint table is also a 400 (resuming a numeric page from a string id).
 	w := env.get(t, "/contacts/"+idString(env.contact.ID)+"/timeline?cursor="+
 		encodeTimelineCursor(time.Now(), "note", "not-a-uint"))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "cursor")
 
 	// An unknown type token inside the cursor is a 400 too.
 	w = env.get(t, "/contacts/"+idString(env.contact.ID)+"/timeline?cursor="+
 		encodeTimelineCursor(time.Now(), "banana", "1"))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "cursor")
 }
 
 // TestGetContactTimeline_ScopedToOwner pins ownership: another user's contact

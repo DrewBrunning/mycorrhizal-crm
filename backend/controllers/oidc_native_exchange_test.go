@@ -140,7 +140,8 @@ func TestOIDCNativeExchangeHandler_MissingValidatedBodyIsRejected(t *testing.T) 
 
 	w := postExchange(t, router, map[string]string{"code": "x", "code_verifier": "y"})
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "request")
+	assert.Empty(t, w.Header().Get("Set-Cookie"), "a rejected exchange must not issue a session")
 }
 
 // The exchange code must never be usable as a bearer session, even though it is

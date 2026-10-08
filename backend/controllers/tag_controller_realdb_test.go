@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -256,17 +257,26 @@ func TestTagController_GetUpdateDelete_NotFoundForUnknownID(t *testing.T) {
 	db := dbtest.New(t)
 	owner, _ := createTagTestUsers(t, db)
 	router := newTagRealDBRouter(db, owner.ID)
+	existing := models.Tag{UserID: owner.ID, Name: "keep-me"}
+	require.NoError(t, db.Create(&existing).Error)
 
 	const bogusID = "does-not-exist"
 
 	getResp := tagDoJSON(t, router, "GET", "/tags/"+bogusID, nil)
-	require.Equal(t, http.StatusNotFound, getResp.Code, getResp.Body.String())
+	mzErrorCode(t, getResp, http.StatusNotFound, "NOT_FOUND")
 
 	putResp := tagDoJSON(t, router, "PUT", "/tags/"+bogusID, models.TagInput{Name: "whatever"})
-	require.Equal(t, http.StatusNotFound, putResp.Code, putResp.Body.String())
+	mzErrorCode(t, putResp, http.StatusNotFound, "NOT_FOUND")
 
 	deleteResp := tagDoJSON(t, router, "DELETE", "/tags/"+bogusID, nil)
-	require.Equal(t, http.StatusNotFound, deleteResp.Code, deleteResp.Body.String())
+	mzErrorCode(t, deleteResp, http.StatusNotFound, "NOT_FOUND")
+
+	var after models.Tag
+	require.NoError(t, db.First(&after, "id = ?", existing.ID).Error, "an unknown-id delete must not remove other tags")
+	assert.Equal(t, "keep-me", after.Name, "an unknown-id update must not rename other tags")
+	var count int64
+	require.NoError(t, db.Model(&models.Tag{}).Where("name = ?", "whatever").Count(&count).Error)
+	assert.Zero(t, count, "an unknown-id update must not create a tag")
 }
 
 // TestTagController_AddContactTag_TagNotFound pins the "tag itself doesn't

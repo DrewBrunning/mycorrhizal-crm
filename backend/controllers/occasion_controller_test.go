@@ -152,7 +152,8 @@ func TestGetUpcomingOccasionsRejectsInvalidDays(t *testing.T) {
 	registerOccasionRoutes(router)
 
 	w := doOccasionGET(router, "/occasions/upcoming?days=45")
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Message, "days must be 30 or 90")
 }
 
 // TestGetUpcomingOccasionsEmptyResultIsArrayNotNull pins CLAUDE.md frontend

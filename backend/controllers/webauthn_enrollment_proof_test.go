@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -24,16 +25,35 @@ func resetEnrollLock(t *testing.T, e *waEnv) {
 	t.Cleanup(func() { middleware.GetAccountRateLimiter().RecordSuccessfulLogin(secondFactorProofLockKey(e.user.ID)) })
 }
 
+// mzTOTPSetupBody decodes POST /users/2fa/setup's response.
+func mzTOTPSetupBody(t *testing.T, body []byte) (secret, otpauthURL string) {
+	t.Helper()
+	var resp struct {
+		Secret     string `json:"secret"`
+		OTPAuthURL string `json:"otpauth_url"`
+	}
+	require.NoError(t, json.Unmarshal(body, &resp))
+	return resp.Secret, resp.OTPAuthURL
+}
+
 func TestEnrollmentProof_FirstFactorNeedsNoProof(t *testing.T) {
 	t.Run("passkey", func(t *testing.T) {
 		e := newWAEnv(t)
 		w, _ := e.do("POST", "/webauthn/register/begin", map[string]string{"name": "First"}, e.session())
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.NotEmpty(t, challengeFrom(t, w.Body.Bytes()), "a proof-free first passkey must get a real ceremony challenge")
 	})
 	t.Run("totp", func(t *testing.T) {
 		e := newWAEnv(t)
 		w, _ := e.do("POST", "/users/2fa/setup", nil, e.session())
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		secret, otpauth := mzTOTPSetupBody(t, w.Body.Bytes())
+		assert.NotEmpty(t, secret)
+		assert.True(t, strings.HasPrefix(otpauth, "otpauth://totp/"), otpauth)
+		var u models.User
+		require.NoError(t, e.db.First(&u, e.user.ID).Error)
+		assert.NotNil(t, u.TOTPSecretEncrypted, "setup must persist the pending secret")
+		assert.False(t, u.TOTPEnabled, "setup alone must not enable 2FA")
 	})
 	t.Run("pending totp secret is not a factor", func(t *testing.T) {
 		e := newWAEnv(t)
@@ -41,9 +61,12 @@ func TestEnrollmentProof_FirstFactorNeedsNoProof(t *testing.T) {
 		e.pendingTOTPSecret(tok)
 		// A second setup and a first passkey still need nothing: nothing is confirmed.
 		w, _ := e.do("POST", "/users/2fa/setup", nil, tok)
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		secret, _ := mzTOTPSetupBody(t, w.Body.Bytes())
+		assert.NotEmpty(t, secret)
 		w, _ = e.do("POST", "/webauthn/register/begin", nil, tok)
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.NotEmpty(t, challengeFrom(t, w.Body.Bytes()))
 	})
 }
 

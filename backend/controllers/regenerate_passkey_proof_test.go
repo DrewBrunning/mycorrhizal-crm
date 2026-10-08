@@ -42,7 +42,15 @@ func TestRegenerateRecoveryCodes_PasskeyOnlyAssertion(t *testing.T) {
 func TestRegenerateRecoveryCodes_PasskeyOnlyStillAcceptsRecoveryCode(t *testing.T) {
 	e, _, tok, codes := passkeyOnlyEnv(t)
 	w, _ := e.do("POST", "/users/2fa/recovery-codes/regenerate", map[string]string{"code": codes[0]}, tok)
-	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var out struct {
+		RecoveryCodes []string `json:"recovery_codes"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+	require.Len(t, out.RecoveryCodes, recoveryCodeCount)
+	assert.False(t, e.hasRecoveryCode(codes[0]), "the presented code is replaced with the new set")
+	assert.True(t, e.hasRecoveryCode(out.RecoveryCodes[0]), "the new set is live")
+	assert.Equal(t, int64(recoveryCodeCount), e.recoveryCount())
 }
 
 func TestRegenerateRecoveryCodes_AssertionWithoutCeremonyRejected(t *testing.T) {

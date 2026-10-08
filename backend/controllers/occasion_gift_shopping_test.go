@@ -30,7 +30,8 @@ func TestGetGiftShoppingListRejectsInvalidDays(t *testing.T) {
 	registerGiftShoppingRoute(router)
 
 	w := doGiftShoppingGET(router, "/occasion-obligations/gift-shopping-list?days=45")
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Message, "days must be 30 or 90")
 }
 
 // TestGetGiftShoppingListEmptyResultIsArrayNotNull mirrors
