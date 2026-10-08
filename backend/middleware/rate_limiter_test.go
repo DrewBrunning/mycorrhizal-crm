@@ -597,3 +597,28 @@ func TestRateLimiterEntryCounts_AndAccountTrackedKeys(t *testing.T) {
 		}
 	}
 }
+
+// RateLimiterEntryCounts must read the limiter that is live now: after
+// ConfigureAPIRateLimiter swaps apiLimiter (issue #1565), the "api" count
+// follows the new limiter, not the one it replaced. Guards the merge skew
+// between #1537 (which added this reader) and #1573 (which made the globals
+// atomic.Pointers): the reader must go through Load().
+func TestRateLimiterEntryCounts_FollowsReconfiguredAPILimiter(t *testing.T) {
+	prev := apiLimiter.Load()
+	t.Cleanup(func() { apiLimiter.Store(prev) })
+
+	ConfigureAPIRateLimiter(time.Second, 10)
+	if got := RateLimiterEntryCounts()["api"]; got != 0 {
+		t.Fatalf("a freshly configured api limiter tracks %d IPs, want 0", got)
+	}
+	apiLimiter.Load().GetLimiter("203.0.113.7")
+	apiLimiter.Load().GetLimiter("203.0.113.8")
+	if got := RateLimiterEntryCounts()["api"]; got != 2 {
+		t.Fatalf(`RateLimiterEntryCounts()["api"] = %d, want 2 (the live limiter's entries)`, got)
+	}
+
+	ConfigureAPIRateLimiter(time.Second, 10)
+	if got := RateLimiterEntryCounts()["api"]; got != 0 {
+		t.Fatalf(`after a reconfigure RateLimiterEntryCounts()["api"] = %d, want 0 (must not read the replaced limiter)`, got)
+	}
+}
