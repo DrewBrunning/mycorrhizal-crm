@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -60,9 +61,20 @@ func newTestConfig(t *testing.T, deployment string) *config.Config {
 	return cfg
 }
 
+// shortTempDir is for any directory that will hold a Unix socket. Not
+// t.TempDir(): it embeds the long test name and, under a long TMPDIR,
+// overflows the ~104-byte sun_path limit (issue #1555).
+func shortTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "emb")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
 func listenUnix(t *testing.T, name string) (net.Listener, string) {
 	t.Helper()
-	socket := filepath.Join(t.TempDir(), name)
+	socket := filepath.Join(shortTempDir(t), name)
 	ln, err := net.Listen("unix", socket)
 	require.NoError(t, err)
 	return ln, socket
