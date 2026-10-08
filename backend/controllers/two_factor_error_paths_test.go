@@ -94,7 +94,7 @@ func TestTwoFactorHandlers_Unauthenticated(t *testing.T) {
 		req, _ := http.NewRequest(tc.method, tc.path, nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusUnauthorized, w.Code, "%s %s", tc.method, tc.path)
+		mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 	}
 }
 
@@ -120,7 +120,7 @@ func TestTwoFactorHandlers_DatabaseError(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusInternalServerError, w.Code, "%s %s: %s", tc.method, tc.path, w.Body.String())
+		mzErrorCode(t, w, http.StatusInternalServerError, "DATABASE_ERROR")
 	}
 }
 
@@ -128,59 +128,75 @@ func TestTwoFactorHandlers_DatabaseError(t *testing.T) {
 
 func TestConfirmTwoFactor_NoPendingSecret(t *testing.T) {
 	db := dbtest.New(t)
-	_, router := seed2FAUser(t, db, false, nil)
+	user, router := seed2FAUser(t, db, false, nil)
 
 	req, _ := http.NewRequest(http.MethodPost, "/confirm", bytes.NewBufferString(`{"code":"000000"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusConflict, w.Code, "confirming without a pending secret must 409")
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	var u models.User
+	require.NoError(t, db.First(&u, user.ID).Error)
+	assert.False(t, u.TOTPEnabled, "a rejected confirm must not enable 2FA")
+	assert.Nil(t, u.TOTPSecretEncrypted)
 }
 
 func TestConfirmTwoFactor_MissingCode(t *testing.T) {
 	db := dbtest.New(t)
 	secret := "somesampleencryptedsecret"
-	_, router := seed2FAUser(t, db, false, &secret)
+	user, router := seed2FAUser(t, db, false, &secret)
 
 	req, _ := http.NewRequest(http.MethodPost, "/confirm", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "code")
+	var u models.User
+	require.NoError(t, db.First(&u, user.ID).Error)
+	assert.False(t, u.TOTPEnabled, "a rejected confirm must not enable 2FA")
 }
 
 func TestDisableTwoFactor_NotEnabled(t *testing.T) {
 	db := dbtest.New(t)
-	_, router := seed2FAUser(t, db, false, nil)
+	user, router := seed2FAUser(t, db, false, nil)
 
 	req, _ := http.NewRequest(http.MethodPost, "/disable", bytes.NewBufferString(`{"code":"000000"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	var u models.User
+	require.NoError(t, db.First(&u, user.ID).Error)
+	assert.False(t, u.TOTPEnabled)
 }
 
 func TestRegenerateRecoveryCodes_NotEnabled(t *testing.T) {
 	db := dbtest.New(t)
-	_, router := seed2FAUser(t, db, false, nil)
+	user, router := seed2FAUser(t, db, false, nil)
 
 	req, _ := http.NewRequest(http.MethodPost, "/regenerate", bytes.NewBufferString(`{"code":"000000"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	var n int64
+	require.NoError(t, db.Model(&models.RecoveryCode{}).Where("user_id = ?", user.ID).Count(&n).Error)
+	assert.Zero(t, n, "no recovery codes may be generated when 2FA is off")
 }
 
 func TestRegenerateRecoveryCodes_MissingCode(t *testing.T) {
 	db := dbtest.New(t)
 	secret := "somesampleencryptedsecret"
-	_, router := seed2FAUser(t, db, true, &secret)
+	user, router := seed2FAUser(t, db, true, &secret)
 
 	req, _ := http.NewRequest(http.MethodPost, "/regenerate", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "code")
+	var n int64
+	require.NoError(t, db.Model(&models.RecoveryCode{}).Where("user_id = ?", user.ID).Count(&n).Error)
+	assert.Zero(t, n, "a rejected regenerate must not mint codes")
 }
 
 // --- reissueSessionToken guard branches ---
@@ -217,7 +233,7 @@ func TestComplete2FALogin_MissingCode(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "code")
 }
 
 func TestComplete2FALogin_NoPendingChallenge(t *testing.T) {
@@ -230,7 +246,9 @@ func TestComplete2FALogin_NoPendingChallenge(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	env := mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Contains(t, env.Error.Message, "No pending two-factor login")
+	assert.Empty(t, w.Header().Get("Set-Cookie"), "no session may be issued")
 }
 
 func TestComplete2FALogin_InvalidChallengeToken(t *testing.T) {
@@ -244,5 +262,7 @@ func TestComplete2FALogin_InvalidChallengeToken(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "2fa_pending", Value: "garbage-not-a-challenge"})
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	env := mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Contains(t, env.Error.Message, "Invalid or expired two-factor session")
+	assert.Empty(t, w.Header().Get("Set-Cookie"), "no session may be issued")
 }
