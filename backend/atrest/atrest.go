@@ -53,7 +53,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -100,10 +99,10 @@ var engine Engine
 func DecodeMasterKey(raw string) ([]byte, error) {
 	kek, err := base64.StdEncoding.DecodeString(strings.TrimSpace(raw))
 	if err != nil {
-		return nil, fmt.Errorf("not valid base64: %w", err)
+		return nil, classify(ErrInvalidKey, "not valid base64: "+err.Error(), err)
 	}
 	if len(kek) != keySize {
-		return nil, fmt.Errorf("must decode to %d bytes, got %d", keySize, len(kek))
+		return nil, classify(ErrInvalidKey, fmt.Sprintf("must decode to %d bytes, got %d", keySize, len(kek)), nil)
 	}
 	return kek, nil
 }
@@ -240,7 +239,7 @@ func Initialize(db *gorm.DB, kek []byte) error {
 		return nil
 	}
 	if db == nil {
-		return errors.New("atrest: db is required when a master key is configured")
+		return classify(ErrDBRequired, "atrest: db is required when a master key is configured", nil)
 	}
 
 	dek, err := loadOrCreateDEK(db, kek)
@@ -346,7 +345,7 @@ func (k KeyMaterialTimes) LastChanged() time.Time {
 // only guards a hand-edited database).
 func ReadKeyMaterialTimes(db *gorm.DB) (KeyMaterialTimes, bool, error) {
 	if db == nil {
-		return KeyMaterialTimes{}, false, errors.New("atrest: key material times require a db handle")
+		return KeyMaterialTimes{}, false, classify(ErrDBRequired, "atrest: key material times require a db handle", nil)
 	}
 	type row struct {
 		CreatedAt *time.Time `gorm:"column:created_at"`
@@ -391,7 +390,7 @@ func VerifyBackupDecryptable(db *gorm.DB, kek []byte) error {
 		return nil
 	}
 	if db == nil {
-		return errors.New("atrest: verify requires a db handle")
+		return classify(ErrDBRequired, "atrest: verify requires a db handle", nil)
 	}
 	type keyRow struct {
 		WrappedDEK []byte `gorm:"column:wrapped_dek"`
@@ -415,8 +414,11 @@ func VerifyBackupDecryptable(db *gorm.DB, kek []byte) error {
 // the database, which is the property the issue's envelope recommendation
 // exists to provide.
 func RotateMasterKey(db *gorm.DB, oldKEK, newKEK []byte) error {
-	if db == nil || oldKEK == nil || newKEK == nil {
-		return errors.New("atrest: rotate requires db, old and new master key")
+	if db == nil {
+		return classify(ErrDBRequired, "atrest: rotate requires db, old and new master key", nil)
+	}
+	if oldKEK == nil || newKEK == nil {
+		return classify(ErrInvalidKey, "atrest: rotate requires db, old and new master key", nil)
 	}
 	type keyRow struct {
 		WrappedDEK []byte `gorm:"column:wrapped_dek"`
@@ -426,7 +428,7 @@ func RotateMasterKey(db *gorm.DB, oldKEK, newKEK []byte) error {
 		return fmt.Errorf("atrest: rotate read DEK: %w", err)
 	}
 	if len(row.WrappedDEK) == 0 {
-		return errors.New("atrest: rotate: no wrapped DEK found (has the server ever booted with a key?)")
+		return ErrNoWrappedDEK
 	}
 	dek, err := unwrap(oldKEK, row.WrappedDEK)
 	if err != nil {
@@ -488,16 +490,16 @@ func Decrypt(stored string) (string, error) {
 	if !engine.on {
 		// Encrypted data present but the layer is not armed: fail closed
 		// rather than return ciphertext as if it were plaintext.
-		return "", errors.New("atrest: encrypted value read while at-rest encryption is not initialized")
+		return "", ErrNotInitialized
 	}
 	rest := strings.TrimPrefix(stored, ciphertextPrefix)
 	kid, payload, ok := strings.Cut(rest, ":")
 	if !ok || kid != keyID {
-		return "", errors.New("atrest: malformed encrypted value")
+		return "", ErrMalformed
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(payload)
 	if err != nil {
-		return "", errors.New("atrest: malformed encrypted value")
+		return "", ErrMalformed
 	}
 	pt, err := open(engine.dek, raw)
 	if err != nil {
@@ -534,9 +536,13 @@ func open(key, data []byte) ([]byte, error) {
 		return nil, err
 	}
 	if len(data) < gcm.NonceSize() {
-		return nil, errors.New("ciphertext too short")
+		return nil, classify(ErrMalformed, "ciphertext too short", nil)
 	}
-	return gcm.Open(nil, data[:gcm.NonceSize()], data[gcm.NonceSize():], nil)
+	pt, err := gcm.Open(nil, data[:gcm.NonceSize()], data[gcm.NonceSize():], nil)
+	if err != nil {
+		return nil, classify(ErrAuthFailed, err.Error(), err)
+	}
+	return pt, nil
 }
 
 // wrap seals a DEK under the master key.

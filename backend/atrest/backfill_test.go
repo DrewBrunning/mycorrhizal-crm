@@ -73,7 +73,7 @@ func TestInitialize_WrongKeyFailsClosed(t *testing.T) {
 	wrong := make([]byte, keySize)
 	wrong[0] = 0xFF
 	err := Initialize(db, wrong)
-	require.Error(t, err, "a wrong master key must fail closed at initialize time")
+	require.ErrorIs(t, err, ErrAuthFailed, "a wrong master key must fail closed at initialize time")
 	require.Contains(t, err.Error(), "wrong DATA_ENCRYPTION_KEY")
 }
 
@@ -145,15 +145,15 @@ func TestRotateMasterKey_WrongOldKeyFails(t *testing.T) {
 	wrong := make([]byte, keySize)
 	wrong[0] = 0xFF
 	err := RotateMasterKey(db, wrong, oldKEK)
-	require.Error(t, err, "rotation with the wrong old key must fail closed")
+	require.ErrorIs(t, err, ErrAuthFailed, "rotation with the wrong old key must fail closed")
 }
 
 func TestRotateMasterKey_MissingArgs(t *testing.T) {
 	db, kek := realDB(t)
 
-	require.Error(t, RotateMasterKey(nil, kek, kek), "nil db must be rejected")
-	require.Error(t, RotateMasterKey(db, nil, kek), "nil old key must be rejected")
-	require.Error(t, RotateMasterKey(db, kek, nil), "nil new key must be rejected")
+	require.ErrorIs(t, RotateMasterKey(nil, kek, kek), ErrDBRequired, "nil db must be rejected")
+	require.ErrorIs(t, RotateMasterKey(db, nil, kek), ErrInvalidKey, "nil old key must be rejected")
+	require.ErrorIs(t, RotateMasterKey(db, kek, nil), ErrInvalidKey, "nil new key must be rejected")
 }
 
 func TestRotateMasterKey_NoDEKYet(t *testing.T) {
@@ -168,7 +168,7 @@ func TestRotateMasterKey_NoDEKYet(t *testing.T) {
 		kek[i] = byte(i)
 	}
 	err := RotateMasterKey(db, kek, kek)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNoWrappedDEK)
 	require.Contains(t, err.Error(), "no wrapped DEK found")
 }
 
@@ -183,7 +183,7 @@ func TestRotateMasterKey_MissingDEKTableFailsClosed(t *testing.T) {
 		kek[i] = byte(i)
 	}
 	err = RotateMasterKey(db, kek, kek)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "no such table: data_encryption_keys")
 	require.Contains(t, err.Error(), "rotate read DEK")
 }
 
@@ -201,7 +201,7 @@ func TestLoadOrCreateDEK_PersistFails(t *testing.T) {
 		kek[i] = byte(i)
 	}
 	_, err := loadOrCreateDEK(db, kek)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "readonly database")
 	require.Contains(t, err.Error(), "persist wrapped DEK")
 }
 
@@ -214,7 +214,7 @@ func TestRotateMasterKey_PersistFails(t *testing.T) {
 		newKEK[i] = byte(i) ^ 0x5A
 	}
 	err := RotateMasterKey(db, oldKEK, newKEK)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "readonly database")
 	require.Contains(t, err.Error(), "rotate persist")
 }
 
@@ -231,13 +231,13 @@ func TestInitialize_MissingDEKTableFailsClosed(t *testing.T) {
 		kek[i] = byte(i)
 	}
 	err = Initialize(db, kek)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "no such table: data_encryption_keys")
 	require.Contains(t, err.Error(), "data_encryption_keys")
 }
 
 func TestBackfill_NilDBErrors(t *testing.T) {
 	err := Backfill(nil)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrDBRequired)
 }
 
 func TestBackfill_MalformedColumnSpecErrors(t *testing.T) {
@@ -252,7 +252,7 @@ func TestBackfill_MalformedColumnSpecErrors(t *testing.T) {
 	t.Cleanup(func() { EncryptedColumns = orig })
 
 	err := Backfill(db)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrMalformedSpec)
 	require.Contains(t, err.Error(), "malformed encrypted-column spec")
 }
 
@@ -268,7 +268,7 @@ func TestBackfillColumn_OtherSQLErrorPropagates(t *testing.T) {
 	// contacts exists but this column doesn't — a real SQL error distinct
 	// from "no such table" must propagate, not be swallowed as a no-op.
 	err := backfillColumn(db, "contacts", "no_such_column_at_all")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "no such column")
 }
 
 func TestBackfillColumn_UpdateFailurePropagates(t *testing.T) {
@@ -279,7 +279,7 @@ func TestBackfillColumn_UpdateFailurePropagates(t *testing.T) {
 
 	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
 	err := backfillColumn(db, "contacts", "how_we_met")
-	require.Error(t, err, "a write failure mid-backfill must surface, not be swallowed")
+	require.ErrorContains(t, err, "readonly database", "a write failure mid-backfill must surface, not be swallowed")
 }
 
 func TestBackfill_EncryptsPlaintextRows_PreservesRowCounts(t *testing.T) {
@@ -459,7 +459,7 @@ func TestBackfillColumn_AuditEventsWriteBlocked_LeavesTriggerInPlace(t *testing.
 	err := backfillColumn(db, auditEventsTable, "before_snapshot")
 	require.NoError(t, db.Exec("PRAGMA query_only = OFF").Error)
 
-	require.Error(t, err, "a write failure during the audit backfill must surface, not be swallowed")
+	require.ErrorContains(t, err, "readonly database", "a write failure during the audit backfill must surface, not be swallowed")
 	require.True(t, auditNoUpdateTriggerExists(t, db),
 		"a failed audit backfill must leave the immutability trigger in place")
 }

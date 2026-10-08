@@ -1,6 +1,7 @@
 package atrest_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -245,7 +246,7 @@ func TestModelRead_CorruptedPlainCiphertext_FailsClosed(t *testing.T) {
 
 	var loaded models.Contact
 	err := db.First(&loaded, contact.ID).Error
-	require.Error(t, err, "a corrupted encrypted column must fail the read closed, not surface garbage")
+	require.ErrorIs(t, err, atrest.ErrMalformed, "a corrupted encrypted column must fail the read closed, not surface garbage")
 }
 
 func TestModelRead_CorruptedJSONCiphertext_FailsClosed(t *testing.T) {
@@ -261,7 +262,7 @@ func TestModelRead_CorruptedJSONCiphertext_FailsClosed(t *testing.T) {
 
 	var loaded models.Contact
 	err := db.First(&loaded, contact.ID).Error
-	require.Error(t, err, "a corrupted encrypted JSON column must fail the read closed, not surface garbage")
+	require.ErrorIs(t, err, atrest.ErrMalformed, "a corrupted encrypted JSON column must fail the read closed, not surface garbage")
 }
 
 func TestModelRead_CardDecryptsToInvalidJSON_FailsClosed(t *testing.T) {
@@ -279,7 +280,8 @@ func TestModelRead_CardDecryptsToInvalidJSON_FailsClosed(t *testing.T) {
 
 	var loaded models.Contact
 	err = db.First(&loaded, contact.ID).Error
-	require.Error(t, err, "a card column that decrypts to invalid JSON must fail the read, not silently zero out")
+	var syntaxErr *json.SyntaxError
+	require.ErrorAs(t, err, &syntaxErr, "a card column that decrypts to invalid JSON must fail the read, not silently zero out")
 }
 
 func TestNotesContentStaysPlaintext_FTSContract(t *testing.T) {

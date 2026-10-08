@@ -24,7 +24,7 @@ func TestReadKeyMaterialTimes_NoRow(t *testing.T) {
 
 func TestReadKeyMaterialTimes_NilDB(t *testing.T) {
 	_, ok, err := ReadKeyMaterialTimes(nil)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrDBRequired)
 	require.False(t, ok)
 }
 
