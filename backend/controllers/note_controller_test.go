@@ -181,7 +181,7 @@ func TestGetContactNotesNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 func TestGetContactNotesMalformedCursor(t *testing.T) {
@@ -199,7 +199,7 @@ func TestGetContactNotesMalformedCursor(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "cursor")
 }
 
 func TestCreateContactNote(t *testing.T) {
@@ -679,7 +679,10 @@ func TestUpdateNoteRejectsCrossUserContactID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	var after models.Note
+	require.NoError(t, db.First(&after, note.ID).Error)
+	assert.Nil(t, after.ContactID, "the note must not be attached to another user's contact")
 }
 
 // N4's inbox chip is a queue depth, so GET /notes (unassigned) returns a

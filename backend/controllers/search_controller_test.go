@@ -91,13 +91,13 @@ func TestSearchAll_Validation(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/search", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "q")
 
 	// Bad limit.
 	req2, _ := http.NewRequest("GET", "/search?q=abc&limit=banana", nil)
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
-	assert.Equal(t, http.StatusBadRequest, w2.Code)
+	mzErrorField(t, w2, http.StatusBadRequest, "INVALID_INPUT", "limit")
 }
 
 // TestSearchAll_RejectsOversizedTerm pins issue #415's search-term bound: a
@@ -110,7 +110,7 @@ func TestSearchAll_RejectsOversizedTerm(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/search?q="+long, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "q")
 
 	exact := strings.Repeat("a", services.MaxSearchTermLen)
 	req2, _ := http.NewRequest("GET", "/search?q="+exact, nil)

@@ -174,7 +174,8 @@ func TestListOccasionEventsRejectsBadWindow(t *testing.T) {
 	registerOccasionEventRoutes(t, router)
 
 	w := doOccasionJSON(router, "GET", "/occasion-events?from=not-a-date", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Message, "RFC 3339")
 }
 
 // ---- update / delete ------------------------------------------------------
@@ -385,7 +386,8 @@ func TestGetInviteeSuggestionsValidation(t *testing.T) {
 	registerOccasionEventRoutes(t, router)
 
 	w := doOccasionJSON(router, "GET", "/occasion-events/invitee-suggestions", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Message, "circle_ids is required")
 }
 
 func TestGetInviteeSuggestionsForeignCircleIsNotFound(t *testing.T) {
