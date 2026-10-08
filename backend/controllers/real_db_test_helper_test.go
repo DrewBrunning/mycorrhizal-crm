@@ -35,7 +35,6 @@ func closeTestDBAtTeardown(t *testing.T, db *gorm.DB) {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		services.WaitForWebhookGoroutines()
-		models.AuditFlush()
 		_ = sqlDB.Close()
 	})
 }

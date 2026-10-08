@@ -40,9 +40,8 @@ func TestAuditChain_RecorderAppendsLinkedChain(t *testing.T) {
 	contact.Lastname = "Linked"
 	require.NoError(t, db.Save(&contact).Error)
 	require.NoError(t, db.Delete(&contact).Error)
-	RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
-	RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLoginFailed, user.ID)
-	AuditFlush()
+	RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+	RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLoginFailed, user.ID)
 
 	n := chainEventCount(t, db)
 	require.GreaterOrEqual(t, n, 5, "create+update+delete+login+login_failed")
@@ -75,10 +74,12 @@ func TestAuditChain_RecorderAppendsLinkedChain(t *testing.T) {
 // clean).
 func TestAuditChain_ConcurrentAppendsDoNotFork(t *testing.T) {
 	db, user := newChainTestDB(t)
+	// The async (production) recorder, to exercise goroutine-serialised appends.
+	rec := NewAuditRecorder(db)
 
 	const n = 40
 	// Barrier: every RecordAuditEvent must have completed its synchronous
-	// wg.Add before AuditFlush runs. The WaitGroup contract forbids an Add
+	// wg.Add before Flush runs. The WaitGroup contract forbids an Add
 	// starting from a zero counter while Wait is in progress, and the barrier
 	// keeps the row-count assertion deterministic instead of racing the
 	// recorder's goroutines.
@@ -87,11 +88,11 @@ func TestAuditChain_ConcurrentAppendsDoNotFork(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func(seq int) {
 			defer allQueued.Done()
-			RecordAuditEvent(AuditEntityAuth, fmt.Sprintf("u%d", seq), AuditOpLogin, user.ID)
+			RecordAuditEvent(db, AuditEntityAuth, fmt.Sprintf("u%d", seq), AuditOpLogin, user.ID)
 		}(i)
 	}
 	allQueued.Wait()
-	AuditFlush()
+	rec.Flush()
 
 	var events []AuditEvent
 	require.NoError(t, db.Order("id asc").Find(&events).Error)
@@ -108,9 +109,8 @@ func TestAuditChain_ConcurrentAppendsDoNotFork(t *testing.T) {
 func TestAuditChain_DetectsContentEdit(t *testing.T) {
 	db, user := newChainTestDB(t)
 	for i := 0; i < 3; i++ {
-		RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+		RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
 	}
-	AuditFlush()
 
 	require.NoError(t, db.Exec("DROP TRIGGER IF EXISTS audit_events_no_update").Error)
 	sqlDB, err := db.DB()
@@ -131,9 +131,8 @@ func TestAuditChain_DetectsContentEdit(t *testing.T) {
 func TestAuditChain_DetectsDeletion(t *testing.T) {
 	db, user := newChainTestDB(t)
 	for i := 0; i < 3; i++ {
-		RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+		RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
 	}
-	AuditFlush()
 
 	require.NoError(t, db.Exec("DELETE FROM audit_events WHERE id = (SELECT id FROM audit_events ORDER BY id ASC LIMIT 1)").Error)
 
@@ -149,9 +148,8 @@ func TestAuditChain_DetectsDeletion(t *testing.T) {
 func TestAuditChain_DetectsInsertion(t *testing.T) {
 	db, user := newChainTestDB(t)
 	for i := 0; i < 3; i++ {
-		RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+		RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
 	}
-	AuditFlush()
 
 	forged := AuditEvent{
 		EntityType: AuditEntityAuth,
@@ -210,9 +208,8 @@ func TestAuditChain_BackfillLegacyRows(t *testing.T) {
 func TestAuditChain_RecomputeRelinksAfterPurge(t *testing.T) {
 	db, user := newChainTestDB(t)
 	for i := 0; i < 3; i++ {
-		RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+		RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
 	}
-	AuditFlush()
 
 	require.NoError(t, db.Exec("DELETE FROM audit_events WHERE id < (SELECT MAX(id) FROM audit_events)").Error)
 
@@ -236,9 +233,8 @@ func TestAuditChain_RecomputeRelinksAfterPurge(t *testing.T) {
 // run too (no laundering).
 func TestAuditChain_VerifyIsReadOnly(t *testing.T) {
 	db, user := newChainTestDB(t)
-	RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
-	RecordAuditEvent(AuditEntityAuth, "alice", AuditOpLogin, user.ID)
-	AuditFlush()
+	RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
+	RecordAuditEvent(db, AuditEntityAuth, "alice", AuditOpLogin, user.ID)
 
 	require.NoError(t, db.Exec("DROP TRIGGER IF EXISTS audit_events_no_update").Error)
 	sqlDB, err := db.DB()

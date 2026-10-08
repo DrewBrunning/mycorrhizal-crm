@@ -17,7 +17,6 @@ import (
 // retention disables purging entirely (never deletes everything).
 func TestPurgeExpiredAuditEvents(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
 
 	user := models.User{Username: "auditpurge", Password: "password123!A", Email: "auditpurge@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -51,11 +50,6 @@ func TestPurgeExpiredAuditEvents(t *testing.T) {
 // verify as a clean chain again (RecomputeAuditChain re-links them).
 func TestPurgeExpiredAuditEvents_RelinksHashChain(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	user := models.User{Username: "auditpurgechain", Password: "password123!A", Email: "auditpurgechain@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -155,11 +149,6 @@ func TestPurgeExpiredReachOutSuggestions(t *testing.T) {
 // so the two can never diverge (issue #978).
 func TestPurgeExpiredAuditEventsScheduled_PurgesAuditAndReachOutSuggestions(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	user := models.User{Username: "auditpurgewire", Password: "password123!A", Email: "auditpurgewire@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -195,11 +184,6 @@ func TestPurgeExpiredAuditEventsScheduled_PurgesAuditAndReachOutSuggestions(t *t
 // aged-out row is still purged.
 func TestPurgeExpiredAuditEvents_RecomputeFailureIsReturned(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	user := models.User{Username: "purgefail", Password: "password123!A", Email: "purgefail@example.com"}
 	require.NoError(t, db.Create(&user).Error)

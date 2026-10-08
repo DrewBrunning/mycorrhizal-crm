@@ -28,7 +28,6 @@ func TestAudit_ContactUpdateSnapshotCapturesNestedData(t *testing.T) {
 	contact := &Contact{UserID: user.ID}
 	ApplyRecordToContact(contact, richCardOnlyRecord(), "")
 	require.NoError(t, db.Create(contact).Error)
-	AuditFlush()
 
 	// Edit ONLY nested data: change pronouns; every flat field stays identical.
 	var loaded Contact
@@ -37,7 +36,6 @@ func TestAudit_ContactUpdateSnapshotCapturesNestedData(t *testing.T) {
 		Pronouns: []contactmodel.Pronouns{{Pronouns: "they/them"}},
 	}
 	require.NoError(t, db.Save(&loaded).Error)
-	AuditFlush()
 
 	var event AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
@@ -158,7 +156,6 @@ func TestAudit_ContactDeleteSnapshotCapturesNestedData(t *testing.T) {
 	ApplyRecordToContact(contact, richCardOnlyRecord(), "")
 	require.NoError(t, db.Create(contact).Error)
 	require.NoError(t, db.Delete(contact).Error)
-	AuditFlush()
 
 	var event AuditEvent
 	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",

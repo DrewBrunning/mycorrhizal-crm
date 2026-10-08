@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-	"sync"
 	"time"
 
 	"mycorrhizal/logger"
@@ -136,113 +135,6 @@ type auditSnapshotProvider interface {
 	auditSnapshot() any
 }
 
-// auditLogger is the package-level recorder that persists audit events
-// fire-and-forget from GORM hooks: a separate goroutine on its own session
-// (never the hook's transaction), so an audit failure can never roll back the
-// real write. The DB is registered at startup (RegisterAuditDB); until then —
-// e.g. AutoMigrate-based unit tests — hooks skip silently, which is what keeps
-// audit wiring out of every existing test.
-//
-// chainMu serializes the read-prev-hash + insert sequence so concurrent audit
-// writes (each hook spawns its own goroutine) append to the hash chain in a
-// deterministic id order instead of forking it. The standalone chain
-// maintenance operations (RecomputeAuditChain) take the same lock, so they can
-// never interleave with a live append.
-type auditLogger struct {
-	mu      sync.RWMutex
-	db      *gorm.DB
-	wg      sync.WaitGroup
-	chainMu sync.Mutex
-}
-
-var auditRecorder = &auditLogger{}
-
-// RegisterAuditDB points the audit recorder at a standalone DB session used
-// for fire-and-forget audit writes. Called from database.InitDB after the
-// connection is opened.
-func RegisterAuditDB(db *gorm.DB) {
-	auditRecorder.mu.Lock()
-	auditRecorder.db = db
-	auditRecorder.mu.Unlock()
-}
-
-// AuditFlush blocks until every in-flight audit write has completed. Used by
-// tests (to read audit rows deterministically) and safe to call at shutdown.
-//
-// It holds a.mu across the Wait so a concurrent record() can never Add to the
-// WaitGroup while Wait is running: the WaitGroup contract forbids an Add that
-// starts at a zero counter concurrently with Wait (a data race that can lose a
-// wakeup at shutdown). Serializing Add and Wait on a.mu makes every Add that
-// began before the flush happen-before the Wait, which is what makes the drain
-// total rather than best-effort.
-func AuditFlush() {
-	auditRecorder.mu.Lock()
-	defer auditRecorder.mu.Unlock()
-	auditRecorder.wg.Wait()
-}
-
-// record queues an audit event for async persistence. snapshotJSON is the
-// redacted before-state ("" for creates). Never returns an error and never
-// blocks the hook beyond launching the goroutine — see the package doc.
-//
-// The chain append (read previous row's hash, compute this row's, insert) is
-// serialized on chainMu so concurrent events chain in id order.
-func (a *auditLogger) record(entityType, entityID, operation string, userID uint, snapshotJSON string) {
-	// The db-nil check and wg.Add(1) run atomically under a.mu so an Add can
-	// never start while AuditFlush's Wait is in progress (see AuditFlush for
-	// the WaitGroup-contract reasoning). The goroutine it spawns only touches
-	// chainMu and the DB session, never a.mu, so holding the lock across the
-	// drain cannot deadlock.
-	a.mu.Lock()
-	db := a.db
-	if db == nil {
-		// Not registered (e.g. AutoMigrate test DBs). Skip silently so hooks
-		// never disturb writes in environments without an audit session.
-		a.mu.Unlock()
-		return
-	}
-	a.wg.Add(1)
-	a.mu.Unlock()
-
-	go func() {
-		defer a.wg.Done()
-
-		a.chainMu.Lock()
-		defer a.chainMu.Unlock()
-
-		event := AuditEvent{
-			EntityType:     entityType,
-			EntityID:       entityID,
-			Operation:      operation,
-			UserID:         userID,
-			BeforeSnapshot: snapshotJSON,
-			// Explicit UTC timestamp so the chain hash is deterministic at
-			// insert time (the row can never be updated afterwards — the
-			// immutability trigger and the chain would both reject it).
-			// Truncated to microseconds to match what SQLite round-trips and
-			// what chainContent hashes, so write-time and verify-time
-			// computations always agree.
-			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
-		}
-
-		prev := ""
-		var last struct{ Hash string }
-		if err := db.Model(&AuditEvent{}).Order("id desc").Limit(1).Scan(&last).Error; err != nil {
-			logger.Warn().Err(err).Msg("audit: failed to read last chain hash, appending from genesis")
-		} else {
-			prev = last.Hash
-		}
-		event.PrevHash = prev
-		event.Hash = AuditChainHash(prev, &event)
-
-		if err := db.Create(&event).Error; err != nil {
-			logger.Warn().Err(err).
-				Str("entity_type", entityType).Str("entity_id", entityID).Str("operation", operation).
-				Msg("audit: failed to persist audit event (real write is unaffected)")
-		}
-	}()
-}
-
 // RecordAuditEvent appends an auth/admin lifecycle event to the audit log
 // (issue #381): login success/failure, registration, password change/reset,
 // TOTP enable/disable, recovery-code regeneration, API-token create/revoke,
@@ -250,8 +142,11 @@ func (a *auditLogger) record(entityType, entityID, operation string, userID uint
 // before-snapshot (undo only supports entity updates) and nothing secret, so
 // the deny-list has nothing to strip. entityID is the affected subject: a
 // username/email for auth events, a numeric user or token id for the rest.
-func RecordAuditEvent(entityType, entityID, operation string, userID uint) {
-	auditRecorder.record(entityType, entityID, operation, userID, "")
+//
+// db is the handle the caller already holds; the recorder is resolved from it
+// (see AuditRecorderFor), never from a package variable (issue #1493).
+func RecordAuditEvent(db *gorm.DB, entityType, entityID, operation string, userID uint) {
+	recordAudit(db, entityType, entityID, operation, userID, "")
 }
 
 // auditState is carried across a single save's hook chain (BeforeSave →
@@ -319,7 +214,7 @@ func auditAfterSave(tx *gorm.DB, entityType, entityID string, userID uint) {
 			before = state.before
 		}
 	}
-	auditRecorder.record(entityType, entityID, op, userID, before)
+	recordAudit(tx, entityType, entityID, op, userID, before)
 }
 
 // skipZeroIdentityAudit reports whether an audit hook fired for a zero-value
@@ -328,9 +223,9 @@ func auditAfterSave(tx *gorm.DB, entityType, entityID string, userID uint) {
 // .Update(...) fires the model's hooks once on a zero-value receiver rather
 // than per row; the resulting event can never satisfy audit_events.user_id's
 // FK and only produces a "failed to persist audit event" warning that buries
-// real failures. Cascade children are deliberately not undoable, so no
-// per-child event is lost. Centralised here so a new audited model cannot
-// reintroduce the bug.
+// real failures. The contact cascade records each child's real delete event
+// itself (RecordCascadeDelete), so dropping the zero-value one loses nothing.
+// Centralised here so a new audited model cannot reintroduce the bug.
 func skipZeroIdentityAudit(entityType, entityID string, userID uint, op string) bool {
 	if entityID != "" && entityID != "0" && userID != 0 {
 		return false
@@ -354,7 +249,7 @@ func auditAfterDelete(tx *gorm.DB, entityType, entityID string, userID uint, mod
 	if err != nil {
 		return
 	}
-	auditRecorder.record(entityType, entityID, AuditOpDelete, userID, raw)
+	recordAudit(tx, entityType, entityID, AuditOpDelete, userID, raw)
 }
 
 // redactedJSONForAudit marshals a model's before-snapshot, honoring the

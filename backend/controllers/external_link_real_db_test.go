@@ -37,7 +37,6 @@ func TestExternalLinkSubstrate_RealMigratedSchema(t *testing.T) {
 	// and close the pool (in t.Cleanup, which runs before the temp-dir
 	// cleanup) so no writer is left when the directory is removed.
 	t.Cleanup(func() {
-		models.AuditFlush()
 		if sqlDB, sqlErr := db.DB(); sqlErr == nil {
 			_ = sqlDB.Close()
 		}

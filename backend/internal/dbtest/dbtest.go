@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"mycorrhizal/database"
+	"mycorrhizal/internal/auditwire"
 	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/fireandforget"
 
@@ -133,6 +134,22 @@ func WithFaults() Option {
 	}
 }
 
+// WithAsyncAudit arms the returned database with the production-shaped audit
+// recorder (issue #1493): events persist on their own goroutine and session,
+// outside the audited write's transaction, exactly as embedded.Start wires it.
+// Without it a dbtest database records audit synchronously inside the audited
+// write's transaction, so tests can read audit rows with no Flush. Use it where
+// that difference matters — e.g. a sweep that counts or fails the request's own
+// statements (routes/db_fault_sweep_test.go), where in-transaction audit inserts
+// would be statements production never runs on the request goroutine. The
+// cleanup drain (fireandforget.Wait) waits for in-flight async audit writes.
+func WithAsyncAudit() Option {
+	return func(tb testing.TB, db *gorm.DB) {
+		tb.Helper()
+		auditwire.For(db).Async = true
+	}
+}
+
 // NewAt is New but writes the database copy to a caller-chosen path, for tests
 // that also need the database file on disk (backup, restore-drill and
 // VACUUM INTO style tests that pass the path to code under test).
@@ -146,6 +163,13 @@ func NewAt(tb testing.TB, dbPath string, opts ...Option) *gorm.DB {
 	db, err := database.OpenMigratedFile(dbPath)
 	if err != nil {
 		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err) // # pragma: no cover — database.OpenMigratedFile failing against a file this function just wrote a valid template copy to is not reachable without corrupting the template out from under every other test in the binary
+	}
+	// Arm audit recording explicitly (issue #1493): the models layer installs
+	// a recorder on this DB on its first audited write, so audit assertions
+	// can never pass vacuously. Production code never sees this marker; a DB
+	// opened any other way records nothing until a recorder is installed.
+	if err := db.Use(&auditwire.Default{}); err != nil {
+		tb.Fatalf("dbtest: arming audit recording: %v", err) // # pragma: no cover — gorm's Use only fails on a duplicate plugin name, and a fresh connection has none
 	}
 	for _, o := range opts {
 		o(tb, db)

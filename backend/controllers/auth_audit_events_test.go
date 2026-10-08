@@ -35,11 +35,6 @@ func newAuthAuditRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	cfg := config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
 
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() {
-		models.AuditFlush()
-		models.RegisterAuditDB(nil)
-	})
 
 	actor := models.User{Username: "auditactor", Password: "password123!A", Email: "auditactor@example.com", IsAdmin: true}
 	require.NoError(t, db.Create(&actor).Error)
@@ -119,7 +114,6 @@ func TestAuthAuditEvents_LoginSuccessAndFailure(t *testing.T) {
 	// Failure for a known account (wrong password).
 	w = auditDoJSON(router, "POST", "/login", map[string]string{"identifier": "loginuser", "password": "definitelyWrongPassword1"})
 	require.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAuth, "loginuser", models.AuditOpLogin))
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAuth, "loginuser", models.AuditOpLoginFailed))
@@ -139,7 +133,6 @@ func TestAuthAuditEvents_Registration(t *testing.T) {
 		Username: "newcomer", Email: "newcomer@example.com", Password: strongPassword,
 	})
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	var registered models.User
 	require.NoError(t, db.Where("username = ?", "newcomer").First(&registered).Error)
@@ -159,7 +152,6 @@ func TestAuthAuditEvents_PasswordChange(t *testing.T) {
 		NewPassword:     strongPasswordAlt,
 	})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", actor.ID), models.AuditOpPasswordChange))
 }
@@ -178,7 +170,6 @@ func TestAuthAuditEvents_PasswordReset(t *testing.T) {
 
 	w := auditDoJSON(router, "POST", "/password-reset/request", models.PasswordResetRequestInput{Email: user.Email})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested))
 
@@ -199,7 +190,6 @@ func TestAuthAuditEvents_PasswordReset(t *testing.T) {
 		Password: strongPasswordAlt,
 	})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset))
 
@@ -219,7 +209,6 @@ func TestAuthAuditEvents_PasswordResetRequest_UnknownEmail_NotAudited(t *testing
 
 	w := auditDoJSON(router, "POST", "/password-reset/request", models.PasswordResetRequestInput{Email: "nobody@example.com"})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	var n int64
 	require.NoError(t, db.Model(&models.AuditEvent{}).
@@ -241,7 +230,6 @@ func TestAuthAuditEvents_APITokenCreateAndRevoke(t *testing.T) {
 
 	w = auditDoJSON(router, "DELETE", "/api-tokens/"+strconv.Itoa(int(created.ID)), nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpCreate))
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpRevoke))
@@ -266,7 +254,6 @@ func TestAuthAuditEvents_APITokenRevokeAll(t *testing.T) {
 
 	w = auditDoJSON(router, "POST", "/api-tokens/revoke-all", nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created1.ID), models.AuditOpRevoke))
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created2.ID), models.AuditOpRevoke))
@@ -292,7 +279,6 @@ func TestAuthAuditEvents_APITokenRotate(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rotated))
 	require.NotEqual(t, created.ID, rotated.ID)
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpRevoke))
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", rotated.ID), models.AuditOpCreate))
@@ -331,7 +317,6 @@ func TestAuthAuditEvents_TwoFactorLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	w = auditDoJSON(router, "POST", "/users/2fa/disable", map[string]string{"code": code})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	id := fmt.Sprintf("%d", actor.ID)
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, id, models.AuditOpTOTPEnable))
@@ -370,7 +355,6 @@ func TestAuthAuditEvents_AdminUserOperations(t *testing.T) {
 	// Delete.
 	w = auditDoJSON(router, "DELETE", "/admin/users/"+strconv.Itoa(int(created.ID)), nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	id := fmt.Sprintf("%d", created.ID)
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, id, models.AuditOpCreate),
@@ -414,7 +398,6 @@ func TestAuthAuditEvents_PeerAdminGuards(t *testing.T) {
 	// Blocked peer-delete -> 403, no delete audit.
 	w = auditDoJSON(router, "DELETE", "/admin/users/"+strconv.Itoa(int(peer.ID)), nil)
 	require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 0, countAudit(t, db, models.AuditEntityUser, peerID, models.AuditOpRoleChange),
 		"a blocked peer-demote must not emit a role-change audit event")
@@ -435,7 +418,6 @@ func TestAuthAuditEvents_PeerAdminGuards(t *testing.T) {
 
 	w = auditDoJSON(selfRouter, "PATCH", "/admin/users/"+strconv.Itoa(int(peer.ID)), models.AdminUserUpdateInput{IsAdmin: boolPtr(false)})
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, peerID, models.AuditOpRoleChange),
 		"an admin's own self-demotion must emit exactly one role-change audit event")

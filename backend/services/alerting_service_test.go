@@ -69,8 +69,6 @@ func alertStateFor(t *testing.T, db *gorm.DB, key string) (models.AlertState, bo
 func TestEvaluateAlerts(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "alerting.db")
 	db := dbtest.NewAt(t, dbPath)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	rec := &recordingDeliverer{deliver: true}
 	origDeliverer := alertDeliverer
@@ -352,8 +350,6 @@ func TestEvaluateAlerts(t *testing.T) {
 // the safe direction — the raise is simply retried).
 func TestAlertingDeliveryBookkeepingErrors(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	sqlDB, err := db.DB()
 	require.NoError(t, err)

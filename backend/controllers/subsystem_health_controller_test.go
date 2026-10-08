@@ -45,8 +45,6 @@ func getSubsystemHealth(t *testing.T, router *gin.Engine) []subsystemHealthRow {
 // first).
 func TestGetSubsystemHealth(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

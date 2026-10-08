@@ -42,8 +42,6 @@ type errorAggregationResponse struct {
 // system_events first) so migrations run once, not per case.
 func TestGetErrorAggregation(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

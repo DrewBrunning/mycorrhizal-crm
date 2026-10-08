@@ -193,6 +193,55 @@ class ContactListViewModelTest {
     }
 
     @Test
+    fun `a stale next page in flight when a search lands is not appended to the new results`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Regression test for CrossTaskIntentE2eTest's LazyColumn crash ("Key "23" was
+            // already used"): page 2 of the unfiltered list was still in flight when a search
+            // link replaced the list. loadNextPage's request was not tied to loadContacts'
+            // cancellation, so it appended old-query rows onto the search results — and where
+            // they overlapped, a duplicate id crashed the list.
+            val (viewModel, contactRepository, _) = newViewModel()
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+                Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
+            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } coAnswers {
+                delay(5_000) // resolves after the search below has already replaced the list
+                Result.success(page(ContactSummary(id = 23, fn = "Zed"), nextCursor = null))
+            }
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zed") } returns
+                Result.success(page(ContactSummary(id = 23, fn = "Zed")))
+            advanceUntilIdle()
+
+            viewModel.loadNextPage()
+            runCurrent()
+            assertTrue(viewModel.uiState.value.pagination.isLoadingMore)
+
+            viewModel.onSearchQueryChange("zed")
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(23), state.contacts.map { it.id })
+            assertFalse("the cancelled page-2 must not leave pagination stuck", state.pagination.isLoadingMore)
+        }
+
+    @Test
+    fun `a next page repeating an already-listed contact does not duplicate it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Keyset pagination can re-serve a row whose sort key changed between page fetches
+            // (renamed mid-scroll). The list is keyed by id, so a repeat would crash it.
+            val (viewModel, contactRepository, _) = newViewModel()
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+                Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
+            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
+                Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
+            advanceUntilIdle()
+
+            viewModel.loadNextPage()
+            advanceUntilIdle()
+
+            assertEquals(listOf(1, 2), viewModel.uiState.value.contacts.map { it.id })
+        }
+
+    @Test
     fun `a search arriving while the initial load is still in flight is not dropped`() =
         runTest(mainDispatcherRule.testDispatcher) {
             // Regression test for the Android E2E flake in ArchiveDeleteAuditTest: the initial

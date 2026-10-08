@@ -40,7 +40,13 @@ func TestSampleResources_RecordsEnvelope(t *testing.T) {
 
 	var held []byte
 	sample, err := sampleResources([]string{dir}, nil, func() (int, int64, error) {
-		held = make([]byte, 4<<20) // 4 MiB live across the sampling window
+		// 64 MiB live across the sampling window. The peak is measured against a
+		// post-GC baseline, which still counts whatever earlier tests in this
+		// binary left reachable (DB pools, page caches); if that is released
+		// during the window it offsets the allocation. With 4 MiB that offset
+		// showed up as a 1.1 MiB "peak" on the arm64 runner (issue #1485's new
+		// leg); 64 MiB keeps the signal far above it.
+		held = make([]byte, 64<<20)
 		for i := 0; i < len(held); i += 4096 {
 			held[i] = 1
 		}
@@ -56,7 +62,7 @@ func TestSampleResources_RecordsEnvelope(t *testing.T) {
 	assert.Positive(t, sample.DurationNanos)
 	assert.GreaterOrEqual(t, sample.HeapSamples, 1)
 	assert.GreaterOrEqual(t, sample.DiskSamples, 1)
-	assert.Greater(t, sample.PeakHeapBytes, int64(2<<20), "the 4MiB allocation should show in the peak")
+	assert.Greater(t, sample.PeakHeapBytes, int64(32<<20), "the 64MiB allocation should show in the peak")
 	assert.GreaterOrEqual(t, sample.PeakExtraDiskBytes, int64(3<<20), "the 3MiB artifact should show in the disk peak")
 	assert.False(t, sample.WriteProbed)
 }

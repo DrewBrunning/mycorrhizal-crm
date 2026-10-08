@@ -18,8 +18,6 @@ import (
 // and a non-positive retention disables purging entirely.
 func TestPurgeExpiredSystemEvents(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// InitDB's migration run records a migration_completed event; clear it so
 	// the retention assertions count only rows this test inserts.
 	require.NoError(t, db.Exec("DELETE FROM system_events").Error)
@@ -57,8 +55,6 @@ func TestPurgeExpiredSystemEvents(t *testing.T) {
 // point takes the job lock and does not panic on repeated invocation.
 func TestPurgeExpiredSystemEventsScheduled_JobLock(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// InitDB's migration run records a migration_completed event; clear it so
 	// the retention assertions count only rows this test inserts.
 	require.NoError(t, db.Exec("DELETE FROM system_events").Error)

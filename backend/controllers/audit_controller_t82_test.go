@@ -22,12 +22,10 @@ import (
 // undo could only preserve the current value, not revert a nested edit.
 func TestUndoAuditEvent_FullFidelityRestoresNestedData(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
-	models.AuditFlush()
 
 	contact := &models.Contact{UserID: user.ID}
 	models.ApplyRecordToContact(contact, richCardOnlyRecordCtrl(), "")
 	require.NoError(t, db.Create(contact).Error)
-	models.AuditFlush()
 
 	// Change ONLY nested data: she/her -> they/them. Every flat field is
 	// identical before and after.
@@ -37,7 +35,6 @@ func TestUndoAuditEvent_FullFidelityRestoresNestedData(t *testing.T) {
 		Pronouns: []contactmodel.Pronouns{{Pronouns: "they/them"}},
 	}
 	require.NoError(t, db.Save(&loaded).Error)
-	models.AuditFlush()
 
 	var persisted models.Contact
 	require.NoError(t, db.First(&persisted, contact.ID).Error)
@@ -78,12 +75,10 @@ func TestUndoAuditEvent_FullFidelityRestoresNestedData(t *testing.T) {
 // (&Contact) used to produce it.
 func TestUndoAuditEvent_PreT82SnapshotPreservesNestedData(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
-	models.AuditFlush()
 
 	contact := &models.Contact{UserID: user.ID}
 	models.ApplyRecordToContact(contact, richCardOnlyRecordCtrl(), "")
 	require.NoError(t, db.Create(contact).Error)
-	models.AuditFlush()
 
 	// A pre-T82 event would have captured the flat state at some earlier
 	// moment — here, the contact's state right now, minus any nested columns
@@ -106,7 +101,6 @@ func TestUndoAuditEvent_PreT82SnapshotPreservesNestedData(t *testing.T) {
 	// Now a real edit changes a flat field (and, underneath it, the card).
 	contact.Firstname = "Changed"
 	require.NoError(t, db.Save(contact).Error)
-	models.AuditFlush()
 
 	req, _ := http.NewRequest("POST", "/audit/"+auditItoa(oldEvent.ID)+"/undo", nil)
 	w := httptest.NewRecorder()

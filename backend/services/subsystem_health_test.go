@@ -41,8 +41,6 @@ func healthFor(t *testing.T, hs []SubsystemHealth, name string) SubsystemHealth 
 // across the cases — each clears system_events first.
 func TestComputeSubsystemHealth(t *testing.T) {
 	db := dbtest.New(t)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	reset := func(t *testing.T) {
 		t.Helper()
