@@ -11,8 +11,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	dbdriver "github.com/golang-migrate/migrate/v4/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -188,9 +190,17 @@ func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
 		setup       func(t *testing.T, dbPath string)
 		wantVersion uint
 		wantDirty   bool
+		// wantErr pins WHICH refusal fired — a state refused for the wrong
+		// reason would otherwise still satisfy require.Error.
+		wantErr func(t *testing.T, err error)
 	}{
 		{
-			name:        "dirty",
+			name: "dirty",
+			wantErr: func(t *testing.T, err error) {
+				var e *ErrDirtyMigration
+				require.ErrorAs(t, err, &e)
+				assert.EqualValues(t, 1, e.Version)
+			},
 			setup:       func(t *testing.T, dbPath string) { dirtyDB(t, dbPath, 1) },
 			wantVersion: 1,
 			wantDirty:   true,
@@ -207,6 +217,11 @@ func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
 			},
 			wantVersion: latest + 2,
 			wantDirty:   false,
+			wantErr: func(t *testing.T, err error) {
+				var e *ErrSchemaAheadOfBinary
+				require.ErrorAs(t, err, &e)
+				assert.EqualValues(t, latest+2, e.Version)
+			},
 		},
 		{
 			name: "sub-floor",
@@ -221,6 +236,11 @@ func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
 			},
 			wantVersion: SupportedUpgradeFloorVersion - 1,
 			wantDirty:   false,
+			wantErr: func(t *testing.T, err error) {
+				var e *ErrSubFloorMigration
+				require.ErrorAs(t, err, &e)
+				assert.EqualValues(t, SupportedUpgradeFloorVersion-1, e.Version)
+			},
 		},
 	}
 
@@ -235,6 +255,7 @@ func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
 
 			_, err = InitDB(dbPath)
 			require.Error(t, err, "this state must refuse")
+			tc.wantErr(t, err)
 
 			after, afterDirty, okAfter, err := MigrationVersion(dbPath)
 			require.NoError(t, err)
@@ -275,6 +296,8 @@ func TestMigrateForce_ReportsBrokenDB(t *testing.T) {
 	t.Parallel()
 	err := MigrateForce(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
 	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to create migration driver", "force on an unopenable database must fail at the driver step")
+	assert.ErrorContains(t, err, "unable to open database file")
 }
 
 // TestMigrateForce_RefusesWhenAheadOfBinary pins that forcing an unknown
@@ -409,6 +432,9 @@ func TestMigrationBodyRollsBackAsOneTransaction(t *testing.T) {
 
 	err := m.executeQuery("CREATE TABLE tx_a (id INTEGER); CREATE TABLE tx_b (this is not sql);")
 	require.Error(t, err, "a migration body with a failing statement must fail")
+	var dbErr *dbdriver.Error
+	require.ErrorAs(t, err, &dbErr, "a failing migration body must surface as the driver's typed *database.Error")
+	assert.ErrorContains(t, dbErr.OrigErr, "syntax error", "the failure must be the bad statement, not a transaction start/commit failure")
 
 	var n int
 	require.NoError(t, db.QueryRow(
@@ -462,6 +488,9 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 
 	err = RunMigrations(sqlDB)
 	require.Error(t, err, "sabotaged migration must fail")
+	assert.ErrorContains(t, err, "failed to apply migrations: version "+strconv.FormatUint(uint64(target), 10)+" ("+migrationFileForVersion(target)+")",
+		"the failure must name the sabotaged migration")
+	assert.ErrorContains(t, err, "already exists", "the sabotaged table collision is the cause")
 
 	// RunMigrations' closeMigrator closes sqlDB (migrate.go's note: Close()'s
 	// database half closes the *sql.DB), so query on a fresh connection.

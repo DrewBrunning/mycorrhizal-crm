@@ -134,4 +134,5 @@ func TestApplicationTablesReportsQueryError(t *testing.T) {
 
 	_, err = applicationTables(conn)
 	require.Error(t, err)
+	assert.ErrorContains(t, err, "database is closed")
 }

@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+	nurl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,8 @@ func TestWithInstanceRejectsNilConfig(t *testing.T) {
 
 func TestWithInstanceRejectsClosedConnection(t *testing.T) {
 	_, err := withInstance(closedSQLite(t), &sqliteConfig{})
-	assert.Error(t, err, "an unpingable connection must fail withInstance")
+	require.Error(t, err, "an unpingable connection must fail withInstance")
+	assert.ErrorContains(t, err, "database is closed", "the failure must be the closed connection from Ping, not a config error")
 }
 
 // readonlySQLite opens a chmod-0444 database file read-only: reads succeed,
@@ -68,7 +70,9 @@ func readonlySQLite(t *testing.T) *sql.DB {
 // creating the version table cannot.
 func TestWithInstanceReportsVersionTableFailure(t *testing.T) {
 	_, err := withInstance(readonlySQLite(t), &sqliteConfig{MigrationsTable: defaultMigrationsTable})
-	assert.Error(t, err, "an unwritable connection must fail withInstance at ensureVersionTable")
+	require.Error(t, err, "an unwritable connection must fail withInstance at ensureVersionTable")
+	assert.NotErrorIs(t, err, errNilConfig)
+	assert.ErrorContains(t, err, "readonly database", "the failure must be the version-table write hitting the read-only file")
 }
 
 func TestWithInstanceSetsDefaultMigrationsTable(t *testing.T) {
@@ -117,7 +121,10 @@ func TestEnsureVersionTableReportsLockedError(t *testing.T) {
 
 func TestEnsureVersionTableReportsExecFailure(t *testing.T) {
 	drv := &sqliteDriver{db: closedSQLite(t), config: &sqliteConfig{MigrationsTable: defaultMigrationsTable}}
-	assert.Error(t, drv.ensureVersionTable(), "an exec failure must surface from ensureVersionTable")
+	err := drv.ensureVersionTable()
+	require.Error(t, err, "an exec failure must surface from ensureVersionTable")
+	assert.NotErrorIs(t, err, database.ErrLocked, "the failure is the exec, not the lock guard")
+	assert.ErrorContains(t, err, "database is closed")
 }
 
 // TestOpenParsesURLAndExecutes covers the Open entry point: it parses the
@@ -143,13 +150,17 @@ func TestOpenParsesURLAndExecutes(t *testing.T) {
 
 func TestOpenRejectsMalformedURL(t *testing.T) {
 	_, err := (&sqliteDriver{}).Open("sqlite:///%zz")
-	assert.Error(t, err, "a malformed URL must fail Open")
+	var urlErr *nurl.Error
+	require.ErrorAs(t, err, &urlErr, "a malformed URL must fail in url.Parse")
+	assert.ErrorContains(t, err, "invalid URL escape")
 }
 
 func TestOpenRejectsBadNoTxWrapFlag(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "open-bad.db")
 	_, err := (&sqliteDriver{}).Open("sqlite://" + dbPath + "?x-no-tx-wrap=notabool")
-	assert.Error(t, err, "a non-boolean x-no-tx-wrap must fail Open")
+	require.Error(t, err, "a non-boolean x-no-tx-wrap must fail Open")
+	assert.ErrorContains(t, err, "x-no-tx-wrap")
+	assert.ErrorContains(t, err, "invalid syntax")
 }
 
 func TestOpenNoTxWrapFlagParsesTrue(t *testing.T) {
@@ -174,7 +185,8 @@ func TestOpenReportsInstanceFailure(t *testing.T) {
 	// The driver builds its DSN from the URL path; point it at the read-only
 	// file. sql.Open is lazy and withInstance's ensureVersionTable then fails.
 	_, err = (&sqliteDriver{}).Open("sqlite://" + p)
-	assert.Error(t, err, "an unwritable target must fail Open via withInstance")
+	require.Error(t, err, "an unwritable target must fail Open via withInstance")
+	assert.ErrorContains(t, err, "readonly database", "the failure must be the version-table write, not the URL or flag parsing")
 }
 
 // TestDropRemovesEveryTableAndVacuum covers Drop's happy path: after it runs,
@@ -200,7 +212,12 @@ func TestDropRemovesEveryTableAndVacuum(t *testing.T) {
 
 func TestDropReportsQueryFailure(t *testing.T) {
 	drv := &sqliteDriver{db: closedSQLite(t), config: &sqliteConfig{MigrationsTable: defaultMigrationsTable}}
-	assert.Error(t, drv.Drop(), "a query failure must surface from Drop")
+	err := drv.Drop()
+	require.Error(t, err, "a query failure must surface from Drop")
+	var dbErr *database.Error
+	require.ErrorAs(t, err, &dbErr, "the table-listing failure must be the typed database.Error")
+	assert.Contains(t, string(dbErr.Query), "sqlite_master", "the failing query is the table listing")
+	assert.ErrorContains(t, err, "database is closed")
 }
 
 // TestDropReportsDropFailure covers Drop's per-table drop error path: the
@@ -262,13 +279,15 @@ func TestRunNoTxWrap(t *testing.T) {
 // errReader is a reader that always fails, for Run's io.ReadAll error branch.
 type errReader struct{}
 
-func (errReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
+var errReadFailed = errors.New("read failed")
+
+func (errReader) Read([]byte) (int, error) { return 0, errReadFailed }
 
 func TestRunReportsReadFailure(t *testing.T) {
 	db := openTestSQLite(t)
 	drv, err := withInstance(db, &sqliteConfig{MigrationsTable: defaultMigrationsTable})
 	require.NoError(t, err)
-	assert.Error(t, drv.Run(errReader{}), "a read failure must surface from Run")
+	assert.ErrorIs(t, drv.Run(errReader{}), errReadFailed, "the reader's own failure must surface from Run")
 }
 
 // TestRunReportsInjectedFault covers the failure-injection seam in Run: with

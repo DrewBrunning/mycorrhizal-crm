@@ -56,7 +56,9 @@ func TestOpenMigratedFileRejectsBogusPath(t *testing.T) {
 	// A path inside a directory that does not exist: SQLite refuses to create
 	// the file (unlike a missing file at an existing path, which it creates).
 	_, err := OpenMigratedFile(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
-	assert.Error(t, err, "opening a database in a nonexistent directory must fail")
+	require.Error(t, err, "opening a database in a nonexistent directory must fail")
+	assert.ErrorContains(t, err, "failed to connect with GORM")
+	assert.ErrorContains(t, err, "unable to open database file")
 }
 
 // TestInitDBReportsMigrationFailure covers InitDB's RunMigrations error path:
@@ -65,7 +67,10 @@ func TestOpenMigratedFileRejectsBogusPath(t *testing.T) {
 func TestInitDBReportsMigrationFailure(t *testing.T) {
 	t.Parallel()
 	_, err := InitDB(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
-	assert.Error(t, err, "a migration failure must surface from InitDB")
+	require.Error(t, err, "a migration failure must surface from InitDB")
+	assert.ErrorContains(t, err, "failed to run migrations")
+	assert.ErrorContains(t, err, "failed to create migration driver")
+	assert.ErrorContains(t, err, "unable to open database file")
 }
 
 // TestMigrationVersionOnUnmigratedDB pins the "no migration ever applied"
@@ -100,7 +105,9 @@ func TestMigrationVersionReportsBrokenDB(t *testing.T) {
 	// A path whose parent does not exist makes sql.Open succeed lazily but
 	// every query fail, so newMigrator's Ping surfaces the error.
 	_, _, _, err := MigrationVersion(filepath.Join(t.TempDir(), "nope", "x.db"))
-	assert.Error(t, err)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to create migration driver")
+	assert.ErrorContains(t, err, "unable to open database file")
 }
 
 // TestAppliedMigrationVersionEmptyTableReturnsOkFalse covers the documented
@@ -136,7 +143,8 @@ func TestAppliedMigrationVersionReportsQueryError(t *testing.T) {
 	require.NoError(t, sqlDB.Close()) // subsequent queries fail
 
 	_, _, _, err = AppliedMigrationVersion(db)
-	assert.Error(t, err, "a failed query must surface from AppliedMigrationVersion")
+	require.Error(t, err, "a failed query must surface from AppliedMigrationVersion")
+	assert.ErrorContains(t, err, "closed", "the failure must be the closed connection the test induced")
 }
 
 // TestMigrationFileForVersion covers migrationFileForVersion's mapping between

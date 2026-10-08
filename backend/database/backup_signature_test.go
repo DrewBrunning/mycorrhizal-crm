@@ -181,9 +181,9 @@ func TestSignAndVerifyBackupSignatureEmptyKey(t *testing.T) {
 	t.Parallel()
 	p := writeStandaloneFile(t, "snap.db", []byte("snapshot"))
 
-	require.Error(t, database.SignBackup(p, nil))
-	require.Error(t, database.SignBackup(p, []byte{}))
-	require.Error(t, database.VerifyBackupSignature(p, nil))
+	require.ErrorContains(t, database.SignBackup(p, nil), "signing key is empty")
+	require.ErrorContains(t, database.SignBackup(p, []byte{}), "signing key is empty")
+	require.ErrorContains(t, database.VerifyBackupSignature(p, nil), "signing key is empty")
 }
 
 func TestSignBackupMissingSnapshotErrors(t *testing.T) {

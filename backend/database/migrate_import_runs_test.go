@@ -54,6 +54,7 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 	_, err = sqlDB.Exec(
 		`INSERT INTO import_runs (user_id, format, created_at) VALUES (1, 'ldif', datetime('now'))`)
 	require.Error(t, err, "CHECK constraint must reject an unknown format token")
+	assert.ErrorContains(t, err, "CHECK constraint failed")
 
 	require.NoError(t, sqlDB.Close())
 

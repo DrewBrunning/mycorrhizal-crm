@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -323,6 +324,11 @@ func TestMigrateFileWithPreBackup_PropagatesVersionReadError(t *testing.T) {
 
 	_, err := InitDB(filepath.Join(blocker, "nested", "live.db"))
 	require.Error(t, err)
+	// The first thing InitDB does with the path is the startup integrity
+	// probe's stat (startup_integrity.go), which is what trips on the
+	// file-as-directory component — before any version read.
+	assert.ErrorContains(t, err, "cannot read database")
+	assert.ErrorIs(t, err, syscall.ENOTDIR, "the cause must be the file-as-directory path, not a backup or migration failure")
 	var backupErr *ErrPreMigrationBackupFailed
 	assert.False(t, errors.As(err, &backupErr), "a version-read failure is not ErrPreMigrationBackupFailed")
 	_, statErr := os.Stat(filepath.Join(dir, "pre-migration"))

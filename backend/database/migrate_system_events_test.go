@@ -55,12 +55,14 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 		INSERT INTO system_events (created_at, occurred_at, event_type, severity)
 		VALUES (datetime('now'), datetime('now'), 'totally_made_up', 'info')`)
 	require.Error(t, err, "CHECK constraint must reject an unknown event_type token")
+	assert.ErrorContains(t, err, "CHECK constraint failed")
 
 	// An out-of-vocabulary result is rejected too.
 	_, err = sqlDB.Exec(`
 		INSERT INTO system_events (created_at, occurred_at, event_type, severity, result)
 		VALUES (datetime('now'), datetime('now'), 'job_completed', 'info', 'maybe')`)
 	require.Error(t, err, "CHECK constraint must reject an unknown result token")
+	assert.ErrorContains(t, err, "CHECK constraint failed")
 
 	require.NoError(t, sqlDB.Close())
 

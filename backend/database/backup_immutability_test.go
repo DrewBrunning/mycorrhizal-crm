@@ -162,7 +162,10 @@ func TestBackupImmutability_FailedSnapshotTouchesNothingElse(t *testing.T) {
 	// is not a database (checkpoint/VACUUM fails).
 	notADB := filepath.Join(t.TempDir(), "not-a-db")
 	require.NoError(t, os.WriteFile(notADB, []byte("this is not sqlite"), 0o600))
-	require.Error(t, BackupSnapshot(notADB, filepath.Join(backupDir, "mycorrhizal-20260109-000000.db")))
+	err := BackupSnapshot(notADB, filepath.Join(backupDir, "mycorrhizal-20260109-000000.db"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "wal_checkpoint(PASSIVE)")
+	assert.ErrorContains(t, err, "file is not a database")
 
 	gotNeighbour, gotNeighbourMode := immutDigest(t, neighbour)
 	assert.Equal(t, neighbourDigest, gotNeighbour, "a failed snapshot must not modify a neighbouring backup")
