@@ -37,6 +37,21 @@ var (
 	binErr  string
 )
 
+// TestMain removes the binary hostBinary built: it lives in a MkdirTemp dir
+// created inside a sync.Once, so no t.Cleanup can own it (issue #1555).
+func TestMain(m *testing.M) {
+	code := m.Run()
+	removeHostBinary()
+	os.Exit(code)
+}
+
+// removeHostBinary deletes the directory holding the built binary, if any.
+func removeHostBinary() {
+	if binPath != "" {
+		_ = os.RemoveAll(filepath.Dir(binPath))
+	}
+}
+
 // hostBinary builds the backend binary once per test run.
 func hostBinary(t *testing.T) string {
 	t.Helper()
@@ -71,6 +86,24 @@ func shortTempDir(t *testing.T) string {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return dir
+}
+
+func TestRemoveHostBinaryDeletesBuildDir(t *testing.T) {
+	dir := shortTempDir(t)
+	f := filepath.Join(dir, "mycorrhizal")
+	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
+	old := binPath
+	defer func() { binPath = old }()
+
+	binPath = ""
+	removeHostBinary() // no-op: must not remove anything
+	_, err := os.Stat(f)
+	require.NoError(t, err)
+
+	binPath = f
+	removeHostBinary()
+	_, err = os.Stat(dir)
+	require.True(t, os.IsNotExist(err))
 }
 
 func hostConfigJSON(t *testing.T, dir string) (embedded.HostConfig, []byte) {
