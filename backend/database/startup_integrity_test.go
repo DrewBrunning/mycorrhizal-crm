@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,8 +167,8 @@ func TestProbeStartupIntegrityOnUnopenableFile(t *testing.T) {
 	err := probeStartupIntegrity(path)
 	var corrupt *ErrDatabaseCorrupt
 	require.Error(t, err)
-	assert.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
-	assert.NotEmpty(t, corrupt.Detail)
+	require.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
+	assert.Contains(t, corrupt.Detail, "file is not a database", "Detail must carry the driver's reason the check could not run")
 }
 
 // TestMigrateUpRefusesCorruptDatabase pins the operator `make migrate-up` path:
@@ -209,4 +210,6 @@ func TestProbeStartupIntegrityPropagatesStatError(t *testing.T) {
 	require.Error(t, err)
 	var corrupt *ErrDatabaseCorrupt
 	assert.False(t, errors.As(err, &corrupt), "a stat failure is a read error, not a corruption finding")
+	assert.ErrorContains(t, err, "cannot read database")
+	assert.ErrorIs(t, err, syscall.EINVAL, "the cause is the stat failure on the NUL path")
 }

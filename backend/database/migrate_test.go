@@ -1358,7 +1358,8 @@ func TestNotificationChannelsMigration(t *testing.T) {
 	_, err = sqlDB.Exec(`
 		INSERT INTO notification_configs (created_at, updated_at, user_id) VALUES (datetime('now'), datetime('now'), ?)`,
 		userID)
-	assert.Error(t, err, "a second active config row for the same user must violate the partial unique index")
+	require.Error(t, err, "a second active config row for the same user must violate the partial unique index")
+	assert.ErrorContains(t, err, "UNIQUE constraint failed: notification_configs.user_id")
 	_, err = sqlDB.Exec("UPDATE notification_configs SET deleted_at = datetime('now') WHERE user_id = ?", userID)
 	require.NoError(t, err)
 	_, err = sqlDB.Exec(`
@@ -1444,7 +1445,8 @@ func TestAddressSuggestionDismissalMigration(t *testing.T) {
 		INSERT INTO dismissed_household_suggestions (created_at, updated_at, user_id, address_hash, member_hash)
 		VALUES (datetime('now'), datetime('now'), ?, 'hash-a', 'members-1')`,
 		userID)
-	assert.Error(t, err, "a duplicate (address_hash, member_hash) dismissal must violate the unique index")
+	require.Error(t, err, "a duplicate (address_hash, member_hash) dismissal must violate the unique index")
+	assert.ErrorContains(t, err, "UNIQUE constraint failed: dismissed_household_suggestions.")
 	_, err = sqlDB.Exec(`
 		INSERT INTO dismissed_household_suggestions (created_at, updated_at, user_id, address_hash, member_hash)
 		VALUES (datetime('now'), datetime('now'), ?, 'hash-b', 'members-1')`,
@@ -1543,7 +1545,8 @@ func TestAuditEventsMigration(t *testing.T) {
 		VALUES (datetime('now'), datetime('now'), 'contact', 'x', 'create', 1)`)
 	require.NoError(t, err)
 	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'x'`)
-	assert.Error(t, err, "audit_events must reject UPDATE via its trigger")
+	require.Error(t, err, "audit_events must reject UPDATE via its trigger")
+	assert.ErrorContains(t, err, "audit_events is append-only: UPDATE is not allowed")
 
 	// Down: rolling back drops the table and trigger; the user survives.
 	require.NoError(t, MigrateDown(dbPath))
@@ -1656,11 +1659,13 @@ func TestAuditHashChainMigration(t *testing.T) {
 	_, err = sqlDB.Exec(`
 		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id)
 		VALUES (datetime('now'), datetime('now'), 'auth', 'alice', 'bogus', 1)`)
-	assert.Error(t, err, "an operation outside the vocabulary must be rejected")
+	require.Error(t, err, "an operation outside the vocabulary must be rejected")
+	assert.ErrorContains(t, err, "CHECK constraint failed")
 
 	// The immutability trigger survives the rebuild.
 	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
-	assert.Error(t, err, "the immutability trigger must survive the rebuild")
+	require.Error(t, err, "the immutability trigger must survive the rebuild")
+	assert.ErrorContains(t, err, "audit_events is append-only: UPDATE is not allowed")
 
 	// The AUTOINCREMENT sequence continues after the preserved max id.
 	var nextID int64
@@ -1684,7 +1689,8 @@ func TestAuditHashChainMigration(t *testing.T) {
 		"SELECT COUNT(*) FROM audit_events WHERE operation = 'login'").Scan(&loginCount))
 	assert.Zero(t, loginCount, "auth lifecycle rows are dropped on rollback (the restored CHECK cannot represent them)")
 	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
-	assert.Error(t, err, "the immutability trigger must be restored by the down migration")
+	require.Error(t, err, "the immutability trigger must be restored by the down migration")
+	assert.ErrorContains(t, err, "audit_events is append-only: UPDATE is not allowed")
 }
 
 // TestSyncHealthFieldsMigration pins migration 000039's shape (issue #390):
