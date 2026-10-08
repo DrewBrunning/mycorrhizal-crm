@@ -322,7 +322,8 @@ needs running per worktree, not just once per clone.
   `gormerrcheck` (discarded GORM `.Error`, trap #4), `rawtimecheck` (raw `time.Now()`/`Since`/`Until`
   in controllers/services/middleware — read the injected clock instead, issue #1494), plus the contract-fixtures/DATA-01/INT-01/API-baseline
   generated-artifact drift tests (incl. generated TS types; targeted `go test -run`, not the full
-  suite).
+  suite) and the mutation-scope generated-config drift test (`backend/.gremlins/*.yaml`; fix with
+  `cd backend && go run ./cmd/genmutationscope`, issue #1552).
 - **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
 - **Always:** the docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
