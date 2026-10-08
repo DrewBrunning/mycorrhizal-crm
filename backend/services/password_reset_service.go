@@ -15,6 +15,13 @@ import (
 const (
 	passwordResetTokenBytes = 32
 	passwordResetTTL        = time.Hour
+	// passwordResetCooldown is the minimum gap between two reset emails for
+	// one account (issue #1569). The request endpoint is per-IP rate limited
+	// only, so without it a caller spread over several IPs could mail one
+	// victim repeatedly (inbox flooding, burning the operator's mail quota).
+	// Two minutes leaves a user who mistyped or lost the first email able to
+	// retry soon, and caps a flood at 30 emails an hour per account.
+	passwordResetCooldown = 2 * time.Minute
 )
 
 // GeneratePasswordResetToken creates a secure token and its hashed representation.
@@ -123,4 +130,17 @@ func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
 
 	logger.Info().Str("email", logger.MaskEmail(email)).Str("language", lang).Msg("Password-changed notification email sent")
 	return nil
+}
+
+// PasswordResetCooldownCutoff returns the latest earlier request time that no
+// longer blocks a new reset at now: a request made after the cutoff is still
+// inside the cooldown (issue #1569).
+func PasswordResetCooldownCutoff(now time.Time) time.Time {
+	return now.Add(-passwordResetCooldown)
+}
+
+// PasswordResetThrottled reports whether a reset requested at lastRequested
+// still blocks a new one at now (issue #1569).
+func PasswordResetThrottled(lastRequested *time.Time, now time.Time) bool {
+	return lastRequested != nil && lastRequested.After(PasswordResetCooldownCutoff(now))
 }
