@@ -256,12 +256,16 @@ func (a *AccountRateLimiter) TrackedKeys() int {
 // RateLimiterEntryCounts snapshots the tracked-key count of every
 // process-wide in-memory limiter, keyed by a bounded label (issue #1496). The
 // /metrics handler publishes it as mycorrhizal_ratelimiter_entries.
+//
+// The IP limiters are atomic.Pointers (issue #1565: ConfigureAPIRateLimiter can
+// replace one while the sweeper and this /metrics reader run), so each count
+// is read through Load() from whichever limiter is live now.
 func RateLimiterEntryCounts() map[string]int {
 	return map[string]int{
-		"auth":    authLimiter.EntryCount(),
-		"api":     apiLimiter.EntryCount(),
-		"carddav": cardDAVLimiter.EntryCount(),
-		"feed":    feedLimiter.EntryCount(),
+		"auth":    authLimiter.Load().EntryCount(),
+		"api":     apiLimiter.Load().EntryCount(),
+		"carddav": cardDAVLimiter.Load().EntryCount(),
+		"feed":    feedLimiter.Load().EntryCount(),
 		"account": accountLimiter.TrackedKeys(),
 	}
 }
