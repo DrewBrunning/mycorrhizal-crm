@@ -5,8 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"mycorrhizal/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // alEnvelope is the REST error envelope body ({"error":{code,message,details}}).
@@ -49,4 +52,28 @@ func alAssertValidation(t *testing.T, w *httptest.ResponseRecorder, field string
 	require.Equal(t, "VALIDATION_ERROR", env.Error.Code, "body: %s", w.Body.String())
 	assert.Contains(t, env.Error.Details, field, "body: %s", w.Body.String())
 	return env
+}
+
+// alSeedApiToken creates a user with one active API token, so a rejected
+// request has something to (not) revoke or rotate.
+func alSeedApiToken(t *testing.T, db *gorm.DB) models.ApiToken {
+	t.Helper()
+	user := models.User{Username: "alseed", Password: "password123!A", Email: "alseed@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	tok := models.ApiToken{UserID: user.ID, Name: "seed", TokenHash: "alseed-hash", Scope: "full"}
+	require.NoError(t, db.Create(&tok).Error)
+	return tok
+}
+
+// alAssertApiTokenUntouched asserts the seeded token is still the only token
+// and still active (neither revoked nor re-hashed by a rejected request).
+func alAssertApiTokenUntouched(t *testing.T, db *gorm.DB, tok models.ApiToken) {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "a rejected request must not create tokens")
+	var after models.ApiToken
+	require.NoError(t, db.First(&after, tok.ID).Error)
+	assert.Nil(t, after.RevokedAt, "a rejected request must not revoke the token")
+	assert.Equal(t, tok.TokenHash, after.TokenHash, "a rejected request must not rotate the token")
 }

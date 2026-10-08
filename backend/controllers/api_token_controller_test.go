@@ -211,7 +211,7 @@ func TestCreateApiToken_CardDAVScope(t *testing.T) {
 }
 
 func TestCreateApiToken_InvalidScopeRejected(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
 
@@ -221,11 +221,14 @@ func TestCreateApiToken_InvalidScopeRejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertValidation(t, w, "Scope")
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert a token")
 }
 
 func TestCreateApiToken_MissingName(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
 
@@ -235,7 +238,10 @@ func TestCreateApiToken_MissingName(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertValidation(t, w, "Name")
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert a token")
 }
 
 func TestRevokeApiToken_Success(t *testing.T) {
@@ -266,15 +272,17 @@ func TestRevokeApiToken_Success(t *testing.T) {
 }
 
 func TestRevokeApiToken_NotFound(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
+	tok := alSeedApiToken(t, db)
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
 
 	req, _ := http.NewRequest("DELETE", "/api-tokens/9999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 func TestRevokeApiToken_WrongUser(t *testing.T) {
@@ -303,15 +311,17 @@ func TestRevokeApiToken_WrongUser(t *testing.T) {
 }
 
 func TestRevokeApiToken_InvalidID(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
+	tok := alSeedApiToken(t, db)
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
 
 	req, _ := http.NewRequest("DELETE", "/api-tokens/not-a-number", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
+	alAssertApiTokenUntouched(t, db, tok)
 }
 
 // --- RevokeAllApiTokens (issue #413) ---
@@ -465,13 +475,15 @@ func TestRotateApiToken_AlreadyRevoked(t *testing.T) {
 }
 
 func TestRotateApiToken_InvalidID(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 
+	tok := alSeedApiToken(t, db)
 	router.POST("/api-tokens/:id/rotate", RotateApiToken)
 
 	req, _ := http.NewRequest("POST", "/api-tokens/not-a-number/rotate", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
+	alAssertApiTokenUntouched(t, db, tok)
 }
