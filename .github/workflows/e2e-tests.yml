@@ -195,11 +195,20 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright tests
         working-directory: frontend
@@ -394,11 +403,20 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright tests (production-default subset)
         working-directory: frontend
@@ -499,14 +517,23 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
         # Both engines: service-worker behaviour genuinely differs (the
         # wrong-MIME registration failure this ticket exists because of was
         # Firefox-specific).
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright service-worker upgrade tests
         working-directory: frontend
@@ -611,11 +638,20 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
-        run: npx playwright install --with-deps webkit
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps webkit && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright WebKit smoke test
         working-directory: frontend
@@ -739,13 +775,22 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright Firefox smoke test
         working-directory: frontend
@@ -858,13 +903,22 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
+        # hanging the job (issue #1549).
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
+            echo "::warning::playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Playwright suite on Firefox
         working-directory: frontend
