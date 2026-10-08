@@ -67,6 +67,29 @@ registry disagree, so the branch-protection list can never drift from the gate l
 
 <!-- governance-required-checks:end -->
 
+### Alerting on a red `main` (bypass / early merge)
+
+The required checks above are what *should* gate a merge, but two paths leave a change on
+`main` that they never actually verified:
+
+- **A bypass merge.** The repo Admin role holds a `bypass_mode: always` bypass (above), so an
+  admin can merge with required checks still running or red.
+- **A merge before the checks finish.** `reap-branch-runs.yml`'s "Cancel remaining runs for the
+  branch" job cancels a merged branch's still-in-flight workflow runs (GitHub does not cancel
+  them on its own), so the required jobs a PR was waiting on can be killed at merge — the gate
+  job then reports `failure`, but the merge already landed.
+
+In both cases the post-merge `push` run of the workflow on `main` is the **only** verification
+the commit gets, and until issue #1568 nothing watched it: `nightly-failure-alert.yml` opens
+issues only for `schedule` runs, so a red `main` was visible only to whoever opened the Actions
+tab. `.github/workflows/main-failure-alert.yml` closes that gap. On a failed
+`push: main` completion it opens (or comments on) a `nightly-failure`+`p1`-labelled
+`Main failure: <workflow name>` issue carrying the run URL, the head SHA, and the originating
+PR; on the next green completion it comments and closes the issue. Its registration list must
+cover every workflow that carries a mandatory per-pr gate — `go run ./cmd/mainalertcheck` fails
+the build, in the same `docs-citations` job and pre-commit block as `nightlyalertcheck`, when one
+is missing.
+
 ## Code ownership
 
 [`.github/CODEOWNERS`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/CODEOWNERS)
