@@ -195,11 +195,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
 
       - name: Run Playwright tests
         working-directory: frontend
@@ -394,11 +398,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
 
       - name: Run Playwright tests (production-default subset)
         working-directory: frontend
@@ -499,14 +507,18 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        working-directory: frontend
         # Both engines: service-worker behaviour genuinely differs (the
         # wrong-MIME registration failure this ticket exists because of was
         # Firefox-specific).
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright service-worker upgrade tests
         working-directory: frontend
@@ -611,11 +623,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        run: npx playwright install --with-deps webkit
+        run: bash ../.github/scripts/playwright-install-retry.sh webkit
 
       - name: Run Playwright WebKit smoke test
         working-directory: frontend
@@ -739,13 +755,17 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright Firefox smoke test
         working-directory: frontend
@@ -858,13 +878,17 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        run: npx playwright install --with-deps chromium firefox
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright suite on Firefox
         working-directory: frontend
