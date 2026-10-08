@@ -58,8 +58,14 @@ func alAssertValidation(t *testing.T, w *httptest.ResponseRecorder, field string
 // request has something to (not) revoke or rotate.
 func alSeedApiToken(t *testing.T, db *gorm.DB) models.ApiToken {
 	t.Helper()
-	user := models.User{Username: "alseed", Password: "password123!A", Email: "alseed@example.com"}
-	require.NoError(t, db.Create(&user).Error)
+	// Belong to the acting user when the test router already seeded one
+	// (setupRouter), so a handler that wrongly mutates "the caller's" tokens
+	// is caught; otherwise create a standalone owner.
+	var user models.User
+	if err := db.First(&user).Error; err != nil {
+		user = models.User{Username: "alseed", Password: "password123!A", Email: "alseed@example.com"}
+		require.NoError(t, db.Create(&user).Error)
+	}
 	tok := models.ApiToken{UserID: user.ID, Name: "seed", TokenHash: "alseed-hash", Scope: "full"}
 	require.NoError(t, db.Create(&tok).Error)
 	return tok
