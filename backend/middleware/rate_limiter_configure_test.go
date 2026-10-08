@@ -17,34 +17,34 @@ import (
 func TestConfigureAPIRateLimiter(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	before := apiLimiter
+	before := apiLimiter.Load()
 	// Restore the original limiter even if an assertion fails mid-test, so a
 	// failure here can never poison later tests (TestAPIRateLimitMiddleware
 	// assumes the lenient default burst of 1000).
-	defer func() { apiLimiter = before }()
+	defer func() { apiLimiter.Store(before) }()
 
 	// Zero values must not touch the existing limiter.
 	ConfigureAPIRateLimiter(0, 0)
-	if apiLimiter != before {
+	if apiLimiter.Load() != before {
 		t.Error("ConfigureAPIRateLimiter(0,0) must leave the global limiter untouched")
 	}
 
 	// Negative values likewise.
 	ConfigureAPIRateLimiter(-time.Second, -1)
-	if apiLimiter != before {
+	if apiLimiter.Load() != before {
 		t.Error("ConfigureAPIRateLimiter(negative) must leave the global limiter untouched")
 	}
 
 	// A valid call replaces it with a limiter carrying the new settings.
 	ConfigureAPIRateLimiter(time.Second, 3)
-	if apiLimiter == before {
+	if apiLimiter.Load() == before {
 		t.Fatal("ConfigureAPIRateLimiter(valid) must replace the global limiter")
 	}
-	if apiLimiter.r != rate.Every(time.Second) {
-		t.Errorf("rate = %v, want rate.Every(time.Second)", apiLimiter.r)
+	if apiLimiter.Load().r != rate.Every(time.Second) {
+		t.Errorf("rate = %v, want rate.Every(time.Second)", apiLimiter.Load().r)
 	}
-	if apiLimiter.b != 3 {
-		t.Errorf("burst = %d, want 3", apiLimiter.b)
+	if apiLimiter.Load().b != 3 {
+		t.Errorf("burst = %d, want 3", apiLimiter.Load().b)
 	}
 }
 
