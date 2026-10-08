@@ -198,17 +198,12 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
 
       - name: Run Playwright tests
         working-directory: frontend
@@ -406,17 +401,12 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
 
       - name: Run Playwright tests (production-default subset)
         working-directory: frontend
@@ -520,20 +510,15 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
-        working-directory: frontend
         # Both engines: service-worker behaviour genuinely differs (the
         # wrong-MIME registration failure this ticket exists because of was
         # Firefox-specific).
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright service-worker upgrade tests
         working-directory: frontend
@@ -641,17 +626,12 @@ jobs:
           key: playwright-${{ runner.os }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
         working-directory: frontend
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps webkit && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash ../.github/scripts/playwright-install-retry.sh webkit
 
       - name: Run Playwright WebKit smoke test
         working-directory: frontend
@@ -778,19 +758,14 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
-        working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright Firefox smoke test
         working-directory: frontend
@@ -906,19 +881,14 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
-        timeout-minutes: 8
-        working-directory: frontend
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
-        # Bounded: a stalled CDN/apt fetch fails fast and retries instead of
-        # hanging the job (issue #1549).
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
-            echo "::warning::playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them. 16 min covers the
+        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
 
       - name: Run Playwright suite on Firefox
         working-directory: frontend
