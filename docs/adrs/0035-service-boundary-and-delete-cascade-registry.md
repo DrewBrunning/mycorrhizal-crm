@@ -98,6 +98,12 @@ instead of the wall clock. Controllers keep one HTTP test per status code plus t
   silent omission found by a later audit.
 - `DeleteContact` behaviour (cascade order, soft/hard outcomes, audit rows, webhooks, status codes) is
   unchanged; the move is covered by the pre-existing sweeps, audit and rollback tests.
+- **Amendment (2026-10-07, #1471 follow-up):** the registry now also audits what it deletes. A step whose
+  model is audited (`models.AuditedEntity`: notes, reminders, life events, gifts) loads the rows it is
+  about to remove, runs the same bulk delete, and records one delete event per row
+  (`models.RecordCascadeDelete`). Before this, those children's audit histories ended with no delete.
+  The cost is one extra SELECT per audited step (+4 queries on `delete_cascade` and `contact_merge`, a
+  constant regenerated into the PERF-02 baseline). The delete itself stays a single statement.
 - The registry encodes policy in one place, so the soft-vs-hard reasoning is reviewable as data rather than
   inferred from 30 call sites.
 - The ratchet and the user-scope registry are still owed; until they land, trap #6's "enumerate by hand"

@@ -223,9 +223,9 @@ func auditAfterSave(tx *gorm.DB, entityType, entityID string, userID uint) {
 // .Update(...) fires the model's hooks once on a zero-value receiver rather
 // than per row; the resulting event can never satisfy audit_events.user_id's
 // FK and only produces a "failed to persist audit event" warning that buries
-// real failures. Cascade children are deliberately not undoable, so no
-// per-child event is lost. Centralised here so a new audited model cannot
-// reintroduce the bug.
+// real failures. The contact cascade records each child's real delete event
+// itself (RecordCascadeDelete), so dropping the zero-value one loses nothing.
+// Centralised here so a new audited model cannot reintroduce the bug.
 func skipZeroIdentityAudit(entityType, entityID string, userID uint, op string) bool {
 	if entityID != "" && entityID != "0" && userID != 0 {
 		return false

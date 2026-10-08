@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"mycorrhizal/models"
@@ -115,6 +116,11 @@ func ContactCascadeRegistry() []CascadeStep {
 			// Bulk soft deletes skip Note.AfterDelete (it fires on a zero-value
 			// model), so advance updated_at on the just-tombstoned notes or a
 			// T17 change-feed cursor stored before this delete misses them.
+			// Only notes need this: of the soft-deleted children, only notes
+			// (with contacts and activities) expose a ?since= change feed, so a
+			// stale updated_at on a cascaded gift, life event or reminder is
+			// never read by a sync client (#1471 grooming item 3). Add the same
+			// bump if one of them gains a change feed.
 			After: func(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error {
 				return tx.Model(&models.Note{}).Unscoped().
 					Where("contact_id = ? AND user_id = ? AND deleted_at IS NOT NULL", t.ID, t.UserID).
@@ -277,12 +283,37 @@ func DeleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint,
 // deleteCascadeRows is the default step body: delete the matched rows through
 // the step's model (so soft delete and model hooks behave exactly as a direct
 // tx.Delete would), or by raw SQL for a model-less join table.
+//
+// When the step's model is audited (models.AuditedEntity — notes, reminders,
+// life events, gifts), every row it removes gets its own delete audit event,
+// exactly as a single-row delete would record. These types have create and
+// update events in the log, so without one their audit history would end with
+// no delete, as though the row still existed (issue #1471 follow-up). The bulk
+// statement's own hook fires once on a zero-value model and is dropped
+// centrally, so the matched rows are loaded first and recorded explicitly —
+// one extra SELECT per audited step, the delete itself stays one statement.
 func deleteCascadeRows(tx *gorm.DB, step CascadeStep, target ContactCascadeTarget) error {
 	query, args := step.Match(target)
 	if step.NewModel == nil {
 		return tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", step.Table, query), args...).Error
 	}
-	return tx.Where(query, args...).Delete(step.NewModel()).Error
+	model := step.NewModel()
+	if _, audited := model.(models.AuditedEntity); !audited {
+		return tx.Where(query, args...).Delete(model).Error
+	}
+
+	rows := reflect.New(reflect.SliceOf(reflect.TypeOf(model).Elem())) // *[]T
+	if err := tx.Where(query, args...).Find(rows.Interface()).Error; err != nil {
+		return err
+	}
+	if err := tx.Where(query, args...).Delete(model).Error; err != nil {
+		return err
+	}
+	list := rows.Elem()
+	for i := 0; i < list.Len(); i++ {
+		models.RecordCascadeDelete(tx, list.Index(i).Addr().Interface().(models.AuditedEntity))
+	}
+	return nil
 }
 
 func runCascadeStep(tx *gorm.DB, step CascadeStep, target ContactCascadeTarget, now time.Time) error {
