@@ -27,8 +27,8 @@ trap cleanup EXIT
 rr="$work/realrelease"
 secret="$("$rr" print-secret)"
 
-if ! docker pull "$image" >/dev/null 2>&1; then
-  echo "::error::cannot pull $image - the tag is registered in SupportedReleases but its image is not published (docker-publish.yml still running or failed?)"
+if ! "$(dirname "$0")/../.github/scripts/docker-pull-retry.sh" "$image" >/dev/null; then
+  echo "::error::cannot pull $image after retries - the tag is registered in SupportedReleases but its image is not published (docker-publish.yml still running or failed?), or the registry rate-limited the pull (toomanyrequests)"
   exit 1
 fi
 

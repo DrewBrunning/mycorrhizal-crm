@@ -22,10 +22,14 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin"
 
-# docker stub: counts scans in $SCAN_COUNT_FILE; exits $ZAP_RC; writes
+# docker stub: counts scans (not pulls) in $SCAN_COUNT_FILE; exits $ZAP_RC; writes
 # zap/report.json unless NO_REPORT=1.
 cat > "$work/bin/docker" <<'STUB'
 #!/usr/bin/env bash
+# `docker pull` (the retrying pre-pull, issue #1566) is not a scan.
+if [ "$1" = "pull" ]; then echo "pull $*" >> "$SCAN_COUNT_FILE.pulls"; exit 0; fi
+# Every scan must run with --pull never so no second, unretried pull happens.
+case " $* " in *" --pull never "*) ;; *) echo "scan without --pull never: $*" >&2; exit 99 ;; esac
 n=$(cat "$SCAN_COUNT_FILE" 2>/dev/null || echo 0)
 echo $((n + 1)) > "$SCAN_COUNT_FILE"
 if [ "${NO_REPORT:-0}" != "1" ]; then echo '{}' > zap/report.json; fi

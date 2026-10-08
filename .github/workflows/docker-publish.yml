@@ -1441,7 +1441,14 @@ jobs:
           [ "$host" = "$ARCH" ] || { echo "::error::leg expects $ARCH, runner is $host"; exit 1; }
 
       - name: Bring up the published image
-        run: docker compose -f docker-compose.published-smoke.yml up -d --wait --wait-timeout 240
+        run: |
+          for attempt in 1 2 3 4; do
+            docker compose -f docker-compose.published-smoke.yml pull --quiet && break
+            [ "$attempt" -lt 4 ] || { echo "::error::pull of the published image failed after 4 attempts"; exit 1; }
+            echo "::warning::image pull attempt $attempt failed; retrying in $((attempt * 20))s"
+            sleep $((attempt * 20))
+          done
+          docker compose -f docker-compose.published-smoke.yml up -d --pull never --wait --wait-timeout 240
 
       - name: Run the end-to-end workflow against the published image
         env:

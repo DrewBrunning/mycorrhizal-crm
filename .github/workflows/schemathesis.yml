@@ -206,7 +206,8 @@ jobs:
       # connection errors; schemagate is the gate, not the exit code.
       - name: Run Schemathesis (anonymous)
         run: |
-          docker run --rm --network host --user 0 \
+          .github/scripts/docker-pull-retry.sh ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266
+          docker run --rm --pull never --network host --user 0 \
             -v "$PWD/backend/openapi.yaml:/schema/openapi.yaml:ro" \
             -v "$PWD/schemathesis/report:/report" \
             ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \
@@ -227,7 +228,8 @@ jobs:
         env:
           SCH_TOKEN: ${{ env.SCH_TOKEN }}
         run: |
-          docker run --rm --network host --user 0 \
+          .github/scripts/docker-pull-retry.sh ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266
+          docker run --rm --pull never --network host --user 0 \
             -v "$PWD/backend/openapi.yaml:/schema/openapi.yaml:ro" \
             -v "$PWD/schemathesis/report:/report" \
             ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \

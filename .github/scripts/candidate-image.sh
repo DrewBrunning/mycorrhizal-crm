@@ -60,7 +60,7 @@ case "$cmd" in
     fi
     repo="$(repo_ref)" || { echo "::error::set CANDIDATE_IMAGE_REPO or GITHUB_REPOSITORY" >&2; exit 2; }
     ref="${repo}@${digest}"
-    docker pull "$ref"
+    "$(dirname "$0")/docker-pull-retry.sh" "$ref"
     docker tag "$ref" "$local_tag"
     # Belt and braces: the registry returned what we asked for. A pull by
     # digest cannot return anything else, but the whole point of this gate is

@@ -9,6 +9,7 @@
 # records its arguments, so nothing here touches a registry.
 
 set -u
+export DOCKER_PULL_RETRY_STEP=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANDIDATE="$SCRIPT_DIR/../candidate-image.sh"
@@ -30,6 +31,11 @@ mkdir -p "$work/bin"
 cat > "$work/bin/docker" <<'STUB'
 #!/usr/bin/env bash
 echo "docker $*" >> "$DOCKER_LOG"
+# DOCKER_FAIL_PULLS=N makes the first N `docker pull` calls fail (retry tests).
+if [ "$1" = "pull" ] && [ -n "${DOCKER_FAIL_PULLS:-}" ]; then
+  n=$(grep -c '^docker pull' "$DOCKER_LOG")
+  [ "$n" -le "$DOCKER_FAIL_PULLS" ] && exit 1
+fi
 if [ "$1" = "image" ] && [ "$2" = "inspect" ]; then
   printf '%s\n' "${INSPECT_OUT:-[]}"
 fi
@@ -69,7 +75,7 @@ export INSPECT_OUT="[\"ghcr.io/owner/repo@${D1}\"]"
 
 check "pull pulls by digest from the lowercased repo and tags locally" 0 "Candidate image under test: ghcr.io/owner/repo@${D1}" -- \
   bash "$CANDIDATE" pull "$D1" mycorrhizal-crm-test:latest
-if grep -qxF "docker pull ghcr.io/owner/repo@${D1}" "$work/docker.log" \
+if grep -qxF "docker pull --quiet ghcr.io/owner/repo@${D1}" "$work/docker.log" \
   && grep -qxF "docker tag ghcr.io/owner/repo@${D1} mycorrhizal-crm-test:latest" "$work/docker.log"; then
   pass=$((pass + 1)); echo "PASS: pull issued exactly pull-by-digest then tag"
 else
@@ -93,6 +99,16 @@ check "pull fails when the pulled image carries a different digest" 1 "does not 
 
 check "pull propagates a docker pull failure" 1 "" -- \
   env DOCKER_RC=1 bash "$CANDIDATE" pull "$D1" mycorrhizal-crm-test:latest
+
+check "pull retries a transient pull failure and then succeeds" 0 "Candidate image under test" -- \
+  env DOCKER_FAIL_PULLS=3 bash "$CANDIDATE" pull "$D1" mycorrhizal-crm-test:latest
+check "pull gives up after 4 failed attempts" 1 "" -- \
+  env DOCKER_FAIL_PULLS=4 bash "$CANDIDATE" pull "$D1" mycorrhizal-crm-test:latest
+if [ "$(grep -c '^docker pull' "$work/docker.log")" -eq 4 ] && ! grep -q '^docker tag' "$work/docker.log"; then
+  pass=$((pass + 1)); echo "PASS: exhausted retries made exactly 4 pulls and never tagged"
+else
+  fail=$((fail + 1)); echo "FAIL: exhausted retry docker calls"; sed 's/^/    | /' "$work/docker.log"
+fi
 
 check "pull honours CANDIDATE_IMAGE_REPO" 0 "ghcr.io/other/img@${D1}" -- \
   env CANDIDATE_IMAGE_REPO=ghcr.io/other/img INSPECT_OUT="[\"ghcr.io/other/img@${D1}\"]" bash "$CANDIDATE" pull "$D1" t:latest
