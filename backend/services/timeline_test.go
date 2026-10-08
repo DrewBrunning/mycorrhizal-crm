@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -134,19 +135,29 @@ func TestComposeTimeline_ErrorsAndBadCursor(t *testing.T) {
 
 func TestApplySensitivityFilter(t *testing.T) {
 	db := dbtest.New(t)
+	build := func(tc *timelineComposer) string {
+		return db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+			return tc.applySensitivityFilter(tx.Model(&models.Note{}), "notes", models.TimelineTypeNote).Find(&[]models.Note{})
+		})
+	}
 
-	// Off by default: the base query is returned unchanged.
-	off := (&timelineComposer{}).applySensitivityFilter(db.Model(&models.Note{}), "notes", models.TimelineTypeNote)
-	require.NotNil(t, off)
+	// Off by default: no sensitivity predicate at all.
+	assert.NotContains(t, build(&timelineComposer{}), "sensitivity")
+
+	// Even with the composer flag on, a table outside feedSensitivityFiltered
+	// (the real state today) gets no predicate.
+	assert.NotContains(t, build(&timelineComposer{filterSensitivity: true}), "sensitivity")
 
 	// No timeline model has a Sensitivity column today, so the set is empty.
-	// Temporarily populate it to exercise the predicate-building branch (never
-	// executed, since the real schema has no such column).
+	// Temporarily populate it to exercise the predicate-building branch.
 	feedSensitivityFiltered[models.TimelineTypeNote] = true
 	t.Cleanup(func() { delete(feedSensitivityFiltered, models.TimelineTypeNote) })
 
-	on := (&timelineComposer{filterSensitivity: true}).applySensitivityFilter(db.Model(&models.Note{}), "notes", models.TimelineTypeNote)
-	require.NotNil(t, on)
+	// Table registered but composer flag off: still no predicate.
+	assert.NotContains(t, build(&timelineComposer{}), "sensitivity")
+
+	// Both on: the normal-only predicate is added.
+	assert.Regexp(t, `notes\.sensitivity = ["']normal["']`, build(&timelineComposer{filterSensitivity: true}))
 }
 
 // --- internal helper coverage ---------------------------------------------
@@ -194,8 +205,13 @@ func TestTimelineCursorPredicate_CoversRanksAndDirections(t *testing.T) {
 
 func TestTimelineDateOrder_Direction(t *testing.T) {
 	db := dbtest.New(t)
-	require.NotNil(t, timelineDateOrder(db.Model(&models.Note{}), "notes", "date", true))
-	require.NotNil(t, timelineDateOrder(db.Model(&models.Note{}), "notes", "date", false))
+	orderOf := func(desc bool) string {
+		return db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+			return timelineDateOrder(tx.Model(&models.Note{}), "notes", "date", desc).Find(&[]models.Note{})
+		})
+	}
+	assert.Contains(t, orderOf(true), "ORDER BY notes.date DESC,notes.id DESC")
+	assert.Contains(t, orderOf(false), "ORDER BY notes.date ASC,notes.id ASC")
 }
 
 func TestResolveTimelineCursorIDs(t *testing.T) {
@@ -217,48 +233,115 @@ func TestResolveTimelineCursorIDs(t *testing.T) {
 
 func TestTimelineEntrySideOfCursor_AllBranches(t *testing.T) {
 	when := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	// Canonical rank order: note < activity < completion < life_event <
+	// external_activity < gift, so the cursor (completion) sits between
+	// note and gift.
 	cur := &TimelineCursor{Date: when, Type: models.TimelineTypeCompletion, ID: "5"}
 
 	cases := []struct {
+		name string
 		desc bool
 		date time.Time
 		typ  string
 		id   string
+		want bool
 	}{
-		{true, when.Add(-time.Hour), models.TimelineTypeNote, "1"},  // before
-		{true, when.Add(time.Hour), models.TimelineTypeNote, "1"},   // after
-		{true, when, models.TimelineTypeNote, "1"},                  // same date, lower rank
-		{true, when, models.TimelineTypeGift, "1"},                  // same date, higher rank
-		{true, when, models.TimelineTypeCompletion, "4"},            // same date/type, id <
-		{true, when, models.TimelineTypeCompletion, "6"},            // same date/type, id >
-		{false, when.Add(time.Hour), models.TimelineTypeNote, "1"},  // asc after
-		{false, when.Add(-time.Hour), models.TimelineTypeNote, "1"}, // asc before
-		{false, when, models.TimelineTypeGift, "1"},                 // asc same date, higher rank
-		{false, when, models.TimelineTypeNote, "1"},                 // asc same date, lower rank
-		{false, when, models.TimelineTypeCompletion, "6"},           // asc same date/type, id >
-		{false, when, models.TimelineTypeCompletion, "4"},           // asc same date/type, id <
+		// desc pages forward newest-first: "strictly before the cursor".
+		{"desc older date", true, when.Add(-time.Hour), models.TimelineTypeGift, "9", true},
+		{"desc newer date", true, when.Add(time.Hour), models.TimelineTypeNote, "1", false},
+		{"desc same date lower rank", true, when, models.TimelineTypeNote, "1", true},
+		{"desc same date higher rank", true, when, models.TimelineTypeGift, "1", false},
+		{"desc same date/type id <", true, when, models.TimelineTypeCompletion, "4", true},
+		{"desc same date/type id >", true, when, models.TimelineTypeCompletion, "6", false},
+		{"desc identical position is not strictly before", true, when, models.TimelineTypeCompletion, "5", false},
+		{"desc id tiebreak is textual", true, when, models.TimelineTypeCompletion, "10", true}, // "10" < "5"
+		// asc pages forward oldest-first: "strictly after the cursor".
+		{"asc newer date", false, when.Add(time.Hour), models.TimelineTypeNote, "1", true},
+		{"asc older date", false, when.Add(-time.Hour), models.TimelineTypeGift, "9", false},
+		{"asc same date higher rank", false, when, models.TimelineTypeGift, "1", true},
+		{"asc same date lower rank", false, when, models.TimelineTypeNote, "1", false},
+		{"asc same date/type id >", false, when, models.TimelineTypeCompletion, "6", true},
+		{"asc same date/type id <", false, when, models.TimelineTypeCompletion, "4", false},
+		{"asc identical position is not strictly after", false, when, models.TimelineTypeCompletion, "5", false},
+		{"asc id tiebreak is textual", false, when, models.TimelineTypeCompletion, "10", false}, // "10" < "5"
 	}
 	for _, c := range cases {
-		_ = timelineEntrySideOfCursor(c.typ, c.date, c.id, cur, c.desc)
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, timelineEntrySideOfCursor(c.typ, c.date, c.id, cur, c.desc))
+		})
 	}
 }
 
 func TestTimelineEntryBefore_AllBranches(t *testing.T) {
 	when := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	n1, n2 := uint(1), uint(2)
+	n1, n2, n9, n10 := uint(1), uint(2), uint(9), uint(10)
 
-	entries := []timelineEntry{
-		{typ: models.TimelineTypeNote, id: "1", date: when, numID: &n1},     // numeric id
-		{typ: models.TimelineTypeNote, id: "2", date: when, numID: &n2},     // numeric id, larger
-		{typ: models.TimelineTypeGift, id: "a", date: when},                 // string id
-		{typ: models.TimelineTypeGift, id: "b", date: when},                 // string id, larger
-		{typ: models.TimelineTypeActivity, id: "1", date: when, numID: &n1}, // different type, same date
-		{typ: models.TimelineTypeNote, id: "9", date: when.Add(time.Hour)},  // different date
+	nNote1 := timelineEntry{typ: models.TimelineTypeNote, id: "1", date: when, numID: &n1}
+	nNote2 := timelineEntry{typ: models.TimelineTypeNote, id: "2", date: when, numID: &n2}
+	nNote9 := timelineEntry{typ: models.TimelineTypeNote, id: "9", date: when, numID: &n9}
+	nNote10 := timelineEntry{typ: models.TimelineTypeNote, id: "10", date: when, numID: &n10}
+	gA := timelineEntry{typ: models.TimelineTypeGift, id: "a", date: when}
+	gB := timelineEntry{typ: models.TimelineTypeGift, id: "b", date: when}
+	// String-PK ids compare textually: "10" < "9".
+	gS9 := timelineEntry{typ: models.TimelineTypeGift, id: "9", date: when}
+	gS10 := timelineEntry{typ: models.TimelineTypeGift, id: "10", date: when}
+	act := timelineEntry{typ: models.TimelineTypeActivity, id: "1", date: when, numID: &n1}
+	later := timelineEntry{typ: models.TimelineTypeNote, id: "9", date: when.Add(time.Hour), numID: &n9}
+
+	cases := []struct {
+		name string
+		a, b timelineEntry
+		desc bool
+		want bool
+	}{
+		{"numeric asc smaller first", nNote1, nNote2, false, true},
+		{"numeric asc larger not first", nNote2, nNote1, false, false},
+		{"numeric desc larger first", nNote2, nNote1, true, true},
+		{"numeric desc smaller not first", nNote1, nNote2, true, false},
+		{"numeric compares as numbers not text (asc 9<10)", nNote9, nNote10, false, true},
+		{"numeric compares as numbers not text (desc 10 first)", nNote10, nNote9, true, true},
+		{"string asc a<b", gA, gB, false, true},
+		{"string asc b not before a", gB, gA, false, false},
+		{"string desc b first", gB, gA, true, true},
+		{"string desc a not first", gA, gB, true, false},
+		{"string compares as text (asc 10<9)", gS10, gS9, false, true},
+		{"string compares as text (desc 9 first)", gS9, gS10, true, true},
+		{"same date asc lower rank first (note<activity)", nNote1, act, false, true},
+		{"same date asc higher rank not first", act, nNote1, false, false},
+		{"same date desc higher rank first (activity before note)", act, nNote1, true, true},
+		{"same date desc lower rank not first", nNote1, act, true, false},
+		{"same date asc note<gift", nNote1, gA, false, true},
+		{"same date desc gift before note", gA, nNote1, true, true},
+		{"asc earlier date first", nNote1, later, false, true},
+		{"asc later date not first", later, nNote1, false, false},
+		{"desc later date first", later, nNote1, true, true},
+		{"desc earlier date not first", nNote1, later, true, false},
+		{"date beats rank in asc", gA, later, false, true},
+		{"date beats rank in desc", later, gA, true, true},
 	}
-	for i := range entries {
-		for j := range entries {
-			_ = timelineEntryBefore(entries[i], entries[j], true)
-			_ = timelineEntryBefore(entries[i], entries[j], false)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, timelineEntryBefore(c.a, c.b, c.desc))
+		})
+	}
+
+	entries := []timelineEntry{nNote1, nNote2, nNote9, nNote10, gA, gB, gS9, gS10, act, later}
+	for _, desc := range []bool{true, false} {
+		for i, x := range entries {
+			assert.Falsef(t, timelineEntryBefore(x, x, desc), "irreflexive: entry %d desc=%v", i, desc)
+			for j, y := range entries {
+				if i == j {
+					continue
+				}
+				xy, yx := timelineEntryBefore(x, y, desc), timelineEntryBefore(y, x, desc)
+				// Asymmetric.
+				assert.Falsef(t, xy && yx, "asymmetric: %d,%d desc=%v", i, j, desc)
+				// Total on distinct entries: exactly one direction holds.
+				assert.Truef(t, xy != yx, "distinct entries %d,%d must be ordered desc=%v", i, j, desc)
+				// Ascending is the reverse of descending.
+				assert.Equalf(t, timelineEntryBefore(x, y, true), timelineEntryBefore(y, x, false),
+					"asc is the reverse of desc: %d,%d", i, j)
+			}
 		}
 	}
 }
