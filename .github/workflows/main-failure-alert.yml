@@ -27,10 +27,15 @@ name: Main failure alert
 # deliberately because nothing else watches their `push: main` runs either.
 # This workflow:
 #
-#   - on failure/timed_out/startup_failure/cancelled: opens a
+#   - on failure/timed_out/startup_failure: opens a
 #     `nightly-failure`+`p1`-labelled issue titled `Main failure: <workflow
 #     name>`, or comments on the one already open for it, linking the run, the
 #     head SHA, and the PR the commit came from;
+#   - on cancelled: does the same, *unless* a newer push run of the same
+#     workflow superseded this one (issue #1618) -- push runs share a
+#     concurrency group, so a burst of merges cancels older pending runs that
+#     were never going to report anything. A superseded run is silent; a lone
+#     cancelled run still alerts, labelled "cancelled (not superseded)";
 #   - on success: comments on that workflow's open `Main failure:` issue (if
 #     any) and closes it -- the alarm clears itself once `main` is green again.
 #
@@ -80,12 +85,17 @@ on:
         description: 'A real Actions run id to link (its head SHA/PR are resolved from the API)'
         required: true
       conclusion:
-        description: 'failure or success'
+        description: 'failure, cancelled or success'
         type: choice
         options:
           - failure
+          - cancelled
           - success
         default: failure
+      newer_run_exists:
+        description: 'For conclusion=cancelled: simulate a newer push run of the same workflow (superseded, no alert). Ignored otherwise.'
+        type: boolean
+        default: false
       dry_run:
         description: 'Log intended actions without creating/closing issues'
         type: boolean
@@ -155,6 +165,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          NEWER_RUN_EXISTS: ${{ inputs.newer_run_exists && '1' || '0' }}
           WORKFLOW_NAME: ${{ inputs.workflow_name }}
           RUN_ID: ${{ inputs.run_id }}
           CONCLUSION: ${{ inputs.conclusion }}
