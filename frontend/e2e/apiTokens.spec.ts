@@ -8,8 +8,15 @@ import { API_BASE_URL, APP_ORIGIN } from './global-setup';
 // it makes the same bearer 401.
 
 test.describe('API tokens', () => {
-  test('create, use, hide-after-reload, revoke', async ({ page, playwright }) => {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  test('create, use, hide-after-reload, revoke', async ({ page, playwright, browserName }) => {
+    // Playwright's Firefox rejects the `clipboard-read` permission ("Unknown
+    // permission", the same limit contactFieldLinking.spec.ts documents), so
+    // only the clipboard read-back is Chromium-only; the rest of the lifecycle
+    // still runs on Firefox.
+    const canReadClipboard = browserName === 'chromium';
+    if (canReadClipboard) {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
     const name = `e2e-token-${Date.now()}`;
 
     await page.goto('/settings');
@@ -33,7 +40,9 @@ test.describe('API tokens', () => {
 
     // The copy button puts exactly that secret on the clipboard.
     await created.getByRole('button', { name: 'Copy' }).click();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(secret);
+    if (canReadClipboard) {
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(secret);
+    }
     await created.getByRole('button', { name: 'Done, I saved it' }).click();
     await expect(created).toBeHidden();
 

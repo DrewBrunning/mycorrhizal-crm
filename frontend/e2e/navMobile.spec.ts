@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, waitForLoading } from './fixtures';
 
 // T33: the global nav bar had accumulated ten destinations and was "incredibly
 // crowded" at phone widths. At <sm the AppBar now shows only the primary
@@ -49,6 +49,10 @@ test.describe('Mobile navigation (T33)', () => {
 
     await page.getByRole('menuitem', { name: /settings/i }).click();
     await expect(page).toHaveURL(/\/settings$/);
+    // The per-test axe scan (fixtures.ts) runs the moment this test ends. The
+    // Settings sections render unnamed MUI progressbars while they fetch, so
+    // ending on the URL assertion alone raced that scan (nightly #1570).
+    await waitForLoading(page);
   });
 });
 
