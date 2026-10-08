@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -275,4 +277,39 @@ func TestStart_ServerModeDefaultsToTCPWhenNoListener(t *testing.T) {
 
 	require.NotNil(t, srv.Addr())
 	require.Equal(t, port, srv.Addr().(*net.TCPAddr).Port)
+}
+
+// Issue #1554: Stop gives tracked background work (a password-reset mail send
+// started by a finished request) a bounded chance to finish before it closes
+// the database.
+func TestStop_DrainsTrackedBackgroundWorkBeforeClosingDB(t *testing.T) {
+	cfg := newTestConfig(t, config.DeploymentServer)
+	ln, _ := listenUnix(t, "drain.sock")
+	srv, err := Start(context.Background(), cfg, Options{Listener: ln, disableInitialTriggers: true})
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	var dbUsableAtEnd error
+	fireandforget.Run(func() {
+		<-release
+		// Still inside Stop's drain window: the database must not be closed yet.
+		dbUsableAtEnd = srv.DB().Exec("SELECT 1").Error
+	})
+
+	stopped := make(chan error, 1)
+	go func() { stopped <- srv.Stop(context.Background()) }()
+
+	select {
+	case err := <-stopped:
+		t.Fatalf("Stop returned (%v) while tracked background work was still running", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case err := <-stopped:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("Stop did not return after the background work finished")
+	}
+	assert.NoError(t, dbUsableAtEnd, "the drained work must run against an open database")
 }

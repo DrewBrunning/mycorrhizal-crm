@@ -29,6 +29,7 @@ import (
 	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/internal/fsguard"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -333,6 +334,11 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.stopErr
 }
 
+// backgroundDrainTimeout bounds how long Stop waits for tracked background
+// work before closing the database. A mail send is bounded by its own client
+// timeout; this keeps a stuck one from holding shutdown open indefinitely.
+const backgroundDrainTimeout = 10 * time.Second
+
 func (s *Server) stop(ctx context.Context) error {
 	drainErr := s.bg.shutdown(ctx)
 
@@ -354,6 +360,17 @@ func (s *Server) stop(ctx context.Context) error {
 	if shutdownErr != nil {
 		logger.Error().Err(shutdownErr).Msg("Server forced to shutdown")
 	}
+
+	// Tracked background work started by requests that have now finished (a
+	// password-reset mail send, webhook fan-out, session touches) holds this
+	// DB handle: give it a bounded chance to finish before Close, so a reset
+	// email isn't dropped, or its failure lost, mid-shutdown (issue #1554).
+	drainCtx, cancelDrain := context.WithTimeout(ctx, backgroundDrainTimeout)
+	if err := fireandforget.WaitContext(drainCtx); err != nil {
+		logger.Warn().Err(err).Dur("waited", backgroundDrainTimeout).
+			Msg("Background work still running at shutdown; closing the database anyway")
+	}
+	cancelDrain()
 
 	// Fire-and-forget audit-chain goroutines (models.RecordAuditEvent, entity
 	// hooks) hold this DB handle too; drain them so none writes after Close.
