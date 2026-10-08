@@ -72,6 +72,16 @@ func smokeConfig(t *testing.T) Config {
 	}
 }
 
+// healthySmokeGrowthSlack widens the growth budgets for the per-PR healthy
+// smoke. Over a 9 s tail on a runner shared with the rest of the package shard
+// under -race, connection churn and GC timing move goroutines/fds/heap by
+// amounts the committed limits (tuned for the 45 min soak) don't absorb; this
+// test already needed two de-flakes. 4x still fails on a gross leak — one
+// goroutine or descriptor per request is hundreds over ~350 ops — while the
+// committed limits keep gating the long soak. The fault test below keeps the
+// committed limits: it must prove detection, not tolerate noise.
+const healthySmokeGrowthSlack = 4
+
 // The per-PR smoke: a healthy server under the mixed workload must pass every
 // budget and end-of-run check. This is the green half of the harness's
 // self-verification; the red half is the fault test below.
@@ -79,7 +89,13 @@ func TestRun_HealthyServerPasses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("soak smoke boots a real server for ~15s")
 	}
-	rep, err := Run(context.Background(), smokeConfig(t))
+	cfg := smokeConfig(t)
+	for i := range cfg.Budgets {
+		if cfg.Budgets[i].Kind == KindGrowth {
+			cfg.Budgets[i].Limit *= healthySmokeGrowthSlack
+		}
+	}
+	rep, err := Run(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.True(t, rep.OK(), rep.Markdown())
 	assert.Equal(t, "in-process", rep.Mode)

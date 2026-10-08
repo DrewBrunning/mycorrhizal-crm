@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"mycorrhizal/middleware"
 
@@ -80,8 +81,15 @@ type injector struct {
 	pinConn *sql.Conn
 	db      *gorm.DB
 	tick    int
+	seq     int64 // distinguishes this injector's limiter keys from earlier runs'
 	closeMu sync.Once
 }
+
+// injectorSeq numbers injectors within a process. The account rate limiter is
+// process-wide, so a second run in the same test binary (go test -count=2, the
+// nightly order-dependence pass) that reused the first run's key names would
+// only re-touch existing keys and the limiter leak would go undetected.
+var injectorSeq atomic.Int64
 
 // has reports whether f is in the injected set.
 func (in *injector) has(f Fault) bool {
@@ -96,7 +104,7 @@ func (in *injector) has(f Fault) bool {
 // newInjector prepares faults against db. WAL pinning needs the live pool;
 // every other fault is self-contained.
 func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, error) {
-	in := &injector{faults: faults, stop: make(chan struct{}), db: db}
+	in := &injector{faults: faults, stop: make(chan struct{}), db: db, seq: injectorSeq.Add(1)}
 	if in.has(FaultWAL) {
 		if db == nil {
 			return nil, fmt.Errorf("fault %q needs an in-process database handle", FaultWAL)
@@ -154,7 +162,7 @@ func (in *injector) Tick() {
 	if in.has(FaultLimiter) {
 		rl := middleware.GetAccountRateLimiter()
 		for i := 0; i < 8; i++ {
-			rl.RecordFailedAttempt(fmt.Sprintf("soak-fault-%d-%d", in.tick, i))
+			rl.RecordFailedAttempt(fmt.Sprintf("soak-fault-%d-%d-%d", in.seq, in.tick, i))
 		}
 	}
 	// FaultWAL pins its snapshot at construction. It also writes ballast every
