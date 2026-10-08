@@ -9,7 +9,7 @@ name: Workflow Lint (actionlint + shellcheck)
 #
 # Installed via a version-pinned, retried `go install` (not a raw release
 # download; unlike unit-tests.yml's golangci-lint / govulncheck it cannot be a
-# go.mod tool directive — see the step comment, issue #1551). shellcheck is a C binary, so it comes from apt. A clean
+# tools.mod tool directive — see the step comment, issue #1551). shellcheck is a C binary, so it comes from apt. A clean
 # baseline means the step exits non-zero on any finding — that is the gate.
 
 on:
@@ -90,19 +90,21 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # Issue #1551: NOT a go.mod `tool` directive, unlike gotestsum/
+      # Issue #1551: NOT a tools.mod `tool` directive, unlike gotestsum/
       # govulncheck/golangci-lint/gremlins. actionlint v1.7.12 needs
       # go.yaml.in/yaml/v4 rc.3, but golangci-lint (gosec) pulls rc.6 into
-      # backend/go.mod and rc.6 has a breaking API change, so actionlint fails
-      # to compile inside the backend module. It stays a version-pinned
+      # backend/tools.mod and rc.6 has a breaking API change, so actionlint
+      # fails to compile in that module graph. It stays a version-pinned
       # `go install`, wrapped in a 3-attempt retry so a transient module-proxy
       # / sum.golang.org failure doesn't redden the check.
       - name: Install actionlint (retried)
         run: |
-          for _ in 1 2 3; do
-            go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && break
+          for attempt in 1 2 3; do
+            go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && exit 0
+            echo "::warning::actionlint install attempt $attempt failed; retrying"
             sleep 10
           done
+          exit 1
 
       # Lints every workflow under .github/workflows/ and, with shellcheck on
       # PATH, every `run:` block too. Exits non-zero on any finding — the

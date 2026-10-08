@@ -322,15 +322,27 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: |
+            backend/go.sum
+            backend/tools.sum
 
-      # Issue #1551: dev tools (gotestsum/govulncheck/golangci-lint/actionlint/
-      # gremlins) are `tool` directives in backend/go.mod, so they resolve from
-      # go.sum + the module cache instead of a live proxy/sum.golang.org fetch
-      # per run. This retried download is the only network step left.
+      # Issue #1551: the Go CI tools (gotestsum, govulncheck, golangci-lint,
+      # gremlins) are `tool` directives in backend/tools.mod, a separate
+      # modfile, so they resolve from tools.sum + the module cache instead of a
+      # live proxy/sum.golang.org fetch per run, without their dependencies
+      # entering backend/go.mod (and so the shipped binary's module graph).
+      # Run them as `go tool -modfile=tools.mod <name>`. This retried download
+      # of both modfiles is the only network step left; it fails the step if
+      # every attempt fails.
       - name: Download Go modules
         working-directory: backend
-        run: for _ in 1 2 3; do go mod download && break; sleep 10; done
+        run: |
+          for attempt in 1 2 3; do
+            go mod download && go mod download -modfile=tools.mod && exit 0
+            echo "::warning::go mod download attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: Check formatting and vet
         working-directory: backend
@@ -376,15 +388,15 @@ jobs:
 
       - name: Vulnerability scan (govulncheck)
         working-directory: backend
-        run: go tool govulncheck ./...
+        run: go tool -modfile=tools.mod govulncheck ./...
 
       # Issue #358: golangci-lint (backend/.golangci.yml), the complementary
       # fast analyzer to CodeQL. v2.14.0: v2.12.2 panicked in
-      # staticcheck/unused under Go 1.27. `go tool golangci-lint` (a go.mod tool
-      # directive, issue #1551), not the golangci-lint-action.
+      # staticcheck/unused under Go 1.27. `go tool -modfile=tools.mod golangci-lint`
+      # (a tools.mod tool directive, issue #1551), not the golangci-lint-action.
       - name: Lint (golangci-lint gosec + bodyclose + correctness set)
         working-directory: backend
-        run: go tool golangci-lint run ./...
+        run: go tool -modfile=tools.mod golangci-lint run ./...
 
       # CLAUDE.md backend trap #4: a GORM finisher (Create/Save/Updates/
       # Delete/First/Find/Exec/...) returns *gorm.DB, not error, so errcheck
@@ -477,15 +489,27 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: |
+            backend/go.sum
+            backend/tools.sum
 
-      # Issue #1551: dev tools (gotestsum/govulncheck/golangci-lint/actionlint/
-      # gremlins) are `tool` directives in backend/go.mod, so they resolve from
-      # go.sum + the module cache instead of a live proxy/sum.golang.org fetch
-      # per run. This retried download is the only network step left.
+      # Issue #1551: the Go CI tools (gotestsum, govulncheck, golangci-lint,
+      # gremlins) are `tool` directives in backend/tools.mod, a separate
+      # modfile, so they resolve from tools.sum + the module cache instead of a
+      # live proxy/sum.golang.org fetch per run, without their dependencies
+      # entering backend/go.mod (and so the shipped binary's module graph).
+      # Run them as `go tool -modfile=tools.mod <name>`. This retried download
+      # of both modfiles is the only network step left; it fails the step if
+      # every attempt fails.
       - name: Download Go modules
         working-directory: backend
-        run: for _ in 1 2 3; do go mod download && break; sleep 10; done
+        run: |
+          for attempt in 1 2 3; do
+            go mod download && go mod download -modfile=tools.mod && exit 0
+            echo "::warning::go mod download attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
 
       # actions/setup-go's own cache keys purely on go.sum and doesn't
       # re-save on a hit, so the race-instrumented objects freeze at
@@ -592,7 +616,7 @@ jobs:
           RUN: ${{ steps.pkgs.outputs.run }}
           RERUN_FAILS: ${{ github.event_name == 'schedule' && '0' || '1' }}
         run: >
-          go tool gotestsum
+          go tool -modfile=tools.mod gotestsum
           --rerun-fails="$RERUN_FAILS" --rerun-fails-max-failures=20
           --rerun-fails-report="rerun-fails-${LEG}.txt"
           --junitfile="junit-${LEG}.xml"
