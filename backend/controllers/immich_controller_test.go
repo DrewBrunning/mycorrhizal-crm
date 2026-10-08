@@ -128,7 +128,10 @@ func TestSaveImmichConfig_CreateWithoutKeyIsRejected(t *testing.T) {
 	router := immichTestRouter(t, db)
 
 	w := immichDoJSON(t, router, "PUT", "/immich/config", models.ImmichConfigInput{BaseURL: "https://immich.example"})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "api_key")
+	var n int64
+	require.NoError(t, db.Model(&models.ImmichConfig{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected request must not create a config")
 }
 
 // TestSaveImmichConfig_RejectsSchemelessBaseURL pins the fix for a real gap:
@@ -174,7 +177,10 @@ func TestTestImmichConnection_NoConfigIs400(t *testing.T) {
 	router := immichTestRouter(t, db)
 
 	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "VALIDATION_ERROR", "")
+	var n int64
+	require.NoError(t, db.Model(&models.ImmichConfig{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected request must not create a config")
 }
 
 func TestTestImmichConnection_SuccessAndFailure(t *testing.T) {
@@ -246,7 +252,7 @@ func TestListImmichPeople_NoConfigIs400(t *testing.T) {
 	router := immichTestRouter(t, db)
 
 	w := immichDoJSON(t, router, "GET", "/immich/people", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	alAssertError(t, w, http.StatusBadRequest, "VALIDATION_ERROR", "")
 }
 
 // TestListImmichPeople_RequestFailedVsUnreachable pins T42: a stubbed 400

@@ -40,7 +40,7 @@ func TestAccountBundleHandlers_RequireUser(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(tc.method, tc.path, nil))
-		assert.Equal(t, http.StatusUnauthorized, w.Code, "%s %s without a user must be 401", tc.method, tc.path)
+		alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 	}
 
 	// fetch/confirm validate their JSON body first, so give them a valid one —
@@ -51,7 +51,7 @@ func TestAccountBundleHandlers_RequireUser(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
 	}
 }
 
@@ -65,7 +65,8 @@ func TestExportAccountBundle_GuardAndBuildFailures(t *testing.T) {
 		dbtest.HideTable(t, db, "contacts")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/export/account", nil))
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		alAssertError(t, w, http.StatusInternalServerError, "INTERNAL_ERROR", "")
+		assert.NotContains(t, w.Header().Get("Content-Disposition"), "attachment", "a failed export must not look like a download")
 	})
 
 	t.Run("build failure", func(t *testing.T) {
@@ -75,7 +76,8 @@ func TestExportAccountBundle_GuardAndBuildFailures(t *testing.T) {
 		dbtest.HideTable(t, db, "notes")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/export/account", nil))
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		alAssertError(t, w, http.StatusInternalServerError, "INTERNAL_ERROR", "")
+		assert.NotContains(t, w.Header().Get("Content-Disposition"), "attachment", "a failed export must not look like a download")
 	})
 }
 
@@ -93,7 +95,7 @@ func TestUploadMycorrhizalBundle_SessionLimit(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newFileUploadRequest(t, "/import/mycorrhizal/upload", "bundle.json", body))
-	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+	alAssertError(t, w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "")
 }
 
 // TestMycorrhizalHandlers_ErrorBranches covers the remaining validation and
@@ -158,5 +160,5 @@ func TestMycorrhizalImport_ConfirmUnknownSession(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newJSONRequest(t, "/import/mycorrhizal/confirm",
 		models.SourceImportConfirmRequest{SessionID: "nope", Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}))
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }

@@ -62,7 +62,7 @@ func TestGetCircleNotFoundForUnknownID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestListCircles(t *testing.T) {
@@ -176,7 +176,10 @@ func TestAddCircleMemberRejectsDuplicate(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var n int64
+	require.NoError(t, db.Model(&models.CircleMember{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "a duplicate add must not create a second membership row")
 }
 
 func TestAddCircleMemberRejectsContactFromAnotherUser(t *testing.T) {
@@ -233,10 +236,16 @@ func TestRemoveCircleMemberNotFound(t *testing.T) {
 	db.First(&user)
 	circle := models.Circle{UserID: user.ID, Name: "College friends"}
 	db.Create(&circle)
+	other := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	require.NoError(t, db.Create(&other).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: circle.ID, UserID: user.ID, MemberVCardUID: other.VCardUID}).Error)
 
 	req, _ := http.NewRequest("DELETE", "/circles/"+circle.ID+"/members/nonexistent-uid", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
+	var n int64
+	require.NoError(t, db.Model(&models.CircleMember{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "removing an unknown member must not remove another membership")
 }

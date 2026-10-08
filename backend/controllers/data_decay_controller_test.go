@@ -72,7 +72,10 @@ func TestCreateDataDecayPolicyRejectsDuplicate(t *testing.T) {
 	w := doCadenceJSON(t, router, "POST", "/data-decay-policies", models.DataDecayPolicyInput{
 		EntityID: contact.VCardUID, IntervalDays: 180,
 	})
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var n int64
+	require.NoError(t, db.Model(&models.DataDecayPolicy{}).Count(&n).Error)
+	assert.EqualValues(t, 1, n, "a rejected duplicate must not add a policy")
 }
 
 func TestCreateDataDecayPolicyRejectsForeignContact(t *testing.T) {
@@ -97,7 +100,7 @@ func TestGetDataDecayPolicyNotFound(t *testing.T) {
 	router.GET("/data-decay-policies/:id", GetDataDecayPolicy)
 
 	w := doCadenceJSON(t, router, "GET", "/data-decay-policies/does-not-exist", nil)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	alAssertError(t, w, http.StatusNotFound, "NOT_FOUND", "")
 }
 
 func TestGetDataDecayPolicyScopedToOwner(t *testing.T) {
@@ -248,7 +251,11 @@ func TestUpdateDataDecayPolicyRejectsEntityChangeToExisting(t *testing.T) {
 	w := doCadenceJSON(t, router, "PUT", "/data-decay-policies/"+policyB.ID, models.DataDecayPolicyInput{
 		EntityID: alice.VCardUID, IntervalDays: 90,
 	})
-	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	alAssertError(t, w, http.StatusConflict, "ALREADY_EXISTS", "")
+	var after models.DataDecayPolicy
+	require.NoError(t, db.First(&after, "id = ?", policyB.ID).Error)
+	assert.Equal(t, bob.VCardUID, after.EntityID, "a rejected update must not retarget the policy")
+	assert.Equal(t, 180, after.IntervalDays, "a rejected update must not change the interval")
 }
 
 func TestDeleteDataDecayPolicySoftDeletesAndAllowsRecreate(t *testing.T) {
