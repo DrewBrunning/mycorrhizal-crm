@@ -82,6 +82,11 @@ func NewAuditRecorder(db *gorm.DB, opts ...AuditOption) AuditRecorder {
 	for _, o := range opts {
 		o(a)
 	}
+	if !a.sync {
+		// Async events are buffered per transaction and released on commit
+		// (issue #1547); that needs the transaction-aware pool.
+		auditwire.Wrap(db)
+	}
 	installAuditRecorder(db, a)
 	return a
 }
@@ -167,6 +172,24 @@ func (a *auditLogger) Record(tx *gorm.DB, entityType, entityID, operation string
 		return
 	}
 
+	// Inside a transaction the event is held until that transaction commits
+	// (issue #1547): the goroutine below would otherwise insert as soon as the
+	// audited transaction releases SQLite's write lock, whether it committed
+	// or rolled back, leaving a phantom row for a write that never happened.
+	// auditwire.DeferOn buffers on the wrapped ConnPool's transaction
+	// (internal/auditwire/txpool.go): Commit runs the closure, Rollback drops
+	// it, and a rolled-back nested db.Transaction (savepoint) drops its own
+	// share. Outside a wrapped transaction (RecordAuditEvent from a
+	// controller, or a handle derived before the pool was wrapped) the event
+	// is queued immediately, as before.
+	if auditwire.DeferOn(tx, func() { a.enqueue(entityType, entityID, operation, userID, snapshotJSON) }) {
+		return
+	}
+	a.enqueue(entityType, entityID, operation, userID, snapshotJSON)
+}
+
+// enqueue launches the async persist goroutine.
+func (a *auditLogger) enqueue(entityType, entityID, operation string, userID uint, snapshotJSON string) {
 	// The db-nil check and wg.Add(1) run atomically under a.mu so an Add can
 	// never start while Flush's Wait is in progress. The goroutine only
 	// touches chainMu and the DB session, never a.mu, so holding the lock
