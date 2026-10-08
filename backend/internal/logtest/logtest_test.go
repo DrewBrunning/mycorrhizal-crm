@@ -20,7 +20,11 @@ type fakeT struct {
 	failed   bool
 }
 
-func (f *fakeT) Name() string            { return "TestFake" }
+// Name is unique per owning test: AllowWarnings records the opt-out in the
+// package-global allowSet keyed by name, so a constant name let
+// TestAllowWarningsOptsOut's entry silently disable every later Guard test
+// when -shuffle or -count=2 ran it first (nightly #1572).
+func (f *fakeT) Name() string            { return "TestFake/" + f.TB.Name() }
 func (f *fakeT) Helper()                 {}
 func (f *fakeT) Failed() bool            { return f.failed }
 func (f *fakeT) Cleanup(fn func())       { f.cleanups = append(f.cleanups, fn) }
