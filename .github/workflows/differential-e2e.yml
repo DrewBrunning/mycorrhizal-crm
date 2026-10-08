@@ -101,11 +101,10 @@ jobs:
       # binary lands on the host (volume mount) where the Go test execs it.
       - name: Build calcard reference CLI
         working-directory: backend/differential/reference/calcard
-        run: >
-          docker run --rm
-          -v "$PWD:/build" -w /build
-          rust:1.93-slim@sha256:c0a38f5662afdb298898da1d70b909af4bda4e0acff2dc52aea6360a9b9c6956
-          cargo build --release --locked
+        run: |
+          img=rust:1.93-slim@sha256:c0a38f5662afdb298898da1d70b909af4bda4e0acff2dc52aea6360a9b9c6956
+          "$GITHUB_WORKSPACE/.github/scripts/docker-pull-retry.sh" "$img"
+          docker run --rm --pull never -v "$PWD:/build" -w /build "$img" cargo build --release --locked
 
       # MYCORRHIZAL_REQUIRE_REFERENCES turns a missing reference (a failed
       # pip install / cargo build above) into a hard test failure instead of

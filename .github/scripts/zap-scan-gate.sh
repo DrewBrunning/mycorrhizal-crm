@@ -30,10 +30,13 @@ exit_blind=3 # keep in sync with backend/cmd/zapgate's exitBlind
 # active scan.
 chmod a+rwx zap
 
+# Pull once with retry/backoff (issue #1566); run_scan then uses --pull never.
+"$(dirname "$0")/docker-pull-retry.sh" "$image"
+
 run_scan() {
   rm -f zap/report.json
   local rc=0
-  docker run --rm --network host \
+  docker run --rm --pull never --network host \
     -e ZAP_AUTH_HEADER \
     -e ZAP_AUTH_HEADER_VALUE \
     -e ZAP_AUTH_HEADER_SITE \
