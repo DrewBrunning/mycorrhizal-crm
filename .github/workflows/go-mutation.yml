@@ -39,9 +39,6 @@ on:
 permissions:
   contents: read
 
-env:
-  GREMLINS_VERSION: v0.6.0
-
 jobs:
   mutate:
     name: Mutation test (${{ matrix.scope }})
@@ -100,6 +97,27 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
+          cache-dependency-path: |
+            backend/go.sum
+            backend/tools.sum
+
+      # Issue #1551: the Go CI tools (gotestsum, govulncheck, golangci-lint,
+      # gremlins) are `tool` directives in backend/tools.mod, a separate
+      # modfile, so they resolve from tools.sum + the module cache instead of a
+      # live proxy/sum.golang.org fetch per run, without their dependencies
+      # entering backend/go.mod (and so the shipped binary's module graph).
+      # Run them as `go tool -modfile=tools.mod <name>`. This retried download
+      # of both modfiles is the only network step left; it fails the step if
+      # every attempt fails.
+      - name: Download Go modules
+        working-directory: backend
+        run: |
+          for attempt in 1 2 3; do
+            go mod download && go mod download -modfile=tools.mod && exit 0
+            echo "::warning::go mod download attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: Mutation config is current
         working-directory: backend
@@ -146,7 +164,7 @@ jobs:
           # standard GitHub-hosted Linux runner's total RAM.
           ulimit -v 8000000
 
-          go run github.com/go-gremlins/gremlins/cmd/gremlins@${{ env.GREMLINS_VERSION }} unleash \
+          go tool -modfile=tools.mod gremlins unleash \
             --workers 4 \
             --timeout-coefficient 30 \
             --config .gremlins/${{ matrix.scope }}.yaml \
