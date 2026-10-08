@@ -514,6 +514,46 @@ class ContactDetailViewModelTest {
         io.mockk.coVerify(exactly = 1) { contactRepository.unfavoriteContact(5) }
     }
 
+    // Issue #1567: a detail fetch that started before the star toggle must not
+    // clobber the optimistic flip when its (stale) response lands afterwards.
+    @Test
+    fun `a stale load response landing after a toggle does not undo the star`() = runTest(mainDispatcherRule.testDispatcher) {
+        val starred = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
+        val slow = CompletableDeferred<Result<ContactRecordResponse>>()
+        var calls = 0
+        coEvery { contactRepository.getContact(5) } coAnswers { if (calls++ == 0) Result.success(starred) else slow.await() }
+        coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.contact?.isFavorite!!)
+
+        vm.load() // second fetch, parked mid-flight (as in the E2E's slow GET)
+        advanceUntilIdle()
+        vm.toggleFavorite()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.contact?.isFavorite!!)
+
+        slow.complete(Result.success(starred)) // stale pre-toggle snapshot arrives late
+        advanceUntilIdle()
+        assertFalse("stale load must not re-star the contact", vm.uiState.value.contact?.isFavorite!!)
+    }
+
+    @Test
+    fun `a load started after a settled toggle still reconciles the star from the server`() = runTest(mainDispatcherRule.testDispatcher) {
+        val starred = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
+        val unstarred = starred.copy(isFavorite = false)
+        coEvery { contactRepository.getContact(5) } returns Result.success(starred) andThen Result.success(unstarred)
+        coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.toggleFavorite()
+        advanceUntilIdle()
+
+        vm.load()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.contact?.isFavorite!!)
+    }
+
     @Test
     fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = false)
