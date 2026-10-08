@@ -721,6 +721,18 @@ own failure classes the 0.6.x milestones name, so they get explicit homes.
   chaos job's `large-migration-disk-full` (ENOSPC during a large migration
   fails closed) — see `docs/development/fault-injection.md`.
 
+### Soak / long-run (issue #1496)
+
+Everything above is short-lived; the soak is the one test that ages a real
+server. `backend/internal/soak` + `cmd/soak` run a sustained mixed workload
+against the real server (in-process via `embedded.Start`) and fail on growth of
+RSS / heap / goroutines / fds / WAL / rate-limiter entries, latency degradation,
+any 5xx, a failed `integrity_check`, FTS drift, a doctor violation or a wedged
+scheduler. Per-PR it is a ~15 s smoke in the `Backend (Go)` job (healthy must
+pass, injected leaks must fail); `soak.yml` is the weekly 45-minute form
+(advisory tier). See [soak-testing.md](soak-testing.md) and the committed
+thresholds in [soak-baseline.md](soak-baseline.md).
+
 ### Security/adversarial tooling
 
 - **Owns** the vulnerability classes no layer above is shaped to catch: BOLA/IDOR

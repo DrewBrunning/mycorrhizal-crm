@@ -237,6 +237,34 @@ func (a *AccountRateLimiter) EntryCount() int {
 	return len(a.accounts)
 }
 
+// TrackedKeys returns the total number of keys held across every map the
+// account limiter keeps (lockout entries, instance-wide entries, and both
+// known-good-IP maps) — the soak harness's growth signal (issue #1496).
+// EntryCount reports only the per-identifier lockout map and would hide a
+// leak in the others.
+func (a *AccountRateLimiter) TrackedKeys() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	n := len(a.accounts) + len(a.global) + len(a.knownGoodGlobalIPs)
+	for _, ips := range a.knownGoodIPs {
+		n += 1 + len(ips)
+	}
+	return n
+}
+
+// RateLimiterEntryCounts snapshots the tracked-key count of every
+// process-wide in-memory limiter, keyed by a bounded label (issue #1496). The
+// /metrics handler publishes it as mycorrhizal_ratelimiter_entries.
+func RateLimiterEntryCounts() map[string]int {
+	return map[string]int{
+		"auth":    authLimiter.EntryCount(),
+		"api":     apiLimiter.EntryCount(),
+		"carddav": cardDAVLimiter.EntryCount(),
+		"feed":    feedLimiter.EntryCount(),
+		"account": accountLimiter.TrackedKeys(),
+	}
+}
+
 // Default TTL for rate limiter entries (10 minutes of inactivity)
 const defaultLimiterTTL = 10 * time.Minute
 

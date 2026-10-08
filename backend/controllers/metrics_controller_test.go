@@ -72,6 +72,12 @@ func TestMetricsHandler_ServesExpositionWithValidToken(t *testing.T) {
 		"db_connections_open ",
 		`mycorrhizal_storage_bytes{kind="database"}`,
 		"process_uptime_seconds ",
+		// Soak signals (issue #1496).
+		"process_resident_memory_bytes ",
+		"process_open_fds ",
+		`mycorrhizal_storage_bytes{kind="wal"}`,
+		`mycorrhizal_ratelimiter_entries{limiter="api"}`,
+		`mycorrhizal_ratelimiter_entries{limiter="account"}`,
 	} {
 		assert.Contains(t, body, want)
 	}
