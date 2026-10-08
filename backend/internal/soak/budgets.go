@@ -52,8 +52,8 @@ var Budgets = []Budget{
 		Reason: "Per-IP and per-account limiter maps are evicted by the 5-minute cleanup ticker. The workload keeps its client set and its failed-login identifiers fixed, so the tracked-key count must be flat; per-request growth means state keyed by something unbounded that never evicts. 20 allows the failed-login lockout entries and known-good-IP records to settle.",
 	},
 	{
-		Signal: SigDBConnsOpen, Kind: KindCeiling, Limit: 25, Unit: "connections",
-		Reason: "The pool is bounded; an open-connection count that exceeds it is a leaked *sql.Rows/*sql.Tx pinning connections. 25 sits above the observed steady-state pool under the offered concurrency.",
+		Signal: SigDBConnsOpen, Kind: KindGrowth, Limit: 6, Unit: "connections",
+		Reason: "The database/sql pool is not capped (no SetMaxOpenConns), so the open-connection count tracks concurrent in-flight requests: a starved CI runner piles requests up and legitimately peaks well above the steady state (27 observed with 24 in flight, back to 2 at the end). A ceiling therefore measures contention, not leaks. A leaked *sql.Rows/*sql.Tx pins its connection forever, so the count climbs over the run instead of returning to the pool; judged as fitted tail growth, like open_fds. 6 absorbs in-flight work at the sample instant.",
 	},
 	{
 		Signal: SigDBBytes, Kind: KindGrowth, Limit: 96 * mib, Unit: "bytes",

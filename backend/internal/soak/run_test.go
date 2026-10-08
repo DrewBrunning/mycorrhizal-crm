@@ -34,6 +34,11 @@ func TestInjector_EachFaultLeaksAndCloseReleases(t *testing.T) {
 	assert.Nil(t, in.retain)
 }
 
+func TestInjector_DBConnsNeedsADatabase(t *testing.T) {
+	_, err := newInjector(context.Background(), []Fault{FaultDBConns}, nil)
+	assert.Error(t, err)
+}
+
 func TestInjector_WALNeedsADatabase(t *testing.T) {
 	_, err := newInjector(context.Background(), []Fault{FaultWAL}, nil)
 	assert.Error(t, err)
@@ -120,7 +125,7 @@ func TestRun_InjectedLeaksAreDetected(t *testing.T) {
 		t.Skip("soak fault test boots a real server for ~15s")
 	}
 	cfg := smokeConfig(t)
-	cfg.Faults = []Fault{FaultGoroutines, FaultHeap, FaultFDs, FaultLimiter}
+	cfg.Faults = []Fault{FaultGoroutines, FaultHeap, FaultFDs, FaultLimiter, FaultDBConns}
 	rep, err := Run(context.Background(), cfg)
 	require.NoError(t, err)
 	require.False(t, rep.OK(), "injected leaks must fail the soak")
@@ -130,7 +135,7 @@ func TestRun_InjectedLeaksAreDetected(t *testing.T) {
 			breached[v.Budget.Signal] = true
 		}
 	}
-	for _, sig := range []string{SigGoroutines, SigHeapInuse, SigOpenFDs, SigLimiterEntries} {
+	for _, sig := range []string{SigGoroutines, SigHeapInuse, SigOpenFDs, SigLimiterEntries, SigDBConnsOpen} {
 		assert.True(t, breached[sig], "%s leak was not detected: %s", sig, rep.Markdown())
 	}
 }

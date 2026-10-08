@@ -39,7 +39,7 @@ absent elsewhere).
 
 1. **Budgets** ([soak-baseline.md](soak-baseline.md), `internal/soak/budgets.go`):
    fitted growth over the tail window (last 2/3) for goroutines, fds, heap, RSS,
-   rate-limiter keys; a ceiling for the WAL and open DB connections; a
+   rate-limiter keys and open DB connections (an uncapped pool, so a ceiling would measure contention); a ceiling for the WAL; a
    degradation ratio (tail median vs first third) for latency. A required signal
    that is missing from `/metrics` fails — a gauge that silently stopped being
    exported must not read as "no growth".

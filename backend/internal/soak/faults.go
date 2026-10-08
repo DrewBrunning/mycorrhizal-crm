@@ -42,10 +42,14 @@ const (
 	// run, so SQLite can never checkpoint past it: the WAL grows without bound
 	// (checkpoint starvation by a never-ending reader).
 	FaultWAL Fault = "wal"
+	// FaultDBConns pins pooled database connections and never returns them
+	// (a leaked *sql.Rows / *sql.Tx holding its connection). The pool is
+	// uncapped, so the open-connection count climbs.
+	FaultDBConns Fault = "dbconns"
 )
 
 // Faults lists every injectable fault.
-var Faults = []Fault{FaultGoroutines, FaultHeap, FaultFDs, FaultLimiter, FaultWAL}
+var Faults = []Fault{FaultGoroutines, FaultHeap, FaultFDs, FaultLimiter, FaultWAL, FaultDBConns}
 
 // ParseFaults validates a comma-separated fault list from a flag ("" is none).
 func ParseFaults(s string) ([]Fault, error) {
@@ -64,7 +68,7 @@ func ParseFaults(s string) ([]Fault, error) {
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("unknown fault %q (valid: goroutines, heap, fds, limiter, wal)", name)
+			return nil, fmt.Errorf("unknown fault %q (valid: goroutines, heap, fds, limiter, wal, dbconns)", name)
 		}
 	}
 	return out, nil
@@ -79,6 +83,8 @@ type injector struct {
 	retain  [][]byte
 	files   []*os.File
 	pinConn *sql.Conn
+	conns   []*sql.Conn // FaultDBConns: connections checked out and never returned
+	ctx     context.Context
 	db      *gorm.DB
 	tick    int
 	seq     int64 // distinguishes this injector's limiter keys from earlier runs'
@@ -104,7 +110,10 @@ func (in *injector) has(f Fault) bool {
 // newInjector prepares faults against db. WAL pinning needs the live pool;
 // every other fault is self-contained.
 func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, error) {
-	in := &injector{faults: faults, stop: make(chan struct{}), db: db, seq: injectorSeq.Add(1)}
+	in := &injector{faults: faults, stop: make(chan struct{}), db: db, seq: injectorSeq.Add(1), ctx: ctx}
+	if in.has(FaultDBConns) && db == nil {
+		return nil, fmt.Errorf("fault %q needs an in-process database handle", FaultDBConns)
+	}
 	if in.has(FaultWAL) {
 		if db == nil {
 			return nil, fmt.Errorf("fault %q needs an in-process database handle", FaultWAL)
@@ -165,6 +174,17 @@ func (in *injector) Tick() {
 			rl.RecordFailedAttempt(fmt.Sprintf("soak-fault-%d-%d-%d", in.seq, in.tick, i))
 		}
 	}
+	if in.has(FaultDBConns) && in.db != nil {
+		// 3 per tick: ~27 over the 9 s tail, well clear of the 6-connection
+		// growth budget and of in-flight noise (which returns to the pool).
+		if sqlDB, err := in.db.DB(); err == nil {
+			for i := 0; i < 3; i++ {
+				if c, err := sqlDB.Conn(in.ctx); err == nil {
+					in.conns = append(in.conns, c)
+				}
+			}
+		}
+	}
 	// FaultWAL pins its snapshot at construction. It also writes ballast every
 	// tick: the pinned reader only starves the checkpoint, so the WAL still
 	// has to be fed, and feeding it from the workload made detection depend
@@ -186,6 +206,10 @@ func (in *injector) Close() {
 		for _, f := range in.files {
 			_ = f.Close()
 		}
+		for _, c := range in.conns {
+			_ = c.Close()
+		}
+		in.conns = nil
 		if in.pinConn != nil {
 			_, _ = in.pinConn.ExecContext(context.Background(), "ROLLBACK")
 			_ = in.pinConn.Close()
