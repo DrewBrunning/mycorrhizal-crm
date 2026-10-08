@@ -1214,8 +1214,15 @@ criterion.**
     (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%), so `break: 74`
     sits ~5 points under it. Hooks are the weak half and the obvious next
     ratchet target. Static mutants are ignored (`ignoreStatic`: 6% of mutants
-    but 58% of the run time); the run takes ~1h45m, hence the job's 180-minute
-    timeout. Locally run a slice with `npx stryker run --mutate
+    but 58% of the run time). The ~1h45m figure was a 16-core dev box; on the
+    4-vCPU CI runner the full scope projects to ~5h (issue #1571: the first
+    nightly at this scope was cancelled by the old 180-minute timeout at 53%),
+    so the workflow runs two parallel legs, `api` and `hooks`, each with a
+    240-minute timeout (api ~4.4k mutants, hooks ~3.3k). Each leg derives its config from `stryker.conf.json`
+    with `jq` and carries its own `break` in the workflow matrix (`api` 83,
+    `hooks` 60 — the same ~5-6 points under each half's measured score as the
+    combined 74); `stryker.conf.json` itself stays the combined local-run
+    config. Locally run a slice with `npx stryker run --mutate
     src/api/notes.ts` (the dry run still executes the whole suite, ~5 min).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
     data loss lives: migration/upgrade and backup/restore (`database`),

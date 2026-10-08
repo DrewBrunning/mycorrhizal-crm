@@ -10,17 +10,31 @@ name: Mutation Testing (Stryker)
 # diff. The scope (stryker.conf.json's `mutate`) is every src/api/*.ts module
 # and every src/hooks/use*.ts hook (issue #1482; it was 6 files) — not the
 # whole tree — and the vitest-runner's `related` mode narrows each mutant to
-# the tests that touch it. Measured 2026-10-06: ~7.7k mutants, ~1h45m on a
-# 16-core box with 6 runners (dry run ~5m, static mutants ignored), so the job
-# timeout below is 180 minutes.
+# the tests that touch it.
 #
-# Threshold-gated (issue #915): stryker.conf.json's `thresholds.break` is set
-# at the current baseline, so `npx stryker run` itself exits non-zero — and
-# this job goes red — on a mutation-score drop below it, rather than the
-# score being printed and ignored. The HTML report still uploads as an
+# Two parallel legs (issue #1571). The ~7.7k-mutant scope measured ~1h45m on a
+# 16-core dev box, but the first nightly at that scope on a 4-vCPU
+# ubuntu-latest runner was still at 53% (4942/7662, Stryker's own estimate
+# ~5h15m total) when the old single job's 180-minute timeout cancelled it, and
+# a single job leaves no headroom under GitHub's 6h job cap. The scope splits
+# into api (~4.4k mutants, ~2.5h at the observed ~29 mutants/min) and hooks
+# (~3.3k, ~2h); the 240-minute timeout leaves ~1.5x margin on the larger leg. Each leg derives its config from
+# stryker.conf.json with jq (one source for everything but the file subset and
+# the break threshold), so the combined config still serves a local full run.
+#
+# Threshold-gated (issue #915): each leg's `break` is set ~5-6 points under the
+# score measured 2026-10-06 for its half (docs/development/testing.md: api
+# 89.41%, hooks 66.35%; combined 79.62% against stryker.conf.json's 74), so
+# `npx stryker run` itself exits non-zero — and this job goes red — on a
+# mutation-score drop below it, rather than the score being printed and
+# ignored. Splitting the gate makes it stricter for api and stops a strong api
+# score masking a hooks regression. The HTML report still uploads as an
 # artifact either way. Still advisory at release time
 # (docs/development/release-gates.md): nightly-only, so a regression is
 # caught by morning rather than blocking the PR that introduced it.
+#
+# `Mutation test (core modules)` is kept as a small aggregate job so the check
+# name .github/release-gates.json registers still exists.
 
 on:
   schedule:
@@ -32,9 +46,19 @@ permissions:
 
 jobs:
   stryker:
-    name: Mutation test (core modules)
+    name: Stryker leg (${{ matrix.leg }})
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: api
+            prefix: src/api/
+            break: 83
+          - leg: hooks
+            prefix: src/hooks/
+            break: 60
 
     steps:
       - name: Checkout repository
@@ -55,14 +79,43 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Derive this leg's Stryker config
+        working-directory: frontend
+        env:
+          PREFIX: ${{ matrix.prefix }}
+          BREAK: ${{ matrix.break }}
+        run: |
+          jq --arg prefix "$PREFIX" --argjson brk "$BREAK" '
+            .mutate |= map(select(startswith("!") or startswith($prefix)))
+            | .thresholds.break = $brk
+            | .htmlReporter.fileName = "reports/mutation/index.html"
+          ' stryker.conf.json > stryker.leg.conf.json
+          jq -c '{mutate, thresholds}' stryker.leg.conf.json
+
       - name: Run Stryker (fails below thresholds.break)
         working-directory: frontend
-        run: npx stryker run --concurrency 4
+        run: npx stryker run stryker.leg.conf.json --concurrency 4
 
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: stryker-mutation-report
+          name: stryker-mutation-report-${{ matrix.leg }}
           path: frontend/reports/mutation/
           retention-days: 30
+
+  # Aggregate under the pre-split job name so release-gates.json's
+  # check_context keeps resolving; red if any leg is red or cancelled.
+  stryker-result:
+    name: Mutation test (core modules)
+    needs: stryker
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every leg to have passed
+        env:
+          RESULT: ${{ needs.stryker.result }}
+        run: |
+          echo "stryker legs: $RESULT"
+          test "$RESULT" = "success"
