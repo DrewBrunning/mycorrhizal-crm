@@ -3,12 +3,14 @@ package controllers
 import (
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestOtherControllers_MalformedID_NotServerError is issue #524 follow-up
@@ -121,7 +123,7 @@ func TestDownloadAttachment_MalformedID_Returns400(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/attachments/not-a-number/download", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 // TestUndoAuditEvent_MalformedID_Returns404 covers audit_controller.go's
@@ -145,10 +147,14 @@ func TestUndoAuditEvent_MalformedID_Returns404(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/audit/not-a-number/undo", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 
 	req2, _ := http.NewRequest("POST", "/audit/null,null/undo", nil)
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
-	assert.Equal(t, http.StatusNotFound, w2.Code, w2.Body.String())
+	mzErrorCode(t, w2, http.StatusNotFound, "NOT_FOUND")
+
+	var events int64
+	require.NoError(t, db.Model(&models.AuditEvent{}).Count(&events).Error)
+	assert.Zero(t, events, "a rejected undo must not write any audit event")
 }

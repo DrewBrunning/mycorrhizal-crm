@@ -15,11 +15,19 @@ import (
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func meerkatRouter(t *testing.T) (*gin.Engine, uint) {
+	t.Helper()
+	_, router, userID := meerkatRouterDB(t)
+	return router, userID
+}
+
+// meerkatRouterDB is meerkatRouter plus the backing DB, for tests that assert
+// a rejected request wrote nothing.
+func meerkatRouterDB(t *testing.T) (*gorm.DB, *gin.Engine, uint) {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 	db := dbtest.New(t)
@@ -27,7 +35,7 @@ func meerkatRouter(t *testing.T) (*gin.Engine, uint) {
 	require.NoError(t, db.Create(&user).Error)
 	router := routerForUser(db, user.ID)
 	registerImportRoutes(router, &config.Config{ProfilePhotoDir: t.TempDir()})
-	return router, user.ID
+	return db, router, user.ID
 }
 
 func meerkatFixtureFile(t *testing.T) []byte {
@@ -102,40 +110,42 @@ func TestMeerkatImport_FullControllerFlow(t *testing.T) {
 }
 
 func TestUploadMeerkatDatabase_RejectsBadUploads(t *testing.T) {
-	router, _ := meerkatRouter(t)
+	db, router, _ := meerkatRouterDB(t)
 
 	// no file
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newFileUploadRequestNoFile(t, "/contacts/import/meerkat/upload"))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "file")
 
 	// not a sqlite file
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/meerkat/upload", "x.db", []byte("nope not sqlite")))
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "file")
 
 	// wrong extension
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/meerkat/upload", "x.txt", meerkatFixtureFile(t)))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "file")
+	mzAssertNoImportWrites(t, db)
 }
 
 func TestMeerkatImport_CancelAndFetchEdgeCases(t *testing.T) {
-	router, _ := meerkatRouter(t)
+	db, router, _ := meerkatRouterDB(t)
 
 	// cancel without session_id
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/contacts/import/meerkat/cancel", nil))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "session_id")
 
 	// fetch unknown session
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/meerkat/fetch",
 		models.MeerkatFetchRequest{SessionID: "nope"}))
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 
 	// status missing session_id
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/contacts/import/meerkat/status", nil))
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "session_id")
+	mzAssertNoImportWrites(t, db)
 }

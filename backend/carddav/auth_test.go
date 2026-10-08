@@ -202,6 +202,9 @@ func TestBasicAuthMiddleware_UnknownUserRejected(t *testing.T) {
 
 	w := doBasicAuthRequest(router, "no-such-carddav-user", "whatever")
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, `Basic realm="CardDAV"`, w.Header().Get("WWW-Authenticate"),
+		"a DAV client needs the Basic challenge to re-prompt")
+	assert.NotContains(t, w.Body.String(), "userID", "the protected handler must not run for an unknown user")
 }
 
 // TestBasicAuthMiddleware_Griefing_DoesNotLockLegitimateIP pins issue #867 on

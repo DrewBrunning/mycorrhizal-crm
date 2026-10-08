@@ -574,7 +574,8 @@ func TestChangePassword_Succeeds(t *testing.T) {
 func TestRequestPasswordReset_DemoModeDisabled(t *testing.T) {
 	cfg := config.Config{FrontendURL: "http://localhost:3000", DemoMode: true}
 
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	require.NoError(t, db.Create(&models.User{Username: "resetdemo", Email: "reset@example.com", Password: "x"}).Error)
 	router.POST("/password-reset/request", func(c *gin.Context) {
 		c.Set("validated", &models.PasswordResetRequestInput{Email: "reset@example.com"})
 		RequestPasswordReset(c, &cfg)
@@ -584,11 +585,17 @@ func TestRequestPasswordReset_DemoModeDisabled(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	env := mzErrorCode(t, w, http.StatusForbidden, "FORBIDDEN")
+	assert.Contains(t, env.Error.Message, "demo mode")
+	var u models.User
+	require.NoError(t, db.Where("email = ?", "reset@example.com").First(&u).Error)
+	assert.Nil(t, u.PasswordResetTokenHash, "demo mode must not mint a reset token")
+	assert.Nil(t, u.PasswordResetRequestedAt)
 }
 
 func TestConfirmPasswordReset_DemoModeDisabled(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	require.NoError(t, db.Create(&models.User{Username: "confirmdemo", Email: "confirmdemo@example.com", Password: "original-hash"}).Error)
 	router.POST("/password-reset/confirm", func(c *gin.Context) {
 		c.Set("validated", &models.PasswordResetConfirmInput{Token: "irrelevant", Password: strongPasswordAlt})
 		ConfirmPasswordReset(c, &config.Config{DemoMode: true})
@@ -598,11 +605,17 @@ func TestConfirmPasswordReset_DemoModeDisabled(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	env := mzErrorCode(t, w, http.StatusForbidden, "FORBIDDEN")
+	assert.Contains(t, env.Error.Message, "demo mode")
+	var u models.User
+	require.NoError(t, db.Where("username = ?", "confirmdemo").First(&u).Error)
+	assert.Equal(t, "original-hash", u.Password, "demo mode must not change any password")
 }
 
 func TestChangePassword_DemoModeDisabled(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	initialPassword, _ := services.HashPassword(strongPassword)
+	require.NoError(t, db.Create(&models.User{Username: "irrelevant", Email: "irrelevant@example.com", Password: initialPassword}).Error)
 	router.POST("/change-password", func(c *gin.Context) {
 		c.Set("username", "irrelevant")
 		c.Set("validated", &models.ChangePasswordInput{
@@ -616,7 +629,11 @@ func TestChangePassword_DemoModeDisabled(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	env := mzErrorCode(t, w, http.StatusForbidden, "FORBIDDEN")
+	assert.Contains(t, env.Error.Message, "demo mode")
+	var u models.User
+	require.NoError(t, db.Where("username = ?", "irrelevant").First(&u).Error)
+	assert.Equal(t, initialPassword, u.Password, "demo mode must not change the password")
 }
 
 // --- HIBP breach check gating (issue #376) -------------------------------
@@ -649,7 +666,7 @@ func TestRegisterUser_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -660,7 +677,10 @@ func TestRegisterUser_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "password")
+	var n int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "breacheduser").Count(&n).Error)
+	assert.Zero(t, n, "a breached password must not create the account")
 }
 
 func TestRegisterUser_HIBPCheckEnabled_AllowsCleanPassword(t *testing.T) {
@@ -670,7 +690,7 @@ func TestRegisterUser_HIBPCheckEnabled_AllowsCleanPassword(t *testing.T) {
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -681,7 +701,10 @@ func TestRegisterUser_HIBPCheckEnabled_AllowsCleanPassword(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "cleanuser").Count(&n).Error)
+	assert.Equal(t, int64(1), n, "the registration must persist the account")
 }
 
 func TestRegisterUser_HIBPCheckDisabled_SkipsBreachedPassword(t *testing.T) {
@@ -690,7 +713,7 @@ func TestRegisterUser_HIBPCheckDisabled_SkipsBreachedPassword(t *testing.T) {
 	// hibpAPIBaseURL is left at its real default, which would fail/hang if
 	// this test actually reached it. If registration returns 201 here, the
 	// check was skipped as intended.
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -701,7 +724,10 @@ func TestRegisterUser_HIBPCheckDisabled_SkipsBreachedPassword(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "defaultuser").Count(&n).Error)
+	assert.Equal(t, int64(1), n, "the registration must persist the account")
 }
 
 func TestChangePassword_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
@@ -1303,7 +1329,9 @@ func TestUpdateLanguage_RejectsMalformedJSON(t *testing.T) {
 }
 
 func TestUpdateLanguage_RequiresAuth(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var before models.User
+	require.NoError(t, db.First(&before).Error)
 	// setupRouter's shared middleware sets "userID" but not "username", so
 	// mounting UpdateLanguage directly exercises the unauthenticated path.
 	router.PATCH("/language", UpdateLanguage)
@@ -1314,7 +1342,10 @@ func TestUpdateLanguage_RequiresAuth(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	var after models.User
+	require.NoError(t, db.First(&after, before.ID).Error)
+	assert.Equal(t, before.Language, after.Language, "an unauthenticated request must not write")
 }
 
 func TestUpdateDateFormat_Succeeds(t *testing.T) {
@@ -1394,7 +1425,9 @@ func TestUpdateDateFormat_RejectsUnsupportedFormat(t *testing.T) {
 }
 
 func TestUpdateDateFormat_RequiresAuth(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
+	var before models.User
+	require.NoError(t, db.First(&before).Error)
 	router.PATCH("/date-format", UpdateDateFormat)
 
 	req, _ := http.NewRequest("PATCH", "/date-format", bytes.NewBufferString(`{"date_format":"iso"}`))
@@ -1403,7 +1436,10 @@ func TestUpdateDateFormat_RequiresAuth(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	mzErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	var after models.User
+	require.NoError(t, db.First(&after, before.ID).Error)
+	assert.Equal(t, before.DateFormat, after.DateFormat, "an unauthenticated request must not write")
 }
 
 // --- registration behaviour (issue #558: "registration behaviour is documented

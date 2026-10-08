@@ -75,26 +75,33 @@ func TestHandlerGetCalendarObjectStatuses(t *testing.T) {
 
 	// A present event serves 200 with its iCalendar body.
 	w := doCalDAV(t, h, user, http.MethodGet, base+"interaction-"+activity.UUID+".ics", "", "")
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/calendar")
+	assert.Contains(t, w.Body.String(), "BEGIN:VCALENDAR")
+	assert.Contains(t, w.Body.String(), "SUMMARY:Wire lunch", "the 200 must carry the event itself")
 
 	// A missing event is a 404 ("the event is gone"), not a 500 ("server broken").
 	w = doCalDAV(t, h, user, http.MethodGet, base+"interaction-does-not-exist.ics", "", "")
 	assert.Equal(t, http.StatusNotFound, w.Code,
 		"GET of a missing event must be 404, not 500 (issue #1439)")
 	assert.NotEqual(t, http.StatusInternalServerError, w.Code)
+	assert.True(t, strings.HasPrefix(w.Body.String(), "404 Not Found"), w.Body.String())
+	assert.NotContains(t, w.Body.String(), "BEGIN:VCALENDAR", "a 404 must not carry calendar data")
 
 	// A path with no resource UID is a malformed request: 400.
 	w = doCalDAV(t, h, user, http.MethodGet, base, "", "")
 	assert.Equal(t, http.StatusBadRequest, w.Code,
 		"GET of the calendar collection path is an invalid path")
+	assert.True(t, strings.HasPrefix(w.Body.String(), "400 Bad Request"), w.Body.String())
 }
 
 func TestHandlerWritePathsForbidden(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler, user, _ := newWireHandler(t)
+	handler, user, activity := newWireHandler(t)
 	h := handler.GinHandler()
 
 	target := "/caldav/calendars/" + user.Username + "/interactions/new-event.ics"
+	existing := "/caldav/calendars/" + user.Username + "/interactions/interaction-" + activity.UUID + ".ics"
 	icalBody := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//mycorrhizal//caldav-test//EN\r\n" +
 		"BEGIN:VEVENT\r\nUID:wire-new\r\nDTSTAMP:20260101T000000Z\r\n" +
 		"DTSTART:20260101T000000Z\r\nSUMMARY:New\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
@@ -104,12 +111,23 @@ func TestHandlerWritePathsForbidden(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, w.Code,
 		"PUT of a calendar object is unsupported and must be 403, not 500")
 	assert.NotEqual(t, http.StatusInternalServerError, w.Code)
+	assert.True(t, strings.HasPrefix(w.Body.String(), "403 Forbidden"), w.Body.String())
 
-	// DELETE is refused by design (read-only serve): a 403, not a 500.
-	w = doCalDAV(t, h, user, http.MethodDelete, target, "", "")
+	// DELETE is refused by design (read-only serve): a 403, not a 500. Aim it at
+	// a real event so a regression that executed it would be visible.
+	w = doCalDAV(t, h, user, http.MethodDelete, existing, "", "")
 	assert.Equal(t, http.StatusForbidden, w.Code,
 		"DELETE of a calendar object is unsupported and must be 403, not 500")
 	assert.NotEqual(t, http.StatusInternalServerError, w.Code)
+	assert.True(t, strings.HasPrefix(w.Body.String(), "403 Forbidden"), w.Body.String())
+
+	// Neither refused write changed anything: the PUT created no event and the
+	// DELETE removed none.
+	w = doCalDAV(t, h, user, http.MethodGet, target, "", "")
+	assert.Equal(t, http.StatusNotFound, w.Code, "the refused PUT must not have created the event")
+	w = doCalDAV(t, h, user, http.MethodGet, existing, "", "")
+	require.Equal(t, http.StatusOK, w.Code, "the refused DELETE must not have removed the event")
+	assert.Contains(t, w.Body.String(), "SUMMARY:Wire lunch")
 }
 
 func TestHandlerCalendarQueryReport(t *testing.T) {

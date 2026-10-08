@@ -297,7 +297,7 @@ func TestGetExternalActivity_UnknownIDIs404(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/external-activities/does-not-exist", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
 }
 
 // --- Dashboard endpoints ------------------------------------------------------

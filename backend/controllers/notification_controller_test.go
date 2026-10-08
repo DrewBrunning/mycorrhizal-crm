@@ -203,7 +203,8 @@ func TestNotificationConfig_TestUnknownChannel(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Details, "Channel")
 }
 
 // newNotificationTestRouter wires the Settings card's notification endpoints
@@ -471,7 +472,7 @@ func TestDeviceRegistration_CRUD(t *testing.T) {
 }
 
 func TestDeviceRegistration_InvalidClientRejected(t *testing.T) {
-	_, router := setupRouter(t)
+	db, router := setupRouter(t)
 	router.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), CreateDeviceRegistration)
 
 	// The middleware's oneof validator rejects an unknown push client — the
@@ -484,7 +485,11 @@ func TestDeviceRegistration_InvalidClientRejected(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	env := mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
+	assert.Contains(t, env.Error.Details, "Client")
+	var count int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Count(&count).Error)
+	assert.Zero(t, count, "an unknown push client must not be registered")
 }
 
 func TestDeviceRegistration_DeleteOwnershipScoping(t *testing.T) {

@@ -165,7 +165,10 @@ func TestAddContactTagRejectsDuplicate(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	mzErrorCode(t, w, http.StatusConflict, "ALREADY_EXISTS")
+	var links int64
+	require.NoError(t, db.Model(&models.ContactTag{}).Where("tag_id = ?", tag.ID).Count(&links).Error)
+	assert.Equal(t, int64(1), links, "a duplicate add must not insert a second link")
 }
 
 func TestAddContactTagRejectsContactFromAnotherUser(t *testing.T) {

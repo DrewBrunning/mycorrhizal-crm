@@ -122,7 +122,10 @@ func TestSaveWebDAVConfig_CreateWithoutPasswordIsRejected(t *testing.T) {
 	router := webdavTestRouter(t, db)
 
 	w := webdavDoJSON(t, router, "PUT", "/nextcloud/config", models.WebDAVConfigInput{BaseURL: "https://nc.example", Username: "alice"})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "app_password")
+	var count int64
+	require.NoError(t, db.Model(&models.WebDAVConfig{}).Where("user_id = ?", uint(1)).Count(&count).Error)
+	assert.Zero(t, count, "a rejected save must not persist a config")
 }
 
 // TestListWebDAVDir_NoConfigIs400 covers issue #524: no Nextcloud connection
@@ -133,7 +136,7 @@ func TestListWebDAVDir_NoConfigIs400(t *testing.T) {
 	router := webdavTestRouter(t, db)
 
 	w := webdavDoJSON(t, router, "GET", "/nextcloud/dir", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 // TestTestWebDAVConnection_NoConfigIs400 covers issue #524: no Nextcloud
@@ -145,7 +148,7 @@ func TestTestWebDAVConnection_NoConfigIs400(t *testing.T) {
 	router := webdavTestRouter(t, db)
 
 	w := webdavDoJSON(t, router, "POST", "/nextcloud/test-connection", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 func TestTestWebDAVConnection_SuccessAndFailure(t *testing.T) {

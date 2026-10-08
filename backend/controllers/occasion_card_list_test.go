@@ -166,16 +166,16 @@ func TestGetOccasionCardListCSVRejectsControlCharsInKind(t *testing.T) {
 	// The exact fuzzed value that reproduced the 502: control bytes and
 	// non-ASCII, URL-encoded the way Schemathesis sent it.
 	w := doCardListGET(router, "/occasion-obligations/card-list?kind=%F0%BE%85%BE%0A%C2%B1")
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 
 	w = doCardListGET(router, "/occasion-obligations/card-list?kind=%00card%0A")
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 
 	// DEL and a C1 control (U+0085 NEL) are control characters too.
 	w = doCardListGET(router, "/occasion-obligations/card-list?kind=card%7F")
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 	w = doCardListGET(router, "/occasion-obligations/card-list?kind=%C2%85card")
-	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 // TestGetOccasionCardListCSVAcceptsCustomKind pins the open-classifier

@@ -86,7 +86,9 @@ func TestMetricsHandler_ServesExpositionWithValidToken(t *testing.T) {
 func TestMetricsHandler_CaseInsensitiveBearerScheme(t *testing.T) {
 	r := metricsRouter(t)
 	w := getMetrics(t, r, "bEaReR   "+testMetricsToken)
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "text/plain; version=0.0.4; charset=utf-8", w.Header().Get("Content-Type"))
+	assert.Contains(t, w.Body.String(), "# TYPE http_requests_total counter", "a mixed-case scheme must be served the real exposition, not an empty 200")
 }
 
 func TestMetricsHandler_ReflectsSystemEventCounters(t *testing.T) {

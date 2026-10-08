@@ -116,12 +116,18 @@ func TestDismissReachOutSuggestion_MarksDismissed(t *testing.T) {
 }
 
 func TestDismissReachOutSuggestion_UnknownIDIs404(t *testing.T) {
-	_, router, _ := setupReachOutSuggestionRouter(t)
+	db, router, user := setupReachOutSuggestionRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Dana"}
+	require.NoError(t, db.Create(&contact).Error)
+	own := seedReachOutSuggestion(t, db, user.ID, contact)
 
 	req, _ := http.NewRequest("POST", "/reach-out-suggestions/does-not-exist/dismiss", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	var reloaded models.ReachOutSuggestion
+	require.NoError(t, db.First(&reloaded, "id = ?", own.ID).Error)
+	assert.Equal(t, models.ReachOutStatusPending, reloaded.Status, "an unknown-id dismiss must not dismiss the caller's own suggestion")
 }
 
 func TestDismissReachOutSuggestion_ForeignUserCannotDismiss(t *testing.T) {

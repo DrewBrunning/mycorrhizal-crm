@@ -392,7 +392,8 @@ func TestWebAuthn_PasskeyOnlyUserCanRegenerateAndConsumeRecoveryCodes(t *testing
 func TestWebAuthn_RegenerateRefusedWithNoFactor(t *testing.T) {
 	e := newWAEnv(t)
 	w, _ := e.do("POST", "/users/2fa/recovery-codes/regenerate", map[string]string{"code": "AAAAA-BBBBB-CCCCC"}, e.session())
-	assert.Equal(t, http.StatusConflict, w.Code)
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	assert.Zero(t, e.recoveryCount(), "no recovery codes may be minted without a second factor")
 }
 
 func TestWebAuthn_TOTPEnrollmentReplacesPasskeyOnlyRecoverySet(t *testing.T) {
@@ -710,7 +711,8 @@ func TestWebAuthn_RequiresConcreteFrontendURL(t *testing.T) {
 func TestWebAuthn_ProofBeginNeedsAPasskey(t *testing.T) {
 	e := newWAEnv(t)
 	w, _ := e.do("POST", "/webauthn/assert/begin", nil, e.session())
-	assert.Equal(t, http.StatusConflict, w.Code)
+	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	assert.Zero(t, e.credentialCount())
 }
 
 func TestWebAuthn_BackupEligibleFlagsRoundTrip(t *testing.T) {
@@ -789,8 +791,10 @@ func TestWebAuthn_StoreFailuresSurfaceAs500(t *testing.T) {
 		if tc.cookie != nil {
 			withPending(req, tc.cookie)
 		}
-		w, _ := doRequest(e.router, req)
-		assert.Equal(t, http.StatusInternalServerError, w.Code, "%s %s: %s", tc.method, tc.path, w.Body.String())
+		w, cookies := doRequest(e.router, req)
+		require.Equal(t, http.StatusInternalServerError, w.Code, "%s %s: %s", tc.method, tc.path, w.Body.String())
+		assert.Equal(t, "DATABASE_ERROR", mzDecode(t, w).Error.Code, "%s %s", tc.method, tc.path)
+		assert.Nil(t, cookies["auth_token"], "%s %s must not issue a session on a store failure", tc.method, tc.path)
 	}
 }
 
@@ -823,8 +827,9 @@ func TestWebAuthn_PendingChallengeUserLookupFailure(t *testing.T) {
 	e.enroll(e.auth(), "Key", e.session())
 	pending, _ := e.passwordStep()
 	dbtest.HideTable(t, e.db, "users")
-	w, _ := doRequest(e.router, withPending(sessionRequest("POST", "/webauthn/login/begin", nil, ""), pending))
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	w, cookies := doRequest(e.router, withPending(sessionRequest("POST", "/webauthn/login/begin", nil, ""), pending))
+	mzErrorCode(t, w, http.StatusInternalServerError, "DATABASE_ERROR")
+	assert.Nil(t, cookies["auth_token"], "a lookup failure must not issue a session")
 }
 
 func TestWebAuthn_DeleteAssertionRejectedWhenRelyingPartyUnconfigured(t *testing.T) {
@@ -845,5 +850,6 @@ func TestWebAuthn_DeleteRejectsMalformedBody(t *testing.T) {
 	req.Body = nopCloser("{not json")
 	req.ContentLength = 9
 	w, _ := doRequest(e.router, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "code")
+	assert.Equal(t, int64(1), e.credentialCount(), "a malformed delete must not remove the passkey")
 }

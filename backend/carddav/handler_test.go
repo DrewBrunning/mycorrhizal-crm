@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -91,7 +92,16 @@ func TestHandlerDelegatesToWebDAV(t *testing.T) {
 	h(c)
 
 	// go-webdav returns 207 Multi-Status for a valid addressbook PROPFIND.
-	assert.Equal(t, http.StatusMultiStatus, w.Code)
+	require.Equal(t, http.StatusMultiStatus, w.Code)
+	// ...and the body must be the WebDAV multistatus for the address book
+	// itself, not an empty 207 from some other branch.
+	assert.Contains(t, w.Header().Get("Content-Type"), "xml")
+	body := w.Body.String()
+	assert.Contains(t, body, "<multistatus")
+	assert.Contains(t, body, "<href>/carddav/addressbooks/alice/contacts/</href>")
+	assert.Contains(t, body, "<addressbook xmlns=\"urn:ietf:params:xml:ns:carddav\">",
+		"the collection must advertise the CardDAV addressbook resourcetype")
+	assert.Contains(t, body, "HTTP/1.1 200 OK")
 }
 
 // TestHandlerFilterLessAddressBookQuery pins TEST-09's first real-client find
@@ -160,6 +170,25 @@ func TestHandlerMKCOLUnsupportedCollectionForbidden(t *testing.T) {
 
 	assert.Equal(t, http.StatusForbidden, w.Code,
 		"MKCOL for an unsupported second address book must be a clean 403, not a 500")
+	assert.Contains(t, w.Body.String(), "creating address books is not supported",
+		"the refusal must say why, so a client can fall back to the existing collection")
+
+	// Nothing was created: no contact rows, and the "created" collection still
+	// does not resolve.
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected MKCOL must not write any contact")
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("PROPFIND", "/carddav/addressbooks/alice/other/", strings.NewReader(
+		`<?xml version="1.0" encoding="utf-8" ?><D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/></D:prop></D:propfind>`))
+	req.Header.Set("Depth", "0")
+	req.Header.Set("Content-Type", "application/xml")
+	c, _ = gin.CreateTestContext(w)
+	c.Request = req
+	c.Set("userID", uint(1))
+	c.Set("username", "alice")
+	h(c)
+	assert.Equal(t, http.StatusNotFound, w.Code, "the rejected MKCOL must not have created the collection")
 }
 
 // TestHandlerGetMissingCardNotFound pins TEST-09's second real-client find:
@@ -233,7 +262,15 @@ func TestHandlerCrossUserAddressBookPropfindNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	db := dbtest.New(t)
-	h := NewHandler(db, t.TempDir()).GinHandler()
+	handler := NewHandler(db, t.TempDir())
+	h := handler.GinHandler()
+
+	// The foreign principal (user 1) owns a card; the probing principal
+	// (user 2) must never see it or anything about it.
+	ownerCtx := ContextWithUser(context.Background(), 1, "pentest1", db, handler.photoDir, "")
+	_, err := handler.backend.PutAddressObject(ownerCtx, "/carddav/addressbooks/pentest1/contacts/secret-uid-1.vcf",
+		mustParseVCard(t, simpleVCard4("secret-uid-1", "Secret Person")), nil)
+	require.NoError(t, err)
 
 	propfind := `<?xml version="1.0" encoding="utf-8" ?>
 <D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/></D:prop></D:propfind>`
@@ -262,6 +299,10 @@ func TestHandlerCrossUserAddressBookPropfindNotFound(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, w.Code,
 				"a foreign/unknown collection PROPFIND must be a clean 404, not a 500")
 			assert.NotEqual(t, http.StatusInternalServerError, w.Code)
+			assert.True(t, strings.HasPrefix(w.Body.String(), "404 Not Found"), w.Body.String())
+			assert.NotContains(t, w.Body.String(), "multistatus", "a 404 must not carry a DAV multistatus")
+			assert.NotContains(t, w.Body.String(), "secret-uid-1", "another principal's card must never leak")
+			assert.NotContains(t, w.Body.String(), "Secret Person")
 		})
 	}
 }

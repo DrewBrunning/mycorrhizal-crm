@@ -151,12 +151,20 @@ func TestDismissContactSyncConflict_IsIdempotent(t *testing.T) {
 }
 
 func TestDismissContactSyncConflict_UnknownIDIs404(t *testing.T) {
-	_, router, _ := setupSyncConflictRouter(t)
+	db, router, user := setupSyncConflictRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Grace"}
+	require.NoError(t, db.Create(&contact).Error)
+	sub := models.ContactSubscription{UserID: user.ID, Name: "Work", URL: "https://example.com/dav/"}
+	require.NoError(t, db.Create(&sub).Error)
+	conflict := seedControllerConflict(t, db, user.ID, contact, sub, models.SyncConflictFieldJobTitle, "Local", "Remote")
 
 	req, _ := http.NewRequest("POST", "/contact-sync-conflicts/does-not-exist/dismiss", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	mzErrorCode(t, w, http.StatusNotFound, "NOT_FOUND")
+	var after models.ContactSyncConflict
+	require.NoError(t, db.First(&after, "id = ?", conflict.ID).Error)
+	assert.Equal(t, models.SyncConflictStatusPending, after.Status, "an unknown-id dismiss must not touch other conflicts")
 }
 
 // TestContactSyncConflicts_Unauthenticated covers currentUserID's early-return
@@ -185,7 +193,8 @@ func TestContactSyncConflicts_Unauthenticated(t *testing.T) {
 		req, _ := http.NewRequest(tc.method, tc.path, nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Equal(t, http.StatusUnauthorized, w.Code, "%s %s", tc.method, tc.path)
+		assert.Equal(t, "UNAUTHORIZED", mzDecode(t, w).Error.Code, "%s %s", tc.method, tc.path)
 	}
 }
 

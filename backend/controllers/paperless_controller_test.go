@@ -115,7 +115,10 @@ func TestSavePaperlessConfig_CreateWithoutTokenIsRejected(t *testing.T) {
 	router := paperlessTestRouter(t, db)
 
 	w := paperlessDoJSON(t, router, "PUT", "/paperless/config", models.PaperlessConfigInput{BaseURL: "https://paperless.example"})
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorField(t, w, http.StatusBadRequest, "INVALID_INPUT", "api_token")
+	var count int64
+	require.NoError(t, db.Model(&models.PaperlessConfig{}).Where("user_id = ?", uint(1)).Count(&count).Error)
+	assert.Zero(t, count, "a rejected save must not persist a config")
 }
 
 func TestSavePaperlessConfig_RejectsSchemelessBaseURL(t *testing.T) {
@@ -141,7 +144,7 @@ func TestListPaperlessDocuments_NoConfigIs400(t *testing.T) {
 	router := paperlessTestRouter(t, db)
 
 	w := paperlessDoJSON(t, router, "GET", "/paperless/documents?query=", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 // TestTestPaperlessConnection_NoConfigIs400 covers issue #524: no Paperless
@@ -153,7 +156,7 @@ func TestTestPaperlessConnection_NoConfigIs400(t *testing.T) {
 	router := paperlessTestRouter(t, db)
 
 	w := paperlessDoJSON(t, router, "POST", "/paperless/test-connection", nil)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mzErrorCode(t, w, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
 func TestTestPaperlessConnection_SuccessAndFailure(t *testing.T) {
