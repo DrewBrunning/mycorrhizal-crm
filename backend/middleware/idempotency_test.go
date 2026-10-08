@@ -180,16 +180,30 @@ func TestIdempotency_Non2xx_NotCached_RetryReruns(t *testing.T) {
 }
 
 func TestIdempotency_KeyScopedPerRequestShape(t *testing.T) {
-	r, _, _ := idempotencyTestRouter(t)
-	// A GET is never keyed; a PUT/PATCH/DELETE passes straight through even
-	// with the header. Only the POST path caches.
-	req, _ := http.NewRequest("DELETE", "/api/v1/things", nil)
-	req.Header.Set("Idempotency-Key", "ignored")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	// No DELETE route registered -> 404, and crucially not a 5xx from the
-	// middleware trying to key a non-POST.
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	r, db, _ := idempotencyTestRouter(t)
+	// A PUT/PATCH/DELETE passes straight through even with the header: the
+	// handler runs on every call (no replay) and no key row is stored. Only the
+	// POST path caches.
+	var calls int64
+	for _, method := range []string{"DELETE", "PUT", "PATCH"} {
+		r.Handle(method, "/api/v1/things/:id", func(c *gin.Context) {
+			atomic.AddInt64(&calls, 1)
+			c.JSON(http.StatusOK, gin.H{"n": atomic.LoadInt64(&calls)})
+		})
+		for i := 0; i < 2; i++ {
+			before := atomic.LoadInt64(&calls)
+			req, _ := http.NewRequest(method, "/api/v1/things/1", nil)
+			req.Header.Set("Idempotency-Key", "ignored")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusOK, w.Code, method)
+			assert.Equal(t, before+1, atomic.LoadInt64(&calls), "%s with a key must reach the handler every time (no replay)", method)
+			assert.Empty(t, w.Header().Get(idempotencyReplayedHeader), method)
+		}
+	}
+	var keys int64
+	require.NoError(t, db.Model(&models.IdempotencyKey{}).Count(&keys).Error)
+	assert.EqualValues(t, 0, keys, "non-POST requests must never create an idempotency key")
 }
 
 func TestIdempotency_ConcurrentRetries_OneWins(t *testing.T) {
