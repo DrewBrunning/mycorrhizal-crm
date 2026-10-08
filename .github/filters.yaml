@@ -189,6 +189,7 @@ differential:
 carddav:
   - '.github/workflows/carddav-e2e.yml'
   - '.github/scripts/carddav-reference/**'
+  - '.github/scripts/docker-pull-retry.sh'
   - 'backend/carddav/**'
   - 'backend/services/contact_sync_service.go'
   - 'backend/services/contact_sync_service_test.go'
@@ -207,6 +208,7 @@ carddav:
 realservers:
   - '.github/workflows/integration-real-servers.yml'
   - '.github/scripts/carddav-reference/provision-nextcloud.sh'
+  - '.github/scripts/docker-pull-retry.sh'
   - 'backend/integrations/**'
   - 'backend/services/immich_*.go'
   - 'backend/services/paperless_*.go'
@@ -224,6 +226,7 @@ realservers:
 reference-clients:
   - '.github/workflows/reference-clients-e2e.yml'
   - '.github/scripts/carddav-reference/**'
+  - '.github/scripts/docker-pull-retry.sh'
   # Issue #917: the DAVx5 leg also exercises CalDAV (both collections get
   # enabled in the app), and its own well-known-discovery fix lives in
   # routes/routes.go, not a carddav/caldav package file — covered by the

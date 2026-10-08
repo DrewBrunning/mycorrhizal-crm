@@ -25,7 +25,8 @@ DB="/var/www/baikal/Specific/db/db.sqlite"
 # A stale data dir (with a www-data-owned .htaccess) blocks the wizard; wipe it.
 rm -rf "$DATA_DIR" 2>/dev/null || sudo rm -rf "$DATA_DIR" 2>/dev/null || true
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" -p "$PORT:80" -e BAIKAL_DB=sqlite \
+"$(dirname "$0")/../docker-pull-retry.sh" ckulka/baikal:latest
+docker run -d --pull never --name "$NAME" -p "$PORT:80" -e BAIKAL_DB=sqlite \
   -v "$DATA_DIR:/var/www/baikal/config" ckulka/baikal:latest >/dev/null
 
 # Apache needs a few seconds; wait before driving the wizard.
