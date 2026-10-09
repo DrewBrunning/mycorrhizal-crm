@@ -81,6 +81,43 @@ assert_case "non-ANR title -> empty" \
 	"" \
 	"Pixel Launcher" 1 1
 
+# A dump that never landed (or landed partial) must degrade to "no decision" at
+# `decision="$(anr_dialog_decision)"`, not abort the script under `set -e`
+# (issue #1637, run 37920512094: the abort happened inside dump_ui and skipped
+# the whole ERROR/diagnostics path, so the failure artifact was empty).
+rm -f "$DUMP_XML"
+if out="$(anr_dialog_decision)" && [ -z "$out" ]; then
+	pass=$((pass + 1)); echo "PASS: anr_dialog_decision tolerates a missing dump"
+else
+	fail=$((fail + 1)); echo "FAIL: anr_dialog_decision on a missing dump (exit/out='$out')"
+fi
+printf '<hierarchy><node' >"$DUMP_XML" # truncated: unparseable
+if out="$(anr_dialog_decision)" && [ -z "$out" ]; then
+	pass=$((pass + 1)); echo "PASS: anr_dialog_decision tolerates a truncated dump"
+else
+	fail=$((fail + 1)); echo "FAIL: anr_dialog_decision on a truncated dump (exit/out='$out')"
+fi
+
+# --- dump_ui: transient adb/uiautomator failures must never abort ----------
+# The direct cause of #1637: a bare `uiautomator dump`/`adb pull` failure under
+# `set -e` killed the script before any caller's budget or diagnostics ran.
+eval "$(sed -n '/^dump_ui() {/,/^}/p' "$SCRIPT")"
+if ! declare -F dump_ui >/dev/null; then
+	echo "FAIL: could not extract dump_ui from $SCRIPT" >&2
+	exit 1
+fi
+ADB_CALLS=0
+# shellcheck disable=SC2317,SC2329 # invoked from the eval-extracted dump_ui
+adb() { ADB_CALLS=$((ADB_CALLS + 1)); return 1; } # every adb call fails
+# shellcheck disable=SC2317,SC2329 # invoked from the eval-extracted dump_ui
+sleep() { :; }
+if dump_ui && [ "$ADB_CALLS" -ge 3 ]; then
+	pass=$((pass + 1)); echo "PASS: dump_ui retries and absorbs an adb failure"
+else
+	fail=$((fail + 1)); echo "FAIL: dump_ui did not retry/absorb an adb failure (calls=$ADB_CALLS)"
+fi
+unset -f adb sleep
+
 # --- wait_for: wall-clock budget + recovery nudge -------------------------
 # Extracted the same way; adb-touching helpers are stubbed. The target
 # appears only after the nudge has fired, proving a stuck (not merely slow)

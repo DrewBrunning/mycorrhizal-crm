@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -621,4 +622,56 @@ func TestRateLimiterEntryCounts_FollowsReconfiguredAPILimiter(t *testing.T) {
 	if got := RateLimiterEntryCounts()["api"]; got != 0 {
 		t.Fatalf(`after a reconfigure RateLimiterEntryCounts()["api"] = %d, want 0 (must not read the replaced limiter)`, got)
 	}
+}
+
+// Issue #1640: ConfigureAPIRateLimiter replacing the global API limiter must
+// not race the background sweeper or the /metrics reader that read it. The
+// pre-#1565 shape shared one *IPRateLimiter between them, which the -race
+// nightly Order-dependence pass caught as a data race inside TestDBFaultSweep
+// (which calls ConfigureAPIRateLimiter once per fault environment). Hammer all
+// three concurrently so `go test -race` fails if that shape is ever
+// reintroduced.
+func TestConfigureAPIRateLimiter_RacesSweeperAndReader(t *testing.T) {
+	prev := apiLimiter.Load()
+	t.Cleanup(func() { apiLimiter.Store(prev) })
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				ConfigureAPIRateLimiter(time.Millisecond, 100)
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				sweepLimiters()
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = RateLimiterEntryCounts()
+			}
+		}
+	}()
+	time.Sleep(50 * time.Millisecond)
+	close(stop)
+	wg.Wait()
 }

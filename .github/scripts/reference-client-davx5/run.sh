@@ -57,8 +57,28 @@ capture_failure_diagnostics() {
 log() { echo "[davx5-interop] $*" >&2; }
 
 dump_ui() {
-	adb shell uiautomator dump /sdcard/dump.xml >/dev/null 2>&1
-	adb pull /sdcard/dump.xml "$DUMP_XML" >/dev/null 2>&1
+	# Best-effort and never fatal. `uiautomator dump` transiently fails right
+	# after an app launch on a contended emulator ("could not get idle state";
+	# the device was still coming back from `device offline` at boot in the
+	# run that exposed this) and `adb pull` can fail on the same flake. Under
+	# `set -e` a bare failure here aborted the whole script *before* any
+	# caller's poll could exhaust its budget or its own `log ERROR` /
+	# capture_failure_diagnostics path ran — observed in run 37920512094:
+	# exit ~3.5s into the intro carousel, no `[davx5-interop] ERROR:` line, and
+	# an empty /tmp/davx5-diag/ because the diagnostics step found nothing.
+	# Retry a couple of times, and always return success so the polling loops
+	# (tap_until_visible / wait_for / wait_for_login_fields) keep their
+	# wall-clock budget; a dump that is genuinely absent leaves the previous
+	# $DUMP_XML in place (or none), which those loops treat as "not found yet".
+	local attempt
+	for attempt in 1 2 3; do
+		if adb shell uiautomator dump /sdcard/dump.xml >/dev/null 2>&1 \
+			&& adb pull /sdcard/dump.xml "$DUMP_XML" >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 1
+	done
+	return 0
 }
 
 # Prints "x y" (tap-able center) for the first node whose text or
@@ -69,7 +89,12 @@ import sys, re
 import xml.etree.ElementTree as ET
 
 path, target = sys.argv[1], sys.argv[2]
-tree = ET.parse(path)
+try:
+    tree = ET.parse(path)
+except (ET.ParseError, FileNotFoundError, OSError):
+    # A missing/partial dump (a transient adb/uiautomator failure that
+    # dump_ui swallowed) means "not found yet", not a script abort.
+    sys.exit(0)
 for node in tree.iter("node"):
     if node.get("text") == target or node.get("content-desc") == target:
         b = node.get("bounds")
@@ -100,7 +125,12 @@ anr_dialog_decision() {
 import sys
 import xml.etree.ElementTree as ET
 
-tree = ET.parse(sys.argv[1])
+try:
+    tree = ET.parse(sys.argv[1])
+except (ET.ParseError, FileNotFoundError, OSError):
+    # A dump that never landed (or landed partial) means "no dialog", not an
+    # abort: anr_dialog_decision is called from an assignment under `set -e`.
+    sys.exit(0)
 title = ""
 has_wait = has_close = False
 for node in tree.iter("node"):
@@ -235,7 +265,10 @@ find_edit_text_fields() {
 import sys, re
 import xml.etree.ElementTree as ET
 
-tree = ET.parse(sys.argv[1])
+try:
+    tree = ET.parse(sys.argv[1])
+except (ET.ParseError, FileNotFoundError, OSError):
+    sys.exit(0)
 for node in tree.iter("node"):
     if node.get("class") == "android.widget.EditText":
         b = node.get("bounds")
@@ -254,7 +287,10 @@ import sys
 import xml.etree.ElementTree as ET
 
 path, index = sys.argv[1], int(sys.argv[2])
-tree = ET.parse(path)
+try:
+    tree = ET.parse(path)
+except (ET.ParseError, FileNotFoundError, OSError):
+    sys.exit(0)
 fields = [n for n in tree.iter("node") if n.get("class") == "android.widget.EditText"]
 if index < len(fields):
     print(fields[index].get("text") or "")
