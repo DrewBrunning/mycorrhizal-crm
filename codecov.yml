@@ -46,6 +46,15 @@
 #     Firebase-SDK-availability gates — has too much real logic mixed in to
 #     blanket-exclude by file, so it's absorbed by a target still below
 #     backend/frontend rather than pretending it's equally testable.
+#     Issue #1627: like backend/frontend, this diff-based patch status is
+#     complemented by a per-file no-regression ratchet
+#     (`backend/cmd/androidcoverageratchet` against
+#     android/coverage-baseline.json, run in android-tests.yml's `test` job on
+#     pull_request only). The patch status only judges a PR's changed lines, so
+#     a file that already sits at a low number stays there forever and a PR
+#     that guts a test for a file it doesn't otherwise edit trips nothing; the
+#     ratchet fails on a drop past tolerance from the committed baseline. See
+#     docs/development/coverage.md's "Per-file no-regression ratchet".
 #
 # Override path (docs/development/coverage.md): write the test first; then
 # `# pragma: no cover` / `/* v8 ignore next */` / `@Generated` a line that

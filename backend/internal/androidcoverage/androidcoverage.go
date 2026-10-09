@@ -1,0 +1,250 @@
+// Package androidcoverage implements the Android half of the per-file
+// no-regression coverage ratchet (backend counterpart:
+// internal/coverageratchet; frontend counterpart:
+// frontend/scripts/check-coverage-ratchet.mjs; issue #1627).
+//
+// The only Android coverage gate CI has today is Codecov's diff-based patch
+// status (codecov.yml, docs/development/coverage.md): codecov/patch/android
+// judges only the lines a PR actually changed. A Kotlin file that already
+// sits at 0% coverage stays there forever -- nothing re-measures a file a PR
+// doesn't touch -- and a PR that deletes or guts a test for a file it doesn't
+// otherwise edit trips no status at all.
+//
+// This package reads the aggregated JaCoCo XML the `test` job in
+// .github/workflows/android-tests.yml already produces
+// (android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml,
+// via ./gradlew jacocoTestReportAggregated), computes each source file's line
+// coverage percentage, and compares it against a committed baseline
+// (android/coverage-baseline.json). A file whose percentage drops by more
+// than the baseline's tolerance fails; an improved, new, or removed/renamed
+// file does not -- a ratchet against regression, not an absolute floor, the
+// same non-absolute philosophy as the backend/frontend ratchets and
+// codecov.yml's deliberately ungated project-wide number.
+//
+// This package intentionally mirrors internal/coverageratchet rather than
+// sharing its code: the two read different artifacts (a Go coverprofile's
+// statement blocks versus a JaCoCo XML's per-line instruction counts), gate
+// different units (statements versus lines), and keep independent baselines.
+// The rules -- key shape, rounding, tolerance semantics, new/gone handling --
+// are deliberately identical; change both together.
+package androidcoverage
+
+import (
+	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"path/filepath"
+	"sort"
+)
+
+// jacocoReport is the subset of the JaCoCo XML document this package reads.
+// `<package>/<sourcefile>` is the file's key; only each source file's `<line>`
+// elements matter (a `<class>` repeats the same information, and its method
+// counters are a different granularity).
+type jacocoReport struct {
+	XMLName  xml.Name        `xml:"report"`
+	Packages []jacocoPackage `xml:"package"`
+}
+
+type jacocoPackage struct {
+	Name        string             `xml:"name,attr"`
+	SourceFiles []jacocoSourceFile `xml:"sourcefile"`
+}
+
+type jacocoSourceFile struct {
+	Name  string       `xml:"name,attr"`
+	Lines []jacocoLine `xml:"line"`
+}
+
+// jacocoLine is one source line's instruction counts: CI covered, MI missed.
+type jacocoLine struct {
+	CI int `xml:"ci,attr"`
+	MI int `xml:"mi,attr"`
+}
+
+// FileStat is one source file's line coverage. Lines is the total number of
+// executable units the file's `<line>` elements report (sum of ci+mi over
+// them), and Covered is the number that ran (sum of ci). Percent is
+// Covered/Lines, which is the definition in this ticket: LINE coverage =
+// sum(ci) / (sum(ci)+sum(mi)) over the sourcefile's lines.
+type FileStat struct {
+	Lines   int
+	Covered int
+}
+
+// Percent returns the covered percentage, 100 for a file with zero executable
+// lines (nothing to fail on).
+func (f FileStat) Percent() float64 {
+	if f.Lines == 0 {
+		return 100
+	}
+	return 100 * float64(f.Covered) / float64(f.Lines)
+}
+
+// Parse reads a JaCoCo XML report and returns per-file stats keyed by the
+// module-independent "<package>/<sourcefile>" path (e.g.
+// "com/mycorrhizal/crm/ui/components/ChipListEditor.kt"). A JaCoCo package
+// name is a slash-separated Kotlin/Java package, and multiple modules
+// legitimately emit files under the same package, so the key is stable across
+// source-set layout but not unique per module -- the same trade-off the
+// aggregated report itself makes, and deliberate here (see the package doc).
+func Parse(r io.Reader) (map[string]FileStat, error) {
+	var report jacocoReport
+	dec := xml.NewDecoder(r)
+	if err := dec.Decode(&report); err != nil {
+		return nil, fmt.Errorf("parsing JaCoCo XML: %w", err)
+	}
+
+	stats := map[string]FileStat{}
+	for _, pkg := range report.Packages {
+		for _, sf := range pkg.SourceFiles {
+			var s FileStat
+			for _, l := range sf.Lines {
+				s.Lines += l.CI + l.MI
+				s.Covered += l.CI
+			}
+			stats[pkg.Name+"/"+sf.Name] = s
+		}
+	}
+	return stats, nil
+}
+
+// Baseline is the committed android/coverage-baseline.json shape. It is
+// byte-for-byte the backend ratchet's shape (internal/coverageratchet.Baseline).
+type Baseline struct {
+	Comment      string             `json:"_comment"`
+	TolerancePct float64            `json:"tolerancePercentPoints"`
+	Files        map[string]float64 `json:"files"`
+}
+
+// baselineComment is written by -update. Keep it accurate: it is the only
+// place the baseline's provenance and key shape are recorded.
+const baselineComment = "Generated by `go run ./cmd/androidcoverageratchet -update` from " +
+	"android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml " +
+	"(./gradlew jacocoTestReportAggregated). Per-file JaCoCo line coverage % " +
+	"(sum(ci)/(sum(ci)+sum(mi))), keyed by package/sourcefile (module-independent). " +
+	"A drop past tolerancePercentPoints percentage points fails the Android (Gradle) PR check. " +
+	"Commit the diff -- it is the review."
+
+// BuildBaseline turns per-file stats into the committed Baseline shape,
+// keeping an existing baseline's tolerance if one is supplied (nil for a
+// from-scratch generation, which falls back to defaultTolerancePct).
+func BuildBaseline(stats map[string]FileStat, existing *Baseline, defaultTolerancePct float64) Baseline {
+	tolerance := defaultTolerancePct
+	if existing != nil {
+		tolerance = existing.TolerancePct
+	}
+	files := make(map[string]float64, len(stats))
+	for file, s := range stats {
+		files[file] = round2(s.Percent())
+	}
+	return Baseline{Comment: baselineComment, TolerancePct: tolerance, Files: files}
+}
+
+// round2 rounds to two decimal places, half away from zero (round-half-up for
+// the non-negative percentages this package handles) -- identical to the
+// backend ratchet's helper so the two baselines stay directly comparable.
+func round2(f float64) float64 {
+	return float64(int(f*100+0.5)) / 100
+}
+
+// LoadBaseline reads a Baseline from path.
+func LoadBaseline(path string) (Baseline, error) {
+	data, err := os.ReadFile(path) // #nosec G304 -- path is a caller-controlled CLI flag / repo-relative constant, not user input
+	if err != nil {
+		return Baseline{}, err
+	}
+	var b Baseline
+	if err := json.Unmarshal(data, &b); err != nil {
+		return Baseline{}, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return b, nil
+}
+
+// SaveBaseline writes b to path as indented JSON, matching this repo's other
+// generated-artifact files.
+func SaveBaseline(path string, b Baseline) error {
+	data, err := json.MarshalIndent(b, "", "  ")
+	if err != nil { // # pragma: no cover — MarshalIndent of this struct can never fail
+		return err
+	}
+	data = append(data, '\n')
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+// Report is the result of comparing current per-file coverage against a
+// baseline.
+type Report struct {
+	OK        bool
+	Findings  []string
+	NewFiles  []string
+	GoneFiles []string
+	DropFiles []string
+}
+
+// unitTolerance is the effective tolerance for one file: the configured
+// percentage-point tolerance, or one executable unit of that file, whichever
+// is larger. Without the floor a small file fails on a single unit that some
+// other test happened to reach (noise, not a lost test); two or more units
+// still fail. Mirrors internal/coverageratchet.unitTolerance.
+func unitTolerance(tolerancePct float64, units int) float64 {
+	if units <= 0 {
+		return tolerancePct
+	}
+	return math.Max(tolerancePct, 100/float64(units)+1e-9)
+}
+
+// Compare finds every file whose coverage percentage dropped by more than
+// unitTolerance(baseline.TolerancePct, units). A file in `current` with no
+// baseline entry (new) is not gated -- that is codecov/patch/android's job.
+// A baseline entry with no matching current file (removed/renamed) is
+// reported but does not fail: the baseline is simply stale for that entry
+// until the next `-update`. Mirrors internal/coverageratchet.Compare.
+func Compare(baseline Baseline, current map[string]FileStat) Report {
+	var report Report
+	report.OK = true
+
+	names := make(map[string]bool, len(baseline.Files)+len(current))
+	for f := range baseline.Files {
+		names[f] = true
+	}
+	for f := range current {
+		names[f] = true
+	}
+	sorted := make([]string, 0, len(names))
+	for f := range names {
+		sorted = append(sorted, f)
+	}
+	sort.Strings(sorted)
+
+	for _, file := range sorted {
+		basePct, inBase := baseline.Files[file]
+		nowStat, inNow := current[file]
+
+		switch {
+		case !inBase:
+			report.NewFiles = append(report.NewFiles, file)
+		case !inNow:
+			report.GoneFiles = append(report.GoneFiles, file)
+		default:
+			nowPct := nowStat.Percent()
+			drop := basePct - nowPct
+			allowed := unitTolerance(baseline.TolerancePct, nowStat.Lines)
+			if drop > allowed {
+				report.OK = false
+				report.DropFiles = append(report.DropFiles, file)
+				report.Findings = append(report.Findings, fmt.Sprintf(
+					"%s: line coverage dropped from %.2f%% to %.2f%% (-%.2fpt, over the %.2fpt tolerance)",
+					file, basePct, nowPct, drop, allowed,
+				))
+			}
+		}
+	}
+	return report
+}
