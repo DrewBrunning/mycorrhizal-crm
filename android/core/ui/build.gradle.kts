@@ -22,4 +22,6 @@ dependencies {
     implementation(libs.kotlinx.datetime)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 }

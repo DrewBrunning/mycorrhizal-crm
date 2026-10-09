@@ -183,6 +183,20 @@ jobs:
         working-directory: android
         run: ./gradlew jacocoTestReportAggregated
 
+      # Issue #1627: the Android half of the per-file no-regression ratchet
+      # (backend cmd/coverageratchet; frontend check-coverage-ratchet.mjs).
+      # Reads the aggregated report the step above just wrote and fails if a
+      # file's line coverage dropped past tolerance from the committed
+      # android/coverage-baseline.json. pull_request only: the job is a
+      # required `Android (Gradle)` check, and the aggregated report is
+      # deterministic per commit, but a push/schedule run is not a PR diff to
+      # gate -- matching the backend ratchet's pull_request-only stance.
+      # actions/setup-go is already installed for the embedded-server build.
+      - name: Per-file coverage ratchet (pull_request only)
+        if: github.event_name == 'pull_request'
+        working-directory: backend
+        run: go run ./cmd/androidcoverageratchet
+
       # Issue #294: informational only, see unit-tests.yml's backend job.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

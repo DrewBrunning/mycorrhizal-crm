@@ -259,15 +259,29 @@ tolerance, never on an existing low number by itself.
   `vitest.config.ts` alongside the existing `text`/`html`/`lcov` reporters)
   and compares each file's line% and branch% against the committed
   `frontend/coverage-baseline.json`.
+- **Android**: `backend/cmd/androidcoverageratchet` (logic in
+  `backend/internal/androidcoverage`) reads the aggregated JaCoCo XML report
+  (`jacocoTestReportAggregated.xml` under
+  `android/build/reports/jacoco/jacocoTestReportAggregated/`, produced by
+  `./gradlew jacocoTestReportAggregated`, issue #342) and compares
+  each source file's line coverage against the committed
+  `android/coverage-baseline.json`. A file's percentage is
+  `sum(ci) / (sum(ci) + sum(mi))` over its JaCoCo `<line>` elements, keyed by
+  the report's own `<package>/<sourcefile>` path (e.g.
+  `com/mycorrhizal/crm/ui/components/ChipListEditor.kt`) — the stable,
+  module-independent key the cross-module aggregation already credits the
+  coverage to. It runs in `android-tests.yml`'s `test` job on `pull_request`
+  only (the required `Android (Gradle)` context), matching the backend
+  ratchet's PR-only stance.
 
-Both sides share the same rules:
+All three share the same rules:
 
 - A file whose gated metric(s) drop by more than the baseline's tolerance
   fails. The effective tolerance per file is the larger of the configured
   percentage points and **one unit** of that file (one line or branch on the
-  frontend, one statement on the backend): losing a single unit is always
-  allowed, losing two is not. An improved file never fails, regardless of
-  magnitude.
+  frontend, one statement on the backend, one JaCoCo line unit on Android):
+  losing a single unit is always allowed, losing two is not. An improved file
+  never fails, regardless of magnitude.
 - A **new** file with no baseline entry is not gated here — that's
   `codecov/patch/*`'s job; gating it twice would just let the two disagree
   on some edge case.
@@ -311,9 +325,11 @@ review, same convention as `bundle-budget.json`):
 ```bash
 cd backend && make gen-coverage-baseline    # runs the whole suite once with -coverpkg=./... (heavy), then rewrites the baseline
 cd frontend && yarn coverage:ratchet:update # needs frontend/coverage/coverage-summary.json from `yarn test:coverage`
+cd android && ./gradlew jacocoTestReportAggregated   # produces the aggregated report the Android ratchet reads
+cd backend && go run ./cmd/androidcoverageratchet -update  # rewrite android/coverage-baseline.json from that report
 ```
 
-Both regenerate in place, keeping the existing `tolerancePercentPoints` /
+All three regenerate in place, keeping the existing `tolerancePercentPoints` /
 `tolerancePct` unless you edit it by hand.
 
 **Tolerance rationale.** The backend suite includes
