@@ -67,6 +67,7 @@ func TestRespondWithError_StatusMapping(t *testing.T) {
 		{"forbidden", ErrForbidden("no")},
 		{"conflict", ErrAlreadyExists("Circle")},
 		{"validation", ErrValidation("bad")},
+		{"payload too large", ErrPayloadTooLarge("too big")},
 		{"rate limited", ErrRateLimitExceeded()},
 		{"internal", ErrInternal("oops")},
 		{"external", ErrExternal("seafile", "down")},
@@ -85,6 +86,16 @@ func TestRespondWithError_StatusMapping(t *testing.T) {
 			assert.Equal(t, tt.err.Message, detail["message"])
 		})
 	}
+}
+
+// ErrPayloadTooLarge (issue #1605) is the 413 constructor the body-limit
+// middleware uses so its rejection rides the standard envelope.
+func TestErrPayloadTooLarge(t *testing.T) {
+	e := ErrPayloadTooLarge("")
+	assert.Equal(t, ErrCodePayloadTooLarge, e.Code)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, e.HTTPStatus)
+	assert.NotEmpty(t, e.Message, "a default message must be supplied")
+	assert.Equal(t, "explicit message", ErrPayloadTooLarge("explicit message").Message)
 }
 
 func TestRespondWithError_OmitsEmptyRequestIDAndDetails(t *testing.T) {

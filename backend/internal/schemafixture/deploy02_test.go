@@ -467,9 +467,8 @@ func TestFullInstallUpgradeRefusesDirtyDatabase(t *testing.T) {
 	closeFixtureDB(t, f.DB)
 
 	_, err := database.InitDB(f.Path)
-	require.Error(t, err, "a dirty database must refuse to migrate")
 	var dirtyErr *database.ErrDirtyMigration
-	require.Truef(t, errors.As(err, &dirtyErr), "want *ErrDirtyMigration, got %T: %v", err, err)
+	require.ErrorAs(t, err, &dirtyErr, "a dirty database must refuse to migrate with *ErrDirtyMigration")
 
 	version, dirty := migrationStateAtPath(t, f.Path)
 	assert.EqualValues(t, f.Release.Version, version, "the refused database must be left untouched")

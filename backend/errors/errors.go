@@ -107,6 +107,11 @@ const (
 	// RFC 4918's 507 Insufficient Storage.
 	ErrCodeInsufficientStorage = "INSUFFICIENT_STORAGE"
 
+	// ErrCodePayloadTooLarge signals that the request body exceeded the
+	// server's configured maximum before any handler ran (issue #1605).
+	// RFC 9110's 413 Content Too Large.
+	ErrCodePayloadTooLarge = "PAYLOAD_TOO_LARGE"
+
 	// Internal errors
 	ErrCodeInternal = "INTERNAL_ERROR"
 	ErrCodeDatabase = "DATABASE_ERROR"
@@ -312,6 +317,17 @@ func ErrInsufficientStorage(message string) *AppError {
 		message = "The server does not have enough storage to complete this operation"
 	}
 	return NewError(ErrCodeInsufficientStorage, message, http.StatusInsufficientStorage)
+}
+
+// ErrPayloadTooLarge returns a 413 Content Too Large error — the request body
+// exceeded the server's configured maximum (issue #1605). It carries the
+// standard envelope so a client decoding error.code gets an object, not the
+// bare string body the body-limit middleware used to emit.
+func ErrPayloadTooLarge(message string) *AppError {
+	if message == "" {
+		message = "Request body is too large"
+	}
+	return NewError(ErrCodePayloadTooLarge, message, http.StatusRequestEntityTooLarge)
 }
 
 // --- Internal Errors ---

@@ -27,43 +27,46 @@ func TestValidate_RejectsMisconfiguration(t *testing.T) {
 	good, err := LoadConfig()
 	require.NoError(t, err)
 
-	cases := map[string]func(Config) Config{
-		"weights don't sum to 100": func(c Config) Config {
+	cases := map[string]struct {
+		mutate func(Config) Config
+		want   string
+	}{
+		"weights don't sum to 100": {func(c Config) Config {
 			c.WeightRecency += 1
 			return c
-		},
-		"chanterelle_min >= moss_min": func(c Config) Config {
+		}, "weights must sum to 100"},
+		"chanterelle_min >= moss_min": {func(c Config) Config {
 			c.ChanterelleMin = c.MossMin
 			return c
-		},
-		"negative weight": func(c Config) Config {
+		}, "thresholds must satisfy"},
+		"negative weight": {func(c Config) Config {
 			// -1 + 21 offset on Recency keeps the sum at exactly 100, so this
 			// (not the sum check) is what trips.
 			c.WeightFrequency = -1
 			c.WeightRecency += 21
 			return c
-		},
-		"zero unknown closeness interval": func(c Config) Config {
+		}, "out of [0,100]"},
+		"zero unknown closeness interval": {func(c Config) Config {
 			c.UnknownClosenessIntervalDays = 0
 			return c
-		},
-		"zero frequency window": func(c Config) Config {
+		}, "unknown_closeness.default_interval_days must be >= 1"},
+		"zero frequency window": {func(c Config) Config {
 			c.FrequencyWindowDays = 0
 			return c
-		},
-		"hop floor above hop base": func(c Config) Config {
+		}, "frequency.window_days must be >= 1"},
+		"hop floor above hop base": {func(c Config) Config {
 			c.ClosenessHopFloor = c.ClosenessHopBaseWeight + 1
 			return c
-		},
-		"missing structural relation type": func(c Config) Config {
+		}, "closeness.hop_floor must be in [0, hop_base_weight]"},
+		"missing structural relation type": {func(c Config) Config {
 			delete(c.RelationCloseness, "friend_of")
 			return c
-		},
-		"affinity type wrongly tiered": func(c Config) Config {
+		}, "no closeness tier assignment"},
+		"affinity type wrongly tiered": {func(c Config) Config {
 			c.RelationCloseness["conflicts_with"] = RelationCloseness{Weight: 50, DefaultIntervalDays: 30}
 			return c
-		},
-		"weight over 100": func(c Config) Config {
+		}, "must not have a closeness tier"},
+		"weight over 100": {func(c Config) Config {
 			// +81 on Frequency, -81 offset on Recency keeps the sum at
 			// exactly 100. Recency necessarily goes negative too (the other
 			// four weights can't absorb an 81-point increase on their own),
@@ -72,92 +75,108 @@ func TestValidate_RejectsMisconfiguration(t *testing.T) {
 			c.WeightFrequency = 101
 			c.WeightRecency -= 81
 			return c
-		},
-		"moss_min over 100": func(c Config) Config {
+		}, "out of [0,100]"},
+		"moss_min over 100": {func(c Config) Config {
 			c.MossMin = 101
 			return c
-		},
-		"unknown closeness weight negative": func(c Config) Config {
+		}, "thresholds must satisfy"},
+		"unknown closeness weight negative": {func(c Config) Config {
 			c.UnknownClosenessWeight = -1
 			return c
-		},
-		"unknown closeness weight over 100": func(c Config) Config {
+		}, "unknown_closeness.weight out of [0,100]"},
+		"unknown closeness weight over 100": {func(c Config) Config {
 			c.UnknownClosenessWeight = 101
 			return c
-		},
-		"recency no_interaction_value negative": func(c Config) Config {
+		}, "unknown_closeness.weight out of [0,100]"},
+		"recency no_interaction_value negative": {func(c Config) Config {
 			c.RecencyNoInteractionValue = -1
 			return c
-		},
-		"recency no_interaction_value over 100": func(c Config) Config {
+		}, "recency.no_interaction_value out of [0,100]"},
+		"recency no_interaction_value over 100": {func(c Config) Config {
 			c.RecencyNoInteractionValue = 101
 			return c
-		},
-		"recency overdue_ratio_cap zero": func(c Config) Config {
+		}, "recency.no_interaction_value out of [0,100]"},
+		"recency overdue_ratio_cap zero": {func(c Config) Config {
 			c.RecencyOverdueRatioCap = 0
 			return c
-		},
-		"negative frequency window": func(c Config) Config {
+		}, "recency.overdue_ratio_cap must be > 0"},
+		"negative frequency window": {func(c Config) Config {
 			c.FrequencyWindowDays = -1
 			return c
-		},
-		"closeness hop_base_weight negative": func(c Config) Config {
+		}, "frequency.window_days must be >= 1"},
+		"closeness hop_base_weight negative": {func(c Config) Config {
 			c.ClosenessHopBaseWeight = -1
 			return c
-		},
-		"closeness hop_base_weight over 100": func(c Config) Config {
+		}, "closeness.hop_base_weight out of [0,100]"},
+		"closeness hop_base_weight over 100": {func(c Config) Config {
 			c.ClosenessHopBaseWeight = 101
 			return c
-		},
-		"closeness hop_decay_per_hop negative": func(c Config) Config {
+		}, "closeness.hop_base_weight out of [0,100]"},
+		"closeness hop_decay_per_hop negative": {func(c Config) Config {
 			c.ClosenessHopDecayPerHop = -1
 			return c
-		},
-		"closeness hop_floor negative": func(c Config) Config {
+		}, "closeness.hop_decay_per_hop must be >= 0"},
+		"closeness hop_floor negative": {func(c Config) Config {
 			c.ClosenessHopFloor = -1
 			return c
-		},
-		"reach_out pending_value negative": func(c Config) Config {
+		}, "closeness.hop_floor must be in [0, hop_base_weight]"},
+		"reach_out pending_value negative": {func(c Config) Config {
 			c.ReachOutPendingValue = -1
 			return c
-		},
-		"reach_out pending_value over 100": func(c Config) Config {
+		}, "reach_out.pending_value out of [0,100]"},
+		"reach_out pending_value over 100": {func(c Config) Config {
 			c.ReachOutPendingValue = 101
 			return c
-		},
-		"negative last_updated window": func(c Config) Config {
+		}, "reach_out.pending_value out of [0,100]"},
+		"negative last_updated window": {func(c Config) Config {
 			c.LastUpdatedWindowDays = -1
 			return c
-		},
-		"last_updated floor negative": func(c Config) Config {
+		}, "last_updated.window_days must be >= 1"},
+		"last_updated floor negative": {func(c Config) Config {
 			c.LastUpdatedFloor = -1
 			return c
-		},
-		"last_updated floor over 100": func(c Config) Config {
+		}, "last_updated.floor out of [0,100]"},
+		"last_updated floor over 100": {func(c Config) Config {
 			c.LastUpdatedFloor = 101
 			return c
-		},
-		"relation closeness tier weight negative": func(c Config) Config {
+		}, "last_updated.floor out of [0,100]"},
+		"relation closeness tier weight negative": {func(c Config) Config {
 			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: -1, DefaultIntervalDays: 30}
 			return c
-		},
-		"relation closeness tier weight over 100": func(c Config) Config {
+		}, "closeness tier weight out of [0,100]"},
+		"relation closeness tier weight over 100": {func(c Config) Config {
 			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: 101, DefaultIntervalDays: 30}
 			return c
-		},
-		"relation closeness tier interval zero": func(c Config) Config {
+		}, "closeness tier weight out of [0,100]"},
+		"relation closeness tier interval zero": {func(c Config) Config {
 			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: 50, DefaultIntervalDays: 0}
 			return c
-		},
+		}, "closeness tier default_interval_days must be >= 1"},
 	}
 
-	for name, mutate := range cases {
+	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			broken := mutate(good)
+			// Start from a fresh deep copy each case: Config.RelationCloseness
+			// is a map, so mutating the shared `good` in place would let one
+			// case's change leak into the next (and map iteration order made
+			// which failure surfaced nondeterministic — the bare assert.Error
+			// this sweep replaced never noticed).
+			broken := tc.mutate(cloneConfig(good))
 			err := validate(broken)
-			assert.Error(t, err, "expected validate to reject: %s", name)
+			require.ErrorContains(t, err, tc.want, "expected validate to reject %s with its specific error", name)
 		})
 	}
+}
+
+// cloneConfig deep-copies a Config so a test case can mutate the
+// RelationCloseness map without corrupting the shared base config.
+func cloneConfig(c Config) Config {
+	rc := make(map[string]RelationCloseness, len(c.RelationCloseness))
+	for k, v := range c.RelationCloseness {
+		rc[k] = v
+	}
+	c.RelationCloseness = rc
+	return c
 }
 
 // TestParseConfig_RejectsUndefinedTier proves flatten() (not just validate())

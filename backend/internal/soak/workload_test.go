@@ -243,14 +243,14 @@ func TestNewWorkload_RegistrationFailures(t *testing.T) {
 	srv := httptest.NewServer(f)
 	defer srv.Close()
 	_, err := NewWorkload(context.Background(), WorkloadConfig{BaseURL: srv.URL})
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "register: status 500")
 
 	f.fail = map[string]int{"/api/v1/login": 401}
 	_, err = NewWorkload(context.Background(), WorkloadConfig{BaseURL: srv.URL, Users: 0, Rate: -1})
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "login: status 401")
 
 	_, err = NewWorkload(context.Background(), WorkloadConfig{BaseURL: "http://127.0.0.1:1"})
-	assert.Error(t, err, "an unreachable server is a registration error")
+	require.ErrorContains(t, err, "register soak user", "an unreachable server is a registration error")
 }
 
 func TestWorkload_RunPacesAndDropsUnderBackpressure(t *testing.T) {

@@ -59,7 +59,9 @@ func TestHouseholdMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
 	require.NoError(t, db.Create(&first).Error)
 
 	second := HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: HouseholdRoleRoommate}
-	assert.Error(t, db.Create(&second).Error, "the same contact must not be addable to the same household twice")
+	require.ErrorContains(t, db.Create(&second).Error,
+		"UNIQUE constraint failed: household_members.household_id, household_members.member_vcard_uid",
+		"the same contact must not be addable to the same household twice")
 }
 
 // The same contact must still be addable to two DIFFERENT households — the

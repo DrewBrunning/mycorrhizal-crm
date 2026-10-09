@@ -3,6 +3,7 @@ package dbtest
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"mycorrhizal/database"
@@ -22,7 +23,7 @@ func TestBuildTemplate_FailsOnUnwritableDir(t *testing.T) {
 	badDir := filepath.Join(t.TempDir(), "does-not-exist")
 
 	path, err := buildTemplate(badDir)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to run migrations")
 	assert.Empty(t, path)
 }
 
@@ -43,7 +44,7 @@ func TestBuildTemplate_SucceedsOnRealDir(t *testing.T) {
 // branch without making the real migration itself fail.
 func TestFinalizeTemplate_FailsWhenGormHasNoConnPool(t *testing.T) {
 	path, err := finalizeTemplate(&gorm.DB{Config: &gorm.Config{}}, "unused")
-	require.Error(t, err)
+	require.ErrorIs(t, err, gorm.ErrInvalidDB)
 	assert.Empty(t, path)
 }
 
@@ -61,7 +62,7 @@ func TestFinalizeTemplate_FailsWhenCheckpointFails(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	path, err := finalizeTemplate(db, p)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "database is closed")
 	assert.Empty(t, path)
 }
 
@@ -71,7 +72,7 @@ func TestFinalizeTemplate_FailsWhenCheckpointFails(t *testing.T) {
 func TestCopyFile_FailsWhenSrcMissing(t *testing.T) {
 	dst := filepath.Join(t.TempDir(), "dst.db")
 	err := copyFile(filepath.Join(t.TempDir(), "no-such-src.db"), dst)
-	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 	assert.NoFileExists(t, dst)
 }
 
@@ -83,7 +84,7 @@ func TestCopyFile_FailsWhenDstDirMissing(t *testing.T) {
 
 	dst := filepath.Join(t.TempDir(), "missing-dir", "dst.db")
 	err := copyFile(src, dst)
-	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // TestCopyFile_FailsWhenWriteFails covers io.Copy's own error branch (as
@@ -97,7 +98,7 @@ func TestCopyFile_FailsWhenWriteFails(t *testing.T) {
 	require.NoError(t, os.WriteFile(src, []byte("hello, this needs to be non-trivially sized to force a write"), 0o644))
 
 	err := copyFile(src, "/dev/full")
-	require.Error(t, err)
+	require.ErrorIs(t, err, syscall.ENOSPC)
 }
 
 // TestCopyFile_CopiesContent is the positive control for the two failure

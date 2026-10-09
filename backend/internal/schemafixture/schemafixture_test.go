@@ -227,5 +227,5 @@ func TestDumpHeaderIsDeterministic(t *testing.T) {
 // generation time rather than producing a truncated dump.
 func TestGenerateDumpRefusesUnknownVersion(t *testing.T) {
 	_, err := GenerateDump(9999, "v9.9.9")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "building schema at version 9999", "an unreachable version must fail at migration time, not yield a truncated dump")
 }

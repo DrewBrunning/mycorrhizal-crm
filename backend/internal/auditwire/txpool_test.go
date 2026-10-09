@@ -143,7 +143,7 @@ func TestTx_CommitRunsRollbackDropsFailedCommitDrops(t *testing.T) {
 	require.NoError(t, tx.Error)
 	require.True(t, DeferOn(tx, func() { ran++ }))
 	require.NoError(t, tx.Statement.ConnPool.(*Tx).ConnPool.(*sql.Tx).Rollback())
-	assert.Error(t, tx.Commit().Error)
+	assert.ErrorIs(t, tx.Commit().Error, sql.ErrTxDone)
 	assert.Equal(t, 1, ran, "failed commit must drop buffered work")
 }
 

@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -134,10 +133,8 @@ func TestJSONBodySizeLimitMiddleware(t *testing.T) {
 		req.Header.Set("Content-Length", strconv.Itoa(MaxJSONBodySize+1))
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
-		var body map[string]any
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-		assert.Equal(t, "request body too large", body["error"])
+		assertMWErrorCode(t, w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE")
+		assert.Equal(t, "request body too large", mwErrorEnvelope(t, w)["message"])
 		assert.False(t, handlerRan, "handler must not run when the header already exceeds the limit")
 	})
 
@@ -224,10 +221,8 @@ func TestDefaultBodySizeLimitMiddleware_ExemptPathBypassesDefaultLimit(t *testin
 	t.Run("a non-exempt path still enforces the default limit", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newOversizedRequest("/api/v1/other"))
-		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code, "the exemption must not leak to routes outside the allowlist")
-		var body map[string]any
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-		assert.Equal(t, "request body too large", body["error"])
+		assertMWErrorCode(t, w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE")
+		assert.Equal(t, "request body too large", mwErrorEnvelope(t, w)["message"])
 		assert.False(t, otherRan, "the handler must not run for a rejected body")
 	})
 }

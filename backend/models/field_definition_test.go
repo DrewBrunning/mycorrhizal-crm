@@ -70,7 +70,9 @@ func TestFieldDefinitionUniqueConstraintRejectsDuplicateKey(t *testing.T) {
 		Target: FieldDefinitionTargetContact, Type: FieldTypeString, Projection: "internal-only",
 		Sensitivity: RelationshipSensitivityNormal,
 	}
-	assert.Error(t, db.Create(&second).Error, "the same user must not define the same key twice")
+	require.ErrorContains(t, db.Create(&second).Error,
+		"UNIQUE constraint failed: field_definitions.user_id, field_definitions.key",
+		"the same user must not define the same key twice")
 }
 
 // The same key must still be usable by two DIFFERENT users -- uniqueness is
@@ -148,5 +150,7 @@ func TestFieldValueUniqueConstraintRejectsDuplicate(t *testing.T) {
 	require.NoError(t, db.Create(&first).Error)
 
 	second := FieldValue{FieldDefinitionID: def.ID, UserID: user.ID, EntityID: contact.VCardUID, Value: raw}
-	assert.Error(t, db.Create(&second).Error, "a contact must not have two values for the same field definition")
+	require.ErrorContains(t, db.Create(&second).Error,
+		"UNIQUE constraint failed: field_values.field_definition_id, field_values.entity_id",
+		"a contact must not have two values for the same field definition")
 }

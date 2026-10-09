@@ -32,25 +32,26 @@ func TestGetCalendar(t *testing.T) {
 
 	// A different path is not found.
 	_, err = b.GetCalendar(ctx, "/caldav/calendars/"+user.Username+"/other/")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "404 Not Found: calendar not found")
 
 	// Another user's calendar path is not found.
 	_, err = b.GetCalendar(ctx, "/caldav/calendars/bob/interactions/")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "404 Not Found: calendar not found")
 
-	// No username in context: error.
+	// No username in context: a 401, not a bare error (which the DAV layer
+	// renders as HTTP 500 — issue #1439).
 	_, err = b.GetCalendar(context.Background(), "/caldav/calendars/"+user.Username+"/interactions/")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "401 Unauthorized: user not authenticated")
 }
 
 func TestCreateDeleteCalendarUnsupported(t *testing.T) {
 	b, ctx, user := newTestBackend(t)
 
 	err := b.CreateCalendar(ctx, &caldav.Calendar{Path: "/caldav/calendars/" + user.Username + "/other/"})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "403 Forbidden: creating calendars is not supported")
 
 	err = b.DeleteCalendar(ctx, "/caldav/calendars/"+user.Username+"/other/")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "403 Forbidden: deleting calendars is not supported")
 }
 
 func TestHandlerDiscovery(t *testing.T) {

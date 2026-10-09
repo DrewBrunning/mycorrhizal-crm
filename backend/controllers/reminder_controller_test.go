@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestCreateReminder(t *testing.T) {
@@ -197,7 +198,7 @@ func TestDeleteReminder(t *testing.T) {
 	// Verify the reminder has been deleted
 	var deletedReminder models.Reminder
 	result := db.First(&deletedReminder, reminder.ID)
-	assert.Error(t, result.Error) // Should return an error, as it has been deleted
+	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound) // soft-deleted, so out of the default scope
 }
 
 func TestGetRemindersForContact(t *testing.T) {
@@ -450,7 +451,7 @@ func TestCompleteReminder_OnceDeletesAndRecordsCompletion(t *testing.T) {
 	// "once" reminders are deleted after completion.
 	var deleted models.Reminder
 	result := db.First(&deleted, reminder.ID)
-	assert.Error(t, result.Error)
+	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
 
 	// A completion record should have been created for the timeline.
 	var completions []models.ReminderCompletion
@@ -727,7 +728,7 @@ func TestDeleteCompletion(t *testing.T) {
 
 	var deleted models.ReminderCompletion
 	result := db.First(&deleted, completion.ID)
-	assert.Error(t, result.Error)
+	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
 }
 
 // TestDeleteCompletionRejectsCompletionFromAnotherUser is the ownership-boundary

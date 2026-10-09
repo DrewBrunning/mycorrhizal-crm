@@ -43,5 +43,5 @@ func TestPopulate_RefusesToOverwrite(t *testing.T) {
 	m, err := Read()
 	require.NoError(t, err)
 	err = Populate(path, m)
-	assert.Error(t, err, "Populate must refuse to clobber an existing file")
+	assert.ErrorContains(t, err, "refusing to overwrite existing file", "Populate must refuse to clobber an existing file")
 }

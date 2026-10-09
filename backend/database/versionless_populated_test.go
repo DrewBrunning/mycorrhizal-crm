@@ -43,7 +43,6 @@ func TestMigrateUpRefusesPopulatedVersionlessDatabase(t *testing.T) {
 
 	err = MigrateUp(path)
 	var versionless *ErrPopulatedVersionlessDatabase
-	require.Error(t, err)
 	require.True(t, errors.As(err, &versionless), "want *ErrPopulatedVersionlessDatabase, got %T: %v", err, err)
 	assert.NotEmpty(t, versionless.Tables)
 	assert.NotContains(t, versionless.Tables, defaultMigrationsTable)
@@ -64,8 +63,7 @@ func TestInitDBRefusesPopulatedVersionlessDatabase(t *testing.T) {
 
 	_, err := InitDB(path)
 	var versionless *ErrPopulatedVersionlessDatabase
-	require.Error(t, err)
-	assert.True(t, errors.As(err, &versionless), "InitDB must refuse, got %T: %v", err, err)
+	require.True(t, errors.As(err, &versionless), "InitDB must refuse, got %T: %v", err, err)
 }
 
 // TestMigrateUpStillMigratesGenuinelyFreshDatabase is the control: an empty

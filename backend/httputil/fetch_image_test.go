@@ -168,8 +168,7 @@ func TestBuildImageClient_TransportIsSSRFGuarded(t *testing.T) {
 	// Sanity: SafeDialContext returns the private-address sentinel for a
 	// loopback literal (no real network access needed).
 	_, dialErr := transport.DialContext(t.Context(), "tcp", "127.0.0.1:9999")
-	require.Error(t, dialErr)
-	assert.Contains(t, dialErr.Error(), "internal IP addresses")
+	require.ErrorContains(t, dialErr, "internal IP addresses")
 }
 
 // --- sanitizeURL ---

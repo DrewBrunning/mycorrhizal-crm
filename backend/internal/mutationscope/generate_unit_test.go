@@ -1,8 +1,10 @@
 package mutationscope
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,7 +60,7 @@ func TestGenerateOnePropagatesMissingPackageDir(t *testing.T) {
 	root := t.TempDir()
 
 	_, err := generateOne(root, Scope{Name: "ghost", PackageDir: "does-not-exist", TargetFiles: []string{"x.go"}})
-	require.Error(t, err)
+	require.ErrorIs(t, err, fs.ErrNotExist, "a missing PackageDir must surface the underlying not-exist error, not a generic failure")
 }
 
 func TestGenerateReturnsOneEntryPerScope(t *testing.T) {
@@ -96,7 +98,7 @@ func TestWritePropagatesGenerateError(t *testing.T) {
 		{Name: "ghost", PackageDir: "does-not-exist", TargetFiles: []string{"x.go"}},
 	}
 
-	require.Error(t, Write(root))
+	require.ErrorContains(t, Write(root), `scope "ghost"`, "Write must propagate the per-scope Generate error, naming the scope")
 }
 
 func TestWriteFailsWhenConfigDirCannotBeCreated(t *testing.T) {
@@ -112,7 +114,7 @@ func TestWriteFailsWhenConfigDirCannotBeCreated(t *testing.T) {
 	// component a regular file so os.MkdirAll fails with ENOTDIR.
 	require.NoError(t, os.WriteFile(filepath.Join(root, ConfigDir), []byte("not a directory"), 0o600))
 
-	require.Error(t, Write(root))
+	require.ErrorIs(t, Write(root), syscall.ENOTDIR, "a regular file where the config dir belongs must fail with ENOTDIR, not be swallowed")
 }
 
 func TestWriteCreatesConfigDirAndFiles(t *testing.T) {

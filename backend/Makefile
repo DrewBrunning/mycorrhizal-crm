@@ -93,8 +93,8 @@ gen-mutation-scope: ## Regenerate the gremlins exclude-files configs under backe
 gen-config-reference: ## Regenerate the configuration register (issue #933, #501 action 1-2/7) from the cfgreg struct tags on config.Config. Run when a Config field or its cfgreg tag changes; the completeness + drift tests fail until this is committed.
 	@go run ./cmd/genconfigreference
 
-gen-coverage-baseline: ## Regenerate the per-file coverage no-regression ratchet's baseline from a cross-package profile (issue #1477): runs the WHOLE suite once with -coverpkg=./... (heavy, ~4 min, one process) and rewrites internal/coverageratchet/testdata/baseline.json. Keeps the existing tolerance; commit the diff -- it is the review. Frontend counterpart: `yarn coverage:ratchet:update`.
-	@go test $$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$$') -coverpkg=./... -covermode=atomic -p 4 -coverprofile=coverage-cross.out
+gen-coverage-baseline: ## Regenerate the per-file coverage no-regression ratchet's baseline from a cross-package profile (issue #1477): runs the WHOLE suite once with -coverpkg=./... (heavy, ~4 min, one process) and rewrites internal/coverageratchet/testdata/baseline.json. Keeps the existing tolerance; commit the diff -- it is the review. RAPID_CHECKS/ADDRESS_PROPERTY_ITERATIONS are pinned to the PR tier (200), matching the "Collect cross-package coverage" step in unit-tests.yml, so the baseline is generated at the same property-test depth it is checked against. Frontend counterpart: `yarn coverage:ratchet:update`.
+	@RAPID_CHECKS=200 ADDRESS_PROPERTY_ITERATIONS=200 go test $$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$$') -coverpkg=./... -covermode=atomic -p 4 -coverprofile=coverage-cross.out
 	@go run ./cmd/coverageratchet -profile coverage-cross.out -update
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)

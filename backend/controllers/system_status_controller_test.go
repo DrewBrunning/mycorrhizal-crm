@@ -112,7 +112,9 @@ func TestGetSystemStatus_Unauthenticated_401(t *testing.T) {
 	router := systemStatusEnv(t, db, validSystemStatusConfig(t, dbPath), 0)
 
 	w, _ := getSystemStatus(t, router)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	// AdminMiddleware's 401 must be the apperrors envelope with the UNAUTHORIZED
+	// code (issue #1608), not a bare {"error":"..."} string.
+	assertUnauthorizedEnvelope(t, w, "GET /admin/system-status")
 }
 
 func TestGetSystemStatus_NonAdmin_403(t *testing.T) {
@@ -126,6 +128,7 @@ func TestGetSystemStatus_NonAdmin_403(t *testing.T) {
 
 	w, _ := getSystemStatus(t, router)
 	assert.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+	assert.Equal(t, "FORBIDDEN", decodeError(t, w).Error.Code)
 }
 
 func TestGetSystemStatus_MigratedDB_ReportsCleanState(t *testing.T) {

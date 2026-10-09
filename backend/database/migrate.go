@@ -329,6 +329,19 @@ const SupportedUpgradeFloorTag = "v1.0.0"
 // docs/development/fault-injection.md.
 const faultMigrationBeforeBatch = "database.migration.before_batch"
 
+// faultMigrationVersionRead is the failure-injection seam for the applied
+// migration-version read (issue #1604). It fires inside MigrationVersion,
+// immediately before m.Version(), so an armed error fails exactly the version
+// read that migrateFileWithPreBackup performs before deciding whether to take
+// the mandatory pre-migration backup (issue #530) — without touching
+// RunMigrations, which builds its own migrator and reads the version through
+// m.Version() directly. That isolation is what lets a test prove the version-
+// read failure propagates out of migrateFileWithPreBackup: if the read were
+// swallowed, the upgrade would simply proceed and no error would surface.
+// Unarmed, faults.Hook is a nil-returning map lookup. See
+// docs/development/fault-injection.md.
+const faultMigrationVersionRead = "database.migration.version_read"
+
 // ErrDirtyMigration is the error RunMigrations returns when the database is in
 // a dirty migration state (issue #439 state 1 / issue #546). golang-migrate
 // marks a migration dirty when it starts and does not finish — the process was
@@ -925,6 +938,14 @@ func MigrationVersion(dbPath string) (version uint, dirty bool, ok bool, err err
 		return 0, false, false, err
 	}
 	defer closeMigrator(m)
+
+	// Issue #1604 failure-injection seam: the applied-version read itself. This
+	// is the read migrateFileWithPreBackup performs before deciding whether to
+	// snapshot; an armed error must cross the caller's existing error path
+	// unchanged, not be mistaken for the backup refusal.
+	if err := faults.Hook(faultMigrationVersionRead); err != nil {
+		return 0, false, false, err
+	}
 
 	version, dirty, err = m.Version()
 	if errors.Is(err, migrate.ErrNilVersion) {
