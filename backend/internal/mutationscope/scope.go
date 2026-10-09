@@ -289,4 +289,47 @@ var Scopes = []Scope{
 			"timed out (efficacy 100.0%, mcover 90.3%, 12s); floor set 5+ " +
 			"points below measured to absorb CI-runner timeout variance",
 	},
+	{
+		Name:       "services-auth",
+		PackageDir: "services",
+		TargetFiles: []string{
+			"twofactor.go", "twofactor_replay.go", "session_service.go",
+			"password_reset_service.go", "api_token_service.go",
+			"webauthn.go", "oidc_native.go", "oidc_service.go",
+			"feed_service.go", "feed_atom.go",
+		},
+		Efficacy:       95,
+		MutantCoverage: 82,
+		Reason: "baseline 2026-10-09 (issue #1624, workers=4, timeout-" +
+			"coefficient=30, cold test cache, gremlins v0.6.0): 200 killed " +
+			"/ 0 lived / 29 not covered / 0 timed out (efficacy 100.0%, " +
+			"mcover 87.34%, 8m43s). The security-services leg — TOTP step " +
+			"window/replay, session expiry/rotation, password-reset token " +
+			"expiry/single-use, API-token scoping/expiry, WebAuthn " +
+			"sign-count, OIDC nonce/state, and feed bearer tokens. Floor " +
+			"set below measured to absorb CI-runner timeout variance",
+	},
+	{
+		Name:       "sensitivity-filter",
+		PackageDir: "services",
+		TargetFiles: []string{
+			"timeline.go", "graph_suggestion_service.go",
+			"search_service.go", "contact_score_service.go",
+			"contact_sync_service.go",
+		},
+		Efficacy:       95,
+		MutantCoverage: 88,
+		Reason: "baseline 2026-10-09 (issue #1624, workers=4, timeout-" +
+			"coefficient=30, cold test cache, gremlins v0.6.0): 237 killed " +
+			"/ 0 lived / 17 not covered / 0 timed out (efficacy 100.0%, " +
+			"mcover 93.31%, 9m4s). The `sensitivity = normal` / " +
+			"`!= secret` query filters that keep private/secret contacts " +
+			"off shared surfaces, at the services query sites (timeline " +
+			"feed, graph seeding, search, scoring, contact sync). NOTE: " +
+			"export_controller.go/account_bundle.go are the full-fidelity " +
+			"exceptions (they deliberately do NOT filter) so they are not " +
+			"mutation targets here; the controller share sites are a " +
+			"follow-up leg. Floor set below measured to absorb CI-runner " +
+			"timeout variance",
+	},
 }
