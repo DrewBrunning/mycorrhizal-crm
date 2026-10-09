@@ -143,7 +143,7 @@ func TestUndoNeedsAnUpdateEvent(t *testing.T) {
 		}
 		return rec.Result(), nil
 	})
-	require.Error(t, undoAnUpdate(ctx, NewClient("http://stub", rt), 1))
+	require.ErrorIs(t, undoAnUpdate(ctx, NewClient("http://stub", rt), 1), context.Canceled)
 }
 
 func TestUndoSurfacesUndoFailure(t *testing.T) {

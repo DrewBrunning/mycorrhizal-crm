@@ -24,7 +24,7 @@ func TestWriteWallClockTrend(t *testing.T) {
 	assert.Equal(t, data, got)
 
 	// A missing parent dir surfaces the error rather than panicking.
-	assert.Error(t, WriteWallClockTrend(filepath.Join(root, "nonexistent"), data))
+	assert.ErrorIs(t, WriteWallClockTrend(filepath.Join(root, "nonexistent"), data), os.ErrNotExist)
 }
 
 // assertWallClockTrendAdvisory compares a fresh measured run against the

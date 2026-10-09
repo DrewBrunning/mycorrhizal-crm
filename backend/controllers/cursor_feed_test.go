@@ -91,15 +91,18 @@ func TestNameCursorEncodeDecodeRoundTrip(t *testing.T) {
 // updated_at-sorted request can never be silently misapplied under sort=name.
 func TestNameCursorDecodeRejectsMalformed(t *testing.T) {
 	timeCursor := EncodeCursor(time.Date(2026, 8, 2, 18, 7, 19, 0, time.UTC), uint(7))
-	for _, raw := range []string{
-		"",
-		"!!!not-base64url!!!",
-		encodeRawURL("smith|"), // missing id
-		"aGVsbG8=",             // decodes but has no | separator
-		timeCursor,             // a time-based cursor is the wrong shape
+	for _, tc := range []struct {
+		raw     string
+		errFrag string
+	}{
+		{"", "cursor is malformed"},
+		{"!!!not-base64url!!!", "cursor is not valid base64url"},
+		{encodeRawURL("smith|"), "cursor is malformed"}, // missing id
+		{"aGVsbG8=", "cursor is not valid base64url"},   // not valid base64url
+		{timeCursor, "cursor is a time-based cursor"},   // a time-based cursor is the wrong shape
 	} {
-		_, err := DecodeNameCursor(raw)
-		assert.Error(t, err, "cursor %q should fail to decode", raw)
+		_, err := DecodeNameCursor(tc.raw)
+		assert.ErrorContains(t, err, tc.errFrag, "cursor %q should fail to decode", tc.raw)
 	}
 }
 
@@ -123,15 +126,18 @@ func TestCursorEncodeDecodeRoundTrip(t *testing.T) {
 // TestCursorDecodeRejectsMalformed pins the 400 path: garbage, truncated
 // base64url, missing id, and a non-timestamp payload must all fail decode.
 func TestCursorDecodeRejectsMalformed(t *testing.T) {
-	for _, raw := range []string{
-		"",
-		"!!!not-base64url!!!",
-		encodeRawURL("2026-08-02T18:07:19.402476499-05:00|"), // missing id
-		encodeRawURL("not-a-time|7"),                         // bad timestamp
-		"aGVsbG8=",                                           // decodes but has no | separator
+	for _, tc := range []struct {
+		raw     string
+		errFrag string
+	}{
+		{"", "cursor is malformed"},
+		{"!!!not-base64url!!!", "cursor is not valid base64url"},
+		{encodeRawURL("2026-08-02T18:07:19.402476499-05:00|"), "cursor is malformed"}, // missing id
+		{encodeRawURL("not-a-time|7"), "cursor timestamp is malformed"},               // bad timestamp
+		{"aGVsbG8=", "cursor is not valid base64url"},                                 // not valid base64url
 	} {
-		_, err := DecodeCursor(raw)
-		assert.Error(t, err, "cursor %q should fail to decode", raw)
+		_, err := DecodeCursor(tc.raw)
+		assert.ErrorContains(t, err, tc.errFrag, "cursor %q should fail to decode", tc.raw)
 	}
 }
 
@@ -150,17 +156,20 @@ func TestPositionCursorEncodeDecodeRoundTrip(t *testing.T) {
 // paths, including the cross-shape case: a time or name cursor's leading
 // component is not an integer and must not decode as a position.
 func TestPositionCursorDecodeRejectsMalformed(t *testing.T) {
-	for _, raw := range []string{
-		"!!!not-base64url!!!",
-		encodeRawURL("3|"),     // missing id
-		encodeRawURL("|abc"),   // missing position
-		encodeRawURL("no-sep"), // no separator
-		encodeRawURL("x|abc"),  // non-integer position
-		EncodeNameCursor("smith", uint(7)),
-		EncodeCursor(time.Date(2026, 8, 2, 18, 7, 19, 0, time.UTC), uint(7)),
+	for _, tc := range []struct {
+		raw     string
+		errFrag string
+	}{
+		{"!!!not-base64url!!!", "cursor is not valid base64url"},
+		{encodeRawURL("3|"), "cursor is malformed"},             // missing id
+		{encodeRawURL("|abc"), "cursor is malformed"},           // missing position
+		{encodeRawURL("no-sep"), "cursor is malformed"},         // no separator
+		{encodeRawURL("x|abc"), "cursor position is malformed"}, // non-integer position
+		{EncodeNameCursor("smith", uint(7)), "cursor position is malformed"},
+		{EncodeCursor(time.Date(2026, 8, 2, 18, 7, 19, 0, time.UTC), uint(7)), "cursor position is malformed"},
 	} {
-		_, err := DecodePositionCursor(raw)
-		assert.Error(t, err, "cursor %q should fail to decode", raw)
+		_, err := DecodePositionCursor(tc.raw)
+		assert.ErrorContains(t, err, tc.errFrag, "cursor %q should fail to decode", tc.raw)
 	}
 }
 

@@ -101,7 +101,7 @@ func TestExternalLinkSubstrate_RealMigratedSchema(t *testing.T) {
 	// Unique constraint: a duplicate (system, external_id, user) is rejected
 	// at the DB level too (belt-and-braces beyond the controller's 409).
 	dup := models.ExternalIdentity{UserID: user.ID, EntityID: contact.VCardUID, System: "immich", ExternalID: "person-real"}
-	require.Error(t, db.Create(&dup).Error, "unique (system, external_id, user_id) must reject a duplicate")
+	require.ErrorContains(t, db.Create(&dup).Error, "UNIQUE constraint failed", "unique (system, external_id, user_id) must reject a duplicate")
 
 	// Cascade on contact delete: both rows must be gone after DeleteContact.
 	delResp := doJSON("DELETE", "/contacts/"+strconv.Itoa(int(contact.ID)), nil)

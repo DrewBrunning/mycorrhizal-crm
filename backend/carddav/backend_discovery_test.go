@@ -109,8 +109,10 @@ func TestCreateDeleteAddressBookUnsupported(t *testing.T) {
 	backend, _ := newDiscoveryBackend(t)
 	ctx := ContextWithUser(context.Background(), 1, "alice", backend.db, backend.photoDir, "")
 
-	require.Error(t, backend.CreateAddressBook(ctx, &webdavcarddav.AddressBook{Path: "/carddav/addressbooks/alice/other/"}))
-	require.Error(t, backend.DeleteAddressBook(ctx, "/carddav/addressbooks/alice/other/"))
+	require.ErrorContains(t, backend.CreateAddressBook(ctx, &webdavcarddav.AddressBook{Path: "/carddav/addressbooks/alice/other/"}),
+		"403 Forbidden: creating address books is not supported")
+	require.ErrorContains(t, backend.DeleteAddressBook(ctx, "/carddav/addressbooks/alice/other/"),
+		"403 Forbidden: deleting address books is not supported")
 }
 
 func TestQueryAddressObjects(t *testing.T) {

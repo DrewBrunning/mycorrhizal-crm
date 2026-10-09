@@ -242,19 +242,19 @@ func TestScalePopulatesLargeDataset(t *testing.T) {
 
 func TestScaleRejectsBadInputs(t *testing.T) {
 	_, err := Scale(nil, 100)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "largedata: nil manifest")
 	m := readManifest(t)
 	_, err = Scale(m, 0)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "targetContacts must be >= 1, got 0")
 	_, err = Scale(m, -5)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "targetContacts must be >= 1, got -5")
 
 	empty := &canonicalfixture.Manifest{
 		Version: canonicalfixture.ManifestVersion,
 		User:    canonicalfixture.ManifestUser{Username: "u", Email: "u@example.com"},
 	}
 	_, err = Scale(empty, 100)
-	assert.Error(t, err, "a manifest with no contacts must be refused")
+	require.ErrorContains(t, err, "largedata: manifest declares no contacts to scale", "a manifest with no contacts must be refused")
 }
 
 // TestRegeneratedUIDsSatisfyUUID4Validation is the issue #868 regression

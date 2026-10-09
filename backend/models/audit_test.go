@@ -113,7 +113,8 @@ func TestAudit_TableRejectsMutation(t *testing.T) {
 	contact := Contact{UserID: user.ID, Firstname: "A"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	require.Error(t, db.Model(&AuditEvent{}).Where("entity_type = ?", AuditEntityContact).Update("operation", "create").Error,
+	require.ErrorContains(t, db.Model(&AuditEvent{}).Where("entity_type = ?", AuditEntityContact).Update("operation", "create").Error,
+		"audit_events is append-only: UPDATE is not allowed",
 		"audit_events must reject UPDATE")
 }
 
@@ -240,9 +241,12 @@ func TestAudit_HookGuardsAndMarshalFailures(t *testing.T) {
 
 	// The redaction helpers surface their own marshal/unmarshal errors.
 	_, err := redactJSON([]byte("{not json"))
-	require.Error(t, err)
+	var syntaxErr *json.SyntaxError
+	require.ErrorAs(t, err, &syntaxErr)
+
 	_, err = redactedJSON(make(chan int))
-	require.Error(t, err)
+	var unsupportedErr *json.UnsupportedTypeError
+	require.ErrorAs(t, err, &unsupportedErr)
 }
 
 func uintToStr(id uint) string {

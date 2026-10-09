@@ -3,6 +3,7 @@ package contactgen
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -62,7 +63,7 @@ func TestPopulate_DuplicateUIDFails(t *testing.T) {
 
 	rec := &contactmodel.Record{Card: contactmodel.Card{UID: "urn:uuid:duplicate"}}
 	_, err = Populate(db, user.ID, []*contactmodel.Record{rec, rec})
-	require.Error(t, err, "a duplicate VCardUID must fail the unique index")
+	require.ErrorContains(t, err, "UNIQUE constraint failed: contacts.user_id, contacts.vcard_uid", "a duplicate VCardUID must fail the unique index")
 }
 
 // TestNewUser_CreatesScopedUser pins the user helper.
@@ -77,22 +78,22 @@ func TestNewUser_CreatesScopedUser(t *testing.T) {
 }
 
 // TestNewUser_DuplicateLabelFails pins the error path: a second user with the
-// same label is rejected by the unique username index, which is what keeps
-// generated users scoped.
+// same label is rejected by the unique index NewUser's derived columns collide
+// on, which is what keeps generated users scoped.
 func TestNewUser_DuplicateLabelFails(t *testing.T) {
 	db := dbtest.New(t)
 	_, err := NewUser(db, "dup")
 	require.NoError(t, err)
 
 	_, err = NewUser(db, "dup")
-	require.Error(t, err, "a duplicate generated username must fail the unique index")
+	require.ErrorContains(t, err, "UNIQUE constraint failed: users.email", "a duplicate generated label must fail the unique index")
 }
 
 // TestCopyFile_MissingSourceFails pins copyFile's error path (used by
 // MigratedDB).
 func TestCopyFile_MissingSourceFails(t *testing.T) {
 	err := copyFile(filepath.Join(t.TempDir(), "does-not-exist"), filepath.Join(t.TempDir(), "out.db"))
-	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // TestMigratedDB_IsFullyMigrated proves the DB helper hands back a real

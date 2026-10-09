@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/database"
 
 	"github.com/stretchr/testify/require"
@@ -42,7 +43,7 @@ func TestRun_SurfacesOperatorErrors(t *testing.T) {
 	t.Run("unopenable database path", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "no", "such", "dir", "x.db")
 		err := run(missing)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to run migrations")
 	})
 
 	t.Run("malformed DATA_ENCRYPTION_KEY", func(t *testing.T) {
@@ -56,6 +57,6 @@ func TestRun_SurfacesOperatorErrors(t *testing.T) {
 		}
 		t.Setenv("DATA_ENCRYPTION_KEY", "not-a-valid-master-key")
 		err = run(dbPath)
-		require.Error(t, err)
+		require.ErrorIs(t, err, atrest.ErrInvalidKey, "a malformed master key must surface atrest.ErrInvalidKey")
 	})
 }

@@ -126,7 +126,7 @@ func TestDataInvariant_A2_CancelledImportCommitsNothing(t *testing.T) {
 		}
 
 		_, _, err = services.ExecuteSourceImportWithActions(ctx, db, user.ID, plan, nil, progress)
-		require.Error(t, err, "a cancelled import must fail, not partially succeed")
+		require.ErrorIs(t, err, context.Canceled, "a cancelled import must fail, not partially succeed")
 
 		after, err := contentFingerprint(db)
 		require.NoError(t, err)

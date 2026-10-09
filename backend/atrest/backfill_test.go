@@ -436,8 +436,8 @@ func TestBackfill_AuditEventsBeforeSnapshot_EncryptsThroughImmutabilityTrigger(t
 	require.True(t, auditNoUpdateTriggerExists(t, db),
 		"the immutability trigger must be back in place after backfill")
 	tamper := db.Exec("UPDATE audit_events SET before_snapshot = 'tampered' WHERE id = ?", id).Error
-	require.Error(t, tamper, "audit_events must reject UPDATEs again after the backfill")
-	require.Contains(t, tamper.Error(), "append-only")
+	require.ErrorContains(t, tamper, "append-only",
+		"audit_events must reject UPDATEs again after the backfill")
 
 	// Idempotent: a second run finds nothing to encrypt and still leaves the
 	// trigger intact.

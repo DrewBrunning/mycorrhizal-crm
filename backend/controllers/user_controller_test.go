@@ -884,7 +884,7 @@ func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
 	db.Where("email = ?", "reusetoken@example.com").First(&updated)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAlt)),
 		"password must still be what the first (legitimate) use set")
-	assert.Error(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAnother)),
+	assert.ErrorIs(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAnother)), bcrypt.ErrMismatchedHashAndPassword,
 		"the replayed token's password must never have taken effect")
 }
 

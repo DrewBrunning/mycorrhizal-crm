@@ -212,12 +212,12 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 
 	var remainingUser models.User
 	err := db.First(&remainingUser, target.ID).Error
-	assert.Error(t, err, "target user should be deleted")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "target user should be deleted")
 
 	// M4/T26: prove rows are genuinely gone, not merely soft-deleted.
 	var unscopedUser models.User
 	unscopedErr := db.Unscoped().First(&unscopedUser, target.ID).Error
-	assert.Error(t, unscopedErr, "target user must be Unscoped-gone — not merely soft-deleted")
+	assert.ErrorIs(t, unscopedErr, gorm.ErrRecordNotFound, "target user must be Unscoped-gone — not merely soft-deleted")
 
 	// M2/T26: re-registration with the deleted account's email must succeed.
 	newUser := models.User{

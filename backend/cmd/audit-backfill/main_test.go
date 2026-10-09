@@ -45,5 +45,5 @@ func TestRun_BackfillsLegacyRows(t *testing.T) {
 
 func TestRun_OpenFailure(t *testing.T) {
 	err := run(filepath.Join(t.TempDir(), "no", "such", "dir", "x.db"))
-	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to open database")
 }

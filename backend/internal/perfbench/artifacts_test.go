@@ -29,7 +29,7 @@ func TestFindRepoRoot(t *testing.T) {
 	assert.Equal(t, root, got)
 
 	_, err = FindRepoRoot(t.TempDir()) // a bare dir with no backend/go.mod above it
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "repo root (a dir containing backend/go.mod) not found above")
 }
 
 func TestFindRepoRoot_FromWorkingDir(t *testing.T) {
@@ -45,13 +45,13 @@ func TestWriteArtifacts_ReportWriteFailureSurfaces(t *testing.T) {
 	// (its dir exists) succeeds.
 	require.NoError(t, os.RemoveAll(filepath.Join(root, "docs")))
 	err := WriteArtifacts(root, []byte("{}\n"), []byte("# r\n"))
-	assert.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestWriteArtifacts_BaselineWriteFailureSurfaces(t *testing.T) {
 	root := t.TempDir() // no backend/internal/... tree
 	err := WriteArtifacts(root, []byte("{}\n"), []byte("# r\n"))
-	assert.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestWriteAndCheckArtifacts(t *testing.T) {
