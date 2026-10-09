@@ -51,7 +51,7 @@ Builds:
       # embedded Go server (lib/arm64-v8a/libmycorrhizal.so, ADR 0028 / #1108). Without
       # it the F-Droid APK hides "Use on this device only" on every device. To ship
       # local mode on F-Droid the build server needs (a) the Gradle flag below and
-      # (b) a Go toolchain >= the `toolchain` line in backend/go.mod (go1.27.1 at the
+      # (b) a Go toolchain >= the `toolchain` line in backend/go.mod (go1.27.2 at the
       # time of writing; Debian's packaged golang is older, so `apt-get install
       # golang` alone will NOT satisfy it). The usual fdroiddata shapes are a `srclibs:`
       # Go entry or a `sudo:` block that installs a pinned, checksum-verified Go
