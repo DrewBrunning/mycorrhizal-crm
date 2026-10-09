@@ -30,11 +30,12 @@ func asyncAuditDB(t *testing.T) (*gorm.DB, AuditRecorder, User) {
 
 func TestAuditRecorder_AsyncRolledBackTransactionLeavesNoEvent(t *testing.T) {
 	db, rec, u := asyncAuditDB(t)
+	boom := errors.New("boom")
 	err := db.Transaction(func(tx *gorm.DB) error {
 		require.NoError(t, tx.Create(&Contact{UserID: u.ID, Firstname: "Ghost"}).Error)
-		return errors.New("boom")
+		return boom
 	})
-	require.Error(t, err)
+	require.ErrorIs(t, err, boom)
 	rec.Flush()
 	assert.EqualValues(t, 1, auditCount(t, db), "rolled-back write must leave no audit row")
 }
@@ -68,7 +69,7 @@ func TestAuditRecorder_AsyncFailedImplicitWriteLeavesNoEvent(t *testing.T) {
 	rec.Flush()
 	before := auditCount(t, db)
 	dup := Contact{UserID: u.ID, Firstname: "Dup2", VCardUID: first.VCardUID}
-	require.Error(t, db.Create(&dup).Error)
+	require.ErrorContains(t, db.Create(&dup).Error, "UNIQUE constraint failed: contacts.user_id, contacts.vcard_uid")
 	rec.Flush()
 	assert.Equal(t, before, auditCount(t, db))
 }

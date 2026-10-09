@@ -271,7 +271,7 @@ func TestRunFailsWhenRepoRootNotFound(t *testing.T) {
 func TestFindRepoRootNotFound(t *testing.T) {
 	t.Chdir(t.TempDir())
 	_, err := findRepoRoot()
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "could not locate repository root")
 }
 
 // TestMainExitsZero drives main() itself through the osExit seam.

@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -251,7 +253,8 @@ func TestAppendFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "a=1\nb=2\nc=3\n", string(b), "appends; never truncates $GITHUB_OUTPUT")
 
-	assert.Error(t, appendFile(filepath.Join(t.TempDir(), "no", "such", "dir", "f"), []byte("x"), 0o644))
+	assert.ErrorIs(t, appendFile(filepath.Join(t.TempDir(), "no", "such", "dir", "f"), []byte("x"), 0o644), fs.ErrNotExist,
+		"a missing parent directory must surface a not-exist error, not a generic failure")
 }
 
 func TestAppendFileWriteError(t *testing.T) {
@@ -259,7 +262,8 @@ func TestAppendFileWriteError(t *testing.T) {
 	if _, err := os.Stat("/dev/full"); err != nil {
 		t.Skip("no /dev/full on this platform")
 	}
-	assert.Error(t, appendFile("/dev/full", []byte("x"), 0o644))
+	assert.ErrorIs(t, appendFile("/dev/full", []byte("x"), 0o644), syscall.ENOSPC,
+		"a full device must surface ENOSPC from the write, not the open")
 }
 
 func TestReportEmptyIsZero(t *testing.T) {

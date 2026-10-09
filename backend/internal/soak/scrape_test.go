@@ -64,18 +64,18 @@ func TestParseExposition_LabelEscapesAndTimestamps(t *testing.T) {
 }
 
 func TestParseExposition_MalformedLinesAreErrors(t *testing.T) {
-	for name, in := range map[string]string{
-		"no value":          "just_a_name\n",
-		"unbalanced braces": "m{a=\"x\" 1\n",
-		"unquoted label":    "m{a=x} 1\n",
-		"unterminated":      "m{a=\"x} 1\n",
-		"no equals":         "m{ax} 1\n",
-		"bad number":        "m 12abc\n",
-		"missing value":     "m{a=\"x\"}\n",
+	for name, tc := range map[string]struct{ in, want string }{
+		"no value":          {"just_a_name\n", "malformed sample (no value)"},
+		"unbalanced braces": {"m{a=\"x\" 1\n", "unbalanced braces"},
+		"unquoted label":    {"m{a=x} 1\n", "not quoted"},
+		"unterminated":      {"m{a=\"x} 1\n", "unterminated"},
+		"no equals":         {"m{ax} 1\n", "label without '='"},
+		"bad number":        {"m 12abc\n", "malformed value in"},
+		"missing value":     {"m{a=\"x\"}\n", "malformed sample (no value)"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := ParseExposition(strings.NewReader(in))
-			assert.Error(t, err)
+			_, err := ParseExposition(strings.NewReader(tc.in))
+			require.ErrorContains(t, err, tc.want)
 		})
 	}
 }

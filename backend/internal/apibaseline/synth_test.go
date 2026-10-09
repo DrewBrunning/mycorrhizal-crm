@@ -147,7 +147,7 @@ func TestExtractSyntheticSpec(t *testing.T) {
 // TestParseRejectsInvalidJSON pins the JSON-decode error path of Parse.
 func TestParseRejectsInvalidJSON(t *testing.T) {
 	_, err := Parse([]byte("{not json"))
-	require.Error(t, err)
+	require.ErrorContains(t, err, "parsing baseline")
 }
 
 // TestSortedResponseKeysNil pins the nil-responses guard.
@@ -172,7 +172,7 @@ func TestFindRepoRootFailure(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, os.Chdir(orig)) })
 
 	_, err = findRepoRoot()
-	require.Error(t, err)
+	require.ErrorContains(t, err, "repo root not found")
 }
 
 // TestReadRepoRootPathResolution pins that Read resolves the committed

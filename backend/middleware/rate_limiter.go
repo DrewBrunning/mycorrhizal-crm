@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"net"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 )
 
@@ -520,11 +520,7 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 
 		// Check if request is allowed
 		if !rateLimiter.Allow() {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":   "Rate limit exceeded",
-				"message": "Too many requests. Please try again later.",
-			})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrRateLimitExceeded())
 			return
 		}
 

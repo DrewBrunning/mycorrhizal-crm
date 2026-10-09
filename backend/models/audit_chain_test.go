@@ -197,7 +197,9 @@ func TestAuditChain_BackfillLegacyRows(t *testing.T) {
 
 	// Idempotent: a second run is a no-op and the trigger still rejects UPDATE.
 	require.NoError(t, RecomputeAuditChain(db))
-	require.Error(t, db.Model(&AuditEvent{}).Where("entity_id = ?", "a").Update("entity_id", "b").Error,
+	require.ErrorContains(t,
+		db.Model(&AuditEvent{}).Where("entity_id = ?", "a").Update("entity_id", "b").Error,
+		"audit_events is append-only: UPDATE is not allowed",
 		"the immutability trigger must still reject UPDATE after backfill")
 }
 
@@ -280,8 +282,8 @@ func TestAuditChain_ClosedDBErrors(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = VerifyAuditChain(db)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "sql: database is closed")
 
 	err = RecomputeAuditChain(db)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "sql: database is closed")
 }

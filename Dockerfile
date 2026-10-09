@@ -8,7 +8,7 @@
 # =============================================================================
 # Stage 1: Build Go backend (cross-compiled, CGO disabled - pure-Go SQLite)
 # =============================================================================
-FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine@sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125 AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine@sha256:85dc1069ac644ea3c527b177303a406eb3358192816cd7f9e5848eb658851673 AS backend-builder
 
 ARG TARGETOS
 ARG TARGETARCH

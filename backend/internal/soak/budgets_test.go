@@ -98,5 +98,5 @@ func TestReplaceBudgetBlock(t *testing.T) {
 	assert.True(t, strings.HasSuffix(out, "outro\n"))
 
 	_, err = ReplaceBudgetBlock("no markers here")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "document has no")
 }

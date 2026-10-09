@@ -95,8 +95,8 @@ func TestMeasureFallsBackToEnvPath(t *testing.T) {
 }
 
 func TestBadFlagIsAParseError(t *testing.T) {
-	require.Error(t, runCheckpoint([]string{"--bogus"}))
-	require.Error(t, runMeasure([]string{"--bogus"}))
+	require.ErrorContains(t, runCheckpoint([]string{"--bogus"}), "flag provided but not defined")
+	require.ErrorContains(t, runMeasure([]string{"--bogus"}), "flag provided but not defined")
 }
 
 func TestRunCLIReportsSubcommandFailure(t *testing.T) {
@@ -117,11 +117,11 @@ func TestRunCLIReportsSubcommandFailure(t *testing.T) {
 
 func TestSeedRefusesBadFlags(t *testing.T) {
 	err := runSeed([]string{"--contacts", "0", "--db", filepath.Join(t.TempDir(), "x.db")})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "exactly one of --contacts or --profile is required")
 	err = runSeed([]string{"--contacts", "10"})
-	require.Error(t, err, "--db is required")
+	require.ErrorContains(t, err, "--db is required")
 	err = runSeed([]string{"--bogus", "10", "--db", filepath.Join(t.TempDir(), "x.db")})
-	require.Error(t, err, "an unknown flag is a parse error")
+	require.ErrorContains(t, err, "flag provided but not defined", "an unknown flag is a parse error")
 }
 
 func TestSeedContactsAndProfileAreMutuallyExclusive(t *testing.T) {
@@ -172,18 +172,18 @@ func TestSeedWithProfile(t *testing.T) {
 func TestCheckpointRefusesBadInputs(t *testing.T) {
 	_, err := os.Stat(filepath.Join(t.TempDir(), "none.db"))
 	err = runCheckpoint([]string{"--db", "src.db"})
-	require.Error(t, err, "--out is required")
+	require.ErrorContains(t, err, "--db and --out are required")
 
 	src := filepath.Join(t.TempDir(), "src.db")
 	require.NoError(t, runSeed([]string{"--contacts", "15", "--db", src}))
 
 	out := filepath.Join(t.TempDir(), "out.db")
 	err = runCheckpoint([]string{"--db", src, "--version", "0", "--out", out})
-	require.Error(t, err, "version 0 is not a valid checkpoint target")
+	require.ErrorContains(t, err, "--version must be >= 1", "version 0 is not a valid checkpoint target")
 
 	require.NoError(t, runCheckpoint([]string{"--db", src, "--version", "31", "--out", out}))
 	err = runCheckpoint([]string{"--db", src, "--version", "31", "--out", out})
-	require.Error(t, err, "an existing --out is refused (no overwrite)")
+	require.ErrorContains(t, err, "already exists; refusing to overwrite")
 }
 
 func TestMeasureRefusesUnmigratedDatabase(t *testing.T) {
@@ -192,7 +192,7 @@ func TestMeasureRefusesUnmigratedDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "fresh.db")
 	require.NoError(t, os.WriteFile(path, []byte("not a database"), 0o600))
 	err := runMeasure([]string{"--db", path})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "has no schema_migrations row")
 }
 
 // captureStdout runs fn while capturing everything written to os.Stdout.

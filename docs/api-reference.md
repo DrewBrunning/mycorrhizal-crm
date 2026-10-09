@@ -34,9 +34,13 @@ All errors follow the same structure:
 
 ```json
 {
-  "code": "NOT_FOUND",
-  "message": "Contact not found",
-  "details": {}
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Contact not found",
+    "details": {}
+  },
+  "request_id": "…",
+  "timestamp": "2026-01-01T00:00:00Z"
 }
 ```
 
@@ -52,6 +56,7 @@ Common error codes:
 | `VALIDATION_ERROR` | 400 |
 | `INVALID_INPUT` | 400 |
 | `ALREADY_EXISTS` | 409 |
+| `PAYLOAD_TOO_LARGE` | 413 |
 | `RATE_LIMIT_EXCEEDED` | 429 |
 | `INTERNAL_ERROR` | 500 |
 

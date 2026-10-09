@@ -120,7 +120,7 @@ func TestStartStop_Lifecycle(t *testing.T) {
 
 	sqlDB, err := srv.db.DB()
 	require.NoError(t, err)
-	require.Error(t, sqlDB.Ping(), "Stop must close the database")
+	require.ErrorContains(t, sqlDB.Ping(), "sql: database is closed", "Stop must close the database")
 }
 
 // TestStart_InvalidConfigReturnsError pins that a library caller gets an error
