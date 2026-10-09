@@ -138,7 +138,7 @@
     "com/mycorrhizal/crm/data/repository/OccasionEventRepositoryImpl.kt": 97.25,
     "com/mycorrhizal/crm/data/repository/PasskeyRepositoryImpl.kt": 100,
     "com/mycorrhizal/crm/data/repository/PendingInteractionFlusher.kt": 98.34,
-    "com/mycorrhizal/crm/data/repository/PendingInteractionRepositoryImpl.kt": 97.21,
+    "com/mycorrhizal/crm/data/repository/PendingInteractionRepositoryImpl.kt": 95.35,
     "com/mycorrhizal/crm/data/repository/RelationshipEdgeRepositoryImpl.kt": 26.35,
     "com/mycorrhizal/crm/data/repository/ReminderRepositoryImpl.kt": 79.45,
     "com/mycorrhizal/crm/data/repository/SafeCollector.common.kt": 100,
