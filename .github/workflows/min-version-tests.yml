@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   # --- Go -----------------------------------------------------------------
-  # go.mod declares `go 1.26.0` (this row's floor) and `toolchain go1.27.1`
+  # go.mod declares `go 1.26.0` (this row's floor) and `toolchain go1.27.2`
   # (what every other job builds with); go-version-file would install the
   # toolchain, not the floor, so the version is hardcoded here instead.
   go-minimum:
@@ -64,7 +64,7 @@ jobs:
           check-latest: false
 
       # GOTOOLCHAIN=local is load-bearing: without it go.mod's `toolchain
-      # go1.27.1` line would silently switch the 1.26.0 binary to 1.27.1,
+      # go1.27.2` line would silently switch the 1.26.0 binary to 1.27.2,
       # passing regardless of whether the floor itself still builds.
       - name: Build, vet, and test at the floor
         working-directory: backend
