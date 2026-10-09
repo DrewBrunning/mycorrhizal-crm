@@ -201,11 +201,18 @@ time-based rule.
     below.
   - Lossy/unknown-field behavior, sensitivity filtering in the query, malformed
     input reject/ignore/preserve rules.
-  - Hostile-input fuzzing seeded from the fixtures (issues #265/#376).
+  - Hostile-input fuzzing seeded from the fixtures (issues #265/#376; extended
+    to the importer paths and client-controlled request parsers by
+    #1625/#1626).
 - **Must not be used for** the neutral model's own logic (unit) or persistence
   (DB/integration).
-- **Runs via** `go test ./...`; fuzz targets run in `backend-checks` (short
-  smoke on PR, 2m per target on the nightly schedule).
+- **Runs via** `go test ./...`; the 21 native fuzz targets
+  (`.github/scripts/run-fuzz-targets.sh`) run as a short 15s-per-target smoke
+  in `backend-checks` on PRs/pushes, and on the nightly schedule sharded by
+  package across the `fuzz-nightly` matrix job at 2m per target (one `go test`
+  process per target is the constraint, so the shard keeps them within the
+  job budget). `backend/fuzz_registration_test.go` pins every `func Fuzz*` to
+  a runner entry and the runner's packages to the matrix.
 
 ### Migration
 

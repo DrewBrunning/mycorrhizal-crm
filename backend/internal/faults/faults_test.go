@@ -229,6 +229,9 @@ func TestErrInjectedIsDoesNotMatchWrongNameOrNonErrInjected(t *testing.T) {
 	assert.True(t, e.Is(&ErrInjected{Name: "a.fault"}))
 }
 
+// TestConcurrentHookAndArmAreSafe has no value assertion by design: the
+// property under test is that concurrent Hook/Arm/Disarm is data-race-free,
+// which only running this test under -race can observe.
 func TestConcurrentHookAndArmAreSafe(t *testing.T) {
 	startClean(t)
 

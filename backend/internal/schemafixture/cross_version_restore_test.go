@@ -268,6 +268,7 @@ func openRestoredDB(t *testing.T, dbPath string) (*gorm.DB, uint) {
 // presents N's schema, so nothing migrates; the three pieces come back intact
 // and the content is byte-for-byte the fixture's.
 func TestCrossVersionRestoreSameRelease(t *testing.T) {
+	require.NotEmpty(t, SupportedReleases)
 	for _, from := range SupportedReleases {
 		from := from
 		t.Run(from.Tag, func(t *testing.T) {

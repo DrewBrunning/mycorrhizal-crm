@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -35,8 +34,7 @@ func TestNewWebAuthn_DerivesRPIDFromFrontendURL(t *testing.T) {
 func TestNewWebAuthn_RejectsNonConcreteOrigins(t *testing.T) {
 	for _, origin := range []string{"", "  ", "*", "not a url", "ftp://crm.example.com", "https://", "crm.example.com"} {
 		_, err := NewWebAuthn(&config.Config{FrontendURL: origin})
-		require.Error(t, err, origin)
-		assert.True(t, errors.Is(err, ErrWebAuthnNotConfigured), origin)
+		assert.ErrorIs(t, err, ErrWebAuthnNotConfigured, origin)
 	}
 }
 
@@ -123,7 +121,8 @@ func TestUniqueNaturalKeyIsEnforced(t *testing.T) {
 		return db.Create(&models.WebAuthnCredential{UserID: user.ID, CredentialID: []byte("same"), PublicKey: []byte("p")}).Error
 	}
 	require.NoError(t, mk())
-	require.Error(t, mk(), "(user_id, credential_id) is a plain unique index")
+	require.ErrorContains(t, mk(), "UNIQUE constraint failed: webauthn_credentials",
+		"(user_id, credential_id) is a plain unique index")
 }
 
 func TestCeremonyStore_SingleUseAndExpiry(t *testing.T) {

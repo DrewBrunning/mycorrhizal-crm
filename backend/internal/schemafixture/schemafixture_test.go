@@ -21,6 +21,7 @@ import (
 // is not dirty" (issue #436 verify). A fixture that omitted the schema_migrations
 // row would silently present version 0 — this is what pins it present and clean.
 func TestEachFixtureLoadsAtItsVersion(t *testing.T) {
+	require.NotEmpty(t, SupportedReleases)
 	for _, r := range SupportedReleases {
 		t.Run(r.Tag, func(t *testing.T) {
 			f := Load(t, r)
@@ -42,6 +43,8 @@ func TestEachFixtureLoadsAtItsVersion(t *testing.T) {
 // references included, soft-deleted rows and cascades intact.
 func TestFixtureManifestDataRowCounts(t *testing.T) {
 	reference := referenceCounts(t)
+	require.NotEmpty(t, reference)
+	require.NotEmpty(t, SupportedReleases)
 
 	for _, r := range SupportedReleases {
 		t.Run(r.Tag, func(t *testing.T) {
@@ -114,6 +117,7 @@ func tableCounts(t *testing.T, db *gorm.DB) map[string]int64 {
 // see: the soft-deleted contact stays soft-deleted alongside julie's recreated
 // row sharing its vcard_uid, and confirmed relationship edges keep their shape.
 func TestFixtureContainsManifestTrapData(t *testing.T) {
+	require.NotEmpty(t, SupportedReleases)
 	for _, r := range SupportedReleases {
 		t.Run(r.Tag, func(t *testing.T) {
 			f := Load(t, r)

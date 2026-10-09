@@ -91,6 +91,7 @@ EOF
   FAKE_GO_CALLS_FILE="$workdir/calls.marker" \
   PATH="$workdir:$PATH" \
   FUZZTIME=1s \
+  FUZZ_PACKAGE="${FUZZ_PACKAGE_TEST:-}" \
     bash "$SCRIPT" >"$log" 2>&1
   status=$?
 
@@ -125,37 +126,50 @@ EOF
 }
 
 run_test "clean pass runs all targets once with the fuzztime budget" \
-  pass 0 8 \
+  pass 0 21 \
   "fuzztime=1s"
 
 run_test "deadline race on the first target is retried and recovers" \
-  deadline-once 0 9 \
+  deadline-once 0 22 \
   "retrying once" \
   "!soft failure"
 
 run_test "deadline race that repeats is a soft failure (nightly stays green)" \
-  deadline-always 0 16 \
+  deadline-always 0 42 \
   "soft failure" \
   "!found a crash"
 
 run_test "real crash fails hard and is never retried or softened" \
-  crash 1 8 \
+  crash 1 21 \
   "found a crash" \
   "one or more fuzz targets failed" \
   "!retrying once" \
   "!soft failure"
 
 run_test "crash is still hard even when the deadline string is also present" \
-  crash-with-deadline 1 8 \
+  crash-with-deadline 1 21 \
   "found a crash" \
   "!soft failure"
 
 run_test "seed-replay of a previously-found crash fails hard (no deadline string)" \
-  other 1 8 \
+  other 1 21 \
   "failed (exit 1)" \
   "one or more fuzz targets failed" \
   "!retrying once" \
   "!soft failure"
+
+# Issue #1625/#1626: the nightly shards by package via FUZZ_PACKAGE; a filter
+# must run only that package's targets, and a filter matching nothing must
+# fail loudly rather than fuzz nothing.
+FUZZ_PACKAGE_TEST=./vcard4
+run_test "FUZZ_PACKAGE runs only that package's targets" \
+  pass 0 2 \
+  "fuzztime=1s"
+FUZZ_PACKAGE_TEST=./no-such-package
+run_test "FUZZ_PACKAGE with no match is an error" \
+  pass 1 0 \
+  "matched no registered fuzz target"
+unset FUZZ_PACKAGE_TEST
 
 echo ""
 echo "$pass passed, $fail failed"

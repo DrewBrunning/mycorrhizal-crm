@@ -43,8 +43,7 @@ func TestImmichClientDo_StatusClassification(t *testing.T) {
 			require.NoError(t, err)
 
 			_, err = client.ListPeople()
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, tc.wantErr), "expected %v, got %v", tc.wantErr, err)
+			require.ErrorIs(t, err, tc.wantErr, "expected %v, got %v", tc.wantErr, err)
 			assert.False(t, errors.Is(err, ErrImmichUnreachable), "a real HTTP response must never map to ErrImmichUnreachable")
 		})
 	}
@@ -65,7 +64,7 @@ func TestImmichClientDo_RequestFailedPreservesStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = client.ListPeople()
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrImmichRequestFailed)
 
 	var reqErr *ImmichRequestError
 	require.True(t, errors.As(err, &reqErr), "expected an *ImmichRequestError, got %T: %v", err, err)
@@ -86,8 +85,7 @@ func TestImmichClientDo_TransportFailureStillUnreachable(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = client.ListPeople()
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrImmichUnreachable))
+	require.ErrorIs(t, err, ErrImmichUnreachable)
 	assert.False(t, errors.Is(err, ErrImmichRequestFailed))
 }
 
@@ -111,7 +109,6 @@ func TestImmichClientDo_MidPaginationFailureSurfaces(t *testing.T) {
 	require.NoError(t, err)
 
 	people, err := client.ListPeople()
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrImmichRequestFailed))
+	require.ErrorIs(t, err, ErrImmichRequestFailed)
 	assert.Nil(t, people, "a mid-pagination failure must not return a partial list")
 }

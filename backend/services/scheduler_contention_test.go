@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 
@@ -228,7 +227,7 @@ func TestRetryLockBusyOnce(t *testing.T) {
 		{name: "success is not retried", attempts: []error{nil}, wantCalls: 1},
 		{name: "busy then success is absorbed", attempts: []error{errLockBusy, nil}, wantCalls: 2},
 		{name: "busy spelled as sqlite_busy only is absorbed", attempts: []error{errors.New("SQLITE_BUSY"), nil}, wantCalls: 2},
-		{name: "busy then busy is a failure", attempts: []error{errLockBusy, errLockBusy}, wantErr: "sqlite_busy", wantCalls: 2},
+		{name: "busy then busy is a failure", attempts: []error{errLockBusy, errLockBusy}, wantErr: "SQLITE_BUSY", wantCalls: 2},
 		{name: "non-busy error is not retried", attempts: []error{errors.New("boom")}, wantErr: "boom", wantCalls: 1},
 		{name: "skipped outcome is not retried", attempts: []error{ErrJobSkipped}, wantErr: ErrJobSkipped.Error(), wantCalls: 1},
 	}
@@ -244,8 +243,7 @@ func TestRetryLockBusyOnce(t *testing.T) {
 			if tt.wantErr == "" {
 				assert.NoError(t, got)
 			} else {
-				require.Error(t, got)
-				assert.Contains(t, strings.ToLower(got.Error()), tt.wantErr)
+				require.ErrorContains(t, got, tt.wantErr)
 			}
 			assert.Equal(t, tt.wantCalls, calls, "attempt() invocation count")
 		})

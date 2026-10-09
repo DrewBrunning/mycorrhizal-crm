@@ -112,7 +112,7 @@ func TestScheduledPurges_FailureIsPropagatedToJobLock(t *testing.T) {
 			failPurgeRawExec(t, db)
 
 			runErr := tc.run(db)
-			require.Error(t, runErr, "a failing purge must return its error")
+			require.ErrorContains(t, runErr, "simulated purge failure", "a failing purge must return its error")
 
 			var job models.JobExecution
 			require.NoError(t, db.Where("job_name = ?", tc.jobName).First(&job).Error)
@@ -153,8 +153,8 @@ func TestFailedPurgeIsDetectedByJobStopped(t *testing.T) {
 	seedStaleJobLock(t, db, models.JobNamePurgeDeleted)
 	failPurgeRawExec(t, db)
 
-	require.Error(t, PurgeDeletedRows(db,
-		config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30}))
+	require.ErrorContains(t, PurgeDeletedRows(db,
+		config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30}), "simulated purge failure")
 
 	res := jobStoppedCondition(context.Background(), db, config.Config{AlertJobStaleMultiplier: 3})
 	require.True(t, res.firing, "a failing purge must leave job_stopped firing")
@@ -199,8 +199,8 @@ func TestPurgeExpiredReachOutSuggestions_DeleteFailureIsReturned(t *testing.T) {
 	}).Error)
 	abortDeletesOn(t, db, "reach_out_suggestions")
 
-	require.Error(t, PurgeExpiredReachOutSuggestions(db, config.Config{AuditRetentionDays: 90}),
-		"a failed reach-out delete must be returned, not swallowed")
+	require.ErrorContains(t, PurgeExpiredReachOutSuggestions(db, config.Config{AuditRetentionDays: 90}),
+		"simulated purge failure", "a failed reach-out delete must be returned, not swallowed")
 }
 
 // TestPurgeSoftDeletedRows_ModelDeleteFailuresAreJoined covers the

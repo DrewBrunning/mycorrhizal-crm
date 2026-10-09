@@ -61,7 +61,7 @@ func TestCheckPasswordBreached_FailsOpenOnServerError(t *testing.T) {
 	})
 
 	breached, err := CheckPasswordBreached(context.Background(), "whatever")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "HIBP: unexpected status 500")
 	assert.False(t, breached, "must fail open: an API error is never treated as a breach")
 }
 
@@ -69,6 +69,6 @@ func TestCheckPasswordBreached_FailsOpenOnUnreachableHost(t *testing.T) {
 	t.Cleanup(SetHIBPAPIBaseURLForTest("http://127.0.0.1:1")) // nothing listens here; connection refused
 
 	breached, err := CheckPasswordBreached(context.Background(), "whatever")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "connection refused")
 	assert.False(t, breached, "must fail open: a network error must not block the caller")
 }

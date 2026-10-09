@@ -183,7 +183,9 @@ func TestAuditRecorder_NilAndBareDBAreSafe(t *testing.T) {
 }
 
 // TestAuditRecorder_InstallInitialisesNilPluginMap covers a Config whose
-// Plugins map was never initialised.
+// Plugins map was never initialised. The property under test IS the non-nil
+// initialisation, so the NotNil check on the installed recorder is the
+// complete assertion — there is nothing further to compare.
 func TestAuditRecorder_InstallInitialisesNilPluginMap(t *testing.T) {
 	db := dbtest.New(t)
 	db.Config.Plugins = nil

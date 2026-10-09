@@ -16,7 +16,9 @@ import (
 // TestAnalyzer runs the pass over testdata/src: services/a.go holds the
 // positives (call, value reference, aliased import, a reason-less marker) and
 // the negatives (inline-allowed, non-clock time functions); a_test.go and the
-// out-of-scope package `other` must produce nothing.
+// out-of-scope package `other` must produce nothing. analysistest.Run is
+// itself the assertion — it fails unless the diagnostics match the `// want`
+// comments in the testdata.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), rawtime.Analyzer, "services", "other")
 }

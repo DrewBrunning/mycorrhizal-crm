@@ -120,6 +120,7 @@ func TestContactCascadeRegistry_CoversEverySchemaTableReferencingAContact(t *tes
 func TestContactCascadeRegistry_StepsAreWellFormed(t *testing.T) {
 	db := dbtest.New(t)
 	seen := map[string]bool{}
+	require.NotEmpty(t, ContactCascadeRegistry(), "registry must declare at least one cascade step")
 	for _, s := range ContactCascadeRegistry() {
 		assert.False(t, seen[s.Table], "table %s appears twice in the registry", s.Table)
 		seen[s.Table] = true
@@ -281,6 +282,7 @@ func TestDeleteContactAssociations_LeavesContactRowAndOtherUsersAlone(t *testing
 // step's table in turn and require DeleteContact to fail with the contact and
 // its already-processed associations intact.
 func TestDeleteContact_EveryStepFailurePropagatesAndRollsBack(t *testing.T) {
+	require.NotEmpty(t, ContactCascadeRegistry(), "registry must declare at least one cascade step")
 	for _, step := range ContactCascadeRegistry() {
 		t.Run(step.Table, func(t *testing.T) {
 			f := newCascadeFixture(t)
@@ -288,7 +290,7 @@ func TestDeleteContact_EveryStepFailurePropagatesAndRollsBack(t *testing.T) {
 			dbtest.HideTable(t, f.db, step.Table)
 
 			err := DeleteContact(f.db, f.contact, f.userID, time.Now())
-			require.Error(t, err, "hiding %s must fail the delete", step.Table)
+			require.ErrorContains(t, err, "no such table: "+step.Table, "hiding %s must fail the delete", step.Table)
 
 			assert.EqualValues(t, 1, count(t, f.db, false, &models.Contact{}, "id = ?", f.contact.ID), "contact must survive a failed cascade")
 			if step.Table != "reminders" && step.Table != "notification_deliveries" {

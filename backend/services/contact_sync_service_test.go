@@ -482,7 +482,7 @@ func TestSyncSubscriptionTracksConsecutiveFailuresAndRecovery(t *testing.T) {
 	var incidentStart *time.Time
 	for i := 1; i <= 3; i++ {
 		_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
-		require.Error(t, err)
+		require.ErrorIs(t, err, ErrContactSyncUnauthorized)
 
 		var reloaded models.ContactSubscription
 		require.NoError(t, db.First(&reloaded, sub.ID).Error)

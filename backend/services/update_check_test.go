@@ -206,9 +206,9 @@ func TestLatestRelease_ErrorsAreNotCached(t *testing.T) {
 	pointUpdateCheckAtTestServer(t, srv)
 
 	_, err := latestRelease(context.Background())
-	require.Error(t, err, "non-200 must be an error")
+	require.ErrorContains(t, err, "unexpected status 500", "non-200 must be an error")
 	_, err = latestRelease(context.Background())
-	require.Error(t, err, "a failed lookup must not be memoized — the next call retries")
+	require.ErrorContains(t, err, "unexpected status 500", "a failed lookup must not be memoized — the next call retries")
 	assert.EqualValues(t, 2, calls.Load())
 }
 
@@ -221,7 +221,7 @@ func TestLatestRelease_Non200ReturnsError(t *testing.T) {
 	pointUpdateCheckAtTestServer(t, srv)
 
 	_, err := latestRelease(context.Background())
-	require.Error(t, err)
+	require.ErrorContains(t, err, "unexpected status 403")
 }
 
 func TestLatestRelease_GarbageBodyReturnsError(t *testing.T) {
@@ -233,7 +233,7 @@ func TestLatestRelease_GarbageBodyReturnsError(t *testing.T) {
 	pointUpdateCheckAtTestServer(t, srv)
 
 	_, err := latestRelease(context.Background())
-	require.Error(t, err)
+	require.ErrorContains(t, err, "invalid character", "an unparseable release body must be surfaced, not ignored")
 }
 
 func TestLatestRelease_EmptyTagNameReturnsError(t *testing.T) {
@@ -245,7 +245,7 @@ func TestLatestRelease_EmptyTagNameReturnsError(t *testing.T) {
 	pointUpdateCheckAtTestServer(t, srv)
 
 	_, err := latestRelease(context.Background())
-	require.Error(t, err)
+	require.ErrorContains(t, err, "empty tag_name in response")
 }
 
 func TestIsUpdateAvailable(t *testing.T) {
@@ -282,5 +282,6 @@ func TestUpdateCheckClient_TransportIsSSRFGuarded(t *testing.T) {
 	require.NotNil(t, transport.DialContext, "the default transport must declare an SSRF-guarded DialContext")
 
 	_, dialErr := transport.DialContext(context.Background(), "tcp", "127.0.0.1:9999")
-	assert.Error(t, dialErr, "the dialer must refuse a loopback address")
+	assert.ErrorContains(t, dialErr, "access to internal IP addresses is not allowed",
+		"the dialer must refuse a loopback address")
 }

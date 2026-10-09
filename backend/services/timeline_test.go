@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/base64"
+	"strconv"
 	"testing"
 	"time"
 
@@ -191,16 +192,117 @@ func TestDecodeTimelineCursor_RoundTripAndRejections(t *testing.T) {
 
 func TestTimelineCursorPredicate_CoversRanksAndDirections(t *testing.T) {
 	when := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	// Cursor type is completion (rank 2): note ranks below it, gift above it.
+	// The id is the pre-typed cursor tiebreak bound only for the equal rank.
+	const id = uint64(5)
 	cur := &TimelineCursor{Date: when, Type: models.TimelineTypeCompletion, ID: "5"}
 
-	// desc/asc: table rank below, equal, and above the cursor's type.
-	for _, typ := range []string{models.TimelineTypeNote, models.TimelineTypeCompletion, models.TimelineTypeGift} {
-		for _, desc := range []bool{true, false} {
-			pred, args := timelineCursorPredicate("notes", "date", typ, cur, uint64(5), desc)
-			assert.NotEmpty(t, pred)
-			assert.NotEmpty(t, args)
-		}
+	cases := []struct {
+		name string
+		typ  string
+		desc bool
+		want string
+		args []any
+	}{
+		{
+			name: "desc below rank is date <= cursor",
+			typ:  models.TimelineTypeNote,
+			desc: true,
+			want: "(notes.date <= ?)",
+			args: []any{when},
+		},
+		{
+			name: "desc equal rank is date < or date = with id <",
+			typ:  models.TimelineTypeCompletion,
+			desc: true,
+			want: "(notes.date < ? OR (notes.date = ? AND notes.id < ?))",
+			args: []any{when, when, id},
+		},
+		{
+			name: "desc above rank is date < cursor",
+			typ:  models.TimelineTypeGift,
+			desc: true,
+			want: "(notes.date < ?)",
+			args: []any{when},
+		},
+		{
+			name: "asc below rank is date > cursor",
+			typ:  models.TimelineTypeNote,
+			desc: false,
+			want: "(notes.date > ?)",
+			args: []any{when},
+		},
+		{
+			name: "asc equal rank is date > or date = with id >",
+			typ:  models.TimelineTypeCompletion,
+			desc: false,
+			want: "(notes.date > ? OR (notes.date = ? AND notes.id > ?))",
+			args: []any{when, when, id},
+		},
+		{
+			name: "asc above rank is date >= cursor",
+			typ:  models.TimelineTypeGift,
+			desc: false,
+			want: "(notes.date >= ?)",
+			args: []any{when},
+		},
 	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pred, args := timelineCursorPredicate("notes", "date", c.typ, cur, id, c.desc)
+			assert.Equal(t, c.want, pred)
+			assert.Equal(t, c.args, args)
+		})
+	}
+}
+
+// TestTimelineCursorPredicate_StraddlesCursorInDB runs the generated predicate
+// against a real migrated schema with rows straddling the cursor. The
+// same-date rows pin the numeric-id tiebreak an equal-rank cursor relies on:
+// flipping < to <= (or > to >=) silently shifts which rows the page returns,
+// which the exact-string assertions cannot catch if both were built
+// consistently from a swapped function.
+func TestTimelineCursorPredicate_StraddlesCursorInDB(t *testing.T) {
+	db := dbtest.New(t)
+	user := seedFeedUser(t, db)
+	contact := seedContact(t, db, user.ID, "Ada", "Lovelace")
+
+	base := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	mustNote := func(content string, date time.Time) models.Note {
+		n := models.Note{UserID: user.ID, ContactID: &contact.ID, Content: content, Date: date}
+		require.NoError(t, db.Create(&n).Error)
+		return n
+	}
+
+	// Creation order fixes the autoincrement ids: older, newer, same1, same2,
+	// same3. The cursor sits in the middle of the same-date run (same2).
+	older := mustNote("older", base.Add(-time.Hour))
+	newer := mustNote("newer", base.Add(time.Hour))
+	same1 := mustNote("same-1", base)
+	same2 := mustNote("same-2", base)
+	same3 := mustNote("same-3", base)
+
+	cursor := &TimelineCursor{Date: base, Type: models.TimelineTypeNote, ID: strconv.FormatUint(uint64(same2.ID), 10)}
+	id := uint64(same2.ID)
+
+	ids := func(desc bool) []uint {
+		pred, args := timelineCursorPredicate("notes", "date", models.TimelineTypeNote, cursor, id, desc)
+		var got []models.Note
+		require.NoError(t, db.Where("user_id = ?", user.ID).Where(pred, args...).Order("notes.id ASC").Find(&got).Error)
+		out := make([]uint, 0, len(got))
+		for _, n := range got {
+			out = append(out, n.ID)
+		}
+		return out
+	}
+
+	// desc (strictly before the cursor): the older row plus the same-date row
+	// whose id sorts below the cursor — not same2 (the cursor itself) or same3.
+	assert.Equal(t, []uint{older.ID, same1.ID}, ids(true))
+	// asc (strictly after the cursor): the newer row plus the same-date row
+	// whose id sorts above the cursor — not same1 or the cursor itself.
+	assert.Equal(t, []uint{newer.ID, same3.ID}, ids(false))
 }
 
 func TestTimelineDateOrder_Direction(t *testing.T) {

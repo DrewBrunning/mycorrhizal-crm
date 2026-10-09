@@ -204,7 +204,8 @@ func TestPurgeExpiredAuditEvents_RecomputeFailureIsReturned(t *testing.T) {
 		"BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'blocked'); END").Error)
 
 	err := PurgeExpiredAuditEvents(db, config.Config{AuditRetentionDays: 30})
-	require.Error(t, err, "a failed hash-chain re-link must be returned, not swallowed")
+	require.ErrorContains(t, err, "audit chain: update event",
+		"a failed hash-chain re-link must be returned, not swallowed")
 
 	var remaining []models.AuditEvent
 	require.NoError(t, db.Find(&remaining).Error)

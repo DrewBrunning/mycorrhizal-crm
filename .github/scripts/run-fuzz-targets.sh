@@ -31,6 +31,13 @@ set -u
 
 FUZZTIME="${1:-${FUZZTIME:-15s}}"
 
+# Optional package filter (issue #1625/#1626): the nightly schedule shards the
+# now-21 targets across per-package matrix legs (one `go test` process per
+# target is the constraint, so a leg runs only its own package's targets at the
+# full -fuzztime budget). Empty means every target. A filter that matches no
+# target is an error, so a typo'd matrix package cannot silently fuzz nothing.
+FUZZ_PACKAGE="${FUZZ_PACKAGE:-}"
+
 targets=(
   "./vcard4 ^FuzzImportVCard4$"
   "./vcard4 ^FuzzExportVCard4$"
@@ -40,6 +47,19 @@ targets=(
   "./jscontact ^FuzzExportJSContact$"
   "./services ^FuzzExtractICalEvents$"
   "./services ^FuzzParseCSV$"
+  "./meerkat ^FuzzMeerkatReader$"
+  "./services ^FuzzMeerkatFieldParsers$"
+  "./services ^FuzzMonicaDecodeAndMap$"
+  "./services ^FuzzAccountBundleUpload$"
+  "./services ^FuzzImportNormalizers$"
+  "./controllers ^FuzzCursors$"
+  "./controllers ^FuzzParseTimelineParams$"
+  "./services ^FuzzTimelineCursorAndParams$"
+  "./contactmodel ^FuzzGeoURI$"
+  "./services ^FuzzNormalizeSearchTerm$"
+  "./carddav ^FuzzNormalizeGeoCoordinate$"
+  "./services ^FuzzDecodeCalendarSafely$"
+  "./services ^FuzzDecodeGeoPulseData$"
 )
 
 # Run one fuzz target. Returns 0 for a clean run (or a soft-failed
@@ -78,12 +98,22 @@ run_one() {
 }
 
 failed=0
+matched=0
 for entry in "${targets[@]}"; do
   read -r dir target <<<"$entry"
+  if [ -n "$FUZZ_PACKAGE" ] && [ "$dir" != "$FUZZ_PACKAGE" ]; then
+    continue
+  fi
+  matched=$((matched + 1))
   echo "::group::fuzz $target (-fuzztime=$FUZZTIME)"
   run_one "$dir" "$target" || failed=1
   echo "::endgroup::"
 done
+
+if [ -n "$FUZZ_PACKAGE" ] && [ "$matched" -eq 0 ]; then
+  echo "::error::FUZZ_PACKAGE=$FUZZ_PACKAGE matched no registered fuzz target"
+  exit 1
+fi
 
 if [ "$failed" -ne 0 ]; then
   echo "::error::one or more fuzz targets failed"
