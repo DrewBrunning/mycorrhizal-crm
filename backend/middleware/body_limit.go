@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	apperrors "mycorrhizal/errors"
 	"net/http"
 	"strconv"
 
@@ -45,7 +46,7 @@ func BodySizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if lengthStr := c.Request.Header.Get("Content-Length"); lengthStr != "" {
 			if length, err := strconv.ParseInt(lengthStr, 10, 64); err == nil && length > maxBytes {
-				c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body too large"})
+				apperrors.AbortWithError(c, apperrors.ErrPayloadTooLarge("request body too large"))
 				return
 			}
 		}

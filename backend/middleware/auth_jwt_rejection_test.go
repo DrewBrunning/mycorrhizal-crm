@@ -70,19 +70,27 @@ func (h *jwtRejectionHarness) validClaims() jwt.MapClaims {
 	}
 }
 
-func (h *jwtRejectionHarness) do(token string) (int, string) {
+// do issues the request and decodes the response message. envelope reports
+// whether the body used the apperrors `{"error":{...,"message"}}` shape
+// (issue #1605) rather than the legacy bare `{"error":"..."}` string.
+func (h *jwtRejectionHarness) do(token string) (code int, msg string, envelope bool) {
 	h.handlerRan = false
 	w := jwtRequest(h.router, token)
 	var body map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
-	msg, _ := body["error"].(string)
-	return w.Code, msg
+	detail, ok := body["error"].(map[string]any)
+	if !ok {
+		return w.Code, "", false
+	}
+	msg, _ = detail["message"].(string)
+	return w.Code, msg, true
 }
 
 func (h *jwtRejectionHarness) requireRejected(t *testing.T, token, wantMsg string) {
 	t.Helper()
-	code, msg := h.do(token)
+	code, msg, envelope := h.do(token)
 	assert.Equal(t, http.StatusUnauthorized, code)
+	assert.True(t, envelope, "rejection must use the apperrors envelope, not a bare-string error")
 	assert.Equal(t, wantMsg, msg)
 	assert.False(t, h.handlerRan, "protected handler must not run for a rejected token")
 }
@@ -247,7 +255,7 @@ func TestAuthMiddleware_AcceptsHMACFamily(t *testing.T) {
 		t.Run(m.Alg(), func(t *testing.T) {
 			tok, err := jwt.NewWithClaims(m, h.validClaims()).SignedString([]byte(testJWTSecret))
 			require.NoError(t, err)
-			code, _ := h.do(tok)
+			code, _, _ := h.do(tok)
 			assert.Equal(t, http.StatusOK, code)
 			assert.True(t, h.handlerRan)
 		})
@@ -273,7 +281,7 @@ func TestAuthMiddleware_RejectsMissingOrNonBearerHeader(t *testing.T) {
 			}
 			w := httptest.NewRecorder()
 			h.router.ServeHTTP(w, req)
-			assert.Equal(t, http.StatusUnauthorized, w.Code)
+			assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 			assert.False(t, h.handlerRan)
 		})
 	}

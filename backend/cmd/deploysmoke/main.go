@@ -561,8 +561,8 @@ func (r *smokeRun) importBodyLimitOwnedByApp() error {
 	if mt := header.Get("Content-Type"); !strings.Contains(mt, "json") {
 		return fmt.Errorf("POST %s (21 MB): Content-Type %q, want JSON — a 413 from nginx, not the app", path, mt)
 	}
-	if !bytes.Contains(body, []byte("request body too large")) {
-		return fmt.Errorf("POST %s (21 MB): body %q, want the app's \"request body too large\"", path, truncate(body, 200))
+	if !bytes.Contains(body, []byte(`"code":"PAYLOAD_TOO_LARGE"`)) {
+		return fmt.Errorf("POST %s (21 MB): body %q, want the app's PAYLOAD_TOO_LARGE error envelope", path, truncate(body, 200))
 	}
 	return nil
 }

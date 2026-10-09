@@ -130,13 +130,13 @@ func TestProtectedEndpoint_RejectsRequestWithNoSessionCookie(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	// AuthMiddleware's own 401 is a bare {"error": "<message>"}, not the
-	// apperrors envelope; pin the actual body so a different 401 source
+	// AuthMiddleware's own 401 must be the standard apperrors envelope (issue
+	// #1605), not a bare {"error": "<message>"} string — a client decoding
+	// error.code would otherwise get a type mismatch. assertUnauthorizedEnvelope
+	// pins the status AND the UNAUTHORIZED code, so a different 401 source
 	// cannot satisfy this test.
-	require.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
-	var denial map[string]any
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &denial))
-	assert.Equal(t, "Authorization token required", denial["error"])
+	assertUnauthorizedEnvelope(t, w, "PATCH /users/language")
+	assert.Equal(t, "Authorization token required", decodeError(t, w).Error.Message)
 	var userAfter models.User
 	require.NoError(t, db.First(&userAfter, userBefore.ID).Error)
 	assert.Equal(t, userBefore.Language, userAfter.Language, "a rejected request must not change the language")
