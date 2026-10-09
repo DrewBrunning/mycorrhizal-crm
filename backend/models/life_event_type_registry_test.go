@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // expectedLifeEventTypeCount is 7 pre-existing constants + 37 added by T36 +
@@ -94,7 +95,9 @@ func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 // for validation) must never drift apart.
 func TestLifeEventTypesForCategoryRoundTripsWithTypeCategories(t *testing.T) {
 	t.Parallel()
-	for _, category := range LifeEventCategories() {
+	categories := LifeEventCategories()
+	require.NotEmpty(t, categories)
+	for _, category := range categories {
 		types := LifeEventTypesForCategory(category)
 		assert.NotEmpty(t, types, "category %q must have at least one type", category)
 		for _, token := range types {
@@ -104,6 +107,7 @@ func TestLifeEventTypesForCategoryRoundTripsWithTypeCategories(t *testing.T) {
 		}
 	}
 
+	require.NotEmpty(t, LifeEventTypeCategories)
 	for token, category := range LifeEventTypeCategories {
 		assert.Contains(t, LifeEventTypesForCategory(category), token,
 			"LifeEventTypeCategories maps %q to %q, but LifeEventTypesForCategory(%q) doesn't list it back", token, category, category)

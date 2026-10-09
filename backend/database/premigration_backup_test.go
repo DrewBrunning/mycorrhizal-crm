@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"testing"
 
+	"mycorrhizal/internal/faults"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -313,11 +315,13 @@ func TestTakePreMigrationBackup_RecordsSystemEventWhenTableExists(t *testing.T) 
 	assert.Equal(t, 1, n, "the snapshot is recorded on the operational timeline")
 }
 
-func TestMigrateFileWithPreBackup_PropagatesVersionReadError(t *testing.T) {
+func TestMigrateFileWithPreBackup_PropagatesIntegrityProbeStatError(t *testing.T) {
 	t.Parallel()
-	// A path whose directory component is a plain file: the migration-version
-	// read fails before any backup or migration is attempted, and the failure
-	// is surfaced as-is rather than mistaken for the backup refusal.
+	// A path whose directory component is a plain file: the startup integrity
+	// probe's os.Stat fails with ENOTDIR before any version read, backup, or
+	// migration is attempted, and the failure is surfaced as-is rather than
+	// mistaken for the backup refusal. (The version-read propagation itself is
+	// covered by TestMigrateFileWithPreBackup_PropagatesVersionReadError.)
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o600))
@@ -330,7 +334,52 @@ func TestMigrateFileWithPreBackup_PropagatesVersionReadError(t *testing.T) {
 	assert.ErrorContains(t, err, "cannot read database")
 	assert.ErrorIs(t, err, syscall.ENOTDIR, "the cause must be the file-as-directory path, not a backup or migration failure")
 	var backupErr *ErrPreMigrationBackupFailed
-	assert.False(t, errors.As(err, &backupErr), "a version-read failure is not ErrPreMigrationBackupFailed")
+	assert.False(t, errors.As(err, &backupErr), "an integrity-probe failure is not ErrPreMigrationBackupFailed")
 	_, statErr := os.Stat(filepath.Join(dir, "pre-migration"))
 	assert.True(t, os.IsNotExist(statErr))
+}
+
+// TestMigrateFileWithPreBackup_PropagatesVersionReadError proves the version
+// read that migrateFileWithPreBackup performs before deciding whether to
+// snapshot is fail-closed: a failure to read the applied migration version
+// surfaces out of the function rather than being swallowed, and neither a
+// pre-migration backup nor any migration follows it.
+//
+// The version read is isolated from RunMigrations' own version read via the
+// database.migration.version_read fault seam (faults.Hook inside
+// MigrationVersion), so an armed error fails ONLY the first read. That
+// isolation is what makes the test meaningful: if migrateFileWithPreBackup
+// ignored the version-read error, it would fall through to RunMigrations,
+// which succeeds, and the test's require.Error would fail.
+func TestMigrateFileWithPreBackup_PropagatesVersionReadError(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "live.db")
+	floorDBWithUser(t, dbPath)
+
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+	injected := errors.New("injected migration-version read failure")
+	faults.ArmError(faultMigrationVersionRead, injected)
+
+	err := migrateFileWithPreBackup(dbPath)
+	require.Error(t, err, "a failed version read must abort the upgrade, not be swallowed")
+	assert.ErrorIs(t, err, injected, "the injected version-read error must cross the seam unchanged")
+	var backupErr *ErrPreMigrationBackupFailed
+	assert.False(t, errors.As(err, &backupErr), "a version-read failure is not the backup refusal")
+
+	// No snapshot: the version is read before the backup decision, so a failure
+	// there must not leave a rollback point behind.
+	_, statErr := os.Stat(filepath.Join(dir, "pre-migration"))
+	assert.True(t, os.IsNotExist(statErr), "no snapshot may be taken before the applied version is known")
+
+	// No migration ran: still at the floor, still clean. Read the version back
+	// through the now-disarmed helper.
+	faults.Disarm(faultMigrationVersionRead)
+	version, dirty, ok, err := MigrationVersion(dbPath)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.EqualValues(t, SupportedUpgradeFloorVersion, version, "a failed version read must migrate nothing")
+	assert.False(t, dirty)
 }

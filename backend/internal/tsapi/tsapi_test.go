@@ -97,29 +97,33 @@ func TestGenerateMapping(t *testing.T) {
 }
 
 func TestGenerateErrors(t *testing.T) {
-	cases := map[string]*openapi3.T{
-		"no schemas":        {},
-		"bad name":          schemaDoc(map[string]*openapi3.SchemaRef{"bad-name": val(&openapi3.Schema{})}),
-		"unresolved":        schemaDoc(map[string]*openapi3.SchemaRef{"X": {}}),
-		"external ref":      schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("array"), Items: &openapi3.SchemaRef{Ref: "other.yaml#/X"}})}),
-		"unresolved inline": schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("array"), Items: &openapi3.SchemaRef{}})}),
-		"multi type":        schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: &openapi3.Types{"string", "null"}})}),
-		"unknown type":      schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("file")})}),
-		"bad enum":          schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Enum: []any{[]any{1}}})}),
-		"bad required": schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{
+	cases := []struct {
+		name string
+		doc  *openapi3.T
+		want string
+	}{
+		{"no schemas", &openapi3.T{}, "spec has no components.schemas"},
+		{"bad name", schemaDoc(map[string]*openapi3.SchemaRef{"bad-name": val(&openapi3.Schema{})}), "not a valid TypeScript identifier"},
+		{"unresolved", schemaDoc(map[string]*openapi3.SchemaRef{"X": {}}), "X is unresolved"},
+		{"external ref", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("array"), Items: &openapi3.SchemaRef{Ref: "other.yaml#/X"}})}), "unsupported $ref"},
+		{"unresolved inline", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("array"), Items: &openapi3.SchemaRef{}})}), "unresolved inline schema"},
+		{"multi type", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: &openapi3.Types{"string", "null"}})}), "multi-valued type"},
+		{"unknown type", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("file")})}), `unsupported schema type "file"`},
+		{"bad enum", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Enum: []any{[]any{1}}})}), "unsupported enum value"},
+		{"bad required", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{
 			Type: typ("object"), Required: []string{"missing"},
 			Properties: openapi3.Schemas{"a": val(&openapi3.Schema{Type: typ("string")})},
-		})}),
-		"bad property": schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{
+		})}), "required property"},
+		{"bad property", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{
 			Type: typ("object"), Properties: openapi3.Schemas{"a": val(&openapi3.Schema{Type: typ("file")})},
-		})}),
-		"bad allOf":      schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{AllOf: openapi3.SchemaRefs{val(&openapi3.Schema{Type: typ("file")})}})}),
-		"bad additional": schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("object"), AdditionalProperties: openapi3.AdditionalProperties{Schema: val(&openapi3.Schema{Type: typ("file")})}})}),
+		})}), "property a:"},
+		{"bad allOf", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{AllOf: openapi3.SchemaRefs{val(&openapi3.Schema{Type: typ("file")})}})}), "unsupported schema type"},
+		{"bad additional", schemaDoc(map[string]*openapi3.SchemaRef{"X": val(&openapi3.Schema{Type: typ("object"), AdditionalProperties: openapi3.AdditionalProperties{Schema: val(&openapi3.Schema{Type: typ("file")})}})}), "unsupported schema type"},
 	}
-	for name, doc := range cases {
-		t.Run(name, func(t *testing.T) {
-			_, err := Generate(doc)
-			require.Error(t, err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Generate(tc.doc)
+			require.ErrorContains(t, err, tc.want)
 		})
 	}
 }

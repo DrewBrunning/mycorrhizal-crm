@@ -145,14 +145,12 @@ func TestProbeStartupIntegrityDetectsCorruptDataPage(t *testing.T) {
 
 	err = probeStartupIntegrity(path)
 	var corrupt *ErrDatabaseCorrupt
-	require.Error(t, err)
 	require.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
 	assert.NotEmpty(t, corrupt.Detail)
 
 	// InitDB surfaces the same typed refusal (wrapped) and does not migrate.
 	_, initErr := InitDB(path)
-	require.Error(t, initErr)
-	assert.True(t, errors.As(initErr, &corrupt), "InitDB must wrap the typed corruption error, got %v", initErr)
+	require.True(t, errors.As(initErr, &corrupt), "InitDB must wrap the typed corruption error, got %v", initErr)
 }
 
 // TestProbeStartupIntegrityOnUnopenableFile pins the other corruption shape: a
@@ -166,7 +164,6 @@ func TestProbeStartupIntegrityOnUnopenableFile(t *testing.T) {
 
 	err := probeStartupIntegrity(path)
 	var corrupt *ErrDatabaseCorrupt
-	require.Error(t, err)
 	require.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
 	assert.Contains(t, corrupt.Detail, "file is not a database", "Detail must carry the driver's reason the check could not run")
 }
@@ -180,8 +177,7 @@ func TestMigrateUpRefusesCorruptDatabase(t *testing.T) {
 
 	err := MigrateUp(path)
 	var corrupt *ErrDatabaseCorrupt
-	require.Error(t, err)
-	assert.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
+	require.True(t, errors.As(err, &corrupt), "want *ErrDatabaseCorrupt, got %T: %v", err, err)
 
 	// No pre-migration backup directory was created: the probe refused before
 	// the backup path ran.

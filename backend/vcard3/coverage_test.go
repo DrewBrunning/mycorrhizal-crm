@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"mycorrhizal/correspondence"
+
+	"github.com/stretchr/testify/require"
 )
 
 // importCoverage / exportCoverage are populated by each import_*_test.go /
@@ -43,7 +45,9 @@ func registerExportCoverage(conceptIDs ...string) {
 // adr.geo/adr.tz ship without an import/export integration test (issue #1442).
 func TestCoverage_AllMappedConceptsHaveImportAndExportTests(t *testing.T) {
 	t.Parallel()
-	for _, entry := range correspondence.Build() {
+	entries := correspondence.Build()
+	require.NotEmpty(t, entries)
+	for _, entry := range entries {
 		cell := entry.Cells[correspondence.FormatVCard3]
 		if cell.Bucket == correspondence.BucketUnsupported {
 			continue

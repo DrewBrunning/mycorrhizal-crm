@@ -173,10 +173,12 @@ func TestServingIsReadOnly(t *testing.T) {
 	b, ctx, _ := newTestBackend(t)
 
 	_, err := b.PutCalendarObject(ctx, "/caldav/calendars/x/interactions/x.ics", ical.NewCalendar(), nil)
-	assert.Error(t, err, "PUT must be unsupported (read-only serve)")
+	assert.ErrorContains(t, err, "403 Forbidden: writing calendar objects is not supported",
+		"PUT must be unsupported (read-only serve)")
 
 	err = b.DeleteCalendarObject(ctx, "/caldav/calendars/x/interactions/x.ics")
-	assert.Error(t, err, "DELETE must be unsupported (read-only serve)")
+	assert.ErrorContains(t, err, "403 Forbidden: deleting calendar objects is not supported",
+		"DELETE must be unsupported (read-only serve)")
 }
 
 func TestCalendarDiscoveryPaths(t *testing.T) {

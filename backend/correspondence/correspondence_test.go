@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"mycorrhizal/contactmodel"
+
+	"github.com/stretchr/testify/require"
 )
 
 // --- (a) no duplicate concept_id -------------------------------------------------
@@ -96,7 +98,9 @@ func resolveNeutralPath(path string) error {
 
 func TestNeutralPathResolves(t *testing.T) {
 	t.Parallel()
-	for _, r := range Load() {
+	rows := Load()
+	require.NotEmpty(t, rows)
+	for _, r := range rows {
 		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
 			if err := resolveNeutralPath(r.NeutralPath); err != nil {
@@ -135,7 +139,9 @@ var validTransforms = map[string]bool{
 
 func TestTransformNamesAreRegistered(t *testing.T) {
 	t.Parallel()
-	for _, r := range Load() {
+	rows := Load()
+	require.NotEmpty(t, rows)
+	for _, r := range rows {
 		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
 			if !validTransforms[r.Transform] {
@@ -198,7 +204,9 @@ func baseProp(prop string) (name string, skip bool) {
 
 func TestPropertyNamesAreIANA(t *testing.T) {
 	t.Parallel()
-	for _, r := range Load() {
+	rows := Load()
+	require.NotEmpty(t, rows)
+	for _, r := range rows {
 		r := r
 		t.Run(r.ConceptID+"/v4", func(t *testing.T) {
 			name, skip := baseProp(r.V4Prop)

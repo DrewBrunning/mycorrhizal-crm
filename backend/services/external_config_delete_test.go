@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -172,8 +171,7 @@ func TestListImmichPeopleForUser_NoConnection(t *testing.T) {
 	cfg := immichTestConfig()
 
 	_, err := ListImmichPeopleForUser(db, cfg, user.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrImmichUnauthorized), "expected an unauthorized sentinel for a missing connection, got %v", err)
+	require.ErrorIs(t, err, ErrImmichUnauthorized, "expected an unauthorized sentinel for a missing connection")
 }
 
 // TestFetchImmichThumbnail exercises the linked-contact photo fetch: the
@@ -206,5 +204,5 @@ func TestFetchImmichThumbnail_UnlinkedContact(t *testing.T) {
 
 	cfg := immichTestConfig()
 	_, _, err := FetchImmichThumbnail(db, cfg, user.ID, contact.VCardUID)
-	require.Error(t, err, "a contact with no Immich identity link must not be fetchable")
+	require.ErrorIs(t, err, ErrImmichNotFound, "a contact with no Immich identity link must not be fetchable")
 }

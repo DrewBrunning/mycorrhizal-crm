@@ -108,7 +108,7 @@ func TestCreateDeviceGrant_ClosedDatabaseErrors(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, _, err = CreateDeviceGrant(db, user.ID, "phone")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "database is closed")
 }
 
 func TestRevokeAllDeviceGrants_ClosedDatabaseErrors(t *testing.T) {
@@ -122,7 +122,7 @@ func TestRevokeAllDeviceGrants_ClosedDatabaseErrors(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = RevokeAllDeviceGrants(db, user.ID)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "database is closed")
 }
 
 var _ = gorm.ErrRecordNotFound

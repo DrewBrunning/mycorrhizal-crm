@@ -27,7 +27,7 @@ func TestHashPassword_Error(t *testing.T) {
 	// Simulate an error by providing an empty password
 	_, err := HashPassword("")
 
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "password cannot be empty")
 }
 
 func TestSpendDummyPasswordHash(t *testing.T) {
@@ -45,7 +45,7 @@ func TestSpendDummyPasswordHash(t *testing.T) {
 		SpendDummyPasswordHash("an-ordinary-password")
 		SpendDummyPasswordHash(string(make([]byte, 200))) // > bcrypt's 72-byte cap
 	})
-	assert.Error(t, bcrypt.CompareHashAndPassword(dummyBcryptHash, []byte("an-ordinary-password")))
+	assert.ErrorIs(t, bcrypt.CompareHashAndPassword(dummyBcryptHash, []byte("an-ordinary-password")), bcrypt.ErrMismatchedHashAndPassword)
 }
 
 func TestGenerateToken(t *testing.T) {
@@ -87,5 +87,5 @@ func TestGenerateToken_Error(t *testing.T) {
 	// Attempts to generate a token should fail
 	_, err := GenerateToken(user, &config, "test-sid")
 
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "JWT secret key is empty")
 }

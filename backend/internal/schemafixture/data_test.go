@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"io/fs"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestIsShadowOfVirtual(t *testing.T) {
 // bytes (a fixture silently built from nothing would be a worse failure).
 func TestReadDumpMissingRelease(t *testing.T) {
 	_, err := readDump(Release{Tag: "v0.6.999", Version: 999})
-	require.Error(t, err)
+	require.ErrorIs(t, err, fs.ErrNotExist, "a release with no committed dump must surface a not-exist error, not a different failure")
 }
 
 // TestFindRepoRootFromNonRepoDir exercises the walk-up failure path: from a
@@ -99,7 +100,7 @@ func TestFindRepoRootFromNonRepoDir(t *testing.T) {
 	empty := t.TempDir()
 	t.Chdir(empty)
 	_, err := findRepoRoot()
-	require.Error(t, err)
+	require.ErrorContains(t, err, "repo root not found")
 }
 
 // TestFindSchemaDirFromNonRepoDir mirrors the above for findSchemaDir.
@@ -107,5 +108,5 @@ func TestFindSchemaDirFromNonRepoDir(t *testing.T) {
 	empty := t.TempDir()
 	t.Chdir(empty)
 	_, err := findSchemaDir()
-	require.Error(t, err)
+	require.ErrorContains(t, err, "repo root not found", "findSchemaDir must propagate findRepoRoot's failure, not return an empty dir")
 }

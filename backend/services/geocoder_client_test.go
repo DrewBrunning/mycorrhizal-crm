@@ -197,7 +197,10 @@ func TestGeocoderClient_RedirectsAreNotFollowed(t *testing.T) {
 	t.Cleanup(redirector.Close)
 
 	_, err := maptilerClient(redirector.URL, "sekret").Geocode(context.Background(), "x")
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrGeocoderRequestFailed)
+	var reqErr *GeocoderRequestError
+	require.ErrorAs(t, err, &reqErr)
+	assert.Equal(t, http.StatusFound, reqErr.StatusCode, "the 302 is surfaced as an unexpected status, not followed")
 	assert.Zero(t, atomic.LoadInt32(&targetHits), "a redirect must never carry the (key-bearing) request elsewhere")
 }
 

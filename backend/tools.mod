@@ -2,7 +2,7 @@ module mycorrhizal
 
 go 1.26.0
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 tool (
 	github.com/go-gremlins/gremlins/cmd/gremlins

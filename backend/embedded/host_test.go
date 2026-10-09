@@ -264,5 +264,5 @@ func TestReadHostConfig_OversizedPayloadRejected(t *testing.T) {
 	// either way it must not allocate without bound.
 	big := `{"jwt_secret":"` + strings.Repeat("a", maxHostConfigBytes+1) + `"}`
 	_, err := ReadHostConfig(strings.NewReader(big))
-	require.Error(t, err)
+	require.ErrorContains(t, err, "embedded: reading host config")
 }

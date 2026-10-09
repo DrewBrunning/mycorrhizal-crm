@@ -394,7 +394,7 @@ func (s *stubServer) importUpload(w http.ResponseWriter, r *http.Request) {
 	case over:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
-		_, _ = w.Write([]byte(`{"error":"request body too large"}`))
+		_, _ = w.Write([]byte(`{"error":{"code":"PAYLOAD_TOO_LARGE","message":"request body too large"}}`))
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"session_id":"stub"}`))

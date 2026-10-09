@@ -95,7 +95,7 @@ func TestVerifyDetectsLostSecondFactorState(t *testing.T) {
 
 func TestVerifyRejectsMissingInputs(t *testing.T) {
 	_, err := Verify(context.Background(), VerifyOptions{})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "Verify needs Creds and Pre")
 }
 
 func TestVerifyReportsABootFailure(t *testing.T) {
@@ -103,7 +103,7 @@ func TestVerifyReportsABootFailure(t *testing.T) {
 	_, err := Verify(context.Background(), VerifyOptions{
 		DBPath: t.TempDir(), Creds: &Credentials{}, Pre: Snapshot{},
 	})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to boot over the data")
 }
 
 func TestVerifyWithoutTwoFactor(t *testing.T) {
@@ -135,7 +135,10 @@ func TestLoginWithTwoFactor(t *testing.T) {
 
 	bad := *creds
 	bad.Password = "wrong-password-1!"
-	require.Error(t, Login(context.Background(), NewClient(cur.BaseURL(), nil), &bad))
+	err = Login(context.Background(), NewClient(cur.BaseURL(), nil), &bad)
+	var ae *APIError
+	require.ErrorAs(t, err, &ae)
+	assert.Equal(t, http.StatusUnauthorized, ae.Status)
 }
 
 func TestHandlerTransportDrivesARouterInProcess(t *testing.T) {

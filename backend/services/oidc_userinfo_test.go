@@ -122,7 +122,8 @@ func TestEnrichFromUserInfoRequiresToken(t *testing.T) {
 	defer cleanup()
 
 	claims := &OIDCClaims{Subject: "user-123"}
-	assert.Error(t, provider.enrichFromUserInfo(context.Background(), "user-123", nil, claims))
+	require.ErrorContains(t, provider.enrichFromUserInfo(context.Background(), "user-123", nil, claims),
+		"no oauth2 token available for UserInfo request")
 }
 
 // setupUserDB gives an in-memory database with just the users table.

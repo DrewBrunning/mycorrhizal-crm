@@ -47,15 +47,15 @@ func TestOIDCNativeExchangeCode_RoundTrip(t *testing.T) {
 
 func TestOIDCNativeExchangeCode_RequiresChallenge(t *testing.T) {
 	_, err := MintOIDCNativeExchangeCode(models.User{Username: "u"}, "", nativeTestConfig())
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "PKCE code challenge is required")
 }
 
 func TestMintOIDCNativeExchangeCode_RejectsMissingSecret(t *testing.T) {
 	user := models.User{Username: "u"}
 	_, err := MintOIDCNativeExchangeCode(user, "challenge", &config.Config{})
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "JWT secret key is empty")
 	_, err = MintOIDCNativeExchangeCode(user, "challenge", nil)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "JWT secret key is empty")
 }
 
 func TestParseOIDCNativeExchangeCode_Rejections(t *testing.T) {

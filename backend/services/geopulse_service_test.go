@@ -129,7 +129,7 @@ func TestUpsertGeoPulseConfig_DatabaseFailures(t *testing.T) {
 		user := seedGeoPulseUser(t, db, "gp-up-lookup")
 		dbtest.HideTable(t, db, "geopulse_configs")
 		_, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp.example", APIKey: "k"})
-		require.Error(t, err)
+		require.ErrorContains(t, err, "no such table: geopulse_configs")
 	})
 	t.Run("update fails", func(t *testing.T) {
 		db := dbtest.New(t)
@@ -137,14 +137,14 @@ func TestUpsertGeoPulseConfig_DatabaseFailures(t *testing.T) {
 		connectGeoPulseForUser(t, db, user.ID, "https://gp.example", "k")
 		require.NoError(t, db.Exec(`CREATE TRIGGER gp_block_update BEFORE UPDATE ON geopulse_configs BEGIN SELECT RAISE(ABORT, 'blocked'); END`).Error)
 		_, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp.example/x"})
-		require.Error(t, err)
+		require.ErrorContains(t, err, "blocked")
 	})
 	t.Run("insert fails", func(t *testing.T) {
 		db := dbtest.New(t)
 		user := seedGeoPulseUser(t, db, "gp-up-insert")
 		require.NoError(t, db.Exec(`CREATE TRIGGER gp_block_insert BEFORE INSERT ON geopulse_configs BEGIN SELECT RAISE(ABORT, 'blocked'); END`).Error)
 		_, err := UpsertGeoPulseConfig(db, secret, user.ID, models.GeoPulseConfigInput{BaseURL: "https://gp.example", APIKey: "k"})
-		require.Error(t, err)
+		require.ErrorContains(t, err, "blocked")
 	})
 }
 
@@ -532,7 +532,8 @@ func TestFindActivityByExternalRef_DatabaseError(t *testing.T) {
 	user := seedGeoPulseUser(t, db, "gp-find-err")
 	dbtest.HideTable(t, db, "activities")
 	got, err := FindActivityByExternalRef(db, user.ID, "geopulse:stay:1")
-	require.Error(t, err, "a real DB error is not 'no match' — treating it as one would create duplicates")
+	require.ErrorContains(t, err, "no such table: activities",
+		"a real DB error is not 'no match' — treating it as one would create duplicates")
 	assert.Nil(t, got)
 }
 

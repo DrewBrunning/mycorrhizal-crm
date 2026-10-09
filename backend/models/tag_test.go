@@ -58,7 +58,9 @@ func TestContactTagUniqueConstraintRejectsDuplicate(t *testing.T) {
 	require.NoError(t, db.Create(&first).Error)
 
 	second := ContactTag{TagID: tag.ID, UserID: user.ID, ContactVCardUID: contact.VCardUID}
-	assert.Error(t, db.Create(&second).Error, "the same contact must not be taggable with the same tag twice")
+	require.ErrorContains(t, db.Create(&second).Error,
+		"UNIQUE constraint failed: contact_tags.tag_id, contact_tags.contact_vcard_uid",
+		"the same contact must not be taggable with the same tag twice")
 }
 
 // The same contact must still be taggable with two DIFFERENT tags.

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
-	"net/http"
 	"strings"
 	"time"
 
@@ -30,15 +30,13 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			// Fall back to Authorization header (for API clients like CardDAV)
 			authHeader := c.GetHeader("Authorization")
 			if authHeader == "" {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization token required"))
 				return
 			}
 
 			// Check if Authorization header is formatted properly
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header must start with Bearer"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization header must start with Bearer"))
 				return
 			}
 
@@ -50,13 +48,11 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			db := c.MustGet("db").(*gorm.DB)
 			apiToken, ok := LookupAPIToken(db, tokenString, now)
 			if !ok {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 				return
 			}
 			if apiToken.Scope == "carddav" {
-				c.JSON(http.StatusForbidden, gin.H{"error": "This token is scoped to CardDAV and cannot be used for the API"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrForbidden("This token is scoped to CardDAV and cannot be used for the API"))
 				return
 			}
 			c.Set("userID", apiToken.UserID)
@@ -81,29 +77,24 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Token expired"))
 				return
 			}
 			if errors.Is(err, jwt.ErrTokenMalformed) {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Malformed token"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Malformed token"))
 				return
 			}
 			if errors.Is(err, jwt.ErrSignatureInvalid) {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token signature"})
-				c.Abort()
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token signature"))
 				return
 			}
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
 		if !token.Valid {
 			// # pragma: no cover — jwt.Parse returns a non-nil error whenever Valid is false, so this defense-in-depth arm is unreachable
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
@@ -112,8 +103,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			// # pragma: no cover — jwt.Parse always yields MapClaims, so this defense-in-depth arm is unreachable
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
@@ -125,8 +115,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// silently double as a bearer credential because its minting code
 		// forgot to update this list. Session tokens never carry a purpose.
 		if purpose, _ := claims["purpose"].(string); purpose != "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
@@ -136,8 +125,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		userID, ok := uintClaim(claims, "user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
@@ -146,8 +134,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// re-login instead of silently trusting unversioned tokens forever.
 		tokenVersion, ok := uintClaim(claims, "token_version")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 
@@ -156,13 +143,11 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		db := c.MustGet("db").(*gorm.DB)
 		var user models.User
 		if err := db.Select("token_version").First(&user, userID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 		if user.TokenVersion != tokenVersion {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired, please sign in again"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
 			return
 		}
 
@@ -174,23 +159,20 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// exactly as the missing-token_version case above does.
 		sid, _ := claims["sid"].(string)
 		if sid == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 			return
 		}
 		var session models.Session
 		if err := db.Select("last_seen_at", "expires_at", "revoked_at").
 			First(&session, "id = ?", sid).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired, please sign in again"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
 			return
 		}
 		idle := time.Duration(cfg.SessionIdleTimeoutHours) * time.Hour
 		if session.RevokedAt != nil ||
 			!session.ExpiresAt.After(now) ||
 			(idle > 0 && now.Sub(session.LastSeenAt) > idle) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired, please sign in again"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
 			return
 		}
 		// Throttled: only the first request in each sessionTouchInterval writes.

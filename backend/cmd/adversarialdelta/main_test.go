@@ -108,14 +108,18 @@ func TestReadPaths(t *testing.T) {
 	assert.Equal(t, []string{"a.go", "b.go"}, got)
 }
 
+// errReaderBoom is the fixed read error errReader returns, so the scanner-error
+// assertion can name it exactly rather than accepting any error.
+var errReaderBoom = errors.New("boom")
+
 // errReader always fails, to exercise readPaths' scanner-error branch.
 type errReader struct{}
 
-func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
+func (errReader) Read([]byte) (int, error) { return 0, errReaderBoom }
 
 func TestReadPathsError(t *testing.T) {
 	_, err := readPaths(errReader{})
-	require.Error(t, err)
+	require.ErrorIs(t, err, errReaderBoom)
 }
 
 func TestMainExitRequiresRelease(t *testing.T) {

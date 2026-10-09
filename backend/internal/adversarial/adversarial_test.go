@@ -42,6 +42,7 @@ func TestEveryFixtureDeclared(t *testing.T) {
 // fixture is a dangling promise.
 func TestEveryManifestEntryResolves(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		if _, err := fixturesFS.ReadFile("fixtures/" + fx.Name); err != nil {
 			t.Errorf("manifest entry %s has no fixture file: %v", fx.Name, err)
@@ -53,6 +54,7 @@ func TestEveryManifestEntryResolves(t *testing.T) {
 // vocabulary; a typo like "presrve" would silently never be asserted.
 func TestDeclaredTierVocabulary(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		switch fx.Tier {
 		case "preserve", "warn", "error", "bound":
@@ -122,6 +124,7 @@ func normTier(s string) string {
 // rule ADR-0003 applies to golden fixtures).
 func TestFixturesByteIdenticalToDocs(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		embedded := LoadFixture(fx.Name)
 		onDisk, err := os.ReadFile(filepath.Join(docsDir, fx.Name))
@@ -141,6 +144,21 @@ func importFixture(fx Fixture, raw []byte) (*contactmodel.Record, []contactmodel
 	return services.ImportVCardBlock(raw)
 }
 
+// errorTierFragments: fixture name -> the stable fragment of the refusal the
+// format adapter returns for input that is not a valid instance of its format.
+// A bare "an error happened" is not enough for a gate: the error must be the
+// specific parse/validation refusal the manifest note names, so a broken
+// fixture (an empty or mis-copied file) that errors for some other reason
+// cannot masquerade as a passing error-tier case.
+var errorTierFragments = map[string]string{
+	"str-truncated.vcf":        "no END field found",
+	"str-garbage-only.vcf":     "malformed vCard",
+	"js-trailing-garbage.json": "jscontact: import:",
+	"js-absurd-types.json":     "cannot unmarshal",
+	"js-null-card.json":        "not a JSContact Card",
+	"js-deeply-nested.json":    "exceeded max depth",
+}
+
 // TestDeclaredTiersHold is the core harness: every fixture gets exactly the
 // tier its manifest declares. No fixture may panic or hang (a panic fails
 // the test process; a hang trips the test timeout), and no fixture may
@@ -149,12 +167,14 @@ func importFixture(fx Fixture, raw []byte) (*contactmodel.Record, []contactmodel
 // "preserve" and "warn" additionally require a registered landing check
 // (preserveLandingChecks / warnLandingChecks, landing_checks_test.go) that
 // asserts the specific data the manifest claims survives — not just
-// "no error, non-nil record", which an empty Record satisfies. "bound"
+// "no error, non-nil record", which an empty Record satisfies. "error"
+// requires a registered refusal fragment in errorTierFragments. "bound"
 // requires a registered companion test in boundFixtureCoverage. A fixture
-// at any of these three tiers with no registered entry fails here, so a
+// at any of these four tiers with no registered entry fails here, so a
 // newly added fixture can't ship silently unasserted (issue #910).
 func TestDeclaredTiersHold(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		t.Run(fx.Name, func(t *testing.T) {
 			raw := LoadFixture(fx.Name)
@@ -162,7 +182,10 @@ func TestDeclaredTiersHold(t *testing.T) {
 
 			switch fx.Tier {
 			case "error":
-				require.Error(t, err, "%s must error (not a valid instance of the format)", fx.Name)
+				want, ok := errorTierFragments[fx.Name]
+				require.Truef(t, ok, "%s declares tier error but has no entry in errorTierFragments; a fixture with no specific-refusal assertion is not a test", fx.Name)
+				require.ErrorContains(t, err, want, "%s must be refused as a named invalid instance of its format", fx.Name)
+				require.Nil(t, record, "%s must not produce a partial record on refusal", fx.Name)
 			case "preserve":
 				require.NoError(t, err, "%s must preserve (import must complete)", fx.Name)
 				require.NotNil(t, record, "%s must produce a record, not a partial write", fx.Name)

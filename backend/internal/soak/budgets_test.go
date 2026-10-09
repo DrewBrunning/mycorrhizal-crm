@@ -13,6 +13,7 @@ import (
 // Every budget carries a reason and a coherent shape: a number with no recorded
 // why is a number nobody can safely change.
 func TestBudgets_AreWellFormed(t *testing.T) {
+	require.NotEmpty(t, Budgets)
 	seen := map[string]bool{}
 	for _, b := range Budgets {
 		assert.NotEmpty(t, strings.TrimSpace(b.Reason), "%s needs a reason", b.Signal)
@@ -97,5 +98,5 @@ func TestReplaceBudgetBlock(t *testing.T) {
 	assert.True(t, strings.HasSuffix(out, "outro\n"))
 
 	_, err = ReplaceBudgetBlock("no markers here")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "document has no")
 }

@@ -18,7 +18,8 @@ func TestEnsureSelfContact_ContactCreateFailureLeavesUserUnpointed(t *testing.T)
 	require.NoError(t, db.Create(&user).Error)
 
 	dbtest.HideTable(t, db, "contacts")
-	require.Error(t, EnsureSelfContact(db, &user))
+	require.ErrorContains(t, EnsureSelfContact(db, &user), "no such table: contacts",
+		"the create failure must abort the transaction rather than be swallowed")
 	assert.Nil(t, user.SelfContactVCardUID)
 
 	var reloaded models.User

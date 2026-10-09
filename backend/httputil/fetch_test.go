@@ -194,7 +194,7 @@ func TestFetchImageFromURL_LoopbackIPv4LiteralNeverReachesListener(t *testing.T)
 	require.True(t, strings.HasPrefix(server.URL, "http://127.0.0.1:"), "sanity check: httptest.Server must bind to loopback for this test to prove anything")
 
 	data, contentType, err := FetchImageFromURL(server.URL + "/photo.jpg")
-	assert.Error(t, err, "expected the loopback listener to be rejected as an SSRF target")
+	assert.ErrorContains(t, err, "internal hosts", "expected the loopback listener to be rejected as an SSRF target")
 	assert.Nil(t, data)
 	assert.Empty(t, contentType)
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "the SSRF guard must prevent the request from ever reaching the listening server")
@@ -216,7 +216,7 @@ func TestFetchImageFromURL_LocalhostHostnameNeverReachesListener(t *testing.T) {
 	localhostURL := "http://localhost:" + serverURL.Port() + "/photo.jpg"
 
 	data, contentType, err := FetchImageFromURL(localhostURL)
-	assert.Error(t, err, "expected the localhost listener to be rejected as an SSRF target")
+	assert.ErrorContains(t, err, "internal hosts", "expected the localhost listener to be rejected as an SSRF target")
 	assert.Nil(t, data)
 	assert.Empty(t, contentType)
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "the SSRF guard must prevent the request from ever reaching the listening server")

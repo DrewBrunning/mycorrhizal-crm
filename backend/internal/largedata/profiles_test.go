@@ -49,23 +49,24 @@ func TestProfileRejectsBadInputs(t *testing.T) {
 		name string
 		p    Profile
 		base *canonicalfixture.Manifest
+		want string
 	}{
-		{"nil base", Smoke, nil},
-		{"base with no contacts", Smoke, empty},
-		{"zero users", Profile{Name: "x", Contacts: 150, Users: 0, ChainDepth: 1, HubFanout: 1}, base},
-		{"contacts below one block", Profile{Name: "x", Contacts: 0, Users: 1, ChainDepth: 1, HubFanout: 1}, base},
+		{"nil base", Smoke, nil, "largedata: nil base manifest"},
+		{"base with no contacts", Smoke, empty, "largedata: base manifest declares no contacts to scale"},
+		{"zero users", Profile{Name: "x", Contacts: 150, Users: 0, ChainDepth: 1, HubFanout: 1}, base, `profile "x" has Users=0, want >= 1`},
+		{"contacts below one block", Profile{Name: "x", Contacts: 0, Users: 1, ChainDepth: 1, HubFanout: 1}, base, `profile "x" has Contacts=0, want >= 1`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.p.UserManifests(tc.base)
-			require.Error(t, err)
+			require.ErrorContains(t, err, tc.want)
 			_, err = Populate(dbtest.New(t), tc.base, tc.p)
-			require.Error(t, err, "Populate rejects the same bad inputs")
+			require.ErrorContains(t, err, tc.want, "Populate rejects the same bad inputs")
 		})
 	}
 
 	_, err := Populate(nil, base, Smoke)
-	require.Error(t, err, "Populate rejects a nil db")
+	require.ErrorContains(t, err, "largedata: nil db", "Populate rejects a nil db")
 }
 
 // --- determinism ---------------------------------------------------------

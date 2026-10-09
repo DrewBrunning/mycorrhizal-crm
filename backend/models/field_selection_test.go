@@ -113,7 +113,7 @@ func TestFieldSelectionAllSelectsEverything(t *testing.T) {
 func TestFieldSelectionEnableRejectsUnknownToken(t *testing.T) {
 	t.Parallel()
 	sel := NewFieldSelection()
-	require.Error(t, sel.Enable("not_a_section"))
+	require.ErrorContains(t, sel.Enable("not_a_section"), `unknown export field section "not_a_section"`)
 	assert.False(t, sel.Has("not_a_section"))
 	require.NoError(t, sel.Enable(SectionEmails))
 	assert.True(t, sel.Has(SectionEmails))

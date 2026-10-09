@@ -388,10 +388,12 @@ jobs:
       - name: Run fuzz targets (issues #265, #376, #712)
         working-directory: backend
         # Issue #578, B4: the PR/push path is the short smoke (15s — the
-        # regression tripwire); the nightly schedule event runs the same
-        # targets at 2m each. -fuzztime comes in via env, never inline.
+        # regression tripwire). Issue #1625/#1626: the nightly schedule no
+        # longer runs here (21 targets would overrun this job's budget); it is
+        # sharded by package in the `fuzz-nightly` job above at 2m each.
+        if: github.event_name != 'schedule'
         env:
-          FUZZTIME: ${{ github.event_name == 'schedule' && '2m' || '15s' }}
+          FUZZTIME: 15s
         run: bash "$GITHUB_WORKSPACE/.github/scripts/run-fuzz-targets.sh"
 
       - name: Vulnerability scan (govulncheck)
@@ -423,6 +425,64 @@ jobs:
       - name: Lint (rawtimecheck — raw time.Now outside the injected clock)
         working-directory: backend
         run: go run ./cmd/rawtimecheck ./...
+
+  # Issues #1625/#1626: the nightly fuzz pass now covers 21 native targets.
+  # At the full 2m budget that overruns the single `backend-checks` job, so the
+  # nightly schedule shards by package — one matrix leg per package running
+  # only its own targets via FUZZ_PACKAGE at 2m each. The PR/push smoke stays
+  # in `backend-checks` (15s per target); this job is schedule-only. The
+  # package list here must equal the distinct dirs in run-fuzz-targets.sh's
+  # targets array — pinned by backend/fuzz_registration_test.go.
+  fuzz-nightly:
+    permissions:
+      contents: read
+    name: Fuzz nightly (${{ matrix.package }})
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: changes
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - ./vcard4
+          - ./vcard3
+          - ./jscontact
+          - ./services
+          - ./meerkat
+          - ./controllers
+          - ./contactmodel
+          - ./carddav
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: |
+            backend/go.sum
+            backend/tools.sum
+
+      - name: Download Go modules
+        working-directory: backend
+        run: |
+          for attempt in 1 2 3; do
+            go mod download && go mod download -modfile=tools.mod && exit 0
+            echo "::warning::go mod download attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
+
+      - name: Fuzz ${{ matrix.package }}
+        working-directory: backend
+        env:
+          FUZZTIME: 2m
+          FUZZ_PACKAGE: ${{ matrix.package }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/run-fuzz-targets.sh"
 
   backend-tests:
     permissions:

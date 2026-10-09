@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // stubTypeProbe forces typeProbe to return exactly (magic, err) until the
@@ -25,6 +27,7 @@ func TestNetworkFilesystemWarning_RealLocalFilesystemIsNil(t *testing.T) {
 }
 
 func TestNetworkFilesystemWarning_FlagsEveryKnownNetworkMagic(t *testing.T) {
+	require.NotEmpty(t, knownNetworkFilesystems)
 	for magic, name := range knownNetworkFilesystems {
 		restore := stubTypeProbe(magic, nil)
 		w := NetworkFilesystemWarning("/data")
