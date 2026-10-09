@@ -49,7 +49,11 @@ class ArchiveDeleteAuditTest : E2eBaseTest() {
         navigateViaDrawer("Contacts")
         searchFor(archGiven)
         waitForText(archDisplayName)
-        compose.onNodeWithText(archDisplayName).performClick()
+        // Retry if the row vanishes mid-recomposition rather than a one-shot
+        // click: the direct `onNodeWithText` here flaked under CI load with
+        // "could not find any node ... the unmerged tree contains '1' node"
+        // (run 37929593004, #1639). clickTextWhenStable polls through that window.
+        clickTextWhenStable(archDisplayName)
 
         // Archive through the detail action menu + confirm dialog.
         clickContentDescription("Contact actions")

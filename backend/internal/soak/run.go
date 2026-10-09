@@ -269,10 +269,17 @@ func (r *Report) judge(cfg Config, budgets []Budget, final Snapshot) {
 		r.fail("%d server errors (5xx / transport) in %d operations; samples: %s",
 			r.Workload.ServerErrs, r.Workload.Total, strings.Join(r.Workload.Samples, " | "))
 	}
-	if n := final.Values[SigServerErrors]; n > 0 {
+	// These two counters are cumulative and the metrics registry is
+	// process-global and never reset, so the absolute value spans every server
+	// this process ever booted (a soak test boots several per run, and
+	// `-count=2` boots them all again). Assert the DELTA across this run's own
+	// window — the documented rule for a process-global counter
+	// (docs/development/testing.md, "Order-dependence pass") — or a prior
+	// instance's 5xx fails an otherwise healthy run (#1638).
+	if n := final.Values[SigServerErrors] - seriesBase(r.Series[SigServerErrors]); n > 0 {
 		r.fail("/metrics counts %.0f HTTP 5xx responses", n)
 	}
-	if n := final.Values[SigJobFailures]; n > 0 {
+	if n := final.Values[SigJobFailures] - seriesBase(r.Series[SigJobFailures]); n > 0 {
 		r.fail("/metrics counts %.0f failed scheduled-job runs", n)
 	}
 	// 429s are the production limiter doing its job on the auth routes, but a
@@ -281,6 +288,16 @@ func (r *Report) judge(cfg Config, budgets []Budget, final Snapshot) {
 	if r.Workload.Total > 0 && float64(r.Workload.RateLimited) > 0.05*float64(r.Workload.Total) {
 		r.fail("%d/%d operations were rate-limited (429) — the soak is measuring throttling, not the server", r.Workload.RateLimited, r.Workload.Total)
 	}
+}
+
+// seriesBase is the first (pre-workload) sample of a cumulative series, or 0
+// when the signal was absent at baseline. Subtracting it turns the
+// process-global registry's absolute counter into a per-run delta.
+func seriesBase(s Series) float64 {
+	if len(s) == 0 {
+		return 0
+	}
+	return s[0].V
 }
 
 // endChecks runs the checks that need the finished server: scheduler health,

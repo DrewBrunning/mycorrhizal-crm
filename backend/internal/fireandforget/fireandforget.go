@@ -24,20 +24,49 @@ import (
 	"sync"
 )
 
-var wg sync.WaitGroup
+// The tracker is a counter plus a condition variable, not a sync.WaitGroup.
+// WaitContext deliberately abandons its wait when the context ends (the
+// goroutines keep running), and a WaitGroup must not be reused by a later Add
+// while such an abandoned Wait is still in flight — the race detector catches
+// exactly that when the next test (or the next embedded Start/Stop cycle) calls
+// Run, because the abandoned Wait's internal state write races the new Add's
+// read (issue #1638). A mutex+Cond has no reuse hazard: an abandoned waiter
+// simply wakes on the next Broadcast, and Add/Wait never race.
+var (
+	mu     sync.Mutex
+	cond   = sync.NewCond(&mu)
+	active int
+)
 
 // Run executes fn in a new tracked goroutine. Wait blocks until every goroutine
 // launched through Run has returned.
 func Run(fn func()) {
-	wg.Add(1)
+	mu.Lock()
+	active++
+	mu.Unlock()
 	go func() {
-		defer wg.Done()
+		defer finish()
 		fn()
 	}()
 }
 
+func finish() {
+	mu.Lock()
+	active--
+	if active == 0 {
+		cond.Broadcast()
+	}
+	mu.Unlock()
+}
+
 // Wait blocks until every goroutine launched through Run has returned.
-func Wait() { wg.Wait() }
+func Wait() {
+	mu.Lock()
+	for active > 0 {
+		cond.Wait()
+	}
+	mu.Unlock()
+}
 
 // WaitContext is Wait bounded by ctx: it returns nil once every tracked
 // goroutine has returned, or ctx.Err() if ctx ends first (the goroutines keep
@@ -45,7 +74,7 @@ func Wait() { wg.Wait() }
 func WaitContext(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
-		wg.Wait()
+		Wait()
 		close(done)
 	}()
 	select {
