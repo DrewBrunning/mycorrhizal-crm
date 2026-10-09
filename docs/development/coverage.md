@@ -260,9 +260,10 @@ tolerance, never on an existing low number by itself.
   and compares each file's line% and branch% against the committed
   `frontend/coverage-baseline.json`.
 - **Android**: `backend/cmd/androidcoverageratchet` (logic in
-  `backend/internal/androidcoverage`) reads the aggregated JaCoCo XML
-  (`android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml`,
-  produced by `./gradlew jacocoTestReportAggregated`, issue #342) and compares
+  `backend/internal/androidcoverage`) reads the aggregated JaCoCo XML report
+  (`jacocoTestReportAggregated.xml` under
+  `android/build/reports/jacoco/jacocoTestReportAggregated/`, produced by
+  `./gradlew jacocoTestReportAggregated`, issue #342) and compares
   each source file's line coverage against the committed
   `android/coverage-baseline.json`. A file's percentage is
   `sum(ci) / (sum(ci) + sum(mi))` over its JaCoCo `<line>` elements, keyed by
