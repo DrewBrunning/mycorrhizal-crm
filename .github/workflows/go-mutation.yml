@@ -86,6 +86,11 @@ jobs:
             package: carddav
           - scope: caldav-backend
             package: caldav
+          # Issue #1624: security services and the sensitivity query filters.
+          - scope: services-auth
+            package: services
+          - scope: sensitivity-filter
+            package: services
 
     steps:
       - name: Checkout repository
