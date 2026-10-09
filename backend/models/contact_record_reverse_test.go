@@ -363,7 +363,8 @@ func TestApplyRecordToContact_AddressFullOnlyFallback(t *testing.T) {
 
 // TestApplyRecordToContact_NilSafety mirrors RecordFromContact's own
 // nil-safety test: ApplyRecordToContact must not panic on a nil Contact or a
-// nil Record.
+// nil Record. There is deliberately no assertion — the contract is simply
+// "does not panic" on nil/empty input, and the call has no return value.
 func TestApplyRecordToContact_NilSafety(t *testing.T) {
 	t.Parallel()
 	ApplyRecordToContact(nil, &contactmodel.Record{}, "")

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
@@ -120,7 +121,9 @@ func TestDismissReachOutSuggestion_NotFound(t *testing.T) {
 	require.NoError(t, db.Create(&user).Error)
 
 	err := DismissReachOutSuggestion(db, user.ID, "00000000-0000-4000-8000-000000000000")
-	require.Error(t, err)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	// A suggestion owned by another user is not dismissible by this one.
 	other := models.User{Username: "reachoutowner", Password: "password123!A", Email: "owner@example.com"}
@@ -129,7 +132,8 @@ func TestDismissReachOutSuggestion_NotFound(t *testing.T) {
 	require.NoError(t, db.Create(&otherContact).Error)
 	s := seedReachOutSuggestion(t, db, other.ID, otherContact, models.ReachOutKindTitle)
 	err = DismissReachOutSuggestion(db, user.ID, s.ID)
-	require.Error(t, err, "a suggestion owned by another user must not be dismissible")
+	require.ErrorAs(t, err, &appErr, "a suggestion owned by another user must not be dismissible")
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
 func TestDismissReachOutSuggestionByReminderID(t *testing.T) {

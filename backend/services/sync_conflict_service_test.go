@@ -619,9 +619,8 @@ func TestRestoreContactSyncConflict_AlreadyDismissedIsConflict(t *testing.T) {
 	require.NoError(t, db.Model(&conflict).Update("status", models.SyncConflictStatusDismissed).Error)
 
 	err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
-	require.Error(t, err)
-	appErr, ok := err.(*apperrors.AppError)
-	require.True(t, ok)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeConflict, appErr.Code)
 }
 
@@ -638,15 +637,12 @@ func TestRestoreContactSyncConflict_UnknownOrForeignIs404(t *testing.T) {
 	foreign := seedSyncConflict(t, db, other.ID, contact.ID, sub.ID, models.SyncConflictFieldPhone, "A", "B")
 
 	err := RestoreContactSyncConflict(db, user.ID, foreign.ID)
-	require.Error(t, err)
-	appErr, ok := err.(*apperrors.AppError)
-	require.True(t, ok)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	err = RestoreContactSyncConflict(db, user.ID, "does-not-exist")
-	require.Error(t, err)
-	appErr, ok = err.(*apperrors.AppError)
-	require.True(t, ok)
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
@@ -670,15 +666,12 @@ func TestDismissContactSyncConflict_IdempotentAndScoped(t *testing.T) {
 	assert.Equal(t, models.SyncConflictStatusDismissed, reloaded.Status)
 
 	err := DismissContactSyncConflict(db, other.ID, conflict.ID)
-	require.Error(t, err)
-	appErr, ok := err.(*apperrors.AppError)
-	require.True(t, ok)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	err = DismissContactSyncConflict(db, user.ID, "does-not-exist")
-	require.Error(t, err)
-	appErr, ok = err.(*apperrors.AppError)
-	require.True(t, ok)
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
@@ -766,9 +759,8 @@ func TestRestoreContactSyncConflict_ContactMissingIs404(t *testing.T) {
 	conflict := seedSyncConflict(t, db, user.ID, 99999, sub.ID, models.SyncConflictFieldPhone, "A", "B")
 
 	err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
-	require.Error(t, err)
-	appErr, ok := err.(*apperrors.AppError)
-	require.True(t, ok)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
@@ -785,7 +777,9 @@ func TestRestoreContactSyncConflict_UnknownFieldFails(t *testing.T) {
 	conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, "not_a_real_field", "A", "B")
 
 	err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
-	require.Error(t, err)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeOperationFailed, appErr.Code)
 
 	var reloaded models.Contact
 	require.NoError(t, db.First(&reloaded, contact.ID).Error)
@@ -862,7 +856,9 @@ func TestRestoreContactSyncConflict_InvalidArrayJSON(t *testing.T) {
 		conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, field, "{not-json", "[]")
 
 		err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
-		require.Error(t, err, "restore of %s with invalid JSON must fail", field)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr, "restore of %s with invalid JSON must fail", field)
+		assert.Equal(t, apperrors.ErrCodeOperationFailed, appErr.Code)
 
 		var reloaded models.Contact
 		require.NoError(t, db.First(&reloaded, contact.ID).Error)
@@ -888,11 +884,11 @@ func TestSyncConflictServices_DBError(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = ListContactSyncConflicts(db, user.ID)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "loading sync conflicts")
 
 	err = RestoreContactSyncConflict(db, user.ID, conflict.ID)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "loading sync conflict")
 
 	err = DismissContactSyncConflict(db, user.ID, conflict.ID)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "loading sync conflict")
 }

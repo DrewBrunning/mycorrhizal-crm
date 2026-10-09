@@ -267,7 +267,7 @@ func TestRenderAtomFeed_CapsAtFiftyEntries(t *testing.T) {
 
 func TestRenderAtomFeed_RequiresFeedAndUser(t *testing.T) {
 	_, err := RenderAtomFeed(nil, nil, AtomRenderInput{})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "feed and user are required")
 
 	// A zero Now falls back to the wall clock (and still succeeds).
 	db, cfg := newFeedTestEnv(t)

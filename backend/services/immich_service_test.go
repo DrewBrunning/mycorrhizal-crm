@@ -498,8 +498,7 @@ func TestTestImmichConnection_NoConfigReturnsError(t *testing.T) {
 	user, _ := seedImmichUser(t, db)
 
 	_, err := TestImmichConnection(db, immichTestConfig(), user.ID)
-	require.Error(t, err, "no saved connection must be a Go error, not a diagnosed result")
-	assert.True(t, errors.Is(err, ErrImmichUnauthorized))
+	require.ErrorIs(t, err, ErrImmichUnauthorized, "no saved connection must be a Go error, not a diagnosed result")
 }
 
 func TestSyncImmichForUser_WritesActivitiesAndDedups(t *testing.T) {
@@ -559,8 +558,7 @@ func TestSyncImmichForUser_ExpiredKeyRecordsError(t *testing.T) {
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "now-stale-key")
 
 	err := SyncImmichForUser(db, immichTestConfig(), user.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrImmichUnauthorized))
+	require.ErrorIs(t, err, ErrImmichUnauthorized)
 
 	var config models.ImmichConfig
 	require.NoError(t, db.Where("user_id = ?", user.ID).First(&config).Error)
@@ -584,8 +582,7 @@ func TestSyncImmichForUser_UnreachableRecordsError(t *testing.T) {
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, url, "")
 
 	err := SyncImmichForUser(db, immichTestConfig(), user.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrImmichUnreachable))
+	require.ErrorIs(t, err, ErrImmichUnreachable)
 
 	var config models.ImmichConfig
 	require.NoError(t, db.Where("user_id = ?", user.ID).First(&config).Error)
@@ -617,7 +614,7 @@ func TestUpsertImmichConfig_EncryptsKeyAndKeepsOnEmptyUpdate(t *testing.T) {
 	other := models.User{Username: "immich-user2", Password: "password123!A", Email: "immich2@example.com"}
 	require.NoError(t, db.Create(&other).Error)
 	_, err = UpsertImmichConfig(db, cfg.JWTSecretKey, other.ID, models.ImmichConfigInput{BaseURL: "https://immich.example"})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "an API key is required")
 }
 
 func TestLinkImmichPerson_WritesExternalIdentity(t *testing.T) {

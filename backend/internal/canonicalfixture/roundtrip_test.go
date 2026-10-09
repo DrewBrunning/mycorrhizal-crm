@@ -87,6 +87,7 @@ func canonicalize(t *testing.T, rec *contactmodel.Record) *contactmodel.Record {
 // wrong read function drops fails this test naming the contact.
 func TestRoundTripReproducesEveryDeclaredField(t *testing.T) {
 	m, ds, db := populatedDB(t)
+	require.NotEmpty(t, m.Contacts)
 
 	for _, entry := range m.Contacts {
 		entry := entry

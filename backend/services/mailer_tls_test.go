@@ -261,7 +261,8 @@ func TestSendViaResend_SuccessAndError(t *testing.T) {
 	require.NoError(t, sendViaResend(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
 
 	status = http.StatusUnprocessableEntity
-	require.Error(t, sendViaResend(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
+	require.ErrorContains(t, sendViaResend(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}),
+		"[ERROR]: 422 Unprocessable Entity", "a non-2xx Resend response must surface as an error")
 }
 
 // TestSendEmail_PartialChannelFailure covers SendEmail's "delivered on some but

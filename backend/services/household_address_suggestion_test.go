@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -13,6 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+// requireHouseholdSuggestionErrCode asserts err is an *apperrors.AppError
+// carrying the exact code the accept/dismiss paths return, so a bare-any-error
+// assertion cannot pass on the wrong branch.
+func requireHouseholdSuggestionErrCode(t *testing.T, err error, code string) {
+	t.Helper()
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, code, appErr.Code)
+}
 
 // householdAddressTestDB opens a REAL migrated schema (CLAUDE.md backend
 // trap 1 — DismissedHouseholdSuggestion's composite unique index and
@@ -339,24 +350,24 @@ func TestAcceptAddressHouseholdSuggestion_Validation(t *testing.T) {
 
 	// Fewer than two members.
 	_, err := AcceptAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeInvalidInput)
 
 	// Duplicates collapse to one distinct member.
 	_, err = AcceptAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, a.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeInvalidInput)
 
 	// Invalid household type.
 	_, err = AcceptAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, b.VCardUID}, "", "extended_family")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeInvalidInput)
 
 	// A UID that isn't the user's contact.
 	_, err = AcceptAddressHouseholdSuggestion(db, user.ID, []string{"00000000-0000-4000-8000-000000000999", b.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeNotFound)
 
 	// Contacts that no longer share an address.
 	c := addrContact(t, db, user.ID, "Charlie", models.ContactAddress{Street: "999 Nowhere", City: "X", Country: "USA"}, false)
 	_, err = AcceptAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, c.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeConflict)
 }
 
 func TestAcceptAddressHouseholdSuggestion_RejectsCoMembersAndDismissed(t *testing.T) {
@@ -374,12 +385,12 @@ func TestAcceptAddressHouseholdSuggestion_RejectsCoMembersAndDismissed(t *testin
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: hh.ID, UserID: user.ID, MemberVCardUID: a.VCardUID, Role: "adult"}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: hh.ID, UserID: user.ID, MemberVCardUID: b.VCardUID, Role: "adult"}).Error)
 	_, err := AcceptAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, b.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeConflict)
 
 	// Dismissed group: conflict.
 	require.NoError(t, DismissAddressHouseholdSuggestion(db, user.ID, []string{c.VCardUID, d.VCardUID}))
 	_, err = AcceptAddressHouseholdSuggestion(db, user.ID, []string{c.VCardUID, d.VCardUID}, "", "")
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeConflict)
 }
 
 func TestAcceptAddressHouseholdSuggestion_ExplicitNameAndType(t *testing.T) {
@@ -416,14 +427,14 @@ func TestDismissAddressHouseholdSuggestion(t *testing.T) {
 
 	// Re-dismissing is a checked ErrAlreadyExists.
 	err := DismissAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, b.VCardUID})
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeAlreadyExists)
 
 	// Fewer than two distinct members.
 	err = DismissAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, a.VCardUID})
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeInvalidInput)
 
 	// Members with no shared address.
 	c := addrContact(t, db, user.ID, "Charlie", models.ContactAddress{Street: "999 Nowhere", City: "X", Country: "USA"}, false)
 	err = DismissAddressHouseholdSuggestion(db, user.ID, []string{a.VCardUID, c.VCardUID})
-	require.Error(t, err)
+	requireHouseholdSuggestionErrCode(t, err, apperrors.ErrCodeInvalidInput)
 }

@@ -198,7 +198,7 @@ func TestExecuteSourceImportWithActions_CancelledContextPersistsNothing(t *testi
 	cancel() // already cancelled before the run starts
 
 	_, _, err := ExecuteSourceImportWithActions(ctx, db, user.ID, plan, nil, nil)
-	require.Error(t, err)
+	require.ErrorIs(t, err, context.Canceled)
 
 	var count int64
 	db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count)

@@ -90,6 +90,7 @@ func TestPurgeContactUIDCleanups_CoverEveryUIDColumnedTable(t *testing.T) {
 // table's own user_id, and the table really has that column.
 func TestPurgeContactUIDCleanups_QueriesAreOwnerScoped(t *testing.T) {
 	db := dbtest.New(t)
+	require.NotEmpty(t, purgeContactUIDCleanups, "registry must declare at least one UID cleanup")
 	for _, spec := range purgeContactUIDCleanups {
 		var hasUserID int
 		require.NoError(t, db.Raw("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = 'user_id'", spec.Table).Scan(&hasUserID).Error)
@@ -235,7 +236,9 @@ func seededRowCount(t *testing.T, db *gorm.DB, table, col string, userID uint, u
 //	W  window:   A also has a second copy soft-deleted 5 days ago (undo window
 //	             still open)             -> A's row KEPT
 func TestPurgeContactUIDCleanups_OwnerScopedBehavior(t *testing.T) {
+	require.NotEmpty(t, purgeContactUIDCleanups, "registry must declare at least one UID cleanup")
 	for _, spec := range purgeContactUIDCleanups {
+		require.NotEmpty(t, spec.Cols, "%s must declare at least one UID column", spec.Table)
 		for _, col := range spec.Cols {
 			t.Run(spec.Table+"."+col, func(t *testing.T) {
 				db := dbtest.New(t)

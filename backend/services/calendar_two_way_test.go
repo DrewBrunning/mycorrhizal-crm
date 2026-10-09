@@ -206,7 +206,7 @@ func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
 
 	// First sync: the push fails, so the run errors and the edit stays pending.
 	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, err, "a failed push must surface as a run error")
+	require.ErrorIs(t, err, ErrCalendarUnreachable, "a failed push must surface as a run error")
 	var reloaded models.CalendarSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
 	assert.Nil(t, reloaded.TerminalFailureAt, "a transient push failure is not terminal")

@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"mycorrhizal/correspondence"
+
+	"github.com/stretchr/testify/require"
 )
 
 // importCoverage / exportCoverage are populated by each import_*_test.go /
@@ -35,7 +37,9 @@ func registerExportCoverage(conceptIDs ...string) {
 // export test in this package (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 func TestCoverage_AllMappedConceptsHaveImportAndExportTests(t *testing.T) {
 	t.Parallel()
-	for _, row := range correspondence.Load() {
+	rows := correspondence.Load()
+	require.NotEmpty(t, rows)
+	for _, row := range rows {
 		if row.V4Prop == "-" {
 			continue
 		}

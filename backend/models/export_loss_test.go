@@ -90,7 +90,9 @@ func TestLossReportsFor_NonWarnAndUnknownConceptsExcluded(t *testing.T) {
 func TestLossReportsFor_EveryMatrixLossIsReachable(t *testing.T) {
 	t.Parallel()
 	contact := &Contact{Firstname: "A", Lastname: "Contact", VCardUID: "urn:uuid:a"}
-	for _, lr := range correspondence.LossReports() {
+	losses := correspondence.LossReports()
+	require.NotEmpty(t, losses)
+	for _, lr := range losses {
 		reports := LossReportsFor(string(lr.Format), contact, []contactmodel.Diagnostic{
 			{Severity: "warn", Concept: lr.Concept, Message: "adapter reported"},
 		})

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // committedMatrixRel is the generated artifact, relative to this package
@@ -53,7 +55,9 @@ var (
 // a half-filled entry cannot reach the generated doc.
 func TestRegistryInvariants(t *testing.T) {
 	seen := map[string]bool{}
-	for _, in := range Registry() {
+	reg := Registry()
+	require.NotEmpty(t, reg)
+	for _, in := range reg {
 		if !kebab.MatchString(in.ID) {
 			t.Errorf("integration ID %q is not kebab-case", in.ID)
 		}
@@ -122,7 +126,10 @@ func TestRegistryInvariants(t *testing.T) {
 // TestEveryFailureModeHasBehavior is issue #464 point 2: every integration must
 // have a stated behavior for all seven failure modes.
 func TestEveryFailureModeHasBehavior(t *testing.T) {
-	for _, in := range Registry() {
+	reg := Registry()
+	require.NotEmpty(t, reg)
+	require.NotEmpty(t, FailureModes)
+	for _, in := range reg {
 		if len(in.Behavior) != len(FailureModes) {
 			t.Errorf("%s: %d Behavior entries, want %d", in.ID, len(in.Behavior), len(FailureModes))
 		}
@@ -252,6 +259,7 @@ func TestEveryOutboundClientIsClassified(t *testing.T) {
 // cannot pile up (same discipline as the crypto-surface ignore file).
 func TestNonIntegrationAllowlistIsLive(t *testing.T) {
 	got := servicesWithOutboundClient(t)
+	require.NotEmpty(t, nonIntegrationClients)
 	for name, reason := range nonIntegrationClients {
 		if strings.TrimSpace(reason) == "" {
 			t.Errorf("nonIntegrationClients[%q] has no reason", name)
@@ -291,7 +299,9 @@ func TestClaimedSourceFilesDoNotOverlap(t *testing.T) {
 // posture must actually route through httputil.SafeDialContext in at least one
 // of its source files. Unguarded / fixed-endpoint rows make no such claim.
 func TestSSRFClaimsMatchSource(t *testing.T) {
-	for _, in := range Registry() {
+	reg := Registry()
+	require.NotEmpty(t, reg)
+	for _, in := range reg {
 		guarded := in.SSRF == SSRFGuardedAlways || in.SSRF == SSRFGuardedWhenEnabled
 		if !guarded {
 			continue
@@ -360,7 +370,9 @@ func TestRenderHelpers(t *testing.T) {
 // that is not naturally idempotent — names a safeguard.
 func TestOutboundOperationsClassified(t *testing.T) {
 	seen := map[string]bool{}
-	for _, op := range OutboundOperations() {
+	ops := OutboundOperations()
+	require.NotEmpty(t, ops)
+	for _, op := range ops {
 		if !kebab.MatchString(op.ID) {
 			t.Errorf("operation ID %q is not kebab-case", op.ID)
 		}
@@ -396,8 +408,11 @@ func TestOutboundOperationsClassified(t *testing.T) {
 // row; a dead entry (an ID no longer in Registry(), or one with no row) also
 // fails, so the allowlist cannot rot. Same discipline as nonIntegrationClients.
 func TestOutboundOperationsCoverWriteIntegrations(t *testing.T) {
+	ops := OutboundOperations()
+	require.NotEmpty(t, ops)
+	require.NotEmpty(t, knownOutboundWriteIntegrations)
 	rows := map[string]int{}
-	for _, op := range OutboundOperations() {
+	for _, op := range ops {
 		rows[op.Integration]++
 	}
 	for id, reason := range knownOutboundWriteIntegrations {
@@ -411,7 +426,7 @@ func TestOutboundOperationsCoverWriteIntegrations(t *testing.T) {
 			t.Errorf("integration %q performs remote writes but has no OutboundOperations() row", id)
 		}
 	}
-	for _, op := range OutboundOperations() {
+	for _, op := range ops {
 		if _, ok := knownOutboundWriteIntegrations[op.Integration]; !ok {
 			t.Errorf("operation %q classifies integration %q, which is not in "+
 				"knownOutboundWriteIntegrations — add it there with a reason", op.ID, op.Integration)

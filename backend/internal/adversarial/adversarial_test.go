@@ -42,6 +42,7 @@ func TestEveryFixtureDeclared(t *testing.T) {
 // fixture is a dangling promise.
 func TestEveryManifestEntryResolves(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		if _, err := fixturesFS.ReadFile("fixtures/" + fx.Name); err != nil {
 			t.Errorf("manifest entry %s has no fixture file: %v", fx.Name, err)
@@ -53,6 +54,7 @@ func TestEveryManifestEntryResolves(t *testing.T) {
 // vocabulary; a typo like "presrve" would silently never be asserted.
 func TestDeclaredTierVocabulary(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		switch fx.Tier {
 		case "preserve", "warn", "error", "bound":
@@ -122,6 +124,7 @@ func normTier(s string) string {
 // rule ADR-0003 applies to golden fixtures).
 func TestFixturesByteIdenticalToDocs(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		embedded := LoadFixture(fx.Name)
 		onDisk, err := os.ReadFile(filepath.Join(docsDir, fx.Name))
@@ -171,6 +174,7 @@ var errorTierFragments = map[string]string{
 // newly added fixture can't ship silently unasserted (issue #910).
 func TestDeclaredTiersHold(t *testing.T) {
 	t.Parallel()
+	require.NotEmpty(t, Manifest)
 	for _, fx := range Manifest {
 		t.Run(fx.Name, func(t *testing.T) {
 			raw := LoadFixture(fx.Name)

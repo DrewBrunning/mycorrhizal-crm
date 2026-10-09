@@ -40,8 +40,8 @@ func TestIDTokenClaimsEmailVerifiedAcceptsBothForms(t *testing.T) {
 // becoming false, since email_verified gates account linking.
 func TestIDTokenClaimsEmailVerifiedRejectsGarbage(t *testing.T) {
 	var claims idTokenClaims
-	assert.Error(t, json.Unmarshal([]byte(`{"email_verified": "yes"}`), &claims))
-	assert.Error(t, json.Unmarshal([]byte(`{"email_verified": 1}`), &claims))
+	require.ErrorContains(t, json.Unmarshal([]byte(`{"email_verified": "yes"}`), &claims), "invalid boolean value")
+	require.ErrorContains(t, json.Unmarshal([]byte(`{"email_verified": 1}`), &claims), "invalid boolean value")
 }
 
 // The string form must not break the other claims decoded alongside it.

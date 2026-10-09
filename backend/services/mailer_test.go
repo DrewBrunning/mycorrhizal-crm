@@ -208,7 +208,7 @@ func TestSendViaSMTP_ConnectionRefused(t *testing.T) {
 		SMTPFromEmail: "noreply@example.com",
 	}
 	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "smtp dial:", "the refused connect must surface through the smtp dial wrapper")
 }
 
 // TestSendViaSMTP_ImplicitTLSConnectionRefused verifies sendViaSMTP routes

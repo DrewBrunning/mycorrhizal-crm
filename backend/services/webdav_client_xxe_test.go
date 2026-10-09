@@ -24,7 +24,6 @@ package services
 // reference is never fetched.
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,8 +56,8 @@ func TestWebDAVClient_Propfind_InternalEntityXXE_RejectedNotExpanded(t *testing.
 	require.NoError(t, err)
 
 	pingErr := client.Ping()
-	require.Error(t, pingErr, "an undefined entity reference must not silently resolve to file content")
-	assert.True(t, errors.Is(pingErr, ErrWebDAVInvalidData), "must surface as a parse failure, not succeed with expanded/leaked data: %v", pingErr)
+	require.ErrorIs(t, pingErr, ErrWebDAVInvalidData,
+		"an undefined entity reference must surface as a parse failure, not succeed with expanded/leaked data")
 	assert.NotContains(t, pingErr.Error(), "root:", "no /etc/passwd content must ever appear, even in the error text")
 }
 

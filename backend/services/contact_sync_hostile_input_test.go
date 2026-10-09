@@ -175,7 +175,7 @@ func TestReconcileContactSync_DuplicateUIDCollidesWithExistingContact_RejectedWi
 	obj := carddav.AddressObject{Path: "/addressbooks/test/impostor.vcf", ETag: "\"e1\"", Card: hostile}
 
 	_, err := reconcileContactSync(db, sub, []carddav.AddressObject{obj}, nil, false, "")
-	require.Error(t, err, "a colliding UID must not silently create a second contact")
+	require.ErrorContains(t, err, "UNIQUE constraint failed", "a colliding UID must not silently create a second contact")
 
 	var count int64
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count).Error)
@@ -353,7 +353,7 @@ func TestSyncSubscription_OversizedResponse_RejectedNotSilentlyAccepted(t *testi
 
 	service := NewContactSyncService(false)
 	_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, err, "an oversized response must not be silently accepted")
+	require.ErrorIs(t, err, ErrContactSyncTooLarge, "an oversized response must not be silently accepted")
 
 	var count int64
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count).Error)

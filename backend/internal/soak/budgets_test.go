@@ -13,6 +13,7 @@ import (
 // Every budget carries a reason and a coherent shape: a number with no recorded
 // why is a number nobody can safely change.
 func TestBudgets_AreWellFormed(t *testing.T) {
+	require.NotEmpty(t, Budgets)
 	seen := map[string]bool{}
 	for _, b := range Budgets {
 		assert.NotEmpty(t, strings.TrimSpace(b.Reason), "%s needs a reason", b.Signal)
