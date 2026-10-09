@@ -101,7 +101,7 @@ func TestRepointDataDecayPolicy(t *testing.T) {
 		createDataDecayPolicy(t, db, user.ID, loser.VCardUID, 20, true)
 
 		err := repointDataDecayPolicy(db, user.ID, &keeper, &loser, nil)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "unresolved data decay policy conflict")
 
 		var count int64
 		require.NoError(t, db.Model(&models.DataDecayPolicy{}).Where("user_id = ?", user.ID).Count(&count).Error)
@@ -119,7 +119,7 @@ func TestRepointDataDecayPolicy(t *testing.T) {
 
 		resolutions := map[string]string{dataDecayPolicyConflictField: "Every 999 days (active)"}
 		err := repointDataDecayPolicy(db, user.ID, &keeper, &loser, resolutions)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "does not match either side")
 
 		var count int64
 		require.NoError(t, db.Model(&models.DataDecayPolicy{}).Where("user_id = ?", user.ID).Count(&count).Error)
@@ -142,8 +142,8 @@ func TestRepointDataDecayPolicy_DBErrors(t *testing.T) {
 	dbtest.HideTable(t, db, "data_decay_policies")
 
 	err := repointDataDecayPolicy(db, user.ID, &keeper, &loser, nil)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "no such table: data_decay_policies")
 
 	_, err = ComputeDataDecayPolicyConflict(db, user.ID, keeper.VCardUID, loser.VCardUID)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "no such table: data_decay_policies")
 }

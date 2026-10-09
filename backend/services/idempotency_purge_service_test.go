@@ -107,7 +107,8 @@ func TestPurgeExpiredIdempotencyKeys_DBErrorIsReturnedNotPanic(t *testing.T) {
 	require.NotPanics(t, func() {
 		purgeErr = PurgeExpiredIdempotencyKeys(db, config.Config{IdempotencyKeyRetentionHours: 24})
 	})
-	require.Error(t, purgeErr, "a failing purge must report the error so the run is recorded as failed")
+	require.ErrorContains(t, purgeErr, "database is closed",
+		"a failing purge must report the error so the run is recorded as failed")
 	require.Contains(t, buf.String(), "idempotency key purge: failed to delete expired keys")
 }
 
@@ -162,6 +163,7 @@ func TestPurgeExpiredIdempotencyKeysScheduled_ReleaseLockErrorIsReturned(t *test
 	require.NotPanics(t, func() {
 		purgeErr = PurgeExpiredIdempotencyKeysScheduled(db, config.Config{IdempotencyKeyRetentionHours: 24})
 	})
-	require.Error(t, purgeErr, "a failed lock release must be surfaced, not swallowed")
+	require.ErrorContains(t, purgeErr, "simulated release failure",
+		"a failed lock release must be surfaced, not swallowed")
 	require.Contains(t, buf.String(), "idempotency key purge: failed to release job lock")
 }

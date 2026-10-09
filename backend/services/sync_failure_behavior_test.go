@@ -79,8 +79,9 @@ func TestContactSync_RequestFailureIsDefinedAndObservable(t *testing.T) {
 
 	_, syncErr := NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
 
-	// 1. The run fails — not a silent success.
-	require.Error(t, syncErr)
+	// 1. The run fails — not a silent success. The injected request error is
+	//    not one of the typed sync sentinels, so it classifies as unreachable.
+	require.ErrorIs(t, syncErr, ErrContactSyncUnreachable)
 
 	// 2. Bookkeeping records the failure.
 	var reloaded models.ContactSubscription
@@ -105,7 +106,7 @@ func TestContactSync_RequestFailureIsDefinedAndObservable(t *testing.T) {
 	// 6. The subscription mutex is released — a second run proceeds (and fails
 	//    the same way) rather than deadlocking.
 	_, secondErr := NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, secondErr)
+	require.ErrorIs(t, secondErr, ErrContactSyncUnreachable)
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
 	assert.Equal(t, 2, reloaded.ConsecutiveFailures, "the second failed run must also be counted")
 }
@@ -140,7 +141,7 @@ func TestCalendarSync_RequestFailureIsDefinedAndObservable(t *testing.T) {
 	t.Cleanup(func() { faults.Disarm(faultCalendarSyncRequest) })
 
 	_, syncErr := NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrCalendarUnreachable)
 
 	var reloaded models.CalendarSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
@@ -232,7 +233,7 @@ func TestContactSync_PermanentAuthFailureIsTerminal(t *testing.T) {
 	require.NoError(t, db.Create(sub).Error)
 
 	_, syncErr := NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrContactSyncUnauthorized)
 
 	var reloaded models.ContactSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
@@ -249,7 +250,7 @@ func TestContactSync_PermanentAuthFailureIsTerminal(t *testing.T) {
 	// terminal entry time is frozen — it answers "when did this stop working".
 	clk.Advance(10 * time.Millisecond)
 	_, syncErr = NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrContactSyncUnauthorized)
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
 	assert.Equal(t, entered, *reloaded.TerminalFailureAt, "terminal entry time must not move on a later permanent run")
 	assert.Equal(t, 2, reloaded.ConsecutiveFailures)
@@ -272,7 +273,7 @@ func TestCalendarSync_PermanentFailureStopsScheduledRetries(t *testing.T) {
 	require.NoError(t, db.Create(sub).Error)
 
 	_, syncErr := NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrCalendarUnauthorized)
 	var reloaded models.CalendarSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
 	require.NotNil(t, reloaded.TerminalFailureAt)
@@ -308,7 +309,7 @@ func TestCalendarSync_TerminalStateClearsOnRecovery(t *testing.T) {
 	require.NoError(t, db.Create(sub).Error)
 
 	_, syncErr := NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrCalendarUnauthorized)
 	var reloaded models.CalendarSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
 	require.NotNil(t, reloaded.TerminalFailureAt)
@@ -343,7 +344,7 @@ func TestContactSync_TransientFailureIsNotTerminal(t *testing.T) {
 	require.NoError(t, db.Create(sub).Error)
 
 	_, syncErr := NewContactSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, syncErr)
+	require.ErrorIs(t, syncErr, ErrContactSyncUnreachable)
 
 	var reloaded models.ContactSubscription
 	require.NoError(t, db.First(&reloaded, sub.ID).Error)
@@ -384,7 +385,7 @@ func TestSync_HungRemoteIsBoundedByContext(t *testing.T) {
 
 	select {
 	case err := <-done:
-		require.Error(t, err, "a hung remote must surface as an error once the deadline passes")
+		require.ErrorIs(t, err, ErrContactSyncUnreachable, "a hung remote must surface as a classified error once the deadline passes")
 		assert.Less(t, time.Since(start), 10*time.Second, "the sync must not outlive its context by much")
 	case <-time.After(15 * time.Second):
 		t.Fatal("SyncSubscription ignored its context deadline against a hung remote")

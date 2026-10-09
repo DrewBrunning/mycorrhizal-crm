@@ -205,7 +205,7 @@ func TestParseVCF_MalformedBlockSkipped(t *testing.T) {
 	// still syntactically a vCard to go-vcard (empty card), so use raw bytes
 	// that don't match the BEGIN/END framing at all to force zero blocks.
 	_, _, _, err := ParseVCF(strings.NewReader("this is not a vcard at all"), db, user.ID)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "VCF file contains no valid vCards")
 }
 
 // TestParseJSContact_BasicImport exercises the new JSContact import path

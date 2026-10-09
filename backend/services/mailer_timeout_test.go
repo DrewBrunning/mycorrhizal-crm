@@ -62,7 +62,7 @@ func TestSendViaSMTP_StalledServerIsBounded(t *testing.T) {
 
 	select {
 	case err := <-done:
-		require.Error(t, err, "a stalled server must produce an error, not a success")
+		require.ErrorContains(t, err, "smtp client:", "a stalled server must produce an error, not a success")
 	case <-time.After(5 * time.Second):
 		t.Fatal("sendViaSMTP did not return — the SMTP conversation is not bounded by smtpDeadline")
 	}
@@ -86,7 +86,7 @@ func TestSendViaSMTP_DialTimeoutIsBounded(t *testing.T) {
 
 	select {
 	case err := <-done:
-		require.Error(t, err)
+		require.ErrorContains(t, err, "smtp dial:")
 	case <-time.After(5 * time.Second):
 		t.Fatal("sendViaSMTP did not return — the connect is not bounded by smtpDialTimeout")
 	}

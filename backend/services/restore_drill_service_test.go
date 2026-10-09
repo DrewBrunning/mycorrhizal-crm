@@ -223,7 +223,7 @@ func TestLiveTablesErrorsOnClosedConnection(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = liveTables(db)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "database is closed")
 }
 
 // TestCountTableRowsErrorsOnUnknownTable pins countTableRows' error-wrapping
@@ -257,7 +257,7 @@ func TestCompareTableCountsErrorsWhenScratchTableMissing(t *testing.T) {
 
 	liveCounts := map[string]int64{"table_that_does_not_exist_in_scratch": 5}
 	_, _, err := compareTableCounts(liveCounts, scratchDB)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "count restored table")
 }
 
 // TestRestoreDrillMinIntervalClampsToMargin mirrors

@@ -255,7 +255,8 @@ func TestCheckDBIntegrityErrorsOnClosedConnection(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	ok, detail, err := checkDBIntegrity(db)
-	require.Error(t, err, "a failed integrity_check query itself (not corruption found) must surface as an error")
+	require.ErrorContains(t, err, "database is closed",
+		"a failed integrity_check query itself (not corruption found) must surface as an error")
 	assert.False(t, ok)
 	assert.Empty(t, detail)
 }

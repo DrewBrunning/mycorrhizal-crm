@@ -50,12 +50,12 @@ func TestParseCSV_HappyPath(t *testing.T) {
 
 func TestParseCSV_EmptyFile(t *testing.T) {
 	_, _, err := ParseCSV(strings.NewReader(""))
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "CSV file is empty")
 }
 
 func TestParseCSV_HeaderOnlyNoDataRows(t *testing.T) {
 	_, _, err := ParseCSV(strings.NewReader("First Name,Email\n"))
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "CSV file has no data rows")
 }
 
 // TestParseCSV_RaggedRows confirms ParseCSV is lenient about inconsistent

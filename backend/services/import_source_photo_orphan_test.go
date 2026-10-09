@@ -96,7 +96,7 @@ func TestSourceImport_PhotoFilesFollowCommittedRows(t *testing.T) {
 		}}
 
 		_, _, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, nil, nil)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "no such table: import_source_links")
 		assert.Empty(t, dirFiles(t, dir))
 	})
 
@@ -118,7 +118,7 @@ func TestSourceImport_PhotoFilesFollowCommittedRows(t *testing.T) {
 				cancel()
 			}
 		})
-		require.Error(t, err)
+		require.ErrorIs(t, err, context.Canceled)
 		assert.Empty(t, dirFiles(t, dir))
 	})
 }
@@ -143,5 +143,5 @@ func TestRemoveContactPhoto(t *testing.T) {
 	assert.Equal(t, []string{"keep.jpg"}, dirFiles(t, dir))
 	// A non-empty directory named like a file makes os.Remove fail with a real error.
 	require.NoError(t, os.MkdirAll(dir+"/sub/inner", 0o750))
-	assert.Error(t, photostore.RemoveContactPhoto(dir, "sub"))
+	assert.ErrorContains(t, photostore.RemoveContactPhoto(dir, "sub"), "directory not empty")
 }

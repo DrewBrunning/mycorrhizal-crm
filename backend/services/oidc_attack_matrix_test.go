@@ -294,7 +294,8 @@ func TestFindOrProvisionUser_TrustEmailOff_UnverifiedEmailWithAutoProvisionDoesN
 	}
 	user, err := FindOrProvisionUser(db, claims, cfg)
 
-	require.Error(t, err, "must not silently provision a colliding account or link to the existing one")
+	require.ErrorContains(t, err, "failed to create OIDC user",
+		"provisioning must abort on the UNIQUE email collision, not silently provision or link")
 	assert.Nil(t, user)
 
 	var count int64

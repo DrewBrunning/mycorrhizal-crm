@@ -75,7 +75,9 @@ func TestRelationVCardTypeTag(t *testing.T) {
 // pair without any test noticing until it hit real data.
 func TestRelationTypeRegistryInversesAreConsistent(t *testing.T) {
 	t.Parallel()
-	for _, token := range KnownRelationTypes() {
+	tokens := KnownRelationTypes()
+	require.NotEmpty(t, tokens)
+	for _, token := range tokens {
 		inverse := InverseRelationType(token)
 		assert.NotEmpty(t, inverse, "token %q has no inverse", token)
 		assert.True(t, IsKnownRelationType(inverse), "token %q's inverse %q is not itself registered", token, inverse)

@@ -444,7 +444,7 @@ func TestRepointRelationshipEdges_FindError(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = repointRelationshipEdges(db, userID, keeper, loser)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "database is closed", "a broken connection must surface, not be swallowed")
 }
 
 // TestRepointRelationshipEdges_DatabaseErrorsPropagate covers the helper's
@@ -465,7 +465,7 @@ func TestRepointRelationshipEdges_DatabaseErrorsPropagate(t *testing.T) {
 			"CREATE TRIGGER block_edge_delete BEFORE DELETE ON relationship_edges BEGIN SELECT RAISE(ABORT, 'blocked'); END;").Error)
 
 		_, err := repointRelationshipEdges(db, userID, keeper, loser)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "blocked", "a failed edge DELETE must surface")
 	})
 
 	t.Run("source update", func(t *testing.T) {
@@ -481,7 +481,7 @@ func TestRepointRelationshipEdges_DatabaseErrorsPropagate(t *testing.T) {
 			"CREATE TRIGGER block_edge_source_update BEFORE UPDATE OF source_id ON relationship_edges BEGIN SELECT RAISE(ABORT, 'blocked'); END;").Error)
 
 		_, err := repointRelationshipEdges(db, userID, keeper, loser)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "blocked", "a failed source_id UPDATE must surface")
 	})
 
 	t.Run("target update", func(t *testing.T) {
@@ -497,7 +497,7 @@ func TestRepointRelationshipEdges_DatabaseErrorsPropagate(t *testing.T) {
 			"CREATE TRIGGER block_edge_target_update BEFORE UPDATE OF target_id ON relationship_edges BEGIN SELECT RAISE(ABORT, 'blocked'); END;").Error)
 
 		_, err := repointRelationshipEdges(db, userID, keeper, loser)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "blocked", "a failed target_id UPDATE must surface")
 	})
 }
 

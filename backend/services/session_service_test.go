@@ -93,7 +93,7 @@ func TestCreateSession_ClosedDBErrors(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = CreateSession(db, uid, sessionCfg(), "", "")
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "database is closed")
 }
 
 func TestIssueSession_PropagatesCreateError(t *testing.T) {
@@ -105,7 +105,7 @@ func TestIssueSession_PropagatesCreateError(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	_, err = IssueSession(db, user, sessionCfg(), "", "")
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "database is closed", "the row-create failure must propagate, not be swallowed")
 }
 
 func TestRevokeSession_SetsRevokedAtOnceAndIsIdempotent(t *testing.T) {
@@ -173,8 +173,8 @@ func TestPurgeExpiredSessions_RemovesExpiredAndLongRevokedKeepsLive(t *testing.T
 	assert.EqualValues(t, 2, countSessions(t, db))
 	require.NoError(t, db.First(&models.Session{}, "id = ?", live).Error)
 	require.NoError(t, db.First(&models.Session{}, "id = ?", recentlyRevoked).Error)
-	assert.Error(t, db.First(&models.Session{}, "id = ?", expired).Error)
-	assert.Error(t, db.First(&models.Session{}, "id = ?", longRevoked).Error)
+	assert.ErrorIs(t, db.First(&models.Session{}, "id = ?", expired).Error, gorm.ErrRecordNotFound)
+	assert.ErrorIs(t, db.First(&models.Session{}, "id = ?", longRevoked).Error, gorm.ErrRecordNotFound)
 }
 
 func TestPurgeExpiredSessionsScheduled_JobLockGuards(t *testing.T) {
@@ -206,7 +206,8 @@ func TestPurgeExpiredSessions_DBErrorIsReturnedNotPanic(t *testing.T) {
 
 	var purgeErr error
 	require.NotPanics(t, func() { purgeErr = PurgeExpiredSessions(db) })
-	require.Error(t, purgeErr, "a failing purge must report the error so the run is recorded as failed")
+	require.ErrorContains(t, purgeErr, "database is closed",
+		"a failing purge must report the underlying delete error so the run is recorded as failed")
 	assert.Contains(t, buf.String(), "session purge: failed to delete expired sessions")
 }
 
