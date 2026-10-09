@@ -303,9 +303,9 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceRelationship,
 			SourceID: bob.VCardUID, AddressKey: AddressNormalizedKey(clarkSt),
 		})
-		require.Error(t, err)
-		require.IsType(t, &apperrors.AppError{}, err)
-		assert.Equal(t, apperrors.ErrCodeConflict, err.(*apperrors.AppError).Code)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrCodeConflict, appErr.Code)
 	})
 	t.Run("address no longer on source", func(t *testing.T) {
 		db := setupAddressSuggestionTestDB(t)
@@ -319,9 +319,9 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceRelationship,
 			SourceID: bob.VCardUID, AddressKey: AddressNormalizedKey(clarkSt),
 		})
-		require.Error(t, err)
-		require.IsType(t, &apperrors.AppError{}, err)
-		assert.Equal(t, apperrors.ErrCodeConflict, err.(*apperrors.AppError).Code)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrCodeConflict, appErr.Code)
 	})
 	t.Run("contact already has it", func(t *testing.T) {
 		db := setupAddressSuggestionTestDB(t)
@@ -334,9 +334,9 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceRelationship,
 			SourceID: bob.VCardUID, AddressKey: AddressNormalizedKey(clarkSt),
 		})
-		require.Error(t, err)
-		require.IsType(t, &apperrors.AppError{}, err)
-		assert.Equal(t, apperrors.ErrCodeConflict, err.(*apperrors.AppError).Code)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrCodeConflict, appErr.Code)
 	})
 	t.Run("household membership ended", func(t *testing.T) {
 		db := setupAddressSuggestionTestDB(t)
@@ -349,9 +349,9 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceHousehold,
 			SourceID: household.ID, AddressKey: AddressNormalizedKey(clarkSt),
 		})
-		require.Error(t, err)
-		require.IsType(t, &apperrors.AppError{}, err)
-		assert.Equal(t, apperrors.ErrCodeConflict, err.(*apperrors.AppError).Code)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrCodeConflict, appErr.Code)
 	})
 	t.Run("foreign contact rejected", func(t *testing.T) {
 		db := setupAddressSuggestionTestDB(t)
@@ -364,8 +364,8 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 			ContactVCardUID: bob.VCardUID, SourceKind: addressSuggestionSourceRelationship,
 			SourceID: alice.VCardUID, AddressKey: AddressNormalizedKey(clarkSt),
 		})
-		require.Error(t, err)
-		require.IsType(t, &apperrors.AppError{}, err)
-		assert.Equal(t, apperrors.ErrCodeNotFound, err.(*apperrors.AppError).Code)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 	})
 }

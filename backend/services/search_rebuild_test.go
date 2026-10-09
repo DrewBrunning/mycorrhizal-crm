@@ -274,7 +274,7 @@ func TestRebuildSearchIndex_InterruptionLeavesOldIndexIntact(t *testing.T) {
 	}))
 
 	_, err = RebuildSearchIndexReport(db)
-	require.Error(t, err, "the injected failure must surface")
+	require.ErrorContains(t, err, "rebuild search index (activities_fts)", "the injected failure must surface")
 
 	require.NoError(t, db.Callback().Raw().Remove(cbName))
 

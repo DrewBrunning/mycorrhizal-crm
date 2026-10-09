@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -55,7 +54,7 @@ func TestRetryJobLockOnBusy(t *testing.T) {
 		{name: "busy then success is retried", attempts: []error{errLockBusy, nil}, wantCall: 2},
 		{name: "busy spelled sqlite_busy only is retried", attempts: []error{errors.New("SQLITE_BUSY"), nil}, wantCall: 2},
 		{name: "busy then success after several retries", attempts: []error{errLockBusy, errLockBusy, nil}, wantCall: 3},
-		{name: "sustained busy is bounded and surfaced", attempts: []error{errLockBusy}, wantErr: "sqlite_busy", wantCall: jobLockBusyMaxAttempts},
+		{name: "sustained busy is bounded and surfaced", attempts: []error{errLockBusy}, wantErr: "SQLITE_BUSY", wantCall: jobLockBusyMaxAttempts},
 		{name: "non-busy error is not retried", attempts: []error{boom}, wantErr: "boom", wantCall: 1},
 		{name: "dedup sentinel is not retried", attempts: []error{errJobRanTooRecently}, wantErr: errJobRanTooRecently.Error(), wantCall: 1},
 	}
@@ -74,8 +73,7 @@ func TestRetryJobLockOnBusy(t *testing.T) {
 			if tt.wantErr == "" {
 				assert.NoError(t, got)
 			} else {
-				require.Error(t, got)
-				assert.Contains(t, strings.ToLower(got.Error()), strings.ToLower(tt.wantErr))
+				require.ErrorContains(t, got, tt.wantErr)
 			}
 			assert.Equal(t, tt.wantCall, calls, "attempt() invocation count")
 		})
@@ -127,7 +125,7 @@ func TestReleaseJobLock_SustainedBusyIsBounded(t *testing.T) {
 	seen := failUpdatesWithBusy(t, db, jobLockBusyMaxAttempts)
 
 	err = releaseJobLock(db, job, true)
-	require.Error(t, err, "a sustained busy must be surfaced, not swallowed")
+	require.ErrorContains(t, err, "database is locked", "a sustained busy must be surfaced, not swallowed")
 	assert.True(t, isSQLiteBusy(err))
 	assert.Equal(t, int32(jobLockBusyMaxAttempts), atomic.LoadInt32(seen),
 		"no more attempts than the bounded maximum")

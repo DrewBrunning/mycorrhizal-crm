@@ -122,7 +122,7 @@ func TestSyncSubscription_OversizedCalendarResponse_RejectedNotSilentlyAccepted(
 	sub := newTestSubscription(t, db, cfg, user.ID, server.URL+"/cal.ics", "", "")
 
 	_, err := NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, err, "an oversized calendar response must not be silently accepted")
+	require.ErrorIs(t, err, ErrCalendarTooLarge, "an oversized calendar response must not be silently accepted")
 
 	var count int64
 	require.NoError(t, db.Model(&models.Activity{}).Where("user_id = ?", user.ID).Count(&count).Error)

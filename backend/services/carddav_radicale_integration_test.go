@@ -567,7 +567,8 @@ func TestCardDAVReferenceServer_RoundTrip(t *testing.T) {
 
 // TestCardDAVRadicale_RoundTrip keeps the historical name so the pre-#681
 // command line (`go test -run TestCardDAVRadicale`) keeps working; it is the
-// same server-generic test with the Radicale default layout.
+// same server-generic test with the Radicale default layout. It has no
+// assertions of its own — it delegates to the asserting helper below.
 func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 	TestCardDAVReferenceServer_RoundTrip(t)
 }

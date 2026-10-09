@@ -517,11 +517,11 @@ func TestCredentialCryptoRoundTrip(t *testing.T) {
 
 	// A different key cannot decrypt.
 	_, err = DecryptCredential("another-secret-key-that-is-32-chars", mustEncrypt(t, secret, "value"))
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "failed to decrypt stored credential")
 
 	// Corrupted ciphertext fails cleanly.
 	_, err = DecryptCredential(secret, "not-base64!!")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, "stored credential is corrupted")
 }
 
 func mustEncrypt(t *testing.T, secret, value string) string {

@@ -75,6 +75,7 @@ func TestScopesHaveReasons(t *testing.T) {
 // an empty exclude list (whole-package scope) instead of failing loudly.
 func TestScopedPackagesExist(t *testing.T) {
 	root := findBackendRoot(t)
+	require.NotEmpty(t, Scopes)
 	for _, s := range Scopes {
 		t.Run(s.Name, func(t *testing.T) {
 			info, err := os.Stat(filepath.Join(root, s.PackageDir))

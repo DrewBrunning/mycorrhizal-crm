@@ -72,7 +72,9 @@ func TestSupportedSurfaceMatchesCorrespondenceOracle(t *testing.T) {
 		supported[f] = true
 	}
 
-	for _, row := range correspondence.Load() {
+	rows := correspondence.Load()
+	require.NotEmpty(t, rows)
+	for _, row := range rows {
 		if !strings.HasPrefix(row.NeutralPath, "Card.") {
 			continue
 		}
@@ -130,6 +132,7 @@ func TestRecord_ExercisesEverySupportedField(t *testing.T) {
 			mu.Unlock()
 		}
 	}))
+	require.NotEmpty(t, SupportedCardFields)
 	for _, f := range SupportedCardFields {
 		require.True(t, seen[f], "generated records never populated supported card field %q", f)
 	}
@@ -232,6 +235,7 @@ func isASCII(s string) bool {
 func TestRecords_UIDsAreDistinct(t *testing.T) {
 	t.Run("distinct", rapid.MakeCheck(func(t *rapid.T) {
 		recs := Records(t, 8)
+		require.Len(t, recs, 8)
 		seen := map[string]bool{}
 		for _, r := range recs {
 			if r.Card.UID == "" {

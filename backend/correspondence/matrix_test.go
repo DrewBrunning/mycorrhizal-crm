@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // committedMatrixRel is the generated artifact, relative to this package
@@ -78,6 +80,8 @@ func TestMatrixCoversEveryCorrespondenceRow(t *testing.T) {
 	t.Parallel()
 	table := ByConcept() // panics on a duplicate concept_id
 	entries := Build()
+	require.NotEmpty(t, entries)
+	require.NotEmpty(t, table)
 
 	seen := make(map[string]bool, len(entries))
 	for _, e := range entries {
@@ -208,7 +212,9 @@ func TestBucketInvariants(t *testing.T) {
 // TestEveryCellHasABucket guards against an empty Bucket leaking into the doc.
 func TestEveryCellHasABucket(t *testing.T) {
 	t.Parallel()
-	for _, e := range Build() {
+	entries := Build()
+	require.NotEmpty(t, entries)
+	for _, e := range entries {
 		for f, c := range e.Cells {
 			if c.Bucket == "" {
 				t.Errorf("%q/%s has no bucket", e.ConceptID, f)
@@ -225,7 +231,9 @@ func TestEveryCellHasABucket(t *testing.T) {
 // differs.
 func TestCardDAVColumnTracksNegotiation(t *testing.T) {
 	t.Parallel()
-	for _, e := range Build() {
+	entries := Build()
+	require.NotEmpty(t, entries)
+	for _, e := range entries {
 		v4 := e.Cells[FormatVCard4]
 		v3 := e.Cells[FormatVCard3]
 		cd := e.Cells[FormatCardDAV]
@@ -291,7 +299,9 @@ func TestLossReportCorrespondence(t *testing.T) {
 // fidelity loss in DATA-02 — they are deliberate decisions, not losses.
 func TestPolicyExclusionsProduceNoLossReport(t *testing.T) {
 	t.Parallel()
-	for _, lr := range LossReports() {
+	reports := LossReports()
+	require.NotEmpty(t, reports)
+	for _, lr := range reports {
 		switch lr.Concept {
 		case "crm.archived", "crm.is_favorite", "crm.notes", "crm.activities", "crm.reminders":
 			t.Errorf("policy exclusion %s leaked into the loss reports", lr.Concept)
