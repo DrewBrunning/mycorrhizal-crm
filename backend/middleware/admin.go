@@ -1,8 +1,7 @@
 package middleware
 
 import (
-	"net/http"
-
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -15,21 +14,18 @@ func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDValue, exists := c.Get("userID")
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authentication required"))
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid user ID"))
 			return
 		}
 
 		if isAPIToken, _ := c.Get("isAPIToken"); isAPIToken == true {
-			c.JSON(http.StatusForbidden, gin.H{"error": "API tokens cannot access admin endpoints"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrForbidden("API tokens cannot access admin endpoints"))
 			return
 		}
 
@@ -37,14 +33,12 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		var user models.User
 		if err := db.Select("is_admin").First(&user, userID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("User not found"))
 			return
 		}
 
 		if !user.IsAdmin {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
-			c.Abort()
+			apperrors.AbortWithError(c, apperrors.ErrForbidden("Admin access required"))
 			return
 		}
 

@@ -152,8 +152,8 @@ func TestAuthMiddleware_JWTExpiryOnInjectedClock(t *testing.T) {
 
 	h.clk.Set(exp)
 	w := jwtRequest(h.router, tok)
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "Token expired")
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Equal(t, "Token expired", mwErrorEnvelope(t, w)["message"])
 }
 
 // iat in the clock's future and nbf not yet reached are rejected, evaluated on

@@ -100,6 +100,7 @@ func TestAuthMiddleware_RejectsPurposeScopedTokens(t *testing.T) {
 
 			assert.Equal(t, http.StatusUnauthorized, w.Code,
 				"a token carrying purpose=%q must never authenticate a session route", purpose)
+			assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 			assert.Equal(t, "Invalid token", rejectedBody(t, w))
 		})
 	}
@@ -131,9 +132,8 @@ func TestAuthMiddleware_JWTRejectedAfterTokenVersionBump(t *testing.T) {
 	w := jwtRequest(router, token)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	var body map[string]string
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-	assert.Equal(t, "Session expired, please sign in again", body["error"])
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Equal(t, "Session expired, please sign in again", mwErrorEnvelope(t, w)["message"])
 }
 
 // Tokens minted before token versioning existed carry no such claim and must be
@@ -151,6 +151,7 @@ func TestAuthMiddleware_JWTWithoutTokenVersionClaimRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
@@ -165,6 +166,7 @@ func TestAuthMiddleware_JWTForMissingUserRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
@@ -185,6 +187,7 @@ func TestAuthMiddleware_JWTWithoutSidClaimRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 	assert.Equal(t, "Invalid token", rejectedBody(t, w))
 }
 
@@ -205,9 +208,8 @@ func TestAuthMiddleware_JWTWithUnknownSidRejected(t *testing.T) {
 	}))
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	var body map[string]string
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-	assert.Equal(t, "Session expired, please sign in again", body["error"])
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Equal(t, "Session expired, please sign in again", mwErrorEnvelope(t, w)["message"])
 }
 
 // Issue #866: the logout path revokes the session row; the very next request
@@ -234,9 +236,8 @@ func TestAuthMiddleware_JWTRejectedAfterSessionRevoked(t *testing.T) {
 
 	w := jwtRequest(router, token)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	var body map[string]string
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-	assert.Equal(t, "Session expired, please sign in again", body["error"])
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Equal(t, "Session expired, please sign in again", mwErrorEnvelope(t, w)["message"])
 }
 
 // Issue #866: a session unused for longer than SESSION_IDLE_TIMEOUT_HOURS is
@@ -259,7 +260,7 @@ func TestAuthMiddleware_JWTRejectedAfterIdleTimeout(t *testing.T) {
 
 	stale := seedSession(t, db, user.ID, time.Now().Add(-2*time.Hour))
 	wStale := jwtRequest(router, signJWT(t, claims(stale)))
-	assert.Equal(t, http.StatusUnauthorized, wStale.Code)
+	assertMWErrorCode(t, wStale, http.StatusUnauthorized, "UNAUTHORIZED")
 	assert.Equal(t, "Session expired, please sign in again", rejectedBody(t, wStale))
 
 	fresh := seedSession(t, db, user.ID, time.Now().Add(-30*time.Minute))
