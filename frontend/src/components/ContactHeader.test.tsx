@@ -582,3 +582,100 @@ test('no "Subscribe via feed" action without a handler (#1276)', () => {
   fireEvent.click(screen.getByLabelText('Actions'));
   expect(screen.queryByText('Subscribe via feed')).not.toBeInTheDocument();
 });
+
+// --- "Add" button paths (the Enter-key path is covered above) --------------
+
+test('clicking the circles Add button calls onAddCircle with a fresh circle', () => {
+  mockMatchMedia(false);
+  const onAddCircle = vi.fn();
+  renderHeader({ onAddCircle });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  const input = screen.getByPlaceholderText('New circle name...');
+  fireEvent.change(input, { target: { value: 'Book Club' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+  expect(onAddCircle).toHaveBeenCalledWith({
+    id: '',
+    created_at: '',
+    updated_at: '',
+    name: 'Book Club',
+  });
+  expect(input).toHaveValue('');
+});
+
+test('clicking the tags Add button calls onAddTag with a fresh tag', () => {
+  mockMatchMedia(false);
+  const onAddTag = vi.fn();
+  renderHeader({ onAddTag });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  const input = screen.getByPlaceholderText('New tag...');
+  fireEvent.change(input, { target: { value: 'Neighbor' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+  expect(onAddTag).toHaveBeenCalledWith({
+    id: '',
+    created_at: '',
+    updated_at: '',
+    name: 'Neighbor',
+  });
+  expect(input).toHaveValue('');
+});
+
+// --- export menu branches (wide layout) ------------------------------------
+
+test('wide layout: choosing vCard 4.0 in the export menu reports the format', async () => {
+  mockMatchMedia(false);
+  const onExportContact = vi.fn();
+  renderHeader({ onExportContact });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
+  fireEvent.click(await screen.findByText('vCard 4.0'));
+
+  expect(onExportContact).toHaveBeenCalledWith('vcf4');
+});
+
+test('wide layout: choosing JSContact in the export menu reports the format', async () => {
+  mockMatchMedia(false);
+  const onExportContact = vi.fn();
+  renderHeader({ onExportContact });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
+  fireEvent.click(await screen.findByText('JSContact'));
+
+  expect(onExportContact).toHaveBeenCalledWith('jscontact');
+});
+
+// --- compact overflow menu action handlers ---------------------------------
+
+test('compact overflow menu reports the Merge and Prep-view clicks', () => {
+  mockMatchMedia(true);
+  const onMergeContact = vi.fn();
+  const onPrepView = vi.fn();
+  renderHeader({ onMergeContact, onPrepView });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('Merge'));
+  expect(onMergeContact).toHaveBeenCalledTimes(1);
+
+  // Selecting a menu item closes the menu; reopen it for the next action.
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('Prep view'));
+  expect(onPrepView).toHaveBeenCalledTimes(1);
+});
+
+test('compact overflow menu reports the Share and export clicks', () => {
+  mockMatchMedia(true);
+  const onShareContact = vi.fn();
+  const onExportContact = vi.fn();
+  renderHeader({ onShareContact, onExportContact });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('Share Contact'));
+  expect(onShareContact).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('JSContact'));
+  expect(onExportContact).toHaveBeenCalledWith('jscontact');
+});

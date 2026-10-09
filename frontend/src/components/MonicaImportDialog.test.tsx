@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { connectMonica } from '../api/monicaImport';
+import { connectMonica, startMonicaFetch } from '../api/monicaImport';
 import MonicaImportDialog from './MonicaImportDialog';
 
 afterEach(cleanup);
@@ -73,4 +73,68 @@ test('surfaces a connect failure inline without leaving the connect step', async
 
   expect(await screen.findByText('Monica rejected the API token')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument();
+});
+
+test('Cancel closes the dialog through the reset path', () => {
+  const onClose = vi.fn();
+  render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test('the include-relationships switch toggles off and on', () => {
+  renderOpen();
+
+  const toggle = screen.getByRole('switch', {
+    name: 'Include relationships between contacts',
+  });
+  expect(toggle).toBeChecked();
+
+  fireEvent.click(toggle);
+  expect(toggle).not.toBeChecked();
+
+  fireEvent.click(toggle);
+  expect(toggle).toBeChecked();
+});
+
+test('the include-extras switch toggles', () => {
+  renderOpen();
+
+  const toggle = screen.getByRole('switch', { name: 'Include calls, tasks, gifts and debts' });
+  expect(toggle).toBeChecked();
+  fireEvent.click(toggle);
+  expect(toggle).not.toBeChecked();
+});
+
+test('Start import kicks off the fetch for the connected session', async () => {
+  const fetchMock = vi.mocked(startMonicaFetch);
+  fetchMock.mockClear();
+  connectMock.mockResolvedValue({
+    session_id: 'sess-9',
+    totals: {
+      contacts: 1,
+      activities: 0,
+      notes: 0,
+      reminders: 0,
+      calls: 0,
+      tasks: 0,
+      gifts: 0,
+      debts: 0,
+    },
+    estimated_fetch_seconds: 60,
+  });
+
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  await screen.findByText('Found 1 contacts, 0 activities and 0 notes.');
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('sess-9', expect.anything()));
 });

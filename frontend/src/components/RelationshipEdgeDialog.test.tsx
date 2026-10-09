@@ -113,3 +113,50 @@ test('linked mode shows a loading spinner in the contact search while contacts a
   resolveFetch({ contacts: [bobContact()], next_cursor: '', limit: 100 });
   await vi.waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
 });
+
+// --- validation error states ------------------------------------------------
+
+test('saving without picking a relationship type shows the required-type error', async () => {
+  renderDialog();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Relationship type is required')).toBeInTheDocument();
+});
+
+test('manual entry with a type but no name shows the name-required error', async () => {
+  renderDialog();
+
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[0]);
+  fireEvent.click(await screen.findByRole('option', { name: 'Parent' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Name is required')).toBeInTheDocument();
+});
+
+test('linked mode with no contact selected shows the contact-required error', async () => {
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [], next_cursor: '', limit: 100 });
+  renderDialog();
+
+  fireEvent.click(screen.getByLabelText('Link to existing contact'));
+  // Linked mode adds the contact-search autocomplete as the first combobox;
+  // the relationship-type select is the second.
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[1]);
+  fireEvent.click(await screen.findByRole('option', { name: 'Parent' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Please select a contact')).toBeInTheDocument();
+});
+
+test('a rejected save surfaces the error inside the dialog', async () => {
+  const onSave = vi.fn().mockImplementation(() => Promise.reject(new Error('backend exploded')));
+  renderDialog({ onSave });
+
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[0]);
+  fireEvent.click(await screen.findByRole('option', { name: 'Parent' }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Bob' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  // The message appears both as the inline error and the snackbar.
+  expect(await screen.findAllByText('backend exploded')).not.toHaveLength(0);
+});

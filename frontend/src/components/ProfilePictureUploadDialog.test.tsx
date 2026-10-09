@@ -258,3 +258,32 @@ test('Cancel resets the dialog state and calls onClose', async () => {
 
   expect(onClose).toHaveBeenCalledTimes(1);
 });
+
+test('pressing Enter in the URL field fetches the image', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/png' }),
+      blob: async () => new Blob(['fake-image-bytes'], { type: 'image/png' }),
+    })),
+  );
+  renderDialog();
+
+  const input = screen.getByPlaceholderText('Paste image URL...');
+  fireEvent.change(input, { target: { value: 'https://example.com/photo.png' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  await waitFor(() => expect(screen.getByLabelText('Zoom')).toBeInTheDocument());
+});
+
+test('pressing Enter with an empty URL is a no-op', () => {
+  renderDialog();
+
+  const input = screen.getByPlaceholderText('Paste image URL...');
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  // Still on the file-selection view; no crop UI mounted and no error shown.
+  expect(screen.queryByLabelText('Zoom')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

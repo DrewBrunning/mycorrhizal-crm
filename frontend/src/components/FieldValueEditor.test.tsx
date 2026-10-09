@@ -114,3 +114,89 @@ test('boolean scalar renders a Switch', () => {
   renderEditor(boolDef, true);
   expect(screen.getByRole('switch')).toBeChecked();
 });
+
+test('boolean scalar reports the toggled value through onChange', () => {
+  const onChange = vi.fn();
+  const boolDef = def({ type: 'boolean' });
+  renderEditor(boolDef, false, onChange);
+
+  fireEvent.click(screen.getByRole('switch'));
+
+  expect(onChange).toHaveBeenCalledWith(true);
+});
+
+test('number scalar renders a numeric value field and reports input', () => {
+  const onChange = vi.fn();
+  renderEditor(def({ type: 'number' }), '42', onChange);
+
+  const input = screen.getByLabelText('Value');
+  expect(input).toHaveAttribute('type', 'number');
+  fireEvent.change(input, { target: { value: '7' } });
+  expect(onChange).toHaveBeenCalledWith('7');
+});
+
+test('date scalar shows the birthday-format helper text', () => {
+  renderEditor(def({ type: 'date' }), '');
+
+  expect(screen.getByLabelText('Value')).toBeInTheDocument();
+  expect(screen.getByText('Year is optional. Check Settings for date format.')).toBeInTheDocument();
+});
+
+test('datetime scalar shows the datetime-format helper text', () => {
+  renderEditor(def({ type: 'datetime' }), '');
+
+  expect(screen.getByText('Format: 2024-06-01T12:00:00Z')).toBeInTheDocument();
+});
+
+test('email scalar renders a type=email field and reports input', () => {
+  const onChange = vi.fn();
+  renderEditor(def({ type: 'email' }), 'a@b.com', onChange);
+
+  const input = screen.getByLabelText('Value');
+  expect(input).toHaveAttribute('type', 'email');
+  fireEvent.change(input, { target: { value: 'c@d.com' } });
+  expect(onChange).toHaveBeenCalledWith('c@d.com');
+});
+
+test('phone scalar renders a type=tel field', () => {
+  renderEditor(def({ type: 'phone' }), '');
+  expect(screen.getByLabelText('Value')).toHaveAttribute('type', 'tel');
+});
+
+test('uri scalar renders a type=url field', () => {
+  renderEditor(def({ type: 'uri' }), '');
+  expect(screen.getByLabelText('Value')).toHaveAttribute('type', 'url');
+});
+
+test('text scalar renders a multiline value field', () => {
+  renderEditor(def({ type: 'text' }), 'line one');
+
+  const input = screen.getByLabelText('Value');
+  expect(input.tagName).toBe('TEXTAREA');
+  expect(input).toHaveValue('line one');
+});
+
+test('unknown/string scalar falls back to the default text editor and reports input', () => {
+  const onChange = vi.fn();
+  renderEditor(def({ type: 'string' }), '', onChange);
+
+  const input = screen.getByLabelText('Value');
+  fireEvent.change(input, { target: { value: 'notes' } });
+  expect(onChange).toHaveBeenCalledWith('notes');
+});
+
+test('date scalar reports input through onChange', () => {
+  const onChange = vi.fn();
+  renderEditor(def({ type: 'date' }), '', onChange);
+
+  fireEvent.change(screen.getByLabelText('Value'), { target: { value: '01.01.2000' } });
+  expect(onChange).toHaveBeenCalledWith('01.01.2000');
+});
+
+test('text scalar reports input through onChange', () => {
+  const onChange = vi.fn();
+  renderEditor(def({ type: 'text' }), '', onChange);
+
+  fireEvent.change(screen.getByLabelText('Value'), { target: { value: 'a paragraph' } });
+  expect(onChange).toHaveBeenCalledWith('a paragraph');
+});
