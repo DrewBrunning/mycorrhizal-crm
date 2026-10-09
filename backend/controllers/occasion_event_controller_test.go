@@ -447,7 +447,7 @@ func TestOccasionEvent_RealMigratedSchema(t *testing.T) {
 	// inserted directly (the handler's own 409 check is exercised elsewhere).
 	require.NoError(t, db.Create(&models.OccasionEventAttendee{UserID: user.ID, EventID: eventID, EntityID: contact.VCardUID}).Error)
 	dup := db.Create(&models.OccasionEventAttendee{UserID: user.ID, EventID: eventID, EntityID: contact.VCardUID})
-	require.Error(t, dup.Error, "(event_id, entity_id) must be unique in the real schema")
+	require.ErrorContains(t, dup.Error, "UNIQUE constraint failed", "(event_id, entity_id) must be unique in the real schema")
 
 	// A stale attendee row referencing a removed contact does not block
 	// re-adding the same card once removed (hard delete, no lingering unique

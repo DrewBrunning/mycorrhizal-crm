@@ -138,8 +138,8 @@ func TestRun_ForceRefusesWithoutExplicitConfirmation(t *testing.T) {
 	markDirty(t, path)
 	t.Setenv("SQLITE_DB_PATH", path)
 
-	require.Error(t, runWithStdin("force", strings.NewReader("nope\n")))
-	require.Error(t, runWithStdin("force", strings.NewReader("\n")))
+	require.ErrorContains(t, runWithStdin("force", strings.NewReader("nope\n")), "aborted: force requires explicit confirmation")
+	require.ErrorContains(t, runWithStdin("force", strings.NewReader("\n")), "aborted: force requires explicit confirmation")
 
 	latest, err := database.LatestMigrationVersion()
 	require.NoError(t, err)

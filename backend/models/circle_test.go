@@ -59,7 +59,9 @@ func TestCircleMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
 	require.NoError(t, db.Create(&first).Error)
 
 	second := CircleMember{CircleID: circle.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID}
-	assert.Error(t, db.Create(&second).Error, "the same contact must not be addable to the same circle twice")
+	require.ErrorContains(t, db.Create(&second).Error,
+		"UNIQUE constraint failed: circle_members.circle_id, circle_members.member_vcard_uid",
+		"the same contact must not be addable to the same circle twice")
 }
 
 // The same contact must still be addable to two DIFFERENT circles — the

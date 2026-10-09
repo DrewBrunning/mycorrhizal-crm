@@ -1,6 +1,7 @@
 package pragmacheck
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -134,7 +135,7 @@ func TestCheckTree_BackendUnreadableDirPropagatesError(t *testing.T) {
 	defer os.Chmod(blocked, 0o755) //nolint:errcheck // best-effort cleanup so t.TempDir can remove it
 
 	_, err := CheckTree(filepath.Join(root, "backend"), "")
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrPermission, "an unreadable subdirectory must surface a permission error, not be treated as absent")
 }
 
 func TestCheckTree_BackendUnreadableFilePropagatesError(t *testing.T) {
@@ -148,7 +149,7 @@ func TestCheckTree_BackendUnreadableFilePropagatesError(t *testing.T) {
 	defer os.Chmod(path, 0o644) //nolint:errcheck // best-effort cleanup
 
 	_, err := CheckTree(filepath.Join(root, "backend"), "")
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrPermission, "an unreadable file must surface a permission error, not be silently skipped")
 }
 
 func TestCheckTree_FrontendUnreadableDirPropagatesError(t *testing.T) {
@@ -162,7 +163,7 @@ func TestCheckTree_FrontendUnreadableDirPropagatesError(t *testing.T) {
 	defer os.Chmod(blocked, 0o755) //nolint:errcheck // best-effort cleanup
 
 	_, err := CheckTree("", filepath.Join(root, "frontend", "src"))
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrPermission, "an unreadable frontend subdirectory must surface a permission error, not be treated as absent")
 }
 
 func TestCheckTree_FrontendUnreadableFilePropagatesError(t *testing.T) {
@@ -176,5 +177,5 @@ func TestCheckTree_FrontendUnreadableFilePropagatesError(t *testing.T) {
 	defer os.Chmod(path, 0o644) //nolint:errcheck // best-effort cleanup
 
 	_, err := CheckTree("", filepath.Join(root, "frontend", "src"))
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrPermission, "an unreadable frontend file must surface a permission error, not be silently skipped")
 }

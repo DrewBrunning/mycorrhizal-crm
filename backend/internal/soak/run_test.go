@@ -17,7 +17,7 @@ func TestParseFaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []Fault{FaultGoroutines, FaultHeap, FaultWAL}, fs)
 	_, err = ParseFaults("goroutines,bogus")
-	assert.Error(t, err)
+	require.ErrorContains(t, err, `unknown fault "bogus"`)
 }
 
 func TestInjector_EachFaultLeaksAndCloseReleases(t *testing.T) {
@@ -36,12 +36,12 @@ func TestInjector_EachFaultLeaksAndCloseReleases(t *testing.T) {
 
 func TestInjector_DBConnsNeedsADatabase(t *testing.T) {
 	_, err := newInjector(context.Background(), []Fault{FaultDBConns}, nil)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, `fault "dbconns" needs an in-process database handle`)
 }
 
 func TestInjector_WALNeedsADatabase(t *testing.T) {
 	_, err := newInjector(context.Background(), []Fault{FaultWAL}, nil)
-	assert.Error(t, err)
+	require.ErrorContains(t, err, `fault "wal" needs an in-process database handle`)
 }
 
 func TestRun_RejectsBadConfig(t *testing.T) {

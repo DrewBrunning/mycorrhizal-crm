@@ -61,5 +61,5 @@ func TestLoadSnapshot_InitializesRelationshipMapForEmptySnapshot(t *testing.T) {
 func TestLoadSnapshot_RejectsMalformedJSON(t *testing.T) {
 	t.Parallel()
 	_, err := LoadSnapshot(strings.NewReader(`{not json`))
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "monica: parsing snapshot")
 }

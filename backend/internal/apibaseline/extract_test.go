@@ -119,7 +119,7 @@ func TestSchemaKey(t *testing.T) {
 func TestLoadRejectsBrokenSpec(t *testing.T) {
 	t.Run("missing file", func(t *testing.T) {
 		_, err := Load("/nonexistent/openapi.yaml")
-		require.Error(t, err)
+		require.ErrorContains(t, err, "loading /nonexistent/openapi.yaml")
 	})
 
 	t.Run("invalid document", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestLoadRejectsBrokenSpec(t *testing.T) {
 		// `info`/`paths`) — LoadFromFile parses it, doc.Validate rejects it.
 		require.NoError(t, os.WriteFile(path, []byte("some: [valid, yaml]\nbut: not-openapi\n"), 0o600))
 		_, err := Load(path)
-		require.Error(t, err)
+		require.ErrorContains(t, err, path+" failed validation")
 	})
 }
 
@@ -145,7 +145,7 @@ func TestParseRejectsWrongVersion(t *testing.T) {
 // TestReadRejectsMissingBaseline pins the Read error path.
 func TestReadRejectsMissingBaseline(t *testing.T) {
 	_, err := Read("/nonexistent/repo-root")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "reading baseline")
 }
 
 // TestCheckSupersetEnumNarrowingOnField pins the per-field enum shrink check

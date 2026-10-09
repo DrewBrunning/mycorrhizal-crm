@@ -35,7 +35,7 @@ func TestStoredPathRejectsTraversal(t *testing.T) {
 	dir := t.TempDir()
 	for _, bad := range []string{"..", "../evil", "a/../evil", "/etc/passwd", "a/b", "..\\evil", ""} {
 		_, err := StoredPath(dir, bad)
-		assert.Error(t, err, "StoredPath must reject %q", bad)
+		assert.ErrorContains(t, err, "attachments: invalid stored name", "StoredPath must reject %q", bad)
 	}
 }
 
@@ -59,7 +59,7 @@ func TestSaveGeneratesDistinctNames(t *testing.T) {
 func TestStoredPathRejectsEmptyDir(t *testing.T) {
 	t.Parallel()
 	_, err := StoredPath("", "some-uuid")
-	assert.Error(t, err, "StoredPath must reject an empty directory")
+	assert.ErrorContains(t, err, "attachments: empty directory", "StoredPath must reject an empty directory")
 }
 
 func TestStoredPathAcceptsBareName(t *testing.T) {
@@ -93,7 +93,7 @@ func TestSaveRejectsInvalidStoredPath(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "ro")
 	require.NoError(t, os.MkdirAll(dir, 0o500))
 	_, err := Save([]byte("data"), dir)
-	assert.Error(t, err, "Save must surface the write failure")
+	assert.ErrorContains(t, err, "attachments: write file", "Save must surface the write failure")
 }
 
 func TestSaveFailsWhenDirIsAFile(t *testing.T) {
@@ -103,13 +103,13 @@ func TestSaveFailsWhenDirIsAFile(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "not-a-dir")
 	require.NoError(t, os.WriteFile(dir, []byte("x"), 0o600))
 	_, err := Save([]byte("data"), dir)
-	assert.Error(t, err, "Save must fail when the directory path is a file")
+	assert.ErrorContains(t, err, "attachments: create directory", "Save must fail when the directory path is a file")
 }
 
 func TestRemoveRejectsInvalidStoredName(t *testing.T) {
 	t.Parallel()
 	err := Remove(t.TempDir(), "../escape.txt")
-	assert.Error(t, err, "Remove must reject a traversal stored name")
+	assert.ErrorContains(t, err, "attachments: invalid stored name", "Remove must reject a traversal stored name")
 }
 
 func TestRemoveFailurePropagates(t *testing.T) {
@@ -127,5 +127,5 @@ func TestRemoveFailurePropagates(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o500))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) // let TempDir's RemoveAll succeed
 	err = Remove(dir, name)
-	assert.Error(t, err, "Remove must propagate a non-IsNotExist removal failure")
+	assert.ErrorContains(t, err, "attachments: remove file", "Remove must propagate a non-IsNotExist removal failure")
 }

@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -158,7 +159,7 @@ func TestProcessAndSavePhoto_EmptyFileReadError(t *testing.T) {
 	fh := newTestFileHeader(t, "photo", "empty.png", []byte{})
 
 	_, _, err := processAndSavePhoto(fh, dir)
-	require.Error(t, err)
+	require.ErrorIs(t, err, io.EOF)
 }
 
 func TestProcessAndSavePhoto_CorruptPNGDecodeError(t *testing.T) {
@@ -169,7 +170,7 @@ func TestProcessAndSavePhoto_CorruptPNGDecodeError(t *testing.T) {
 	fh := newTestFileHeader(t, "photo", "corrupt.png", corrupt)
 
 	_, _, err := processAndSavePhoto(fh, dir)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "png: invalid format")
 }
 
 func TestProcessAndSavePhoto_HEICMagicBytesDetected(t *testing.T) {
@@ -245,7 +246,7 @@ func TestSaveImage_ErrorsWhenParentDirMissing(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 10, 10))
 
 	err := saveImage(path, img)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // --- GetProfilePicture ---

@@ -3,9 +3,11 @@ package httputil
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSafeDialContextRejectsNonPublicAddresses(t *testing.T) {
@@ -49,5 +51,7 @@ func TestSafeDialContextRejectsMalformedAddress(t *testing.T) {
 
 	conn, err := dial(context.Background(), "tcp", "missing-port")
 	assert.Nil(t, conn)
-	assert.Error(t, err)
+	var addrErr *net.AddrError
+	require.True(t, errors.As(err, &addrErr), "want *net.AddrError, got %T: %v", err, err)
+	assert.Equal(t, "missing port in address", addrErr.Err)
 }

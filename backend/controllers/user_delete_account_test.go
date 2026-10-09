@@ -113,7 +113,7 @@ func TestDeleteOwnAccount_Succeeds(t *testing.T) {
 
 	var remaining models.User
 	err = db.Unscoped().First(&remaining, user.ID).Error
-	assert.Error(t, err, "self-deleted user must be hard-deleted")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "self-deleted user must be hard-deleted")
 
 	var contactCount int64
 	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contactCount).Error)
@@ -192,7 +192,7 @@ func TestDeleteOwnAccount_TOTPRequiredWhenEnabled(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	err := db.Unscoped().First(&models.User{}, user.ID).Error
-	assert.Error(t, err, "account must be gone after a correct 2FA proof")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "account must be gone after a correct 2FA proof")
 }
 
 // TestDeleteOwnAccount_SoleAdminOtherUsersRequirePromotion covers issue #972
@@ -253,7 +253,7 @@ func TestDeleteOwnAccount_SoleAdminOtherUsersRequirePromotion(t *testing.T) {
 
 	var deletedAdmin models.User
 	err = db.Unscoped().First(&deletedAdmin, admin.ID).Error
-	assert.Error(t, err, "the sole admin's own account must be deleted once promotion is satisfied")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "the sole admin's own account must be deleted once promotion is satisfied")
 }
 
 // TestDeleteOwnAccount_SoleAdminNoOtherUsersDeletesDirectly is the genuinely
@@ -271,7 +271,7 @@ func TestDeleteOwnAccount_SoleAdminNoOtherUsersDeletesDirectly(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	err = db.Unscoped().First(&models.User{}, admin.ID).Error
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
 // TestDeleteOwnAccount_NotSoleAdminDeletesDirectly: when a peer admin exists,
@@ -289,7 +289,7 @@ func TestDeleteOwnAccount_NotSoleAdminDeletesDirectly(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	err = db.Unscoped().First(&models.User{}, admin1.ID).Error
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
 // TestDeleteOwnAccount_NoAuditEventPersisted pins issue #972 decision 3:
@@ -386,7 +386,7 @@ func TestSoleAdminPromotionCandidates(t *testing.T) {
 		u := seedDeleteAccountUser(t, db4, "canderr", false)
 		require.NoError(t, db4.Exec("DROP TABLE users").Error)
 		_, err := soleAdminPromotionCandidates(db4, u.ID)
-		assert.Error(t, err)
+		assert.ErrorContains(t, err, "no such table")
 	})
 }
 
