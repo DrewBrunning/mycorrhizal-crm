@@ -2,7 +2,7 @@ module mycorrhizal
 
 go 1.26.0
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
@@ -101,7 +101,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.29.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0
 	google.golang.org/protobuf v1.36.11 // indirect

@@ -151,7 +151,7 @@ just by habit:
   A PR that adds a floating-tag `uses:` line does not merge.
 - **Docker base images are pinned by digest**, not just a version tag — every
   `FROM` line in the three Dockerfiles names a `@sha256:…` digest alongside
-  the tag (e.g. `golang:1.27.1-alpine@sha256:…`). `hadolint`
+  the tag (e.g. `golang:1.27.2-alpine@sha256:…`). `hadolint`
   (`.github/workflows/sast.yml`) lints all three Dockerfiles on every
   relevant change and flags an unpinned `FROM`.
 
