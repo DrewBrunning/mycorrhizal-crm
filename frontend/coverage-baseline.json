@@ -39,10 +39,10 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 85.87,
-      "linesTotal": 262,
-      "branches": 73.8,
-      "branchesTotal": 126
+      "lines": 86.19,
+      "linesTotal": 268,
+      "branches": 75.18,
+      "branchesTotal": 133
     },
     "src/ContactSharesPage.tsx": {
       "lines": 95.45,
@@ -51,20 +51,20 @@
       "branchesTotal": 29
     },
     "src/ContactsPage.tsx": {
-      "lines": 87.35,
-      "linesTotal": 174,
-      "branches": 80.95,
-      "branchesTotal": 105
+      "lines": 87.42,
+      "linesTotal": 175,
+      "branches": 81.81,
+      "branchesTotal": 110
     },
     "src/DashboardPage.tsx": {
-      "lines": 72.22,
-      "linesTotal": 144,
+      "lines": 73.79,
+      "linesTotal": 145,
       "branches": 60.63,
       "branchesTotal": 94
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
-      "linesTotal": 109,
+      "linesTotal": 108,
       "branches": 94.23,
       "branchesTotal": 52
     },
@@ -99,9 +99,9 @@
       "branchesTotal": 74
     },
     "src/NotesPage.tsx": {
-      "lines": 63.51,
+      "lines": 79.72,
       "linesTotal": 74,
-      "branches": 80.85,
+      "branches": 85.1,
       "branchesTotal": 47
     },
     "src/OccasionsPage.tsx": {
@@ -131,14 +131,14 @@
     "src/SystemEventsPage.tsx": {
       "lines": 75,
       "linesTotal": 40,
-      "branches": 70.83,
-      "branchesTotal": 48
+      "branches": 72.22,
+      "branchesTotal": 54
     },
     "src/SystemStatusPage.tsx": {
       "lines": 98.91,
       "linesTotal": 92,
-      "branches": 84.74,
-      "branchesTotal": 118
+      "branches": 85.48,
+      "branchesTotal": 124
     },
     "src/UsersPage.tsx": {
       "lines": 91.95,
@@ -256,9 +256,9 @@
     },
     "src/api/contacts.ts": {
       "lines": 99.08,
-      "linesTotal": 219,
-      "branches": 93.31,
-      "branchesTotal": 374
+      "linesTotal": 238,
+      "branches": 94.37,
+      "branchesTotal": 409
     },
     "src/api/contractConformance.ts": {
       "lines": 0,
@@ -585,13 +585,13 @@
       "branchesTotal": 47
     },
     "src/components/AddContactDialog.tsx": {
-      "lines": 87.5,
-      "linesTotal": 120,
-      "branches": 63.04,
-      "branchesTotal": 92
+      "lines": 88.88,
+      "linesTotal": 126,
+      "branches": 68.26,
+      "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
-      "lines": 82.85,
+      "lines": 84.28,
       "linesTotal": 70,
       "branches": 73.52,
       "branchesTotal": 34
@@ -717,7 +717,7 @@
       "branchesTotal": 14
     },
     "src/components/ContactHeader.tsx": {
-      "lines": 66.66,
+      "lines": 80.39,
       "linesTotal": 102,
       "branches": 91.53,
       "branchesTotal": 130
@@ -807,9 +807,9 @@
       "branchesTotal": 8
     },
     "src/components/EditTimelineItemDialog.tsx": {
-      "lines": 71.87,
+      "lines": 78.12,
       "linesTotal": 64,
-      "branches": 74.64,
+      "branches": 78.87,
       "branchesTotal": 71
     },
     "src/components/EditableArrayField.tsx": {
@@ -891,9 +891,9 @@
       "branchesTotal": 11
     },
     "src/components/FieldValueEditor.tsx": {
-      "lines": 69.56,
+      "lines": 93.47,
       "linesTotal": 46,
-      "branches": 53.84,
+      "branches": 80.76,
       "branchesTotal": 26
     },
     "src/components/FileLinksPanel.tsx": {
@@ -910,9 +910,9 @@
     },
     "src/components/GeoPulseSettings.tsx": {
       "lines": 100,
-      "linesTotal": 56,
+      "linesTotal": 51,
       "branches": 94,
-      "branchesTotal": 50
+      "branchesTotal": 44
     },
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 96.61,
@@ -1029,9 +1029,9 @@
       "branchesTotal": 12
     },
     "src/components/MeerkatImportDialog.tsx": {
-      "lines": 66.66,
+      "lines": 93.75,
       "linesTotal": 48,
-      "branches": 80,
+      "branches": 84,
       "branchesTotal": 25
     },
     "src/components/MergeContactsDialog.tsx": {
@@ -1041,9 +1041,9 @@
       "branchesTotal": 121
     },
     "src/components/MonicaImportDialog.tsx": {
-      "lines": 67.39,
+      "lines": 95.65,
       "linesTotal": 46,
-      "branches": 84.61,
+      "branches": 92.3,
       "branchesTotal": 13
     },
     "src/components/MultiValueField.tsx": {
@@ -1191,9 +1191,9 @@
       "branchesTotal": 4
     },
     "src/components/ProfilePictureUploadDialog.tsx": {
-      "lines": 67.88,
+      "lines": 70.64,
       "linesTotal": 109,
-      "branches": 66.66,
+      "branches": 71.11,
       "branchesTotal": 45
     },
     "src/components/ReachOutSuggestionsList.tsx": {
@@ -1209,9 +1209,9 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 71.05,
+      "lines": 83.33,
       "linesTotal": 114,
-      "branches": 61.79,
+      "branches": 79.77,
       "branchesTotal": 89
     },
     "src/components/RelationshipEdgeList.tsx": {
@@ -1455,10 +1455,10 @@
       "branchesTotal": 8
     },
     "src/hooks/useContactDetailData.ts": {
-      "lines": 97.67,
-      "linesTotal": 86,
-      "branches": 82.6,
-      "branchesTotal": 46
+      "lines": 97.77,
+      "linesTotal": 90,
+      "branches": 82.97,
+      "branchesTotal": 47
     },
     "src/hooks/useContactDialogs.ts": {
       "lines": 100,
@@ -1900,7 +1900,7 @@
     },
     "src/test/mswServer.ts": {
       "lines": 100,
-      "linesTotal": 26,
+      "linesTotal": 28,
       "branches": 100,
       "branchesTotal": 13
     },
@@ -1975,6 +1975,12 @@
       "linesTotal": 9,
       "branches": 100,
       "branchesTotal": 10
+    },
+    "src/utils/statusText.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 2
     },
     "src/utils/syncHealth.ts": {
       "lines": 100,

@@ -17,31 +17,54 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"io"
+	"os"
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/database"
 )
 
 func main() {
-	dbPath := flag.String("db", "mycorrhizal.db", "path to the SQLite database file")
-	flag.Parse()
+	os.Exit(run(os.Args[1:], os.Getenv, os.Stdout, os.Stderr)) // # pragma: no cover — os.Exit terminates the process; tests exercise run() directly
+}
+
+// run is split out of main so the exit paths are testable. Exit codes: 0 on
+// success, 2 on a usage/parse error, 1 on any runtime failure.
+func run(args []string, env func(string) string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("backfill-at-rest", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dbPath := fs.String("db", "mycorrhizal.db", "path to the SQLite database file")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
 
 	db, err := database.InitDB(*dbPath)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		fmt.Fprintf(stderr, "failed to open database: %v\n", err)
+		return 1
 	}
 
-	kek, err := atrest.EncryptionKey()
+	kek, err := atrest.ResolveMasterKey(env("DATA_ENCRYPTION_KEY"), env("DATA_ENCRYPTION_KEY_FILE"), env("JWT_SECRET_KEY"))
 	if err != nil {
-		log.Fatalf("failed to resolve at-rest encryption master key: %v", err)
+		fmt.Fprintf(stderr, "failed to resolve at-rest encryption master key: %v\n", err)
+		return 1
+	}
+	if kek == nil {
+		// Fail closed: with no key the backfill would be a silent no-op,
+		// leaving every plaintext row unencrypted while reporting success.
+		fmt.Fprintln(stderr, "failed to resolve at-rest encryption master key: no key configured (DATA_ENCRYPTION_KEY, DATA_ENCRYPTION_KEY_FILE and JWT_SECRET_KEY all unset); refusing to run")
+		return 1
 	}
 	if err := atrest.Initialize(db, kek); err != nil {
-		log.Fatalf("failed to initialize at-rest encryption: %v", err)
+		fmt.Fprintf(stderr, "failed to initialize at-rest encryption: %v\n", err)
+		return 1
 	}
 	if err := atrest.Backfill(db); err != nil {
-		log.Fatalf("failed to backfill at-rest encryption: %v", err)
+		fmt.Fprintf(stderr, "failed to backfill at-rest encryption: %v\n", err)
+		return 1
 	}
 
-	log.Println("At-rest encryption backfill complete")
+	fmt.Fprintln(stdout, "At-rest encryption backfill complete")
+	return 0
 }

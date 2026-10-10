@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { uploadMeerkatDatabase } from '../api/meerkatImport';
+import { startMeerkatFetch, uploadMeerkatDatabase } from '../api/meerkatImport';
 import MeerkatImportDialog from './MeerkatImportDialog';
 
 afterEach(cleanup);
@@ -75,4 +75,54 @@ test('a rejected upload shows the error inline and stays on the connect step', a
   );
   expect(screen.getByRole('button', { name: 'Choose database file' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Start import' })).not.toBeInTheDocument();
+});
+
+test('Cancel closes the dialog through the reset path', () => {
+  const onClose = vi.fn();
+  render(<MeerkatImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test('Start import kicks off the source fetch with the selected user', async () => {
+  const fetchMock = vi.mocked(startMeerkatFetch);
+  fetchMock.mockClear();
+  uploadMock.mockResolvedValue({
+    session_id: 's1',
+    default_source_user_id: 1,
+    totals: { contacts: 5, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    source_users: [
+      { id: 1, username: 'a', email: '', name: 'A', contacts: 4 },
+      { id: 2, username: 'b', email: '', name: 'B', contacts: 1 },
+    ],
+  });
+  renderOpen();
+  pickFile();
+
+  await screen.findByText('5 contacts, 0 relationships, 0 notes.');
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('s1', 1));
+});
+
+test('choosing a different source user updates the radio selection', async () => {
+  uploadMock.mockResolvedValue({
+    session_id: 's1',
+    default_source_user_id: 1,
+    totals: { contacts: 5, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    source_users: [
+      { id: 1, username: 'a', email: '', name: 'A', contacts: 4 },
+      { id: 2, username: 'b', email: '', name: 'B', contacts: 1 },
+    ],
+  });
+  renderOpen();
+  pickFile();
+
+  await screen.findByText('5 contacts, 0 relationships, 0 notes.');
+  const radios = screen.getAllByRole('radio');
+  fireEvent.click(radios[1]);
+  expect(radios[1]).toBeChecked();
+  expect(radios[0]).not.toBeChecked();
 });

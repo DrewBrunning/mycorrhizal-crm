@@ -295,6 +295,62 @@ test('assigning a contact files the note and removes it from the inbox', async (
   expect(screen.getByText('0')).toBeDefined();
 });
 
+// The empty-inbox copy differs from the empty-*filter* copy: once a search
+// or date filter is active, "No unfiled notes" would be misleading -- there
+// may be plenty of notes, just none matching. This branch was rendered but
+// never asserted.
+test('shows the filtered-empty message once a search excludes every note', async () => {
+  mockFetchByUrl({ '/notes?': emptyNotesResponse });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+
+  fireEvent.change(screen.getByLabelText('Search...'), { target: { value: 'zzz-no-such-note' } });
+
+  await waitFor(() => expect(screen.getByText('No notes match your filters')).toBeDefined());
+  expect(screen.queryByText('No unfiled notes')).toBeNull();
+});
+
+// Error state: a rejected POST must keep the compose dialog open and show an
+// inline error instead of closing as if the note had been saved.
+test('a failed note creation shows an inline error and keeps the dialog open', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string }) => {
+      if (options?.method === 'POST') {
+        return {
+          ok: false,
+          status: 500,
+          json: async () => ({ error: { message: 'could not save' } }),
+        };
+      }
+      if (url.includes('/contacts')) {
+        return { ok: true, json: async () => ({ contacts: [] }) };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [], next_cursor: '', limit: 25, total: 0 }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+
+  fireEvent.click(screen.getByText('Add Note'));
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+
+  fireEvent.change(screen.getByLabelText('Content *'), { target: { value: 'draft note' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.getByText('Failed to save note')).toBeDefined());
+  // The dialog is still mounted so the user's draft is not lost.
+  expect(screen.getByRole('dialog')).toBeDefined();
+});
+
 // The chip is a queue depth, so it must render the server's `total` rather
 // than the number of rows on the loaded page. Rendering notes.length
 // under-counted anyone with more than one page of unfiled notes, and the
@@ -331,4 +387,32 @@ test('unfiled count shows the server total, not the loaded page length', async (
 
   expect(screen.getByText('42')).toBeDefined();
   expect(screen.queryByText('2'), 'must not render the page length as the queue depth').toBeNull();
+});
+
+// The info affordance explains the otherwise-unlabelled inbox. Its popover
+// only mounts on click; assert the explanation actually reaches the user.
+test('the info button opens the explanation popover', async () => {
+  mockFetchByUrl({ '/notes?': emptyNotesResponse });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'More information' }));
+
+  expect(await screen.findByText(/Filed notes leave the inbox/i)).toBeDefined();
+});
+
+// The From/To date filters each wire an onChange handler into notesParams;
+// changing them must not crash and must keep the field controlled.
+test('the from/to date filters accept input', async () => {
+  mockFetchByUrl({ '/notes?': emptyNotesResponse });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+
+  fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-01-01' } });
+  fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-02-01' } });
+
+  expect(screen.getByLabelText('From')).toHaveValue('2026-01-01');
+  expect(screen.getByLabelText('To')).toHaveValue('2026-02-01');
 });

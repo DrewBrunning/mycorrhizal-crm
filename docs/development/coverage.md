@@ -227,6 +227,52 @@ against stale carryforward data, with only a warning annotation as
 evidence, is the exact failure mode that motivated this doc's own
 `cmd/codecovcheck` gate above.
 
+## The exec'd server binary (`package main`) is not measured
+
+`main.go` is baselined at 0% (issue #1623 §2): Go coverage only instruments
+the *test* process, and the two tests that exercise the server run it as a
+**separate, exec'd binary** rather than calling it in-process — both in the
+per-PR `rest` leg:
+
+- `backend/main_test.go`'s `hostBinary` builds `package main` and runs it
+  with `--embedded-host`, driving the real argv-0 embedded-host path the
+  Android client depends on (issue #1339).
+- `backend/config/startup_smoke_test.go`'s `backendBinary` builds the same
+  binary and runs it under a broken environment, proving a misconfiguration
+  fails at startup naming the offending variable (issue #450).
+
+Two things sometimes named for this are *not* in the class: the upgrade suite
+(`backend/internal/schemafixture/upgrade_test.go`) drives the migrator
+in-process via `database.InitDB`, so its lines are already measured; and the
+real deploy-smoke run boots the binary inside a Docker container
+(`deploy-smoke.yml`) and uploads no backend coverage at all.
+
+Go ≥1.20 can close the gap — `go build -cover -covermode=atomic` instruments
+the binary, `GOCOVERDIR` makes it emit `covdata`, and `go tool covdata
+textfmt` renders a coverprofile. A `-covermode=atomic` `go test -coverprofile`
+pass even folds an exec'd child's blocks in automatically when the child is
+built `-covermode=atomic` **and inherits `GOCOVERDIR`** (hand-verified; no
+explicit `covdata` step is needed). The blocker is the test edit, not the
+merge: both tests build with a bare `go build` and run the child in a
+deliberately scrubbed environment (`cmd.Env = []string{"HOME=" + dir}`, or a
+hand-built `PATH`/`HOME`), so `-cover` and `GOCOVERDIR` would have to be
+threaded through the test itself. Until that edit lands, a PR's `main.go`
+changed lines are carried only by the backend threshold buffer
+(`target: 95%`, `threshold: 5%` — 90% passes), not by measurement.
+
+An operator can measure it by hand without editing the tests:
+
+```bash
+cd backend
+go build -cover -covermode=atomic -o /tmp/mycorrhizal .          # instruments package main only
+mkdir -p /tmp/covdata
+GOCOVERDIR=/tmp/covdata /tmp/mycorrhizal                          # any real run; a startup-config failure counts too
+go tool covdata textfmt -i=/tmp/covdata -o=main-cov.out           # mode: atomic profile for main.go
+```
+
+The final `covdata textfmt` output is the profile an eventual fix would merge
+into the CI upload; the exact form was verified against a toy `package main`.
+
 ## Per-file no-regression ratchet
 
 The patch-coverage gate above only judges a PR's *changed* lines. That leaves

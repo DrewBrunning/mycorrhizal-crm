@@ -21,3 +21,12 @@ useDefault = true
 description = "Android apk-key-hash passkey origins (public certificate digests)"
 regexTarget = "line"
 regexes = ['''android:apk-key-hash:[A-Za-z0-9_-]{43}''']
+
+# Issue #1623: the controllers test suite shares a deliberately-fake JWT secret
+# literal to sign tokens and encrypt test credentials; the hex tail trips the
+# generic-api-key rule on entropy alone. Not a secret — it exists only in
+# _test.go files and the value is public in the test source.
+[[allowlists]]
+description = "Fake JWT secret literal in controllers tests (#1623)"
+regexTarget = "line"
+regexes = ['''test-jwt-secret-0123456789abcdef0123456789abcdef''']
