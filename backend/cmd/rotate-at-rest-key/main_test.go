@@ -158,3 +158,81 @@ func TestRun_UnresolvableOldKey(t *testing.T) {
 	require.Contains(t, errBuf.String(), "no current master key resolved")
 	require.Equal(t, before, readWrappedDEK(t, db), "an unresolvable old key must not rotate the DEK")
 }
+
+// TestRun_BadFlag pins the usage exit for an unknown flag: exit code 2 (the
+// same code as the missing -new usage error), the flag package's complaint on
+// stderr, nothing on stdout.
+func TestRun_BadFlag(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-no-such-flag"}, envMap(nil), &out, &errBuf)
+	require.Equal(t, 2, code)
+	require.Contains(t, errBuf.String(), "flag provided but not defined")
+	require.Empty(t, out.String())
+}
+
+// TestRun_UnopenableDatabase pins the first runtime failure: a database path
+// that cannot be opened exits 1 (with a valid -new, so the usage check passes).
+func TestRun_UnopenableDatabase(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	missing := filepath.Join(t.TempDir(), "no", "such", "dir", "x.db")
+	code := run([]string{"-db", missing, "-new", b64(testKEK(0x77))}, envMap(nil), &out, &errBuf)
+	require.Equal(t, 1, code)
+	require.Contains(t, errBuf.String(), "failed to open database")
+	require.Empty(t, out.String())
+}
+
+// TestRun_InvalidOldKeyFlag pins that a malformed explicit -old key is rejected
+// before RotateMasterKey runs: exit 1, the -old-specific message, and the
+// wrapped DEK byte-identical afterward.
+func TestRun_InvalidOldKeyFlag(t *testing.T) {
+	db, dbPath := newMigratedDB(t)
+	require.NoError(t, atrest.Initialize(db, testKEK(0x11)))
+	atrest.ResetForTest()
+	before := readWrappedDEK(t, db)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-db", dbPath, "-new", b64(testKEK(0x22)), "-old", "!!!not-base64!!!"},
+		envMap(nil), &out, &errBuf)
+	require.Equal(t, 1, code)
+	require.Contains(t, errBuf.String(), "failed to decode -old key")
+	require.Empty(t, out.String())
+	require.Equal(t, before, readWrappedDEK(t, db), "an invalid -old key must leave the DEK untouched")
+}
+
+// TestRun_InvalidEnvOldKey pins the other way the current key can fail to
+// resolve: with no -old, a malformed DATA_ENCRYPTION_KEY is a resolution error
+// (distinct from the "nothing configured" refusal above) and rotates nothing.
+func TestRun_InvalidEnvOldKey(t *testing.T) {
+	db, dbPath := newMigratedDB(t)
+	require.NoError(t, atrest.Initialize(db, testKEK(0x11)))
+	atrest.ResetForTest()
+	before := readWrappedDEK(t, db)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-db", dbPath, "-new", b64(testKEK(0x22))},
+		envMap(map[string]string{"DATA_ENCRYPTION_KEY": "!!!not-base64!!!"}), &out, &errBuf)
+	require.Equal(t, 1, code)
+	require.Contains(t, errBuf.String(), "failed to resolve current master key")
+	require.Empty(t, out.String())
+	require.Equal(t, before, readWrappedDEK(t, db), "an unresolvable current key must leave the DEK untouched")
+}
+
+// TestRun_WrongOldKeyFailsRotation pins the rotation-error exit: both keys are
+// well-formed but -old is not the key the DEK is wrapped under, so unwrapping
+// fails inside RotateMasterKey. The command must exit 1 with "rotation failed"
+// and leave the wrapped DEK untouched — rewrapping under the new key from a
+// wrong old key would orphan every encrypted row.
+func TestRun_WrongOldKeyFailsRotation(t *testing.T) {
+	db, dbPath := newMigratedDB(t)
+	require.NoError(t, atrest.Initialize(db, testKEK(0x11)))
+	atrest.ResetForTest()
+	before := readWrappedDEK(t, db)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-db", dbPath, "-new", b64(testKEK(0x22)), "-old", b64(testKEK(0x99))},
+		envMap(nil), &out, &errBuf)
+	require.Equal(t, 1, code)
+	require.Contains(t, errBuf.String(), "rotation failed")
+	require.Empty(t, out.String(), "a failed rotation must not print the success line")
+	require.Equal(t, before, readWrappedDEK(t, db), "a wrong -old key must leave the DEK untouched")
+}

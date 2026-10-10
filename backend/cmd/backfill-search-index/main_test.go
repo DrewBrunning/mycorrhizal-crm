@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/require"
@@ -74,4 +76,38 @@ func TestRun_UnopenableDatabase(t *testing.T) {
 	code := run([]string{"-db", missing}, envMap(nil), &out, &errBuf)
 	require.NotZero(t, code)
 	require.Contains(t, errBuf.String(), "failed to open database")
+}
+
+// TestRun_BadFlag pins the usage exit: an unknown flag is exit code 2 (distinct
+// from the runtime-failure code 1), with the flag package's complaint on
+// stderr and nothing on stdout.
+func TestRun_BadFlag(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-no-such-flag"}, envMap(nil), &out, &errBuf)
+	require.Equal(t, 2, code)
+	require.Contains(t, errBuf.String(), "flag provided but not defined")
+	require.Empty(t, out.String())
+}
+
+// searchRebuildFault is services' faultSearchRebuild seam (an unexported
+// constant there); the name is part of the documented fault catalogue
+// (docs/development/fault-injection.md), so it is stable.
+const searchRebuildFault = "services.search.rebuild"
+
+// TestRun_RebuildFailure pins the rebuild-error exit: a failure inside the
+// rebuild transaction exits 1 with the cause on stderr and no success line on
+// stdout (the CLI must never report "rebuilt successfully" for a failed run).
+func TestRun_RebuildFailure(t *testing.T) {
+	_, dbPath := newMigratedDB(t)
+
+	injected := errors.New("injected failure mid-FTS-rebuild")
+	faults.ArmError(searchRebuildFault, injected)
+	t.Cleanup(func() { faults.Disarm(searchRebuildFault) })
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"-db", dbPath}, envMap(nil), &out, &errBuf)
+	require.Equal(t, 1, code)
+	require.Contains(t, errBuf.String(), "failed to rebuild search index")
+	require.Contains(t, errBuf.String(), injected.Error())
+	require.Empty(t, out.String(), "a failed rebuild must not print the success line")
 }
