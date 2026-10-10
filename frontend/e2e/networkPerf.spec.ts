@@ -20,6 +20,17 @@ const GRAPH_ROUTE = '**/api/v1/graph';
 // Keep in sync with src/utils/graphBudget.ts.
 const NODE_CEILING = 2000;
 
+// Same reasoning as networkGraphScale.spec.ts's DECISION_TIMEOUT: the
+// over-ceiling stub renders the notice *and* the always-mounted list view (one
+// ListItemButton per contact, ~2500 of them) plus a computeFilteredGraphData
+// pass in a single synchronous React commit. Under load that can exceed the 5 s
+// default assertion timeout on a shared CI runner, and the first post-goto
+// assertion (the notice) flakes red — issue #1641. The decision itself is
+// deterministic once the render lands, and this spec is explicitly a trend
+// signal for wall-clock (docs/development/web-perf-budgets.md), so wait
+// generously for it.
+const DECISION_TIMEOUT = 30_000;
+
 interface StubNode {
   id: string;
   type: 'contact';
@@ -64,18 +75,22 @@ test.describe('Network graph render ceiling', { tag: '@perf' }, () => {
 
     // Degradation is visible; the canvas is not mounted.
     const notice = page.getByTestId('graph-over-budget');
-    await expect(notice).toBeVisible();
+    await expect(notice).toBeVisible({ timeout: DECISION_TIMEOUT });
     await expect(notice).toContainText(String(NODE_CEILING + 499)); // edge count = nodes - 1
-    await expect(page.locator('canvas')).toHaveCount(0);
+    await expect(page.locator('canvas')).toHaveCount(0, { timeout: DECISION_TIMEOUT });
 
     // The always-in-DOM list view still lists the contacts (NetworkListView
     // renders one ListItemButton per contact) -- first and last, so a
     // truncated render would fail.
-    await expect(page.getByRole('heading', { name: /network list view/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Perf Contact 0', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /network list view/i })).toBeVisible({
+      timeout: DECISION_TIMEOUT,
+    });
+    await expect(page.getByRole('button', { name: 'Perf Contact 0', exact: true })).toBeVisible({
+      timeout: DECISION_TIMEOUT,
+    });
     await expect(
       page.getByRole('button', { name: `Perf Contact ${NODE_CEILING + 499}`, exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: DECISION_TIMEOUT });
 
     // Serve a small payload (as a circle/contact filter would narrow it) and
     // confirm the canvas renders instead of the notice.
@@ -83,7 +98,9 @@ test.describe('Network graph render ceiling', { tag: '@perf' }, () => {
     await page.route(GRAPH_ROUTE, (route) => route.fulfill({ json: small }));
     await page.reload();
 
-    await expect(page.locator('canvas')).toHaveCount(1);
-    await expect(page.getByTestId('graph-over-budget')).toHaveCount(0);
+    await expect(page.locator('canvas')).toHaveCount(1, { timeout: DECISION_TIMEOUT });
+    await expect(page.getByTestId('graph-over-budget')).toHaveCount(0, {
+      timeout: DECISION_TIMEOUT,
+    });
   });
 });

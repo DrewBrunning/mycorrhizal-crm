@@ -2,6 +2,7 @@ package soak
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -236,4 +237,28 @@ func TestJudge_AlwaysOnAssertions(t *testing.T) {
 	for _, want := range []string{"never exported", "only 10 operations", "server errors", "5xx", "failed scheduled-job", "rate-limited"} {
 		assert.Contains(t, joined, want)
 	}
+}
+
+// The 5xx / job-failure counters are cumulative and the metrics registry is
+// process-global and never reset (#1638): a healthy window whose baseline
+// already carried a previous server instance's errors must pass, while a fresh
+// error inside the window must still fail.
+func TestJudge_ServerErrorCountersAreDelta(t *testing.T) {
+	// Baseline carried 4 5xx and 2 job failures from an earlier boot; this
+	// window added none.
+	healthy := &Report{Series: map[string]Series{
+		SigServerErrors: {{V: 4}},
+		SigJobFailures:  {{V: 2}},
+	}}
+	healthy.Workload = Result{Total: 100}
+	healthy.judge(Config{MinOps: 10}, nil, Snapshot{Values: map[string]float64{SigServerErrors: 4, SigJobFailures: 2}})
+	joined := strings.Join(healthy.Failures, "\n")
+	assert.NotContains(t, joined, "5xx", "a pre-existing count must not fail a healthy window")
+	assert.NotContains(t, joined, "failed scheduled-job", "a pre-existing count must not fail a healthy window")
+
+	// A 5xx that lands inside the window is still a finding.
+	breached := &Report{Series: map[string]Series{SigServerErrors: {{V: 4}}}}
+	breached.Workload = Result{Total: 100}
+	breached.judge(Config{MinOps: 10}, nil, Snapshot{Values: map[string]float64{SigServerErrors: 5}})
+	assert.Contains(t, strings.Join(breached.Failures, "\n"), "5xx")
 }

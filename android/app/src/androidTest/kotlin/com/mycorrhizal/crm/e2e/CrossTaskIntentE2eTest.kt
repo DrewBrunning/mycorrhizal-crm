@@ -115,11 +115,24 @@ class CrossTaskIntentE2eTest {
 
     // Issue #1399: the app is ALREADY on Contacts (empty search) when the link arrives —
     // the reused/restored Contacts entry used to keep its old, empty query.
+    //
+    // Deliberately does NOT press HOME between the two links. The pre-#1639 version
+    // backgrounded the app ("leaving it on Contacts") to model a link delivered to a
+    // backgrounded task, but that injects a *restore* path the test cannot control: on a
+    // contended emulator the process can be killed while backgrounded, so the second
+    // `am start` recreates the activity with saved state and the app's ADR-0029 consume-once
+    // guard skips the new link, leaving the search field empty for the full timeout
+    // (`ComposeTimeoutException` at 30s, both attempts of run 37929593004). The contract
+    // #1399 actually pins — a link arriving while the Contacts entry is already on the back
+    // stack must still apply its query — is fully exercised by the warm `onNewIntent` path
+    // from Contacts, which is what a foreground/browser deep link does. The cold path has
+    // its own test (coldContactLinkFromOutsideTheTaskOpensTheContact) and the recreate
+    // consume-once behaviour is pinned in warmContactLinkFromOutsideTheTaskOpensTheContactAndIsConsumedOnce.
     @Test
     fun warmSearchLinkWhileAlreadyOnContactsFiltersTheList() {
         viewCrossTask("mycorrhizal://search") // empty q -> plain Contacts, empty search field
         waitForText(displayName)
-        shell("input keyevent KEYCODE_HOME") // backgrounds the app, leaving it on Contacts
+        compose.waitForIdle()
         viewCrossTask("mycorrhizal://search?q=${given.replace(" ", "%20")}")
         waitFor(hasSetTextAction() and hasText(given))
         waitForText(displayName)
