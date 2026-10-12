@@ -86,7 +86,7 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 		t.Fatal(err)
 	}
 	worst := worstCaseSeconds(t, string(script))
-	for _, want := range []string{"timeout --kill-after=", "pkill -9 -x apt-get", "fuser /var/lib/dpkg/lock-frontend", "exit 1"} {
+	for _, want := range []string{"timeout --kill-after=", "pkill -9 -x apt-get", "fuser /var/lib/dpkg/lock-frontend", "exit 1", "PLAYWRIGHT_APT_CACHE", "/var/cache/apt/archives"} {
 		if !strings.Contains(string(script), want) {
 			t.Errorf("install script missing %q", want)
 		}
@@ -115,6 +115,22 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 			wantKey := "playwright-${{ runner.os }}-" + strings.Join(browsers, "-") + "-${{ hashFiles('frontend/yarn.lock') }}"
 			if key != wantKey {
 				t.Errorf("%s: cache key %q, want %q", id, key, wantKey)
+			}
+			// A separate apt-package cache (issue #1646) must precede the
+			// browser cache: a slow Ubuntu mirror otherwise re-downloads
+			// ~50 MiB of browser dependencies on every run. Separate key so an
+			// existing browser cache entry cannot block saving the packages.
+			if i < 2 || !strings.HasPrefix(j.Steps[i-2].Name, "Cache apt packages") {
+				t.Errorf("%s: install step not preceded by an apt-package cache step (issue #1646)", id)
+			} else {
+				aptStep := j.Steps[i-2]
+				if path := aptStep.With["path"]; !strings.Contains(path, "~/.cache/playwright-apt") {
+					t.Errorf("%s: apt cache step path %q, want ~/.cache/playwright-apt", id, path)
+				}
+				wantAptKey := "playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}"
+				if got := aptStep.With["key"]; got != wantAptKey {
+					t.Errorf("%s: apt cache key %q, want %q", id, got, wantAptKey)
+				}
 			}
 		}
 	}

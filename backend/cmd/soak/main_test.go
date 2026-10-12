@@ -44,6 +44,18 @@ func TestRun_WriteBudgetsDoc(t *testing.T) {
 	}
 }
 
+// growthSlack is the -growth-slack factor the healthy run below uses. It
+// mirrors internal/soak's healthySmokeGrowthSlack: over a ~12 s run on a
+// runner shared with the rest of the package shard under -race (the nightly
+// order-dependence pass runs this package with -shuffle=on -count=2),
+// connection churn moves open fds / DB connections enough that the fitted tail
+// growth breaches the committed limits, which are tuned for the 45 min soak —
+// a healthy server failed this as a nightly flake (issue #1647). 4x still
+// fails on a gross leak (one fd per request is hundreds over ~350 ops), and
+// the -fault sub-test below keeps the committed limits so detection stays
+// proven. The committed limits keep gating the long soak.
+const growthSlack = "4"
+
 func TestRun_HealthyPassesFaultyFailsAndReportsAreWritten(t *testing.T) {
 	if testing.Short() {
 		t.Skip("boots a real server")
@@ -54,7 +66,8 @@ func TestRun_HealthyPassesFaultyFailsAndReportsAreWritten(t *testing.T) {
 	base := []string{"-duration", "12s", "-sample", "1s", "-users", "3", "-rate", "20", "-min-ops", "50", "-advisory-latency", "-md", md, "-json", js}
 
 	var out, errb bytes.Buffer
-	require.Equal(t, 0, run(context.Background(), base, &out, &errb), out.String()+errb.String())
+	healthy := append([]string{"-growth-slack", growthSlack}, base...)
+	require.Equal(t, 0, run(context.Background(), healthy, &out, &errb), out.String()+errb.String())
 	assert.Contains(t, out.String(), "Soak run: PASS")
 	assert.Contains(t, out.String(), "t=", "progress lines are printed unless -quiet")
 	mdb, err := os.ReadFile(md)
