@@ -3,6 +3,7 @@
   "mutate": [
     "src/api/*.ts",
     "src/hooks/use*.ts",
+    "src/utils/*.ts",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
     "!src/api/contractConformance.ts",

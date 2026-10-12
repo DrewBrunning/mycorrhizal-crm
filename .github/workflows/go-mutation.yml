@@ -91,6 +91,12 @@ jobs:
             package: services
           - scope: sensitivity-filter
             package: services
+          # Issue #1624 §2 follow-up: the share/sync read projections where the
+          # sensitivity filters actually execute (models/contact_record.go,
+          # models/field_selection.go) — the controller share/read entry points
+          # only thread an include_sensitive flag into these.
+          - scope: sensitivity-filter-records
+            package: models
 
     steps:
       - name: Checkout repository

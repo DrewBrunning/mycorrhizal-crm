@@ -328,8 +328,34 @@ var Scopes = []Scope{
 			"feed, graph seeding, search, scoring, contact sync). NOTE: " +
 			"export_controller.go/account_bundle.go are the full-fidelity " +
 			"exceptions (they deliberately do NOT filter) so they are not " +
-			"mutation targets here; the controller share sites are a " +
-			"follow-up leg. Floor set below measured to absorb CI-runner " +
-			"timeout variance",
+			"mutation targets here; the share/sync read projections are " +
+			"the sensitivity-filter-records leg below. Floor set below " +
+			"measured to absorb CI-runner timeout variance",
+	},
+	{
+		Name:       "sensitivity-filter-records",
+		PackageDir: "models",
+		TargetFiles: []string{
+			"contact_record.go", "field_selection.go",
+		},
+		Efficacy:       95,
+		MutantCoverage: 90,
+		Reason: "baseline 2026-10-12 (issue #1624 §2 follow-up, workers=4, " +
+			"timeout-coefficient=30, cold test cache, gremlins v0.6.0): " +
+			"83 killed / 0 lived / 0 not covered / 0 timed out (efficacy " +
+			"100.0%, mcover 100.0%, 48s). The share/sync read projections " +
+			"that enforce the sensitivity rule where contact shares and the " +
+			"CardDAV/CalDAV sync view actually build their payloads: " +
+			"models/contact_record.go's projectRelationshipEdges / " +
+			"projectPreferences / projectCustomFields (reached from " +
+			"RecordForContactFiltered, the shared path under " +
+			"contact_share_controller.go and RecordForContactForSync) and " +
+			"models/field_selection.go's address filter. The controller " +
+			"share/read entry points only thread an include_sensitive bool " +
+			"into these, so the filters themselves — the thing a flipped " +
+			"comparison would leak — live here. export/account_bundle/" +
+			"contact_map are the full-fidelity exceptions and are not " +
+			"targets. Floor set below measured to absorb CI-runner timeout " +
+			"variance",
 	},
 }

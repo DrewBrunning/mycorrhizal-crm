@@ -181,12 +181,16 @@ canonical checklist files), import ingestion (the import-source files in `servic
 exporters (`vcard3`, `vcard4`, `jscontact`). The scope and each leg's threshold live in
 `backend/internal/mutationscope.Scopes` — the single source for both go-mutation.yml's matrix and each
 leg's generated config (`backend/.gremlins/<scope>.yaml`, `cd backend && go run
-./cmd/genmutationscope` or `make gen-mutation-scope`). Issue #1491 added eight legs (fifteen total):
+./cmd/genmutationscope` or `make gen-mutation-scope`). Issue #1491 added eight legs (sixteen total):
 `middleware-auth` (auth/admin/idempotency/login-lockout), `ssrf` (`httputil`), `services-merge` +
 `controllers-merge`, `schedule-math` (cadence/reminder/data-decay/occasion), `sync-reconcile`
 (`contact_sync_service.go`), `carddav-backend`, `caldav-backend` — all measured 100% efficacy at
 adoption (one survivor in `ssrf` killed by `httputil/bounds_test.go`); the legs are advisory, promotion
-of `middleware-auth`/`ssrf` to a release gate waits on 30 stable nightly days. gremlins v0.6.0 only mutates
+of `middleware-auth`/`ssrf` to a release gate waits on 30 stable nightly days. Issue #1624 added
+`services-auth` (TOTP/session/reset/API-token/WebAuthn/OIDC/feed), `sensitivity-filter` (the
+`sensitivity = normal` query filters on the services query sites) and `sensitivity-filter-records` (the
+share/sync read projections in `models/contact_record.go`/`field_selection.go`, the filters the
+controller share/read entry points thread an `include_sensitive` flag into) — nineteen total. gremlins v0.6.0 only mutates
 comparisons/arithmetic/increments — it will not delete an `if !ok` arm or a `user_id` SQL filter, so
 ownership scoping is guarded by the route ownership matrix, not a mutation leg. A new scope also needs
 its leg added by hand to go-mutation.yml's matrix (`TestWorkflowMatrixMatchesScopes` enforces parity).
