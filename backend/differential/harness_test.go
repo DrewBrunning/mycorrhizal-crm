@@ -57,28 +57,26 @@ func TestNewCalcardRefEnvOverride(t *testing.T) {
 }
 
 // TestNewCalcardRefPrebuiltBinary pins the binary fallback: a prebuilt
-// calcard-ref in the expected location resolves without an env var.
+// calcard-ref in the expected location resolves without an env var. It runs
+// from a temp dir with a fake binary planted at each expected path so the
+// found-branch is exercised on every machine — the repository does not ship a
+// prebuilt binary (the scheduled differential job builds it), so an earlier
+// version of this test that only used one if present left the fallback's
+// return uncovered in CI and made differential/harness.go's coverage (and so
+// the backend ratchet) depend on the runner.
 func TestNewCalcardRefPrebuiltBinary(t *testing.T) {
-	t.Setenv(calcardEnvVar, "")
-	release := filepath.Join("reference", "calcard", "target", "release", "calcard-ref")
-	debug := filepath.Join("reference", "calcard", "target", "debug", "calcard-ref")
-	had := false
-	for _, p := range []string{release, debug} {
-		if _, err := os.Stat(p); err == nil {
-			had = true
-		}
+	for _, target := range []string{"release", "debug"} {
+		t.Run(target, func(t *testing.T) {
+			t.Setenv(calcardEnvVar, "")
+			t.Chdir(t.TempDir())
+			bin := filepath.Join("reference", "calcard", "target", target, "calcard-ref")
+			require.NoError(t, os.MkdirAll(filepath.Dir(bin), 0o755))
+			require.NoError(t, os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755))
+			ref, reason := NewCalcardRef()
+			require.Empty(t, reason)
+			require.Equal(t, []string{bin}, ref.argv)
+		})
 	}
-	if had {
-		ref, reason := NewCalcardRef()
-		require.Empty(t, reason)
-		require.NotEmpty(t, ref.argv)
-		return
-	}
-	// Neither binary is present on this machine: the resolver must report
-	// unavailable (the scheduled CI job builds it).
-	ref, reason := NewCalcardRef()
-	require.Empty(t, ref.argv)
-	require.Contains(t, reason, calcardEnvVar)
 }
 
 // TestNewCalcardRefMissingBinary forces the unavailable path deterministically
