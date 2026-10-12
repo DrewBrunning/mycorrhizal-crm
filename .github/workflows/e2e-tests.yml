@@ -191,6 +191,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -199,8 +210,10 @@ jobs:
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium
@@ -394,6 +407,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -402,8 +426,10 @@ jobs:
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium
@@ -503,6 +529,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -514,8 +551,10 @@ jobs:
         # wrong-MIME registration failure this ticket exists because of was
         # Firefox-specific).
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
@@ -619,6 +658,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -627,8 +677,10 @@ jobs:
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh webkit
@@ -751,6 +803,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -761,8 +824,10 @@ jobs:
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
@@ -874,6 +939,17 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched. Its
+          # own key (not the browser one) so an existing browser cache entry
+          # cannot block saving the package cache.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -884,8 +960,10 @@ jobs:
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
         # depends on) runs on the default Chromium engine.
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
-        # left by a timed-out attempt released between them. 16 min covers the
-        # script's worst case (915 s); backend/internal/e2einstall enforces it.
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox

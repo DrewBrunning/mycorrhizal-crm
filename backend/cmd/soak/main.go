@@ -54,6 +54,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.String("json", "", "write the full report (every series) as JSON to this file")
 	mdOut := fs.String("md", "", "write the markdown report to this file (e.g. $GITHUB_STEP_SUMMARY)")
 	advisoryLatency := fs.Bool("advisory-latency", false, "report latency-degradation budgets without failing on them (for runs too short, or too contended, for a head/tail p95 ratio to mean anything)")
+	growthSlack := fs.Float64("growth-slack", 1, "multiply every growth budget by this factor (for runs too short, or too contended, for a fitted growth over a handful of samples to mean anything); 1 = the committed limits")
 	quiet := fs.Bool("quiet", false, "suppress per-sample progress lines")
 	budgetsDoc := fs.String("write-budgets-doc", "", "regenerate the budget table in this markdown file (docs/development/soak-baseline.md) and exit")
 	if err := fs.Parse(args); err != nil {
@@ -87,11 +88,20 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		Duration: *duration, SampleEvery: *sample, Users: *users, Rate: *rate, Seed: *seed,
 		MinOps: *minOps, Faults: faults,
 	}
-	if *advisoryLatency {
+	if *advisoryLatency || *growthSlack != 1 {
 		cfg.Budgets = soak.DefaultBudgets()
+	}
+	if *advisoryLatency {
 		for i := range cfg.Budgets {
 			if cfg.Budgets[i].Kind == soak.KindDegradation {
 				cfg.Budgets[i].Advisory = true
+			}
+		}
+	}
+	if *growthSlack != 1 {
+		for i := range cfg.Budgets {
+			if cfg.Budgets[i].Kind == soak.KindGrowth {
+				cfg.Budgets[i].Limit *= *growthSlack
 			}
 		}
 	}
