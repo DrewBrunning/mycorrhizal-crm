@@ -34,8 +34,8 @@ class ReminderRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: Int, reminder: Reminder): Result<Reminder> {
-        val result = apiClient.updateReminder(id, reminder)
+    override suspend fun update(id: Int, reminder: Reminder, revision: Int?): Result<Reminder> {
+        val result = apiClient.updateReminder(id, reminder, revision)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
         return result
     }
@@ -57,8 +57,8 @@ class ReminderRepositoryImpl @Inject constructor(
         return result.map { it.reminder }
     }
 
-    override suspend fun delete(id: Int): Result<Unit> {
-        val result = apiClient.deleteReminder(id)
+    override suspend fun delete(id: Int, revision: Int?): Result<Unit> {
+        val result = apiClient.deleteReminder(id, revision)
         if (result.isSuccess) dao.deleteByIds(listOf(id))
         return result
     }

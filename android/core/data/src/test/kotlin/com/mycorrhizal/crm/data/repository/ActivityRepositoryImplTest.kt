@@ -99,7 +99,7 @@ class ActivityRepositoryImplTest {
         db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
         coEvery { apiClient.deleteActivity(1) } returns Result.success(Unit)
 
-        val result = repository.delete(1)
+        val result = repository.delete(1, null)
 
         assertTrue(result.isSuccess)
         assertTrue(db.cachedActivityDao().getAll().isEmpty())
@@ -111,7 +111,7 @@ class ActivityRepositoryImplTest {
         db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
         coEvery { apiClient.deleteActivity(1) } returns Result.failure(ApiError.Client(500, "boom"))
 
-        val result = repository.delete(1)
+        val result = repository.delete(1, null)
 
         assertTrue(result.isFailure)
         assertEquals(1, db.cachedActivityDao().getAll().size)
@@ -178,7 +178,7 @@ class ActivityRepositoryImplTest {
         val updated = Activity(id = 7, title = "Lunch and coffee", type = "meal")
         coEvery { apiClient.updateActivity(7, any()) } returns Result.success(updated)
 
-        val result = repository.update(7, ActivityInput(title = "Lunch and coffee"))
+        val result = repository.update(7, ActivityInput(title = "Lunch and coffee"), null)
 
         assertTrue(result.isSuccess)
         assertEquals("Lunch and coffee", db.cachedActivityDao().getById(7)?.title)
@@ -195,5 +195,18 @@ class ActivityRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    // Issue #1665 / ADR 0008: the revision is forwarded as If-Match.
+    @Test
+    fun `update and delete forward the revision`() = runTest {
+        coEvery { apiClient.updateActivity(7, any(), 5) } returns Result.success(Activity(id = 7, title = "x"))
+        coEvery { apiClient.deleteActivity(7, 5) } returns Result.success(Unit)
+
+        assertTrue(repository.update(7, ActivityInput(title = "x"), 5).isSuccess)
+        assertTrue(repository.delete(7, 5).isSuccess)
+
+        io.mockk.coVerify(exactly = 1) { apiClient.updateActivity(7, any(), 5) }
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteActivity(7, 5) }
     }
 }

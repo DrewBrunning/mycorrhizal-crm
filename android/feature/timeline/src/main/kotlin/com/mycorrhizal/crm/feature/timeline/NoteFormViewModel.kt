@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,10 @@ data class NoteFormState(
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: the `revision` the record had when this edit began; sent as `If-Match` on save. */
+    val revision: Int? = null,
+    /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
+    val conflict: Boolean = false,
 ) {
     val isEdit: Boolean get() = noteId != null
     val hasContent: Boolean get() = content.isNotBlank()
@@ -177,6 +182,15 @@ class NoteFormViewModel @Inject constructor(
     fun onDateChange(value: String) = _uiState.update { it.copy(date = value) }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
+    /** Conflict dialog "Keep editing": leave the form as typed (nothing was saved). */
+    fun onConflictKeepEditing() = _uiState.update { it.copy(conflict = false) }
+
+    /** Conflict dialog "Load latest version": discard the edit and refetch the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        loadExisting()
+    }
+
     /**
      * Debounced contact search for the reassignment picker — same
      * cancel-and-relaunch shape as RelationshipsViewModel.searchContacts.
@@ -236,14 +250,20 @@ class NoteFormViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = when {
-                state.noteId != null -> noteRepository.update(state.noteId, input)
+                state.noteId != null -> noteRepository.update(state.noteId, input, state.revision)
                 state.targetContactId != null -> noteRepository.create(state.targetContactId, input)
                 else -> noteRepository.createUnassigned(input)
             }
             result.foldApiError(
                 onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = NoteFormEvent.Saved },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(isSaving = false, conflict = true)
+                        } else {
+                            it.copy(isSaving = false, error = error.displayMessage)
+                        }
+                    }
                 },
             )
         }
@@ -257,6 +277,7 @@ class NoteFormViewModel @Inject constructor(
         content = note.content.orEmpty(),
         date = note.date.orEmpty(),
         targetContactId = note.contactId,
+        revision = note.revision,
         // Deliberately NOT read from note.contact — the note API never
         // populates it (zero-valued struct); the name is resolved via
         // ContactRepository by [loadExisting] instead.

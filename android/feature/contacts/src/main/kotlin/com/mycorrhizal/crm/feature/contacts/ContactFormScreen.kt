@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.TitleSpec
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,6 +143,13 @@ fun ContactFormScreen(
                 onTagToggle = viewModel::onTagToggle,
             )
         }
+    }
+
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictKeepEditing,
+        )
     }
 
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error

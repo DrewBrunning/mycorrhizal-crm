@@ -55,6 +55,8 @@ data class ContactDetailUiState(
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: a delete was rejected with 412 — the contact changed elsewhere since it loaded. */
+    val conflict: Boolean = false,
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
     val dateFormat: String? = null,
     /**
@@ -744,15 +746,42 @@ class ContactDetailViewModel @Inject constructor(
         if (contactId == 0 || _uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
-            contactRepository.deleteContact(contactId).foldApiError(
+            contactRepository.deleteContact(contactId, _uiState.value.contact?.revision).foldApiError(
                 onSuccess = {
                     _uiState.update { it.copy(isMutating = false) }
                     _events.value = ContactDetailEvent.ContactDeleted
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(isMutating = false, conflict = true)
+                        } else {
+                            it.copy(isMutating = false, error = error.displayMessage)
+                        }
+                    }
                 },
             )
+        }
+    }
+
+    /** Conflict dialog "Not now": nothing was deleted; leave the screen as it is. */
+    fun onConflictDismissed() = _uiState.update { it.copy(conflict = false) }
+
+    /** Conflict dialog "Load latest version": refetch the server's copy, then the user may retry. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        load()
+    }
+
+    /**
+     * A successful favorite flip bumps the contact's server revision (the backend's `Update`
+     * fires the revision hook) but its response carries no revision, so re-read it — otherwise a
+     * later delete would send a stale `If-Match` and 412 against our own write. Best-effort: on
+     * failure the next delete just surfaces the conflict dialog.
+     */
+    private suspend fun refreshRevision() {
+        contactRepository.getContact(contactId).getOrNull()?.let { fresh ->
+            _uiState.update { it.copy(contact = it.contact?.copy(revision = fresh.revision, etag = fresh.etag)) }
         }
     }
 
@@ -861,6 +890,7 @@ class ContactDetailViewModel @Inject constructor(
                 contactRepository.favoriteContact(contactId)
             }
             favoriteEpoch++
+            if (result.isSuccess) refreshRevision()
             result.foldApiError(
                 onSuccess = {},
                 onError = { error ->

@@ -14,6 +14,8 @@ data class ContactRecordResponse(
     val id: Int = 0,
     val uid: String? = null,
     val etag: String? = null,
+    /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
+    val revision: Int? = null,
     val gender: String? = null,
     val card: Card? = null,
     val crm: CRMEnvelope? = null,

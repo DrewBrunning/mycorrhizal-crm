@@ -49,14 +49,14 @@ class LifeEventRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: String, input: LifeEventInput): Result<LifeEvent> {
-        val result = apiClient.updateLifeEvent(id, input)
+    override suspend fun update(id: String, input: LifeEventInput, revision: Int?): Result<LifeEvent> {
+        val result = apiClient.updateLifeEvent(id, input, revision)
         result.getOrNull()?.let { dao.upsert(it.toCached(input.entityId)) }
         return result
     }
 
-    override suspend fun delete(id: String): Result<Unit> {
-        val result = apiClient.deleteLifeEvent(id)
+    override suspend fun delete(id: String, revision: Int?): Result<Unit> {
+        val result = apiClient.deleteLifeEvent(id, revision)
         if (result.isSuccess) dao.deleteById(id)
         return result
     }

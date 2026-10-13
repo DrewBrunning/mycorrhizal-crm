@@ -228,8 +228,8 @@ class ContactRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse> {
-        val result = apiClient.updateContact(id, input)
+    override suspend fun updateContact(id: Int, input: ContactRecordInput, revision: Int?): Result<ContactRecordResponse> {
+        val result = apiClient.updateContact(id, input, revision)
         return result.fold(
             onSuccess = { record ->
                 dao.upsert(record.toCached())
@@ -239,8 +239,8 @@ class ContactRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun deleteContact(id: Int): Result<Unit> {
-        val result = apiClient.deleteContact(id)
+    override suspend fun deleteContact(id: Int, revision: Int?): Result<Unit> {
+        val result = apiClient.deleteContact(id, revision)
         if (result.isSuccess) dao.deleteById(id)
         return result
     }

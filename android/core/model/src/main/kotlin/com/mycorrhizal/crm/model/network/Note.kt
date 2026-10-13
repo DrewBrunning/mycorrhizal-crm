@@ -16,6 +16,8 @@ data class Note(
     val date: String? = null,
     @Json(name = "contact_id") val contactId: Int? = null,
     val contact: ContactFlat? = null,
+    /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
+    val revision: Int? = null,
     /** T17 change-feed tombstone marker. */
     val deleted: Boolean = false,
 )

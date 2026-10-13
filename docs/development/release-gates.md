@@ -54,7 +54,7 @@ Four mechanisms, in order of when they fire:
    and the per-release adversarial delta ([#953](https://github.com/DrewBrunning/mycorrhizal-crm/issues/953)),
    each with a recorded `ack_*` dispatch escape. `dry_run: true` runs the whole battery and the
    fixture regeneration but makes no commit, push, or tag, and is exercised weekly by
-   `release-dry-run.yml` ([#929](https://github.com/DrewBrunning/mycorrhizal-crm/issues/929)).
+   `release-dry-run.yml` (see "Dry run and release paperwork" below) ([#929](https://github.com/DrewBrunning/mycorrhizal-crm/issues/929)).
 
 3. **Publication time** — `docker-publish.yml`'s **`release-gate`** job calls the *same*
    `release-validate.yml` before anything publishes (ADR 0021, issue #1165). Because the tag-triggered
@@ -392,6 +392,27 @@ reference-client rows can be added to the ledger as further `gates[]` entries wi
 longer-term replacement for the device run is a hosted real-device job (Firebase Test Lab arm64),
 tracked separately.
 
+## Dry run and release paperwork
+
+The weekly rehearsal exists to catch *pipeline* defects, so gates that check *paperwork* state (expected
+to be unsatisfied mid-cycle) must not turn it red. In `release.yml` with `dry_run: true`:
+
+| Gate | Kind | Real release | Dry run |
+|---|---|---|---|
+| `Gate - ASVS/MASVS re-verification obligation` (`release-obligations.sh asvs`) | paperwork | hard fail without a new section-10 row (or recorded `ack_asvs_current`) | runs, `::warning::` + a "Pending release paperwork" line, passes |
+| `Gate - per-release adversarial delta` (`release-obligations.sh adversarial`) | paperwork | hard fail without a ledger row (or recorded `ack_adversarial_delta`) | same downgrade |
+| `Gate - manual-gate attestations` | paperwork | verified attestation or recorded `id=skip:<reason>` | rehearsal dispatch passes recorded skips (no device, no release); unchanged |
+| citecheck, `releasegatecheck`, the `validate` battery, registration/frozen-chain, test gates | pipeline / deterministic repo checks | fail | fail (still fail the rehearsal) |
+
+The downgrade is the explicit `--dry-run` flag on `release-obligations.sh`, chosen in the step by
+`DRY_RUN`; the rehearsal never passes an `ack_*` input (an ack is a recorded skip). Each would-block is
+appended to `PENDING_PAPERWORK_FILE` and the `Dry run - summary` step renders it as a **Pending release
+paperwork** section ("a real release would currently be blocked on: ..."). Real releases and
+`promote-rc.yml` never pass `--dry-run`. Pinned by `releaseworkflow.CheckDryRunPaperwork` (part of
+`releasegatecheck`, per PR: both steps keep one `--dry-run` call inside the `DRY_RUN` branch and one bare
+call in the else, no `if:`/`continue-on-error`, the summary section exists, the rehearsal passes no ack) and
+by `.github/scripts/tests/release-obligations.test.sh`.
+
 ## The gates
 
 Generated view of `.github/release-gates.json`. `releasegatecheck` asserts every row here has a
@@ -445,7 +466,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Go mutation testing` | advisory | no | gremlins mutation testing against the safety-critical Go paths (migration/upgrade, backup/restore, delete cascade, import/export, data-integrity invariants — backend/internal/mutationscope.Scopes); each matrix leg's generated config fails the nightly run itself below its recorded threshold (issue #915). Per-leg check names make polling impractical; nightly-only and not release-blocking, so tier stays advisory. | `go-mutation.yml` |
 | `Android macrobenchmark` | advisory | no | cold/warm/hot startup and dashboard frame timing trend; continue-on-error by design (emulator variance). | `android-tests.yml` |
 | `Reproducible image (all-in-one)` | advisory | no | double-build config + layer digest compare for the linux/amd64 image; continue-on-error until reliably green on main (REL-04, #448). | `reproducibility.yml` |
-| `Release dry-run rehearsal` | advisory | no | weekly + on-demand: dispatches release.yml with dry_run:true against the last SupportedReleases entry and fails if that dry run fails; exercises the final-release path's gate battery + fixture regeneration without cutting a release (issue #929). Not release-blocking -- a failure means the automation regressed, triaged like any other advisory gate. | `release-dry-run.yml` |
+| `Release dry-run rehearsal` | advisory | no | weekly + on-demand: dispatches release.yml with dry_run:true against the last SupportedReleases entry and fails if that dry run fails (release paperwork gates -- ASVS row, adversarial delta -- are reported as "Pending release paperwork", not failed); exercises the final-release path's gate battery + fixture regeneration without cutting a release (issue #929). Not release-blocking -- a failure means the automation regressed, triaged like any other advisory gate. | `release-dry-run.yml` |
 | `Docker apk pin check` | advisory | no | nightly + on-demand: builds all three Dockerfiles with caching disabled, so a pinned Alpine apk version that upstream has pruned fails here days before it fails a release image build (the #1062/#1131 recurrence guard). Advisory because it is a time-based upstream-drift signal, not a repository change. | `docker-pin-check.yml` |
 
 <!-- release-gates:end -->

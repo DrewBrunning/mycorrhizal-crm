@@ -388,4 +388,39 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Instant Messaging").assertDoesNotExist()
     }
+
+    // Issue #1665 / ADR 0008: a 412 on save keeps the form and offers keep-editing / load-latest.
+    private fun formViewModel(state: ContactFormState): ContactFormViewModel {
+        val viewModel = io.mockk.mockk<ContactFormViewModel>(relaxed = true)
+        io.mockk.every { viewModel.uiState } returns kotlinx.coroutines.flow.MutableStateFlow(state)
+        io.mockk.every { viewModel.events } returns kotlinx.coroutines.flow.MutableStateFlow<ContactFormEvent?>(null)
+        return viewModel
+    }
+
+    @Test
+    fun `a save conflict shows the edit prompt and routes both buttons to the view model`() {
+        val viewModel = formViewModel(ContactFormState(contactId = 5, conflict = true))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactFormScreen(onSaved = {}, onBack = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your edit was not saved.", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load latest version").performClick()
+        io.mockk.verify(exactly = 1) { viewModel.onConflictLoadLatest() }
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        io.mockk.verify(exactly = 1) { viewModel.onConflictKeepEditing() }
+    }
+
+    @Test
+    fun `no conflict prompt on the form without a conflict`() {
+        val viewModel = formViewModel(ContactFormState(contactId = 5))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactFormScreen(onSaved = {}, onBack = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+    }
 }

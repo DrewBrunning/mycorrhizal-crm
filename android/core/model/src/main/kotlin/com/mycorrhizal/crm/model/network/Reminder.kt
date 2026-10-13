@@ -24,6 +24,8 @@ data class Reminder(
     @Json(name = "contact_id") val contactId: Int? = null,
     @Json(name = "life_event_id") val lifeEventId: String? = null,
     val contact: ContactFlat? = null,
+    /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
+    val revision: Int? = null,
 )
 
 /** GET /contacts/{id}/reminders — wrapped `{ reminders }` array. */

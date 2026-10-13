@@ -49,6 +49,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 /**
  * M9 item 1: the "Activities" drawer entry — every activity across every contact (matching web's
@@ -80,6 +81,8 @@ fun ActivitiesInboxScreen(
         onDelete = viewModel::delete,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
+        onConflictDismiss = viewModel::onConflictDismissed,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest,
     )
 }
 
@@ -101,6 +104,8 @@ fun ActivitiesInboxScreenContent(
     onDelete: (Int) -> Unit = {},
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
+    onConflictDismiss: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {},
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -197,6 +202,15 @@ fun ActivitiesInboxScreenContent(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
+        )
+    }
+
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = onConflictLoadLatest,
+            onKeep = onConflictDismiss,
+            messageRes = R.string.conflict_message_delete,
+            keepLabelRes = R.string.conflict_dismiss,
         )
     }
 

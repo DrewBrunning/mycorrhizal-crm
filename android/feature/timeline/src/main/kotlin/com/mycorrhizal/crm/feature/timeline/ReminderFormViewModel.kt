@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,10 @@ data class ReminderFormState(
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: the `revision` the record had when this edit began; sent as `If-Match` on save. */
+    val revision: Int? = null,
+    /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
+    val conflict: Boolean = false,
 ) {
     val isEdit: Boolean get() = reminderId != null
     val hasMessage: Boolean get() = message.isNotBlank()
@@ -179,6 +184,15 @@ class ReminderFormViewModel @Inject constructor(
     fun onReoccurFromCompletionChange(value: Boolean) = _uiState.update { it.copy(reoccurFromCompletion = value) }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
+    /** Conflict dialog "Keep editing": leave the form as typed (nothing was saved). */
+    fun onConflictKeepEditing() = _uiState.update { it.copy(conflict = false) }
+
+    /** Conflict dialog "Load latest version": discard the edit and refetch the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        loadExisting()
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
@@ -193,14 +207,20 @@ class ReminderFormViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.reminderId != null) {
-                reminderRepository.update(state.reminderId, reminder)
+                reminderRepository.update(state.reminderId, reminder, state.revision)
             } else {
                 reminderRepository.create(state.contactId, reminder)
             }
             result.foldApiError(
                 onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = ReminderFormEvent.Saved },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(isSaving = false, conflict = true)
+                        } else {
+                            it.copy(isSaving = false, error = error.displayMessage)
+                        }
+                    }
                 },
             )
         }
@@ -216,5 +236,6 @@ class ReminderFormViewModel @Inject constructor(
         recurrence = reminder.recurrence ?: ReminderRecurrence.ONCE,
         byMail = reminder.byMail ?: false,
         reoccurFromCompletion = reminder.reoccurFromCompletion ?: true,
+        revision = reminder.revision,
     )
 }

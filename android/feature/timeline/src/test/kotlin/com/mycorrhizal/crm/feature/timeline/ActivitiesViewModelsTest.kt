@@ -161,8 +161,8 @@ class ActivitiesViewModelTest {
                 nextCursor = null,
             ),
         )
-        coEvery { activityRepository.delete(1) } returns Result.success(Unit)
-        coEvery { activityRepository.delete(2) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery { activityRepository.delete(1, any()) } returns Result.success(Unit)
+        coEvery { activityRepository.delete(2, any()) } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -252,7 +252,7 @@ class ActivityFormViewModelTest {
         coEvery { activityRepository.get(7) } returns Result.success(
             Activity(id = 7, title = "Lunch", type = "meal"),
         )
-        coEvery { activityRepository.update(7, any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -268,6 +268,7 @@ class ActivityFormViewModelTest {
             activityRepository.update(
                 7,
                 match<ActivityInput> { input -> input.title == "Dinner" },
+                any(),
             )
         }
         assertEquals(ActivityFormEvent.Saved, vm.events.value)
@@ -288,7 +289,7 @@ class ActivityFormViewModelTest {
                 externalRef = "cal-event-42",
             ),
         )
-        coEvery { activityRepository.update(7, any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -305,6 +306,7 @@ class ActivityFormViewModelTest {
                     input.contactIds == listOf(5, 9) &&
                         input.externalRef == "cal-event-42"
                 },
+                any(),
             )
         }
     }
@@ -322,7 +324,7 @@ class ActivityFormViewModelTest {
                 contacts = listOf(ContactFlat(id = 5, firstname = "Dana"), ContactFlat(id = 9, firstname = "Bob")),
             ),
         )
-        coEvery { activityRepository.update(7, any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -339,6 +341,7 @@ class ActivityFormViewModelTest {
             activityRepository.update(
                 7,
                 match<ActivityInput> { input -> input.contactIds == emptyList<Int>() },
+                any(),
             )
         }
     }
