@@ -1666,4 +1666,38 @@ class ContactDetailScreenTest {
 
         assertEquals(5, opened)
     }
+
+    // Issue #1665 / ADR 0008: a 412 on delete shows the "not deleted" prompt on the detail screen.
+    @Test
+    fun `a delete conflict shows the prompt and routes both buttons to the view model`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact, conflict = true))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
+        composeTestRule.onNodeWithText("so it was not deleted", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load latest version").performClick()
+        verify(exactly = 1) { viewModel.onConflictLoadLatest() }
+        composeTestRule.onNodeWithText("Not now").performClick()
+        verify(exactly = 1) { viewModel.onConflictDismissed() }
+    }
+
+    @Test
+    fun `no conflict prompt on the detail screen without a conflict`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+    }
 }

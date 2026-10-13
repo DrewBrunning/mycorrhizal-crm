@@ -119,6 +119,41 @@ assert_case "adversarial: would-block downgraded under --dry-run -> pass" 0 "wou
 
 assert_case "adversarial: missing --release -> usage error" 2 "requires --release" adversarial
 
+# --- dry run: paperwork gates report, never fail ----------------------------
+
+PENDING="$tmp/pending.md"
+export PENDING_PAPERWORK_FILE="$PENDING"
+: > "$PENDING"
+export STUB_PREV_TAG="v0.9.0"
+export STUB_ASVS_ROW=0
+assert_case "asvs: no row under --dry-run -> warning, exit 0" 0 "a real release would be blocked" asvs --dry-run
+if grep -qF "ASVS/MASVS re-verification" "$PENDING"; then
+  pass=$((pass + 1)); echo "PASS: asvs --dry-run writes the pending-paperwork line"
+else
+  fail=$((fail + 1)); echo "FAIL: asvs --dry-run did not write the pending-paperwork line"
+fi
+: > "$PENDING"
+export STUB_ADV_EXIT=1
+assert_case "adversarial: would-block under --dry-run -> exit 0" 0 "would block a real release" adversarial --release v1.0.0 --dry-run
+if grep -qF "Adversarial delta" "$PENDING"; then
+  pass=$((pass + 1)); echo "PASS: adversarial --dry-run writes the pending-paperwork line"
+else
+  fail=$((fail + 1)); echo "FAIL: adversarial --dry-run did not write the pending-paperwork line"
+fi
+export STUB_ASVS_ROW=1
+: > "$PENDING"
+assert_case "asvs: row present under --dry-run -> pass, nothing pending" 0 "new changelog row" asvs --dry-run
+if [ ! -s "$PENDING" ]; then
+  pass=$((pass + 1)); echo "PASS: satisfied gate writes nothing pending"
+else
+  fail=$((fail + 1)); echo "FAIL: satisfied gate wrote pending paperwork"
+fi
+# Real mode (no --dry-run) is unchanged even with the pending file wired.
+export STUB_ASVS_ROW=0
+assert_case "asvs: no row WITHOUT --dry-run still fails (real mode unchanged)" 1 "no new section-10 changelog row" asvs
+assert_case "adversarial: would-block WITHOUT --dry-run still fails" 1 "Adversarial-delta gate failed" adversarial --release v1.0.0
+unset PENDING_PAPERWORK_FILE
+
 assert_case "unknown command -> usage error" 2 "unknown command" frobnicate
 
 # --- asvs: HEAD self-tagged (real git, no stub) -----------------------------

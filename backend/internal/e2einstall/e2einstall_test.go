@@ -24,6 +24,7 @@ const (
 
 type step struct {
 	Name           string            `yaml:"name"`
+	ID             string            `yaml:"id"`
 	Run            string            `yaml:"run"`
 	TimeoutMinutes int               `yaml:"timeout-minutes"`
 	With           map[string]string `yaml:"with"`
@@ -112,7 +113,7 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 				continue
 			}
 			key := j.Steps[i-1].With["key"]
-			wantKey := "playwright-${{ runner.os }}-" + strings.Join(browsers, "-") + "-${{ hashFiles('frontend/yarn.lock') }}"
+			wantKey := "playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-" + strings.Join(browsers, "-") + "-${{ hashFiles('frontend/yarn.lock') }}"
 			if key != wantKey {
 				t.Errorf("%s: cache key %q, want %q", id, key, wantKey)
 			}
@@ -127,7 +128,7 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 				if path := aptStep.With["path"]; !strings.Contains(path, "~/.cache/playwright-apt") {
 					t.Errorf("%s: apt cache step path %q, want ~/.cache/playwright-apt", id, path)
 				}
-				wantAptKey := "playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}"
+				wantAptKey := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}"
 				if got := aptStep.With["key"]; got != wantAptKey {
 					t.Errorf("%s: apt cache key %q, want %q", id, got, wantAptKey)
 				}

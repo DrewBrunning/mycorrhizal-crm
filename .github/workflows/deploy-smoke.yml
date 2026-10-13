@@ -36,6 +36,11 @@ on:
         required: false
         type: string
         default: ''
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -55,7 +60,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     # Composed into the release battery there is no diff to gate on: the smoke
     # always runs (issue #1484).
     if: ${{ inputs.image_digest == '' }}
@@ -88,7 +93,7 @@ jobs:
       contents: read
       packages: read
     name: Clean-install smoke test
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 25
     needs: changes
     # `changes` is skipped when composed (image_digest set), so `always()` +

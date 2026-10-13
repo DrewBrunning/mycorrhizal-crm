@@ -121,6 +121,11 @@ jobs:
       # "still broken" comment every single day. A success conclusion always
       # goes through ensure-alert.sh: closing is naturally a no-op when there
       # is no open issue, so there is nothing to dedupe there.
+      #
+      # Every lookup in this job uses the REST issues endpoint, never
+      # search/issues: this matrix's ~33 legs start within seconds of each
+      # other, and the Search API's separate 30-requests/minute budget 403'd
+      # every leg past the 30th (run 38400077165) -- see alert-lib/issues.sh.
       - name: Check whether this run was already reported
         id: already-reported
         if: >-
@@ -129,18 +134,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ steps.latest-run.outputs.name }}
           RUN_ID: ${{ steps.latest-run.outputs.id }}
-        run: |
-          set -euo pipefail
-          query="repo:${GH_REPO} is:issue label:nightly-failure \"${RUN_ID}\" in:body,comments"
-          encoded="$(jq -rn --arg q "$query" '$q | @uri')"
-          count="$(gh api -X GET "search/issues?q=${encoded}" --jq '.total_count')"
-          if [ "$count" -gt 0 ]; then
-            echo "Run ${RUN_ID} is already referenced by an existing issue -- already reported."
-            echo "reported=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "reported=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: .github/scripts/nightly-alert/already-reported.sh
 
       - name: Open/update or close the nightly-failure issue
         if: >-

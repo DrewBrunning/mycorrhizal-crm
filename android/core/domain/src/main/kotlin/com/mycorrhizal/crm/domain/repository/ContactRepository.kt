@@ -86,7 +86,7 @@ interface ContactRepository {
     suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse>
 
     /** Update a contact on the server; returns the updated record. */
-    suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse>
+    suspend fun updateContact(id: Int, input: ContactRecordInput, revision: Int?): Result<ContactRecordResponse>
 
     // M24: top-level contact actions. Delete/archive/unarchive were repository-level gaps
     // (no client surface at all), not just missing UI; the backend endpoints pre-date the
@@ -97,7 +97,7 @@ interface ContactRepository {
      * Delete a contact (soft delete per `/CLAUDE.md`'s delete-semantics — the row survives
      * server-side for the audit undo). Removes the local cache row.
      */
-    suspend fun deleteContact(id: Int): Result<Unit>
+    suspend fun deleteContact(id: Int, revision: Int?): Result<Unit>
 
     /** Archive a contact (backend also retires its reminders); flips the cached `archived` flag. */
     suspend fun archiveContact(id: Int): Result<Unit>

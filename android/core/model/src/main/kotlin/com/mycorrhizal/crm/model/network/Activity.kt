@@ -23,6 +23,8 @@ data class Activity(
     val contacts: List<ContactFlat>? = null,
     val type: String? = null,
     @Json(name = "external_ref") val externalRef: String? = null,
+    /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
+    val revision: Int? = null,
     /** T17 change-feed tombstone marker. */
     val deleted: Boolean = false,
 ) {

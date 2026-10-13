@@ -147,7 +147,10 @@ the right user is signed in and unlocked:
   change recreates the activity — M25 — and must not replay the launch intent's link), and ignore any
   intent carrying `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` (reopening from Recents re-delivers the original
   intent). After handling, the link is cleared from the activity's intent (`setIntent` with the data and the
-  extra removed). The same rule applies to the OIDC return, so a replayed callback can never surface a
+  extra removed). *Amendment (#1654):* the identity of the consumed intent is persisted in
+  `onSaveInstanceState`; on a recreate / process restore, an intent whose payload differs from the
+  persisted identity is a **new** link (the system starts a killed task's restored activity with it) and
+  is handled, while an identical one stays a replay and is skipped. The same rule applies to the OIDC return, so a replayed callback can never surface a
   spurious "login failed" snackbar.
 - **Gate, then navigate.** A pending link is held until the main tree composes — i.e. after login, the
   server-compatibility gate, and the ADR 0014 app lock — exactly as today. Added: the pending link is

@@ -33,6 +33,12 @@ on:
     - cron: '30 5 * * 1' # 05:30 UTC every Monday
   workflow_dispatch:
   workflow_call:
+    inputs:
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -46,7 +52,7 @@ jobs:
     name: Go minimum version (1.26.0)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     # internal/schemafixture alone can take >10m under load; #1177's
     # follow-up found the RC2 floor leg timed out at the 10m default, not on
     # a hang -- give real headroom.
@@ -85,7 +91,7 @@ jobs:
     name: Go below minimum fails clearly (1.25.5)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -126,7 +132,7 @@ jobs:
     name: Node.js + Yarn minimum version (22.22.2 / 1.22.0)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -176,7 +182,7 @@ jobs:
     name: Node.js below minimum fails clearly (22.22.1)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -223,7 +229,7 @@ jobs:
     name: Browser minimum version (Firefox 111 / Chrome 115)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -361,7 +367,7 @@ jobs:
     name: Docker Compose minimum version (v2.17.2)
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 25
     steps:
       - name: Checkout repository

@@ -40,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +81,13 @@ fun NoteFormScreen(
                 modifier = Modifier.padding(padding),
             )
         }
+    }
+
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictKeepEditing,
+        )
     }
 
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error

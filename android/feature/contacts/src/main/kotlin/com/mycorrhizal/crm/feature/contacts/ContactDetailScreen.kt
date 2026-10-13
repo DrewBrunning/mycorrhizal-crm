@@ -145,6 +145,7 @@ import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
@@ -716,6 +717,14 @@ fun ContactDetailScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             },
+        )
+    }
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictDismissed,
+            messageRes = R.string.conflict_message_delete,
+            keepLabelRes = R.string.conflict_dismiss,
         )
     }
     if (showArchiveConfirm && contact != null) {

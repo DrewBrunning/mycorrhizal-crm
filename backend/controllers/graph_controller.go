@@ -32,7 +32,7 @@ func GetGraph(c *gin.Context) {
 	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles", "card").
 		Where("user_id = ? AND archived = ?", userID, false).
 		Find(&contacts).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contacts"})
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to fetch contacts").WithError(err))
 		return
 	}
 
@@ -45,7 +45,7 @@ func GetGraph(c *gin.Context) {
 	var relationshipEdges []models.RelationshipEdge
 	if err := db.Where("user_id = ? AND status = ?", userID, models.RelationshipStatusConfirmed).
 		Find(&relationshipEdges).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch relationship edges"})
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to fetch relationship edges").WithError(err))
 		return
 	}
 
@@ -54,7 +54,7 @@ func GetGraph(c *gin.Context) {
 	if err := db.Preload("Contacts", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id").Where("user_id = ?", userID)
 	}).Where("user_id = ?", userID).Find(&activities).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch activities"})
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to fetch activities").WithError(err))
 		return
 	}
 

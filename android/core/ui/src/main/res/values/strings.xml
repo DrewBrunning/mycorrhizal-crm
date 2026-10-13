@@ -1952,4 +1952,11 @@
     <string name="geopulse_duration_minutes">%1$d min</string>
     <string name="geopulse_duration_hours">%1$d h</string>
     <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="conflict_title">Changed elsewhere</string>
+    <string name="conflict_message_edit">This was changed on another device or in the web app after you opened it. Your edit was not saved. Load the latest version to discard your edit and see the current one, or keep editing to copy your changes first.</string>
+    <string name="conflict_message_delete">This was changed on another device or in the web app after you opened it, so it was not deleted. Load the latest version to see the current one.</string>
+    <string name="conflict_message_edit_closed">This was changed on another device or in the web app after you opened it. Your edit was not saved. Load the latest version to see the current one.</string>
+    <string name="conflict_load_latest">Load latest version</string>
+    <string name="conflict_keep_editing">Keep editing</string>
+    <string name="conflict_dismiss">Not now</string>
 </resources>

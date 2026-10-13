@@ -12,16 +12,26 @@
 #
 # Usage (run from the repo root, against the commit being released on HEAD):
 #
-#   release-obligations.sh asvs [--ack <reason>]
+#   release-obligations.sh asvs [--ack <reason>] [--dry-run]
 #       Require a new `| N.N | ...` changelog row in
 #       docs/security/asvs-l2-verification-report.md since the previous release
-#       tag, or a recorded acknowledgement.
+#       tag, or a recorded acknowledgement. `--dry-run` downgrades a would-block
+#       to a warning (see "Dry run" below).
 #
 #   release-obligations.sh adversarial --release <tag> [--ack <reason>] [--dry-run]
 #       Classify the paths changed since the previous release tag and require
 #       docs/security/adversarial-deltas.md to hold a row for the release naming
 #       each security-relevant surface class it touched, or a recorded
 #       acknowledgement. `--dry-run` downgrades a would-block to a warning.
+#
+# Dry run: the weekly release-dry-run.yml rehearsal exists to catch *pipeline*
+# defects. Missing release paperwork (an unwritten ASVS row, an unrecorded
+# adversarial delta) is an expected mid-cycle state, not a pipeline defect, so
+# under `--dry-run` a would-block becomes a `::warning::` plus a line in the
+# "Pending release paperwork" section (PENDING_PAPERWORK_FILE, rendered by
+# release.yml's dry-run summary step) and the script exits 0. No `ack` is
+# recorded -- a real release gets no benefit from the rehearsal. Without
+# `--dry-run` (every real release and promote-rc.yml) behavior is unchanged.
 #
 # The compare base is the most recent release tag reachable from HEAD
 # (`git describe --tags --abbrev=0 --match 'v[0-9]*'`). With no prior release tag
@@ -38,6 +48,13 @@ emit_warning() {
   # Mirror the warning into the run summary when Actions provides one.
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     printf '### :warning: %s\n' "$1" >> "$GITHUB_STEP_SUMMARY"
+  fi
+}
+
+# Record a would-block for the dry-run summary (no-op when no file is wired).
+note_pending() {
+  if [ -n "${PENDING_PAPERWORK_FILE:-}" ]; then
+    printf -- '- %s\n' "$1" >> "$PENDING_PAPERWORK_FILE"
   fi
 }
 
@@ -60,14 +77,18 @@ previous_tag() {
   git describe --tags --abbrev=0 --match 'v[0-9]*' "${exclude_args[@]}" HEAD 2>/dev/null || true
 }
 
-# asvs [--ack <reason>]
+# asvs [--ack <reason>] [--dry-run]
 run_asvs() {
-  local ack=""
+  local ack="" dry_run="false"
   while [ $# -gt 0 ]; do
     case "$1" in
       --ack)
         ack="${2:-}"
         shift 2
+        ;;
+      --dry-run)
+        dry_run="true"
+        shift
         ;;
       *)
         echo "release-obligations.sh: unknown asvs option: $1" >&2
@@ -95,6 +116,11 @@ run_asvs() {
   fi
   if [ -n "$ack" ]; then
     emit_warning "ASVS re-verification row absent; dispatcher acknowledged current: ${ack}"
+    return 0
+  fi
+  if [ "$dry_run" = "true" ]; then
+    emit_warning "ASVS re-verification row absent since $prev: a real release would be blocked until $report gets a new section-10 changelog row (or ack_asvs_current is passed); dry run continues."
+    note_pending "ASVS/MASVS re-verification: $report has no new section-10 changelog row since $prev (re-verify per section 8 and add the row before cutting)."
     return 0
   fi
   emit_error "$report has no new section-10 changelog row since $prev. Re-verify per section 8 and add the row, or re-dispatch with ack_asvs_current=<reason>."
@@ -156,6 +182,7 @@ run_adversarial() {
   # would-block as a warning and continues. A real release fails hard.
   if [ "$dry_run" = "true" ]; then
     emit_warning "Adversarial-delta gate would block a real release of $release; dry run continues. See docs/security/adversarial-deltas.md."
+    note_pending "Adversarial delta: docs/security/adversarial-deltas.md has no row for $release covering the surface classes touched since $prev."
     return 0
   fi
   emit_error "Adversarial-delta gate failed. Record the delta in docs/security/adversarial-deltas.md, or re-dispatch with ack_adversarial_delta=<reason>."

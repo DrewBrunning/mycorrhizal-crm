@@ -197,7 +197,7 @@ class NotesViewModelTest {
         coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
             ContactNotesPage(notes = listOf(Note(id = 3, content = "One"), Note(id = 4, content = "Two")), nextCursor = null),
         )
-        coEvery { noteRepository.delete(3) } returns Result.success(Unit)
+        coEvery { noteRepository.delete(3, any()) } returns Result.success(Unit)
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -213,7 +213,7 @@ class NotesViewModelTest {
         coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
             ContactNotesPage(notes = listOf(Note(id = 3, content = "One")), nextCursor = null),
         )
-        coEvery { noteRepository.delete(3) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery { noteRepository.delete(3, any()) } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -342,7 +342,7 @@ class NoteFormViewModelTest {
         coEvery { noteRepository.get(3) } returns Result.success(
             Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z"),
         )
-        coEvery { noteRepository.update(3, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -357,6 +357,7 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.content == "Loves rock climbing" },
+                any(),
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
@@ -494,7 +495,7 @@ class NoteFormViewModelTest {
                 contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee"),
             ),
         )
-        coEvery { noteRepository.update(3, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -508,6 +509,7 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.contactId == null },
+                any(),
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
@@ -524,7 +526,7 @@ class NoteFormViewModelTest {
                 contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee"),
             ),
         )
-        coEvery { noteRepository.update(3, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -537,6 +539,7 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.contactId == 12 },
+                any(),
             )
         }
     }

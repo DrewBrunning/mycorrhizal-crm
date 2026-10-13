@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"errors"
+
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 
@@ -33,7 +35,13 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		var user models.User
 		if err := db.Select("is_admin").First(&user, userID).Error; err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("User not found"))
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("User not found"))
+			} else {
+				// A lookup failure is not "no such user": surface it as the
+				// server fault it is rather than masking an outage as a 401.
+				apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to verify admin access").WithError(err))
+			}
 			return
 		}
 

@@ -119,7 +119,7 @@ class TimelineEntityRepositoriesTest {
             LifeEvent(id = "le1", entityId = "c1", type = "graduation", description = "Class of 2026"),
         )
 
-        val result = repository.update("le1", input)
+        val result = repository.update("le1", input, null)
 
         assertTrue(result.isSuccess)
         assertEquals("Class of 2026", db.cachedLifeEventDao().getForContact("c1").single().description)
@@ -131,7 +131,7 @@ class TimelineEntityRepositoriesTest {
         db.cachedLifeEventDao().upsert(CachedLifeEvent(id = "le1", entityId = "c1"))
         coEvery { apiClient.deleteLifeEvent("le1") } returns Result.success(Unit)
 
-        val result = repository.delete("le1")
+        val result = repository.delete("le1", null)
 
         assertTrue(result.isSuccess)
         assertTrue(db.cachedLifeEventDao().getForContact("c1").isEmpty())
@@ -143,7 +143,7 @@ class TimelineEntityRepositoriesTest {
         db.cachedLifeEventDao().upsert(CachedLifeEvent(id = "le1", entityId = "c1"))
         coEvery { apiClient.deleteLifeEvent("le1") } returns Result.failure(ApiError.Server(500, "boom"))
 
-        val result = repository.delete("le1")
+        val result = repository.delete("le1", null)
 
         assertTrue(result.isFailure)
         assertEquals(1, db.cachedLifeEventDao().getForContact("c1").size)
@@ -298,5 +298,21 @@ class TimelineEntityRepositoriesTest {
 
         assertTrue(result.isFailure)
         assertNull(db.cachedConversationAgendaDao().getForContact("c1").firstOrNull())
+    }
+
+    // Issue #1665 / ADR 0008: life-event update/delete forward the revision as If-Match.
+    @Test
+    fun `lifeEvents update and delete forward the revision`() = runTest {
+        val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
+        val input = LifeEventInput(entityId = "c1", type = "wedding")
+        coEvery { apiClient.updateLifeEvent("le1", any(), 5) } returns
+            Result.success(LifeEvent(id = "le1", entityId = "c1", type = "wedding"))
+        coEvery { apiClient.deleteLifeEvent("le1", 5) } returns Result.success(Unit)
+
+        assertTrue(repository.update("le1", input, 5).isSuccess)
+        assertTrue(repository.delete("le1", 5).isSuccess)
+
+        io.mockk.coVerify(exactly = 1) { apiClient.updateLifeEvent("le1", any(), 5) }
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteLifeEvent("le1", 5) }
     }
 }

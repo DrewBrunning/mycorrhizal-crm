@@ -55,14 +55,14 @@ class NoteRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: Int, input: NoteInput): Result<Note> {
-        val result = apiClient.updateNote(id, input)
+    override suspend fun update(id: Int, input: NoteInput, revision: Int?): Result<Note> {
+        val result = apiClient.updateNote(id, input, revision)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
         return result
     }
 
-    override suspend fun delete(id: Int): Result<Unit> {
-        val result = apiClient.deleteNote(id)
+    override suspend fun delete(id: Int, revision: Int?): Result<Unit> {
+        val result = apiClient.deleteNote(id, revision)
         if (result.isSuccess) dao.deleteById(id)
         return result
     }

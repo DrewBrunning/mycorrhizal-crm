@@ -397,7 +397,7 @@ class ContactDetailViewModelTest {
     fun `deleteContact emits ContactDeleted on success`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.deleteContact(5) } returns Result.success(Unit)
+        coEvery { contactRepository.deleteContact(5, any()) } returns Result.success(Unit)
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -407,14 +407,96 @@ class ContactDetailViewModelTest {
 
         assertEquals(ContactDetailEvent.ContactDeleted, vm.events.value)
         assertFalse(vm.uiState.value.isMutating)
-        io.mockk.coVerify(exactly = 1) { contactRepository.deleteContact(5) }
+        io.mockk.coVerify(exactly = 1) { contactRepository.deleteContact(5, any()) }
     }
+
+    // --- Issue #1665 / ADR 0008: If-Match on delete, typed 412 -> conflict dialog ---
+
+    @Test
+    fun `deleteContact sends the revision the loaded contact carries`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.deleteContact(5, 3) } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.deleteContact()
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { contactRepository.deleteContact(5, 3) }
+        assertEquals(ContactDetailEvent.ContactDeleted, vm.events.value)
+    }
+
+    @Test
+    fun `a 412 on delete raises the conflict state, keeps the screen and does not toast`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.deleteContact(5, 3) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            vm.deleteContact()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.conflict)
+            assertNull(vm.uiState.value.error)
+            assertFalse(vm.uiState.value.isMutating)
+            assertNull(vm.events.value)
+
+            vm.onConflictDismissed()
+            assertFalse(vm.uiState.value.conflict)
+        }
+
+    @Test
+    fun `load latest after a delete conflict refetches the contact with its new revision`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val stale = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(stale)
+            coEvery { contactRepository.deleteContact(5, 3) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+            coEvery { contactRepository.deleteContact(5, 8) } returns Result.success(Unit)
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            vm.deleteContact()
+            advanceUntilIdle()
+
+            coEvery { contactRepository.getContact(5) } returns Result.success(stale.copy(revision = 8))
+            vm.onConflictLoadLatest()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.conflict)
+            assertEquals(8, vm.uiState.value.contact?.revision)
+
+            vm.deleteContact()
+            advanceUntilIdle()
+            io.mockk.coVerify(exactly = 1) { contactRepository.deleteContact(5, 8) }
+        }
+
+    @Test
+    fun `a successful favorite toggle re-reads the revision so a later delete is not spuriously stale`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.favoriteContact(5) } returns Result.success(Unit)
+            coEvery { contactRepository.deleteContact(5, 4) } returns Result.success(Unit)
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            // The favorite write bumps the server revision to 4.
+            coEvery { contactRepository.getContact(5) } returns Result.success(record.copy(revision = 4, isFavorite = true))
+            vm.toggleFavorite()
+            advanceUntilIdle()
+            vm.deleteContact()
+            advanceUntilIdle()
+
+            io.mockk.coVerify(exactly = 1) { contactRepository.deleteContact(5, 4) }
+        }
 
     @Test
     fun `deleteContact failure surfaces the error and keeps the screen alive`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.deleteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { contactRepository.deleteContact(5, any()) } returns Result.failure(ApiError.Server(500, "boom"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -786,7 +868,7 @@ class ContactDetailViewModelTest {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         val gate = CompletableDeferred<Unit>()
-        coEvery { contactRepository.deleteContact(5) } coAnswers {
+        coEvery { contactRepository.deleteContact(5, any()) } coAnswers {
             gate.await()
             Result.success(Unit)
         }
@@ -803,7 +885,7 @@ class ContactDetailViewModelTest {
         gate.complete(Unit)
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { contactRepository.deleteContact(5) }
+        coVerify(exactly = 1) { contactRepository.deleteContact(5, any()) }
         assertEquals(ContactDetailEvent.ContactDeleted, vm.events.value)
     }
 
@@ -864,7 +946,7 @@ class ContactDetailViewModelTest {
             val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
-            coEvery { contactRepository.deleteContact(5) } coAnswers {
+            coEvery { contactRepository.deleteContact(5, any()) } coAnswers {
                 gate.await()
                 Result.success(Unit)
             }

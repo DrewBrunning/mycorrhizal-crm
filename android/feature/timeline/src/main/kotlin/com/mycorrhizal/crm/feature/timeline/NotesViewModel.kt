@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,8 @@ data class NotesUiState(
     val deletingId: Int? = null,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
+    val conflict: Boolean = false,
 )
 
 @HiltViewModel
@@ -129,18 +132,37 @@ class NotesViewModel @Inject constructor(
     }
 
     /** Delete a note (M19). Confirmation is the screen's job — see M17's rule. */
+    /** Conflict dialog "Not now": nothing was deleted; the list stays as it is. */
+    fun onConflictDismissed() {
+        _uiState.update { it.copy(conflict = false) }
+    }
+
+    /** Conflict dialog "Load latest version": refetch the list so the row shows the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        load()
+    }
+
+    private fun revisionOf(id: Int): Int? = _uiState.value.notes.firstOrNull { it.id == id }?.revision
+
     fun delete(id: Int) {
         if (_uiState.value.deletingId != null) return
         viewModelScope.launch {
             _uiState.update { it.copy(deletingId = id, error = null) }
-            noteRepository.delete(id).foldApiError(
+            noteRepository.delete(id, revisionOf(id)).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
                         state.copy(deletingId = null, notes = state.notes.filterNot { it.id == id })
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(deletingId = null, conflict = true)
+                        } else {
+                            it.copy(deletingId = null, error = error.displayMessage)
+                        }
+                    }
                 },
             )
         }

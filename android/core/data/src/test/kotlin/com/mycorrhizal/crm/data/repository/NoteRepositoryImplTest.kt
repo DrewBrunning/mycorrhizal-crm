@@ -99,7 +99,7 @@ class NoteRepositoryImplTest {
         db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
         coEvery { apiClient.deleteNote(3) } returns Result.success(Unit)
 
-        val result = repository.delete(3)
+        val result = repository.delete(3, null)
 
         assertTrue(result.isSuccess)
         assertTrue(db.cachedNoteDao().getAll().isEmpty())
@@ -111,7 +111,7 @@ class NoteRepositoryImplTest {
         db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
         coEvery { apiClient.deleteNote(3) } returns Result.failure(ApiError.Client(500, "boom"))
 
-        val result = repository.delete(3)
+        val result = repository.delete(3, null)
 
         assertTrue(result.isFailure)
         assertEquals(1, db.cachedNoteDao().getAll().size)
@@ -185,7 +185,7 @@ class NoteRepositoryImplTest {
             Note(id = 3, content = "Loves rock climbing"),
         )
 
-        val result = repository.update(3, NoteInput(content = "Loves rock climbing"))
+        val result = repository.update(3, NoteInput(content = "Loves rock climbing"), null)
 
         assertTrue(result.isSuccess)
         assertEquals("Loves rock climbing", db.cachedNoteDao().getById(3)?.content)
@@ -202,5 +202,29 @@ class NoteRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    // Issue #1665 / ADR 0008: the revision is forwarded as If-Match; a 412 changes nothing locally.
+    @Test
+    fun `update and delete forward the revision`() = runTest {
+        coEvery { apiClient.updateNote(3, any(), 5) } returns Result.success(Note(id = 3, content = "x"))
+        coEvery { apiClient.deleteNote(3, 5) } returns Result.success(Unit)
+
+        assertTrue(repository.update(3, NoteInput(content = "x"), 5).isSuccess)
+        assertTrue(repository.delete(3, 5).isSuccess)
+
+        io.mockk.coVerify(exactly = 1) { apiClient.updateNote(3, any(), 5) }
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteNote(3, 5) }
+    }
+
+    @Test
+    fun `a 412 delete keeps the cached row and returns the typed conflict`() = runTest {
+        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
+        coEvery { apiClient.deleteNote(3, 5) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+
+        val result = repository.delete(3, 5)
+
+        assertTrue(result.exceptionOrNull() is ApiError.PreconditionFailed)
+        assertEquals(1, db.cachedNoteDao().getAll().size)
     }
 }

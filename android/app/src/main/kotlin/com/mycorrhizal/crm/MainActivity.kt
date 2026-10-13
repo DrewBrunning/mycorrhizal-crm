@@ -138,6 +138,7 @@ class MainActivity : FragmentActivity() {
         // T106: must precede super.onCreate() -- required by the library, not stylistic.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        lastConsumedLaunchIdentity = savedInstanceState?.getString(STATE_CONSUMED_LAUNCH_IDENTITY)
 
         // Issue #507 (MASVS-L2 resilience re-evaluation): every screen in this
         // single-Activity app renders relationship PII, so both are applied
@@ -236,6 +237,16 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    // Issue #1654: identity of the last launch intent consumed, persisted across
+    // recreate / process restore so a restored activity can tell a replay of the
+    // consumed link from a different link delivered with the saved state.
+    private var lastConsumedLaunchIdentity: String? = null
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        lastConsumedLaunchIdentity?.let { outState.putString(STATE_CONSUMED_LAUNCH_IDENTITY, it) }
+    }
+
     // singleTask: a deep link to the running activity arrives here, not in
     // onCreate — handle it the same way.
     override fun onNewIntent(intent: Intent) {
@@ -252,7 +263,9 @@ class MainActivity : FragmentActivity() {
      */
     private fun consumeLaunchIntent(savedStateIsNull: Boolean) {
         val current = intent ?: return
-        if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags)) return
+        val identity = launchIntentIdentity(current)
+        if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags, identity, lastConsumedLaunchIdentity)) return
+        lastConsumedLaunchIdentity = identity
         handleOidcReturn(current.data)
         handleDeepLink(current)
         handleShare(current)
@@ -444,13 +457,44 @@ internal fun shareDraftFromIntent(intent: Intent?): String? {
 }
 
 /**
- * ADR 0029 §3: whether an incoming launch intent may be handled. False for a
- * recreate (saved state present) and for a reopen from Recents
- * (`FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`) — both re-deliver an intent that was
- * already consumed. Pure so it is testable without an Activity.
+ * ADR 0029 §3: whether an incoming launch intent may be handled. Never for a
+ * reopen from Recents (`FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`). A fresh launch /
+ * `onNewIntent` (saved state null) is always handled. A recreate or process
+ * restore (saved state present) re-delivers either the already-consumed intent
+ * (skip) or — issue #1654 — a *different* link the system started the restored
+ * activity with (handle): it is handled only when its [identity] is non-null and
+ * differs from [consumedIdentity] restored from saved state. Pure so it is
+ * testable without an Activity.
  */
-internal fun shouldHandleLaunchIntent(savedStateIsNull: Boolean, flags: Int): Boolean =
-    savedStateIsNull && (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
+internal fun shouldHandleLaunchIntent(
+    savedStateIsNull: Boolean,
+    flags: Int,
+    identity: String? = null,
+    consumedIdentity: String? = null,
+): Boolean {
+    if ((flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return false
+    if (savedStateIsNull) return true
+    return identity != null && identity != consumedIdentity
+}
+
+/**
+ * Stable identity of a launch intent's payload (data URI, notification link,
+ * shared text/subject) — null when it carries none. Saved across recreate so a
+ * replay of the consumed intent is distinguishable from a new one (issue #1654).
+ */
+internal fun launchIntentIdentity(intent: Intent?): String? {
+    if (intent == null) return null
+    val parts = listOf(
+        intent.dataString,
+        intent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK),
+        intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+        intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+    )
+    if (parts.all { it.isNullOrEmpty() }) return null
+    return parts.joinToString("\u0000") { it.orEmpty() }
+}
+
+private const val STATE_CONSUMED_LAUNCH_IDENTITY = "consumed_launch_identity"
 
 /**
  * ADR 0029 §4: clears this pending link whenever [session] reports logged-out,
