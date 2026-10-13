@@ -276,7 +276,7 @@ jobs:
       # real GLX connection even to a fake display -- Xvfb + Mesa's
       # software rasterizer (llvmpipe) is the standard portable fix.
       - name: Install Firefox 111's runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2 libgl1 xvfb libgl1-mesa-dri libglx-mesa0
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2 libgl1 xvfb libgl1-mesa-dri libglx-mesa0 libegl1 libgles2
 
       - name: Start a virtual X display (Xvfb)
         run: |
