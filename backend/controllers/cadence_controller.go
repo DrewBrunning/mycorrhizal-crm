@@ -4,6 +4,7 @@ import (
 	"errors"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
+	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -30,11 +31,21 @@ func cadenceNow(c *gin.Context) time.Time {
 }
 
 // policyHealth derives health for one policy, embedding it in the response
-// shape. A DB failure is a hard error (abort); health itself is never an
-// error even when undefined.
-func policyHealth(c *gin.Context, db *gorm.DB, userID uint, policy *models.CadencePolicy) (cadencePolicyWithHealth, bool) {
+// shape. health itself is never an error even when undefined.
+//
+// A DB failure while deriving health is a hard error (abort) for a pure read.
+// For a write handler (committed=true) the policy row is already persisted, so
+// the failure must not become a 5xx a client would retry (a create retry
+// duplicates the record): it is logged at warn and the 2xx carries the
+// committed policy with zero-value ("undefined") health, which clients
+// refresh on the next read (issue #1663).
+func policyHealth(c *gin.Context, db *gorm.DB, userID uint, policy *models.CadencePolicy, committed bool) (cadencePolicyWithHealth, bool) {
 	health, err := services.ComputeCadenceHealth(db, userID, policy, cadenceNow(c))
 	if err != nil {
+		if committed {
+			logger.FromContext(c).Warn().Err(err).Str("cadence_policy_id", policy.ID).Msg("Cadence policy written but health derivation failed; returning the policy with undefined health")
+			return cadencePolicyWithHealth{CadencePolicy: *policy}, true
+		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute cadence health").WithError(err))
 		return cadencePolicyWithHealth{}, false
 	}
@@ -85,7 +96,7 @@ func CreateCadencePolicy(c *gin.Context) {
 		return
 	}
 
-	resp, ok := policyHealth(c, db, userID, &policy)
+	resp, ok := policyHealth(c, db, userID, &policy, true)
 	if !ok {
 		return
 	}
@@ -111,7 +122,7 @@ func GetCadencePolicy(c *gin.Context) {
 		return
 	}
 
-	resp, ok := policyHealth(c, db, userID, &policy)
+	resp, ok := policyHealth(c, db, userID, &policy, false)
 	if !ok {
 		return
 	}
@@ -208,7 +219,7 @@ func ListCadencePolicies(c *gin.Context) {
 
 	response := make([]cadencePolicyWithHealth, 0, len(policies))
 	for i := range policies {
-		resp, ok := policyHealth(c, db, userID, &policies[i])
+		resp, ok := policyHealth(c, db, userID, &policies[i], false)
 		if !ok {
 			return
 		}
@@ -279,7 +290,7 @@ func UpdateCadencePolicy(c *gin.Context) {
 		return
 	}
 
-	resp, ok := policyHealth(c, db, userID, &policy)
+	resp, ok := policyHealth(c, db, userID, &policy, true)
 	if !ok {
 		return
 	}

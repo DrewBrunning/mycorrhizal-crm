@@ -206,12 +206,14 @@ func mustUint(s string) uint {
 	return uint(n)
 }
 
-const (
-	faultReasonPostCommitRead = "post-commit response read: the write is already committed in its own statement and the handler re-reads the row to build the response (policy health / reloaded associations); a failure there is reported as a 5xx so the client re-reads rather than trusting a half-built body. Recorded design debt, not a rollback guarantee"
-)
+// faultReasonPostCommitRead marks a 2xx outcome whose failed statement is the
+// post-commit response read (issue #1663): the write is already committed, so
+// the handler answers 2xx from the committed in-memory entity (warn-logged)
+// and the sweep additionally asserts the write persisted.
+const faultReasonPostCommitRead = "post-commit response read: the write is committed, so a failed re-read answers 2xx with the committed in-memory entity and a warn log, never 5xx (#1663)"
 
 // crudAllowlist are the 2xx outcomes (best-effort side effects) of the CRUD
-// scenarios; crudPostCommitErrors are the 5xx-after-commit outcomes.
+// scenarios.
 func crudAllowlist() map[string]string {
 	m := map[string]string{}
 	for k, v := range map[string]string{
@@ -224,15 +226,13 @@ func crudAllowlist() map[string]string {
 		"PUT /tags/:id|query tags#2":               faultReasonAudit,
 		"PUT /life-events/:id|query life_events#2": faultReasonAudit,
 		"PUT /gifts/:id|query gifts#2":             faultReasonAudit,
+
+		"PUT /activities/:id|query activities#3":        faultReasonPostCommitRead,
+		"PUT /activities/:id|query activity_contacts#2": faultReasonPostCommitRead,
+		"POST /cadence-policies|query activities#1":     faultReasonPostCommitRead,
+		"PUT /cadence-policies/:id|query activities#1":  faultReasonPostCommitRead,
 	} {
 		m[k] = v
 	}
 	return m
-}
-
-var crudPostCommitErrors = map[string]string{
-	"PUT /activities/:id|query activities#3":        faultReasonPostCommitRead,
-	"PUT /activities/:id|query activity_contacts#2": faultReasonPostCommitRead,
-	"POST /cadence-policies|query activities#1":     faultReasonPostCommitRead,
-	"PUT /cadence-policies/:id|query activities#1":  faultReasonPostCommitRead,
 }
