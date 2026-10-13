@@ -188,3 +188,65 @@ func TestCommittedAllowlistValid(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestObservedCountsTable(t *testing.T) {
+	allow := writeAllow(t, `[
+{"message":"m","fields":{"path":"/a"},"max_count":4,"reason":"r"},
+{"message":"never seen","max_count":2,"reason":"r"}]`)
+	logs := `{"level":"warn","path":"/a","message":"m"}` + "\n" + `{"level":"warn","path":"/a","message":"m"}`
+
+	t.Run("stdout and summary on success including zero-observed", func(t *testing.T) {
+		sum := filepath.Join(t.TempDir(), "summary.md")
+		t.Setenv("GITHUB_STEP_SUMMARY", sum)
+		t.Setenv("GITHUB_JOB", "e2e-leg")
+		var out bytes.Buffer
+		if err := run(strings.NewReader(logs), &out, allow); err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{`"m"{path=/a} | 2 | 4`, `"never seen" | 0 | 2`} {
+			if !strings.Contains(out.String(), want) {
+				t.Errorf("stdout missing %q:\n%s", want, out.String())
+			}
+		}
+		raw, err := os.ReadFile(sum)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"### logguard observed counts (e2e-leg)", "| entry | observed | max_count |", "| `\"m\"{path=/a}` | 2 | 4 |", "| `\"never seen\"` | 0 | 2 |"} {
+			if !strings.Contains(string(raw), want) {
+				t.Errorf("summary missing %q:\n%s", want, raw)
+			}
+		}
+	})
+	t.Run("summary appends and escapes pipes; no job name", func(t *testing.T) {
+		sum := filepath.Join(t.TempDir(), "summary.md")
+		if err := os.WriteFile(sum, []byte("prior\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("GITHUB_STEP_SUMMARY", sum)
+		t.Setenv("GITHUB_JOB", "")
+		a := writeAllow(t, `[{"message":"m","fields":{"path":"/a|/b"},"max_count":1,"reason":"r"}]`)
+		if err := run(strings.NewReader(""), &bytes.Buffer{}, a); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := os.ReadFile(sum)
+		if !strings.HasPrefix(string(raw), "prior\n### logguard observed counts\n") || !strings.Contains(string(raw), `/a\|/b`) {
+			t.Errorf("bad summary:\n%s", raw)
+		}
+	})
+	t.Run("table still printed on failure", func(t *testing.T) {
+		t.Setenv("GITHUB_STEP_SUMMARY", "")
+		var out bytes.Buffer
+		a := writeAllow(t, `[{"message":"m","max_count":1,"reason":"r"}]`)
+		err := run(strings.NewReader(logs), &out, a)
+		if err == nil || !strings.Contains(out.String(), `"m" | 2 | 1`) {
+			t.Fatalf("want failure and table, got %v %q", err, out.String())
+		}
+	})
+	t.Run("unwritable summary errors", func(t *testing.T) {
+		t.Setenv("GITHUB_STEP_SUMMARY", filepath.Join(t.TempDir(), "no", "dir", "s.md"))
+		if err := run(strings.NewReader(""), &bytes.Buffer{}, allow); err == nil {
+			t.Fatal("want error")
+		}
+	})
+}
