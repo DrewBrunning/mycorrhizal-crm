@@ -48,8 +48,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-curl -fsS -X POST "${base}/session/${session_id}/url" -H 'Content-Type: application/json' \
-  -d '{"url":"'"$url"'"}' >/dev/null
+if ! nav_body="$(curl -sS --fail-with-body -X POST "${base}/session/${session_id}/url" -H 'Content-Type: application/json' \
+  -d '{"url":"'"$url"'"}' 2>&1)"; then
+  echo "navigate failed: $nav_body"
+  exit 1
+fi
 
 # WebDriver's POST .../url only waits for the platform page-load event
 # (DOMContentLoaded/load) -- it returns as soon as the static HTML shell and
