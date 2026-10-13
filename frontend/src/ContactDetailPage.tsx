@@ -85,6 +85,7 @@ import PreferenceDialog, {
 } from './components/PreferenceDialog';
 import PreferenceList from './components/PreferenceList';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
+import RecordConflictDialog from './components/RecordConflictDialog';
 import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
 import RelationshipEdgeList from './components/RelationshipEdgeList';
 import ReminderDialog from './components/ReminderDialog';
@@ -831,12 +832,19 @@ export default function ContactDetailPage() {
     }
   };
 
+  // ADR 0008: a save answered with 412 means the record changed elsewhere
+  // since this page loaded it. Per ADR 0010 nothing is merged -- the user
+  // reloads the latest version or keeps their edit open to copy from.
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const handleConflict = () => setConflictOpen(true);
+
   const fieldEditing = useContactFieldEditing({
     id,
     record,
     setRecord,
     refreshLifeEvents,
     showError,
+    onConflict: handleConflict,
   });
 
   const {
@@ -846,7 +854,7 @@ export default function ContactDetailPage() {
     handleStartEditProfile,
     handleCancelEditProfile,
     handleSaveProfile,
-  } = useContactProfileEditing({ id, record, setRecord, showError });
+  } = useContactProfileEditing({ id, record, setRecord, showError, onConflict: handleConflict });
 
   const {
     handleDeleteContact,
@@ -941,6 +949,15 @@ export default function ContactDetailPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
+      <RecordConflictDialog
+        open={conflictOpen}
+        onKeepEditing={() => setConflictOpen(false)}
+        onReload={() => {
+          handleCancelEditProfile();
+          fieldEditing.handleEditCancel();
+          void reloadRecord().finally(() => setConflictOpen(false));
+        }}
+      />
       {/* Contact Header Card */}
       <ContactHeader
         record={record}

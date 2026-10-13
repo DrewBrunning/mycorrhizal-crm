@@ -1,6 +1,6 @@
 import { type Dispatch, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../api/client';
+import { ApiError, isPreconditionFailed } from '../api/client';
 import {
   type Card,
   type ContactRecordResponse,
@@ -19,6 +19,9 @@ export interface ContactFieldEditingOptions {
   // so the timeline and the Life Events panel pick it up without a reload.
   refreshLifeEvents: (uid: string) => Promise<void>;
   showError: (message: string) => void;
+  // Called instead of showError when a save is rejected with 412 (the record
+  // changed elsewhere; ADR 0008).
+  onConflict?: () => void;
 }
 
 // ContactInformation's editing surface: the one-field-at-a-time inline
@@ -30,6 +33,7 @@ export function useContactFieldEditing({
   setRecord,
   refreshLifeEvents,
   showError,
+  onConflict,
 }: ContactFieldEditingOptions) {
   const { t } = useTranslation();
   const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
@@ -39,6 +43,10 @@ export function useContactFieldEditing({
 
   const reportUpdateError = (err: unknown) => {
     console.error('Error updating contact:', err);
+    if (onConflict && isPreconditionFailed(err)) {
+      onConflict();
+      return;
+    }
     if (err instanceof ApiError) {
       showError(err.getDisplayMessage());
     } else {
@@ -88,6 +96,7 @@ export function useContactFieldEditing({
       const updated = await updateContactRecord(
         id,
         applyRecordPatch(record, buildRecordPatch(record.card, field, valueToSave)),
+        record.revision,
       );
       setRecord(updated);
       setEditingField(null);
@@ -96,7 +105,7 @@ export function useContactFieldEditing({
       await refreshLifeEvents(record.uid).catch(() => {});
     } catch (err) {
       reportUpdateError(err);
-      if (err instanceof ApiError) {
+      if (err instanceof ApiError && !(onConflict && isPreconditionFailed(err))) {
         setValidationError(err.getDisplayMessage());
       }
     }
@@ -108,11 +117,15 @@ export function useContactFieldEditing({
   const handleUpdateCard = async (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => {
     if (!record || !id) return;
     try {
-      const updated = await updateContactRecord(id, {
-        gender: record.gender,
-        card: { ...record.card, ...patch },
-        crm: { ...record.crm, ...crmPatch },
-      });
+      const updated = await updateContactRecord(
+        id,
+        {
+          gender: record.gender,
+          card: { ...record.card, ...patch },
+          crm: { ...record.crm, ...crmPatch },
+        },
+        record.revision,
+      );
       setRecord(updated);
       await refreshLifeEvents(record.uid).catch(() => {});
     } catch (err) {

@@ -94,11 +94,15 @@ test('saving a CRM field PUTs the merged record, closes the editor, refreshes li
   act(() => result.current.handleEditStart('how_we_met', 'School'));
   act(() => result.current.handleEditValueChange('Work'));
   await act(() => result.current.handleEditSave('how_we_met'));
-  expect(updateContactRecord).toHaveBeenCalledWith('1', {
-    gender: 'female',
-    card: record.card,
-    crm: { how_we_met: 'Work' },
-  });
+  expect(updateContactRecord).toHaveBeenCalledWith(
+    '1',
+    {
+      gender: 'female',
+      card: record.card,
+      crm: { how_we_met: 'Work' },
+    },
+    1,
+  );
   expect(setRecord).toHaveBeenCalled();
   expect(result.current.editingField).toBeNull();
   expect(refreshLifeEvents).toHaveBeenCalledWith('alice-uid');
@@ -167,11 +171,15 @@ test('handleUpdateCard merges the card and CRM patches and refreshes life events
   await act(() =>
     result.current.handleUpdateCard({ emails: [{ address: 'a@example.com' }] }, { kind: 'human' }),
   );
-  expect(updateContactRecord).toHaveBeenCalledWith('1', {
-    gender: 'female',
-    card: { ...record.card, emails: [{ address: 'a@example.com' }] },
-    crm: { how_we_met: 'School', kind: 'human' },
-  });
+  expect(updateContactRecord).toHaveBeenCalledWith(
+    '1',
+    {
+      gender: 'female',
+      card: { ...record.card, emails: [{ address: 'a@example.com' }] },
+      crm: { how_we_met: 'School', kind: 'human' },
+    },
+    1,
+  );
   expect(refreshLifeEvents).toHaveBeenCalledWith('alice-uid');
 });
 
@@ -189,4 +197,46 @@ test('handleUpdateCard reports and rethrows a failure', async () => {
   });
   expect(showError).toHaveBeenLastCalledWith(UPDATE_ERROR);
   expect(setRecord).not.toHaveBeenCalled();
+});
+
+function setupWithConflict(onConflict: () => void) {
+  return renderHook(
+    () =>
+      useContactFieldEditing({
+        id: '1',
+        record,
+        setRecord,
+        refreshLifeEvents,
+        showError,
+        onConflict,
+      }),
+    { wrapper },
+  );
+}
+
+test('a 412 on an inline save calls onConflict, with no toast or inline error', async () => {
+  const onConflict = vi.fn();
+  const { result } = setupWithConflict(onConflict);
+  act(() => result.current.handleEditStart('how_we_met', 'School'));
+  vi.mocked(updateContactRecord).mockRejectedValueOnce(
+    new ApiError('stale', 'PRECONDITION_FAILED', 412),
+  );
+  await act(() => result.current.handleEditSave('how_we_met'));
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(showError).not.toHaveBeenCalled();
+  expect(result.current.validationError).toBe('');
+  expect(result.current.editingField).toBe('how_we_met');
+});
+
+test('a 412 on a structured save calls onConflict and still rethrows', async () => {
+  const onConflict = vi.fn();
+  const { result } = setupWithConflict(onConflict);
+  vi.mocked(updateContactRecord).mockRejectedValueOnce(
+    new ApiError('stale', 'PRECONDITION_FAILED', 412),
+  );
+  await act(async () => {
+    await expect(result.current.handleUpdateCard({})).rejects.toThrow('stale');
+  });
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(showError).not.toHaveBeenCalled();
 });
