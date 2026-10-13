@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbtest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,6 +50,19 @@ func TestInjector_LeakScalesWithElapsedIntervals(t *testing.T) {
 	assert.Len(t, in.files, 3*leakFDs)
 	in.Tick() // back on cadence: one interval's worth (floor of 1)
 	assert.Len(t, in.retain, 4)
+}
+
+func TestInjector_WALBallastScalesWithElapsedIntervals(t *testing.T) {
+	db := dbtest.New(t)
+	in, err := newInjector(context.Background(), []Fault{FaultWAL}, db)
+	require.NoError(t, err)
+	defer in.Close()
+	in.every = time.Second
+	in.last = time.Now().Add(-3 * time.Second)
+	in.Tick()
+	var n int
+	require.NoError(t, db.Raw("SELECT COALESCE(SUM(length(b)),0) FROM soak_fault_ballast").Scan(&n).Error)
+	assert.Equal(t, 3*leakWALBytes, n)
 }
 
 func TestInjector_DBConnsNeedsADatabase(t *testing.T) {

@@ -112,6 +112,7 @@ const (
 	leakFDs        = 48
 	leakLimiter    = 40
 	leakDBConns    = 8
+	leakWALBytes   = 2 << 20
 )
 
 // injectorSeq numbers injectors within a process. The account rate limiter is
@@ -235,12 +236,14 @@ func (in *injector) Tick() {
 	// tick: the pinned reader only starves the checkpoint, so the WAL still
 	// has to be fed, and feeding it from the workload made detection depend
 	// on how many writes a contended runner managed (7.98 MiB observed
-	// against an 8 MiB ceiling after 197 ops). 1 MiB per tick reaches the
-	// ceiling in a few seconds whatever the throughput.
+	// against an 8 MiB ceiling after 197 ops). leakWALBytes per nominal
+	// interval reaches the ceiling in a few seconds whatever the throughput.
 	if in.has(FaultWAL) && in.db != nil {
 		// Best effort: a failed write just means less ballast this tick.
 		if err := in.db.Exec("CREATE TABLE IF NOT EXISTS soak_fault_ballast (b BLOB)").Error; err == nil {
-			_ = in.db.Exec("INSERT INTO soak_fault_ballast (b) VALUES (zeroblob(1048576))").Error
+			// m intervals' worth, like every other fault: ballast follows elapsed
+			// time, not how many ticks a starved runner delivered.
+			_ = in.db.Exec("INSERT INTO soak_fault_ballast (b) VALUES (zeroblob(?))", leakWALBytes*m).Error
 		}
 	}
 }
