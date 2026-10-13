@@ -31,13 +31,13 @@ on:
   # instead of a from-source `docker compose up --build`.
   workflow_call:
     inputs:
-      runner:
-        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+      image_digest:
+        description: 'Candidate image digest (sha256:<64 hex>) to boot instead of building from source (release composition only).'
         required: false
         type: string
         default: ''
-      image_digest:
-        description: 'Candidate image digest (sha256:<64 hex>) to boot instead of building from source (release composition only).'
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
         required: false
         type: string
         default: ''

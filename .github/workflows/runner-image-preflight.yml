@@ -8,9 +8,6 @@ name: Runner Image Preflight
 # unchanged). Never scheduled, so it needs no nightly-failure-alert
 # registration (cmd/nightlyalertcheck only covers `schedule:` workflows).
 on:
-  push:
-    branches: [ci/ubuntu-26-preflight]
-    paths: ['.github/workflows/runner-image-preflight.yml']
   workflow_dispatch:
     inputs:
       image:
@@ -24,7 +21,6 @@ permissions:
 
 jobs:
   e2e-tests:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/e2e-tests.yml
     with:
       runner: ${{ inputs.image }}
@@ -34,7 +30,6 @@ jobs:
       actions: read
       packages: read
   unit-tests:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/unit-tests.yml
     with:
       runner: ${{ inputs.image }}
@@ -45,7 +40,6 @@ jobs:
       # nested over-request. Inert on dispatch (needs a pull_request event).
       statuses: write
   android-tests:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/android-tests.yml
     with:
       runner: ${{ inputs.image }}
@@ -54,14 +48,12 @@ jobs:
       pull-requests: read
       actions: read
   min-version-tests:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/min-version-tests.yml
     with:
       runner: ${{ inputs.image }}
     permissions:
       contents: read
   reference-clients-e2e:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reference-clients-e2e.yml
     with:
       runner: ${{ inputs.image }}
@@ -70,7 +62,6 @@ jobs:
       pull-requests: read
       actions: read
   deploy-smoke:
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/deploy-smoke.yml
     with:
       runner: ${{ inputs.image }}
