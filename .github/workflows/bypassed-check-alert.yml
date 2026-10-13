@@ -1,0 +1,124 @@
+name: Bypassed check alert
+
+# Issue #1661. A required check does not protect `main` from an admin-bypass
+# merge or from a merge that lands before the checks finish (PR #1642 merged
+# with `Backend (Go)` red and nothing noticed). This workflow looks at the
+# merged PR's head commit after every push to `main` and, if any context
+# required by .github/rulesets/main-protection.json was not green, opens (or
+# comments on) a `ci`+`p1` issue "Merged with non-green required checks: PR #N".
+#
+# Advisory by design: it is NOT a merge-blocking check, so it is deliberately
+# absent from .github/release-gates.json and the ruleset (see
+# docs/development/repo-governance.md).
+#
+# Trigger choice: `push` to `main`, not `pull_request_target: closed`. The
+# push event runs the workflow from `main` itself with no PR-controlled
+# context at all, so there is nothing for zizmor's dangerous-triggers audit to
+# flag and no way for PR code to reach this job. The PR is recovered from the
+# pushed commit via `commits/{sha}/pulls` (the same lookup main-failure-alert
+# uses); a direct push with no PR (the release app's registration commits) is
+# skipped. Semantics of "green" (skipped/neutral pass, latest re-run wins,
+# merged-before-finished is its own category) live in
+# backend/internal/bypassedcheck.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'A merged PR number to evaluate'
+        required: true
+      dry_run:
+        description: 'Log the issue/comment instead of writing it'
+        type: boolean
+        default: true
+
+# Serialize per-commit so a burst of merges is evaluated in order; never cancel
+# an in-flight evaluation (a dropped one would be a silent miss).
+concurrency:
+  group: bypassed-check-alert-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    name: Alert on merge with non-green required checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: read
+      statuses: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Resolves the merged PR and its head SHA. Event values go through env,
+      # never inlined into the script.
+      - name: Resolve the merged PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_SHA: ${{ github.sha }}
+          INPUT_PR: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            pr="$INPUT_PR"
+          else
+            pr="$(gh api "repos/${GH_REPO}/commits/${PUSH_SHA}/pulls" \
+              --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].number // empty')"
+          fi
+          if [ -z "$pr" ]; then
+            echo "No merged PR for this commit (direct push) -- nothing to check."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pr_json="$(gh api "repos/${GH_REPO}/pulls/${pr}")"
+          if [ "$(jq -r '.merged' <<<"$pr_json")" != "true" ]; then
+            echo "PR #${pr} is not merged -- nothing to check."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "found=true"
+            echo "number=${pr}"
+            echo "head_sha=$(jq -r '.head.sha' <<<"$pr_json")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate required checks on the PR head
+        if: steps.pr.outputs.found == 'true'
+        working-directory: backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          go run ./cmd/bypassedcheck \
+            -ruleset ../.github/rulesets/main-protection.json \
+            -repo "$GH_REPO" -sha "$HEAD_SHA" > "$RUNNER_TEMP/verdict.json"
+          cat "$RUNNER_TEMP/verdict.json"
+
+      - name: Open/update the alert issue
+        if: steps.pr.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          VERDICT_FILE: ${{ runner.temp }}/verdict.json
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: .github/scripts/bypassed-check-alert/ensure-alert.sh
