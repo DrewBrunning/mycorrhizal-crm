@@ -51,14 +51,14 @@ class ActivityRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: Int, input: ActivityInput): Result<Activity> {
-        val result = apiClient.updateActivity(id, input)
+    override suspend fun update(id: Int, input: ActivityInput, revision: Int?): Result<Activity> {
+        val result = apiClient.updateActivity(id, input, revision)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
         return result
     }
 
-    override suspend fun delete(id: Int): Result<Unit> {
-        val result = apiClient.deleteActivity(id)
+    override suspend fun delete(id: Int, revision: Int?): Result<Unit> {
+        val result = apiClient.deleteActivity(id, revision)
         if (result.isSuccess) dao.deleteById(id)
         return result
     }

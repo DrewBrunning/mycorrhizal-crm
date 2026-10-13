@@ -696,10 +696,20 @@ only a 5xx (or a genuinely swallowed internal failure) is `error`/`warn`.
   `t.Parallel()`; a test that installs its **own** logger capture must do so
   *after* calling the helper (the helper's Guard would otherwise replace it).
 - **E2E / deploy smoke: `cmd/logguard`.** `cd backend && go run ./cmd/logguard`
-  reads the server's JSON log on stdin and fails on any warn-or-above line whose
-  `message` is not in `backend/cmd/logguard/allowlist.json`
-  (`{message, max_count, reason}`; every field required), or on an allowlisted
-  message above its `max_count`. Non-JSON lines (nginx, gin text) are ignored.
+  reads the server's JSON log on stdin and fails on any warn-or-above line not
+  matched by an entry in `backend/cmd/logguard/allowlist.json`
+  (`{message, fields?, max_count, reason}`; all but `fields` required), or on an
+  entry matching more lines than its `max_count`. An entry may carry `fields`:
+  a map of log-field name to an RE2 regexp that must match the **whole**
+  stringified value (e.g. `"path": "/api/v1/immich/people"`, `"status": "503"`).
+  A generic message such as `HTTP request` / `Request error` (the 5xx access
+  and error logs) is therefore only excused on the exact routes the E2E specs
+  drive, not on any route; the same message on another path/status, or with the
+  field missing, is reported as unlisted with its method/path/status. The first
+  matching entry in file order takes a line, so a scoped entry never spills into
+  a later catch-all's budget. Bounds are the exact count the spec produces times
+  2 for Playwright's single CI retry, with any further headroom stated in the
+  entry's `reason`. Non-JSON lines (nginx, gin text) are ignored.
   It runs after the Playwright suite in `e2e-tests.yml` (`e2e` and
   `e2e-prod-defaults`), after the workflow in `deploy-smoke.yml`, and over the
   server log in both `reference-clients-e2e.yml` legs (which set

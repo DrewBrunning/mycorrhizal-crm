@@ -47,6 +47,9 @@ set -euo pipefail
 DRY_RUN="${DRY_RUN:-0}"
 export GH_TOKEN GH_REPO
 
+# shellcheck source=SCRIPTDIR/../alert-lib/issues.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../alert-lib/issues.sh"
+
 echo "Main run of '${WORKFLOW_NAME}': ${CONCLUSION} (attempt ${RUN_ATTEMPT}) -- ${RUN_URL}"
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -63,14 +66,10 @@ else
 fi
 
 title="Main failure: ${WORKFLOW_NAME}"
-# `gh issue list` is unreliable against this repo (Projects-classic GraphQL
-# error) -- go through the REST search API directly, the same workaround this
-# repo's other automation uses. The query string is built with jq's @uri so
-# the title's own characters (parens, etc. in a workflow name like "Chaos
-# Tests (failure injection)") cannot break out of the quoted in:title term.
-query="repo:${GH_REPO} is:issue is:open label:nightly-failure in:title \"${title}\""
-encoded="$(jq -rn --arg q "$query" '$q | @uri')"
-existing_issue="$(gh api -X GET "search/issues?q=${encoded}" --jq '.items[0].number // empty')"
+# Exact-title lookup over the REST issues endpoint, never search/issues --
+# see alert-lib/issues.sh for why (the Search API's 30/min budget killed
+# the alarm on 2026-10-13).
+existing_issue="$(find_alert_issue open "$title")"
 if [ -n "$existing_issue" ]; then
 	echo "Found existing open issue #${existing_issue} for '${WORKFLOW_NAME}'."
 else

@@ -304,7 +304,7 @@ class ContactFormViewModelTest {
             crm = CRMEnvelope(circles = listOf("friends")),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         // Re-stub after creation (last-registered-wins) so the edit-mode membership load
@@ -362,7 +362,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -370,7 +370,7 @@ class ContactFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        coVerify { contactRepository.updateContact(5, any()) }
+        coVerify { contactRepository.updateContact(5, any(), any()) }
         assertEquals(ContactFormEvent.Saved, vm.events.value)
     }
 
@@ -447,7 +447,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -463,6 +463,7 @@ class ContactFormViewModelTest {
                         input.card?.personalInfo?.firstOrNull()?.value == "climbing" &&
                         input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value == "Whitehall"
                 },
+                any(),
             )
         }
     }
@@ -498,7 +499,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -516,6 +517,7 @@ class ContactFormViewModelTest {
                         phone.pref == 1 && phone.features == listOf("voice") &&
                         email?.id == "email-1" && email.contexts == listOf("work") && email.pref == 1
                 },
+                any(),
             )
         }
     }
@@ -536,7 +538,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -555,6 +557,7 @@ class ContactFormViewModelTest {
                     phones.any { it.id == "phone-1" && it.number == "+1-555-0100" && it.contexts == listOf("work") } &&
                         phones.any { it.id == null && it.number == "+1-555-0199" && it.contexts == listOf("cell") }
                 },
+                any(),
             )
         }
     }
@@ -582,7 +585,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -601,6 +604,7 @@ class ContactFormViewModelTest {
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
                     partial?.year == null && partial?.month == 12 && partial?.day == 25
                 },
+                any(),
             )
         }
     }
@@ -630,7 +634,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -647,6 +651,7 @@ class ContactFormViewModelTest {
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
                     partial?.year == 2020 && partial?.month == null
                 },
+                any(),
             )
         }
     }
@@ -694,7 +699,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -731,6 +736,7 @@ class ContactFormViewModelTest {
                         input.card?.emails?.firstOrNull()?.label == "work" &&
                         input.card?.emails?.firstOrNull()?.pref == 1
                 },
+                any(),
             )
         }
     }
@@ -766,7 +772,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -794,6 +800,7 @@ class ContactFormViewModelTest {
                         comps.first { it.kind == "postcode" }.value == "12345" &&
                         addr?.id == "addr-1" && addr.pref == 1
                 },
+                any(),
             )
         }
     }
@@ -818,7 +825,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -839,6 +846,7 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.addresses?.firstOrNull()?.contexts == listOf("work", "delivery")
                 },
+                any(),
             )
         }
     }
@@ -860,7 +868,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -895,6 +903,7 @@ class ContactFormViewModelTest {
                         pi?.value == "trail running" && pi.kind == "hobby" && pi.id == "pi-1" && pi.level == "medium" &&
                         title?.name == "Engineer" && title.kind == "title" && title.id == "title-1"
                 },
+                any(),
             )
         }
     }
@@ -914,7 +923,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -937,6 +946,7 @@ class ContactFormViewModelTest {
                         orgs.getOrNull(1)?.name == "Side project" && // extra org preserved
                         orgs.getOrNull(1)?.id == "org-2"
                 },
+                any(),
             )
         }
     }
@@ -956,7 +966,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -971,6 +981,7 @@ class ContactFormViewModelTest {
                     val orgs = input.card?.organizations.orEmpty()
                     orgs.size == 1 && orgs.first().id == "org-2"
                 },
+                any(),
             )
         }
     }
@@ -997,7 +1008,7 @@ class ContactFormViewModelTest {
             )),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1016,6 +1027,7 @@ class ContactFormViewModelTest {
                         periods.any { it.kind == "organization" && it.entryId == "org-1" } &&
                         periods.any { it.kind == "title" && it.entryId == "title-1" }
                 },
+                any(),
             )
         }
     }
@@ -1032,7 +1044,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1052,6 +1064,7 @@ class ContactFormViewModelTest {
                                 it.range.start?.year == 2019 && it.range.end?.year == 2024
                         }
                 },
+                any(),
             )
         }
     }
@@ -1071,7 +1084,7 @@ class ContactFormViewModelTest {
             )),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1086,6 +1099,7 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.crm?.periods.orEmpty().none { it.kind == "organization" }
                 },
+                any(),
             )
         }
     }
@@ -1105,7 +1119,7 @@ class ContactFormViewModelTest {
             )),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1123,6 +1137,7 @@ class ContactFormViewModelTest {
                         it.kind == "address" && it.entryId == "addr-1" && it.range.end?.year == 2024
                     }
                 },
+                any(),
             )
         }
     }
@@ -1141,7 +1156,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1160,6 +1175,7 @@ class ContactFormViewModelTest {
                         input.crm?.workInformation == "Full-stack at Acme" &&
                         input.crm?.contactInformation == "Prefers email"
                 },
+                any(),
             )
         }
     }
@@ -1224,7 +1240,7 @@ class ContactFormViewModelTest {
                 crm = CRMEnvelope(gender = "non-binary"),
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1234,7 +1250,7 @@ class ContactFormViewModelTest {
             advanceUntilIdle()
 
             coVerify {
-                contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "genderfluid" })
+                contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "genderfluid" }, any())
             }
         }
 
@@ -1246,7 +1262,7 @@ class ContactFormViewModelTest {
             crm = CRMEnvelope(gender = "non-binary"),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1255,7 +1271,7 @@ class ContactFormViewModelTest {
         advanceUntilIdle()
 
         coVerify {
-            contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "non-binary" })
+            contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "non-binary" }, any())
         }
     }
 
@@ -1271,7 +1287,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1287,6 +1303,7 @@ class ContactFormViewModelTest {
                     val pref = input.card?.preferredLanguages?.firstOrNull()
                     pref?.id == "lp1" && pref.language == "en" && pref.contexts == listOf("work") && pref.pref == 1
                 },
+                any(),
             )
         }
     }
@@ -1304,7 +1321,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1324,6 +1341,7 @@ class ContactFormViewModelTest {
                         speakToAs.grammaticalGenders?.firstOrNull()?.id == "g1" &&
                         speakToAs.grammaticalGenders?.firstOrNull()?.value == "common"
                 },
+                any(),
             )
         }
     }
@@ -1359,7 +1377,7 @@ class ContactFormViewModelTest {
             ),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1383,6 +1401,7 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.notes == listOf(CardNote(id = "n1", note = "met at conf"))
                 },
+                any(),
             )
         }
     }
@@ -1412,7 +1431,7 @@ class ContactFormViewModelTest {
                 ),
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1437,6 +1456,7 @@ class ContactFormViewModelTest {
                         birth?.date?.partial?.month == 7 && birth.date?.partial?.day == 4 &&
                             wedding?.id == "a1" && wedding.date?.partial?.year == 2020
                     },
+                    any(),
                 )
             }
         }
@@ -1469,7 +1489,7 @@ class ContactFormViewModelTest {
             crm = CRMEnvelope(kind = "human"),
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1484,6 +1504,7 @@ class ContactFormViewModelTest {
             contactRepository.updateContact(
                 5,
                 match<ContactRecordInput> { input -> input.card?.kind == "device" && input.crm?.kind == "human" },
+                any(),
             )
         }
     }
@@ -1496,7 +1517,7 @@ class ContactFormViewModelTest {
                 card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1507,7 +1528,7 @@ class ContactFormViewModelTest {
             advanceUntilIdle()
 
             coVerify {
-                contactRepository.updateContact(5, match<ContactRecordInput> { it.card?.kind == null })
+                contactRepository.updateContact(5, match<ContactRecordInput> { it.card?.kind == null }, any())
             }
         }
 
@@ -1544,6 +1565,95 @@ class ContactFormViewModelTest {
         assertEquals(PhoneSpec.typeOptions, LinkSpec.typeOptions)
         assertEquals(CONTEXT_OPTIONS, OnlineServiceSpec.typeOptions)
     }
+
+    // --- Issue #1665 / ADR 0008: If-Match on save, typed 412 -> conflict dialog, no auto-merge ---
+
+    private fun revisionRecord(revision: Int, given: String = "Dana") = ContactRecordResponse(
+        id = 5,
+        uid = "u5",
+        revision = revision,
+        card = Card(
+            name = Name(components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = given))),
+        ),
+    )
+
+    @Test
+    fun `save sends the revision the contact had when the edit began`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
+        coEvery { contactRepository.updateContact(5, any(), 4) } returns Result.success(revisionRecord(5))
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.updateContact(5, any(), 4) }
+        assertFalse(vm.uiState.value.conflict)
+    }
+
+    @Test
+    fun `a 412 on save raises the conflict state instead of an error toast`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
+        coEvery { contactRepository.updateContact(5, any(), 4) } returns
+            Result.failure(ApiError.PreconditionFailed("stale"))
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onGivenNameChange("Edited")
+        vm.save()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.conflict)
+        assertNull(state.error)
+        assertFalse(state.isSaving)
+        assertNull(vm.events.value)
+        // Nothing merged: the typed edit is still on screen.
+        assertEquals("Edited", state.givenName)
+    }
+
+    @Test
+    fun `keep editing dismisses the conflict and leaves the edit in place`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
+        coEvery { contactRepository.updateContact(5, any(), 4) } returns
+            Result.failure(ApiError.PreconditionFailed("stale"))
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onGivenNameChange("Edited")
+        vm.save()
+        advanceUntilIdle()
+        vm.onConflictKeepEditing()
+
+        assertFalse(vm.uiState.value.conflict)
+        assertEquals("Edited", vm.uiState.value.givenName)
+    }
+
+    @Test
+    fun `load latest discards the edit, refetches, and the next save uses the new revision`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
+            coEvery { contactRepository.updateContact(5, any(), 4) } returns
+                Result.failure(ApiError.PreconditionFailed("stale"))
+            coEvery { contactRepository.updateContact(5, any(), 6) } returns Result.success(revisionRecord(7))
+
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+            vm.onGivenNameChange("Edited")
+            vm.save()
+            advanceUntilIdle()
+
+            coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(6, given = "Server"))
+            vm.onConflictLoadLatest()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.conflict)
+            assertEquals("Server", vm.uiState.value.givenName)
+            vm.save()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { contactRepository.updateContact(5, any(), 6) }
+            assertEquals(ContactFormEvent.Saved, vm.events.value)
+        }
 
     // --- ADR 0031 / issue #1287: the explicit per-address geocode lookup ---
 
@@ -1603,7 +1713,7 @@ class ContactFormViewModelTest {
                 )
             }
             // Nothing is persisted by the lookup: no save, no update. Discard == leave.
-            coVerify(exactly = 0) { contactRepository.updateContact(any(), any()) }
+            coVerify(exactly = 0) { contactRepository.updateContact(any(), any(), any()) }
         }
 
     @Test

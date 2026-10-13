@@ -125,3 +125,19 @@ test('a failed save stays in edit mode and reports the error', async () => {
     'Failed to update contact. Please check your input and try again.',
   );
 });
+
+test('save sends the record revision, and a 412 calls onConflict instead of showError', async () => {
+  const onConflict = vi.fn();
+  const { result } = renderHook(() =>
+    useContactProfileEditing({ id: '1', record, setRecord, showError, onConflict }),
+  );
+  act(() => result.current.handleStartEditProfile());
+  vi.mocked(updateContactRecord).mockRejectedValueOnce(
+    new ApiError('stale', 'PRECONDITION_FAILED', 412),
+  );
+  await act(() => result.current.handleSaveProfile());
+  expect(vi.mocked(updateContactRecord).mock.calls[0][2]).toBe(record.revision);
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(showError).not.toHaveBeenCalled();
+  expect(result.current.editingProfile).toBe(true);
+});

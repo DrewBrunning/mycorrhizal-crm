@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -227,7 +228,7 @@ func (e *waEnv) enableTOTP(token string) (secret string, session string) {
 		Secret string `json:"secret"`
 	}
 	require.NoError(e.t, json.Unmarshal(w.Body.Bytes(), &setup))
-	w, cookies := e.do("POST", "/users/2fa/confirm", map[string]string{"code": totpCodeAt(e.t, setup.Secret, time.Now().Add(-30*time.Second))}, token)
+	w, cookies := e.do("POST", "/users/2fa/confirm", map[string]string{"code": totpCodeAt(e.t, setup.Secret, services.Now().Add(-30*time.Second))}, token)
 	require.Equal(e.t, http.StatusOK, w.Code, w.Body.String())
 	var confirmed struct {
 		RecoveryCodes []string `json:"recovery_codes"`
@@ -496,11 +497,15 @@ func TestWebAuthn_DeletingLastFactorDropsRecoveryCodesAndEndsSessions(t *testing
 }
 
 func TestWebAuthn_DeleteKeepsRecoveryCodesWhileTOTPRemains(t *testing.T) {
+	// Freeze the clock: the confirm (S-1) and delete (S+1) codes must straddle
+	// the validator's ±1 step window, which a wall-clock step rollover mid-test
+	// would push out of range.
+	defer services.SetClock(clock.NewFake(time.Now()))()
 	e := newWAEnv(t)
 	secret, session := e.enableTOTP(e.session())
 	va := e.auth()
 	id, _, session := e.enroll(va, "Phone", session)
-	w, _ := e.do("DELETE", "/webauthn/credentials/"+id, map[string]string{"code": totpCodeAt(t, secret, time.Now().Add(30*time.Second))}, session)
+	w, _ := e.do("DELETE", "/webauthn/credentials/"+id, map[string]string{"code": totpCodeAt(t, secret, services.Now().Add(30*time.Second))}, session)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	assert.Equal(t, int64(recoveryCodeCount-1), e.recoveryCount(), "one spent proving the enrollment")
 	assert.True(t, e.reload().TOTPEnabled)

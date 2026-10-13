@@ -1937,4 +1937,11 @@
     <string name="geopulse_duration_minutes">%1$d min</string>
     <string name="geopulse_duration_hours">%1$d h</string>
     <string name="geopulse_duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="conflict_title">Cambiado en otro lugar</string>
+    <string name="conflict_message_edit">Esto se cambió en otro dispositivo o en la aplicación web después de que lo abrieras. Tu edición no se guardó. Carga la última versión para descartar tu edición y ver la actual, o sigue editando para copiar tus cambios primero.</string>
+    <string name="conflict_message_delete">Esto se cambió en otro dispositivo o en la aplicación web después de que lo abrieras, por lo que no se eliminó. Carga la última versión para ver la actual.</string>
+    <string name="conflict_message_edit_closed">Esto se cambió en otro dispositivo o en la aplicación web después de que lo abrieras. Tu edición no se guardó. Carga la última versión para ver la actual.</string>
+    <string name="conflict_load_latest">Cargar la última versión</string>
+    <string name="conflict_keep_editing">Seguir editando</string>
+    <string name="conflict_dismiss">Ahora no</string>
 </resources>

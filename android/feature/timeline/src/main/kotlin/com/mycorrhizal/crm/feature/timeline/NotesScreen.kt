@@ -48,6 +48,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 /**
  * M19: per-contact notes list. Gained a search field + from/to-date filters
@@ -76,6 +77,8 @@ fun NotesScreen(
         onDelete = viewModel::delete,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
+        onConflictDismiss = viewModel::onConflictDismissed,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest,
     )
 }
 
@@ -97,6 +100,8 @@ fun NotesScreenContent(
     onDelete: (Int) -> Unit = {},
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
+    onConflictDismiss: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {},
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -207,6 +212,15 @@ fun NotesScreenContent(
     // When the list is empty the error text is the persistent body content
     // (EmptyState above), so don't toast-and-clear it into a misleading
     // "No notes yet". Only surface a snackbar for errors over a populated list.
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = onConflictLoadLatest,
+            onKeep = onConflictDismiss,
+            messageRes = R.string.conflict_message_delete,
+            keepLabelRes = R.string.conflict_dismiss,
+        )
+    }
+
     val listError = state.error
     if (listError != null && state.notes.isNotEmpty()) {
         LaunchedEffect(listError) {

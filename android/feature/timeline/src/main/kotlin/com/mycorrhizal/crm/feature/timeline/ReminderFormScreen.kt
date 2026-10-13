@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -96,6 +97,13 @@ fun ReminderFormScreen(
                 modifier = Modifier.padding(padding),
             )
         }
+    }
+
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictKeepEditing,
+        )
     }
 
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error

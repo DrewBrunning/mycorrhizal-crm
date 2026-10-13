@@ -1,6 +1,6 @@
 import { type Dispatch, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../api/client';
+import { ApiError, isPreconditionFailed } from '../api/client';
 import { type ContactRecordResponse, updateContactRecord } from '../api/contacts';
 import type { ProfileValues } from '../components/ContactHeader';
 import {
@@ -14,6 +14,9 @@ export interface ContactProfileEditingOptions {
   record: ContactRecordResponse | null;
   setRecord: Dispatch<SetStateAction<ContactRecordResponse | null>>;
   showError: (message: string) => void;
+  // Called instead of showError when the save is rejected with 412 (the
+  // record changed elsewhere; ADR 0008).
+  onConflict?: () => void;
 }
 
 // The ContactHeader's name/kind/language edit mode: seeded from the record on
@@ -24,6 +27,7 @@ export function useContactProfileEditing({
   record,
   setRecord,
   showError,
+  onConflict,
 }: ContactProfileEditingOptions) {
   const { t } = useTranslation();
   const [editingProfile, setEditingProfile] = useState(false);
@@ -47,11 +51,19 @@ export function useContactProfileEditing({
     }
     if (!id) return;
     try {
-      const updated = await updateContactRecord(id, buildProfileUpdate(record, profileValues));
+      const updated = await updateContactRecord(
+        id,
+        buildProfileUpdate(record, profileValues),
+        record.revision,
+      );
       setRecord(updated);
       setEditingProfile(false);
     } catch (err) {
       console.error('Error updating profile:', err);
+      if (onConflict && isPreconditionFailed(err)) {
+        onConflict();
+        return;
+      }
       if (err instanceof ApiError) {
         showError(err.getDisplayMessage());
       } else {

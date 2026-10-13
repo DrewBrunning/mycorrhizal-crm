@@ -48,8 +48,8 @@ interface NoteRepository {
     suspend fun createUnassigned(input: NoteInput): Result<Note>
 
     /** Update a note; returns the updated note. */
-    suspend fun update(id: Int, input: NoteInput): Result<Note>
+    suspend fun update(id: Int, input: NoteInput, revision: Int?): Result<Note>
 
     /** Delete a note (soft delete server-side; removes the local cache row). */
-    suspend fun delete(id: Int): Result<Unit>
+    suspend fun delete(id: Int, revision: Int?): Result<Unit>
 }
