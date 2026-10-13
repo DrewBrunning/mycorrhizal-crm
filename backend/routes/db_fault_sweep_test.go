@@ -412,6 +412,9 @@ func buildFaultAllowlist() map[string]string {
 	add("the password change and every revocation already committed atomically; minting the caller's replacement session is best-effort and the handler documents that the client re-authenticates", "POST /users/change-password", "create sessions#1")
 	add(faultReasonRemind, "POST /reminders/:id/complete",
 		"create reminder_completions#1", "delete notification_deliveries#1", "update reach_out_suggestions#1")
+	for k, v := range crudAllowlist() {
+		m[k] = v
+	}
 	return m
 }
 
@@ -427,8 +430,17 @@ func faultKey(scenario string, stmts []dbfault.Statement, i int) string {
 	return fmt.Sprintf("%s|%s#%d", scenario, stmts[i-1], n)
 }
 
-func TestDBFaultSweep(t *testing.T) {
-	for _, sc := range faultScenarios() {
+func TestDBFaultSweep(t *testing.T) { runFaultSweep(t, faultScenarios()) }
+
+// TestDBFaultSweepCRUD runs the CRUD-handler scenarios (db_fault_crud_scenarios_test.go).
+func TestDBFaultSweepCRUD(t *testing.T) {
+	all := append(faultScenarios(), faultCRUDScenarios()...)
+	requireNoDuplicateFaultNames(t, all)
+	runFaultSweep(t, faultCRUDScenarios())
+}
+
+func runFaultSweep(t *testing.T, scenarios []faultScenario) {
+	for _, sc := range scenarios {
 		t.Run(sc.name, func(t *testing.T) {
 			// 1. happy run, recording.
 			base := newFaultEnv(t)
@@ -467,6 +479,16 @@ func TestDBFaultSweep(t *testing.T) {
 				require.Equalf(t, stmts[i-1], fired, "%s: statement order drifted between runs", label)
 
 				key := faultKey(sc.name, stmts, i)
+				if _, post := crudPostCommitErrors[key]; post {
+					usedAllow[key] = true
+					if w.Code < 500 || w.Code >= 600 {
+						failures = append(failures, fmt.Sprintf("%s: declared post-commit 5xx %q but got HTTP %d — remove the entry", label, key, w.Code))
+					}
+					if l := faultLeak(w.Body.String(), tables); l != "" {
+						failures = append(failures, fmt.Sprintf("%s: %s in body", label, l))
+					}
+					continue
+				}
 				if _, allowed := faultAllowlist[key]; allowed {
 					usedAllow[key] = true
 					if w.Code < 200 || w.Code >= 300 {
@@ -479,6 +501,11 @@ func TestDBFaultSweep(t *testing.T) {
 				}
 				for _, f := range faultViolations(w, tables, before, after) {
 					failures = append(failures, fmt.Sprintf("%s [key %q]: %s", label, key, f))
+				}
+			}
+			for key := range crudPostCommitErrors {
+				if strings.HasPrefix(key, sc.name+"|") && !usedAllow[key] {
+					failures = append(failures, fmt.Sprintf("stale post-commit entry %q matches no statement", key))
 				}
 			}
 			for key := range faultAllowlist {
