@@ -1212,25 +1212,30 @@ criterion.**
   reaching the Go safety-critical paths) insufficient to back that claim, so
   it is now two nightly, threshold-gated workflows rather than one advisory
   one:
-  - `stryker.yml` — frontend, every `src/api/*.ts` module and every
-    `src/hooks/use*.ts` hook (issue #1482; the scope was six files — the
-    contacts / relationship-edge / life-event modules — which were already the
+  - `stryker.yml` — frontend, every `src/api/*.ts` module, every
+    `src/hooks/use*.ts` hook and every `src/utils/*.ts` pure helper (issues
+    #1482, #1624 §3; the scope was six files — the contacts /
+    relationship-edge / life-event modules — which were already the
     best-tested, so the gate said little). `frontend/stryker.conf.json`'s
     `thresholds.break` fails the run itself on a score drop below the
     committed baseline. **Baseline measured 2026-10-06: 79.62% overall**
-    (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%), so `break: 74`
-    sits ~5 points under it. Hooks are the weak half and the obvious next
-    ratchet target. Static mutants are ignored (`ignoreStatic`: 6% of mutants
-    but 58% of the run time). The ~1h45m figure was a 16-core dev box; on the
-    4-vCPU CI runner the full scope projects to ~5h (issue #1571: the first
-    nightly at this scope was cancelled by the old 180-minute timeout at 53%),
-    so the workflow runs two parallel legs, `api` and `hooks`, each with a
-    240-minute timeout (api ~4.4k mutants, hooks ~3.3k). Each leg derives its config from `stryker.conf.json`
-    with `jq` and carries its own `break` in the workflow matrix (`api` 83,
-    `hooks` 60 — the same ~5-6 points under each half's measured score as the
-    combined 74); `stryker.conf.json` itself stays the combined local-run
-    config. Locally run a slice with `npx stryker run --mutate
-    src/api/notes.ts` (the dry run still executes the whole suite, ~5 min).
+    (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%); **`src/utils`
+    measured 2026-10-12: 85.07%** (701 mutants). Static mutants are ignored
+    (`ignoreStatic`: 6% of mutants but 58% of the run time). The ~1h45m
+    figure was a 16-core dev box; on the 4-vCPU CI runner the api+hooks scope
+    projects to ~5h (issue #1571: the first nightly at this scope was
+    cancelled by the old 180-minute timeout at 53%), so the workflow runs
+    three parallel legs, `api`, `hooks` and `utils`, each with a 240-minute
+    timeout (api ~4.4k mutants, hooks ~3.3k, utils 701). Each leg derives its
+    config from `stryker.conf.json` with `jq` and carries its own `break` in
+    the workflow matrix (`api` 83, `hooks` 62, `utils` 79 — ~6 points under
+    each half's measured score); `stryker.conf.json` itself stays the combined
+    local-run config. Issue #1624 §3 also added the first
+    `useContactMerge`/`useSystemEvents` tests, killing 77 hook survivors and
+    lifting the hooks half from 66.35% to ~68.5% (the remaining hook survivors
+    are a dedicated follow-up). Locally run a slice with `npx stryker run
+    --mutate src/api/notes.ts` (the dry run still executes the whole suite,
+    ~5 min).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
     data loss lives: migration/upgrade and backup/restore (`database`),
     data-integrity invariants (`atrest`), delete cascade (the two files
@@ -1253,13 +1258,46 @@ criterion.**
     `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after
     adding or removing a file in a scoped package (`controllers`/`services`
     are far larger than the scope, so the exclude list is mechanical, not
-    hand-maintained).
+    hand-maintained). Issue #1624 added `services-auth` (TOTP/session/reset/
+    API-token/WebAuthn/OIDC/feed), `sensitivity-filter` (the `sensitivity =
+    normal` query filters on the services query sites) and
+    `sensitivity-filter-records` (the share/sync read projections in
+    `models/contact_record.go`/`field_selection.go` — the filters the
+    controller share/read entry points thread an `include_sensitive` flag
+    into), nineteen legs total.
 
   Both stay nightly + manual-dispatch rather than per-PR: mutation testing is
   O(test suite × mutant count), too slow to gate every diff. Neither is a
   release gate (`docs/development/release-gates.md`) for the same reason —
   the ratchet catches a regression by morning, not by blocking the PR that
   introduced it.
+
+**Mutation tools evaluated and not adopted (issue #1624).** Two cross-cutting
+gaps are recorded rather than fixed:
+
+- **Statement/branch-deletion mutators.** gremlins v0.6.0 only mutates
+  comparisons, arithmetic and increments; it never deletes an `if !ok` arm or
+  a `WHERE user_id = ?` filter. The one Go tool with `statement/remove`,
+  `branch/if` and `branch/else` (`go-mutesting`) is unmaintained since 2021
+  and panics at startup on this repo's Go toolchain — a nil
+  `*go/types.StdSizes` (its vendored `golang.org/x/tools` never populates
+  `types.Config.Sizes`), on the `middleware-auth` and
+  `controllers-delete-cascade` targets and on any file — so it is not viable
+  without a maintained fork. `ooze` is maintained but is a **library**, not a
+  CLI, and its virus set (comparisons/arithmetic/increments plus loop
+  break/condition/range) does not include statement/branch deletion, so it
+  does not close this gap. Declined; ownership scoping stays guarded by
+  `routes/ownership_matrix_test.go`.
+- **Android (pitest).** There is no mutation leg for the Android `core`
+  modules. The vanilla `gradle-pitest-plugin` targets JVM (`sourceSets.main`)
+  projects and does not support AGP's `com.android.library` modules, so it
+  cannot target the pure-logic `:core:model`. The Android-capable free plugin
+  (`pl.droidsonroids.pitest` 0.2.18) fails to apply on this repo's Gradle 9.5
+  — "Cannot mutate configuration container for buildscript of project
+  ':core:model' using create(String). Configurations cannot be added or
+  removed from the buildscript configuration container" — and Arcmutate's
+  Kotlin/Android support is commercial. Declined; Android logic keeps its
+  JUnit/Robolectric suites and the coverage ratchet.
 
 ## Determinism and isolation (the "test infrastructure" acceptance criteria)
 
