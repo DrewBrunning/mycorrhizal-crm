@@ -443,7 +443,8 @@ doesn't otherwise touch. The complement is a **per-file no-regression ratchet** 
 floor): committed per-file baselines `frontend/coverage-baseline.json` and
 `backend/internal/coverageratchet/testdata/baseline.json`, checked in `unit-tests.yml` (backend on
 `pull_request` and push to `main`, never `schedule` — deeper property-test tiers aren't comparable;
-the cross-package run pins the PR-tier iteration counts itself). A file may not drop more than the
+the cross-package run pins the PR-tier iteration counts itself; frontend on every trigger of its job),
+plus Android's `android/coverage-baseline.json` in `android-tests.yml` (PR and push to `main`, issue #1660). A file may not drop more than the
 documented tolerance below its baseline. When tests are added, raise the baseline in the same PR
 (`cd frontend && yarn test:coverage && yarn coverage:ratchet:update`; `cd backend && make
 gen-coverage-baseline`); lowering one is a reviewed diff with a reason.
