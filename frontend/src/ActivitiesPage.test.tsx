@@ -525,3 +525,38 @@ test('a 412 on delete shows the conflict dialog and keeps the edit open', async 
   expect(await screen.findByText('Changed elsewhere')).toBeDefined();
   expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined();
 });
+
+test('a non-412 failure on save or delete logs and shows no conflict dialog', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const failure = { error: { code: 'INTERNAL', message: 'boom' } };
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: { body: { activities: [activity()], next_cursor: '', limit: 25 } },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+    {
+      pattern: '/activities/1',
+      handler: [
+        { method: 'PUT', status: 500, body: failure },
+        { method: 'DELETE', status: 500, body: failure },
+      ],
+    },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(consoleError).toHaveBeenCalledWith('Failed to update activity:', expect.anything()),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  await waitFor(() =>
+    expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.anything()),
+  );
+  expect(screen.queryByText('Changed elsewhere')).toBeNull();
+});
