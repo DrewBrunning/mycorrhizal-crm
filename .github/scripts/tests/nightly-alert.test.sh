@@ -123,9 +123,10 @@ scenario() {
   fi
 }
 
-# Near-miss titles: a sibling workflow whose name contains this one, the
-# red-main alarm's issue for the same workflow, and a pull request.
-near_misses='{"number":7,"title":"Nightly failure: Reference-Client E2E Tests"},{"number":8,"title":"Main failure: E2E Tests"},{"number":9,"title":"Nightly failure: E2E Tests","pull_request":{}}'
+# Near-miss titles: sibling workflows whose names contain this one (as a
+# prefix and as a suffix), the red-main alarm's issue for the same workflow,
+# and a pull request.
+near_misses='{"number":6,"title":"Nightly failure: E2E Tests (perf)"},{"number":7,"title":"Nightly failure: Reference-Client E2E Tests"},{"number":8,"title":"Main failure: E2E Tests"},{"number":9,"title":"Nightly failure: E2E Tests","pull_request":{}}'
 
 # --- ensure-alert.sh -------------------------------------------------------
 seed
