@@ -1,5 +1,11 @@
 // Activities-related API calls
-import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import {
+  API_BASE_URL,
+  apiFetch,
+  getAuthHeaders,
+  getConditionalHeaders,
+  parseErrorResponse,
+} from './client';
 
 export interface ActivityContact {
   ID: number;
@@ -136,10 +142,11 @@ export async function updateActivity(
     date?: string;
     contact_ids?: number[];
   },
+  revision?: number,
 ): Promise<Activity> {
   const response = await apiFetch(`${API_BASE_URL}/activities/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
     body: JSON.stringify(data),
   });
 
@@ -151,10 +158,10 @@ export async function updateActivity(
 }
 
 // Delete activity
-export async function deleteActivity(id: string | number): Promise<void> {
+export async function deleteActivity(id: string | number, revision?: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/activities/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
   });
 
   if (!response.ok) {

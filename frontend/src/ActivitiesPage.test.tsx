@@ -29,6 +29,7 @@ interface Call {
   url: string;
   method: string;
   body?: unknown;
+  headers?: Record<string, string>;
 }
 
 // Route-based fetch mock: unlike a flat url->response map, this page needs
@@ -48,6 +49,7 @@ function mockFetchRoutes(
         url,
         method,
         body: options?.body ? JSON.parse(options.body as string) : undefined,
+        headers: options?.headers as Record<string, string> | undefined,
       });
       for (const { pattern, handler } of routes) {
         if (!url.includes(pattern)) continue;
@@ -89,6 +91,7 @@ const emptyContactsPage = () => ({ contacts: [], next_cursor: '', limit: 25, tot
 function activity(overrides: Record<string, unknown> = {}) {
   return {
     ID: 1,
+    revision: 5,
     title: 'Coffee catch-up',
     description: 'Long overdue',
     location: 'Downtown Cafe',
@@ -430,4 +433,95 @@ test('deleting an activity confirms, calls DELETE, and refetches', async () => {
     expect(screen.queryByDisplayValue('Coffee catch-up')).toBeNull();
   });
   confirmSpy.mockRestore();
+});
+
+// --- ADR 0008: If-Match + 412 conflict dialog ---------------------------------
+
+const staleBody = {
+  error: { code: 'PRECONDITION_FAILED', message: 'stale', details: {} },
+};
+
+test('saving and deleting an activity send its revision as If-Match', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const calls = mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: { body: { activities: [activity()], next_cursor: '', limit: 25 } },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+    {
+      pattern: '/activities/1',
+      handler: [
+        { method: 'PUT', body: activity() },
+        { method: 'DELETE', status: 204, body: undefined },
+      ],
+    },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
+  expect(calls.find((c) => c.method === 'PUT')?.headers?.['If-Match']).toBe('"5"');
+
+  await waitFor(() => expect(screen.queryByDisplayValue('Coffee catch-up')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
+  expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"5"');
+});
+
+test('a 412 on save shows the conflict dialog; Keep editing keeps the edit, Load latest refetches and discards it', async () => {
+  const calls = mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: { body: { activities: [activity()], next_cursor: '', limit: 25 } },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+    { pattern: '/activities/1', handler: { method: 'PUT', status: 412, body: staleBody } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() => expect(screen.queryByText('Changed elsewhere')).toBeNull());
+  expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined();
+
+  const listGets = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.includes('/activities?')).length;
+  const before = listGets();
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Load latest version' }));
+
+  await waitFor(() => expect(screen.queryByDisplayValue('Coffee catch-up')).toBeNull());
+  await waitFor(() => expect(listGets()).toBeGreaterThan(before));
+});
+
+test('a 412 on delete shows the conflict dialog and keeps the edit open', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: { body: { activities: [activity()], next_cursor: '', limit: 25 } },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+    { pattern: '/activities/1', handler: { method: 'DELETE', status: 412, body: staleBody } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeDefined();
+  expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined();
 });

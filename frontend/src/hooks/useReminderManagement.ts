@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { isPreconditionFailed } from '../api/client';
 import {
   completeReminder,
   createReminder,
@@ -10,7 +11,13 @@ import {
 } from '../api/reminders';
 import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
-export function useReminderManagement(contactId: string | undefined, notifier?: ErrorNotifier) {
+export function useReminderManagement(
+  contactId: string | undefined,
+  notifier?: ErrorNotifier,
+  // Called instead of the generic error notice when an edit/delete is rejected
+  // with 412 (the reminder changed elsewhere; ADR 0008).
+  onConflict?: () => void,
+) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -33,7 +40,7 @@ export function useReminderManagement(contactId: string | undefined, notifier?: 
 
     try {
       if (editingReminder) {
-        await updateReminder(editingReminder.ID, reminderData);
+        await updateReminder(editingReminder.ID, reminderData, editingReminder.revision);
       } else {
         await createReminder(parseInt(contactId, 10), reminderData);
       }
@@ -41,7 +48,12 @@ export function useReminderManagement(contactId: string | undefined, notifier?: 
       setReminderDialogOpen(false);
       setEditingReminder(null);
     } catch (err) {
-      handleError(err, { operation: 'saving reminder' }, notifier);
+      // Rethrown either way so the dialog stays open ("keep editing").
+      if (!(onConflict && isPreconditionFailed(err))) {
+        handleError(err, { operation: 'saving reminder' }, notifier);
+      } else {
+        onConflict();
+      }
       throw err;
     }
   };
@@ -63,9 +75,13 @@ export function useReminderManagement(contactId: string | undefined, notifier?: 
 
   const handleDeleteReminder = async (reminderId: number) => {
     try {
-      await deleteReminder(reminderId);
+      await deleteReminder(reminderId, reminders.find((r) => r.ID === reminderId)?.revision);
       await refreshReminders();
     } catch (err) {
+      if (onConflict && isPreconditionFailed(err)) {
+        onConflict();
+        return;
+      }
       handleError(err, { operation: 'deleting reminder' }, notifier);
       throw err;
     }

@@ -79,7 +79,12 @@ afterEach(() => {
 });
 
 function setup(
-  opts: { r?: ContactRecordResponse | null; id?: string; selfContactUid?: string | null } = {},
+  opts: {
+    r?: ContactRecordResponse | null;
+    id?: string;
+    selfContactUid?: string | null;
+    onConflict?: () => void;
+  } = {},
 ) {
   const r = opts.r === undefined ? record : opts.r;
   const id = 'id' in opts ? opts.id : '1';
@@ -94,6 +99,7 @@ function setup(
         setSelfContactUid,
         showError,
         showSuccess,
+        onConflict: opts.onConflict,
       }),
     { wrapper },
   );
@@ -129,8 +135,18 @@ describe('delete', () => {
     const { result } = setup();
     await act(() => result.current.handleDeleteContact());
     expect(confirmSpy.mock.calls[0][0]).toContain('Alice Wonder');
-    expect(deleteContact).toHaveBeenCalledWith('1');
+    expect(deleteContact).toHaveBeenCalledWith('1', record.revision);
     expect(location).toBe('/contacts');
+  });
+
+  test('a 412 (stale revision) calls onConflict instead of alerting and stays', async () => {
+    vi.mocked(deleteContact).mockRejectedValue(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+    const onConflict = vi.fn();
+    const { result } = setup({ onConflict });
+    await act(() => result.current.handleDeleteContact());
+    expect(onConflict).toHaveBeenCalledTimes(1);
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(location).toBe('/contacts/1');
   });
 
   test('declining makes no request', async () => {

@@ -416,3 +416,90 @@ test('the from/to date filters accept input', async () => {
   expect(screen.getByLabelText('From')).toHaveValue('2026-01-01');
   expect(screen.getByLabelText('To')).toHaveValue('2026-02-01');
 });
+
+// --- ADR 0008: If-Match + 412 conflict dialog ---------------------------------
+
+function stubStaleNotes(status: number) {
+  const calls: { method: string; headers?: Record<string, string> }[] = [];
+  let listGets = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: RequestInit) => {
+      const method = (options?.method || 'GET').toUpperCase();
+      calls.push({ method, headers: options?.headers as Record<string, string> });
+      if (method === 'PUT' || method === 'DELETE') {
+        return {
+          ok: false,
+          status,
+          statusText: 'Precondition Failed',
+          json: async () => ({
+            error: { code: 'PRECONDITION_FAILED', message: 'stale', details: {} },
+          }),
+        };
+      }
+      if (url.includes('/notes')) {
+        listGets += 1;
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                ID: 1,
+                revision: 9,
+                content: 'Stale me',
+                date: '2026-01-01T00:00:00Z',
+                contact_id: null,
+                CreatedAt: '2026-01-01T00:00:00Z',
+                UpdatedAt: '2026-01-01T00:00:00Z',
+              },
+            ],
+            next_cursor: '',
+            limit: 25,
+            total: 1,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ contacts: [] }) };
+    }),
+  );
+  return { calls, listGets: () => listGets };
+}
+
+async function openStaleNote() {
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Stale me')).toBeDefined());
+  const buttons = screen.getAllByRole('button');
+  fireEvent.click(buttons[buttons.length - 1]);
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+}
+
+test('a note save sends its revision as If-Match; a 412 opens the conflict dialog', async () => {
+  const { calls, listGets } = stubStaleNotes(412);
+  await openStaleNote();
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeDefined();
+  expect(calls.find((c) => c.method === 'PUT')?.headers?.['If-Match']).toBe('"9"');
+
+  // Keep editing leaves the edit dialog open.
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() => expect(screen.queryByText('Changed elsewhere')).toBeNull());
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
+
+  // Load latest closes the edit and refetches the list.
+  const before = listGets();
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Load latest version' }));
+  await waitFor(() => expect(listGets()).toBeGreaterThan(before));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+});
+
+test('a 412 on note delete opens the conflict dialog', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const { calls } = stubStaleNotes(412);
+  await openStaleNote();
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeDefined();
+  expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"9"');
+});

@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { ApiError } from '../api/client';
+import { ApiError, isPreconditionFailed } from '../api/client';
 import {
   archiveContact,
   type ContactRecordResponse,
@@ -23,6 +23,9 @@ export interface ContactLifecycleOptions {
   setSelfContactUid: (uid: string | null) => void;
   showError: (message: string) => void;
   showSuccess: (message: string) => void;
+  // Called when the delete is rejected with 412 (the contact changed
+  // elsewhere since it was loaded; ADR 0008).
+  onConflict?: () => void;
 }
 
 // The header's whole-contact actions: delete, archive/unarchive, favorite,
@@ -36,6 +39,7 @@ export function useContactLifecycleActions({
   setSelfContactUid,
   showError,
   showSuccess,
+  onConflict,
 }: ContactLifecycleOptions) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -55,10 +59,14 @@ export function useContactLifecycleActions({
       return;
     }
     try {
-      await deleteContact(id);
+      await deleteContact(id, record.revision);
       await navigate('/contacts');
     } catch (err) {
       console.error('Error deleting contact:', err);
+      if (onConflict && isPreconditionFailed(err)) {
+        onConflict();
+        return;
+      }
       alert(t('contactDetail.deleteContactError'));
     }
   };
