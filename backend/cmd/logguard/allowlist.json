@@ -11,37 +11,75 @@
   },
   {
     "message": "HTTP request",
-    "max_count": 5,
-    "reason": "The access log (middleware/logging.go) emits a warn/error line only for a 5xx. e2e/immich.spec.ts deliberately configures an unreachable Immich (https://immich.example and http://127.0.0.1:54321) and opens the contact thumbnail and the people picker, so the backend proxies answer EXTERNAL_SERVICE_ERROR/503 and degrade as designed. Those are the only 5xx the suite drives; a regression that produces more trips this bound."
+    "fields": {
+      "status": "503",
+      "path": "/api/v1/immich/people"
+    },
+    "max_count": 2,
+    "reason": "e2e/immich.spec.ts configures an unreachable Immich (https://immich.example / http://127.0.0.1:54321). Only two routes answer 5xx there: GET /api/v1/immich/people (the 'browsing people' test opens the picker once) and GET /api/v1/immich/contacts/:vcard_uid/thumbnail (the 'linked person' test renders the linked-person row once; the contact summary itself degrades to 200 from cached metadata, and the test-connection / config / link routes answer 200/400). The access log (middleware/logging.go) emits warn/error only for a 5xx. Scoped to the people route (status 503); bound 2 = 1 driving call x 2 for Playwright's single CI retry (retries: 1 on PR/push, 0 nightly). Any 5xx on another route, or more calls here, trips the gate."
+  },
+  {
+    "message": "HTTP request",
+    "fields": {
+      "status": "503",
+      "path": "/api/v1/immich/contacts/[^/]+/thumbnail"
+    },
+    "max_count": 4,
+    "reason": "e2e/immich.spec.ts configures an unreachable Immich (https://immich.example / http://127.0.0.1:54321). Only two routes answer 5xx there: GET /api/v1/immich/people (the 'browsing people' test opens the picker once) and GET /api/v1/immich/contacts/:vcard_uid/thumbnail (the 'linked person' test renders the linked-person row once; the contact summary itself degrades to 200 from cached metadata, and the test-connection / config / link routes answer 200/400). The access log (middleware/logging.go) emits warn/error only for a 5xx. Scoped to the thumbnail route (status 503); bound 4 = 1 driving call x 2 for Playwright's single CI retry (retries: 1 on PR/push, 0 nightly), doubled again as headroom for AuthImg re-mounting when the summary-loading spinner flips. Any 5xx on another route, or more calls here, trips the gate."
   },
   {
     "message": "Request error",
-    "max_count": 5,
-    "reason": "errors.LogError (errors/middleware.go) logs a 5xx at error; the same two deliberately-unreachable-Immich e2e calls (immich.spec.ts) are the only 5xx the E2E suite drives, and each logs once here alongside its access-log line. The bound keeps the gate sensitive to any additional 5xx."
+    "fields": {
+      "status": "503",
+      "path": "/api/v1/immich/people"
+    },
+    "max_count": 2,
+    "reason": "e2e/immich.spec.ts configures an unreachable Immich (https://immich.example / http://127.0.0.1:54321). Only two routes answer 5xx there: GET /api/v1/immich/people (the 'browsing people' test opens the picker once) and GET /api/v1/immich/contacts/:vcard_uid/thumbnail (the 'linked person' test renders the linked-person row once; the contact summary itself degrades to 200 from cached metadata, and the test-connection / config / link routes answer 200/400). errors.LogError (errors/middleware.go) logs a 5xx at error, once per such request alongside its access-log line. Scoped to the people route (status 503) with the same bound (2) as its access-log entry."
+  },
+  {
+    "message": "Request error",
+    "fields": {
+      "status": "503",
+      "path": "/api/v1/immich/contacts/[^/]+/thumbnail"
+    },
+    "max_count": 4,
+    "reason": "e2e/immich.spec.ts configures an unreachable Immich (https://immich.example / http://127.0.0.1:54321). Only two routes answer 5xx there: GET /api/v1/immich/people (the 'browsing people' test opens the picker once) and GET /api/v1/immich/contacts/:vcard_uid/thumbnail (the 'linked person' test renders the linked-person row once; the contact summary itself degrades to 200 from cached metadata, and the test-connection / config / link routes answer 200/400). errors.LogError (errors/middleware.go) logs a 5xx at error, once per such request alongside its access-log line. Scoped to the thumbnail route (status 503) with the same bound (4) as its access-log entry."
   },
   {
     "message": "Immich test connection: ping failed",
-    "max_count": 5,
-    "reason": "e2e/immich.spec.ts clicks the Settings \"Test connection\" button with an unreachable https://immich.example; the service logs the ping failure and returns the diagnostic to the caller (the UI is what the test asserts). The same class of user-triggered diagnostic the #1474 triage downgraded elsewhere; bounded to this suite's immich spec."
+    "max_count": 2,
+    "reason": "e2e/immich.spec.ts clicks the Settings \"Test connection\" button with an unreachable https://immich.example; the service logs the ping failure and returns the diagnostic to the caller (the UI is what the test asserts). The same class of user-triggered diagnostic the #1474 triage downgraded elsewhere; bounded to 2 = the one Test-connection click in the immich spec x 2 for Playwright's single CI retry."
   },
   {
     "message": "Meerkat upload rejected",
-    "max_count": 5,
-    "reason": "e2e/meerkatImport.spec.ts feeds a non-Meerkat file and asserts the wizard reports the rejection inline; the controller logs the rejected upload before returning the 4xx. Environment-inherent to the negative test, not a server fault."
+    "fields": {
+      "path": "/api/v1/contacts/import/meerkat/upload"
+    },
+    "max_count": 2,
+    "reason": "e2e/meerkatImport.spec.ts feeds a non-Meerkat file and asserts the wizard reports the rejection inline; the controller logs the rejected upload before returning the 4xx. Environment-inherent to the negative test, not a server fault. Scoped to the one route that logs it; bound 2 = the spec's single driving action x 2 for Playwright's single CI retry."
   },
   {
     "message": "Monica connect failed",
-    "max_count": 5,
-    "reason": "e2e/monicaImport.spec.ts submits an unreachable Monica connection and asserts the inline error; the controller logs the client's failed connect before returning the 4xx. Environment-inherent to the negative test."
+    "fields": {
+      "path": "/api/v1/contacts/import/monica/connect"
+    },
+    "max_count": 2,
+    "reason": "e2e/monicaImport.spec.ts submits an unreachable Monica connection and asserts the inline error; the controller logs the client's failed connect before returning the 4xx. Environment-inherent to the negative test. Scoped to the one route that logs it; bound 2 = the spec's single driving action x 2 for Playwright's single CI retry."
   },
   {
     "message": "Test notification channel failed",
-    "max_count": 5,
-    "reason": "e2e/notifications.spec.ts exercises the \"send test notification\" failure path against an unreachable channel; the controller logs the client-triggered test result before returning it. Environment-inherent to the negative test."
+    "fields": {
+      "path": "/api/v1/notifications/config/test"
+    },
+    "max_count": 2,
+    "reason": "e2e/notifications.spec.ts exercises the \"send test notification\" failure path against an unreachable channel; the controller logs the client-triggered test result before returning it. Environment-inherent to the negative test. Scoped to the one route that logs it; bound 2 = the spec's single driving action x 2 for Playwright's single CI retry."
   },
   {
     "message": "webhook delivery will not be retried",
-    "max_count": 150,
-    "reason": "e2e/systemEvents.spec.ts registers one webhook pointed at a permanent-404 receiver and fires it ~101 times to fill the admin log's 100-row window, so this warn (and the integration_failed system event it records) is raised once per fire. This is the intended, bounded signal that test asserts on; the bound leaves headroom for the one test's full page-fill."
+    "fields": {
+      "component": "webhook"
+    },
+    "max_count": 110,
+    "reason": "e2e/systemEvents.spec.ts registers one webhook pointed at a permanent-404 receiver and fires it once, then tops the admin log up until it holds 101 rows (WINDOW+1), so on a fresh log this warn (and the integration_failed system event it records) is raised up to 101 times; a Playwright retry re-fires only once because the log is already full. Bound 110 = 101 plus a handful for other webhook-failure events recorded earlier in the same stack. Scoped to component=webhook."
   }
 ]
