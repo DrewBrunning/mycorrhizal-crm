@@ -1,5 +1,11 @@
 // Contact-related API calls
-import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import {
+  API_BASE_URL,
+  apiFetch,
+  getAuthHeaders,
+  ifMatchHeader,
+  parseErrorResponse,
+} from './client';
 
 export interface ContactValue {
   type: string;
@@ -1159,13 +1165,21 @@ export async function getContactRecord(id: string | number): Promise<ContactReco
   return response.json();
 }
 
+// `revision` is the ContactRecordResponse.revision the edit started from; when
+// given it is sent as `If-Match` (ADR 0008) so a write against a record that
+// changed elsewhere is rejected with a 412 ApiError instead of silently
+// overwriting it. Omitted, the write is unconditional (last-writer-wins).
 export async function updateContactRecord(
   id: string | number,
   input: ContactRecordInput,
+  revision?: number,
 ): Promise<ContactRecordResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: {
+      ...getAuthHeaders(),
+      ...(revision === undefined ? {} : ifMatchHeader(revision)),
+    },
     body: JSON.stringify(input),
   });
 

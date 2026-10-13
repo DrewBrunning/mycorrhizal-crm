@@ -882,7 +882,10 @@
     "unsavedChangesTitle": "Abandonner les modifications non enregistrées ?",
     "unsavedChangesMessage": "Vous avez des modifications non enregistrées qui seront perdues si vous continuez.",
     "discard": "Abandonner",
-    "keepEditing": "Continuer la modification"
+    "keepEditing": "Continuer la modification",
+    "conflictTitle": "Modifié ailleurs",
+    "conflictMessage": "Cet enregistrement a été modifié ailleurs (autre onglet, appareil ou synchronisation) après son ouverture ; votre modification n'a donc pas été enregistrée. Les modifications ne sont jamais fusionnées automatiquement. Chargez la dernière version pour continuer (votre modification sera abandonnée), ou gardez cette modification ouverte pour copier vos changements d'abord.",
+    "conflictReload": "Charger la dernière version"
   },
   "externalLinks": {
     "title": "Liens externes",

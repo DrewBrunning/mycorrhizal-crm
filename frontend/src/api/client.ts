@@ -89,6 +89,18 @@ export class ApiError extends Error {
   }
 }
 
+// ADR 0008: the backend's answer (412, PRECONDITION_FAILED) to a write whose
+// `If-Match` revision is stale. Per ADR 0010 there is no automatic merge, so
+// callers surface a conflict prompt instead of retrying.
+export function isPreconditionFailed(err: unknown): err is ApiError {
+  return err instanceof ApiError && (err.status === 412 || err.code === 'PRECONDITION_FAILED');
+}
+
+// Formats a revision as the quoted entity-tag the backend's checkIfMatch accepts.
+export function ifMatchHeader(revision: number): Record<string, string> {
+  return { 'If-Match': `"${revision}"` };
+}
+
 // Parse error response from backend
 export async function parseErrorResponse(response: Response): Promise<ApiError> {
   try {
