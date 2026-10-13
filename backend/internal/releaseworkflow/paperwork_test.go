@@ -48,6 +48,17 @@ func TestCheckDryRunPaperworkCatchesEachRegression(t *testing.T) {
 		{"dry-run workflow passes an ack", func(t *testing.T, m *manualFiles) {
 			m.dryRun = replaceOnce(t, m.dryRun, `-f "attest_manual_gates=${attest}"`, `-f "attest_manual_gates=${attest}" -f "ack_asvs_current=dry run"`)
 		}, "must not pass `ack_asvs_current`"},
+		{"step missing", func(t *testing.T, m *manualFiles) {
+			m.release = replaceOnce(t, m.release, "- name: Gate - per-release adversarial delta", "- name: Gate - renamed")
+		}, "release job needs the step"},
+		{"DRY_RUN env not from input", func(t *testing.T, m *manualFiles) {
+			m.release = replaceOnce(t, m.release, "          ACK_ASVS_CURRENT: ${{ inputs.ack_asvs_current }}\n          DRY_RUN: ${{ inputs.dry_run }}", "          ACK_ASVS_CURRENT: ${{ inputs.ack_asvs_current }}\n          DRY_RUN: \"false\"")
+		}, "must take DRY_RUN from"},
+		{"pending file env missing", func(t *testing.T, m *manualFiles) {
+			m.release = replaceOnce(t, m.release, "          PENDING_PAPERWORK_FILE: ${{ runner.temp }}/pending-paperwork.md\n        run: |\n          set -eu\n          if", "        run: |\n          set -eu\n          if")
+		}, "must set PENDING_PAPERWORK_FILE"},
+		{"release unparseable", func(t *testing.T, m *manualFiles) { m.release = "a: [" }, "does not parse"},
+		{"dry-run unparseable", func(t *testing.T, m *manualFiles) { m.dryRun = "a: [" }, "does not parse"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
