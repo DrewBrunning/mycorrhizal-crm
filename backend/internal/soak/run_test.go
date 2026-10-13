@@ -27,12 +27,27 @@ func TestInjector_EachFaultLeaksAndCloseReleases(t *testing.T) {
 	in.Tick()
 	in.Tick()
 	assert.Len(t, in.retain, 2)
-	assert.Len(t, in.files, 24)
+	assert.Len(t, in.files, 2*leakFDs)
 	assert.True(t, in.has(FaultHeap))
 	assert.False(t, in.has(FaultWAL))
 	in.Close()
 	in.Close() // idempotent
 	assert.Nil(t, in.retain)
+}
+
+// A starved sampler delivers fewer ticks than the run's duration implies; the
+// leak must follow elapsed time, not tick count (issue #1675).
+func TestInjector_LeakScalesWithElapsedIntervals(t *testing.T) {
+	in, err := newInjector(context.Background(), []Fault{FaultHeap, FaultFDs}, nil)
+	require.NoError(t, err)
+	defer in.Close()
+	in.every = time.Second
+	in.last = time.Now().Add(-3 * time.Second) // three intervals were skipped
+	in.Tick()
+	assert.Len(t, in.retain, 3)
+	assert.Len(t, in.files, 3*leakFDs)
+	in.Tick() // back on cadence: one interval's worth (floor of 1)
+	assert.Len(t, in.retain, 4)
 }
 
 func TestInjector_DBConnsNeedsADatabase(t *testing.T) {

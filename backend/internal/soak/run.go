@@ -168,6 +168,7 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrRun, err)
 	}
+	inj.every = cfg.SampleEvery
 	defer inj.Close()
 
 	wl, err := NewWorkload(ctx, WorkloadConfig{BaseURL: baseURL, Users: cfg.Users, Rate: cfg.Rate, Seed: cfg.Seed})
