@@ -1083,4 +1083,51 @@ class EntityListScreensTopLevelTest {
         composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
         composeTestRule.onNodeWithText("https://example.com/listing").assertIsDisplayed()
     }
+
+    // Issue #1665 / ADR 0008: a 412 on a life-event delete or edit shows the prompt. The edit
+    // dialog has already closed, so it offers "Load latest version" / "Not now" with no keep-editing.
+    private fun lifeEventsVm(repo: LifeEventRepository): LifeEventsViewModel {
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        return LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+    }
+
+    private val staleLifeEvent = LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison", revision = 4)
+
+    @Test
+    fun `a life event delete conflict shows the not-deleted prompt and load latest refetches`() {
+        val repo = mockk<LifeEventRepository>()
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(staleLifeEvent))
+        coEvery { repo.delete("e1", 4) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        val vm = lifeEventsVm(repo)
+        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNode(androidx.compose.ui.test.hasContentDescription("Delete", substring = true)).performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
+        composeTestRule.onNodeWithText("so it was not deleted", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load latest version").performClick()
+        composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+        io.mockk.coVerify(exactly = 2) { repo.listForContact(uid) }
+    }
+
+    @Test
+    fun `a life event edit conflict shows the closed-form prompt and not now dismisses it`() {
+        val repo = mockk<LifeEventRepository>()
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(staleLifeEvent))
+        coEvery { repo.update("e1", any(), 4) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        val vm = lifeEventsVm(repo)
+        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithText("Moved to Madison", substring = true).performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your edit was not saved.", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Keep editing").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Not now").performClick()
+        composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+        assertNull(vm.uiState.value.conflict)
+    }
 }
