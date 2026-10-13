@@ -120,6 +120,10 @@ infra:
   - '.env.example'
   - 'backend/cmd/deploysmoke/**'
   - '.github/scripts/deploy-smoke-misconfig.sh'
+  # Issue #1474: cmd/logguard (and its allowlist, whose per-route counts are
+  # only verifiable against real E2E traffic) gates the e2e and deploy-smoke
+  # server logs, so a change to it must re-run both.
+  - 'backend/cmd/logguard/**'
 
 # chaos (issue #434): the external-fault CI job's harness. Deliberately much
 # narrower than backend/** — chaos tests are slow by design and must not run
@@ -232,6 +236,8 @@ reference-clients:
   # routes/routes.go, not a carddav/caldav package file — covered by the
   # workflow-file entry above plus routes.go's own broad test suite.
   - '.github/scripts/reference-client-davx5/**'
+  # Issue #1474: both legs end with cmd/logguard over the server log.
+  - 'backend/cmd/logguard/**'
   - 'backend/carddav/**'
   - 'backend/caldav/**'
   - 'backend/services/carddav_vdirsyncer_integration_test.go'

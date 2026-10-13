@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.json.JSONObject
 import android.content.Intent
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -110,6 +111,33 @@ class NotificationDeepLinkRouteTest {
             val expected = if (v.isNull("android_route")) null else v.getString("android_route")
             assertEquals("vector $uri", expected, deepLinkRoute(Uri.parse(uri)))
         }
+    }
+
+    // Issue #1654: restored-from-saved-state delivery.
+    @Test
+    fun `restored activity handles a different link but not the consumed one`() {
+        val a = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
+        val b = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/2")))
+        assertTrue(shouldHandleLaunchIntent(false, 0, identity = b, consumedIdentity = a))
+        assertFalse(shouldHandleLaunchIntent(false, 0, identity = a, consumedIdentity = a))
+        // nothing consumed yet before the save (e.g. first link arrives with a restore)
+        assertTrue(shouldHandleLaunchIntent(false, 0, identity = a, consumedIdentity = null))
+        // a stripped / payload-less intent is never handled; history reopen never is
+        assertFalse(shouldHandleLaunchIntent(false, 0, identity = null, consumedIdentity = a))
+        assertFalse(
+            shouldHandleLaunchIntent(false, Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY, identity = b, consumedIdentity = a),
+        )
+    }
+
+    @Test
+    fun `launchIntentIdentity distinguishes sources and is null without a payload`() {
+        assertNull(launchIntentIdentity(null))
+        assertNull(launchIntentIdentity(Intent(Intent.ACTION_MAIN)))
+        val n = launchIntentIdentity(Intent().putExtra(NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://contacts/1"))
+        val v = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
+        val shared = launchIntentIdentity(Intent().putExtra(Intent.EXTRA_TEXT, "t").putExtra(Intent.EXTRA_SUBJECT, "s"))
+        assertEquals(3, setOf(n, v, shared).size)
+        assertEquals(v, launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1"))))
     }
 
     @Test
