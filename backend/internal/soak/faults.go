@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"mycorrhizal/middleware"
 
@@ -89,7 +90,30 @@ type injector struct {
 	tick    int
 	seq     int64 // distinguishes this injector's limiter keys from earlier runs'
 	closeMu sync.Once
+
+	// every is the nominal Tick cadence (the sampling interval); last is when
+	// the previous Tick (or construction) happened. Tick scales what it leaks
+	// by how many nominal intervals actually elapsed, so the injected leak is
+	// proportional to wall-clock time, not to how many ticks a starved runner
+	// managed to deliver (see Tick).
+	every time.Duration
+	last  time.Time
 }
+
+// Per-nominal-interval leak sizes. They are sized against the committed
+// growth limits and the transient noise a contended -race runner puts on each
+// signal (a start-up burst of ~100+ goroutines/fds and ~25 pooled
+// connections that can sit inside the tail window), not against a healthy
+// run's steady state: the injected ramp over the >= 9 s tail must clear both
+// the limit and that transient by a wide margin, whatever the sample count.
+const (
+	leakGoroutines = 100
+	leakHeapBytes  = 8 << 20
+	leakFDs        = 48
+	leakLimiter    = 40
+	leakDBConns    = 8
+	leakWALBytes   = 2 << 20
+)
 
 // injectorSeq numbers injectors within a process. The account rate limiter is
 // process-wide, so a second run in the same test binary (go test -count=2, the
@@ -110,7 +134,7 @@ func (in *injector) has(f Fault) bool {
 // newInjector prepares faults against db. WAL pinning needs the live pool;
 // every other fault is self-contained.
 func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, error) {
-	in := &injector{faults: faults, stop: make(chan struct{}), db: db, seq: injectorSeq.Add(1), ctx: ctx}
+	in := &injector{faults: faults, stop: make(chan struct{}), db: db, seq: injectorSeq.Add(1), ctx: ctx, every: time.Second, last: time.Now()}
 	if in.has(FaultDBConns) && db == nil {
 		return nil, fmt.Errorf("fault %q needs an in-process database handle", FaultDBConns)
 	}
@@ -143,26 +167,51 @@ func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, e
 	return in, nil
 }
 
-// Tick leaks one increment of the fault's resource.
+// multiplier is how many nominal intervals elapsed since the previous Tick
+// (at least 1), and advances the clock.
+func (in *injector) multiplier() int {
+	now := time.Now()
+	m := 1
+	if in.every > 0 {
+		if r := int((now.Sub(in.last) + in.every/2) / in.every); r > m {
+			m = r
+		}
+	}
+	in.last = now
+	return m
+}
+
+// Tick leaks one nominal increment of each fault's resource, times the number
+// of nominal intervals that elapsed since the last Tick.
+//
+// Why time-scaled: the sampler's ticker drops ticks when the process is
+// starved (a -race runner shared with the rest of the package shard), so a
+// "14 s" run can deliver ~6 samples instead of 14. A fixed amount per tick
+// then shrank the total leak with the runner's load, right when the start-up
+// burst (goroutines, fds and pooled connections spike for the first seconds,
+// and with few samples that spike sits inside the 2/3 tail window) is
+// largest. The fitted slope went flat or negative and a genuine leak went
+// undetected (issue #1675). Scaling by elapsed intervals makes the leak a
+// function of wall-clock time, which the fit's time axis already is.
 func (in *injector) Tick() {
 	in.tick++
+	m := in.multiplier()
 	if in.has(FaultGoroutines) {
-		for i := 0; i < 25; i++ {
+		for i := 0; i < leakGoroutines*m; i++ {
 			go func() { <-in.stop }()
 		}
 	}
 	if in.has(FaultHeap) {
-		b := make([]byte, 4<<20)
-		for i := 0; i < len(b); i += 4096 {
-			b[i] = 1 // touch every page so it is resident, not just reserved
+		for k := 0; k < m; k++ {
+			b := make([]byte, leakHeapBytes)
+			for i := 0; i < len(b); i += 4096 {
+				b[i] = 1 // touch every page so it is resident, not just reserved
+			}
+			in.retain = append(in.retain, b)
 		}
-		in.retain = append(in.retain, b)
 	}
 	if in.has(FaultFDs) {
-		// Large enough to stand clear of keep-alive connection churn: on a
-		// contended -race runner the FD count swings by ~50 on its own, which
-		// buried a 3-per-tick leak (~40 over a 14 s run).
-		for i := 0; i < 12; i++ {
+		for i := 0; i < leakFDs*m; i++ {
 			if f, err := os.Open(os.DevNull); err == nil {
 				in.files = append(in.files, f)
 			}
@@ -170,15 +219,13 @@ func (in *injector) Tick() {
 	}
 	if in.has(FaultLimiter) {
 		rl := middleware.GetAccountRateLimiter()
-		for i := 0; i < 8; i++ {
+		for i := 0; i < leakLimiter*m; i++ {
 			rl.RecordFailedAttempt(fmt.Sprintf("soak-fault-%d-%d-%d", in.seq, in.tick, i))
 		}
 	}
 	if in.has(FaultDBConns) && in.db != nil {
-		// 3 per tick: ~27 over the 9 s tail, well clear of the 6-connection
-		// growth budget and of in-flight noise (which returns to the pool).
 		if sqlDB, err := in.db.DB(); err == nil {
-			for i := 0; i < 3; i++ {
+			for i := 0; i < leakDBConns*m; i++ {
 				if c, err := sqlDB.Conn(in.ctx); err == nil {
 					in.conns = append(in.conns, c)
 				}
@@ -189,12 +236,14 @@ func (in *injector) Tick() {
 	// tick: the pinned reader only starves the checkpoint, so the WAL still
 	// has to be fed, and feeding it from the workload made detection depend
 	// on how many writes a contended runner managed (7.98 MiB observed
-	// against an 8 MiB ceiling after 197 ops). 1 MiB per tick reaches the
-	// ceiling in a few seconds whatever the throughput.
+	// against an 8 MiB ceiling after 197 ops). leakWALBytes per nominal
+	// interval reaches the ceiling in a few seconds whatever the throughput.
 	if in.has(FaultWAL) && in.db != nil {
 		// Best effort: a failed write just means less ballast this tick.
 		if err := in.db.Exec("CREATE TABLE IF NOT EXISTS soak_fault_ballast (b BLOB)").Error; err == nil {
-			_ = in.db.Exec("INSERT INTO soak_fault_ballast (b) VALUES (zeroblob(1048576))").Error
+			// m intervals' worth, like every other fault: ballast follows elapsed
+			// time, not how many ticks a starved runner delivered.
+			_ = in.db.Exec("INSERT INTO soak_fault_ballast (b) VALUES (zeroblob(?))", leakWALBytes*m).Error
 		}
 	}
 }
