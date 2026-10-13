@@ -163,6 +163,8 @@ data class ContactFormState(
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: the save was rejected with 412 — the contact changed elsewhere since it loaded. */
+    val conflict: Boolean = false,
 ) {
     val isEdit: Boolean get() = contactId != null
 
@@ -688,6 +690,15 @@ class ContactFormViewModel @Inject constructor(
 
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
+    /** Conflict dialog "Keep editing": leave the form as typed (nothing was saved). */
+    fun onConflictKeepEditing() = _uiState.update { it.copy(conflict = false) }
+
+    /** Conflict dialog "Load latest version": discard the edit and refetch the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        loadExisting()
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
@@ -703,7 +714,7 @@ class ContactFormViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.contactId != null) {
-                contactRepository.updateContact(state.contactId, input)
+                contactRepository.updateContact(state.contactId, input, baseRecord?.revision)
             } else {
                 contactRepository.createContact(input)
             }
@@ -720,7 +731,13 @@ class ContactFormViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(isSaving = false, conflict = true)
+                        } else {
+                            it.copy(isSaving = false, error = error.displayMessage)
+                        }
+                    }
                 },
             )
         }

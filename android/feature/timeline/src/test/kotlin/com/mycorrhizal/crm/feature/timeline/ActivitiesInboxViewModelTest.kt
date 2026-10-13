@@ -103,7 +103,7 @@ class ActivitiesInboxViewModelTest {
                 nextCursor = null,
             ),
         )
-        coEvery { activityRepository.delete(1) } returns Result.success(Unit)
+        coEvery { activityRepository.delete(1, any()) } returns Result.success(Unit)
 
         val vm = ActivitiesInboxViewModel(activityRepository)
         advanceUntilIdle()
@@ -120,7 +120,7 @@ class ActivitiesInboxViewModelTest {
         coEvery { activityRepository.listAll() } returns Result.success(
             ActivitiesPage(activitiesRaw = listOf(Activity(id = 1, title = "One")), nextCursor = null),
         )
-        coEvery { activityRepository.delete(1) } returns Result.failure(ApiError.Client(500, "delete failed"))
+        coEvery { activityRepository.delete(1, any()) } returns Result.failure(ApiError.Client(500, "delete failed"))
 
         val vm = ActivitiesInboxViewModel(activityRepository)
         advanceUntilIdle()

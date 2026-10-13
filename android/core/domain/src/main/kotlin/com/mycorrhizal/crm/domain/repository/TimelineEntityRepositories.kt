@@ -18,8 +18,8 @@ import com.mycorrhizal.crm.model.network.PreferenceInput
 interface LifeEventRepository {
     suspend fun listForContact(entityId: String): Result<List<LifeEvent>>
     suspend fun create(input: LifeEventInput): Result<LifeEvent>
-    suspend fun update(id: String, input: LifeEventInput): Result<LifeEvent>
-    suspend fun delete(id: String): Result<Unit>
+    suspend fun update(id: String, input: LifeEventInput, revision: Int?): Result<LifeEvent>
+    suspend fun delete(id: String, revision: Int?): Result<Unit>
 }
 
 interface GiftRepository {

@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +51,10 @@ data class ActivityFormState(
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** ADR 0008: the `revision` the record had when this edit began; sent as `If-Match` on save. */
+    val revision: Int? = null,
+    /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
+    val conflict: Boolean = false,
     /** Carried from the loaded activity so an edit doesn't wipe an external
      *  ref the form doesn't render (e.g. a calendar/ExternalActivity link). */
     val externalRef: String? = null,
@@ -195,6 +200,15 @@ class ActivityFormViewModel @Inject constructor(
     fun onLocationChange(value: String) = _uiState.update { it.copy(location = value) }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
+    /** Conflict dialog "Keep editing": leave the form as typed (nothing was saved). */
+    fun onConflictKeepEditing() = _uiState.update { it.copy(conflict = false) }
+
+    /** Conflict dialog "Load latest version": discard the edit and refetch the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = false) }
+        loadExisting()
+    }
+
     /**
      * Debounced contact search for the participant picker — same
      * cancel-and-relaunch shape as RelationshipsViewModel.searchContacts.
@@ -260,14 +274,20 @@ class ActivityFormViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.activityId != null) {
-                activityRepository.update(state.activityId, input)
+                activityRepository.update(state.activityId, input, state.revision)
             } else {
                 activityRepository.create(input)
             }
             result.foldApiError(
                 onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = ActivityFormEvent.Saved },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update {
+                        if (error is ApiError.PreconditionFailed) {
+                            it.copy(isSaving = false, conflict = true)
+                        } else {
+                            it.copy(isSaving = false, error = error.displayMessage)
+                        }
+                    }
                 },
             )
         }
@@ -285,6 +305,7 @@ class ActivityFormViewModel @Inject constructor(
         location = activity.location.orEmpty(),
         participants = activity.contacts.orEmpty(),
         externalRef = activity.externalRef,
+        revision = activity.revision,
     )
 
     companion object {

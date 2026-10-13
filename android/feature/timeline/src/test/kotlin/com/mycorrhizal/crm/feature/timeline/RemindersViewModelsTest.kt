@@ -128,7 +128,7 @@ class RemindersViewModelTest {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
             listOf(Reminder(id = 1, message = "Call Dana"), Reminder(id = 2, message = "Gift")),
         )
-        coEvery { reminderRepository.delete(1) } returns Result.success(Unit)
+        coEvery { reminderRepository.delete(1, any()) } returns Result.success(Unit)
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -145,7 +145,7 @@ class RemindersViewModelTest {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
             listOf(Reminder(id = 1, message = "Call Dana")),
         )
-        coEvery { reminderRepository.delete(1) } returns Result.failure(
+        coEvery { reminderRepository.delete(1, any()) } returns Result.failure(
             ApiError.Client(404, "Reminder not found"),
         )
 
@@ -312,7 +312,7 @@ class ReminderFormViewModelTest {
         coEvery { reminderRepository.get(1) } returns Result.success(
             Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, remindAt = "2026-08-10T14:00:00Z"),
         )
-        coEvery { reminderRepository.update(1, any()) } returns Result.success(Reminder(id = 1, message = "Call Dana"))
+        coEvery { reminderRepository.update(1, any(), any()) } returns Result.success(Reminder(id = 1, message = "Call Dana"))
 
         val vm = createViewModel(reminderId = 1)
         advanceUntilIdle()
@@ -328,6 +328,7 @@ class ReminderFormViewModelTest {
             reminderRepository.update(
                 1,
                 match<Reminder> { reminder -> reminder.message == "Call Dana today" },
+                any(),
             )
         }
         assertEquals(ReminderFormEvent.Saved, vm.events.value)
@@ -360,7 +361,7 @@ class ReminderFormViewModelTest {
             coEvery { reminderRepository.get(1) } returns Result.success(
                 Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, remindAt = "2026-08-10T14:00:00Z"),
             )
-            coEvery { reminderRepository.update(1, any()) } returns Result.failure(
+            coEvery { reminderRepository.update(1, any(), any()) } returns Result.failure(
                 ApiError.Client(409, "Reminder was modified by another session"),
             )
 

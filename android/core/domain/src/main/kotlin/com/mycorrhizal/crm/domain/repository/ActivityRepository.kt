@@ -43,8 +43,8 @@ interface ActivityRepository {
     suspend fun create(input: ActivityInput): Result<Activity>
 
     /** Update an activity; returns the updated record. */
-    suspend fun update(id: Int, input: ActivityInput): Result<Activity>
+    suspend fun update(id: Int, input: ActivityInput, revision: Int?): Result<Activity>
 
     /** Delete an activity (soft delete server-side; removes the local cache row). */
-    suspend fun delete(id: Int): Result<Unit>
+    suspend fun delete(id: Int, revision: Int?): Result<Unit>
 }

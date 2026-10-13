@@ -25,6 +25,7 @@ import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.registry.PreferenceCategory
 import com.mycorrhizal.crm.model.registry.PreferenceSection
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -64,7 +65,12 @@ data class EntityListUiState(
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
     val deletingId: String? = null,
+    /** ADR 0008 (issue #1665): a life-event write was rejected with 412 (changed elsewhere). */
+    val conflict: EntityConflict? = null,
 )
+
+/** Which write a 412 rejected — picks the conflict dialog's wording. */
+enum class EntityConflict { EDIT, DELETE }
 
 // --- M18 form-data carriers. Each mirrors the fields its dialog now models;
 // update() builds the full-overwrite input from these, so every field the form
@@ -268,20 +274,48 @@ class LifeEventsViewModel @Inject constructor(
             lifeEventRepository.update(
                 original.id,
                 form.toInput(original.entityId).copy(source = original.source),
+                original.revision,
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e ->
+                    _uiState.update {
+                        if (e is ApiError.PreconditionFailed) {
+                            it.copy(conflict = EntityConflict.EDIT)
+                        } else {
+                            it.copy(error = e.displayMessage)
+                        }
+                    }
+                },
             )
         }
+    }
+
+    /** Conflict dialog "Not now": nothing was written; leave the list as it is. */
+    fun onConflictDismissed() {
+        _uiState.update { it.copy(conflict = null) }
+    }
+
+    /** Conflict dialog "Load latest version": refetch so the row shows the server's copy. */
+    fun onConflictLoadLatest() {
+        _uiState.update { it.copy(conflict = null) }
+        load()
     }
 
     fun delete(id: String) {
         if (_uiState.value.deletingId != null) return
         viewModelScope.launch {
             _uiState.update { it.copy(deletingId = id) }
-            lifeEventRepository.delete(id).foldApiError(
+            lifeEventRepository.delete(id, findById(id)?.revision).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(deletingId = null, error = e.displayMessage) } },
+                onError = { e ->
+                    _uiState.update {
+                        if (e is ApiError.PreconditionFailed) {
+                            it.copy(deletingId = null, conflict = EntityConflict.DELETE)
+                        } else {
+                            it.copy(deletingId = null, error = e.displayMessage)
+                        }
+                    }
+                },
             )
         }
     }

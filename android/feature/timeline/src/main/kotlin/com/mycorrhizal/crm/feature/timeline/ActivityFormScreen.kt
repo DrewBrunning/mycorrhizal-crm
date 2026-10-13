@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +82,13 @@ fun ActivityFormScreen(
             onAddParticipant = viewModel::onAddParticipant,
             onRemoveParticipant = viewModel::onRemoveParticipant,
             modifier = Modifier.padding(padding),
+        )
+    }
+
+    if (state.conflict) {
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictKeepEditing,
         )
     }
 
