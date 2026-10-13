@@ -171,10 +171,10 @@ table and the `networkGraphScale.spec.ts` benchmark. Two-tier per #447: bundle b
 
 **Mutation testing (issue #915):** two nightly (`workflow_dispatch` too), threshold-gated workflows
 — not report-only, and not a per-PR or release gate, since mutation testing is O(test suite × mutant
-count). `stryker.yml` (frontend: all `src/api/*.ts` + `src/hooks/use*.ts` since #1482, break 74 against a measured 79.62%; api 89%, hooks 66%)
-now sets `thresholds.break` in `frontend/stryker.conf.json`, so `npx stryker run` itself fails below the
-committed baseline (CI runs it as two parallel `api`/`hooks` legs with their own `break` in the workflow
-matrix, since the full scope is ~5h on a 4-vCPU runner — issue #1571). `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
+count). `stryker.yml` (frontend: `src/api/*.ts`, `src/hooks/use*.ts` since #1482, and `src/utils` as a third leg)
+sets `thresholds.break` in `frontend/stryker.conf.json` (combined break 74, for local `npx stryker run`); CI runs it as three parallel
+`api`/`hooks`/`utils` legs with their own `break` in the workflow matrix: 83/64/79 against measured api 89.41%, hooks 70.12%,
+utils 85.07% (2026-10-13), since the full scope is ~5h on a 4-vCPU runner — issue #1571). `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
 paths coverage alone can't prove: migration/upgrade + backup/restore (`database`), data-integrity
 invariants (`atrest`), delete cascade (`services/contact_delete.go`'s registry, ADR 0035, plus `admin_user_controller.go`/`user_delete_cascade.go`, the trap 6
 canonical checklist files), import ingestion (the import-source files in `services`), and the three
