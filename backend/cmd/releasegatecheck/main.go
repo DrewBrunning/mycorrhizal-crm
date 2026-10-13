@@ -205,6 +205,7 @@ func runAt(w io.Writer, root string) int {
 		return 2
 	}
 	findings = append(findings, releaseworkflow.CheckManualGates(string(releaseBytes), string(dryRunBytes))...)
+	findings = append(findings, releaseworkflow.CheckDryRunPaperwork(string(releaseBytes), string(dryRunBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {
