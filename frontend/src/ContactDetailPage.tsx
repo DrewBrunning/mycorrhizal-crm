@@ -378,6 +378,12 @@ export default function ContactDetailPage() {
     handleSaveActivity,
   } = useContactDialogs(id, refreshNotesAndActivities, { showError });
 
+  // ADR 0008: a save or delete answered with 412 means the record changed elsewhere
+  // since this page loaded it. Per ADR 0010 nothing is merged -- the user
+  // reloads the latest version or keeps their edit open to copy from.
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const handleConflict = () => setConflictOpen(true);
+
   const {
     editingTimelineItem,
     editTimelineValues,
@@ -389,7 +395,7 @@ export default function ContactDetailPage() {
     handleDeleteNote,
     handleDeleteActivity,
     setEditTimelineValues,
-  } = useTimelineEditing(record?.id, refreshNotesAndActivities, { showError });
+  } = useTimelineEditing(record?.id, refreshNotesAndActivities, { showError }, handleConflict);
 
   const {
     reminders,
@@ -403,7 +409,7 @@ export default function ContactDetailPage() {
     handleAddReminder,
     setReminderDialogOpen,
     setEditingReminder,
-  } = useReminderManagement(id, { showError });
+  } = useReminderManagement(id, { showError }, handleConflict);
 
   // Pre-filled reminder values (used by Stay in Touch)
   const [reminderInitialValues, setReminderInitialValues] = useState<
@@ -438,7 +444,7 @@ export default function ContactDetailPage() {
     handleCreate: handleCreateLifeEvent,
     handleUpdate: handleUpdateLifeEvent,
     handleDelete: handleDeleteLifeEvent,
-  } = useLifeEvents(record?.uid);
+  } = useLifeEvents(record?.uid, handleConflict);
 
   const {
     preferences,
@@ -748,7 +754,7 @@ export default function ContactDetailPage() {
     if (!record?.uid) return;
     const payload = lifeEventPayloadFromForm(record.uid, data);
     if (editingLifeEvent) {
-      await handleUpdateLifeEvent(editingLifeEvent.id, payload);
+      await handleUpdateLifeEvent(editingLifeEvent.id, payload, editingLifeEvent.revision);
     } else {
       await handleCreateLifeEvent({ ...payload, source: 'user' });
     }
@@ -832,12 +838,6 @@ export default function ContactDetailPage() {
     }
   };
 
-  // ADR 0008: a save answered with 412 means the record changed elsewhere
-  // since this page loaded it. Per ADR 0010 nothing is merged -- the user
-  // reloads the latest version or keeps their edit open to copy from.
-  const [conflictOpen, setConflictOpen] = useState(false);
-  const handleConflict = () => setConflictOpen(true);
-
   const fieldEditing = useContactFieldEditing({
     id,
     record,
@@ -871,6 +871,7 @@ export default function ContactDetailPage() {
     setSelfContactUid,
     showError,
     showSuccess,
+    onConflict: handleConflict,
   });
 
   const handleStayInTouch = () => {
@@ -887,6 +888,9 @@ export default function ContactDetailPage() {
     if (!id) return;
 
     await uploadProfilePicture(id, croppedImageBlob);
+    // The upload persists the contact (bumping its revision); re-read it so the
+    // next save sends the current If-Match.
+    await reloadRecord();
 
     // Refresh the profile picture
     const blob = await getContactProfilePicture(id);
@@ -953,9 +957,21 @@ export default function ContactDetailPage() {
         open={conflictOpen}
         onKeepEditing={() => setConflictOpen(false)}
         onReload={() => {
+          // "Load latest" discards every open edit and refetches everything the
+          // conflict could have come from: the contact, its timeline, reminders
+          // and life events.
           handleCancelEditProfile();
           fieldEditing.handleEditCancel();
-          void reloadRecord().finally(() => setConflictOpen(false));
+          handleCancelEditTimelineItem();
+          setReminderDialogOpen(false);
+          setEditingReminder(null);
+          lifeEventDialog.close();
+          void Promise.all([
+            reloadRecord(),
+            refreshNotesAndActivities(),
+            refreshReminders(),
+            refreshLifeEvents(),
+          ]).finally(() => setConflictOpen(false));
         }}
       />
       {/* Contact Header Card */}

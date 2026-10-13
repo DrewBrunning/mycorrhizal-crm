@@ -28,6 +28,7 @@ import NetworkListView from './components/NetworkListView';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useGraph } from './hooks/useGraph';
+import { useRecordConflict } from './hooks/useRecordConflict';
 import { dropStaleCircleFilter, loadNetworkFilters, saveNetworkFilters } from './networkFilters';
 import type { GraphNode } from './types/graph';
 import { computeFilteredGraphData } from './utils/networkGraphData';
@@ -53,6 +54,9 @@ export default function NetworkPage() {
   const setCenteredNodeId = (value: string | null) =>
     setFilters((f) => ({ ...f, centeredNodeId: value }));
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  // ADR 0008: a 412 means the activity changed elsewhere since the edit began;
+  // "Load latest" closes the edit so reopening fetches the current version.
+  const { handleConflict, conflictDialog } = useRecordConflict(() => handleActivityEditClose());
   const [editValues, setEditValues] = useState<{
     activityTitle?: string;
     activityDescription?: string;
@@ -158,17 +162,22 @@ export default function NetworkPage() {
   const handleActivitySave = async () => {
     if (!editingActivity || !editValues.activityTitle?.trim()) return;
     try {
-      await updateActivity(editingActivity.ID, {
-        title: editValues.activityTitle,
-        description: editValues.activityDescription || '',
-        location: editValues.activityLocation || '',
-        date: editValues.activityDate
-          ? new Date(editValues.activityDate).toISOString()
-          : new Date().toISOString(),
-        contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
-      });
+      await updateActivity(
+        editingActivity.ID,
+        {
+          title: editValues.activityTitle,
+          description: editValues.activityDescription || '',
+          location: editValues.activityLocation || '',
+          date: editValues.activityDate
+            ? new Date(editValues.activityDate).toISOString()
+            : new Date().toISOString(),
+          contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
+        },
+        editingActivity.revision,
+      );
       handleActivityEditClose();
     } catch (err) {
+      if (handleConflict(err)) return;
       console.error('Failed to update activity:', err);
     }
   };
@@ -176,9 +185,10 @@ export default function NetworkPage() {
   const handleActivityDelete = async () => {
     if (!editingActivity) return;
     try {
-      await deleteActivity(editingActivity.ID);
+      await deleteActivity(editingActivity.ID, editingActivity.revision);
       handleActivityEditClose();
     } catch (err) {
+      if (handleConflict(err)) return;
       console.error('Failed to delete activity:', err);
     }
   };
@@ -377,6 +387,7 @@ export default function NetworkPage() {
         onContactClick={handleNodeClick}
       />
 
+      {conflictDialog}
       {editingActivity && (
         <EditTimelineItemDialog
           open

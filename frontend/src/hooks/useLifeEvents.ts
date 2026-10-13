@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { isPreconditionFailed } from '../api/client';
 import { type Contact, getContactsByUid } from '../api/contacts';
 import {
   createLifeEvent,
@@ -11,7 +12,12 @@ import {
 } from '../api/lifeEvents';
 import { handleFetchError } from '../utils/errorHandler';
 
-export function useLifeEvents(entityId: string | undefined) {
+export function useLifeEvents(
+  entityId: string | undefined,
+  // Called when an update/delete is rejected with 412 (the event changed
+  // elsewhere; ADR 0008).
+  onConflict?: () => void,
+) {
   const [events, setEvents] = useState<LifeEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -66,19 +72,33 @@ export function useLifeEvents(entityId: string | undefined) {
   );
 
   const handleUpdate = useCallback(
-    async (id: string, data: LifeEventInputData) => {
-      await updateLifeEvent(id, data);
+    async (id: string, data: LifeEventInputData, revision?: number) => {
+      try {
+        await updateLifeEvent(id, data, revision);
+      } catch (err) {
+        // Rethrown so the dialog stays open ("keep editing").
+        if (onConflict && isPreconditionFailed(err)) onConflict();
+        throw err;
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, onConflict],
   );
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteLifeEvent(id);
+      try {
+        await deleteLifeEvent(id, events.find((e) => e.id === id)?.revision);
+      } catch (err) {
+        if (onConflict && isPreconditionFailed(err)) {
+          onConflict();
+          return;
+        }
+        throw err;
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, onConflict, events],
   );
 
   return {

@@ -101,6 +101,15 @@ export function ifMatchHeader(revision: number): Record<string, string> {
   return { 'If-Match': `"${revision}"` };
 }
 
+// getAuthHeaders plus, when `revision` is known, the `If-Match` precondition.
+// Omitted, the write is unconditional (last-writer-wins).
+export function getConditionalHeaders(revision?: number): HeadersInit {
+  return {
+    ...getAuthHeaders(),
+    ...(revision === undefined ? {} : ifMatchHeader(revision)),
+  };
+}
+
 // Parse error response from backend
 export async function parseErrorResponse(response: Response): Promise<ApiError> {
   try {

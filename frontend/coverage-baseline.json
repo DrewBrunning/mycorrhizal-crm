@@ -3,10 +3,10 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 89.53,
-      "linesTotal": 86,
-      "branches": 78.12,
-      "branchesTotal": 64
+      "lines": 92.39,
+      "linesTotal": 92,
+      "branches": 79.41,
+      "branchesTotal": 68
     },
     "src/App.tsx": {
       "lines": 72.64,
@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.49,
-      "linesTotal": 274,
+      "lines": 86.73,
+      "linesTotal": 280,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -93,16 +93,16 @@
       "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
-      "lines": 81.11,
-      "linesTotal": 90,
-      "branches": 62.16,
-      "branchesTotal": 74
+      "lines": 81.72,
+      "linesTotal": 93,
+      "branches": 62.82,
+      "branchesTotal": 78
     },
     "src/NotesPage.tsx": {
-      "lines": 79.72,
-      "linesTotal": 74,
-      "branches": 85.1,
-      "branchesTotal": 47
+      "lines": 86.25,
+      "linesTotal": 80,
+      "branches": 86.27,
+      "branchesTotal": 51
     },
     "src/OccasionsPage.tsx": {
       "lines": 86.66,
@@ -214,9 +214,9 @@
     },
     "src/api/client.ts": {
       "lines": 100,
-      "linesTotal": 38,
+      "linesTotal": 39,
       "branches": 100,
-      "branchesTotal": 36
+      "branchesTotal": 38
     },
     "src/api/contactDetail.ts": {
       "lines": 100,
@@ -258,7 +258,7 @@
       "lines": 99.08,
       "linesTotal": 238,
       "branches": 94.4,
-      "branchesTotal": 411
+      "branchesTotal": 409
     },
     "src/api/contractConformance.ts": {
       "lines": 0,
@@ -1215,7 +1215,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 83.33,
+      "lines": 84.21,
       "linesTotal": 114,
       "branches": 79.77,
       "branchesTotal": 89
@@ -1492,9 +1492,9 @@
     },
     "src/hooks/useContactLifecycleActions.ts": {
       "lines": 100,
-      "linesTotal": 51,
-      "branches": 97.22,
-      "branchesTotal": 36
+      "linesTotal": 63,
+      "branches": 97.5,
+      "branchesTotal": 44
     },
     "src/hooks/useContactMemberships.ts": {
       "lines": 100,
@@ -1648,9 +1648,9 @@
     },
     "src/hooks/useLifeEvents.ts": {
       "lines": 100,
-      "linesTotal": 37,
-      "branches": 100,
-      "branchesTotal": 14
+      "linesTotal": 45,
+      "branches": 95.45,
+      "branchesTotal": 22
     },
     "src/hooks/useLinkFieldTypes.ts": {
       "lines": 100,
@@ -1712,6 +1712,12 @@
       "branches": 100,
       "branchesTotal": 6
     },
+    "src/hooks/useRecordConflict.tsx": {
+      "lines": 100,
+      "linesTotal": 9,
+      "branches": 100,
+      "branchesTotal": 2
+    },
     "src/hooks/useRelationshipEdges.ts": {
       "lines": 100,
       "linesTotal": 56,
@@ -1720,9 +1726,9 @@
     },
     "src/hooks/useReminderManagement.ts": {
       "lines": 100,
-      "linesTotal": 42,
+      "linesTotal": 47,
       "branches": 100,
-      "branchesTotal": 6
+      "branchesTotal": 14
     },
     "src/hooks/useRowKeys.ts": {
       "lines": 100,
@@ -1785,10 +1791,10 @@
       "branchesTotal": 26
     },
     "src/hooks/useTimelineEditing.ts": {
-      "lines": 100,
-      "linesTotal": 46,
-      "branches": 100,
-      "branchesTotal": 34
+      "lines": 94,
+      "linesTotal": 50,
+      "branches": 78,
+      "branchesTotal": 50
     },
     "src/hooks/useWebAuthn.ts": {
       "lines": 100,

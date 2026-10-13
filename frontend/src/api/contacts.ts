@@ -3,7 +3,7 @@ import {
   API_BASE_URL,
   apiFetch,
   getAuthHeaders,
-  ifMatchHeader,
+  getConditionalHeaders,
   parseErrorResponse,
 } from './client';
 
@@ -1176,10 +1176,7 @@ export async function updateContactRecord(
 ): Promise<ContactRecordResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
     method: 'PUT',
-    headers: {
-      ...getAuthHeaders(),
-      ...(revision === undefined ? {} : ifMatchHeader(revision)),
-    },
+    headers: getConditionalHeaders(revision),
     body: JSON.stringify(input),
   });
 
@@ -1208,10 +1205,10 @@ export async function createContactRecord(
 }
 
 // Delete contact
-export async function deleteContact(id: string | number): Promise<void> {
+export async function deleteContact(id: string | number, revision?: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
   });
 
   if (!response.ok) {

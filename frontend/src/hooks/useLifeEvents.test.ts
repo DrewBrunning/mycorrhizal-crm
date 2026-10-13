@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { type Contact, getContactsByUid } from '../api/contacts';
 import {
   createLifeEvent,
@@ -131,7 +132,7 @@ test('handleCreate creates the event and refreshes', async () => {
 
 test('handleUpdate updates the event and refreshes', async () => {
   vi.mocked(getLifeEvents).mockResolvedValue({
-    life_events: [lifeEvent('le-1')],
+    life_events: [lifeEvent('le-1', { revision: 3 })],
     next_cursor: '',
     limit: 50,
   });
@@ -145,16 +146,16 @@ test('handleUpdate updates the event and refreshes', async () => {
     description: 'to a new city',
   };
   await act(async () => {
-    await result.current.handleUpdate('le-1', data);
+    await result.current.handleUpdate('le-1', data, 3);
   });
 
-  expect(updateLifeEvent).toHaveBeenCalledWith('le-1', data);
+  expect(updateLifeEvent).toHaveBeenCalledWith('le-1', data, 3);
   expect(getLifeEvents).toHaveBeenCalledTimes(2);
 });
 
 test('handleDelete deletes the event and refreshes', async () => {
   vi.mocked(getLifeEvents).mockResolvedValue({
-    life_events: [lifeEvent('le-1')],
+    life_events: [lifeEvent('le-1', { revision: 3 })],
     next_cursor: '',
     limit: 50,
   });
@@ -166,8 +167,76 @@ test('handleDelete deletes the event and refreshes', async () => {
     await result.current.handleDelete('le-1');
   });
 
-  expect(deleteLifeEvent).toHaveBeenCalledWith('le-1');
+  expect(deleteLifeEvent).toHaveBeenCalledWith('le-1', 3);
   expect(getLifeEvents).toHaveBeenCalledTimes(2);
+});
+
+// ADR 0008: a 412 calls onConflict. An update rethrows so the dialog stays open;
+// a delete swallows it (the list click has no dialog to keep open).
+test('handleUpdate answered 412 calls onConflict, rethrows and does not refresh', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
+  const stale = new ApiError('stale', 'PRECONDITION_FAILED', 412);
+  vi.mocked(updateLifeEvent).mockRejectedValue(stale);
+  const onConflict = vi.fn();
+
+  const { result } = renderHook(() => useLifeEvents('uid-1', onConflict));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(
+    act(async () => {
+      await result.current.handleUpdate('le-1', { entity_id: 'uid-1', type: 'moved' }, 3);
+    }),
+  ).rejects.toBe(stale);
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(getLifeEvents).toHaveBeenCalledTimes(1);
+});
+
+test('handleUpdate rethrows a non-412 error without calling onConflict', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
+  vi.mocked(updateLifeEvent).mockRejectedValue(new Error('boom'));
+  const onConflict = vi.fn();
+
+  const { result } = renderHook(() => useLifeEvents('uid-1', onConflict));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(
+    act(async () => {
+      await result.current.handleUpdate('le-1', { entity_id: 'uid-1', type: 'moved' }, 3);
+    }),
+  ).rejects.toThrow('boom');
+  expect(onConflict).not.toHaveBeenCalled();
+});
+
+test('handleDelete answered 412 calls onConflict and does not refresh or throw', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({
+    life_events: [lifeEvent('le-1', { revision: 3 })],
+    next_cursor: '',
+    limit: 50,
+  });
+  vi.mocked(deleteLifeEvent).mockRejectedValue(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+  const onConflict = vi.fn();
+
+  const { result } = renderHook(() => useLifeEvents('uid-1', onConflict));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    await result.current.handleDelete('le-1');
+  });
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(getLifeEvents).toHaveBeenCalledTimes(1);
+});
+
+test('handleDelete rethrows a non-412 error', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
+  vi.mocked(deleteLifeEvent).mockRejectedValue(new Error('boom'));
+  const { result } = renderHook(() => useLifeEvents('uid-1', vi.fn()));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(
+    act(async () => {
+      await result.current.handleDelete('le-1');
+    }),
+  ).rejects.toThrow('boom');
 });
 
 test('sets error when the fetch fails', async () => {

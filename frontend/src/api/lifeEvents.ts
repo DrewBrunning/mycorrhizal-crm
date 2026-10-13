@@ -1,4 +1,10 @@
-import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import {
+  API_BASE_URL,
+  apiFetch,
+  getAuthHeaders,
+  getConditionalHeaders,
+  parseErrorResponse,
+} from './client';
 
 // LifeEvent category tokens — T36. Hardcoded mirror of backend/models/life_event.go's
 // LifeEventCategory* constants (frontend-trap-4 in CLAUDE.md: there is no
@@ -168,20 +174,24 @@ export async function createLifeEvent(data: LifeEventInputData): Promise<LifeEve
   return response.json();
 }
 
-export async function updateLifeEvent(id: string, data: LifeEventInputData): Promise<LifeEvent> {
+export async function updateLifeEvent(
+  id: string,
+  data: LifeEventInputData,
+  revision?: number,
+): Promise<LifeEvent> {
   const response = await apiFetch(`${API_BASE_URL}/life-events/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
     body: JSON.stringify(data),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
-export async function deleteLifeEvent(id: string): Promise<void> {
+export async function deleteLifeEvent(id: string, revision?: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/life-events/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

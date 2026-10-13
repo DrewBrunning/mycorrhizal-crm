@@ -1,5 +1,11 @@
 // Reminder-related API calls
-import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import {
+  API_BASE_URL,
+  apiFetch,
+  getAuthHeaders,
+  getConditionalHeaders,
+  parseErrorResponse,
+} from './client';
 
 export interface Reminder {
   ID: number;
@@ -97,10 +103,11 @@ export async function createReminder(
 export async function updateReminder(
   reminderId: number,
   reminderData: Partial<ReminderFormData>,
+  revision?: number,
 ): Promise<Reminder> {
   const response = await apiFetch(`${API_BASE_URL}/reminders/${reminderId}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
     body: JSON.stringify(reminderData),
   });
 
@@ -145,10 +152,10 @@ export async function skipReminder(
 }
 
 // Delete a reminder
-export async function deleteReminder(reminderId: number): Promise<void> {
+export async function deleteReminder(reminderId: number, revision?: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/reminders/${reminderId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
   });
 
   if (!response.ok) {

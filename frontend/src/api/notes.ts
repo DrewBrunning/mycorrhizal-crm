@@ -1,5 +1,11 @@
 // Notes-related API calls
-import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import {
+  API_BASE_URL,
+  apiFetch,
+  getAuthHeaders,
+  getConditionalHeaders,
+  parseErrorResponse,
+} from './client';
 
 export interface Note {
   ID: number;
@@ -131,10 +137,11 @@ export async function createUnassignedNote(data: {
 export async function updateNote(
   id: string | number,
   data: { content: string; date: string; contact_id?: number | null },
+  revision?: number,
 ): Promise<Note> {
   const response = await apiFetch(`${API_BASE_URL}/notes/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
     body: JSON.stringify(data),
   });
 
@@ -146,10 +153,10 @@ export async function updateNote(
 }
 
 // Delete note
-export async function deleteNote(id: string | number): Promise<void> {
+export async function deleteNote(id: string | number, revision?: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/notes/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getConditionalHeaders(revision),
   });
 
   if (!response.ok) {

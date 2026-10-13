@@ -58,6 +58,7 @@ const contactRecord: ContactRecordResponse = {
 const notes: Note[] = [
   {
     ID: 2,
+    revision: 3,
     contact_id: 1,
     content: 'Contract fixture note',
     date: '2026-08-20T18:00:00Z',
@@ -276,6 +277,7 @@ function mockFetch({
   immichConfigured = false,
   extraPreferences = [],
   staleWrite,
+  staleOnce: staleOnceInput = [],
 }: {
   record?: ContactRecordResponse;
   failGet?: Endpoint[];
@@ -298,10 +300,13 @@ function mockFetch({
   // The first PUT /contacts/1 answers 412 (ADR 0008) and the record is
   // swapped for this newer server version, as if another tab saved first.
   staleWrite?: ContactRecordResponse;
+  // "METHOD /path" requests that answer 412 once (ADR 0008).
+  staleOnce?: string[];
 } = {}) {
   const calls: Call[] = [];
   let current = record;
   let stale = staleWrite;
+  const staleOnce = [...staleOnceInput];
   const obligations = [...occasionObligations];
 
   const get = (endpoint: Endpoint, body: () => unknown) =>
@@ -470,6 +475,19 @@ function mockFetch({
             unrouted.push(`GET ${path}`);
             return errorResponse(`unrouted GET ${path}`, 404);
         }
+      }
+
+      const staleIdx = staleOnce.indexOf(`${method} ${path}`);
+      if (staleIdx !== -1) {
+        staleOnce.splice(staleIdx, 1);
+        return {
+          ok: false,
+          status: 412,
+          statusText: 'Precondition Failed',
+          json: async () => ({
+            error: { code: 'PRECONDITION_FAILED', message: 'stale', details: {} },
+          }),
+        };
       }
 
       if (path === '/contacts/1' && method === 'PUT') {
@@ -1733,4 +1751,77 @@ test('a contact with only a given name still renders and names its dialogs', asy
   );
   expect(within(dialog).getByDisplayValue('Catch-up with Cher')).toBeInTheDocument();
   await dismiss(dialog);
+});
+
+test('deleting a contact sends the loaded revision as If-Match', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(headerButton('Delete'));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
+  expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"7"');
+});
+
+test('a 412 on contact delete opens the conflict dialog instead of the generic alert', async () => {
+  mockFetch({ staleOnce: ['DELETE /contacts/1'] });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(headerButton('Delete'));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(screen.getByText('Alice Wonder')).toBeInTheDocument();
+});
+
+test('a timeline note save sends the note revision as If-Match', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const row = rowWith('Contract fixture note', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'PUT' && c.url.endsWith('/notes/2'))).toBe(true),
+  );
+  expect(
+    calls.find((c) => c.method === 'PUT' && c.url.endsWith('/notes/2'))?.headers,
+  ).toMatchObject({ 'If-Match': '"3"' });
+});
+
+test('a 412 on a timeline note save opens the conflict dialog, keeps the edit, and Load latest refetches the timeline', async () => {
+  const calls = mockFetch({ staleOnce: ['PUT /notes/2'] });
+  await renderLoaded();
+  const row = rowWith('Contract fixture note', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+  const notesGets = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1/notes')).length;
+  const before = notesGets();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Load latest version' }));
+
+  await waitFor(() => expect(screen.queryByText('Changed elsewhere')).not.toBeInTheDocument());
+  expect(notesGets()).toBeGreaterThan(before);
+});
+
+test('a 412 on a timeline note delete opens the conflict dialog', async () => {
+  mockFetch({ staleOnce: ['DELETE /notes/2'] });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const row = rowWith('Contract fixture note', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
 });
