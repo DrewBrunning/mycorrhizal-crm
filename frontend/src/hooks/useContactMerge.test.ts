@@ -336,3 +336,18 @@ test('reset clears an error left by a failed preview', async () => {
   act(() => result.current.reset());
   expect(result.current.error).toBeNull();
 });
+
+test('a failed preview after a successful one clears the stale preview', async () => {
+  vi.mocked(previewContactMerge).mockResolvedValueOnce(fullPreview());
+  const { result } = renderHook(() => useContactMerge());
+  await act(async () => {
+    await result.current.loadPreview(1, 2);
+  });
+  expect(result.current.preview).not.toBeNull();
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('gone'));
+  await act(async () => {
+    await result.current.loadPreview(1, 3);
+  });
+  expect(result.current.preview).toBeNull();
+  expect(result.current.error).toBe('gone');
+});

@@ -14,6 +14,7 @@ export function useRowKeys(length: number) {
   while (keys.current.length < length) {
     keys.current.push(next.current++);
   }
+  // Stryker disable next-line ConditionalExpression,EqualityOperator: the padding loop above leaves keys.length >= length, so truncating at equality (or always) is a no-op
   if (keys.current.length > length) {
     keys.current.length = length;
   }
@@ -23,6 +24,7 @@ export function useRowKeys(length: number) {
     onRemove: (index: number) => {
       keys.current.splice(index, 1);
     },
+    // Stryker disable next-line BlockStatement: the reconcile loop pads a missing key with the same next id, so an explicit push is redundant when the length grows with it
     onAdd: () => {
       keys.current.push(next.current++);
     },

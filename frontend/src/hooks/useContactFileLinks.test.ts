@@ -203,3 +203,11 @@ test('handlers use the latest refresh callback', async () => {
   expect(first).not.toHaveBeenCalled();
   expect(second).toHaveBeenCalledTimes(4);
 });
+
+test('a rejected paperless or nextcloud lookup hides only that system', async () => {
+  vi.mocked(getPaperlessConfig).mockRejectedValue(new Error('500'));
+  vi.mocked(getNextcloudConfig).mockRejectedValue(new Error('500'));
+  const { result } = renderHook(() => useContactFileLinks('alice-uid', refreshExternalLinks));
+  await waitFor(() => expect(result.current.configured.seafile).toBe(true));
+  expect(result.current.configured).toEqual({ paperless: false, seafile: true, nextcloud: false });
+});

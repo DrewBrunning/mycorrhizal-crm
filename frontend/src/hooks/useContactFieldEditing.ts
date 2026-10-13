@@ -84,6 +84,7 @@ export function useContactFieldEditing({
     if (isDateField(field)) {
       // Blank clears the date; anything else must parse in the user's
       // display format.
+      // Stryker disable next-line ConditionalExpression,MethodExpression,StringLiteral: parseBirthdayInput returns '' for blank input, so the leading blank guard is redundant
       if (editValue.trim() !== '' && parseBirthdayInput(editValue) === null) {
         setValidationError(t('contactDetail.birthdayError'));
         return;

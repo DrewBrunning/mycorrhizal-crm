@@ -44,6 +44,7 @@ export function useWebAuthn() {
       await refresh();
       return result;
     },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable, so the deps array is equivalent either way
     [refresh],
   );
 
@@ -52,6 +53,7 @@ export function useWebAuthn() {
       await removePasskey(id, proof);
       await refresh();
     },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable, so the deps array is equivalent either way
     [refresh],
   );
 

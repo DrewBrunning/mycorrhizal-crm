@@ -102,3 +102,18 @@ test('remove forwards the id and proof, then reloads; failures propagate', async
     await expect(result.current.remove('a', proof)).rejects.toThrow('denied');
   });
 });
+
+test('register and remove use the latest refresh after the list was reloaded', async () => {
+  vi.mocked(listPasskeys).mockResolvedValue([]);
+  vi.mocked(registerPasskey).mockResolvedValue({ id: 'n' } as never);
+  vi.mocked(removePasskey).mockResolvedValue(undefined);
+  const { result, rerender } = renderHook(() => useWebAuthn());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender();
+  vi.mocked(listPasskeys).mockClear();
+  await act(async () => {
+    await result.current.register('x');
+    await result.current.remove('a', {} as PasskeyRemovalProof);
+  });
+  expect(listPasskeys).toHaveBeenCalledTimes(2);
+});

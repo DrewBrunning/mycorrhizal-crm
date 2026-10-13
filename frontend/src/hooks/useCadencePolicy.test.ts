@@ -223,3 +223,14 @@ test('refetches for the new entity when the entity id changes', async () => {
   rerender({ id: 'uid-2' });
   await waitFor(() => expect(getCadencePolicies).toHaveBeenLastCalledWith('uid-2'));
 });
+
+test('a list response without the policies key leaves no policy', async () => {
+  vi.mocked(getCadencePolicies).mockResolvedValueOnce(listResponse([policy]));
+  const { result } = renderHook(() => useCadencePolicy('uid-1'));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+  vi.mocked(getCadencePolicies).mockResolvedValueOnce({} as CadencePoliciesResponse);
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.policy).toBeNull();
+});

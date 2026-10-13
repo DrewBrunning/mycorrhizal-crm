@@ -192,3 +192,14 @@ test('refresh follows the contact uid when it changes', async () => {
   });
   expect(getExternalIdentities).toHaveBeenLastCalledWith({ contactId: 'b', limit: 100 });
 });
+
+test('refresh without a contact uid does not fetch or flip loading', async () => {
+  const { result } = renderHook(() => useExternalLinks(undefined));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(getExternalIdentities).not.toHaveBeenCalled();
+  expect(getExternalActivities).not.toHaveBeenCalled();
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBeNull();
+});

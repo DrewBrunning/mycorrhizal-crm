@@ -49,3 +49,12 @@ test('an empty list has no keys, and onAdd then external growth stays consistent
   rerender({ n: 1 });
   expect(keysOf(result.current, 1)).toEqual([0]);
 });
+
+test('repeated onAdd calls keep every key unique, including keys padded afterwards', () => {
+  const { result, rerender } = renderHook(({ n }) => useRowKeys(n), { initialProps: { n: 2 } });
+  act(() => result.current.onAdd());
+  act(() => result.current.onAdd());
+  act(() => result.current.onAdd());
+  rerender({ n: 6 });
+  expect(keysOf(result.current, 6)).toEqual([0, 1, 2, 3, 4, 5]);
+});

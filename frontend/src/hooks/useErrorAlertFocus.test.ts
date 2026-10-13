@@ -1,4 +1,5 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, render, renderHook } from '@testing-library/react';
+import { createElement } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { useErrorAlertFocus } from './useErrorAlertFocus';
 
@@ -76,4 +77,30 @@ test('no focus happens before any error was reported', () => {
   const { focus } = attachRef(result);
   rerender();
   expect(focus).not.toHaveBeenCalled();
+});
+
+test('an attached alert is not focused on mount without an error, and is focused when one arrives', () => {
+  const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+  let report!: (m: string) => void;
+  function Harness({ initial }: { initial?: string }) {
+    const { error, setError, errorRef } = useErrorAlertFocus(initial);
+    report = setError;
+    return createElement('div', { ref: errorRef, tabIndex: -1 }, error);
+  }
+  render(createElement(Harness));
+  expect(focus).not.toHaveBeenCalled();
+  act(() => report('boom'));
+  expect(focus).toHaveBeenCalledTimes(1);
+  focus.mockRestore();
+});
+
+test('an alert mounted with an initial error is focused straight away', () => {
+  const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+  function Harness() {
+    const { error, errorRef } = useErrorAlertFocus('preset');
+    return createElement('div', { ref: errorRef, tabIndex: -1 }, error);
+  }
+  render(createElement(Harness));
+  expect(focus).toHaveBeenCalledTimes(1);
+  focus.mockRestore();
 });
