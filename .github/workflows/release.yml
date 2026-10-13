@@ -40,7 +40,10 @@ name: Release
 # regeneration + test gates, but makes NO commit/push/tag/artifact (#499:
 # "the workflow is itself tested"). `preflight`'s tag-exists/already-
 # registered checks downgrade to warnings so a dry run can target the last
-# shipped version. `release-dry-run.yml` dispatches this weekly + on demand
+# shipped version. The two release-paperwork gates (ASVS row, adversarial
+# delta -- `release-obligations.sh`) also downgrade to warnings + a "Pending
+# release paperwork" summary section: they are process state, not pipeline
+# defects, and are always hard failures in a real cut. `release-dry-run.yml` dispatches this weekly + on demand
 # against the last SupportedReleases entry (#929).
 #
 # Rehearsing an ALREADY-REGISTERED version (#929): "Register the release"
@@ -431,9 +434,18 @@ jobs:
         if: ${{ env.IS_RC != 'true' }}
         env:
           ACK_ASVS_CURRENT: ${{ inputs.ack_asvs_current }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          PENDING_PAPERWORK_FILE: ${{ runner.temp }}/pending-paperwork.md
         run: |
           set -eu
-          bash .github/scripts/release-obligations.sh asvs --ack "${ACK_ASVS_CURRENT:-}"
+          # A dry run reports a would-block as a warning + the "Pending
+          # release paperwork" summary section instead of failing the
+          # rehearsal; a real release is unchanged (hard fail).
+          if [ "$DRY_RUN" = "true" ]; then
+            bash .github/scripts/release-obligations.sh asvs --ack "${ACK_ASVS_CURRENT:-}" --dry-run
+          else
+            bash .github/scripts/release-obligations.sh asvs --ack "${ACK_ASVS_CURRENT:-}"
+          fi
 
       - name: Gate - per-release adversarial delta
         if: ${{ env.IS_RC != 'true' }}
@@ -441,6 +453,7 @@ jobs:
           ACK_ADVERSARIAL_DELTA: ${{ inputs.ack_adversarial_delta }}
           DRY_RUN: ${{ inputs.dry_run }}
           VERSION: ${{ env.VERSION }}
+          PENDING_PAPERWORK_FILE: ${{ runner.temp }}/pending-paperwork.md
         run: |
           set -eu
           if [ "$DRY_RUN" = "true" ]; then
@@ -543,11 +556,23 @@ jobs:
 
       - name: Dry run - summary
         if: ${{ inputs.dry_run }}
+        env:
+          PENDING_PAPERWORK_FILE: ${{ runner.temp }}/pending-paperwork.md
         run: |
           {
             echo "### Dry run complete"
             echo
-            echo "Every gate passed and \`${VERSION}\` checked cleanly. No commit, push or tag was made."
+            echo "Every pipeline gate passed and \`${VERSION}\` checked cleanly. No commit, push or tag was made."
+            # Process gates (release paperwork) are reported, never fatal, in
+            # a dry run -- a real release would still block on them.
+            if [ -s "$PENDING_PAPERWORK_FILE" ]; then
+              echo
+              echo "### Pending release paperwork"
+              echo
+              echo "A real release would currently be blocked on:"
+              echo
+              cat "$PENDING_PAPERWORK_FILE"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Mint the App token HERE, not at the top of the workflow: an App
