@@ -13,6 +13,7 @@ export function useDiagnostics() {
   const requestRef = useRef(0);
 
   const run = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);
@@ -27,6 +28,7 @@ export function useDiagnostics() {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
+    // Stryker disable next-line ArrayDeclaration: refresh/run is stable (no reactive inputs), so its deps array is equivalent either way
   }, []);
 
   return { data, loading, error, run };

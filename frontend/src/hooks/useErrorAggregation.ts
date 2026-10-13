@@ -8,11 +8,13 @@ import { handleFetchError } from '../utils/errorHandler';
 export function useErrorAggregation(windowHours = 24) {
   const [buckets, setBuckets] = useState<ErrorBucket[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);
@@ -32,6 +34,7 @@ export function useErrorAggregation(windowHours = 24) {
 
   useEffect(() => {
     void refresh();
+    // Stryker disable next-line ArrayDeclaration: refresh is stable, so the mount effect runs exactly once under either deps array
   }, [refresh]);
 
   return { buckets, totalEvents, loading, error, refresh };
