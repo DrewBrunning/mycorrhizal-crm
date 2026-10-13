@@ -361,10 +361,15 @@ func UpdateActivity(c *gin.Context) {
 		return
 	}
 
-	// Reload the activity with contacts to return complete data
-	if err := db.Preload("Contacts", "contacts.user_id = ?", userID).Where("user_id = ?", userID).First(&activity, id).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to reload activity").WithError(err))
-		return
+	// Reload the activity with contacts to return complete data. The write is
+	// already committed, so a failed re-read must not answer 5xx (a client
+	// retry would be told the change did not happen): fall back to the
+	// in-memory committed entity (issue #1663).
+	var reloaded models.Activity
+	if err := db.Preload("Contacts", "contacts.user_id = ?", userID).Where("user_id = ?", userID).First(&reloaded, id).Error; err != nil {
+		logger.FromContext(c).Warn().Err(err).Uint("activity_id", activity.ID).Msg("Activity updated but response reload failed; returning the committed in-memory entity")
+	} else {
+		activity = reloaded
 	}
 
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "activity.updated", activity)

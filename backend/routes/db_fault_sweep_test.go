@@ -479,18 +479,11 @@ func runFaultSweep(t *testing.T, scenarios []faultScenario) {
 				require.Equalf(t, stmts[i-1], fired, "%s: statement order drifted between runs", label)
 
 				key := faultKey(sc.name, stmts, i)
-				if _, post := crudPostCommitErrors[key]; post {
+				if reason, allowed := faultAllowlist[key]; allowed {
 					usedAllow[key] = true
-					if w.Code < 500 || w.Code >= 600 {
-						failures = append(failures, fmt.Sprintf("%s: declared post-commit 5xx %q but got HTTP %d — remove the entry", label, key, w.Code))
+					if reason == faultReasonPostCommitRead && fmt.Sprint(before) == fmt.Sprint(after) {
+						failures = append(failures, fmt.Sprintf("%s: post-commit read fault answered 2xx but the write did not persist", label))
 					}
-					if l := faultLeak(w.Body.String(), tables); l != "" {
-						failures = append(failures, fmt.Sprintf("%s: %s in body", label, l))
-					}
-					continue
-				}
-				if _, allowed := faultAllowlist[key]; allowed {
-					usedAllow[key] = true
 					if w.Code < 200 || w.Code >= 300 {
 						failures = append(failures, fmt.Sprintf("%s: allowlisted %q but it now fails with HTTP %d — remove the entry", label, key, w.Code))
 					}
@@ -501,11 +494,6 @@ func runFaultSweep(t *testing.T, scenarios []faultScenario) {
 				}
 				for _, f := range faultViolations(w, tables, before, after) {
 					failures = append(failures, fmt.Sprintf("%s [key %q]: %s", label, key, f))
-				}
-			}
-			for key := range crudPostCommitErrors {
-				if strings.HasPrefix(key, sc.name+"|") && !usedAllow[key] {
-					failures = append(failures, fmt.Sprintf("stale post-commit entry %q matches no statement", key))
 				}
 			}
 			for key := range faultAllowlist {
