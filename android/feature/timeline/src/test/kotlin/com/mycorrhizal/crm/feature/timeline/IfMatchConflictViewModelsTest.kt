@@ -242,3 +242,111 @@ class ReminderIfMatchTest {
             assertEquals(1, vm.uiState.value.reminders.size)
         }
 }
+
+class ConflictResolutionViewModelsTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    private val activityRepository = mockk<ActivityRepository>()
+    private val reminderRepository = mockk<ReminderRepository>()
+    private val authRepository = mockk<AuthRepository>()
+
+    @Test
+    fun `inbox delete 412 raises conflict, load latest reloads, dismiss clears`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { activityRepository.listAll() } returns Result.success(
+                com.mycorrhizal.crm.model.network.ActivitiesPage(
+                    activitiesRaw = listOf(Activity(id = 1, title = "A", revision = 2)),
+                    nextCursor = null,
+                ),
+            )
+            coEvery { activityRepository.delete(1, 2) } returns STALE
+            val vm = ActivitiesInboxViewModel(activityRepository)
+            advanceUntilIdle()
+            vm.delete(1)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { activityRepository.delete(1, 2) }
+            assertTrue(vm.uiState.value.conflict)
+            assertNull(vm.uiState.value.error)
+            assertEquals(1, vm.uiState.value.activities.size)
+
+            vm.onConflictLoadLatest()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.conflict)
+            coVerify(exactly = 2) { activityRepository.listAll() }
+
+            vm.delete(1)
+            advanceUntilIdle()
+            vm.onConflictDismissed()
+            assertFalse(vm.uiState.value.conflict)
+        }
+
+    @Test
+    fun `activities list load latest reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(
+            ContactActivitiesPage(activities = listOf(Activity(id = 1, title = "A", revision = 2)), nextCursor = null),
+        )
+        coEvery { activityRepository.delete(1, 2) } returns STALE
+        val vm = ActivitiesViewModel(activityRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+        vm.delete(1)
+        advanceUntilIdle()
+        vm.onConflictLoadLatest()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.conflict)
+        coVerify(exactly = 2) { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `reminder form keep editing and load latest resolve the conflict`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { reminderRepository.get(1) } returns Result.success(
+            Reminder(id = 1, message = "Call", remindAt = "2026-08-10T14:00:00Z", revision = 6),
+        )
+        coEvery { reminderRepository.update(1, any(), 6) } returns STALE
+        val vm = ReminderFormViewModel(reminderRepository, SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1)))
+        advanceUntilIdle()
+        vm.save()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.conflict)
+
+        vm.onConflictKeepEditing()
+        assertFalse(vm.uiState.value.conflict)
+
+        vm.save()
+        advanceUntilIdle()
+        coEvery { reminderRepository.get(1) } returns Result.success(
+            Reminder(id = 1, message = "Server", remindAt = "2026-08-10T14:00:00Z", revision = 8),
+        )
+        vm.onConflictLoadLatest()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.conflict)
+        assertEquals("Server", vm.uiState.value.message)
+        assertEquals(8, vm.uiState.value.revision)
+    }
+
+    @Test
+    fun `reminders list load latest reloads and dismiss clears`() = runTest(mainDispatcherRule.testDispatcher) {
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { reminderRepository.listForContact(5) } returns Result.success(
+            listOf(Reminder(id = 1, message = "x", revision = 4)),
+        )
+        coEvery { reminderRepository.delete(1, 4) } returns STALE
+        val vm = RemindersViewModel(reminderRepository, authRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+        vm.delete(1)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.conflict)
+
+        vm.onConflictLoadLatest()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.conflict)
+        coVerify(exactly = 2) { reminderRepository.listForContact(5) }
+
+        vm.delete(1)
+        advanceUntilIdle()
+        vm.onConflictDismissed()
+        assertFalse(vm.uiState.value.conflict)
+    }
+}
