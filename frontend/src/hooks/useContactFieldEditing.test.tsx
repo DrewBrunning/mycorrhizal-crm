@@ -239,6 +239,7 @@ test('a 412 on a structured save calls onConflict and still rethrows', async () 
   });
   expect(onConflict).toHaveBeenCalledTimes(1);
   expect(showError).not.toHaveBeenCalled();
+});
 
 // --- behavior pins (issue #1662) ---
 
@@ -302,6 +303,7 @@ test('a non-date field is saved verbatim without date parsing', async () => {
   expect(updateContactRecord).toHaveBeenCalledWith(
     '1',
     expect.objectContaining({ crm: { how_we_met: 'not a date 99.99' } }),
+    1,
   );
 });
 
