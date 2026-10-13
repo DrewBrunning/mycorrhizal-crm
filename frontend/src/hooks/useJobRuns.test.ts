@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getJobRunHealth, type JobRun, type JobRunHealth, listJobRuns } from '../api/jobRuns';
 import { useJobRunHealth, useJobRunHistory } from './useJobRuns';
@@ -243,4 +243,165 @@ describe('useJobRunHistory', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.data).toEqual([run]);
   });
+});
+
+// --- behavior pins (issue #1662) ---
+
+describe('loading, error and stale-guard behavior', () => {
+  test('health: loading is true in flight, the error is logged and cleared by a refresh', async () => {
+    const d = deferred<{ jobs: JobRunHealth[] }>();
+    vi.mocked(getJobRunHealth).mockReturnValueOnce(d.promise);
+    const { result } = renderHook(() => useJobRunHealth());
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    await act(async () => {
+      d.reject(new Error('bad'));
+    });
+    await waitFor(() => expect(result.current.error).toBe('bad'));
+    expect(console.error).toHaveBeenCalledWith(
+      '[fetching background job health] Error:',
+      expect.anything(),
+    );
+
+    const d2 = deferred<{ jobs: JobRunHealth[] }>();
+    vi.mocked(getJobRunHealth).mockReturnValueOnce(d2.promise);
+    act(() => {
+      void result.current.refresh();
+    });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    expect(result.current.error).toBeNull();
+    await act(async () => {
+      d2.resolve({ jobs: [health] });
+    });
+  });
+
+  test('health: a stale response that lands last neither overwrites nor ends loading', async () => {
+    const first = deferred<{ jobs: JobRunHealth[] }>();
+    const second = deferred<{ jobs: JobRunHealth[] }>();
+    vi.mocked(getJobRunHealth)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { result } = renderHook(() => useJobRunHealth());
+    act(() => {
+      void result.current.refresh();
+    });
+    await waitFor(() => expect(getJobRunHealth).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      first.resolve({ jobs: [health] });
+    });
+    expect(result.current.data).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    await act(async () => {
+      second.resolve({ jobs: [] });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
+
+  test('history: loading is true in flight, errors are logged and cleared by the next load', async () => {
+    const d = deferred<{ job_runs: JobRun[]; total: number }>();
+    vi.mocked(listJobRuns).mockReturnValueOnce(d.promise);
+    const { result } = renderHook(() => useJobRunHistory());
+    act(() => {
+      void result.current.load({ jobName: 'x' });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    await act(async () => {
+      d.reject(new Error('bad'));
+    });
+    await waitFor(() => expect(result.current.error).toBe('bad'));
+    expect(console.error).toHaveBeenCalledWith(
+      '[fetching job run history] Error:',
+      expect.anything(),
+    );
+
+    const d2 = deferred<{ job_runs: JobRun[]; total: number }>();
+    vi.mocked(listJobRuns).mockReturnValueOnce(d2.promise);
+    act(() => {
+      void result.current.load({ jobName: 'x' });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    expect(result.current.error).toBeNull();
+    await act(async () => {
+      d2.resolve({ job_runs: [run], total: 1 });
+    });
+  });
+
+  test('history: a stale load that lands last neither overwrites nor ends loading', async () => {
+    const first = deferred<{ job_runs: JobRun[]; total: number }>();
+    const second = deferred<{ job_runs: JobRun[]; total: number }>();
+    vi.mocked(listJobRuns).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const { result } = renderHook(() => useJobRunHistory());
+    act(() => {
+      void result.current.load({ jobName: 'a' });
+    });
+    act(() => {
+      void result.current.load({ jobName: 'b' });
+    });
+    await act(async () => {
+      first.resolve({ job_runs: [run], total: 1 });
+    });
+    expect(result.current.data).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    await act(async () => {
+      second.reject(new Error('later'));
+    });
+  });
+
+  test('history: reset discards an in-flight load, success or failure', async () => {
+    const ok = deferred<{ job_runs: JobRun[]; total: number }>();
+    vi.mocked(listJobRuns).mockReturnValueOnce(ok.promise);
+    const { result } = renderHook(() => useJobRunHistory());
+    act(() => {
+      void result.current.load({ jobName: 'a' });
+    });
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    act(() => result.current.reset());
+    expect(result.current.loading).toBe(false);
+    await act(async () => {
+      ok.resolve({ job_runs: [run], total: 1 });
+    });
+    expect(result.current.data).toEqual([]);
+
+    const bad = deferred<{ job_runs: JobRun[]; total: number }>();
+    vi.mocked(listJobRuns).mockReturnValueOnce(bad.promise);
+    act(() => {
+      void result.current.load({ jobName: 'a' });
+    });
+    act(() => result.current.reset());
+    await act(async () => {
+      bad.reject(new Error('late'));
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  test('history: reset clears a previous error and data', async () => {
+    vi.mocked(listJobRuns).mockRejectedValueOnce(new Error('bad'));
+    const { result } = renderHook(() => useJobRunHistory());
+    await act(async () => {
+      await result.current.load({ jobName: 'a' });
+    });
+    expect(result.current.error).toBe('bad');
+    act(() => result.current.reset());
+    expect(result.current.error).toBeNull();
+  });
+});
+
+test('history: a load that started before a reset stays stale even when a new load follows', async () => {
+  const first = deferred<{ job_runs: JobRun[]; total: number }>();
+  const second = deferred<{ job_runs: JobRun[]; total: number }>();
+  vi.mocked(listJobRuns).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  const { result } = renderHook(() => useJobRunHistory());
+  act(() => {
+    void result.current.load({ jobName: 'a' });
+  });
+  act(() => result.current.reset());
+  act(() => {
+    void result.current.load({ jobName: 'b' });
+  });
+  await waitFor(() => expect(listJobRuns).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    first.resolve({ job_runs: [run], total: 1 });
+  });
+  expect(result.current.data).toEqual([]);
+  expect(result.current.loading).toBe(true);
 });

@@ -295,3 +295,133 @@ test('canLoadMore is false when fewer events than the window are loaded', async 
 
   expect(result.current.canLoadMore).toBe(false);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+test.each([
+  ['component', { component: 'app' }],
+  ['severity', { severity: 'warn' as const }],
+  ['event type', { eventType: 'job_completed' as const }],
+  ['correlation id', { correlationId: 'c-1' }],
+  ['ids', { ids: [1] }],
+])('hasFilters is true when only the %s filter is set', async (_name, patch) => {
+  vi.mocked(getSystemEvents).mockResolvedValue(response([]));
+  const { result } = renderHook(() => useSystemEvents());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    result.current.patchFilters(patch);
+  });
+  expect(result.current.hasFilters).toBe(true);
+});
+
+test('canLoadMore: a window filled exactly counts, one short does not, and the cap closes it', async () => {
+  const exactly = Array.from({ length: 100 }, (_, i) => event(i + 1));
+  vi.mocked(getSystemEvents).mockResolvedValue(response(exactly.slice(0, 99)));
+  const short = renderHook(() => useSystemEvents());
+  await waitFor(() => expect(short.result.current.loading).toBe(false));
+  expect(short.result.current.canLoadMore).toBe(false);
+  cleanup();
+
+  const atCap = Array.from({ length: 500 }, (_, i) => event(i + 1));
+  vi.mocked(getSystemEvents).mockResolvedValue(response(atCap));
+  const { result } = renderHook(() => useSystemEvents());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    result.current.showRelated('c-1'); // jumps to the 500 window
+  });
+  await waitFor(() =>
+    expect(getSystemEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 500 })),
+  );
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.events).toHaveLength(500);
+  expect(result.current.canLoadMore).toBe(false);
+});
+
+test('clearFilters returns the window to the default limit', async () => {
+  const full = Array.from({ length: 100 }, (_, i) => event(i + 1));
+  vi.mocked(getSystemEvents).mockResolvedValue(response(full));
+  const { result } = renderHook(() => useSystemEvents());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    result.current.loadMore();
+  });
+  await waitFor(() =>
+    expect(getSystemEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 200 })),
+  );
+  await act(async () => {
+    result.current.clearFilters();
+  });
+  await waitFor(() =>
+    expect(getSystemEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 100 })),
+  );
+});
+
+test('a refetch clears the error while loading, and the failure is logged by operation', async () => {
+  vi.mocked(getSystemEvents).mockRejectedValueOnce(new Error('down'));
+  const { result } = renderHook(() => useSystemEvents());
+  await waitFor(() => expect(result.current.error).toBe('down'));
+  expect(console.error).toHaveBeenCalledWith('[fetching system events] Error:', expect.anything());
+
+  const d = deferred<SystemEventsResponse>();
+  vi.mocked(getSystemEvents).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(response([]));
+  });
+});
+
+test('a superseded fetch is ignored whether it succeeds or fails, and does not end loading', async () => {
+  const stale = deferred<SystemEventsResponse>();
+  const fresh = deferred<SystemEventsResponse>();
+  vi.mocked(getSystemEvents).mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+  const { result } = renderHook(() => useSystemEvents());
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(getSystemEvents).toHaveBeenCalledTimes(2));
+
+  await act(async () => {
+    stale.resolve(response([event(1)]));
+  });
+  expect(result.current.events).toEqual([]);
+  expect(result.current.loading).toBe(true);
+  await act(async () => {
+    fresh.resolve(response([event(2)]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.events.map((e) => e.id)).toEqual([2]);
+
+  const stale2 = deferred<SystemEventsResponse>();
+  const fresh2 = deferred<SystemEventsResponse>();
+  vi.mocked(getSystemEvents)
+    .mockReturnValueOnce(stale2.promise)
+    .mockReturnValueOnce(fresh2.promise);
+  act(() => {
+    void result.current.refetch();
+  });
+  act(() => {
+    void result.current.refetch();
+  });
+  await act(async () => {
+    stale2.reject(new Error('old failure'));
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.loading).toBe(true);
+  await act(async () => {
+    fresh2.resolve(response([event(3)]));
+  });
+});

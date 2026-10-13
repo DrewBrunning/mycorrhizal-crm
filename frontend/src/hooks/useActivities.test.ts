@@ -551,3 +551,42 @@ test('refetch and loadMore follow filter changes', async () => {
     expect.objectContaining({ cursor: 'c', search: 'b' }),
   );
 });
+
+test('interleaved loadMore and refetch requests never share an id: an old loadMore stays stale', async () => {
+  signIn();
+  vi.mocked(getActivities).mockResolvedValueOnce({
+    activities: [activity(1, 'one')],
+    next_cursor: 'c1',
+    limit: 25,
+  });
+  const { result } = renderHook(() => useActivities());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+
+  const firstMore = deferred<never>();
+  const refetch = deferred<never>();
+  const secondMore = deferred<never>();
+  vi.mocked(getActivities)
+    .mockReturnValueOnce(firstMore.promise)
+    .mockReturnValueOnce(refetch.promise)
+    .mockReturnValueOnce(secondMore.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.refetch();
+  });
+  act(() => {
+    void result.current.loadMore();
+  });
+  await waitFor(() => expect(getActivities).toHaveBeenCalledTimes(4));
+
+  await act(async () => {
+    firstMore.resolve({
+      activities: [activity(9, 'stale')],
+      next_cursor: 'zz',
+      limit: 25,
+    } as never);
+  });
+  expect(result.current.activities.map((a) => a.ID)).toEqual([1]);
+  expect(result.current.loading).toBe(true);
+});

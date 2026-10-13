@@ -145,3 +145,97 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.tags).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty, requests up to 200 tags with their contacts, and reports loading', async () => {
+  const d = deferred<TagListResponse>();
+  vi.mocked(listTags).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useTags());
+  expect(result.current.tags).toEqual([]);
+  expect(result.current.contacts).toEqual([]);
+  expect(result.current.tagNamesByUid.size).toBe(0);
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(listTags).toHaveBeenCalledWith({ limit: 200, include_contacts: true });
+  await act(async () => {
+    d.resolve(listResponse([tag], [contactTag]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('tolerates a response without tags or contacts', async () => {
+  vi.mocked(listTags).mockResolvedValue({} as TagListResponse);
+  const { result } = renderHook(() => useTags());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.tags).toEqual([]);
+  expect(result.current.contacts).toEqual([]);
+});
+
+test('a failed load logs its operation, and a refresh clears the error', async () => {
+  vi.mocked(listTags).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useTags());
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+  expect(console.error).toHaveBeenCalledWith('[fetching tags] Error:', expect.anything());
+
+  const d = deferred<TagListResponse>();
+  vi.mocked(listTags).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(listResponse([], []));
+  });
+});
+
+test('tagNamesByUid collects every tag name per contact and tracks reloaded data', async () => {
+  const second: Tag = { ...tag, id: 'tag-2', name: 'colleague' };
+  vi.mocked(listTags).mockResolvedValueOnce(
+    listResponse(
+      [tag, second],
+      [contactTag, { id: 2, tag_id: 'tag-2', contact_vcard_uid: 'uid-1' }],
+    ),
+  );
+  const { result } = renderHook(() => useTags());
+  await waitFor(() =>
+    expect(result.current.tagNamesByUid.get('uid-1')).toEqual(['friend', 'colleague']),
+  );
+
+  vi.mocked(listTags).mockResolvedValueOnce(listResponse([tag], [contactTag]));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.tagNamesByUid.get('uid-1')).toEqual(['friend']);
+});
+
+test('rename, delete and create log their own operation and use the latest notifier', async () => {
+  vi.mocked(listTags).mockResolvedValue(listResponse([tag], []));
+  vi.mocked(createTag).mockRejectedValue(new Error('c'));
+  vi.mocked(updateTag).mockRejectedValue(new Error('u'));
+  vi.mocked(deleteTag).mockRejectedValue(new Error('d'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useTags(n), { initialProps: { n: first } });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.handleCreate('x')).rejects.toThrow('c');
+    await expect(result.current.handleUpdate('tag-1', 'x')).rejects.toThrow('u');
+    await expect(result.current.handleDelete('tag-1')).rejects.toThrow('d');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError.mock.calls.map((c) => c[0])).toEqual(['c', 'u', 'd']);
+  for (const op of ['creating tag', 'updating tag', 'deleting tag']) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+  expect(listTags).toHaveBeenCalledTimes(1);
+});

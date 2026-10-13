@@ -239,3 +239,74 @@ test('setReminderDialogOpen and setReminderEditing expose setters', async () => 
   });
   expect(result.current.editingReminder?.ID).toBe(9);
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('a failed fetch is logged by operation and the next refresh clears the error', async () => {
+  vi.mocked(getRemindersForContact).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useReminderManagement('1'));
+  await act(async () => {
+    await result.current.refreshReminders();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(console.error).toHaveBeenCalledWith('[fetching reminders] Error:', expect.anything());
+
+  vi.mocked(getRemindersForContact).mockResolvedValueOnce([]);
+  await act(async () => {
+    await result.current.refreshReminders();
+  });
+  expect(result.current.error).toBeNull();
+});
+
+test('a successful save closes the dialog and forgets the edited reminder', async () => {
+  vi.mocked(getRemindersForContact).mockResolvedValue([]);
+  vi.mocked(createReminder).mockResolvedValue(reminder(1, 'x'));
+  const { result } = renderHook(() => useReminderManagement('1'));
+  act(() => result.current.handleEditReminder(reminder(2, 'e')));
+  expect(result.current.reminderDialogOpen).toBe(true);
+  expect(result.current.editingReminder?.ID).toBe(2);
+  vi.mocked(updateReminder).mockResolvedValue(reminder(2, 'e'));
+  await act(async () => {
+    await result.current.handleSaveReminder(formData());
+  });
+  expect(result.current.reminderDialogOpen).toBe(false);
+  expect(result.current.editingReminder).toBeNull();
+});
+
+test('each failing action logs its own operation', async () => {
+  vi.mocked(createReminder).mockRejectedValue(new Error('s'));
+  vi.mocked(completeReminder).mockRejectedValue(new Error('c'));
+  vi.mocked(deleteReminder).mockRejectedValue(new Error('d'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useReminderManagement('1', { showError }));
+  await act(async () => {
+    await expect(result.current.handleSaveReminder(formData())).rejects.toThrow('s');
+    await expect(result.current.handleCompleteReminder(1)).rejects.toThrow('c');
+    await expect(result.current.handleDeleteReminder(1)).rejects.toThrow('d');
+  });
+  expect(showError.mock.calls.map((c) => c[0])).toEqual(['s', 'c', 'd']);
+  for (const op of ['saving reminder', 'completing reminder', 'deleting reminder']) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+});
+
+test('refreshReminders follows the contact id when it changes', async () => {
+  vi.mocked(getRemindersForContact).mockResolvedValue([]);
+  const { result, rerender } = renderHook(({ id }) => useReminderManagement(id), {
+    initialProps: { id: '1' },
+  });
+  rerender({ id: '7' });
+  await act(async () => {
+    await result.current.refreshReminders();
+  });
+  expect(getRemindersForContact).toHaveBeenLastCalledWith(7);
+});
+
+test('a contact without an id neither fetches nor clears an existing error', async () => {
+  const { result } = renderHook(() => useReminderManagement(undefined));
+  await act(async () => {
+    await result.current.refreshReminders();
+  });
+  expect(getRemindersForContact).not.toHaveBeenCalled();
+  expect(result.current.error).toBeNull();
+});

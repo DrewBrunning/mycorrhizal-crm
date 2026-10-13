@@ -345,3 +345,35 @@ test('loadMore reports loading, keeps the total when the page omits it, and logs
   expect(result.current.error).toBeNull();
   expect(result.current.total).toBe(0);
 });
+
+test('refetches when the contact or a filter changes', async () => {
+  signIn();
+  vi.mocked(getUnassignedNotes).mockResolvedValue(unassignedResponse());
+  vi.mocked(getContactNotes).mockResolvedValue({ notes: [note] });
+  const { result, rerender } = renderHook(
+    ({ id, q }: { id?: number; q?: string }) => useNotes(id, { search: q }),
+    { initialProps: {} as { id?: number; q?: string } },
+  );
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ q: 'lunch' });
+  await waitFor(() =>
+    expect(getUnassignedNotes).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'lunch' }),
+    ),
+  );
+  rerender({ id: 42, q: 'lunch' });
+  await waitFor(() => expect(getContactNotes).toHaveBeenCalledWith(42));
+});
+
+test('moving from the unassigned list to a contact drops the stale server total', async () => {
+  signIn();
+  vi.mocked(getUnassignedNotes).mockResolvedValue(unassignedResponse({ total: 7 }));
+  vi.mocked(getContactNotes).mockResolvedValue({ notes: [note] });
+  const { result, rerender } = renderHook(({ id }: { id?: number }) => useNotes(id), {
+    initialProps: {} as { id?: number },
+  });
+  await waitFor(() => expect(result.current.total).toBe(7));
+  rerender({ id: 42 });
+  await waitFor(() => expect(getContactNotes).toHaveBeenCalled());
+  await waitFor(() => expect(result.current.total).toBe(1));
+});

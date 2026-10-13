@@ -15,7 +15,7 @@ export function useSubsystemHealth() {
 
   const refresh = useCallback(
     async () => {
-      // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
+      // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
       const requestId = requestRef.current + 1;
       requestRef.current = requestId;
       setLoading(true);

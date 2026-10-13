@@ -240,3 +240,99 @@ test('reset clears the preview, resolutions and error', async () => {
   expect(result.current.resolutions).toEqual({});
   expect(result.current.error).toBeNull();
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts with no preview, no resolutions, and nothing in flight', () => {
+  const { result } = renderHook(() => useContactMerge());
+  expect(result.current.preview).toBeNull();
+  expect(result.current.resolutions).toEqual({});
+  expect(result.current.loading).toBe(false);
+  expect(result.current.committing).toBe(false);
+  expect(result.current.error).toBeNull();
+});
+
+test('loadPreview reports loading while in flight and clears a previous error', async () => {
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('first'));
+  const { result } = renderHook(() => useContactMerge());
+  await act(async () => {
+    await result.current.loadPreview(1, 2);
+  });
+  expect(result.current.error).toBe('first');
+  expect(console.error).toHaveBeenCalledWith(
+    '[previewing contact merge] Error:',
+    expect.anything(),
+  );
+
+  const d = deferred<ContactMergePreviewResponse>();
+  vi.mocked(previewContactMerge).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.loadPreview(1, 2);
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  expect(previewContactMerge).toHaveBeenLastCalledWith(1, 2);
+  await act(async () => {
+    d.resolve(fullPreview());
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.preview).not.toBeNull();
+});
+
+test('committing is true while the merge request is in flight, and failures are logged by operation', async () => {
+  const d = deferred<{ message: string; contact: { id: number } }>();
+  vi.mocked(commitContactMerge).mockReturnValueOnce(d.promise as never);
+  const { result } = renderHook(() => useContactMerge());
+  act(() => {
+    void result.current.commit(1, 2);
+  });
+  await waitFor(() => expect(result.current.committing).toBe(true));
+  await act(async () => {
+    d.resolve({ message: 'ok', contact: { id: 1 } });
+  });
+  await waitFor(() => expect(result.current.committing).toBe(false));
+
+  vi.mocked(commitContactMerge).mockRejectedValueOnce(new Error('nope'));
+  await act(async () => {
+    await expect(result.current.commit(1, 2)).rejects.toThrow('nope');
+  });
+  expect(console.error).toHaveBeenCalledWith('[merging contacts] Error:', expect.anything());
+});
+
+test('commit sends the resolutions chosen after the hook first rendered, and the latest notifier', async () => {
+  vi.mocked(commitContactMerge).mockRejectedValue(new Error('merge failed'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useContactMerge(n), {
+    initialProps: { n: first },
+  });
+  await act(async () => {
+    result.current.setResolution('name', 'b');
+  });
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.commit(3, 4)).rejects.toThrow();
+  });
+  expect(commitContactMerge).toHaveBeenCalledWith(3, 4, { name: 'b' });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError).toHaveBeenCalledWith('merge failed');
+});
+
+test('reset clears an error left by a failed preview', async () => {
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('x'));
+  const { result } = renderHook(() => useContactMerge());
+  await act(async () => {
+    await result.current.loadPreview(1, 2);
+  });
+  expect(result.current.error).toBe('x');
+  act(() => result.current.reset());
+  expect(result.current.error).toBeNull();
+});

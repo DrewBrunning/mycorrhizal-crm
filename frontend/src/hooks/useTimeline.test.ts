@@ -470,3 +470,57 @@ test('switching contacts clears a lingering error, cursor, and load-more spinner
   rerender({ id: 3 });
   await waitFor(() => expect(result.current.error).toBeNull());
 });
+
+test('interleaved loadMore and refresh requests never share an id: an old loadMore stays stale', async () => {
+  vi.mocked(getTimeline).mockResolvedValueOnce(page([noteItem('1', 'a')], 'c1'));
+  const { result } = renderHook(() => useTimeline(5));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  const firstMore = deferred<TimelineResponse>();
+  const refresh = deferred<TimelineResponse>();
+  const secondMore = deferred<TimelineResponse>();
+  vi.mocked(getTimeline)
+    .mockReturnValueOnce(firstMore.promise)
+    .mockReturnValueOnce(refresh.promise)
+    .mockReturnValueOnce(secondMore.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.refresh();
+  });
+  act(() => {
+    void result.current.loadMore();
+  });
+  await waitFor(() => expect(getTimeline).toHaveBeenCalledTimes(4));
+  await act(async () => {
+    firstMore.resolve(page([noteItem('9', 'stale')], 'zz'));
+  });
+  expect(result.current.items.map((i) => i.id)).toEqual(['1']);
+  expect(result.current.loadingMore).toBe(true);
+});
+
+test('a request started for the previous contact stays stale after the switch, even if a new one starts', async () => {
+  const oldContact = deferred<TimelineResponse>();
+  const newContact = deferred<TimelineResponse>();
+  vi.mocked(getTimeline)
+    .mockReturnValueOnce(oldContact.promise)
+    .mockReturnValueOnce(newContact.promise);
+  const { result, rerender } = renderHook(({ id }) => useTimeline(id), {
+    initialProps: { id: 1 as number | undefined },
+  });
+  act(() => {
+    void result.current.refresh();
+  });
+  rerender({ id: 2 });
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(getTimeline).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    oldContact.resolve(page([noteItem('1', 'contact one')], 'x'));
+  });
+  expect(result.current.items).toEqual([]);
+  expect(result.current.loading).toBe(true);
+});

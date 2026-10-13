@@ -22,21 +22,26 @@ export function useFeeds(notifier?: ErrorNotifier) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const fetched = await listFeeds();
-      setFeeds(fetched);
-      const uids = fetched.filter((f) => f.kind === 'contact').map((f) => f.entity_id);
-      const contacts = uids.length > 0 ? await getContactsByUid(uids) : new Map<string, Contact>();
-      setContactNames(new Map([...contacts].map(([uid, c]) => [uid, feedContactName(c)])));
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching feeds'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const fetched = await listFeeds();
+        setFeeds(fetched);
+        const uids = fetched.filter((f) => f.kind === 'contact').map((f) => f.entity_id);
+        const contacts =
+          uids.length > 0 ? await getContactsByUid(uids) : new Map<string, Contact>();
+        setContactNames(new Map([...contacts].map(([uid, c]) => [uid, feedContactName(c)])));
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching feeds'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Rotate returns the replacement's one-time URL; the caller shows it.
   const handleRotate = async (id: string): Promise<FeedCreateResponse> => {

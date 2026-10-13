@@ -34,17 +34,23 @@ export function useContactFileLinks(
     nextcloud: false,
   });
 
-  useEffect(() => {
-    void Promise.allSettled([getPaperlessConfig(), getSeafileConfig(), getNextcloudConfig()]).then(
-      ([p, s, n]) => {
+  useEffect(
+    () => {
+      void Promise.allSettled([
+        getPaperlessConfig(),
+        getSeafileConfig(),
+        getNextcloudConfig(),
+      ]).then(([p, s, n]) => {
         setConfigured({
           paperless: p.status === 'fulfilled' && p.value.has_api_token,
           seafile: s.status === 'fulfilled' && s.value.has_api_token,
           nextcloud: n.status === 'fulfilled' && n.value.has_app_password,
         });
-      },
-    );
-  }, []);
+      });
+    },
+    // Stryker disable next-line ArrayDeclaration: the config probe runs once on mount; a deps array that never changes is equivalent
+    [],
+  );
 
   const handleLinkPaperless = useCallback(
     async (doc: PaperlessDocument) => {

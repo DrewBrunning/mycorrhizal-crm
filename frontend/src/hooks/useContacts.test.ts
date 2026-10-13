@@ -259,3 +259,166 @@ test('does not fetch when unauthenticated', async () => {
   expect(getContacts).not.toHaveBeenCalled();
   expect(result.current.error).toBe('No authentication token found');
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('starts empty with no cursor or hidden count before the first page lands', () => {
+  vi.mocked(getContacts).mockReturnValue(new Promise(() => {}));
+  const { result } = renderHook(() => useContacts());
+  expect(result.current.contacts).toEqual([]);
+  expect(result.current.nextCursor).toBe('');
+  expect(result.current.hiddenCount).toBeUndefined();
+  expect(result.current.error).toBeNull();
+});
+
+test('passes every filter to the first-page fetch and exposes the hidden count', async () => {
+  vi.mocked(getContacts).mockResolvedValue({ ...page([contact(1, 'a')]), hidden_count: 4 });
+  const { result } = renderHook(() =>
+    useContacts({
+      limit: 10,
+      search: 's',
+      circle: 'c',
+      sort: 'firstname',
+      order: 'asc',
+      includeArchived: true,
+      archived: false,
+      favorites: true,
+      hasContactInfo: true,
+    } as never),
+  );
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getContacts).toHaveBeenCalledWith({
+    limit: 10,
+    search: 's',
+    circle: 'c',
+    sort: 'firstname',
+    order: 'asc',
+    includeArchived: true,
+    archived: false,
+    favorites: true,
+    hasContactInfo: true,
+  });
+  expect(result.current.hiddenCount).toBe(4);
+});
+
+test('tolerates a page without contacts or cursor', async () => {
+  vi.mocked(getContacts).mockResolvedValue({} as ContactsResponse);
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.contacts).toEqual([]);
+  expect(result.current.nextCursor).toBe('');
+});
+
+test('a failed load is logged by operation, and a refetch clears the error while loading', async () => {
+  vi.mocked(getContacts).mockRejectedValueOnce(new Error('down'));
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.error).toBe('down'));
+  expect(console.error).toHaveBeenCalledWith('[fetching contacts] Error:', expect.anything());
+
+  const d = deferred<ContactsResponse>();
+  vi.mocked(getContacts).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(page([]));
+  });
+});
+
+test('loadMore logs its failure by operation, clears the error next time, and reports loading', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'a')], 'c1'));
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+
+  vi.mocked(getContacts).mockRejectedValueOnce(new Error('page 2 down'));
+  await act(async () => {
+    await result.current.loadMore();
+  });
+  expect(result.current.error).toBe('page 2 down');
+  expect(console.error).toHaveBeenCalledWith('[loading more contacts] Error:', expect.anything());
+
+  const d = deferred<ContactsResponse>();
+  vi.mocked(getContacts).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve({ ...page([contact(2, 'b')], ''), hidden_count: 2 });
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1, 2]);
+  expect(result.current.hiddenCount).toBe(2);
+});
+
+test('a stale response that lands last neither overwrites nor ends loading', async () => {
+  const slowOld = deferred<ContactsResponse>();
+  const fastNew = deferred<ContactsResponse>();
+  vi.mocked(getContacts).mockReturnValueOnce(slowOld.promise).mockReturnValueOnce(fastNew.promise);
+  const { result, rerender } = renderHook(({ search }) => useContacts({ search }), {
+    initialProps: { search: 'ab' },
+  });
+  rerender({ search: 'abc' });
+  await act(async () => {
+    slowOld.resolve(page([contact(1, 'old')]));
+  });
+  expect(result.current.contacts).toEqual([]);
+  expect(result.current.loading).toBe(true);
+  await act(async () => {
+    fastNew.resolve(page([contact(2, 'new')]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('a stale loadMore that lands last keeps the spinner for the newer request', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'a')], 'c1'));
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+  const first = deferred<ContactsResponse>();
+  const second = deferred<ContactsResponse>();
+  vi.mocked(getContacts).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.loadMore();
+  });
+  await act(async () => {
+    first.resolve(page([contact(9, 'dup')], 'zz'));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
+  expect(result.current.loading).toBe(true);
+});
+
+test('interleaved loadMore and refetch requests never share an id: an old loadMore stays stale', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'a')], 'c1'));
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+
+  const firstMore = deferred<ContactsResponse>();
+  const refetch = deferred<ContactsResponse>();
+  const secondMore = deferred<ContactsResponse>();
+  vi.mocked(getContacts)
+    .mockReturnValueOnce(firstMore.promise)
+    .mockReturnValueOnce(refetch.promise)
+    .mockReturnValueOnce(secondMore.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.refetch();
+  });
+  act(() => {
+    void result.current.loadMore();
+  });
+  await waitFor(() => expect(getContacts).toHaveBeenCalledTimes(4));
+
+  await act(async () => {
+    firstMore.resolve(page([contact(9, 'stale')], 'zz'));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
+  expect(result.current.loading).toBe(true);
+});

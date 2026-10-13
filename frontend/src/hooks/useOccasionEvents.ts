@@ -22,6 +22,7 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 // useOccasionObligations' exact shape.
 export function useOccasionEvents(notifier?: ErrorNotifier) {
   const [events, setEvents] = useState<OccasionEvent[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,7 +177,11 @@ export function useOccasionEventAttendees(eventId: string | undefined, notifier?
     [eventId, notifier],
   );
 
-  const clearSuggestions = useCallback(() => setSuggestions([]), []);
+  const clearSuggestions = useCallback(
+    () => setSuggestions([]),
+    // Stryker disable next-line ArrayDeclaration: setSuggestions is stable, so the deps array is equivalent either way
+    [],
+  );
 
   return {
     attendees,

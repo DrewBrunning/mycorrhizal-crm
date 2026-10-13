@@ -171,3 +171,55 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.policy).toBeNull();
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('a failed load is logged by operation, and the next refresh clears the error', async () => {
+  vi.mocked(getCadencePolicies).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useCadencePolicy('uid-1'));
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+  expect(console.error).toHaveBeenCalledWith('[loading cadence policy] Error:', expect.anything());
+
+  vi.mocked(getCadencePolicies).mockResolvedValueOnce(listResponse([policy]));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.policy).toEqual(policy);
+});
+
+test('saving for a different entity than the loaded policy creates instead of updating', async () => {
+  vi.mocked(getCadencePolicies).mockResolvedValue(listResponse([policy]));
+  vi.mocked(createCadencePolicy).mockResolvedValue(policy);
+  const { result } = renderHook(() => useCadencePolicy('uid-1'));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+  await act(async () => {
+    await result.current.handleSave({ entity_id: 'uid-2' } as CadencePolicyInput);
+  });
+  expect(createCadencePolicy).toHaveBeenCalledWith({ entity_id: 'uid-2' });
+  expect(updateCadencePolicy).not.toHaveBeenCalled();
+});
+
+test('a failed delete is logged by operation, notified, rethrown, and keeps the policy', async () => {
+  vi.mocked(getCadencePolicies).mockResolvedValue(listResponse([policy]));
+  vi.mocked(deleteCadencePolicy).mockRejectedValue(new Error('d'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useCadencePolicy('uid-1', { showError }));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+  await act(async () => {
+    await expect(result.current.handleDelete()).rejects.toThrow('d');
+  });
+  expect(showError).toHaveBeenCalledWith('d');
+  expect(console.error).toHaveBeenCalledWith('[deleting cadence policy] Error:', expect.anything());
+  expect(result.current.policy).toEqual(policy);
+});
+
+test('refetches for the new entity when the entity id changes', async () => {
+  vi.mocked(getCadencePolicies).mockResolvedValue(listResponse([]));
+  const { rerender } = renderHook(({ id }) => useCadencePolicy(id), {
+    initialProps: { id: 'uid-1' },
+  });
+  await waitFor(() => expect(getCadencePolicies).toHaveBeenCalledWith('uid-1'));
+  rerender({ id: 'uid-2' });
+  await waitFor(() => expect(getCadencePolicies).toHaveBeenLastCalledWith('uid-2'));
+});

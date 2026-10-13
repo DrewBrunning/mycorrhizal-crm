@@ -243,3 +243,104 @@ test('handleDelete rethrows and notifies on failure', async () => {
 
   expect(notifier.showError).toHaveBeenCalledWith('delete failed');
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty and loading, requesting up to 200 circles with members', async () => {
+  const d = deferred<ReturnType<typeof emptyListResponse>>();
+  vi.mocked(listCircles).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useCircles());
+  expect(result.current.circles).toEqual([]);
+  expect(result.current.members).toEqual([]);
+  expect(result.current.circleNamesByUid.size).toBe(0);
+  expect(result.current.loading).toBe(true);
+  expect(listCircles).toHaveBeenCalledWith({ limit: 200, include_members: true });
+  await act(async () => {
+    d.resolve(emptyListResponse());
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('tolerates a response without circles or members', async () => {
+  vi.mocked(listCircles).mockResolvedValue({} as never);
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.circles).toEqual([]);
+  expect(result.current.members).toEqual([]);
+});
+
+test('a failed load logs its operation, and a refresh clears the error', async () => {
+  vi.mocked(listCircles).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+  expect(console.error).toHaveBeenCalledWith('[fetching circles] Error:', expect.anything());
+
+  const d = deferred<ReturnType<typeof emptyListResponse>>();
+  vi.mocked(listCircles).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(emptyListResponse());
+  });
+});
+
+test('circleNamesByUid collects several circles per contact and tracks reloads', async () => {
+  vi.mocked(listCircles).mockResolvedValueOnce({
+    circles: [circle('c-1', 'Family'), circle('c-2', 'Work')],
+    members: [member('c-1', 'uid-1'), member('c-2', 'uid-1')],
+    total: 2,
+    next_cursor: '',
+    limit: 200,
+  });
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() =>
+    expect(result.current.circleNamesByUid.get('uid-1')).toEqual(['Family', 'Work']),
+  );
+  vi.mocked(listCircles).mockResolvedValueOnce({
+    circles: [circle('c-1', 'Family')],
+    members: [member('c-1', 'uid-1')],
+    total: 1,
+    next_cursor: '',
+    limit: 200,
+  });
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.circleNamesByUid.get('uid-1')).toEqual(['Family']);
+});
+
+test('create, rename and delete failures log their operation and use the latest notifier', async () => {
+  vi.mocked(listCircles).mockResolvedValue(emptyListResponse() as never);
+  vi.mocked(createCircle).mockRejectedValue(new Error('c'));
+  vi.mocked(updateCircle).mockRejectedValue(new Error('u'));
+  vi.mocked(deleteCircle).mockRejectedValue(new Error('d'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useCircles(n), {
+    initialProps: { n: first },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.handleCreate('x')).rejects.toThrow('c');
+    await expect(result.current.handleUpdate('c-1', 'x')).rejects.toThrow('u');
+    await expect(result.current.handleDelete('c-1')).rejects.toThrow('d');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError.mock.calls.map((c) => c[0])).toEqual(['c', 'u', 'd']);
+  for (const op of ['creating circle', 'updating circle', 'deleting circle']) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+  expect(listCircles).toHaveBeenCalledTimes(1);
+});

@@ -333,3 +333,89 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.edges).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('requests up to 100 edges for the viewed contact and reports loading while in flight', async () => {
+  const d = deferred<RelationshipEdgesResponse>();
+  vi.mocked(getRelationshipEdges).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  expect(result.current.loading).toBe(false);
+  act(() => {
+    void result.current.refreshRelationshipEdges();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(getRelationshipEdges).toHaveBeenCalledWith({ contactId: 'alice-uid', limit: 100 });
+  await act(async () => {
+    d.resolve(listResponse([]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('an override uid wins over the viewed uid', async () => {
+  vi.mocked(getRelationshipEdges).mockResolvedValue(listResponse([]));
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges('carol-uid');
+  });
+  expect(getRelationshipEdges).toHaveBeenCalledWith({ contactId: 'carol-uid', limit: 100 });
+});
+
+test('a failed fetch logs its operation', async () => {
+  vi.mocked(getRelationshipEdges).mockRejectedValue(new Error('down'));
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+  expect(console.error).toHaveBeenCalledWith(
+    '[fetching relationship edges] Error:',
+    expect.anything(),
+  );
+});
+
+test('refresh follows the viewed contact when it changes', async () => {
+  vi.mocked(getRelationshipEdges).mockResolvedValue(listResponse([]));
+  const { result, rerender } = renderHook(({ uid }) => useRelationshipEdges(uid), {
+    initialProps: { uid: 'alice-uid' as string | undefined },
+  });
+  rerender({ uid: 'dave-uid' });
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+  expect(getRelationshipEdges).toHaveBeenCalledWith({ contactId: 'dave-uid', limit: 100 });
+});
+
+test('every failing action logs its own operation, notifies, rethrows, and keeps the dialog state', async () => {
+  vi.mocked(createRelationshipEdge).mockRejectedValue(new Error('s'));
+  vi.mocked(deleteRelationshipEdge).mockRejectedValue(new Error('d'));
+  vi.mocked(acceptRelationshipEdge).mockRejectedValue(new Error('a'));
+  vi.mocked(rejectRelationshipEdge).mockRejectedValue(new Error('r'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid', { showError }));
+  await act(async () => {
+    await expect(
+      result.current.handleSaveRelationshipEdge({} as RelationshipEdgeInput),
+    ).rejects.toThrow('s');
+    await expect(result.current.handleDeleteRelationshipEdge('e')).rejects.toThrow('d');
+    await expect(result.current.handleAcceptSuggestion('e')).rejects.toThrow('a');
+    await expect(result.current.handleRejectSuggestion('e')).rejects.toThrow('r');
+  });
+  expect(showError.mock.calls.map((c) => c[0])).toEqual(['s', 'd', 'a', 'r']);
+  for (const op of [
+    'saving relationship',
+    'deleting relationship',
+    'accepting suggested relationship',
+    'rejecting suggested relationship',
+  ]) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+  expect(getRelationshipEdges).not.toHaveBeenCalled();
+});

@@ -131,3 +131,75 @@ test('every handler is a no-op without a contact uid', async () => {
   expect(unlinkPaperlessDocument).not.toHaveBeenCalled();
   expect(refreshExternalLinks).not.toHaveBeenCalled();
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('no system is enabled until the config lookups settle', () => {
+  const never = new Promise<never>(() => {});
+  vi.mocked(getPaperlessConfig).mockReturnValue(never);
+  vi.mocked(getSeafileConfig).mockReturnValue(never);
+  vi.mocked(getNextcloudConfig).mockReturnValue(never);
+  const { result } = renderHook(() => useContactFileLinks('alice-uid', refreshExternalLinks));
+  expect(result.current.configured).toEqual({ paperless: false, seafile: false, nextcloud: false });
+});
+
+test('each system is enabled only by its own saved credential', async () => {
+  vi.mocked(getPaperlessConfig).mockResolvedValue({ has_api_token: false } as never);
+  vi.mocked(getSeafileConfig).mockResolvedValue({ has_api_token: true } as never);
+  vi.mocked(getNextcloudConfig).mockResolvedValue({ has_app_password: true } as never);
+  const a = renderHook(() => useContactFileLinks('alice-uid', refreshExternalLinks));
+  await waitFor(() => expect(a.result.current.configured.seafile).toBe(true));
+  expect(a.result.current.configured).toEqual({ paperless: false, seafile: true, nextcloud: true });
+  cleanup();
+
+  vi.mocked(getPaperlessConfig).mockResolvedValue({ has_api_token: true } as never);
+  vi.mocked(getSeafileConfig).mockResolvedValue({ has_api_token: false } as never);
+  const b = renderHook(() => useContactFileLinks('alice-uid', refreshExternalLinks));
+  await waitFor(() => expect(b.result.current.configured.paperless).toBe(true));
+  expect(b.result.current.configured).toEqual({ paperless: true, seafile: false, nextcloud: true });
+  cleanup();
+
+  vi.mocked(getSeafileConfig).mockResolvedValue({ has_api_token: true } as never);
+  vi.mocked(getNextcloudConfig).mockResolvedValue({ has_app_password: false } as never);
+  const c = renderHook(() => useContactFileLinks('alice-uid', refreshExternalLinks));
+  await waitFor(() => expect(c.result.current.configured.seafile).toBe(true));
+  expect(c.result.current.configured.nextcloud).toBe(false);
+});
+
+test('link and unlink handlers follow the current contact uid', async () => {
+  const { result, rerender } = renderHook(
+    ({ uid }) => useContactFileLinks(uid, refreshExternalLinks),
+    {
+      initialProps: { uid: 'alice-uid' as string | undefined },
+    },
+  );
+  rerender({ uid: 'bob-uid' });
+  await act(async () => {
+    await result.current.handleLinkPaperless({ id: 1 } as PaperlessDocument);
+    await result.current.handleLinkSeafile({ repo_id: 'r' } as never);
+    await result.current.handleLinkNextcloud({ path: '/p' } as WebDAVItem);
+    await result.current.handleUnlink('seafile', 'ei-9');
+  });
+  expect(linkPaperlessDocument).toHaveBeenCalledWith('bob-uid', 1);
+  expect(linkSeafileItem).toHaveBeenCalledWith('bob-uid', expect.anything());
+  expect(linkNextcloudItem).toHaveBeenCalledWith('bob-uid', expect.anything());
+  expect(unlinkSeafileItem).toHaveBeenCalledWith('bob-uid', 'ei-9');
+  expect(refreshExternalLinks).toHaveBeenCalledWith('bob-uid');
+});
+
+test('handlers use the latest refresh callback', async () => {
+  const first = vi.fn(async () => {});
+  const second = vi.fn(async () => {});
+  const { result, rerender } = renderHook(({ cb }) => useContactFileLinks('alice-uid', cb), {
+    initialProps: { cb: first },
+  });
+  rerender({ cb: second });
+  await act(async () => {
+    await result.current.handleLinkPaperless({ id: 1 } as PaperlessDocument);
+    await result.current.handleLinkSeafile({} as never);
+    await result.current.handleLinkNextcloud({} as WebDAVItem);
+    await result.current.handleUnlink('paperless', 'x');
+  });
+  expect(first).not.toHaveBeenCalled();
+  expect(second).toHaveBeenCalledTimes(4);
+});

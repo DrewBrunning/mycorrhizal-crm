@@ -179,3 +179,22 @@ test('a failed dismiss notifies with the latest notifier, logs, rethrows, and sk
   );
   expect(getDuplicatePairs).not.toHaveBeenCalled();
 });
+
+test('each page replaces the visible list with a new array so the UI re-renders as the scan fills', async () => {
+  const d2 = deferred<never>();
+  vi.mocked(getDuplicatePairs)
+    .mockResolvedValueOnce({ pairs: [pair('a', 'b')], total: 2 } as never)
+    .mockReturnValueOnce(d2.promise);
+  const { result } = renderHook(() => useDuplicatePairs());
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.pairs).toHaveLength(1));
+  const afterFirstPage = result.current.pairs;
+  await act(async () => {
+    d2.resolve({ pairs: [pair('c', 'd')], total: 2 } as never);
+  });
+  await waitFor(() => expect(result.current.pairs).toHaveLength(2));
+  expect(afterFirstPage).toHaveLength(1);
+  expect(result.current.pairs).not.toBe(afterFirstPage);
+});

@@ -13,30 +13,40 @@ import { handleFetchError } from '../utils/errorHandler';
 // with no filters and no pagination, mirroring useSubsystemHealth.
 export function useJobRunHealth() {
   const [data, setData] = useState<JobRunHealth[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await getJobRunHealth();
-      if (requestRef.current !== requestId) return;
-      setData(resp.jobs || []);
-    } catch (err) {
-      if (requestRef.current !== requestId) return;
-      setError(handleFetchError(err, 'fetching background job health'));
-    } finally {
-      if (requestRef.current === requestId) setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      // Stryker disable next-line ArithmeticOperator: the health hook's counter has a single increment site, so any strictly monotonic id sequence works
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await getJobRunHealth();
+        if (requestRef.current !== requestId) return;
+        setData(resp.jobs || []);
+      } catch (err) {
+        if (requestRef.current !== requestId) return;
+        setError(handleFetchError(err, 'fetching background job health'));
+      } finally {
+        if (requestRef.current === requestId) setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and a ref only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useEffect(
+    () => {
+      void refresh();
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable, so the mount effect runs exactly once under either deps array
+    [refresh],
+  );
 
   return { data, loading, error, refresh };
 }
@@ -49,29 +59,37 @@ export function useJobRunHistory() {
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const load = useCallback(async (params: ListJobRunsParams) => {
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await listJobRuns(params);
-      if (requestRef.current !== requestId) return;
-      setData(resp.job_runs || []);
-    } catch (err) {
-      if (requestRef.current !== requestId) return;
-      setError(handleFetchError(err, 'fetching job run history'));
-    } finally {
-      if (requestRef.current === requestId) setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (params: ListJobRunsParams) => {
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await listJobRuns(params);
+        if (requestRef.current !== requestId) return;
+        setData(resp.job_runs || []);
+      } catch (err) {
+        if (requestRef.current !== requestId) return;
+        setError(handleFetchError(err, 'fetching job run history'));
+      } finally {
+        if (requestRef.current === requestId) setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and a ref only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const reset = useCallback(() => {
-    requestRef.current += 1;
-    setData([]);
-    setError(null);
-    setLoading(false);
-  }, []);
+  const reset = useCallback(
+    () => {
+      requestRef.current += 1;
+      setData([]);
+      setError(null);
+      setLoading(false);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and a ref only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return { data, loading, error, load, reset };
 }

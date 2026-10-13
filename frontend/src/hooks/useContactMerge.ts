@@ -16,40 +16,48 @@ export function useContactMerge(notifier?: ErrorNotifier) {
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPreview = useCallback(async (keepId: number, mergeId: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await previewContactMerge(keepId, mergeId);
-      // Backend sends a bare `null` (not `[]`) for an empty Go slice --
-      // same convention as GetRelationshipEdges, normalized once here
-      // rather than guarding every render-site access.
-      setPreview({
-        ...result,
-        resolution: {
-          ...result.resolution,
-          emails: result.resolution.emails || [],
-          phones: result.resolution.phones || [],
-          addresses: result.resolution.addresses || [],
-          urls: result.resolution.urls || [],
-          impps: result.resolution.impps || [],
-          resolved_scalars: result.resolution.resolved_scalars || {},
-          conflicts: result.resolution.conflicts || [],
-          field_value_conflicts: result.resolution.field_value_conflicts || [],
-        },
-      });
-      setResolutions({});
-    } catch (err) {
-      setError(handleFetchError(err, 'previewing contact merge'));
-      setPreview(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadPreview = useCallback(
+    async (keepId: number, mergeId: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await previewContactMerge(keepId, mergeId);
+        // Backend sends a bare `null` (not `[]`) for an empty Go slice --
+        // same convention as GetRelationshipEdges, normalized once here
+        // rather than guarding every render-site access.
+        setPreview({
+          ...result,
+          resolution: {
+            ...result.resolution,
+            emails: result.resolution.emails || [],
+            phones: result.resolution.phones || [],
+            addresses: result.resolution.addresses || [],
+            urls: result.resolution.urls || [],
+            impps: result.resolution.impps || [],
+            resolved_scalars: result.resolution.resolved_scalars || {},
+            conflicts: result.resolution.conflicts || [],
+            field_value_conflicts: result.resolution.field_value_conflicts || [],
+          },
+        });
+        setResolutions({});
+      } catch (err) {
+        setError(handleFetchError(err, 'previewing contact merge'));
+        setPreview(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const setResolution = useCallback((field: string, value: string) => {
-    setResolutions((prev) => ({ ...prev, [field]: value }));
-  }, []);
+  const setResolution = useCallback(
+    (field: string, value: string) => {
+      setResolutions((prev) => ({ ...prev, [field]: value }));
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // allConflictsResolved covers both conflict kinds (scalar + FieldValue) --
   // the commit button should stay disabled until every one has a choice, so
@@ -76,11 +84,15 @@ export function useContactMerge(notifier?: ErrorNotifier) {
     [resolutions, notifier],
   );
 
-  const reset = useCallback(() => {
-    setPreview(null);
-    setResolutions({});
-    setError(null);
-  }, []);
+  const reset = useCallback(
+    () => {
+      setPreview(null);
+      setResolutions({});
+      setError(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return {
     preview,

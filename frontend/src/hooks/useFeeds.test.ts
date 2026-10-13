@@ -158,3 +158,79 @@ test('handleRevokeAll returns the count and refreshes; failure notifies and reth
   });
   expect(showError).toHaveBeenCalledTimes(1);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty, reports loading while the list loads, and a failure is logged then cleared on retry', async () => {
+  const d = deferred<Feed[]>();
+  vi.mocked(listFeeds).mockReturnValueOnce(d.promise);
+  const { result } = renderHook(() => useFeeds());
+  expect(result.current.feeds).toEqual([]);
+  expect(result.current.contactNames.size).toBe(0);
+  // No mount effect: the page calls refresh, so the hook starts in the loading state.
+  expect(result.current.loading).toBe(true);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  await act(async () => {
+    d.resolve([]);
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  vi.mocked(listFeeds).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(console.error).toHaveBeenCalledWith('[fetching feeds] Error:', expect.anything());
+
+  const d2 = deferred<Feed[]>();
+  vi.mocked(listFeeds).mockReturnValueOnce(d2.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d2.resolve([]);
+  });
+});
+
+test('a feed list with only contact feeds looks up exactly their uids', async () => {
+  vi.mocked(listFeeds).mockResolvedValue([
+    feed({ id: 'a', kind: 'contact', entity_id: 'alice-uid' }),
+    feed({ id: 'b', kind: 'aggregate' }),
+  ]);
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map([['alice-uid', alice]]));
+  const { result } = renderHook(() => useFeeds());
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(getContactsByUid).toHaveBeenCalledWith(['alice-uid']);
+  expect(result.current.contactNames.get('alice-uid')).toBe('Alice Smith');
+});
+
+test('rotate, revoke and revoke-all log their own operation', async () => {
+  vi.mocked(listFeeds).mockResolvedValue([]);
+  vi.mocked(rotateFeed).mockRejectedValue(new Error('r'));
+  vi.mocked(revokeFeed).mockRejectedValue(new Error('v'));
+  vi.mocked(revokeAllFeeds).mockRejectedValue(new Error('a'));
+  const { result } = renderHook(() => useFeeds());
+  await act(async () => {
+    await expect(result.current.handleRotate('x')).rejects.toThrow('r');
+    await expect(result.current.handleRevoke('x')).rejects.toThrow('v');
+    await expect(result.current.handleRevokeAll()).rejects.toThrow('a');
+  });
+  for (const op of ['rotating feed', 'revoking feed', 'revoking all feeds']) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+});

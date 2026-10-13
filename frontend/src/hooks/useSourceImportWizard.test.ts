@@ -759,3 +759,137 @@ test('resolveRowAction honors skip, ignores unknown suggestions', () => {
   expect(resolveRowAction(none, { row_index: 1, suggested_action: 'merge' })).toBe('add');
   expect(resolveRowAction(none, { row_index: 1, suggested_action: '' })).toBe('add');
 });
+
+test('a changed base path and start function are picked up by later actions', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(st('fetching_contacts'));
+  const first = vi.fn().mockResolvedValue(undefined);
+  const second = vi.fn().mockResolvedValue(undefined);
+  const { result, rerender } = renderHook(
+    ({ basePath, startFetch }) => useSourceImportWizard({ basePath, startFetch }),
+    { initialProps: { basePath: '/one', startFetch: first } },
+  );
+  rerender({ basePath: '/two', startFetch: second });
+  await act(async () => {
+    await result.current.beginFetch('s1');
+  });
+  expect(first).not.toHaveBeenCalled();
+  expect(second).toHaveBeenCalledWith('s1');
+  expect(statusMock).toHaveBeenLastCalledWith('/two', 's1');
+  await tick(1500);
+  expect(statusMock).toHaveBeenLastCalledWith('/two', 's1');
+});
+
+test('confirm and cancelImport use the latest base path', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(st('ready'));
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockResolvedValue(undefined);
+  cancelMock.mockClear();
+  const { result, rerender } = renderHook(
+    ({ basePath }) =>
+      useSourceImportWizard({ basePath, startFetch: vi.fn().mockResolvedValue(undefined) }),
+    { initialProps: { basePath: '/one' } },
+  );
+  await toReview({ current: result.current });
+  rerender({ basePath: '/two' });
+  await act(async () => {
+    await result.current.confirm();
+  });
+  expect(confirmMock).toHaveBeenLastCalledWith('/two', 's1', expect.anything());
+  await act(async () => {
+    await result.current.cancelImport();
+    await result.current.cancel();
+  });
+  expect(cancelMock).toHaveBeenCalledWith('/two', 's1');
+});
+
+test('a late cancelled answer clears an error left by a concurrently failed poll', async () => {
+  vi.useFakeTimers();
+  const slowFail = (() => {
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<never>((_, rej) => {
+      reject = rej;
+    });
+    return { promise, reject };
+  })();
+  statusMock.mockResolvedValueOnce(st('ready'));
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockResolvedValue(undefined);
+  const { result } = mount();
+  await toReview({ current: result.current });
+
+  // importing: the immediate poll hangs and will fail; the next tick's poll says cancelled.
+  statusMock.mockReturnValueOnce(slowFail.promise as never);
+  statusMock.mockResolvedValueOnce(st('importing'));
+  await act(async () => {
+    await result.current.confirm();
+  });
+  statusMock.mockReset();
+  let releaseCancelled!: (v: unknown) => void;
+  statusMock.mockReturnValueOnce(
+    new Promise((res) => {
+      releaseCancelled = res;
+    }) as never,
+  );
+  await tick(1500);
+  await act(async () => {
+    slowFail.reject(new Error('transient'));
+  });
+  expect(result.current.error).toBe('transient');
+  await act(async () => {
+    releaseCancelled(st('cancelled'));
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.step).toBe('review');
+});
+
+test('confirm clears an earlier error as soon as it starts, and does nothing with a session but no preview', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(st('fetching_contacts'));
+  const idle = mount();
+  await act(async () => {
+    await idle.result.current.beginFetch('s1');
+  });
+  confirmMock.mockClear();
+  await act(async () => {
+    await idle.result.current.confirm();
+  });
+  expect(confirmMock).not.toHaveBeenCalled();
+  cleanup();
+
+  statusMock.mockReset();
+  statusMock.mockResolvedValue(st('ready'));
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockRejectedValueOnce(new Error('first'));
+  const { result } = mount();
+  await toReview({ current: result.current });
+  await act(async () => {
+    await result.current.confirm();
+  });
+  expect(result.current.error).toBe('first');
+  const gate: { release?: () => void } = {};
+  confirmMock.mockImplementationOnce(
+    () =>
+      new Promise<undefined>((res) => {
+        gate.release = () => res(undefined);
+      }) as never,
+  );
+  act(() => {
+    void result.current.confirm();
+  });
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    gate.release?.();
+  });
+});
+
+test('reset clears an error left by a failed fetch', async () => {
+  const { result } = mount(vi.fn().mockRejectedValue(new Error('cannot start')));
+  await act(async () => {
+    await result.current.beginFetch('s1');
+  });
+  expect(result.current.error).toBe('cannot start');
+  act(() => result.current.reset());
+  expect(result.current.error).toBeNull();
+});
