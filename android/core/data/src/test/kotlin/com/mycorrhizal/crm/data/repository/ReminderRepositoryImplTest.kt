@@ -128,7 +128,7 @@ class ReminderRepositoryImplTest {
         )
         coEvery { apiClient.deleteReminder(1) } returns Result.success(Unit)
 
-        val result = repository.delete(1)
+        val result = repository.delete(1, null)
 
         assertTrue(result.isSuccess)
         assertNull(db.cachedReminderDao().getById(1))
@@ -143,7 +143,7 @@ class ReminderRepositoryImplTest {
             ApiError.Client(404, "Reminder not found"),
         )
 
-        val result = repository.delete(1)
+        val result = repository.delete(1, null)
 
         assertTrue(result.isFailure)
         assertEquals("Call Dana", db.cachedReminderDao().getById(1)?.message)
@@ -173,5 +173,18 @@ class ReminderRepositoryImplTest {
         val result = repository.deleteCompletion(7)
 
         assertTrue(result.isSuccess)
+    }
+
+    // Issue #1665 / ADR 0008: the revision is forwarded as If-Match.
+    @Test
+    fun `update and delete forward the revision`() = runTest {
+        coEvery { apiClient.updateReminder(1, any(), 5) } returns Result.success(Reminder(id = 1, message = "x"))
+        coEvery { apiClient.deleteReminder(1, 5) } returns Result.success(Unit)
+
+        assertTrue(repository.update(1, Reminder(message = "x"), 5).isSuccess)
+        assertTrue(repository.delete(1, 5).isSuccess)
+
+        io.mockk.coVerify(exactly = 1) { apiClient.updateReminder(1, any(), 5) }
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteReminder(1, 5) }
     }
 }

@@ -619,7 +619,7 @@ class ContactRepositoryImplTest {
         coEvery { apiClient.updateContact(9, any()) } returns Result.success(updated)
         val input = ContactRecordInput(card = Card(name = Name(full = "Carol King Renamed")))
 
-        val result = repository.updateContact(9, input)
+        val result = repository.updateContact(9, input, null)
 
         assertTrue(result.isSuccess)
         val cached = db.cachedContactDao().getById(9)
@@ -825,7 +825,7 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
         coEvery { apiClient.deleteContact(5) } returns Result.success(Unit)
 
-        val result = repository.deleteContact(5)
+        val result = repository.deleteContact(5, null)
 
         assertTrue(result.isSuccess)
         assertEquals(null, db.cachedContactDao().getById(5))
@@ -837,7 +837,7 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
         coEvery { apiClient.deleteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
 
-        val result = repository.deleteContact(5)
+        val result = repository.deleteContact(5, null)
 
         assertTrue(result.isFailure)
         assertTrue(db.cachedContactDao().getById(5) != null)
@@ -959,5 +959,27 @@ class ContactRepositoryImplTest {
         val result = repository.applyContactAddressSuggestion(input)
 
         assertTrue(result.isSuccess)
+    }
+
+    // Issue #1665 / ADR 0008: the revision is forwarded as If-Match; a 412 leaves the cache alone.
+    @Test
+    fun `updateContact and deleteContact forward the revision`() = runTest {
+        coEvery { apiClient.updateContact(9, any(), 5) } returns Result.success(ContactRecordResponse(id = 9, uid = "u9"))
+        coEvery { apiClient.deleteContact(9, 6) } returns Result.success(Unit)
+
+        assertTrue(repository.updateContact(9, ContactRecordInput(), 5).isSuccess)
+        assertTrue(repository.deleteContact(9, 6).isSuccess)
+
+        io.mockk.coVerify(exactly = 1) { apiClient.updateContact(9, any(), 5) }
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteContact(9, 6) }
+    }
+
+    @Test
+    fun `a 412 update returns the typed conflict`() = runTest {
+        coEvery { apiClient.updateContact(9, any(), 5) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+
+        val result = repository.updateContact(9, ContactRecordInput(), 5)
+
+        assertTrue(result.exceptionOrNull() is ApiError.PreconditionFailed)
     }
 }

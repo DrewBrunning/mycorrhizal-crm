@@ -83,6 +83,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import java.math.BigDecimal
 
 // M18 (100-M18-android-entity-field-richness.md): each entity's dialog gains
@@ -678,6 +679,21 @@ fun LifeEventsScreen(
                 },
             )
         }
+    }
+
+    // The edit dialog has already closed by the time the 412 lands, so there is no form to
+    // "keep editing" — the dialog only offers to reload the server's version.
+    state.conflict?.let { conflict ->
+        WriteConflictDialog(
+            onLoadLatest = viewModel::onConflictLoadLatest,
+            onKeep = viewModel::onConflictDismissed,
+            messageRes = if (conflict == EntityConflict.EDIT) {
+                R.string.conflict_message_edit_closed
+            } else {
+                R.string.conflict_message_delete
+            },
+            keepLabelRes = R.string.conflict_dismiss,
+        )
     }
 }
 

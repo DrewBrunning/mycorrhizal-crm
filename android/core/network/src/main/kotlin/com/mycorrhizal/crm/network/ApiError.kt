@@ -41,6 +41,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
                 409 -> message ?: "Conflict"
                 else -> message ?: "Request failed"
             }
+            is PreconditionFailed -> "Changed elsewhere — load the latest version"
             is Parse -> "Unexpected server response"
             is ArchivedProfile -> "This profile is a read-only archive — switch to your server to make changes"
             is Unknown -> "Something went wrong"
@@ -50,6 +51,14 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
     class Timeout(cause: SocketTimeoutException) : ApiError("Timeout", cause)
     class Server(val code: Int, val body: String, val errorCode: String? = null) : ApiError(body)
     class Client(val code: Int, val body: String) : ApiError(body)
+
+    /**
+     * 412 `PRECONDITION_FAILED` (ADR 0008): the `If-Match` revision was stale — the record was
+     * changed elsewhere since this client read it. Nothing was written; per ADR 0009 the client
+     * never auto-merges, it offers to reload the server's version.
+     */
+    class PreconditionFailed(val body: String) : ApiError(body)
+
     class Parse(body: String) : ApiError(body)
 
     /** A write was refused because the active profile is a read-only archive (ADR 0028 Decision 3). */

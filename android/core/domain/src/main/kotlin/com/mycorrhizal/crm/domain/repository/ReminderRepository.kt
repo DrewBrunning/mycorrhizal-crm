@@ -18,13 +18,13 @@ interface ReminderRepository {
     suspend fun create(contactId: Int, reminder: Reminder): Result<Reminder>
 
     /** Update a reminder; returns the updated reminder. */
-    suspend fun update(id: Int, reminder: Reminder): Result<Reminder>
+    suspend fun update(id: Int, reminder: Reminder, revision: Int?): Result<Reminder>
 
     /** Mark a reminder complete; recurring reminders reschedule and return the reminder. */
     suspend fun complete(id: Int): Result<Reminder?>
 
     /** Delete a reminder. */
-    suspend fun delete(id: Int): Result<Unit>
+    suspend fun delete(id: Int, revision: Int?): Result<Unit>
 
     /** A contact's reminder completions (completion timeline). */
     suspend fun listCompletions(contactId: Int): Result<List<ReminderCompletion>>

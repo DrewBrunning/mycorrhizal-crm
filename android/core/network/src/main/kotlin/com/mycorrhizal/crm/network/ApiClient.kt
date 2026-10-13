@@ -1088,8 +1088,8 @@ class ApiClient(
         }
 
     /** PUT /api/v1/contacts/{id} — returns the raw ContactRecordResponse (200). */
-    suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse> =
-        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input) { _, body ->
+    suspend fun updateContact(id: Int, input: ContactRecordInput, ifMatchRevision: Int? = null): Result<ContactRecordResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
 
@@ -1099,8 +1099,8 @@ class ApiClient(
     // client surface, not the backend.
 
     /** DELETE /api/v1/contacts/{id} — soft-delete; the row stays for undo (T60/M16). */
-    suspend fun deleteContact(id: Int): Result<Unit> =
-        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id")
+    suspend fun deleteContact(id: Int, ifMatchRevision: Int? = null): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", ifMatchRevision)
 
     /** POST /api/v1/contacts/{id}/archive — archives the contact and retires its reminders. */
     suspend fun archiveContact(id: Int): Result<Unit> =
@@ -1375,8 +1375,8 @@ class ApiClient(
     }
 
     /** DELETE /api/v1/activities/{id} — soft-deletes an activity (M19). */
-    suspend fun deleteActivity(id: Int): Result<Unit> =
-        executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id")
+    suspend fun deleteActivity(id: Int, ifMatchRevision: Int? = null): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id", ifMatchRevision)
 
     /**
      * POST /api/v1/activities — wrapped `{ message, activity }`, unwrapped here.
@@ -1392,8 +1392,8 @@ class ApiClient(
         }
 
     /** PUT /api/v1/activities/{id} — raw Activity response. */
-    suspend fun updateActivity(id: Int, input: ActivityInput): Result<Activity> =
-        executePut("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id", input) { _, body ->
+    suspend fun updateActivity(id: Int, input: ActivityInput, ifMatchRevision: Int? = null): Result<Activity> =
+        executePut("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(Activity::class.java).fromJson(body)
         }
 
@@ -1456,8 +1456,8 @@ class ApiClient(
     }
 
     /** DELETE /api/v1/notes/{id} — soft-deletes a note (M19). */
-    suspend fun deleteNote(id: Int): Result<Unit> =
-        executeDelete("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id")
+    suspend fun deleteNote(id: Int, ifMatchRevision: Int? = null): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id", ifMatchRevision)
 
     /** POST /api/v1/contacts/{id}/notes — wrapped `{ message, note }`, unwrapped here. */
     suspend fun createNote(contactId: Int, input: NoteInput): Result<Note> =
@@ -1472,8 +1472,8 @@ class ApiClient(
         }
 
     /** PUT /api/v1/notes/{id} — wrapped `{ message, note }`, unwrapped here. */
-    suspend fun updateNote(id: Int, input: NoteInput): Result<Note> =
-        executePut("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id", input) { _, body ->
+    suspend fun updateNote(id: Int, input: NoteInput, ifMatchRevision: Int? = null): Result<Note> =
+        executePut("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
         }
 
@@ -1496,8 +1496,9 @@ class ApiClient(
         }
 
     /** PUT /api/v1/reminders/{id} — wrapped `{ message, reminder }`, unwrapped here. */
-    suspend fun updateReminder(id: Int, reminder: Reminder): Result<Reminder> =
-        executePut("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", reminder) { _, body ->
+    suspend fun updateReminder(id: Int, reminder: Reminder, ifMatchRevision: Int? = null): Result<Reminder> =
+        // The revision rides in If-Match, never the body (a request body is not the precondition).
+        executePut("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", reminder.copy(revision = null), ifMatchRevision) { _, body ->
             moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
         }
 
@@ -1533,8 +1534,8 @@ class ApiClient(
         }
 
     /** DELETE /api/v1/reminders/{id} — delete a reminder. */
-    suspend fun deleteReminder(id: Int): Result<Unit> =
-        executeDelete("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id")
+    suspend fun deleteReminder(id: Int, ifMatchRevision: Int? = null): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", ifMatchRevision)
 
     /** GET /api/v1/contacts/{id}/reminder-completions — a contact's completion timeline. */
     suspend fun listContactReminderCompletions(contactId: Int): Result<CompletionsResponse> =
@@ -2228,13 +2229,13 @@ class ApiClient(
             moshi.adapter(CreateLifeEventResponse::class.java).fromJson(body)?.lifeEvent
         }
 
-    suspend fun updateLifeEvent(id: String, input: LifeEventInput): Result<LifeEvent> =
-        executePut("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id", input) { _, body ->
+    suspend fun updateLifeEvent(id: String, input: LifeEventInput, ifMatchRevision: Int? = null): Result<LifeEvent> =
+        executePut("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(LifeEvent::class.java).fromJson(body)
         }
 
-    suspend fun deleteLifeEvent(id: String): Result<Unit> =
-        executeDelete("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id")
+    suspend fun deleteLifeEvent(id: String, ifMatchRevision: Int? = null): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id", ifMatchRevision)
 
     // --- Gifts ---
 
@@ -2856,11 +2857,13 @@ class ApiClient(
     private suspend fun <T> executePut(
         url: String,
         body: Any,
+        ifMatchRevision: Int? = null,
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
             .put(body.toJsonBody())
+            .withIfMatch(ifMatchRevision)
             .build()
         return execute(request, mapper)
     }
@@ -2916,16 +2919,27 @@ class ApiClient(
     private fun boundaryFor(idempotencyKey: String): String =
         "mycorrhizal-" + idempotencyKey.filter { it.isLetterOrDigit() || it == '-' }.take(MAX_BOUNDARY_KEY_CHARS)
 
+    /**
+     * ADR 0008 / issue #1665: attach `If-Match: "<revision>"` (a quoted integer, the `revision`
+     * the record carried when the edit began) so the server rejects a stale write with 412
+     * instead of silently overwriting. A null revision omits the header — the check is opt-in
+     * server-side, and a record from a server that predates the field has nothing to send.
+     */
+    private fun Request.Builder.withIfMatch(revision: Int?): Request.Builder =
+        if (revision == null) this else header(IF_MATCH_HEADER, "\"$revision\"")
+
     private fun Any.toJsonBody(): okhttp3.RequestBody =
         moshi.adapter<Any>(javaClass).toJson(this).toRequestBody(jsonMediaType)
 
     private suspend fun <T> executeDelete(
         url: String,
+        ifMatchRevision: Int? = null,
         mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
             .delete()
+            .withIfMatch(ifMatchRevision)
             .build()
         return execute(request, mapper)
     }
@@ -2992,6 +3006,9 @@ class ApiClient(
     private fun parseError(code: Int, body: String): ApiError {
         val parsed = parseErrorDisplayMessage(body)
         val message = parsed?.takeIf { it.isNotBlank() } ?: body.ifBlank { "HTTP $code" }
+        // ADR 0008/0010: a stale If-Match is a typed conflict, never a generic 4xx, so a caller
+        // can offer "load latest" instead of a bare error toast.
+        if (code == HTTP_PRECONDITION_FAILED) return ApiError.PreconditionFailed(message)
         return if (code in 400..499) {
             ApiError.Client(code, message)
         } else {
@@ -3041,6 +3058,10 @@ class ApiClient(
          * stored outcome for a repeated (user, key) instead of running the handler twice.
          */
         const val IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
+
+        /** ADR 0008 (issue #1665): the optimistic-concurrency precondition header. */
+        const val IF_MATCH_HEADER = "If-Match"
+        private const val HTTP_PRECONDITION_FAILED = 412
         private const val MAX_BOUNDARY_KEY_CHARS = 48
 
         /**

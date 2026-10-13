@@ -93,4 +93,11 @@ class ApiErrorTest {
     fun `network display message is generic`() {
         assertEquals("No connection", ApiError.Network(ConnectException("x")).displayMessage)
     }
+
+    @Test
+    fun `precondition failed is a distinct type with its own message`() {
+        val error = ApiError.PreconditionFailed("stale")
+        assertEquals("Changed elsewhere — load the latest version", error.displayMessage)
+        assertTrue(error.toApiError() === error)
+    }
 }

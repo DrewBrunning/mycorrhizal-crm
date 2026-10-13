@@ -28,10 +28,10 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
+import assertEquals
+import assertFalse
+import assertNull
+import assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -150,6 +150,54 @@ class LifeEventsViewModelTest {
             coVerify { repo.create(match { it.remind == true && it.date?.hasMonthDay == true }) }
         }
 
+    // Issue #1665 / ADR 0008: life-event PUT/DELETE carry the loaded revision; a 412 is a typed
+    // conflict (not an error toast) and the list stays put until the user loads the latest.
+    @Test fun `update sends the loaded revision and a 412 raises an edit conflict`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            val original = LifeEvent(id = "e1", entityId = UID, type = "moved", revision = 4)
+            coEvery { repo.listForContact(UID) } returns Result.success(listOf(original))
+            coEvery { repo.update("e1", any(), 4) } returns
+                Result.failure(ApiError.PreconditionFailed("stale"))
+            val vm = vm(); advanceUntilIdle()
+
+            vm.update(original, LifeEventFormData(type = "relocated"))
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repo.update("e1", any(), 4) }
+            assertEquals(EntityConflict.EDIT, vm.uiState.value.conflict)
+            assertNull(vm.uiState.value.error)
+
+            val refreshed = original.copy(revision = 6)
+            coEvery { repo.listForContact(UID) } returns Result.success(listOf(refreshed))
+            vm.onConflictLoadLatest()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.conflict)
+            assertEquals(6, vm.findById("e1")?.revision)
+        }
+
+    @Test fun `delete sends the loaded revision and a 412 raises a delete conflict`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns
+                Result.success(listOf(LifeEvent(id = "e1", entityId = UID, type = "moved", revision = 4)))
+            coEvery { repo.delete("e1", 4) } returns
+                Result.failure(ApiError.PreconditionFailed("stale"))
+            val vm = vm(); advanceUntilIdle()
+
+            vm.delete("e1")
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repo.delete("e1", 4) }
+            assertEquals(EntityConflict.DELETE, vm.uiState.value.conflict)
+            assertNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.deletingId)
+            assertEquals(1, vm.uiState.value.items.size)
+
+            vm.onConflictDismissed()
+            assertNull(vm.uiState.value.conflict)
+        }
+
     @Test fun `update preserves the unmodeled source field while applying the form`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubContact(contacts)
@@ -163,7 +211,7 @@ class LifeEventsViewModelTest {
                 remind = true,
             )
             coEvery { repo.listForContact(UID) } returns Result.success(listOf(original))
-            coEvery { repo.update("e1", any()) } returns Result.success(original)
+            coEvery { repo.update("e1", any(), any()) } returns Result.success(original)
             val vm = vm(); advanceUntilIdle()
 
             vm.update(
@@ -187,6 +235,7 @@ class LifeEventsViewModelTest {
                             // Cleared fields persist as cleared, not carried forward.
                             it.date == null && it.relatedEntityIds == null && it.remind == false
                     },
+                    any(),
                 )
             }
         }

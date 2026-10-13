@@ -198,6 +198,25 @@ it opens the normal activity form pre-filled with the location, the stay's own l
 you choose the contacts and save (the server dedupes a stay that was already logged). Nothing is stored until you
 save. Both entry points are hidden on a local (embedded) profile, which has no outbound integrations.
 
+## Editing the same record from two places
+
+Edits and deletes of contacts, notes, activities, life events and reminders are checked against the
+record's **revision**
+([ADR 0008](adrs/0008-conditional-write-enforcement.md),
+[ADR 0009](adrs/0009-rest-conflict-policy.md)). The app sends the revision the record had when you
+opened it as an `If-Match` header; if the web app or another device changed the record in the
+meantime, the server refuses the write (`412 PRECONDITION_FAILED`) and **nothing is saved or
+deleted**. There is no automatic merge. The app shows a "Changed elsewhere" prompt:
+
+- **Load latest version** — discard your edit and reload the server's copy (for a delete, reload the
+  list so the row shows the current record; you can then delete it again).
+- **Keep editing** (edit forms) / **Not now** (deletes and the life-event list) — dismiss the prompt.
+  On an edit form your typed changes stay on screen so you can copy them out first; saving again
+  without loading the latest version is refused again until the revision is refreshed.
+
+These writes are online-only: the app's offline queue (call/SMS capture, replayed as new
+activities) only ever *creates* records, so it never sends `If-Match` and cannot collide this way.
+
 ## Contact timeline
 
 A contact's page shows the **5 most recent** events of its merged timeline (activities, notes,

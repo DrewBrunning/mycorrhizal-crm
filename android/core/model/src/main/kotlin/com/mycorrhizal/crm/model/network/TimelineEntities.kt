@@ -24,6 +24,8 @@ data class LifeEvent(
     val source: String? = null,
     @Json(name = "related_entity_ids") val relatedEntityIds: List<String>? = null,
     val remind: Boolean? = null,
+    /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
+    val revision: Int? = null,
     val deleted: Boolean? = null,
 )
 
