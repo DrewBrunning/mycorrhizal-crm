@@ -194,11 +194,15 @@ jobs:
       # file's line coverage dropped past tolerance from the committed
       # android/coverage-baseline.json. pull_request only: the job is a
       # required `Android (Gradle)` check, and the aggregated report is
-      # deterministic per commit, but a push/schedule run is not a PR diff to
-      # gate -- matching the backend ratchet's pull_request-only stance.
+      # deterministic per commit. pull_request + push to main, NOT schedule
+      # (same as the backend ratchet, issue #1660): the report step above has
+      # no `if:` so it is produced on every run of this job, and running on
+      # push closes the gap where a PR merged with the ratchet red left main
+      # drifting unnoticed (main-failure-alert.yml alerts on a red "Android
+      # Tests" push run).
       # actions/setup-go is already installed for the embedded-server build.
-      - name: Per-file coverage ratchet (pull_request only)
-        if: github.event_name == 'pull_request'
+      - name: Per-file coverage ratchet (pull_request and push to main)
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         working-directory: backend
         run: go run ./cmd/androidcoverageratchet
 

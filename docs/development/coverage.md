@@ -317,8 +317,9 @@ tolerance, never on an existing low number by itself.
   `com/mycorrhizal/crm/ui/components/ChipListEditor.kt`) — the stable,
   module-independent key the cross-module aggregation already credits the
   coverage to. It runs in `android-tests.yml`'s `test` job on `pull_request`
-  only (the required `Android (Gradle)` context), matching the backend
-  ratchet's PR-only stance.
+  and push to `main`, never `schedule` (the required `Android (Gradle)`
+  context; issue #1660), like the backend ratchet. A red `Android Tests` push
+  run is alerted by `main-failure-alert.yml` (issue #1568).
 
 All three share the same rules:
 
@@ -405,7 +406,8 @@ run measures the same package set at the depth the baseline was generated at.
 The push run exists so a PR merged with the ratchet red cannot leave `main`
 drifting silently; a red `Unit Tests` push run is alerted by
 `main-failure-alert.yml` (issue #1568). The frontend ratchet has no property/generative variance
-and runs on every trigger the `frontend` job runs on — but it does have
+and runs on every trigger the `frontend` job runs on (PRs, push to `main`,
+schedule; issue #1660 confirmed it was never PR-only) — but it does have
 *incidental* coverage: a line one component's own tests never reach, hit only
 because another test file happens to render it. That flipped on the first CI
 run of this ratchet (`OccasionEventAttendeesDialog.tsx`: 43/45 lines in a local
