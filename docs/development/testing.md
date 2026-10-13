@@ -1238,16 +1238,28 @@ criterion.**
     three parallel legs, `api`, `hooks` and `utils`, each with a 240-minute
     timeout (api ~4.4k mutants, hooks ~3.3k, utils 701). Each leg derives its
     config from `stryker.conf.json` with `jq` and carries its own `break` in
-    the workflow matrix (`api` 83, `hooks` 64, `utils` 79 — ~6 points under
+    the workflow matrix (`api` 83, `hooks` 93, `utils` 79 — ~6 points under
     each half's measured score); `stryker.conf.json` itself stays the combined
     local-run config. Issue #1624 §3 added the first tests for the largest
     untested hooks (`useContactMerge`, `useSystemEvents`, `useAudit`,
     `useSeafile`, `useImmich`), killing 121 survivors and lifting the hooks
     half from 66.35% to **70.12%** (2026-10-13, 2277 killed / 785 survived /
-    186 no-coverage). The residual hook survivors are dominated by equivalent
-    mutants — React dependency arrays and logging-argument literals a test
-    cannot observe — so further ratcheting has low yield; the remaining
-    genuine gaps are in partially-tested hooks. Locally run a slice with
+    186 no-coverage; 70.18% by Stryker's formula). Issue #1662
+    measured the residual instead of assuming it: only 156 of 969 survivors
+    were dependency-array candidates and 13 were logging literals; 800 were
+    real gaps (stale-request guards, loading/error flags, `||` fallbacks,
+    payload shape, unexercised branches). Hook tests now pin those; the
+    proven-equivalent mutants carry per-site `// Stryker disable` comments with
+    reasons, so ignored mutants leave the score denominator. A per-file
+    re-measure (never the full leg locally) estimates the hooks half at
+    **99.27%** (3113 killed / 3136 valid). **Directive trap:** Stryker only
+    honors `disable next-line` as a *leading comment of a node that starts on
+    the mutant's line* — a comment above a closing `}, []);` attaches to
+    nothing and is silently ignored, so for deps arrays pass the array as its
+    own argument line with the comment above it. Single-site request counters
+    (`requestRef.current + 1`) are equivalent, but counters shared by several
+    call sites (loadMore + refetch + reset) are not: pin them with an
+    interleaving test. Locally run a slice with
     `npx stryker run --mutate src/api/notes.ts` (the dry run still executes
     the whole suite, ~5 min).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
