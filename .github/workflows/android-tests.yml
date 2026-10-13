@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: false
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -41,7 +46,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
       android: ${{ steps.resolve.outputs.android }}
       backend: ${{ steps.resolve.outputs.backend }}
@@ -92,7 +97,7 @@ jobs:
     permissions:
       contents: read
     name: Android (Gradle)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     # Typical time ~26-30m; a slightly slow runner has hit a 30m cap
     # mid-assemble. 40m keeps the bound meaningful with variance headroom.
     timeout-minutes: 40
@@ -331,7 +336,7 @@ jobs:
       contents: read
       actions: read
     name: Android E2E (emulator)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 60
     needs: changes
     # Unconditional on schedule/dispatch; path-gated on push:main (android/**,
@@ -542,7 +547,7 @@ jobs:
       contents: read
       actions: read
     name: Android E2E (emulator, minSdk 26)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 60
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
 
@@ -703,7 +708,7 @@ jobs:
     permissions:
       contents: read
     name: Android below minSdk fails clearly (API 24)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 30
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
 
@@ -774,7 +779,7 @@ jobs:
       contents: read
       actions: read
     name: Android macrobenchmark (emulator)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 60
     continue-on-error: true
     needs: changes

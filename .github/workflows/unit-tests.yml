@@ -17,6 +17,12 @@ on:
   # unlike a push). Not for ad hoc manual runs.
   workflow_dispatch:
   workflow_call:
+    inputs:
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -43,7 +49,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
       backend: ${{ steps.resolve.outputs.backend }}
       frontend: ${{ steps.resolve.outputs.frontend }}
@@ -107,7 +113,7 @@ jobs:
     permissions:
       contents: read
     name: Docs & security-doc citations
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - name: Checkout repository
@@ -211,7 +217,7 @@ jobs:
   # Policy: docs/changelog-policy.md.
   changelog-note:
     name: Changelog note for operator-visible change
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.changelog-relevant == 'true'
     permissions:
@@ -251,7 +257,7 @@ jobs:
   # cmd/codecovcheck fails on drift.
   codecov-patch-stub:
     name: Codecov patch no-op
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 5
     needs: changes
     if: >-
@@ -310,7 +316,7 @@ jobs:
     permissions:
       contents: read
     name: Backend checks (fmt/vet/bench/fuzz/lint)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     # Issue #712: nightly fuzz is 8 targets at -fuzztime=2m (~16m) plus
     # golang/go#75804 hardening retries (up to +2m/target), so schedule gets
     # real headroom; PRs stay tight.
@@ -438,7 +444,7 @@ jobs:
       contents: read
     name: Fuzz nightly (${{ matrix.package }})
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 35
     needs: changes
     strategy:
@@ -488,7 +494,7 @@ jobs:
     permissions:
       contents: read
     name: Backend tests (${{ matrix.leg }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     # Each leg owns a whole runner. PRs/main merges stay tight (a hung job
     # must not eat a runner); nightly schedule runs for hours, where the
     # deep generative/property pass lives (RAPID_CHECKS below).
@@ -800,7 +806,7 @@ jobs:
     permissions:
       contents: read
     name: Backend (Go)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 45
     needs: [changes, backend-checks, backend-tests]
     # Always run so this required status check still reports when the two
@@ -1037,7 +1043,7 @@ jobs:
     permissions:
       contents: read
     name: Frontend (Vitest)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
     needs: changes
     # Scheduled runs must always run the full suite (there is no diff to gate
@@ -1127,7 +1133,7 @@ jobs:
     permissions:
       contents: read
     name: Frontend bundle-size budget
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'

@@ -27,6 +27,11 @@ on:
         required: false
         type: string
         default: ''
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -47,7 +52,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
       backend: ${{ steps.resolve.outputs.backend }}
       frontend: ${{ steps.resolve.outputs.frontend }}
@@ -99,7 +104,7 @@ jobs:
       actions: read
       packages: read
     name: Run E2E Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 25
     needs: changes
     # Pure backend/** changes are covered by unit-tests.yml's Go checks and
@@ -191,6 +196,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -200,13 +213,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
@@ -343,7 +356,7 @@ jobs:
       actions: read
       packages: read
     name: Run E2E Tests (production defaults)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
     needs: changes
     # Same path gating + nightly schedule-exemption as the main e2e job.
@@ -407,6 +420,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -416,13 +437,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
@@ -506,7 +527,7 @@ jobs:
     permissions:
       contents: read
     name: Run E2E Service-Worker Upgrade Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 40
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
@@ -529,6 +550,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -538,13 +567,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # Both engines: service-worker behaviour genuinely differs (the
@@ -595,7 +624,7 @@ jobs:
       contents: read
       packages: read
     name: Run E2E WebKit Smoke Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
@@ -658,6 +687,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -667,13 +704,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
@@ -740,7 +777,7 @@ jobs:
       contents: read
       packages: read
     name: Run E2E Firefox Smoke Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
@@ -803,6 +840,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -812,13 +857,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
@@ -876,7 +921,7 @@ jobs:
       contents: read
       packages: read
     name: Run E2E Firefox Full Suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 45
     needs: changes
     if: github.event_name == 'schedule'
@@ -939,6 +984,14 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS is not in the expressions `env` context.
+        id: image
+        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -948,13 +1001,13 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Install Playwright browsers
         # chromium too: the `setup` project (auth.setup.ts, which `firefox`
