@@ -67,6 +67,34 @@ func withValidated(factory func() any) gin.HandlerFunc {
 	}
 }
 
+// TestCreateActivity_AssociationFailureRollsBackActivity pins that the activity
+// row and its contact associations commit atomically: when linking the contacts
+// fails the request is a 500 DATABASE_ERROR and no contact-less activity is left
+// behind for a retry to duplicate.
+func TestCreateActivity_AssociationFailureRollsBackActivity(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs: Error creating relationship between activity and contacts")
+	db, router := setupRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	require.NoError(t, db.Create(&contact).Error)
+	dbtest.HideTable(t, db, "activity_contacts")
+
+	body, _ := json.Marshal(models.ActivityInput{Title: "Atomic", Date: time.Now(), ContactIDs: []uint{contact.ID}})
+	req, _ := http.NewRequest("POST", "/activities", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "DATABASE_ERROR")
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&models.Activity{}).Where("title = ?", "Atomic").Count(&n).Error)
+	assert.Zero(t, n, "the activity insert must roll back with the failed association")
+}
+
 func TestCreateActivity(t *testing.T) {
 	db, router := setupRouter(t)
 

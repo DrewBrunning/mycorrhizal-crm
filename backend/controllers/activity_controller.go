@@ -78,19 +78,30 @@ func CreateActivity(c *gin.Context) {
 		Type:        activityType,
 		ExternalRef: externalRef,
 	}
-	if err := db.Create(&activity).Error; err != nil {
-		logger.FromContext(c).Error().Err(err).Msg("Error saving activity to database")
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save activity").WithError(err))
-		return
-	}
-
-	// Update the activity's contacts association
-	if len(contacts) > 0 {
-		if err := db.Model(&activity).Association("Contacts").Append(contacts); err != nil {
-			logger.FromContext(c).Error().Err(err).Msg("Error creating relationship between activity and contacts")
-			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to associate contacts with activity").WithError(err))
-			return
+	// The activity row and its contact associations commit together: a failed
+	// association must not leave an orphan contact-less activity behind (a
+	// client retry after the 500 would then create a duplicate).
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&activity).Error; err != nil {
+			logger.FromContext(c).Error().Err(err).Msg("Error saving activity to database")
+			return apperrors.ErrDatabase("Failed to save activity").WithError(err)
 		}
+		if len(contacts) > 0 {
+			if err := tx.Model(&activity).Association("Contacts").Append(contacts); err != nil {
+				logger.FromContext(c).Error().Err(err).Msg("Error creating relationship between activity and contacts")
+				return apperrors.ErrDatabase("Failed to associate contacts with activity").WithError(err)
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		var appErr *apperrors.AppError
+		if errors.As(txErr, &appErr) {
+			apperrors.AbortWithError(c, appErr)
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save activity").WithError(txErr))
+		}
+		return
 	}
 
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "activity.created", activity)
