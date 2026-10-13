@@ -50,7 +50,12 @@ case "$args" in
   *"actions/workflows/"*"/runs?"*) resp="$(cat "$WORKFLOW_RUNS_JSON")" ;;
   *"actions/runs/${RUN_ID}"*) resp="$(cat "$RUN_JSON")" ;;
   *"commits/"*"/pulls"*) resp="$(cat "$PULLS_JSON")" ;;
-  *"search/issues"*) resp="$(cat "$SEARCH_JSON")" ;;
+  *"search/issues"*)
+    # The Search API's 30/min budget broke the alarm (alert-lib/issues.sh).
+    printf 'SEARCH: %s\n' "$args" >> "$GH_LOG"
+    resp='{"items":[]}'
+    ;;
+  *"/issues?labels=nightly-failure&"*) resp="$(cat "$ISSUES_JSON")" ;;
   *) resp='{}' ;;
 esac
 if [ -n "$jqfilter" ]; then
@@ -67,7 +72,7 @@ seed() {
   printf '{"workflow_runs":[{"run_number":10}]}\n' > "$work/workflow-runs.json"
   printf '{"jobs":[{"name":"backend-tests","conclusion":"failure"}]}\n' > "$work/jobs.json"
   printf '[{"number":1599}]\n' > "$work/pulls.json"
-  printf '{"items":[]}\n' > "$work/search.json"
+  printf '[]\n' > "$work/issues.json"
 }
 seed
 
@@ -85,7 +90,7 @@ scenario() {
     WORKFLOW_NAME="Unit Tests" RUN_ID="1000" RUN_URL="https://example.test/run/1000" \
     RUN_ATTEMPT="1" HEAD_SHA="deadbeef" HEAD_BRANCH="main" \
     RUN_JSON="$work/run.json" WORKFLOW_RUNS_JSON="$work/workflow-runs.json" \
-    JOBS_JSON="$work/jobs.json" PULLS_JSON="$work/pulls.json" SEARCH_JSON="$work/search.json" \
+    JOBS_JSON="$work/jobs.json" PULLS_JSON="$work/pulls.json" ISSUES_JSON="$work/issues.json" \
     "$@" bash "$SCRIPT" 2>&1)"
   rc=$?
 
@@ -96,6 +101,9 @@ scenario() {
   fi
   if [ "$ok" -eq 1 ] && [ -n "$absent" ] && grep -qF -- "$absent" <<<"$out"; then
     ok=0; reason="unexpected substring '$absent'"
+  fi
+  if [ "$ok" -eq 1 ] && grep -q '^SEARCH' "$work/gh.log"; then
+    ok=0; reason="called the Search API"
   fi
   local mutated=1
   grep -q '^MUTATE' "$work/gh.log" || mutated=0
@@ -169,10 +177,25 @@ scenario "failure live opens an issue" 0 \
 
 # --- success unchanged -----------------------------------------------------
 seed
-printf '{"items":[{"number":42}]}\n' > "$work/search.json"
+printf '[{"number":42,"title":"Main failure: Unit Tests"}]\n' > "$work/issues.json"
 scenario "success closes the open issue" 0 \
   "would comment on and close issue #42" "" nomutate -- \
   CONCLUSION=success DRY_RUN=1
+
+# --- issue lookup is an exact title match ----------------------------------
+# A sibling workflow's issue, the nightly alarm's issue for the same workflow,
+# and a pull request must never be mistaken for this workflow's main issue.
+seed
+printf '%s\n' '[{"number":7,"title":"Main failure: Unit Tests (extra)"},{"number":8,"title":"Nightly failure: Unit Tests"},{"number":9,"title":"Main failure: Unit Tests","pull_request":{}}]' > "$work/issues.json"
+scenario "success ignores near-miss titles and PRs" 0 \
+  "nothing to close" "#7" nomutate -- \
+  CONCLUSION=success DRY_RUN=1
+
+seed
+printf '%s\n' '[{"number":51,"title":"Main failure: Unit Tests"},{"number":50,"title":"Main failure: Unit Tests"}]' > "$work/issues.json"
+scenario "failure comments on the newest exact-title issue" 0 \
+  "would comment on issue #51" "" nomutate -- \
+  CONCLUSION=failure DRY_RUN=1
 
 seed
 scenario "success with no open issue does nothing" 0 \
