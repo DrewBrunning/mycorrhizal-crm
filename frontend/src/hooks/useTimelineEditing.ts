@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { type Activity, deleteActivity, updateActivity } from '../api/activities';
+import { isPreconditionFailed } from '../api/client';
 import { getAllContacts } from '../api/contacts';
 import { deleteNote, type Note, updateNote } from '../api/notes';
 import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
@@ -8,10 +9,15 @@ export function useTimelineEditing(
   contactId: number | undefined,
   onRefresh: () => Promise<void>,
   notifier?: ErrorNotifier,
+  // Called instead of the generic error notice when a save/delete is rejected
+  // with 412 (the item changed elsewhere; ADR 0008).
+  onConflict?: () => void,
 ) {
   const [editingTimelineItem, setEditingTimelineItem] = useState<{
     type: 'note' | 'activity';
     id: number;
+    // The item's revision when the edit began; sent as If-Match.
+    revision?: number;
   } | null>(null);
   const [editTimelineValues, setEditTimelineValues] = useState<{
     noteContent?: string;
@@ -27,7 +33,7 @@ export function useTimelineEditing(
   >([]);
 
   const handleStartEditTimelineItem = async (type: 'note' | 'activity', item: Note | Activity) => {
-    setEditingTimelineItem({ type, id: item.ID });
+    setEditingTimelineItem({ type, id: item.ID, revision: item.revision });
 
     if (type === 'note') {
       const note = item as Note;
@@ -67,16 +73,21 @@ export function useTimelineEditing(
     if (!editTimelineValues.noteContent?.trim()) return;
 
     try {
-      await updateNote(noteId, {
-        content: editTimelineValues.noteContent,
-        date: editTimelineValues.noteDate
-          ? new Date(editTimelineValues.noteDate).toISOString()
-          : new Date().toISOString(),
-        contact_id: contactId,
-      });
+      await updateNote(
+        noteId,
+        {
+          content: editTimelineValues.noteContent,
+          date: editTimelineValues.noteDate
+            ? new Date(editTimelineValues.noteDate).toISOString()
+            : new Date().toISOString(),
+          contact_id: contactId,
+        },
+        editingTimelineItem?.revision,
+      );
       await onRefresh();
       handleCancelEditTimelineItem();
     } catch (err) {
+      if (onConflict && isPreconditionFailed(err)) return onConflict();
       handleError(err, { operation: 'updating note' }, notifier);
     }
   };
@@ -85,38 +96,45 @@ export function useTimelineEditing(
     if (!editTimelineValues.activityTitle?.trim()) return;
 
     try {
-      await updateActivity(activityId, {
-        title: editTimelineValues.activityTitle,
-        description: editTimelineValues.activityDescription || '',
-        location: editTimelineValues.activityLocation || '',
-        date: editTimelineValues.activityDate
-          ? new Date(editTimelineValues.activityDate).toISOString()
-          : new Date().toISOString(),
-        contact_ids: editTimelineValues.activityContacts?.map((c) => c.ID) || [],
-      });
+      await updateActivity(
+        activityId,
+        {
+          title: editTimelineValues.activityTitle,
+          description: editTimelineValues.activityDescription || '',
+          location: editTimelineValues.activityLocation || '',
+          date: editTimelineValues.activityDate
+            ? new Date(editTimelineValues.activityDate).toISOString()
+            : new Date().toISOString(),
+          contact_ids: editTimelineValues.activityContacts?.map((c) => c.ID) || [],
+        },
+        editingTimelineItem?.revision,
+      );
       await onRefresh();
       handleCancelEditTimelineItem();
     } catch (err) {
+      if (onConflict && isPreconditionFailed(err)) return onConflict();
       handleError(err, { operation: 'updating activity' }, notifier);
     }
   };
 
   const handleDeleteNote = async (noteId: number) => {
     try {
-      await deleteNote(noteId);
+      await deleteNote(noteId, editingTimelineItem?.revision);
       await onRefresh();
       handleCancelEditTimelineItem();
     } catch (err) {
+      if (onConflict && isPreconditionFailed(err)) return onConflict();
       handleError(err, { operation: 'deleting note' }, notifier);
     }
   };
 
   const handleDeleteActivity = async (activityId: number) => {
     try {
-      await deleteActivity(activityId);
+      await deleteActivity(activityId, editingTimelineItem?.revision);
       await onRefresh();
       handleCancelEditTimelineItem();
     } catch (err) {
+      if (onConflict && isPreconditionFailed(err)) return onConflict();
       handleError(err, { operation: 'deleting activity' }, notifier);
     }
   };

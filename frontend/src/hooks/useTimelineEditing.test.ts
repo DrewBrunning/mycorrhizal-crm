@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type Activity, deleteActivity, updateActivity } from '../api/activities';
+import { ApiError } from '../api/client';
 import { getAllContacts } from '../api/contacts';
 import { deleteNote, type Note, updateNote } from '../api/notes';
 import { useTimelineEditing } from './useTimelineEditing';
@@ -37,6 +38,7 @@ beforeEach(() => {
 
 const note: Note = {
   ID: 1,
+  revision: 4,
   content: 'hello',
   date: '2026-08-12T10:00:00Z',
   CreatedAt: '2026-08-12T10:00:00Z',
@@ -47,6 +49,7 @@ const contact = { ID: 5, firstname: 'Alice', lastname: 'A' };
 
 const activity: Activity = {
   ID: 2,
+  revision: 6,
   title: 'coffee',
   description: 'debrief',
   location: 'cafe',
@@ -63,7 +66,7 @@ test('starts editing a note with its content and date', async () => {
     await result.current.handleStartEditTimelineItem('note', note);
   });
 
-  expect(result.current.editingTimelineItem).toEqual({ type: 'note', id: 1 });
+  expect(result.current.editingTimelineItem).toEqual({ type: 'note', id: 1, revision: 4 });
   expect(result.current.editTimelineValues).toEqual({
     noteContent: 'hello',
     noteDate: '2026-08-12',
@@ -81,7 +84,7 @@ test('starts editing an activity and fetches contacts for the autocomplete', asy
 
   expect(getAllContacts).toHaveBeenCalledWith({ limit: 1000 });
   expect(result.current.allContacts).toEqual([contact]);
-  expect(result.current.editingTimelineItem).toEqual({ type: 'activity', id: 2 });
+  expect(result.current.editingTimelineItem).toEqual({ type: 'activity', id: 2, revision: 6 });
   expect(result.current.editTimelineValues).toEqual({
     activityTitle: 'coffee',
     activityDescription: 'debrief',
@@ -130,11 +133,15 @@ test('handleUpdateNote saves, refreshes and resets', async () => {
     await result.current.handleUpdateNote(1);
   });
 
-  expect(updateNote).toHaveBeenCalledWith(1, {
-    content: 'hello',
-    date: new Date('2026-08-12').toISOString(),
-    contact_id: 42,
-  });
+  expect(updateNote).toHaveBeenCalledWith(
+    1,
+    {
+      content: 'hello',
+      date: new Date('2026-08-12').toISOString(),
+      contact_id: 42,
+    },
+    4,
+  );
   expect(onRefresh).toHaveBeenCalledTimes(1);
   expect(result.current.editingTimelineItem).toBeNull();
   expect(result.current.editTimelineValues).toEqual({});
@@ -164,13 +171,17 @@ test('handleUpdateActivity saves, refreshes and resets', async () => {
     await result.current.handleUpdateActivity(2);
   });
 
-  expect(updateActivity).toHaveBeenCalledWith(2, {
-    title: 'coffee',
-    description: 'debrief',
-    location: 'cafe',
-    date: new Date('2026-08-12').toISOString(),
-    contact_ids: [5],
-  });
+  expect(updateActivity).toHaveBeenCalledWith(
+    2,
+    {
+      title: 'coffee',
+      description: 'debrief',
+      location: 'cafe',
+      date: new Date('2026-08-12').toISOString(),
+      contact_ids: [5],
+    },
+    6,
+  );
   expect(onRefresh).toHaveBeenCalledTimes(1);
   expect(result.current.editingTimelineItem).toBeNull();
   expect(result.current.editTimelineValues).toEqual({});
@@ -200,7 +211,7 @@ test('handleDeleteNote deletes, refreshes and resets', async () => {
     await result.current.handleDeleteNote(1);
   });
 
-  expect(deleteNote).toHaveBeenCalledWith(1);
+  expect(deleteNote).toHaveBeenCalledWith(1, 4);
   expect(onRefresh).toHaveBeenCalledTimes(1);
   expect(result.current.editingTimelineItem).toBeNull();
 });
@@ -217,7 +228,7 @@ test('handleDeleteActivity deletes, refreshes and resets', async () => {
     await result.current.handleDeleteActivity(2);
   });
 
-  expect(deleteActivity).toHaveBeenCalledWith(2);
+  expect(deleteActivity).toHaveBeenCalledWith(2, 6);
   expect(onRefresh).toHaveBeenCalledTimes(1);
   expect(result.current.editingTimelineItem).toBeNull();
 });
@@ -237,7 +248,7 @@ test('update errors notify through the notifier but keep the editor open', async
 
   expect(showError).toHaveBeenCalledWith('boom');
   expect(onRefresh).not.toHaveBeenCalled();
-  expect(result.current.editingTimelineItem).toEqual({ type: 'note', id: 1 });
+  expect(result.current.editingTimelineItem).toEqual({ type: 'note', id: 1, revision: 4 });
 });
 
 test('contact autocomplete fetch failures are swallowed', async () => {
@@ -250,4 +261,163 @@ test('contact autocomplete fetch failures are swallowed', async () => {
 
   expect(result.current.allContacts).toEqual([]);
   expect(result.current.editTimelineValues.activityTitle).toBe('coffee');
+});
+
+// ADR 0008: a 412 on a timeline write calls onConflict instead of the generic
+// notifier, and leaves the edit open ("keep editing").
+const stale = () => new ApiError('stale', 'PRECONDITION_FAILED', 412);
+
+test.each([
+  ['note update', 'note', note, () => vi.mocked(updateNote), 'handleUpdateNote', 1],
+  [
+    'activity update',
+    'activity',
+    activity,
+    () => vi.mocked(updateActivity),
+    'handleUpdateActivity',
+    2,
+  ],
+  ['note delete', 'note', note, () => vi.mocked(deleteNote), 'handleDeleteNote', 1],
+  [
+    'activity delete',
+    'activity',
+    activity,
+    () => vi.mocked(deleteActivity),
+    'handleDeleteActivity',
+    2,
+  ],
+] as const)(
+  '%s answered 412 calls onConflict and keeps the editor open',
+  async (_n, type, item, api, handler, id) => {
+    api().mockRejectedValue(stale());
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const onConflict = vi.fn();
+    const showError = vi.fn();
+    const { result } = renderHook(() =>
+      useTimelineEditing(42, onRefresh, { showError }, onConflict),
+    );
+
+    await act(async () => {
+      await result.current.handleStartEditTimelineItem(type, item);
+    });
+    await act(async () => {
+      await result.current[handler](id);
+    });
+
+    expect(onConflict).toHaveBeenCalledTimes(1);
+    expect(showError).not.toHaveBeenCalled();
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(result.current.editingTimelineItem).not.toBeNull();
+  },
+);
+
+const failing = [
+  ['note update', 'note', note, () => vi.mocked(updateNote), 'handleUpdateNote', 1],
+  [
+    'activity update',
+    'activity',
+    activity,
+    () => vi.mocked(updateActivity),
+    'handleUpdateActivity',
+    2,
+  ],
+  ['note delete', 'note', note, () => vi.mocked(deleteNote), 'handleDeleteNote', 1],
+  [
+    'activity delete',
+    'activity',
+    activity,
+    () => vi.mocked(deleteActivity),
+    'handleDeleteActivity',
+    2,
+  ],
+] as const;
+
+test.each(failing)(
+  '%s answered with a non-412 error goes to the notifier, not onConflict',
+  async (_n, type, item, api, handler, id) => {
+    api().mockRejectedValue(new ApiError('boom', 'INTERNAL', 500));
+    const onConflict = vi.fn();
+    const showError = vi.fn();
+    const { result } = renderHook(() =>
+      useTimelineEditing(42, vi.fn().mockResolvedValue(undefined), { showError }, onConflict),
+    );
+
+    await act(async () => {
+      await result.current.handleStartEditTimelineItem(type, item);
+    });
+    await act(async () => {
+      await result.current[handler](id);
+    });
+
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(failing)(
+  '%s answered 412 with no onConflict handler falls back to the notifier',
+  async (_n, type, item, api, handler, id) => {
+    api().mockRejectedValue(stale());
+    const showError = vi.fn();
+    const { result } = renderHook(() =>
+      useTimelineEditing(42, vi.fn().mockResolvedValue(undefined), { showError }),
+    );
+
+    await act(async () => {
+      await result.current.handleStartEditTimelineItem(type, item);
+    });
+    await act(async () => {
+      await result.current[handler](id);
+    });
+
+    expect(showError).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('saving blank fields falls back to empty strings, no contacts and a current date', async () => {
+  vi.mocked(getAllContacts).mockResolvedValue([]);
+  vi.mocked(updateNote).mockResolvedValue(note);
+  vi.mocked(updateActivity).mockResolvedValue(activity);
+  const { result } = renderHook(() => useTimelineEditing(42, vi.fn().mockResolvedValue(undefined)));
+
+  await act(async () => {
+    await result.current.handleStartEditTimelineItem('note', {
+      ...note,
+      date: '',
+    });
+  });
+  await act(async () => {
+    await result.current.handleUpdateNote(1);
+  });
+  expect(updateNote).toHaveBeenCalledWith(
+    1,
+    { content: 'hello', date: expect.any(String), contact_id: 42 },
+    4,
+  );
+
+  await act(async () => {
+    await result.current.handleStartEditTimelineItem('activity', {
+      ...activity,
+      description: '',
+      location: '',
+      date: '',
+    });
+  });
+  act(() => {
+    result.current.setEditTimelineValues({ activityTitle: 'coffee' });
+  });
+  await act(async () => {
+    await result.current.handleUpdateActivity(2);
+  });
+  expect(updateActivity).toHaveBeenCalledWith(
+    2,
+    {
+      title: 'coffee',
+      description: '',
+      location: '',
+      date: expect.any(String),
+      contact_ids: [],
+    },
+    6,
+  );
 });

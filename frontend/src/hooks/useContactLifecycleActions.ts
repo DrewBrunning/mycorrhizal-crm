@@ -1,12 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { ApiError } from '../api/client';
+import { ApiError, isPreconditionFailed } from '../api/client';
 import {
   archiveContact,
   type ContactRecordResponse,
   deleteContact,
   favoriteContact,
+  getContactRecord,
   unarchiveContact,
   unfavoriteContact,
 } from '../api/contacts';
@@ -23,6 +24,9 @@ export interface ContactLifecycleOptions {
   setSelfContactUid: (uid: string | null) => void;
   showError: (message: string) => void;
   showSuccess: (message: string) => void;
+  // Called when the delete is rejected with 412 (the contact changed
+  // elsewhere since it was loaded; ADR 0008).
+  onConflict?: () => void;
 }
 
 // The header's whole-contact actions: delete, archive/unarchive, favorite,
@@ -36,6 +40,7 @@ export function useContactLifecycleActions({
   setSelfContactUid,
   showError,
   showSuccess,
+  onConflict,
 }: ContactLifecycleOptions) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -49,16 +54,34 @@ export function useContactLifecycleActions({
     }
   };
 
+  // ADR 0008: favorite/archive PATCHes persist the contact, which bumps its
+  // revision, but their flat response carries none. Re-read it so the next
+  // save/delete sends the current If-Match instead of 412ing against our own
+  // toggle. Best-effort: on failure the held revision just stays as it was.
+  const syncRevision = async () => {
+    if (!id) return;
+    try {
+      const fresh = await getContactRecord(id);
+      setRecord((prev) => (prev ? { ...prev, revision: fresh.revision } : prev));
+    } catch (err) {
+      console.error('Error refreshing contact revision:', err);
+    }
+  };
+
   const handleDeleteContact = async () => {
     if (!record || !id) return;
     if (!window.confirm(t('contactDetail.confirmDeleteContact', { name: displayName }))) {
       return;
     }
     try {
-      await deleteContact(id);
+      await deleteContact(id, record.revision);
       await navigate('/contacts');
     } catch (err) {
       console.error('Error deleting contact:', err);
+      if (onConflict && isPreconditionFailed(err)) {
+        onConflict();
+        return;
+      }
       alert(t('contactDetail.deleteContactError'));
     }
   };
@@ -73,6 +96,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = await archiveContact(id);
       setRecord({ ...record, archived: updatedContact.archived });
+      await syncRevision();
     } catch (err) {
       reportError('Error archiving contact:', err);
     }
@@ -83,6 +107,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = await unarchiveContact(id);
       setRecord({ ...record, archived: updatedContact.archived });
+      await syncRevision();
     } catch (err) {
       reportError('Error unarchiving contact:', err);
     }
@@ -98,6 +123,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
       setRecord((prev) => (prev ? { ...prev, is_favorite: updatedContact.is_favorite } : prev));
+      await syncRevision();
     } catch (err) {
       setRecord((prev) => (prev ? { ...prev, is_favorite: wasFavorite } : prev));
       reportError('Error toggling favorite:', err);

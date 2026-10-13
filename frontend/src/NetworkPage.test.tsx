@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import type { Activity } from './api/activities';
+import { ApiError } from './api/client';
 import type { GraphData, GraphNode } from './types/graph';
 
 // NetworkGraph renders to a canvas via react-force-graph-2d, which is out of
@@ -68,6 +69,7 @@ vi.mock('./hooks/useCircles', () => ({
 
 const mockActivity: Activity = {
   ID: 7,
+  revision: 4,
   title: 'Coffee Chat',
   description: 'Catch up',
   location: 'Cafe',
@@ -177,6 +179,7 @@ test('handleActivitySave submits the edited fields and closes the dialog', async
         location: 'Cafe',
         contact_ids: [],
       }),
+      4,
     );
   });
 
@@ -221,6 +224,122 @@ test('handleActivitySave logs on a failed update and leaves the dialog open', as
   consoleError.mockRestore();
 });
 
+test('a 412 on activity save opens the conflict dialog; Load latest closes the edit', async () => {
+  updateActivity.mockRejectedValueOnce(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  const reload = await screen.findByRole('button', { name: 'Load latest version' });
+
+  // Keep editing: dialog closes, the edit stays open.
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: 'Load latest version' })).toBeNull();
+  });
+  expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+
+  // Retry -> conflict again -> Load latest discards the edit.
+  updateActivity.mockRejectedValueOnce(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Load latest version' }));
+  await waitFor(() => {
+    expect(screen.queryByDisplayValue('Coffee Chat')).toBeNull();
+  });
+  expect(reload).toBeDefined();
+});
+
+test('a 412 on activity delete opens the conflict dialog and keeps the edit open', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  deleteActivity.mockRejectedValueOnce(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  await screen.findByRole('button', { name: 'Load latest version' });
+  expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+});
+
+test('saving an activity keeps its attendees as contact_ids', async () => {
+  getActivity.mockResolvedValue({
+    ...mockActivity,
+    contacts: [{ ID: 3, firstname: 'Bo', lastname: 'Li' }],
+  });
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(updateActivity).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ contact_ids: [3] }),
+      4,
+    );
+  });
+});
+
+test('a non-412 failure on activity delete logs and leaves the dialog open', async () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  deleteActivity.mockRejectedValueOnce(new Error('server down'));
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  await waitFor(() => {
+    expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.any(Error));
+  });
+  expect(screen.queryByRole('button', { name: 'Load latest version' })).toBeNull();
+  expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  consoleError.mockRestore();
+});
+
+test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {
+  getActivity.mockResolvedValue({
+    ...mockActivity,
+    description: '',
+    location: '',
+    date: '',
+    contacts: undefined,
+  });
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(updateActivity).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        description: '',
+        location: '',
+        date: expect.any(String),
+        contact_ids: [],
+      }),
+      4,
+    );
+  });
+});
+
 test('deleting the activity confirms, calls deleteActivity, and closes the dialog', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   await renderPage();
@@ -233,7 +352,7 @@ test('deleting the activity confirms, calls deleteActivity, and closes the dialo
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
   await waitFor(() => {
-    expect(deleteActivity).toHaveBeenCalledWith(7);
+    expect(deleteActivity).toHaveBeenCalledWith(7, 4);
   });
   await waitFor(() => {
     expect(screen.queryByDisplayValue('Coffee Chat')).toBeNull();

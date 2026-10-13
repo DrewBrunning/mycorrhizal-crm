@@ -32,6 +32,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
+import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
 
 const NotesPage: React.FC = () => {
@@ -123,21 +124,33 @@ const NotesPage: React.FC = () => {
     });
   };
 
+  // ADR 0008: a 412 means the note changed elsewhere since the edit began.
+  const { handleConflict, conflictDialog } = useRecordConflict(() => {
+    setEditingNote(null);
+    setEditValues({});
+    void refetch();
+  });
+
   const handleSaveEdit = async () => {
     if (!editingNote || !editValues.noteContent?.trim()) return;
 
     try {
-      await updateNote(editingNote.ID, {
-        content: editValues.noteContent,
-        date: editValues.noteDate
-          ? new Date(editValues.noteDate).toISOString()
-          : new Date().toISOString(),
-        contact_id: editValues.noteContactId ?? null,
-      });
+      await updateNote(
+        editingNote.ID,
+        {
+          content: editValues.noteContent,
+          date: editValues.noteDate
+            ? new Date(editValues.noteDate).toISOString()
+            : new Date().toISOString(),
+          contact_id: editValues.noteContactId ?? null,
+        },
+        editingNote.revision,
+      );
       setEditingNote(null);
       setEditValues({});
       void refetch();
     } catch (err) {
+      if (handleConflict(err)) return;
       handleError(err, { operation: 'updating note' });
     }
   };
@@ -151,11 +164,12 @@ const NotesPage: React.FC = () => {
     if (!editingNote) return;
 
     try {
-      await deleteNote(editingNote.ID);
+      await deleteNote(editingNote.ID, editingNote.revision);
       setEditingNote(null);
       setEditValues({});
       void refetch();
     } catch (err) {
+      if (handleConflict(err)) return;
       handleError(err, { operation: 'deleting note' });
     }
   };
@@ -173,6 +187,7 @@ const NotesPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
+      {conflictDialog}
       <Box
         sx={{
           display: 'flex',

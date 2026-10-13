@@ -36,6 +36,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useRecordConflict } from './hooks/useRecordConflict';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -142,23 +143,35 @@ const ActivitiesPage: React.FC = () => {
     });
   };
 
+  // ADR 0008: a 412 means the activity changed elsewhere since the edit began.
+  const { handleConflict, conflictDialog } = useRecordConflict(() => {
+    setEditingActivity(null);
+    setEditValues({});
+    void refetch();
+  });
+
   const handleSaveEdit = async () => {
     if (!editingActivity || !editValues.activityTitle?.trim()) return;
 
     try {
-      await updateActivity(editingActivity.ID, {
-        title: editValues.activityTitle,
-        description: editValues.activityDescription || '',
-        location: editValues.activityLocation || '',
-        date: editValues.activityDate
-          ? new Date(editValues.activityDate).toISOString()
-          : new Date().toISOString(),
-        contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
-      });
+      await updateActivity(
+        editingActivity.ID,
+        {
+          title: editValues.activityTitle,
+          description: editValues.activityDescription || '',
+          location: editValues.activityLocation || '',
+          date: editValues.activityDate
+            ? new Date(editValues.activityDate).toISOString()
+            : new Date().toISOString(),
+          contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
+        },
+        editingActivity.revision,
+      );
       setEditingActivity(null);
       setEditValues({});
       void refetch();
     } catch (err) {
+      if (handleConflict(err)) return;
       console.error('Failed to update activity:', err);
     }
   };
@@ -172,11 +185,12 @@ const ActivitiesPage: React.FC = () => {
     if (!editingActivity) return;
 
     try {
-      await deleteActivity(editingActivity.ID);
+      await deleteActivity(editingActivity.ID, editingActivity.revision);
       setEditingActivity(null);
       setEditValues({});
       void refetch();
     } catch (err) {
+      if (handleConflict(err)) return;
       console.error('Failed to delete activity:', err);
     }
   };
@@ -194,6 +208,7 @@ const ActivitiesPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
+      {conflictDialog}
       <Box
         sx={{
           display: 'flex',

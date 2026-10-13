@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import {
   completeReminder,
   createReminder,
@@ -41,6 +42,7 @@ beforeEach(() => {
 function reminder(id: number, message: string): Reminder {
   return {
     ID: id,
+    revision: 5,
     message,
     by_mail: false,
     remind_at: '2026-08-20T09:00:00Z',
@@ -128,7 +130,7 @@ test('handleSaveReminder updates when editing an existing reminder', async () =>
     await result.current.handleSaveReminder(formData({ message: 'edited' }));
   });
 
-  expect(updateReminder).toHaveBeenCalledWith(1, formData({ message: 'edited' }));
+  expect(updateReminder).toHaveBeenCalledWith(1, formData({ message: 'edited' }), 5);
   expect(createReminder).not.toHaveBeenCalled();
   expect(result.current.reminders.map((r) => r.ID)).toEqual([1]);
   expect(result.current.editingReminder).toBeNull();
@@ -201,8 +203,60 @@ test('handleDeleteReminder deletes and refreshes', async () => {
     await result.current.handleDeleteReminder(1);
   });
 
-  expect(deleteReminder).toHaveBeenCalledWith(1);
+  expect(deleteReminder).toHaveBeenCalledWith(1, undefined);
   expect(result.current.reminders.map((r) => r.ID)).toEqual([2]);
+});
+
+test('handleDeleteReminder sends the listed reminder revision as If-Match', async () => {
+  vi.mocked(deleteReminder).mockResolvedValue(undefined);
+  vi.mocked(getRemindersForContact).mockResolvedValue([reminder(1, 'call Ada')]);
+
+  const { result } = renderHook(() => useReminderManagement('7'));
+  await act(async () => {
+    await result.current.refreshReminders();
+  });
+  await act(async () => {
+    await result.current.handleDeleteReminder(1);
+  });
+
+  expect(deleteReminder).toHaveBeenCalledWith(1, 5);
+});
+
+// ADR 0008: a 412 calls onConflict instead of the generic notice.
+test('handleSaveReminder answered 412 calls onConflict, rethrows and keeps the dialog open', async () => {
+  const stale = new ApiError('stale', 'PRECONDITION_FAILED', 412);
+  vi.mocked(updateReminder).mockRejectedValue(stale);
+  const onConflict = vi.fn();
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useReminderManagement('7', { showError }, onConflict));
+  act(() => {
+    result.current.handleEditReminder(reminder(1, 'old'));
+  });
+
+  await expect(
+    act(async () => {
+      await result.current.handleSaveReminder(formData({ message: 'edited' }));
+    }),
+  ).rejects.toBe(stale);
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(showError).not.toHaveBeenCalled();
+  expect(result.current.reminderDialogOpen).toBe(true);
+});
+
+test('handleDeleteReminder answered 412 calls onConflict and does not refresh or throw', async () => {
+  vi.mocked(deleteReminder).mockRejectedValue(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+  const onConflict = vi.fn();
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useReminderManagement('7', { showError }, onConflict));
+  await act(async () => {
+    await result.current.handleDeleteReminder(1);
+  });
+
+  expect(onConflict).toHaveBeenCalledTimes(1);
+  expect(showError).not.toHaveBeenCalled();
+  expect(getRemindersForContact).not.toHaveBeenCalled();
 });
 
 test('handleDeleteReminder rethrows on failure', async () => {

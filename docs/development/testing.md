@@ -454,8 +454,9 @@ nothing -- the spec memoises its matchers), and the re-auth dialog and the
 dialog behind it can both contain the text "Session expired" -- locate the
 re-auth prompt by role + accessible name. The real backend reports validation
 failures as `400 VALIDATION_ERROR`, not 422. `412 Precondition Failed` is
-deliberately not covered: the web client never sends `If-Match` (ADR 0008), so
-that is a missing feature, not a missing test.
+covered by the two-tab specs `ifMatchConflict.spec.ts` (contact edit) and
+`ifMatchEntityConflict.spec.ts` (notes, reminders, and favorite-then-edit): the web
+client sends `If-Match` (ADR 0008) and shows the conflict dialog.
 
 ### Visual regression (issue #258)
 

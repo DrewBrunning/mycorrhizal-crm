@@ -9,6 +9,7 @@ import {
   type ContactRecordResponse,
   deleteContact,
   favoriteContact,
+  getContactRecord,
   unarchiveContact,
   unfavoriteContact,
 } from '../api/contacts';
@@ -24,6 +25,7 @@ vi.mock('../api/contacts', async (importOriginal) => {
     unarchiveContact: vi.fn(),
     deleteContact: vi.fn(),
     favoriteContact: vi.fn(),
+    getContactRecord: vi.fn(),
     unfavoriteContact: vi.fn(),
   };
 });
@@ -70,6 +72,8 @@ beforeEach(() => {
   setSelfContactUid = vi.fn();
   showError = vi.fn();
   showSuccess = vi.fn();
+  // The server's revision after the action's own write bumped it.
+  vi.mocked(getContactRecord).mockResolvedValue({ ...record, revision: record.revision + 1 });
 });
 
 afterEach(() => {
@@ -79,7 +83,12 @@ afterEach(() => {
 });
 
 function setup(
-  opts: { r?: ContactRecordResponse | null; id?: string; selfContactUid?: string | null } = {},
+  opts: {
+    r?: ContactRecordResponse | null;
+    id?: string;
+    selfContactUid?: string | null;
+    onConflict?: () => void;
+  } = {},
 ) {
   const r = opts.r === undefined ? record : opts.r;
   const id = 'id' in opts ? opts.id : '1';
@@ -94,6 +103,7 @@ function setup(
         setSelfContactUid,
         showError,
         showSuccess,
+        onConflict: opts.onConflict,
       }),
     { wrapper },
   );
@@ -129,8 +139,18 @@ describe('delete', () => {
     const { result } = setup();
     await act(() => result.current.handleDeleteContact());
     expect(confirmSpy.mock.calls[0][0]).toContain('Alice Wonder');
-    expect(deleteContact).toHaveBeenCalledWith('1');
+    expect(deleteContact).toHaveBeenCalledWith('1', record.revision);
     expect(location).toBe('/contacts');
+  });
+
+  test('a 412 (stale revision) calls onConflict instead of alerting and stays', async () => {
+    vi.mocked(deleteContact).mockRejectedValue(new ApiError('stale', 'PRECONDITION_FAILED', 412));
+    const onConflict = vi.fn();
+    const { result } = setup({ onConflict });
+    await act(() => result.current.handleDeleteContact());
+    expect(onConflict).toHaveBeenCalledTimes(1);
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(location).toBe('/contacts/1');
   });
 
   test('declining makes no request', async () => {
@@ -199,6 +219,48 @@ describe('archive / unarchive', () => {
     expect(unarchiveContact).not.toHaveBeenCalled();
     expect(favoriteContact).not.toHaveBeenCalled();
     expect(deleteContact).not.toHaveBeenCalled();
+  });
+});
+
+// ADR 0008: favorite/archive persist the contact and bump its revision, but
+// their flat response has none -- the held revision must be re-read or the
+// next save/delete would 412 against our own toggle.
+describe('revision stays current after whole-contact actions', () => {
+  const bumped = record.revision + 1;
+
+  test('favorite re-reads the revision', async () => {
+    vi.mocked(favoriteContact).mockResolvedValue({ is_favorite: true } as never);
+    const { result } = setup();
+    await act(() => result.current.handleToggleFavorite());
+    expect(getContactRecord).toHaveBeenCalledWith('1');
+    expect(applyUpdates(record).revision).toBe(bumped);
+  });
+
+  test('unfavorite re-reads the revision', async () => {
+    vi.mocked(unfavoriteContact).mockResolvedValue({ is_favorite: false } as never);
+    const { result } = setup({ r: { ...record, is_favorite: true } });
+    await act(() => result.current.handleToggleFavorite());
+    expect(applyUpdates({ ...record, is_favorite: true }).revision).toBe(bumped);
+  });
+
+  test('archive and unarchive re-read the revision', async () => {
+    vi.mocked(archiveContact).mockResolvedValue({ archived: true } as never);
+    vi.mocked(unarchiveContact).mockResolvedValue({ archived: false } as never);
+    const { result } = setup();
+    await act(() => result.current.handleArchiveContact());
+    expect(applyUpdates(record).revision).toBe(bumped);
+    setRecord.mockClear();
+    await act(() => result.current.handleUnarchiveContact());
+    expect(applyUpdates(record).revision).toBe(bumped);
+  });
+
+  test('a failed re-read leaves the held revision alone', async () => {
+    vi.mocked(favoriteContact).mockResolvedValue({ is_favorite: true } as never);
+    vi.mocked(getContactRecord).mockRejectedValue(new Error('offline'));
+    const { result } = setup();
+    await act(() => result.current.handleToggleFavorite());
+    expect(applyUpdates(record).revision).toBe(record.revision);
+    expect(showError).not.toHaveBeenCalled();
   });
 });
 
