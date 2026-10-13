@@ -90,6 +90,35 @@ cover every workflow that carries a mandatory per-pr gate — `go run ./cmd/main
 the build, in the same `docs-citations` job and pre-commit block as `nightlyalertcheck`, when one
 is missing.
 
+### Merge-bypass alert (issue #1661)
+
+`main-failure-alert.yml` watches `main` *after* the merge; it does not say that a **required check
+was not green when the PR merged** — PR #1642 landed with `Backend (Go)` red and the drift went
+unnoticed for days. `.github/workflows/bypassed-check-alert.yml` closes that: on every `push` to
+`main` it resolves the merged PR (`commits/{sha}/pulls`; a direct push with no PR is skipped),
+runs `go run ./cmd/bypassedcheck` against the **PR head SHA**, and — if any context in
+`.github/rulesets/main-protection.json` `required_status_checks` was not green — opens (or comments
+on) a `ci`+`p1` issue `Merged with non-green required checks: PR #N` naming the PR, the merger and
+each context.
+
+- **Advisory, not a gate.** It cannot block a merge that already happened, so it is deliberately
+  *not* in `.github/release-gates.json` or the ruleset, and `governancecheck`, `mainalertcheck`
+  and `nightlyalertcheck` do not apply (it has no `schedule:` trigger and carries no per-pr gate).
+- **Why `push`, not `pull_request_target`.** The push event runs the workflow from `main` with no
+  PR-controlled context, so there is no privileged-trigger surface for zizmor to flag and PR code
+  can never reach the job (token permissions: `contents/checks/statuses/pull-requests: read`,
+  `issues: write`).
+- **What "green" means** (`backend/internal/bypassedcheck`, table-tested): mirrors GitHub's
+  required-check semantics — a check run passes on `success`, `neutral` or `skipped` (a
+  path-filtered skip is not a bypass); a commit status (e.g. `codecov/patch/*`) passes on `success`.
+  Check runs and statuses of one context are pooled and the **latest wins**, so a green re-run
+  supersedes an earlier red. Every other result is reported as `failed` (including `cancelled`,
+  which is what the branch reaper produces for jobs still running at merge); a run still
+  queued/in progress or a `pending` status is `incomplete` (merged before the check finished); no
+  result at all is `missing`.
+- **Manual test:** dispatch the workflow with a merged `pr_number`; `dry_run` (default true) logs
+  the issue body without writing it.
+
 ## Code ownership
 
 [`.github/CODEOWNERS`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/CODEOWNERS)

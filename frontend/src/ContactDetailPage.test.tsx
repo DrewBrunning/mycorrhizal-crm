@@ -212,6 +212,7 @@ interface Call {
   url: string;
   method: string;
   body?: unknown;
+  headers?: Record<string, string>;
 }
 
 type Endpoint =
@@ -274,6 +275,7 @@ function mockFetch({
   dataDecayPolicies = [],
   immichConfigured = false,
   extraPreferences = [],
+  staleWrite,
 }: {
   record?: ContactRecordResponse;
   failGet?: Endpoint[];
@@ -293,9 +295,13 @@ function mockFetch({
   dataDecayPolicies?: DataDecayPolicy[];
   immichConfigured?: boolean;
   extraPreferences?: Preference[];
+  // The first PUT /contacts/1 answers 412 (ADR 0008) and the record is
+  // swapped for this newer server version, as if another tab saved first.
+  staleWrite?: ContactRecordResponse;
 } = {}) {
   const calls: Call[] = [];
   let current = record;
+  let stale = staleWrite;
   const obligations = [...occasionObligations];
 
   const get = (endpoint: Endpoint, body: () => unknown) =>
@@ -308,7 +314,7 @@ function mockFetch({
       const method = (options?.method || 'GET').toUpperCase();
       const body =
         typeof options?.body === 'string' ? JSON.parse(options.body as string) : undefined;
-      calls.push({ url, method, body });
+      calls.push({ url, method, body, headers: options?.headers as Record<string, string> });
       const path = url.replace(/^.*\/api\/v1/, '').split('?')[0];
 
       if (method === 'GET') {
@@ -468,6 +474,22 @@ function mockFetch({
 
       if (path === '/contacts/1' && method === 'PUT') {
         if (fail.update) return errorResponse('update failed');
+        if (stale) {
+          current = stale;
+          stale = undefined;
+          return {
+            ok: false,
+            status: 412,
+            statusText: 'Precondition Failed',
+            json: async () => ({
+              error: {
+                code: 'PRECONDITION_FAILED',
+                message: 'stale',
+                details: { expected_revision: String(current.revision) },
+              },
+            }),
+          };
+        }
         current = {
           ...current,
           ...body,
@@ -888,6 +910,70 @@ test('editing "how we met" saves it as a plain CRM string field', async () => {
     const putCall = calls.find((c) => c.method === 'PUT');
     expect(putCall?.body).toMatchObject({ crm: { how_we_met: 'At a conference' } });
   });
+});
+
+// --- ADR 0008: If-Match + 412 conflict dialog ---------------------------------
+
+test('a save sends the loaded revision as If-Match', async () => {
+  const calls = mockFetch();
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  const content = fieldContent('How We Met');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
+  const put = calls.find((c) => c.method === 'PUT');
+  expect(put?.headers?.['If-Match']).toBe('"7"');
+});
+
+test('a 412 opens the conflict dialog, and "Load latest version" refetches and discards the edit', async () => {
+  const newer: ContactRecordResponse = {
+    ...contactRecord,
+    revision: 8,
+    crm: { ...contactRecord.crm, how_we_met: 'Edited in another tab' },
+  };
+  const calls = mockFetch({ staleWrite: newer });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  const content = fieldContent('How We Met');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'My stale edit' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+
+  expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+  const getsBefore = calls.filter(
+    (c) => c.method === 'GET' && c.url.endsWith('/contacts/1'),
+  ).length;
+
+  fireEvent.click(screen.getByRole('button', { name: 'Load latest version' }));
+
+  await waitFor(() => expect(screen.queryByText('Changed elsewhere')).not.toBeInTheDocument());
+  expect(
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1')).length,
+  ).toBeGreaterThan(getsBefore);
+  expect(await screen.findByText('Edited in another tab')).toBeInTheDocument();
+  expect(screen.queryByDisplayValue('My stale edit')).not.toBeInTheDocument();
+});
+
+test('"Keep editing" on the conflict dialog leaves the edit open', async () => {
+  mockFetch({ staleWrite: { ...contactRecord, revision: 8 } });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  const content = fieldContent('How We Met');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'My stale edit' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+
+  await screen.findByText('Changed elsewhere');
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+  await waitFor(() => expect(screen.queryByText('Changed elsewhere')).not.toBeInTheDocument());
+  expect(screen.getByDisplayValue('My stale edit')).toBeInTheDocument();
 });
 
 // --- handleSaveProfile: name-component assembly + validation ---------------

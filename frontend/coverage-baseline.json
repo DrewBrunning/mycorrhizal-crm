@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.19,
-      "linesTotal": 268,
+      "lines": 86.49,
+      "linesTotal": 274,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -214,9 +214,9 @@
     },
     "src/api/client.ts": {
       "lines": 100,
-      "linesTotal": 36,
+      "linesTotal": 38,
       "branches": 100,
-      "branchesTotal": 33
+      "branchesTotal": 36
     },
     "src/api/contactDetail.ts": {
       "lines": 100,
@@ -257,8 +257,8 @@
     "src/api/contacts.ts": {
       "lines": 99.08,
       "linesTotal": 238,
-      "branches": 94.37,
-      "branchesTotal": 409
+      "branches": 94.4,
+      "branchesTotal": 411
     },
     "src/api/contractConformance.ts": {
       "lines": 0,
@@ -1202,6 +1202,12 @@
       "branches": 71.42,
       "branchesTotal": 14
     },
+    "src/components/RecordConflictDialog.tsx": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
+    },
     "src/components/RelatedToMembersSection.tsx": {
       "lines": 100,
       "linesTotal": 8,
@@ -1468,9 +1474,9 @@
     },
     "src/hooks/useContactFieldEditing.ts": {
       "lines": 100,
-      "linesTotal": 50,
+      "linesTotal": 53,
       "branches": 100,
-      "branchesTotal": 28
+      "branchesTotal": 36
     },
     "src/hooks/useContactFileLinks.ts": {
       "lines": 100,
@@ -1504,9 +1510,9 @@
     },
     "src/hooks/useContactProfileEditing.ts": {
       "lines": 100,
-      "linesTotal": 24,
+      "linesTotal": 27,
       "branches": 100,
-      "branchesTotal": 10
+      "branchesTotal": 14
     },
     "src/hooks/useContactScore.ts": {
       "lines": 100,

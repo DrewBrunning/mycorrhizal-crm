@@ -882,7 +882,10 @@
     "unsavedChangesTitle": "¿Descartar los cambios no guardados?",
     "unsavedChangesMessage": "Tienes cambios sin guardar que se perderán si continúas.",
     "discard": "Descartar",
-    "keepEditing": "Seguir editando"
+    "keepEditing": "Seguir editando",
+    "conflictTitle": "Modificado en otro lugar",
+    "conflictMessage": "Este registro se modificó en otro lugar (otra pestaña, dispositivo o sincronización) después de abrirlo, por lo que tu edición no se guardó. Los cambios nunca se fusionan automáticamente. Carga la última versión para continuar (se descartará tu edición) o deja esta edición abierta para copiar tus cambios antes.",
+    "conflictReload": "Cargar la última versión"
   },
   "externalLinks": {
     "title": "Enlaces externos",
