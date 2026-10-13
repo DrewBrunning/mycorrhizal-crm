@@ -12,24 +12,27 @@ export function useDiagnostics() {
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const run = useCallback(async () => {
-    // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await runDiagnostics();
-      if (requestRef.current !== requestId) return;
-      setData(resp);
-    } catch (err) {
-      if (requestRef.current !== requestId) return;
-      setError(handleFetchError(err, 'running diagnostics'));
-    } finally {
-      if (requestRef.current === requestId) setLoading(false);
-    }
-    // Stryker disable next-line ArrayDeclaration: refresh/run is stable (no reactive inputs), so its deps array is equivalent either way
-  }, []);
+  const run = useCallback(
+    async () => {
+      // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await runDiagnostics();
+        if (requestRef.current !== requestId) return;
+        setData(resp);
+      } catch (err) {
+        if (requestRef.current !== requestId) return;
+        setError(handleFetchError(err, 'running diagnostics'));
+      } finally {
+        if (requestRef.current === requestId) setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh/run closes over state setters and a ref only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return { data, loading, error, run };
 }

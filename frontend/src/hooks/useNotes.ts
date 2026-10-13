@@ -31,6 +31,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
   const [nextCursor, setNextCursor] = useState('');
   const [total, setTotal] = useState<number | null>(null);
   const [limit, setLimit] = useState(paramLimit || 25);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

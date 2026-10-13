@@ -13,29 +13,35 @@ export function useSubsystemHealth() {
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await getSubsystemHealth();
-      if (requestRef.current !== requestId) return;
-      setData(resp.subsystems || []);
-    } catch (err) {
-      if (requestRef.current !== requestId) return;
-      setError(handleFetchError(err, 'fetching subsystem health'));
-    } finally {
-      if (requestRef.current === requestId) setLoading(false);
-    }
-    // Stryker disable next-line ArrayDeclaration: refresh/run is stable (no reactive inputs), so its deps array is equivalent either way
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      // Stryker disable next-line ArithmeticOperator: any strictly monotonic id sequence works; only inequality between successive ids is observable
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await getSubsystemHealth();
+        if (requestRef.current !== requestId) return;
+        setData(resp.subsystems || []);
+      } catch (err) {
+        if (requestRef.current !== requestId) return;
+        setError(handleFetchError(err, 'fetching subsystem health'));
+      } finally {
+        if (requestRef.current === requestId) setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh/run closes over state setters and a ref only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  useEffect(() => {
-    void refresh();
+  useEffect(
+    () => {
+      void refresh();
+    },
     // Stryker disable next-line ArrayDeclaration: refresh is stable, so the mount effect runs exactly once under either deps array
-  }, [refresh]);
+    [refresh],
+  );
 
   return { data, loading, error, refresh };
 }

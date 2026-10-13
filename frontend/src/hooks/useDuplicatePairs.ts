@@ -21,32 +21,36 @@ export function useDuplicatePairs(notifier?: ErrorNotifier) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setPairs([]);
-    try {
-      const all: DuplicatePair[] = [];
-      let nextPage = 1;
-      for (let guard = 0; guard < DUPLICATES_MAX_PAGES; guard++) {
-        const response = await getDuplicatePairs({ page: nextPage, limit: DUPLICATES_PAGE_SIZE });
-        all.push(...response.pairs);
-        // Incremental: the list fills as each page lands instead of holding
-        // the dialog on a blank spinner until a large scan is fully fetched.
-        // Safe because the backend sorts the whole result set before
-        // offsetting, so appending pages preserves the global strongest-first
-        // order.
-        setPairs(all.slice());
-        if (all.length >= response.total) break;
-        nextPage += 1;
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      setPairs([]);
+      try {
+        const all: DuplicatePair[] = [];
+        let nextPage = 1;
+        for (let guard = 0; guard < DUPLICATES_MAX_PAGES; guard++) {
+          const response = await getDuplicatePairs({ page: nextPage, limit: DUPLICATES_PAGE_SIZE });
+          all.push(...response.pairs);
+          // Incremental: the list fills as each page lands instead of holding
+          // the dialog on a blank spinner until a large scan is fully fetched.
+          // Safe because the backend sorts the whole result set before
+          // offsetting, so appending pages preserves the global strongest-first
+          // order.
+          setPairs(all.slice());
+          if (all.length >= response.total) break;
+          nextPage += 1;
+        }
+        setTotal(all.length);
+      } catch (err) {
+        setError(handleFetchError(err, 'scanning for duplicates'));
+      } finally {
+        setLoading(false);
       }
-      setTotal(all.length);
-    } catch (err) {
-      setError(handleFetchError(err, 'scanning for duplicates'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // dismiss records a "not a duplicate" verdict, then refetches so the pair
   // disappears immediately.

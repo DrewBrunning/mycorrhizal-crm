@@ -23,18 +23,22 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getFieldDefinitions(100);
-      setDefinitions(response.field_definitions || []);
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching custom field definitions'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await getFieldDefinitions(100);
+        setDefinitions(response.field_definitions || []);
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching custom field definitions'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const handleCreate = useCallback(
     async (input: FieldDefinitionInput) => {

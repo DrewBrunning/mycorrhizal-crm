@@ -34,7 +34,6 @@ export function useErrorAggregation(windowHours = 24) {
 
   useEffect(() => {
     void refresh();
-    // Stryker disable next-line ArrayDeclaration: refresh is stable, so the mount effect runs exactly once under either deps array
   }, [refresh]);
 
   return { buckets, totalEvents, loading, error, refresh };
