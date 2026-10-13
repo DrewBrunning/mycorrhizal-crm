@@ -1425,9 +1425,9 @@
       "branchesTotal": 39
     },
     "src/hooks/useAudit.ts": {
-      "lines": 90.24,
+      "lines": 100,
       "linesTotal": 41,
-      "branches": 50,
+      "branches": 93.75,
       "branchesTotal": 16
     },
     "src/hooks/useBeforeUnloadGuard.ts": {
@@ -1497,7 +1497,7 @@
       "branchesTotal": 24
     },
     "src/hooks/useContactMerge.ts": {
-      "lines": 93.93,
+      "lines": 100,
       "linesTotal": 33,
       "branches": 100,
       "branchesTotal": 18
@@ -1629,7 +1629,7 @@
       "branchesTotal": 6
     },
     "src/hooks/useImmich.ts": {
-      "lines": 97.05,
+      "lines": 100,
       "linesTotal": 68,
       "branches": 100,
       "branchesTotal": 0
@@ -1725,7 +1725,7 @@
       "branchesTotal": 2
     },
     "src/hooks/useSeafile.ts": {
-      "lines": 96.29,
+      "lines": 100,
       "linesTotal": 54,
       "branches": 100,
       "branchesTotal": 0
@@ -1755,9 +1755,9 @@
       "branchesTotal": 8
     },
     "src/hooks/useSystemEvents.ts": {
-      "lines": 87.8,
+      "lines": 100,
       "linesTotal": 41,
-      "branches": 84,
+      "branches": 96,
       "branchesTotal": 25
     },
     "src/hooks/useSystemStatus.ts": {

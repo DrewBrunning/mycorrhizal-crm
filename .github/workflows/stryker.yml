@@ -26,7 +26,8 @@ name: Mutation Testing (Stryker)
 #
 # Threshold-gated (issue #915): each leg's `break` is set ~6 points under the
 # score measured for its half (docs/development/testing.md: api 89.41%, hooks
-# 66.35% on 2026-10-06; utils 85.07% on 2026-10-12; combined against
+# 66.35% on 2026-10-06 then 70.12% on 2026-10-13 after the #1624 §3 tests;
+# utils 85.07% on 2026-10-12; combined against
 # stryker.conf.json's 74), so `npx stryker run` itself exits non-zero — and
 # this job goes red — on a mutation-score drop below it, rather than the score
 # being printed and ignored. Splitting the gate makes it stricter for api and
@@ -59,13 +60,15 @@ jobs:
             prefix: src/api/
             break: 83
           # Issue #1624 §3: baseline 2026-10-12 measured 66.40% (3261 mutants,
-          # 865 survivors). New useContactMerge/useSystemEvents tests (the two
-          # largest untested hooks) kill 77 of those; recomputed 68.48%.
-          # Break stays ~6 under the measured score. The remaining survivors
-          # (most in already-partially-tested hooks) are a dedicated follow-up.
+          # 865 survivors). Tests added for the largest untested hooks
+          # (useContactMerge, useSystemEvents, useAudit, useSeafile, useImmich)
+          # kill 121 of those, lifting the half to 70.12% (2026-10-13).
+          # Break stays ~6 under the measured score. The residual survivors are
+          # dominated by equivalent mutants (React dependency arrays, logging
+          # argument literals), so further ratcheting has low yield.
           - leg: hooks
             prefix: src/hooks/
-            break: 62
+            break: 64
           # Issue #1624 §3: pure src/utils/*.ts helpers (date/cadence
           # formatting, the graph budget, CSV/vCard helpers) are cheap,
           # high-yield Stryker targets. Measured 2026-10-12 at 85.07%
