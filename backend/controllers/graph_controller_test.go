@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +16,40 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestGetGraph_DatabaseFailureUsesErrorEnvelope pins that each of the graph's
+// three reads fails with the standard DATABASE_ERROR envelope (not a bare
+// {"error": "..."} string), naming which read failed.
+func TestGetGraph_DatabaseFailureUsesErrorEnvelope(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs: Request error")
+	for _, tc := range []struct{ table, noun string }{
+		{"contacts", "contacts"},
+		{"relationship_edges", "relationship edges"},
+		{"activities", "activities"},
+	} {
+		t.Run(tc.table, func(t *testing.T) {
+			db, router := setupRouter(t)
+			router.GET("/graph", GetGraph)
+			dbtest.HideTable(t, db, tc.table)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/graph", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+			var env struct {
+				Error struct {
+					Code    string `json:"code"`
+					Message string `json:"message"`
+				} `json:"error"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &env), w.Body.String())
+			assert.Equal(t, "DATABASE_ERROR", env.Error.Code)
+			assert.Contains(t, env.Error.Message, tc.noun)
+			assert.NotContains(t, w.Body.String(), "no such table")
+		})
+	}
+}
 
 func findGraphNode(nodes []models.GraphNode, id string) *models.GraphNode {
 	for i := range nodes {

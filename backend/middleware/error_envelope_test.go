@@ -222,6 +222,30 @@ func TestAdminMiddleware_Rejections_PinEnvelopeCodes(t *testing.T) {
 	}
 }
 
+// TestAdminMiddleware_LookupFailureIs500 pins that a failed admin lookup (a
+// database fault, not a missing user) is a 500 DATABASE_ERROR rather than being
+// masked as the 401 "User not found" reserved for a genuinely absent user.
+func TestAdminMiddleware_LookupFailureIs500(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	admin := models.User{Username: "env-admin-fault", Email: "env-admin-fault@example.com", Password: "pw", IsAdmin: true}
+	require.NoError(t, db.Create(&admin).Error)
+	dbtest.HideTable(t, db, "users")
+
+	ran := false
+	r := gin.New()
+	r.Use(RequestIDMiddleware())
+	r.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", admin.ID); c.Next() })
+	r.Use(AdminMiddleware())
+	r.GET("/admin", func(c *gin.Context) { ran = true; c.Status(http.StatusOK) })
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/admin", nil))
+
+	require.False(t, ran, "admin handler must not run when the admin lookup fails")
+	assertMWErrorCode(t, w, http.StatusInternalServerError, "DATABASE_ERROR")
+	assert.NotContains(t, w.Body.String(), "no such table")
+}
+
 // TestBodySizeLimitMiddleware_413_UsesErrorEnvelope pins the body-limit
 // middleware's rejection shape: 413 with PAYLOAD_TOO_LARGE in the envelope.
 func TestBodySizeLimitMiddleware_413_UsesErrorEnvelope(t *testing.T) {
