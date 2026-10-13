@@ -163,3 +163,86 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.items).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty and idle; refresh asks for up to 100 items of the entity and reports loading', async () => {
+  const d = deferred<ConversationAgendaListResponse>();
+  vi.mocked(getConversationAgenda).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useConversationAgenda('uid-1'));
+  expect(result.current.items).toEqual([]);
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBeNull();
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(getConversationAgenda).toHaveBeenCalledWith({ entityId: 'uid-1', limit: 100 });
+  await act(async () => {
+    d.resolve(listResponse([item('a-1')]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('an override entity id wins; a response without the list yields none', async () => {
+  vi.mocked(getConversationAgenda).mockResolvedValue({} as ConversationAgendaListResponse);
+  const { result } = renderHook(() => useConversationAgenda('uid-1'));
+  await act(async () => {
+    await result.current.refresh('uid-2');
+  });
+  expect(getConversationAgenda).toHaveBeenCalledWith({ entityId: 'uid-2', limit: 100 });
+  expect(result.current.items).toEqual([]);
+});
+
+test('a failed refresh is logged by operation and the next refresh clears the error', async () => {
+  vi.mocked(getConversationAgenda).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useConversationAgenda('uid-1'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(result.current.loading).toBe(false);
+  expect(console.error).toHaveBeenCalledWith(
+    '[fetching conversation agenda] Error:',
+    expect.anything(),
+  );
+  vi.mocked(getConversationAgenda).mockResolvedValueOnce(listResponse([]));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBeNull();
+});
+
+test('open and discussed lists follow the items, and handlers follow the current entity id', async () => {
+  vi.mocked(getConversationAgenda)
+    .mockResolvedValueOnce(listResponse([item('a', { discussed_at: undefined })]))
+    .mockResolvedValue(listResponse([item('a', { discussed_at: '2026-02-01T00:00:00Z' })]));
+  vi.mocked(createConversationAgenda).mockResolvedValue(item('n') as never);
+  const { result, rerender } = renderHook(({ id }) => useConversationAgenda(id), {
+    initialProps: { id: 'uid-1' },
+  });
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.openItems).toHaveLength(1);
+  expect(result.current.discussedItems).toHaveLength(0);
+
+  rerender({ id: 'uid-9' });
+  await act(async () => {
+    await result.current.handleCreate({ entity_id: 'uid-9', content: 'x' });
+    await result.current.handleUpdate('a', { entity_id: 'uid-9', content: 'y' });
+    await result.current.handleDiscuss('a');
+    await result.current.handleDelete('a');
+  });
+  expect(getConversationAgenda).toHaveBeenLastCalledWith({ entityId: 'uid-9', limit: 100 });
+  expect(result.current.openItems).toHaveLength(0);
+  expect(result.current.discussedItems).toHaveLength(1);
+});

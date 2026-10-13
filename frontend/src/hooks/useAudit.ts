@@ -16,6 +16,7 @@ const MAX_LIMIT = 500;
 // grows in 100-event steps up to the 500 cap when the list fills the window.
 export function useAudit() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<AuditEntityType | ''>('');
@@ -26,6 +27,7 @@ export function useAudit() {
   const requestRef = useRef(0);
 
   const fetchEvents = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);
@@ -54,21 +56,33 @@ export function useAudit() {
   // A changed filter restarts the window at the default limit -- the pageless
   // API only returns the newest `limit` rows, so a previous Load-more window
   // must not silently mask the filtered result.
-  const applyEntityType = useCallback((type: AuditEntityType | '') => {
-    setEntityType(type);
-    setLimit(DEFAULT_LIMIT);
-  }, []);
+  const applyEntityType = useCallback(
+    (type: AuditEntityType | '') => {
+      setEntityType(type);
+      setLimit(DEFAULT_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const applyEntityId = useCallback((id: string) => {
-    setEntityId(id);
-    setLimit(DEFAULT_LIMIT);
-  }, []);
+  const applyEntityId = useCallback(
+    (id: string) => {
+      setEntityId(id);
+      setLimit(DEFAULT_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const clearFilters = useCallback(() => {
-    setEntityType('');
-    setEntityId('');
-    setLimit(DEFAULT_LIMIT);
-  }, []);
+  const clearFilters = useCallback(
+    () => {
+      setEntityType('');
+      setEntityId('');
+      setLimit(DEFAULT_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // The API returns `total` = the number of rows in this window (no cursor),
   // so "a full window means there might be more" is the only signal available.

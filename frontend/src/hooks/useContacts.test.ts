@@ -422,3 +422,15 @@ test('interleaved loadMore and refetch requests never share an id: an old loadMo
   expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
   expect(result.current.loading).toBe(true);
 });
+
+test('loadMore tolerates a page without contacts and keeps what is already listed', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'a')], 'c1'));
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+  vi.mocked(getContacts).mockResolvedValueOnce({} as ContactsResponse);
+  await act(async () => {
+    await result.current.loadMore();
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
+  expect(result.current.nextCursor).toBe('');
+});

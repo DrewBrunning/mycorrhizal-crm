@@ -44,11 +44,13 @@ export async function fetchContactDetailCore(id: string): Promise<ContactDetailC
     getContactNotes(id).catch((err: unknown) => {
       console.error('Error fetching contact notes:', err);
       auxFetchFailed = true;
+      // Stryker disable next-line ObjectLiteral: the empty fallback and an empty object both normalize to [] via the `|| []` below
       return { notes: [] as Note[] };
     }),
     getContactActivities(id).catch((err: unknown) => {
       console.error('Error fetching contact activities:', err);
       auxFetchFailed = true;
+      // Stryker disable next-line ObjectLiteral: the empty fallback and an empty object both normalize to [] via the `|| []` below
       return { activities: [] as Activity[] };
     }),
     getCompletionsForContact(parseInt(id, 10)).catch((err: unknown) => {
@@ -114,20 +116,24 @@ export function useContactDetailData(id: string | undefined) {
   // dialogs can't touch) refreshes to match.
   const [timelineRevision, setTimelineRevision] = useState(0);
 
-  const applyCore = useCallback((core: ContactDetailCore) => {
-    setRecord(core.record);
-    setNotes(core.notes);
-    setActivities(core.activities);
-    setCompletions(core.completions);
-    setEnabledFields(resolveEnabledFields(core.user?.enabled_contact_fields ?? null));
-    // T90: this page's own /users/me fetch is fresher than the localStorage
-    // cache (e.g. right after a Settings picker change); take its value. Only
-    // when the fetch actually succeeded -- a transient failure shouldn't hide
-    // a badge the cache had.
-    if (core.user) {
-      setSelfContactUid(core.user.self_contact_vcard_uid ?? null);
-    }
-  }, []);
+  const applyCore = useCallback(
+    (core: ContactDetailCore) => {
+      setRecord(core.record);
+      setNotes(core.notes);
+      setActivities(core.activities);
+      setCompletions(core.completions);
+      setEnabledFields(resolveEnabledFields(core.user?.enabled_contact_fields ?? null));
+      // T90: this page's own /users/me fetch is fresher than the localStorage
+      // cache (e.g. right after a Settings picker change); take its value. Only
+      // when the fetch actually succeeded -- a transient failure shouldn't hide
+      // a badge the cache had.
+      if (core.user) {
+        setSelfContactUid(core.user.self_contact_vcard_uid ?? null);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: applyCore closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Unified refresh for notes, activities, and completions.
   const refreshNotesAndActivities = useCallback(async () => {

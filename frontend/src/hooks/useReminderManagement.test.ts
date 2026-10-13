@@ -310,3 +310,12 @@ test('a contact without an id neither fetches nor clears an existing error', asy
   expect(getRemindersForContact).not.toHaveBeenCalled();
   expect(result.current.error).toBeNull();
 });
+
+test('adding a reminder after editing one forgets the edited reminder', async () => {
+  const { result } = renderHook(() => useReminderManagement('1'));
+  act(() => result.current.handleEditReminder(reminder(2, 'e')));
+  expect(result.current.editingReminder?.ID).toBe(2);
+  act(() => result.current.handleAddReminder());
+  expect(result.current.editingReminder).toBeNull();
+  expect(result.current.reminderDialogOpen).toBe(true);
+});

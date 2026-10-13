@@ -268,3 +268,50 @@ describe('toggle Me (T90)', () => {
     expect(showError).toHaveBeenCalledWith("Couldn't update your self contact.");
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+describe('failure logging', () => {
+  test('each failing action logs its own label with the error', async () => {
+    const boom = new Error('x');
+    vi.mocked(deleteContact).mockRejectedValue(boom);
+    vi.mocked(archiveContact).mockRejectedValue(boom);
+    vi.mocked(unarchiveContact).mockRejectedValue(boom);
+    vi.mocked(favoriteContact).mockRejectedValue(boom);
+    vi.mocked(updateSelfContact).mockRejectedValue(boom);
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleDeleteContact();
+      await result.current.handleArchiveContact();
+      await result.current.handleUnarchiveContact();
+      await result.current.handleToggleFavorite();
+      await result.current.handleToggleMe();
+    });
+    for (const label of [
+      'Error deleting contact:',
+      'Error archiving contact:',
+      'Error unarchiving contact:',
+      'Error toggling favorite:',
+      'Error updating self contact:',
+    ]) {
+      expect(console.error).toHaveBeenCalledWith(label, boom);
+    }
+  });
+
+  test('a failed Me toggle shows the settings error and leaves the pointer alone', async () => {
+    vi.mocked(updateSelfContact).mockRejectedValue(new Error('x'));
+    const { result } = setup();
+    await act(() => result.current.handleToggleMe());
+    expect(showError).toHaveBeenCalledWith(expect.any(String));
+    expect(setSelfContactUid).not.toHaveBeenCalled();
+    expect(showSuccess).not.toHaveBeenCalled();
+  });
+
+  test('a failed unfavorite rolls a favorite back to favorite', async () => {
+    vi.mocked(unfavoriteContact).mockRejectedValue(new Error('x'));
+    const fav = { ...record, is_favorite: true };
+    const { result } = setup({ r: fav });
+    await act(() => result.current.handleToggleFavorite());
+    expect(applyUpdates(fav).is_favorite).toBe(true);
+  });
+});

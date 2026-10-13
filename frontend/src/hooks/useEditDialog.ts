@@ -8,22 +8,34 @@ export function useEditDialog<T>() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<T | null>(null);
 
-  const openCreate = useCallback(() => {
-    setEditing(null);
-    setOpen(true);
-  }, []);
+  const openCreate = useCallback(
+    () => {
+      setEditing(null);
+      setOpen(true);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const openEdit = useCallback((item: T) => {
-    setEditing(item);
-    setOpen(true);
-  }, []);
+  const openEdit = useCallback(
+    (item: T) => {
+      setEditing(item);
+      setOpen(true);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Closing also clears the edited item, so the next openCreate can never
   // render the previous edit's values for a frame.
-  const close = useCallback(() => {
-    setOpen(false);
-    setEditing(null);
-  }, []);
+  const close = useCallback(
+    () => {
+      setOpen(false);
+      setEditing(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return { open, editing, openCreate, openEdit, close };
 }

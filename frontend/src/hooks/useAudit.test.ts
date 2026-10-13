@@ -291,3 +291,107 @@ test('handleUndo propagates an undo failure to the caller without refreshing', a
   await expect(result.current.handleUndo(7)).rejects.toThrow('410 gone');
   expect(getAuditEvents).toHaveBeenCalledTimes(1);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+async function growWindow() {
+  const full = Array.from({ length: 100 }, (_, i) => event(i + 1));
+  vi.mocked(getAuditEvents).mockResolvedValue(response(full));
+  const hook = renderHook(() => useAudit());
+  await waitFor(() => expect(hook.result.current.loading).toBe(false));
+  await act(async () => {
+    hook.result.current.loadMore();
+  });
+  await waitFor(() =>
+    expect(getAuditEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 200 })),
+  );
+  return hook;
+}
+
+test('applyEntityId restarts the window at the default limit', async () => {
+  const { result } = await growWindow();
+  await act(async () => {
+    result.current.applyEntityId('uid-9');
+  });
+  await waitFor(() =>
+    expect(getAuditEvents).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entity_id: 'uid-9', limit: 100 }),
+    ),
+  );
+});
+
+test('clearFilters restarts the window at the default limit', async () => {
+  const { result } = await growWindow();
+  await act(async () => {
+    result.current.clearFilters();
+  });
+  await waitFor(() =>
+    expect(getAuditEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 100 })),
+  );
+});
+
+test('a refetch clears the error while loading, and failures are logged by operation', async () => {
+  vi.mocked(getAuditEvents).mockRejectedValueOnce(new Error('down'));
+  const { result } = renderHook(() => useAudit());
+  await waitFor(() => expect(result.current.error).toBe('down'));
+  expect(console.error).toHaveBeenCalledWith('[fetching audit events] Error:', expect.anything());
+
+  const d = deferred<AuditEventsResponse>();
+  vi.mocked(getAuditEvents).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(response([]));
+  });
+});
+
+test('a superseded fetch neither fails the page nor ends loading, whether it succeeds or fails', async () => {
+  const stale = deferred<AuditEventsResponse>();
+  const fresh = deferred<AuditEventsResponse>();
+  vi.mocked(getAuditEvents).mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+  const { result } = renderHook(() => useAudit());
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(getAuditEvents).toHaveBeenCalledTimes(2));
+
+  await act(async () => {
+    stale.reject(new Error('old failure'));
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.loading).toBe(true);
+  await act(async () => {
+    fresh.resolve(response([event(1)]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.events).toHaveLength(1);
+});
+
+test('a superseded success landing last does not end loading', async () => {
+  const stale = deferred<AuditEventsResponse>();
+  const fresh = deferred<AuditEventsResponse>();
+  vi.mocked(getAuditEvents).mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+  const { result } = renderHook(() => useAudit());
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(getAuditEvents).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    stale.resolve(response([event(7)]));
+  });
+  expect(result.current.events).toEqual([]);
+  expect(result.current.loading).toBe(true);
+});

@@ -153,3 +153,97 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.items).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty and idle; refresh asks for up to 100 gifts of the entity and reports loading', async () => {
+  const d = deferred<GiftListResponse>();
+  vi.mocked(getGifts).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useGifts('uid-1'));
+  expect(result.current.items).toEqual([]);
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBeNull();
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(getGifts).toHaveBeenCalledWith({ entityId: 'uid-1', limit: 100 });
+  await act(async () => {
+    d.resolve(listResponse([gift('g-1')]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.items).toHaveLength(1);
+});
+
+test('an override entity id wins over the hook entity id', async () => {
+  vi.mocked(getGifts).mockResolvedValue(listResponse([]));
+  const { result } = renderHook(() => useGifts('uid-1'));
+  await act(async () => {
+    await result.current.refresh('uid-2');
+  });
+  expect(getGifts).toHaveBeenCalledWith({ entityId: 'uid-2', limit: 100 });
+});
+
+test('a response without gifts yields none; a failure is logged then cleared by the next refresh', async () => {
+  vi.mocked(getGifts).mockResolvedValueOnce({} as GiftListResponse);
+  const { result } = renderHook(() => useGifts('uid-1'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.items).toEqual([]);
+
+  vi.mocked(getGifts).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(result.current.loading).toBe(false);
+  expect(console.error).toHaveBeenCalledWith('[fetching gifts] Error:', expect.anything());
+
+  vi.mocked(getGifts).mockResolvedValueOnce(listResponse([]));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBeNull();
+});
+
+test('refresh and the mutation handlers follow the current entity id', async () => {
+  vi.mocked(getGifts).mockResolvedValue(listResponse([]));
+  vi.mocked(createGift).mockResolvedValue(gift('n'));
+  const { result, rerender } = renderHook(({ id }) => useGifts(id), {
+    initialProps: { id: 'uid-1' as string | undefined },
+  });
+  rerender({ id: 'uid-9' });
+  await act(async () => {
+    await result.current.handleCreate({} as GiftInput);
+    await result.current.handleUpdate('g', {} as GiftInput);
+    await result.current.handleDelete('g');
+  });
+  expect(getGifts).toHaveBeenCalledTimes(3);
+  expect(getGifts).toHaveBeenLastCalledWith({ entityId: 'uid-9', limit: 100 });
+});
+
+test('ideas and resolved update when the items change', async () => {
+  vi.mocked(getGifts)
+    .mockResolvedValueOnce(listResponse([gift('g-1', { status: 'idea' })]))
+    .mockResolvedValueOnce(listResponse([gift('g-1', { status: 'given' })]));
+  const { result } = renderHook(() => useGifts('uid-1'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.ideas).toHaveLength(1);
+  expect(result.current.resolved).toHaveLength(0);
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.ideas).toHaveLength(0);
+  expect(result.current.resolved).toHaveLength(1);
+});

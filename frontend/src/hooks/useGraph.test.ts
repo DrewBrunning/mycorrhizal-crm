@@ -143,3 +143,43 @@ test('defaults to empty arrays when the response omits nodes or edges', async ()
 
   expect(result.current.data).toEqual({ nodes: [], edges: [] });
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('starts empty; loading is true while the graph loads and an old error is cleared by refetch', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockRejectedValueOnce(new Error('boom'));
+  const { result } = renderHook(() => useGraph());
+  expect(result.current.data).toBeNull();
+  await waitFor(() => expect(result.current.error).toBe('boom'));
+  expect(console.error).toHaveBeenCalledWith('[fetching network graph] Error:', expect.anything());
+
+  const d = deferred<GraphResponse>();
+  vi.mocked(getGraph).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(graphResponse);
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+});
+
+test('a stale response that lands last neither overwrites nor ends loading', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  const first = deferred<GraphResponse>();
+  const second = deferred<GraphResponse>();
+  vi.mocked(getGraph).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  const { result } = renderHook(() => useGraph());
+  act(() => {
+    void result.current.refetch();
+  });
+  await waitFor(() => expect(getGraph).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    first.resolve(graphResponse);
+  });
+  expect(result.current.data).toBeNull();
+  expect(result.current.loading).toBe(true);
+});

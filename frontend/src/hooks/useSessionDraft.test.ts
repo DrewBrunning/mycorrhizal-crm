@@ -56,3 +56,20 @@ describe('useSessionDraft', () => {
     expect(readSessionDraft('note-b')).toEqual({ content: 'b' });
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+describe('clearDraft follows the current key', () => {
+  test('removes the draft stored under the key in effect when it is called', () => {
+    const { result, rerender } = renderHook(
+      ({ key }) => useSessionDraft(key, { content: 'x' }, true),
+      { initialProps: { key: 'a' } },
+    );
+    rerender({ key: 'b' });
+    expect(readSessionDraft('a')).toEqual({ content: 'x' });
+    expect(readSessionDraft('b')).toEqual({ content: 'x' });
+    result.current.clearDraft();
+    expect(readSessionDraft('b')).toBeNull();
+    expect(readSessionDraft('a')).toEqual({ content: 'x' });
+  });
+});

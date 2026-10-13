@@ -28,17 +28,21 @@ export function useSeafile(notifier?: ErrorNotifier) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<SeafileConnectionTestResult | null>(null);
 
-  const refreshConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError(null);
-    try {
-      setConfig(await getSeafileConfig());
-    } catch (err) {
-      setConfigError(handleFetchError(err, 'fetching Seafile config'));
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
+  const refreshConfig = useCallback(
+    async () => {
+      setConfigLoading(true);
+      setConfigError(null);
+      try {
+        setConfig(await getSeafileConfig());
+      } catch (err) {
+        setConfigError(handleFetchError(err, 'fetching Seafile config'));
+      } finally {
+        setConfigLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const saveConfig = useCallback(
     async (input: { base_url: string; api_token?: string }) => {
@@ -54,10 +58,14 @@ export function useSeafile(notifier?: ErrorNotifier) {
     [notifier],
   );
 
-  const removeConfig = useCallback(async () => {
-    await deleteSeafileConfig();
-    setConfig(null);
-  }, []);
+  const removeConfig = useCallback(
+    async () => {
+      await deleteSeafileConfig();
+      setConfig(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const browseLibraries = useCallback(async () => {
     setBrowsing(true);

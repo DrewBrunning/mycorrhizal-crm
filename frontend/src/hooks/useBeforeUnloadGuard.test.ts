@@ -87,3 +87,22 @@ describe('useBeforeUnloadGuard', () => {
     expect(isAnythingDirty()).toBe(false);
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+describe('beforeunload handler contract', () => {
+  test('prevents the default, sets an empty returnValue, and returns an empty string', () => {
+    const add = vi.spyOn(window, 'addEventListener');
+    render(createElement(Harness, { isDirty: true }));
+    const registered = add.mock.calls.filter((c) => (c[0] as string) === 'beforeunload');
+    expect(registered).toHaveLength(1);
+    const handler = registered[0][1] as (e: BeforeUnloadEvent) => unknown;
+
+    const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    Object.defineProperty(event, 'returnValue', { value: 'seed', writable: true });
+    const prevent = vi.spyOn(event, 'preventDefault');
+    expect(handler(event)).toBe('');
+    expect(prevent).toHaveBeenCalledTimes(1);
+    expect((event as unknown as { returnValue: unknown }).returnValue).toBe('');
+  });
+});

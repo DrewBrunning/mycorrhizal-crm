@@ -17,6 +17,7 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 export function useHouseholds(notifier?: ErrorNotifier) {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

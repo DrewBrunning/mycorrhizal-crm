@@ -94,3 +94,31 @@ test('keeps the fail-open defaults when the fetch rejects', async () => {
     registration_disabled: false,
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('requests the OIDC discovery endpoint', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(fetchResponse({}));
+  vi.stubGlobal('fetch', fetchMock);
+  renderHook(() => useOIDCConfig());
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/auth\/oidc\/config$/);
+});
+
+test('a non-ok response keeps the defaults; a missing provider name falls back to SSO', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(fetchResponse({ enabled: true, provider_name: 'X' }, false))
+    .mockResolvedValueOnce(fetchResponse({ enabled: true }));
+  vi.stubGlobal('fetch', fetchMock);
+  const a = renderHook(() => useOIDCConfig());
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(a.result.current.enabled).toBe(false);
+  cleanup();
+
+  const b = renderHook(() => useOIDCConfig());
+  await waitFor(() => expect(b.result.current.enabled).toBe(true));
+  expect(b.result.current.provider_name).toBe('SSO');
+  expect(b.result.current.registration_disabled).toBe(false);
+});

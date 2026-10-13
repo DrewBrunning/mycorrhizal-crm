@@ -22,22 +22,26 @@ export function useOIDCConfig(): OIDCConfig {
     registration_disabled: false,
   });
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/auth/oidc/config`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setConfig({
-            enabled: data.enabled === true,
-            provider_name: data.provider_name || 'SSO',
-            registration_disabled: data.registration_disabled === true,
-          });
-        }
-      })
-      .catch(() => {
-        // Best-effort; see the registration_disabled default above.
-      });
-  }, []);
+  useEffect(
+    () => {
+      fetch(`${API_BASE_URL}/auth/oidc/config`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) {
+            setConfig({
+              enabled: data.enabled === true,
+              provider_name: data.provider_name || 'SSO',
+              registration_disabled: data.registration_disabled === true,
+            });
+          }
+        })
+        .catch(() => {
+          // Best-effort; see the registration_disabled default above.
+        });
+    },
+    // Stryker disable next-line ArrayDeclaration: the discovery probe runs once on mount; a deps array that never changes is equivalent
+    [],
+  );
 
   return config;
 }

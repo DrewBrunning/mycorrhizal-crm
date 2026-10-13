@@ -623,6 +623,7 @@ test('browse actions report their busy flag, log their operation, and use the la
   const cases: {
     name: string;
     api: Mock;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     run: (r: any) => Promise<unknown>;
     flag: string;
     label: string;
@@ -675,6 +676,7 @@ test('browse actions report their busy flag, log their operation, and use the la
       stateKey: 'people',
     },
   ];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hooks: Record<string, () => any> = {
     seafile: () => useSeafile,
     nextcloud: () => useNextcloud,
@@ -690,26 +692,27 @@ test('browse actions report their busy flag, log their operation, and use the la
     const first = { showError: vi.fn() };
     const second = { showError: vi.fn() };
     const { result, rerender } = renderHook(({ n }) => useIt(n), { initialProps: { n: first } });
+    const current = () => result.current;
     rerender({ n: second });
     act(() => {
-      void c.run(result.current);
+      void c.run(current());
     });
-    await waitFor(() => expect(result.current[c.flag]).toBe(true));
+    await waitFor(() => expect(current()[c.flag]).toBe(true));
     await act(async () => {
       d.resolve(c.value);
     });
-    await waitFor(() => expect(result.current[c.flag]).toBe(false));
-    expect(result.current[c.stateKey]).toEqual(c.value);
+    await waitFor(() => expect(current()[c.flag]).toBe(false));
+    expect(current()[c.stateKey]).toEqual(c.value);
 
     // Failure: notified through the latest notifier and logged by operation.
     c.api.mockRejectedValueOnce(new Error('nope'));
     await act(async () => {
-      await expect(c.run(result.current)).rejects.toThrow('nope');
+      await expect(c.run(current())).rejects.toThrow('nope');
     });
     expect(first.showError).not.toHaveBeenCalled();
     expect(second.showError).toHaveBeenCalledWith('nope');
     expect(console.error).toHaveBeenCalledWith(`[${c.label}] Error:`, expect.anything());
-    expect(result.current[c.flag]).toBe(false);
+    expect(current()[c.flag]).toBe(false);
   }
 });
 
@@ -760,4 +763,30 @@ test('immich loadSummary reports its loading flag while in flight', async () => 
     d.resolve(null);
   });
   await waitFor(() => expect(result.current.summaryLoading).toBe(false));
+});
+
+test('browse state starts empty and idle for every service', () => {
+  const seafile = renderHook(() => useSeafile()).result.current;
+  expect(seafile.libraries).toEqual([]);
+  expect(seafile.items).toEqual([]);
+  expect(seafile.browsing).toBe(false);
+  const nextcloud = renderHook(() => useNextcloud()).result.current;
+  expect(nextcloud.items).toEqual([]);
+  expect(nextcloud.browsing).toBe(false);
+  const paperless = renderHook(() => usePaperless()).result.current;
+  expect(paperless.documents).toEqual([]);
+  expect(paperless.documentsLoading).toBe(false);
+});
+
+test('immich runSync uses the latest notifier after a re-render', async () => {
+  vi.mocked(syncImmich).mockRejectedValue(new Error('sync failed'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useImmich(n), { initialProps: { n: first } });
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.runSync()).rejects.toThrow('sync failed');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError).toHaveBeenCalledWith('sync failed');
 });

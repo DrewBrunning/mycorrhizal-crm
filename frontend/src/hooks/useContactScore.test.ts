@@ -1,4 +1,4 @@
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type ContactScoreResponse, getContactScore } from '../api/contactScore';
 import { useContactScore } from './useContactScore';
@@ -85,4 +85,23 @@ test('refreshScore re-fetches on demand', async () => {
   await result.current.refreshScore();
 
   expect(getContactScore).toHaveBeenCalledWith(1);
+});
+
+// --- behavior pins (issue #1662) ---
+
+test('a failed load is logged by operation and the next refresh clears the error', async () => {
+  vi.mocked(getContactScore).mockRejectedValueOnce(new Error('down'));
+  const { result } = renderHook(() => useContactScore(1));
+  await waitFor(() => expect(result.current.error).toBe('down'));
+  expect(console.error).toHaveBeenCalledWith(
+    '[fetching relationship health score] Error:',
+    expect.anything(),
+  );
+
+  vi.mocked(getContactScore).mockResolvedValueOnce(score);
+  await act(async () => {
+    await result.current.refreshScore();
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.score).toEqual(score);
 });

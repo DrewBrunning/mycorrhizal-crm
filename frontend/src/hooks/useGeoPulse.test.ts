@@ -455,3 +455,14 @@ test('a lookup started before clearSuggestions stays stale even when a new looku
   expect(result.current.suggestions).toBeNull();
   expect(result.current.suggestionsLoading).toBe(true);
 });
+
+test('clearSuggestions drops a lookup error shown inline', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new Error('unreachable'));
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.lookup('2026-09-01');
+  });
+  expect(result.current.suggestionsError).toBe('unreachable');
+  act(() => result.current.clearSuggestions());
+  expect(result.current.suggestionsError).toBeNull();
+});
