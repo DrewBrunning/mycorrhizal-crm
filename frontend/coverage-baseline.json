@@ -40,7 +40,7 @@
     },
     "src/ContactDetailPage.tsx": {
       "lines": 86.73,
-      "linesTotal": 279,
+      "linesTotal": 280,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -1492,9 +1492,9 @@
     },
     "src/hooks/useContactLifecycleActions.ts": {
       "lines": 100,
-      "linesTotal": 54,
+      "linesTotal": 63,
       "branches": 97.5,
-      "branchesTotal": 40
+      "branchesTotal": 44
     },
     "src/hooks/useContactMemberships.ts": {
       "lines": 100,
