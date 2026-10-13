@@ -141,7 +141,13 @@ test.describe('Contact sharing', () => {
       await recipientPage.goto('/contacts');
       await waitForLoading(recipientPage);
       await searchContact(recipientPage, fullName);
-      await expect(recipientPage.getByText(fullName)).not.toBeVisible();
+      // The empty-state message itself quotes the query ("No results for
+      // "<fullName>"."), so a bare getByText(fullName) matches the message and
+      // can never be "not visible" once the search settles (and passes
+      // vacuously before it does). Wait for the settled empty state, then
+      // assert no contact card carries the exact name.
+      await expect(recipientPage.getByText(/^No results for "/)).toBeVisible();
+      await expect(recipientPage.getByText(fullName, { exact: true })).toHaveCount(0);
 
       // The sender's original is untouched -- still reachable by ID.
       const senderResp = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
