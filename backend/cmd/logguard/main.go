@@ -122,7 +122,14 @@ func run(in io.Reader, out io.Writer, allowlistPath string) error {
 	if err != nil {
 		return fmt.Errorf("read log: %w", err)
 	}
-	failures := evaluate(recs, allow)
+	failures, used := evaluate(recs, allow)
+	// The observed-vs-max table is emitted on success AND failure so every
+	// run records how much margin each bound has (issue #1664).
+	table := observedTable(allow, used)
+	fmt.Fprint(out, table)
+	if err := appendSummary(os.Getenv("GITHUB_STEP_SUMMARY"), os.Getenv("GITHUB_JOB"), allow, used); err != nil {
+		return fmt.Errorf("write step summary: %w", err)
+	}
 	if len(failures) > 0 {
 		return fmt.Errorf("%d unexpected warn/error log finding(s) (of %d warn+ lines):\n  %s\n"+
 			"fix the cause, or add a reason-bearing entry to %s",
@@ -254,7 +261,7 @@ func parseRecord(line string) (record, bool) {
 // then checks each entry's count against max_count. A record no entry matches
 // is reported with its method/path/status (when it has them) so a scoped
 // message that surfaced on the wrong route is visible.
-func evaluate(recs []record, allow []*entry) []string {
+func evaluate(recs []record, allow []*entry) ([]string, []int) {
 	used := make([]int, len(allow))
 	unlisted := map[string]int{}
 	for _, r := range recs {
@@ -294,5 +301,45 @@ func evaluate(recs []record, allow []*entry) []string {
 			failures = append(failures, fmt.Sprintf("%dx %s exceeds max_count %d (%s)", used[i], e.key(), e.MaxCount, e.Reason))
 		}
 	}
-	return failures
+	return failures, used
+}
+
+// observedTable renders the per-entry "entry | observed | max_count" table as
+// plain text for stdout. Zero-observed entries are listed too: they show an
+// allowlist row (and bound) that nothing exercised in this run.
+func observedTable(allow []*entry, used []int) string {
+	var b strings.Builder
+	b.WriteString("logguard observed counts (entry | observed | max_count):\n")
+	for i, e := range allow {
+		fmt.Fprintf(&b, "  %s | %d | %d\n", e.key(), used[i], e.MaxCount)
+	}
+	return b.String()
+}
+
+// appendSummary appends the same table, as markdown, to the GitHub step
+// summary file when path is non-empty. job (GITHUB_JOB) names the leg.
+func appendSummary(path, job string, allow []*entry, used []int) error {
+	if path == "" {
+		return nil
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 G703 -- CI-supplied path
+	if err != nil {
+		return err
+	}
+	var b strings.Builder
+	title := "logguard observed counts"
+	if job != "" {
+		title += " (" + job + ")"
+	}
+	fmt.Fprintf(&b, "### %s\n\n| entry | observed | max_count |\n|---|---:|---:|\n", title)
+	for i, e := range allow {
+		cell := strings.NewReplacer("|", "\\|", "\n", " ").Replace(e.key())
+		fmt.Fprintf(&b, "| `%s` | %d | %d |\n", cell, used[i], e.MaxCount)
+	}
+	b.WriteString("\n")
+	if _, err := f.WriteString(b.String()); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
