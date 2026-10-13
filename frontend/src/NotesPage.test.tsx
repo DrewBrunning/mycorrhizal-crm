@@ -433,7 +433,11 @@ function stubStaleNotes(status: number) {
           status,
           statusText: 'Precondition Failed',
           json: async () => ({
-            error: { code: 'PRECONDITION_FAILED', message: 'stale', details: {} },
+            error: {
+              code: status === 412 ? 'PRECONDITION_FAILED' : 'INTERNAL',
+              message: 'stale',
+              details: {},
+            },
           }),
         };
       }
@@ -502,4 +506,29 @@ test('a 412 on note delete opens the conflict dialog', async () => {
 
   expect(await screen.findByText('Changed elsewhere')).toBeDefined();
   expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"9"');
+});
+
+test('a non-412 failure on note save shows no conflict dialog and keeps the edit open', async () => {
+  const { calls } = stubStaleNotes(500);
+  await openStaleNote();
+
+  // A cleared date takes the "now" fallback on save.
+  const dateInput = screen.getByRole('dialog').querySelector('input[type="date"]');
+  fireEvent.change(dateInput as HTMLInputElement, { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
+  expect(screen.queryByText('Changed elsewhere')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
+});
+
+test('a non-412 failure on note delete shows no conflict dialog and keeps the edit open', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const { calls } = stubStaleNotes(500);
+  await openStaleNote();
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
+  expect(screen.queryByText('Changed elsewhere')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
 });

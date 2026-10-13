@@ -268,6 +268,78 @@ test('a 412 on activity delete opens the conflict dialog and keeps the edit open
   expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
 });
 
+test('saving an activity keeps its attendees as contact_ids', async () => {
+  getActivity.mockResolvedValue({
+    ...mockActivity,
+    contacts: [{ ID: 3, firstname: 'Bo', lastname: 'Li' }],
+  });
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(updateActivity).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ contact_ids: [3] }),
+      4,
+    );
+  });
+});
+
+test('a non-412 failure on activity delete logs and leaves the dialog open', async () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  deleteActivity.mockRejectedValueOnce(new Error('server down'));
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  await waitFor(() => {
+    expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.any(Error));
+  });
+  expect(screen.queryByRole('button', { name: 'Load latest version' })).toBeNull();
+  expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  consoleError.mockRestore();
+});
+
+test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {
+  getActivity.mockResolvedValue({
+    ...mockActivity,
+    description: '',
+    location: '',
+    date: '',
+    contacts: undefined,
+  });
+
+  await renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'trigger-activity-click' }));
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(updateActivity).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        description: '',
+        location: '',
+        date: expect.any(String),
+        contact_ids: [],
+      }),
+      4,
+    );
+  });
+});
+
 test('deleting the activity confirms, calls deleteActivity, and closes the dialog', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   await renderPage();

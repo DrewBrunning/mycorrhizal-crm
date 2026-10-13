@@ -310,3 +310,114 @@ test.each([
     expect(result.current.editingTimelineItem).not.toBeNull();
   },
 );
+
+const failing = [
+  ['note update', 'note', note, () => vi.mocked(updateNote), 'handleUpdateNote', 1],
+  [
+    'activity update',
+    'activity',
+    activity,
+    () => vi.mocked(updateActivity),
+    'handleUpdateActivity',
+    2,
+  ],
+  ['note delete', 'note', note, () => vi.mocked(deleteNote), 'handleDeleteNote', 1],
+  [
+    'activity delete',
+    'activity',
+    activity,
+    () => vi.mocked(deleteActivity),
+    'handleDeleteActivity',
+    2,
+  ],
+] as const;
+
+test.each(failing)(
+  '%s answered with a non-412 error goes to the notifier, not onConflict',
+  async (_n, type, item, api, handler, id) => {
+    api().mockRejectedValue(new ApiError('boom', 'INTERNAL', 500));
+    const onConflict = vi.fn();
+    const showError = vi.fn();
+    const { result } = renderHook(() =>
+      useTimelineEditing(42, vi.fn().mockResolvedValue(undefined), { showError }, onConflict),
+    );
+
+    await act(async () => {
+      await result.current.handleStartEditTimelineItem(type, item);
+    });
+    await act(async () => {
+      await result.current[handler](id);
+    });
+
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(failing)(
+  '%s answered 412 with no onConflict handler falls back to the notifier',
+  async (_n, type, item, api, handler, id) => {
+    api().mockRejectedValue(stale());
+    const showError = vi.fn();
+    const { result } = renderHook(() =>
+      useTimelineEditing(42, vi.fn().mockResolvedValue(undefined), { showError }),
+    );
+
+    await act(async () => {
+      await result.current.handleStartEditTimelineItem(type, item);
+    });
+    await act(async () => {
+      await result.current[handler](id);
+    });
+
+    expect(showError).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('saving blank fields falls back to empty strings, no contacts and a current date', async () => {
+  vi.mocked(getAllContacts).mockResolvedValue([]);
+  vi.mocked(updateNote).mockResolvedValue(note);
+  vi.mocked(updateActivity).mockResolvedValue(activity);
+  const { result } = renderHook(() => useTimelineEditing(42, vi.fn().mockResolvedValue(undefined)));
+
+  await act(async () => {
+    await result.current.handleStartEditTimelineItem('note', {
+      ...note,
+      date: '',
+    });
+  });
+  await act(async () => {
+    await result.current.handleUpdateNote(1);
+  });
+  expect(updateNote).toHaveBeenCalledWith(
+    1,
+    { content: 'hello', date: expect.any(String), contact_id: 42 },
+    4,
+  );
+
+  await act(async () => {
+    await result.current.handleStartEditTimelineItem('activity', {
+      ...activity,
+      description: '',
+      location: '',
+      date: '',
+    });
+  });
+  act(() => {
+    result.current.setEditTimelineValues({ activityTitle: 'coffee' });
+  });
+  await act(async () => {
+    await result.current.handleUpdateActivity(2);
+  });
+  expect(updateActivity).toHaveBeenCalledWith(
+    2,
+    {
+      title: 'coffee',
+      description: '',
+      location: '',
+      date: expect.any(String),
+      contact_ids: [],
+    },
+    6,
+  );
+});
