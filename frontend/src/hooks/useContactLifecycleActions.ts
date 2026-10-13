@@ -7,6 +7,7 @@ import {
   type ContactRecordResponse,
   deleteContact,
   favoriteContact,
+  getContactRecord,
   unarchiveContact,
   unfavoriteContact,
 } from '../api/contacts';
@@ -53,6 +54,20 @@ export function useContactLifecycleActions({
     }
   };
 
+  // ADR 0008: favorite/archive PATCHes persist the contact, which bumps its
+  // revision, but their flat response carries none. Re-read it so the next
+  // save/delete sends the current If-Match instead of 412ing against our own
+  // toggle. Best-effort: on failure the held revision just stays as it was.
+  const syncRevision = async () => {
+    if (!id) return;
+    try {
+      const fresh = await getContactRecord(id);
+      setRecord((prev) => (prev ? { ...prev, revision: fresh.revision } : prev));
+    } catch (err) {
+      console.error('Error refreshing contact revision:', err);
+    }
+  };
+
   const handleDeleteContact = async () => {
     if (!record || !id) return;
     if (!window.confirm(t('contactDetail.confirmDeleteContact', { name: displayName }))) {
@@ -81,6 +96,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = await archiveContact(id);
       setRecord({ ...record, archived: updatedContact.archived });
+      await syncRevision();
     } catch (err) {
       reportError('Error archiving contact:', err);
     }
@@ -91,6 +107,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = await unarchiveContact(id);
       setRecord({ ...record, archived: updatedContact.archived });
+      await syncRevision();
     } catch (err) {
       reportError('Error unarchiving contact:', err);
     }
@@ -106,6 +123,7 @@ export function useContactLifecycleActions({
     try {
       const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
       setRecord((prev) => (prev ? { ...prev, is_favorite: updatedContact.is_favorite } : prev));
+      await syncRevision();
     } catch (err) {
       setRecord((prev) => (prev ? { ...prev, is_favorite: wasFavorite } : prev));
       reportError('Error toggling favorite:', err);

@@ -888,6 +888,9 @@ export default function ContactDetailPage() {
     if (!id) return;
 
     await uploadProfilePicture(id, croppedImageBlob);
+    // The upload persists the contact (bumping its revision); re-read it so the
+    // next save sends the current If-Match.
+    await reloadRecord();
 
     // Refresh the profile picture
     const blob = await getContactProfilePicture(id);

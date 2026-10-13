@@ -120,4 +120,28 @@ test.describe('Concurrent note / reminder edit conflict', () => {
       await deleteTestContact(page.request, contact.ID);
     }
   });
+  test('toggling favorite then editing the contact does not conflict with our own write', async ({
+    page,
+  }) => {
+    const contact = await createTestContact(page.request, { lastname: 'Original' });
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+      await page.getByRole('button', { name: 'Mark as favorite' }).click();
+      await expect(page.getByRole('button', { name: 'Unmark as favorite' })).toBeVisible();
+
+      // The favorite write bumped the revision; the next save must carry it.
+      await page.locator('.edit-icon').first().click();
+      await page.getByLabel('Last Name', { exact: true }).fill('AfterFavorite');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(
+        page.getByRole('heading', { name: `${contact.firstname} AfterFavorite` }),
+      ).toBeVisible();
+      await expect(page.getByRole('dialog').filter({ hasText: 'Changed elsewhere' })).toHaveCount(
+        0,
+      );
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
 });
