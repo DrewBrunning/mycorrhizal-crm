@@ -90,7 +90,7 @@ build-matrix shape, not a version number).
 |---|---|---|
 | Go | `min-version-tests.yml` / `go-minimum`, `go-below-minimum` | `GOTOOLCHAIN=local` so go.mod's `toolchain` line can't silently mask the floor. |
 | Node.js, Yarn | `min-version-tests.yml` / `node-yarn-minimum`, `node-below-minimum` | Yarn Classic run via a pinned standalone download, not whatever the runner ships. |
-| Browsers | `min-version-tests.yml` / `browser-minimum` | Real, pinned Firefox 111 (exact floor) and Chrome for Testing 115 (closest official artifact to the 111 floor — Google publishes no pinned, downloadable Chrome 111) driven via raw WebDriver. Below-floor case is `frontend/src/unsupportedBrowserFallback.test.ts` (a unit test, not a live ancient browser — module/nomodule dispatch is a guaranteed HTML5 behavior, not project code). WebKit has no entry here — there is nothing to pin an exact floor against; see the [WebKit engine caveat](#webkit-engine-caveat-issue-992) below. |
+| Browsers | `min-version-tests.yml` / `browser-minimum` | Real, pinned Firefox 111 (exact floor) and Chrome for Testing 115 (closest official artifact to the 111 floor — Google publishes no pinned, downloadable Chrome 111) driven via raw WebDriver. Below-floor case is `frontend/src/unsupportedBrowserFallback.test.ts` (a unit test, not a live ancient browser — module/nomodule dispatch is a guaranteed HTML5 behavior, not project code). WebKit has no entry here — there is nothing to pin an exact floor against; see the [WebKit engine caveat](#webkit-engine-caveat-issue-992) below. **Firefox 111 is advisory and cannot currently be verified on GitHub-hosted runners** — see [Firefox 111 limitation](#firefox-111-limitation-issue-1002); Chrome for Testing 115 is the blocking browser-floor signal. |
 | SQLite | rides on Go | No version of its own; travels with the Go module. |
 | Docker Engine, Docker Compose | `min-version-tests.yml` / `docker-compose-minimum` | Validates the compose-file-syntax floor with the earliest V2 client against the runner's current dockerd — does **not** run an actual old Engine daemon (see the job's own comment for why that's a deliberately separate, higher-risk piece of work). |
 | Host OS / architecture | not independently checkable (version-wise); arm64 execution covered by `arm64-tests.yml` / `arm64-go` and `docker-publish.yml`'s `post-publish-smoke` arm64 leg | Linux x86_64/arm64 is the only shape this project builds/tests at all. arm64 is run natively on `ubuntu-24.04-arm` (issue #1485), so the arm64 half of the claim is exercised, not just built. |
@@ -137,3 +137,26 @@ asserts the capability directly rather than assuming either way. This still does
 the floor's Web-Push rationale: no spec here, on any engine, performs a live `subscribe()` round
 trip against a real push service, and there is still no real-Safari CI runner to compare against
 — see the spec's own file header for the current, precise scope of what is and isn't proven.
+
+## Firefox 111 limitation (issue #1002)
+
+The exact-floor Firefox 111 assertion in `browser-minimum` is **advisory
+(`continue-on-error`) and cannot currently be verified in CI on GitHub's hosted runners.**
+Firefox 111 headless segfaults there with `RenderCompositorSWGL failed mapping default
+framebuffer, no dt` (content process, signal 11) — a known, undiagnosed Firefox bug (Mozilla
+Bugzilla 1693011 / 1832201) that does not reproduce in a plain Docker container. Fixes that
+were confirmed and kept: `libdbus-glib-1-2` (#990/#991), Xvfb + Mesa llvmpipe (#999/#1001).
+
+Evidence for the remaining workarounds, each tried on real CI via `workflow_dispatch`:
+
+| Attempt | Result | Run |
+|---|---|---|
+| Baseline (scheduled run, 2026-10-12) | session creation returns HTTP 500, step fails (job green via continue-on-error) | [38255427197](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/38255427197) |
+| `-headless` + prefs `gfx.webrender.all/enabled/software=false`, `layers.acceleration.disabled=true` + env `MOZ_WEBRENDER=0`, `MOZ_ACCELERATED=0` | unchanged: same SWGL line, signal 11 | [38475158242](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/38475158242) |
+| Above + `gfx.webrender.force-disabled=true`, headed under Xvfb, `libegl1 libgles2` | GFX crash gone, session opens, but Firefox dies on navigation (`Failed to decode response from marionette`) | [38476391828](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/38476391828), [38477449403](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/38477449403) |
+
+**What is blocking:** Chrome for Testing 115 (four minors above the Chrome 111 floor, the closest
+published pin) is the only blocking browser-floor signal. The Firefox ≥ 111 floor is therefore
+declared by `browserslist` and enforced at build time (`build.target`), but not exercised on a real
+Firefox 111 in CI. A failing advisory step emits a `::warning::` and a job-summary line rather than
+staying silently green. Revisit if a runner image or Firefox-adjacent fix changes the picture.

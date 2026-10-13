@@ -20,7 +20,7 @@ base="http://127.0.0.1:${driver_port}"
 
 case "$kind" in
   firefox)
-    caps='{"capabilities":{"alwaysMatch":{"browserName":"firefox","moz:firefoxOptions":{"binary":"'"$binary"'","args":[],"prefs":{"gfx.webrender.force-disabled":true,"gfx.webrender.all":false,"gfx.webrender.enabled":false,"gfx.webrender.software":false,"layers.acceleration.disabled":true}}}}}'
+    caps='{"capabilities":{"alwaysMatch":{"browserName":"firefox","moz:firefoxOptions":{"binary":"'"$binary"'","args":["-headless"]}}}}'
     ;;
   chrome)
     caps='{"capabilities":{"alwaysMatch":{"browserName":"chrome","goog:chromeOptions":{"binary":"'"$binary"'","args":["--headless=new","--no-sandbox","--disable-gpu"]}}}}'

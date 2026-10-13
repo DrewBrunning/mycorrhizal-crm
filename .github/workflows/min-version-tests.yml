@@ -276,7 +276,7 @@ jobs:
       # real GLX connection even to a fake display -- Xvfb + Mesa's
       # software rasterizer (llvmpipe) is the standard portable fix.
       - name: Install Firefox 111's runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2 libgl1 xvfb libgl1-mesa-dri libglx-mesa0 libegl1 libgles2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2 libgl1 xvfb libgl1-mesa-dri libglx-mesa0
 
       - name: Start a virtual X display (Xvfb)
         run: |
@@ -301,17 +301,21 @@ jobs:
       # Advisory, not blocking (#1002): Firefox 111 headless still segfaults
       # on this runner despite all three fixes above confirmed present --
       # a known, unresolved Firefox bug (Mozilla Bugzilla #1693011,
-      # #1832201), not specific to this repo. Chrome for Testing 115 below
-      # is the real, blocking browser-floor signal.
+      # #1832201), not specific to this repo. Tried and ruled out on real CI
+      # (see the matrix doc's "Firefox 111 limitation"): WebRender-off prefs +
+      # MOZ_WEBRENDER=0/MOZ_ACCELERATED=0 (SWGL crash unchanged), and
+      # force-disabled WebRender headed under Xvfb with libegl1 (GFX crash gone
+      # but Marionette dies on navigation). A failure is surfaced as a
+      # ::warning:: + step summary, not silent green. Chrome for Testing 115
+      # below is the real, blocking browser-floor signal.
       - name: Assert the app loads on Firefox 111 (the documented floor)
         continue-on-error: true
-        env:
-          MOZ_WEBRENDER: '0'
-          MOZ_ACCELERATED: '0'
         run: |
           /tmp/geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
           if ! .github/scripts/min-browser-check.sh 4444 firefox /tmp/firefox-111/firefox-bin http://127.0.0.1:8899/index.html; then
-            echo "::warning::Firefox 111 assertion FAILED (advisory, #1002)"
+            echo "::warning::Firefox 111 assertion FAILED (advisory, #1002) -- known hosted-runner crash; Chrome 115 is the blocking floor signal"
+            echo "### Firefox 111: assertion FAILED (advisory, #1002)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Known unverifiable-on-hosted-runners crash; see docs/development/supported-runtime-matrix.md. Chrome for Testing 115 is the blocking signal." >> "$GITHUB_STEP_SUMMARY"
             grep -v -E "AsyncShutdown|^ *(@|addBlocker|setup)" /tmp/geckodriver.log | head -80 || true
             exit 1
           fi
