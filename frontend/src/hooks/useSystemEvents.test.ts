@@ -120,7 +120,10 @@ test('patchFilters clears a previous ids drill-down unless the patch sets ids', 
 });
 
 test('patchFilters resets the window to the default limit', async () => {
-  vi.mocked(getSystemEvents).mockResolvedValue(response([]));
+  // A full window so loadMore actually grows the limit -- otherwise the reset
+  // to DEFAULT_LIMIT is invisible and the assertion proves nothing.
+  const full = Array.from({ length: 100 }, (_, i) => event(i + 1));
+  vi.mocked(getSystemEvents).mockResolvedValue(response(full));
 
   const { result } = renderHook(() => useSystemEvents());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -128,7 +131,9 @@ test('patchFilters resets the window to the default limit', async () => {
   await act(async () => {
     result.current.loadMore();
   });
-  expect(result.current.filters).toBeDefined();
+  await waitFor(() =>
+    expect(getSystemEvents).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 200 })),
+  );
 
   await act(async () => {
     result.current.patchFilters({ component: 'app' });

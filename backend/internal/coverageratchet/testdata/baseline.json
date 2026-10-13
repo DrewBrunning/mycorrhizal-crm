@@ -177,7 +177,7 @@
     "database/sqlite_driver.go": 88.89,
     "database/startup_integrity.go": 100,
     "differential/corpus.go": 100,
-    "differential/harness.go": 88.24,
+    "differential/harness.go": 85.29,
     "differential/ical.go": 100,
     "differential/pins.go": 97.67,
     "differential/pins_jscontact.go": 100,

@@ -1228,14 +1228,18 @@ criterion.**
     three parallel legs, `api`, `hooks` and `utils`, each with a 240-minute
     timeout (api ~4.4k mutants, hooks ~3.3k, utils 701). Each leg derives its
     config from `stryker.conf.json` with `jq` and carries its own `break` in
-    the workflow matrix (`api` 83, `hooks` 62, `utils` 79 — ~6 points under
+    the workflow matrix (`api` 83, `hooks` 64, `utils` 79 — ~6 points under
     each half's measured score); `stryker.conf.json` itself stays the combined
-    local-run config. Issue #1624 §3 also added the first
-    `useContactMerge`/`useSystemEvents` tests, killing 77 hook survivors and
-    lifting the hooks half from 66.35% to ~68.5% (the remaining hook survivors
-    are a dedicated follow-up). Locally run a slice with `npx stryker run
-    --mutate src/api/notes.ts` (the dry run still executes the whole suite,
-    ~5 min).
+    local-run config. Issue #1624 §3 added the first tests for the largest
+    untested hooks (`useContactMerge`, `useSystemEvents`, `useAudit`,
+    `useSeafile`, `useImmich`), killing 121 survivors and lifting the hooks
+    half from 66.35% to **70.12%** (2026-10-13, 2277 killed / 785 survived /
+    186 no-coverage). The residual hook survivors are dominated by equivalent
+    mutants — React dependency arrays and logging-argument literals a test
+    cannot observe — so further ratcheting has low yield; the remaining
+    genuine gaps are in partially-tested hooks. Locally run a slice with
+    `npx stryker run --mutate src/api/notes.ts` (the dry run still executes
+    the whole suite, ~5 min).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
     data loss lives: migration/upgrade and backup/restore (`database`),
     data-integrity invariants (`atrest`), delete cascade (the two files
