@@ -13,24 +13,28 @@ export function useSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const runSearch = useCallback(async (query: string) => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) {
-      setResult(null);
+  const runSearch = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (trimmed.length < 2) {
+        setResult(null);
+        setError(null);
+        return;
+      }
+      setLoading(true);
       setError(null);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      setResult(await searchAll(trimmed));
-    } catch (err) {
-      setError(handleFetchError(err, 'searching'));
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        setResult(await searchAll(trimmed));
+      } catch (err) {
+        setError(handleFetchError(err, 'searching'));
+        setResult(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: runSearch closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return {
     result,

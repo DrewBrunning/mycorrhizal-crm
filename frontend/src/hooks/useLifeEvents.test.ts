@@ -248,3 +248,95 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.events).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+type LifePage = Awaited<ReturnType<typeof getLifeEvents>>;
+
+test('starts empty, reports loading, logs a failure by operation, and a refresh clears it', async () => {
+  const d = deferred<LifePage>();
+  vi.mocked(getLifeEvents).mockReturnValueOnce(d.promise);
+  const { result } = renderHook(() => useLifeEvents('uid-1'));
+  expect(result.current.events).toEqual([]);
+  expect(result.current.total).toBe(0);
+  expect(result.current.contactsByUid.size).toBe(0);
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  await act(async () => {
+    d.resolve({ life_events: [], next_cursor: '', limit: 50 });
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  vi.mocked(getLifeEvents).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(console.error).toHaveBeenCalledWith('[fetching life events] Error:', expect.anything());
+
+  const d2 = deferred<LifePage>();
+  vi.mocked(getLifeEvents).mockReturnValueOnce(d2.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d2.resolve({ life_events: [], next_cursor: '', limit: 50 });
+  });
+});
+
+test('a response without life_events yields none; an override entity id wins', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({} as LifePage);
+  const { result } = renderHook(() => useLifeEvents('uid-1'));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.events).toEqual([]);
+  await act(async () => {
+    await result.current.refresh('uid-9');
+  });
+  expect(getLifeEvents).toHaveBeenLastCalledWith({ entity_id: 'uid-9', limit: 50 });
+});
+
+test('an event with no related ids is skipped, and related ids from every event are collected once', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({
+    life_events: [
+      lifeEvent('a', { related_entity_ids: undefined }),
+      lifeEvent('b', { related_entity_ids: ['uid-2', 'uid-3'] }),
+      lifeEvent('c', { related_entity_ids: ['uid-3', 'uid-4'] }),
+    ],
+    next_cursor: '',
+    limit: 50,
+  });
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map());
+  const { result } = renderHook(() => useLifeEvents('uid-1'));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getContactsByUid).toHaveBeenCalledWith(['uid-2', 'uid-3', 'uid-4']);
+});
+
+test('refresh and the mutations follow the current entity id', async () => {
+  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
+  vi.mocked(createLifeEvent).mockResolvedValue({ message: '', life_event: lifeEvent('n') });
+  const { result, rerender } = renderHook(({ id }) => useLifeEvents(id), {
+    initialProps: { id: 'uid-1' },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ id: 'uid-9' });
+  await waitFor(() =>
+    expect(getLifeEvents).toHaveBeenLastCalledWith({ entity_id: 'uid-9', limit: 50 }),
+  );
+  vi.mocked(getLifeEvents).mockClear();
+  await act(async () => {
+    await result.current.handleCreate({} as LifeEventInputData);
+    await result.current.handleUpdate('x', {} as LifeEventInputData);
+    await result.current.handleDelete('x');
+  });
+  expect(getLifeEvents).toHaveBeenCalledTimes(3);
+  expect(getLifeEvents).toHaveBeenLastCalledWith({ entity_id: 'uid-9', limit: 50 });
+});

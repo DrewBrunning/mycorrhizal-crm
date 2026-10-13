@@ -17,23 +17,27 @@ export function useContactShares(notifier?: ErrorNotifier) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [incomingResp, outgoingResp] = await Promise.all([
-        getIncomingContactShares(),
-        getOutgoingContactShares(),
-      ]);
-      setIncoming(incomingResp.contact_shares || []);
-      setOutgoing(outgoingResp.contact_shares || []);
-      setUsernames({ ...outgoingResp.usernames, ...incomingResp.usernames });
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching contact shares'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [incomingResp, outgoingResp] = await Promise.all([
+          getIncomingContactShares(),
+          getOutgoingContactShares(),
+        ]);
+        setIncoming(incomingResp.contact_shares || []);
+        setOutgoing(outgoingResp.contact_shares || []);
+        setUsernames({ ...outgoingResp.usernames, ...incomingResp.usernames });
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching contact shares'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Preview-only step: parses the share's payload and returns what
   // handleConfirmShare needs. Does not change the share's status.

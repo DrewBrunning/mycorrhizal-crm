@@ -69,9 +69,9 @@
       "branchesTotal": 52
     },
     "src/DateFormatProvider.tsx": {
-      "lines": 92.1,
+      "lines": 92.48,
       "linesTotal": 266,
-      "branches": 83.94,
+      "branches": 84.86,
       "branchesTotal": 218
     },
     "src/HouseholdsPage.tsx": {
@@ -1425,15 +1425,15 @@
       "branchesTotal": 0
     },
     "src/hooks/useActivities.ts": {
-      "lines": 92.59,
+      "lines": 100,
       "linesTotal": 54,
-      "branches": 71.79,
+      "branches": 100,
       "branchesTotal": 39
     },
     "src/hooks/useAudit.ts": {
       "lines": 100,
       "linesTotal": 41,
-      "branches": 93.75,
+      "branches": 100,
       "branchesTotal": 16
     },
     "src/hooks/useBeforeUnloadGuard.ts": {
@@ -1445,13 +1445,13 @@
     "src/hooks/useCadencePolicy.ts": {
       "lines": 100,
       "linesTotal": 29,
-      "branches": 92.85,
+      "branches": 100,
       "branchesTotal": 14
     },
     "src/hooks/useCircles.ts": {
-      "lines": 95.74,
+      "lines": 100,
       "linesTotal": 47,
-      "branches": 87.5,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/hooks/useConnections.ts": {
@@ -1461,9 +1461,9 @@
       "branchesTotal": 8
     },
     "src/hooks/useContactDetailData.ts": {
-      "lines": 97.77,
+      "lines": 100,
       "linesTotal": 90,
-      "branches": 82.97,
+      "branches": 97.87,
       "branchesTotal": 47
     },
     "src/hooks/useContactDialogs.ts": {
@@ -1521,27 +1521,27 @@
       "branchesTotal": 2
     },
     "src/hooks/useContactShares.ts": {
-      "lines": 79.41,
+      "lines": 100,
       "linesTotal": 34,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 4
     },
     "src/hooks/useContacts.ts": {
       "lines": 100,
       "linesTotal": 40,
-      "branches": 92,
+      "branches": 100,
       "branchesTotal": 25
     },
     "src/hooks/useConversationAgenda.ts": {
       "lines": 100,
       "linesTotal": 28,
-      "branches": 66.66,
+      "branches": 83.33,
       "branchesTotal": 6
     },
     "src/hooks/useDataDecayPolicy.ts": {
       "lines": 100,
       "linesTotal": 36,
-      "branches": 93.75,
+      "branches": 100,
       "branchesTotal": 16
     },
     "src/hooks/useDebounce.ts": {
@@ -1553,7 +1553,7 @@
     "src/hooks/useDiagnostics.ts": {
       "lines": 100,
       "linesTotal": 17,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 6
     },
     "src/hooks/useDiscardGuard.ts": {
@@ -1565,13 +1565,13 @@
     "src/hooks/useDocumentTitle.ts": {
       "lines": 100,
       "linesTotal": 4,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 2
     },
     "src/hooks/useDuplicatePairs.ts": {
-      "lines": 86.2,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 6
     },
     "src/hooks/useEditDialog.ts": {
@@ -1581,21 +1581,21 @@
       "branchesTotal": 0
     },
     "src/hooks/useErrorAggregation.ts": {
-      "lines": 90.47,
+      "lines": 100,
       "linesTotal": 21,
-      "branches": 54.54,
+      "branches": 100,
       "branchesTotal": 11
     },
     "src/hooks/useErrorAlertFocus.ts": {
       "lines": 100,
       "linesTotal": 9,
-      "branches": 85.71,
+      "branches": 100,
       "branchesTotal": 7
     },
     "src/hooks/useExternalLinks.ts": {
       "lines": 100,
       "linesTotal": 16,
-      "branches": 62.5,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/hooks/useFeeds.ts": {
@@ -1605,9 +1605,9 @@
       "branchesTotal": 5
     },
     "src/hooks/useFieldDefinitions.ts": {
-      "lines": 75,
+      "lines": 100,
       "linesTotal": 68,
-      "branches": 57.14,
+      "branches": 100,
       "branchesTotal": 14
     },
     "src/hooks/useGeoPulse.ts": {
@@ -1619,7 +1619,7 @@
     "src/hooks/useGifts.ts": {
       "lines": 100,
       "linesTotal": 25,
-      "branches": 66.66,
+      "branches": 83.33,
       "branchesTotal": 6
     },
     "src/hooks/useGraph.ts": {
@@ -1653,9 +1653,9 @@
       "branchesTotal": 22
     },
     "src/hooks/useLinkFieldTypes.ts": {
-      "lines": 85.71,
+      "lines": 100,
       "linesTotal": 56,
-      "branches": 70,
+      "branches": 100,
       "branchesTotal": 10
     },
     "src/hooks/useNavigationGuard.tsx": {
@@ -1665,7 +1665,7 @@
       "branchesTotal": 4
     },
     "src/hooks/useNextcloud.ts": {
-      "lines": 95.45,
+      "lines": 100,
       "linesTotal": 44,
       "branches": 100,
       "branchesTotal": 0
@@ -1679,7 +1679,7 @@
     "src/hooks/useNotificationChannelHealth.ts": {
       "lines": 100,
       "linesTotal": 19,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/hooks/useOIDCConfig.ts": {
@@ -1689,27 +1689,27 @@
       "branchesTotal": 6
     },
     "src/hooks/useOccasionEvents.ts": {
-      "lines": 87.34,
-      "linesTotal": 79,
-      "branches": 72.22,
+      "lines": 98.75,
+      "linesTotal": 80,
+      "branches": 100,
       "branchesTotal": 18
     },
     "src/hooks/useOccasionObligations.ts": {
       "lines": 100,
       "linesTotal": 29,
-      "branches": 83.33,
+      "branches": 100,
       "branchesTotal": 6
     },
     "src/hooks/usePaperless.ts": {
-      "lines": 95.45,
+      "lines": 100,
       "linesTotal": 44,
       "branches": 100,
       "branchesTotal": 0
     },
     "src/hooks/usePreferences.ts": {
-      "lines": 93.1,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 83.33,
+      "branches": 100,
       "branchesTotal": 6
     },
     "src/hooks/useRecordConflict.tsx": {
@@ -1719,7 +1719,7 @@
       "branchesTotal": 2
     },
     "src/hooks/useRelationshipEdges.ts": {
-      "lines": 89.28,
+      "lines": 100,
       "linesTotal": 56,
       "branches": 100,
       "branchesTotal": 10
@@ -1731,9 +1731,9 @@
       "branchesTotal": 14
     },
     "src/hooks/useRowKeys.ts": {
-      "lines": 90,
+      "lines": 100,
       "linesTotal": 10,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 2
     },
     "src/hooks/useSeafile.ts": {
@@ -1743,7 +1743,7 @@
       "branchesTotal": 0
     },
     "src/hooks/useSearch.ts": {
-      "lines": 88.23,
+      "lines": 100,
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 2
@@ -1755,39 +1755,39 @@
       "branchesTotal": 4
     },
     "src/hooks/useSourceImportWizard.ts": {
-      "lines": 98.09,
+      "lines": 100,
       "linesTotal": 105,
-      "branches": 85,
+      "branches": 100,
       "branchesTotal": 40
     },
     "src/hooks/useSubsystemHealth.ts": {
       "lines": 100,
       "linesTotal": 19,
-      "branches": 50,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/hooks/useSystemEvents.ts": {
       "lines": 100,
       "linesTotal": 41,
-      "branches": 96,
+      "branches": 100,
       "branchesTotal": 25
     },
     "src/hooks/useSystemStatus.ts": {
-      "lines": 89.47,
+      "lines": 100,
       "linesTotal": 19,
-      "branches": 33.33,
+      "branches": 100,
       "branchesTotal": 6
     },
     "src/hooks/useTags.ts": {
-      "lines": 91.48,
+      "lines": 100,
       "linesTotal": 47,
-      "branches": 75,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/hooks/useTimeline.ts": {
-      "lines": 90.69,
+      "lines": 100,
       "linesTotal": 43,
-      "branches": 61.53,
+      "branches": 100,
       "branchesTotal": 26
     },
     "src/hooks/useTimelineEditing.ts": {

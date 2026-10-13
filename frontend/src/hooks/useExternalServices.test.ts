@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
@@ -511,4 +511,282 @@ test('immich runSync rethrows on failure', async () => {
     }),
   ).rejects.toThrow('sync failed');
   expect(result.current.syncing).toBe(false);
+});
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+const labels: Record<string, string> = {
+  seafile: 'Seafile',
+  paperless: 'Paperless',
+  nextcloud: 'Nextcloud',
+  immich: 'Immich',
+};
+
+test('every service starts unconfigured and idle', () => {
+  for (const s of services) {
+    const { result } = renderHook(() => s.use());
+    expect(result.current.config).toBeNull();
+    expect(result.current.configLoading).toBe(false);
+    expect(result.current.configError).toBeNull();
+    expect(result.current.testing).toBe(false);
+    expect(result.current.testResult).toBeNull();
+  }
+});
+
+test('refreshConfig reports loading, logs its operation, and a retry clears the error', async () => {
+  for (const s of services) {
+    vi.mocked(console.error).mockClear();
+    vi.mocked(s.fetchConfig).mockRejectedValueOnce(new Error('boom'));
+    const { result } = renderHook(() => s.use());
+    await act(async () => {
+      await result.current.refreshConfig();
+    });
+    expect(result.current.configError).toBe('boom');
+    expect(console.error).toHaveBeenCalledWith(
+      `[fetching ${labels[s.name]} config] Error:`,
+      expect.anything(),
+    );
+
+    const d = deferred<unknown>();
+    vi.mocked(s.fetchConfig).mockReturnValueOnce(d.promise);
+    act(() => {
+      void result.current.refreshConfig();
+    });
+    await waitFor(() => expect(result.current.configLoading).toBe(true));
+    expect(result.current.configError).toBeNull();
+    await act(async () => {
+      d.resolve(s.configFixture);
+    });
+    await waitFor(() => expect(result.current.configLoading).toBe(false));
+  }
+});
+
+test('saveConfig and testConnection log their operations and honor the latest notifier', async () => {
+  for (const s of services) {
+    vi.mocked(console.error).mockClear();
+    vi.mocked(s.saveConfigApi).mockRejectedValue(new Error('save failed'));
+    vi.mocked(s.testConnectionApi).mockRejectedValue(new Error('test failed'));
+    const first = { showError: vi.fn() };
+    const second = { showError: vi.fn() };
+    const { result, rerender } = renderHook(({ n }) => s.use(n), { initialProps: { n: first } });
+    rerender({ n: second });
+    await act(async () => {
+      await expect(result.current.saveConfig(s.saveInput)).rejects.toThrow('save failed');
+      await expect(result.current.testConnection()).rejects.toThrow('test failed');
+    });
+    expect(first.showError).not.toHaveBeenCalled();
+    expect(second.showError.mock.calls.map((c) => c[0])).toEqual(['save failed', 'test failed']);
+    expect(console.error).toHaveBeenCalledWith(
+      `[saving ${labels[s.name]} connection] Error:`,
+      expect.anything(),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      `[testing ${labels[s.name]} connection] Error:`,
+      expect.anything(),
+    );
+  }
+});
+
+test('testConnection reports testing and drops the previous result while the new check runs', async () => {
+  for (const s of services) {
+    vi.mocked(s.testConnectionApi).mockResolvedValueOnce(s.testFixture);
+    const { result } = renderHook(() => s.use());
+    await act(async () => {
+      await result.current.testConnection();
+    });
+    expect(result.current.testResult).toEqual(s.testFixture);
+
+    const d = deferred<unknown>();
+    vi.mocked(s.testConnectionApi).mockReturnValueOnce(d.promise);
+    act(() => {
+      void result.current.testConnection();
+    });
+    await waitFor(() => expect(result.current.testing).toBe(true));
+    expect(result.current.testResult).toBeNull();
+    await act(async () => {
+      d.resolve(s.testFixture);
+    });
+    await waitFor(() => expect(result.current.testing).toBe(false));
+    expect(result.current.testResult).toEqual(s.testFixture);
+  }
+});
+
+test('browse actions report their busy flag, log their operation, and use the latest notifier', async () => {
+  const cases: {
+    name: string;
+    api: Mock;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    run: (r: any) => Promise<unknown>;
+    flag: string;
+    label: string;
+    value: unknown;
+    stateKey: string;
+  }[] = [
+    {
+      name: 'seafile libraries',
+      api: getSeafileLibraries as Mock,
+      run: (r) => r.browseLibraries(),
+      flag: 'browsing',
+      label: 'browsing Seafile libraries',
+      value: [{ id: 'l' }],
+      stateKey: 'libraries',
+    },
+    {
+      name: 'seafile folder',
+      api: getSeafileDir as Mock,
+      run: (r) => r.browseDir('lib', '/x'),
+      flag: 'browsing',
+      label: 'browsing Seafile folder',
+      value: [{ id: 'f' }],
+      stateKey: 'items',
+    },
+    {
+      name: 'nextcloud folder',
+      api: getNextcloudDir as Mock,
+      run: (r) => r.browseDir('/x'),
+      flag: 'browsing',
+      label: 'browsing Nextcloud folder',
+      value: [{ name: 'd' }],
+      stateKey: 'items',
+    },
+    {
+      name: 'paperless documents',
+      api: getPaperlessDocuments as Mock,
+      run: (r) => r.browseDocuments('q'),
+      flag: 'documentsLoading',
+      label: 'browsing Paperless documents',
+      value: [{ id: 1 }],
+      stateKey: 'documents',
+    },
+    {
+      name: 'immich people',
+      api: getImmichPeople as Mock,
+      run: (r) => r.browsePeople(),
+      flag: 'peopleLoading',
+      label: 'browsing Immich people',
+      value: [{ id: 'p' }],
+      stateKey: 'people',
+    },
+  ];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hooks: Record<string, () => any> = {
+    seafile: () => useSeafile,
+    nextcloud: () => useNextcloud,
+    paperless: () => usePaperless,
+    immich: () => useImmich,
+  };
+  for (const c of cases) {
+    vi.mocked(console.error).mockClear();
+    const useIt = hooks[c.name.split(' ')[0]]();
+    // Busy flag is true while in flight and the result lands in state.
+    const d = deferred<unknown>();
+    c.api.mockReturnValueOnce(d.promise);
+    const first = { showError: vi.fn() };
+    const second = { showError: vi.fn() };
+    const { result, rerender } = renderHook(({ n }) => useIt(n), { initialProps: { n: first } });
+    const current = () => result.current;
+    rerender({ n: second });
+    act(() => {
+      void c.run(current());
+    });
+    await waitFor(() => expect(current()[c.flag]).toBe(true));
+    await act(async () => {
+      d.resolve(c.value);
+    });
+    await waitFor(() => expect(current()[c.flag]).toBe(false));
+    expect(current()[c.stateKey]).toEqual(c.value);
+
+    // Failure: notified through the latest notifier and logged by operation.
+    c.api.mockRejectedValueOnce(new Error('nope'));
+    await act(async () => {
+      await expect(c.run(current())).rejects.toThrow('nope');
+    });
+    expect(first.showError).not.toHaveBeenCalled();
+    expect(second.showError).toHaveBeenCalledWith('nope');
+    expect(console.error).toHaveBeenCalledWith(`[${c.label}] Error:`, expect.anything());
+    expect(current()[c.flag]).toBe(false);
+  }
+});
+
+test('immich starts with no people, summary, or sync in progress', () => {
+  const { result } = renderHook(() => useImmich());
+  expect(result.current.people).toEqual([]);
+  expect(result.current.summary).toBeNull();
+  expect(result.current.summaryLoading).toBe(false);
+  expect(result.current.peopleLoading).toBe(false);
+  expect(result.current.syncing).toBe(false);
+});
+
+test('immich runSync reports syncing, logs the operation, notifies, and skips the config refresh on failure', async () => {
+  const d = deferred<undefined>();
+  vi.mocked(syncImmich).mockReturnValueOnce(d.promise as never);
+  vi.mocked(getImmichConfig).mockResolvedValue({} as never);
+  const notifier = { showError: vi.fn() };
+  const { result } = renderHook(() => useImmich(notifier));
+  act(() => {
+    void result.current.runSync();
+  });
+  await waitFor(() => expect(result.current.syncing).toBe(true));
+  await act(async () => {
+    d.resolve(undefined);
+  });
+  await waitFor(() => expect(result.current.syncing).toBe(false));
+
+  vi.mocked(getImmichConfig).mockClear();
+  vi.mocked(console.error).mockClear();
+  vi.mocked(syncImmich).mockRejectedValueOnce(new Error('sync down'));
+  await act(async () => {
+    await expect(result.current.runSync()).rejects.toThrow('sync down');
+  });
+  expect(notifier.showError).toHaveBeenCalledWith('sync down');
+  expect(console.error).toHaveBeenCalledWith('[syncing Immich] Error:', expect.anything());
+  expect(getImmichConfig).not.toHaveBeenCalled();
+});
+
+test('immich loadSummary reports its loading flag while in flight', async () => {
+  const d = deferred<null>();
+  vi.mocked(getImmichContactSummary).mockReturnValueOnce(d.promise as never);
+  const { result } = renderHook(() => useImmich());
+  act(() => {
+    void result.current.loadSummary('c-1');
+  });
+  await waitFor(() => expect(result.current.summaryLoading).toBe(true));
+  await act(async () => {
+    d.resolve(null);
+  });
+  await waitFor(() => expect(result.current.summaryLoading).toBe(false));
+});
+
+test('browse state starts empty and idle for every service', () => {
+  const seafile = renderHook(() => useSeafile()).result.current;
+  expect(seafile.libraries).toEqual([]);
+  expect(seafile.items).toEqual([]);
+  expect(seafile.browsing).toBe(false);
+  const nextcloud = renderHook(() => useNextcloud()).result.current;
+  expect(nextcloud.items).toEqual([]);
+  expect(nextcloud.browsing).toBe(false);
+  const paperless = renderHook(() => usePaperless()).result.current;
+  expect(paperless.documents).toEqual([]);
+  expect(paperless.documentsLoading).toBe(false);
+});
+
+test('immich runSync uses the latest notifier after a re-render', async () => {
+  vi.mocked(syncImmich).mockRejectedValue(new Error('sync failed'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useImmich(n), { initialProps: { n: first } });
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.runSync()).rejects.toThrow('sync failed');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError).toHaveBeenCalledWith('sync failed');
 });

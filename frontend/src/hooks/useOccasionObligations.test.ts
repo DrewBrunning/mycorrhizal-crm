@@ -180,3 +180,99 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.obligations).toEqual([]);
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+type ObligationPage = Awaited<ReturnType<typeof getOccasionObligations>>;
+
+test('starts empty, asks for up to 100 obligations of the entity, and reports loading', async () => {
+  const d = deferred<ObligationPage>();
+  vi.mocked(getOccasionObligations).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useOccasionObligations('uid-1'));
+  expect(result.current.obligations).toEqual([]);
+  expect(result.current.error).toBeNull();
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(getOccasionObligations).toHaveBeenCalledWith({ entityId: 'uid-1', limit: 100 });
+  await act(async () => {
+    d.resolve({ occasion_obligations: [obligation] } as never);
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.obligations).toEqual([obligation]);
+});
+
+test('a response without the list yields none, and a failed load is logged then cleared by a refresh', async () => {
+  vi.mocked(getOccasionObligations).mockResolvedValueOnce({} as never);
+  const { result } = renderHook(() => useOccasionObligations('uid-1'));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.obligations).toEqual([]);
+
+  vi.mocked(getOccasionObligations).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBe('offline');
+  expect(console.error).toHaveBeenCalledWith(
+    '[fetching occasion obligations] Error:',
+    expect.anything(),
+  );
+
+  const d = deferred<ObligationPage>();
+  vi.mocked(getOccasionObligations).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve({ occasion_obligations: [] } as never);
+  });
+});
+
+test('refetches when the entity id changes', async () => {
+  vi.mocked(getOccasionObligations).mockResolvedValue({ occasion_obligations: [] } as never);
+  const { rerender } = renderHook(({ id }) => useOccasionObligations(id), {
+    initialProps: { id: 'a' },
+  });
+  await waitFor(() => expect(getOccasionObligations).toHaveBeenCalledTimes(1));
+  rerender({ id: 'b' });
+  await waitFor(() =>
+    expect(getOccasionObligations).toHaveBeenLastCalledWith({ entityId: 'b', limit: 100 }),
+  );
+});
+
+test('save and delete failures log their operations and use the latest notifier', async () => {
+  vi.mocked(getOccasionObligations).mockResolvedValue({ occasion_obligations: [] } as never);
+  vi.mocked(createOccasionObligation).mockRejectedValue(new Error('s'));
+  vi.mocked(deleteOccasionObligation).mockRejectedValue(new Error('d'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useOccasionObligations('uid-1', n), {
+    initialProps: { n: first },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.handleSave(null, {} as OccasionObligationInput)).rejects.toThrow(
+      's',
+    );
+    await expect(result.current.handleDelete('o-1')).rejects.toThrow('d');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError.mock.calls.map((c) => c[0])).toEqual(['s', 'd']);
+  expect(console.error).toHaveBeenCalledWith(
+    '[saving occasion obligation] Error:',
+    expect.anything(),
+  );
+  expect(console.error).toHaveBeenCalledWith(
+    '[deleting occasion obligation] Error:',
+    expect.anything(),
+  );
+});

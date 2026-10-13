@@ -366,3 +366,196 @@ describe('useContactDetailLoader', () => {
     );
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+describe('logging and fallbacks', () => {
+  test('each swallowed fetch failure is logged with its own label', async () => {
+    const boom = new Error('boom');
+    vi.mocked(getContactNotes).mockRejectedValue(boom);
+    vi.mocked(getContactActivities).mockRejectedValue(boom);
+    vi.mocked(getCompletionsForContact).mockRejectedValue(boom);
+    vi.mocked(getCurrentUser).mockRejectedValue(boom);
+    await fetchContactDetailCore('1');
+    expect(consoleError).toHaveBeenCalledWith('Error fetching contact notes:', boom);
+    expect(consoleError).toHaveBeenCalledWith('Error fetching contact activities:', boom);
+    expect(consoleError).toHaveBeenCalledWith('Error fetching reminder completions:', boom);
+    expect(consoleError).toHaveBeenCalledWith('Error fetching current user preferences:', boom);
+  });
+
+  test('a failed profile picture is logged', async () => {
+    const boom = new Error('x');
+    vi.mocked(getContactProfilePicture).mockRejectedValue(boom);
+    await fetchProfilePictureUrl('1', true);
+    expect(consoleError).toHaveBeenCalledWith('Error fetching profile picture:', boom);
+  });
+
+  test('a failed timeline refresh is logged by operation', async () => {
+    vi.mocked(getContactActivities).mockRejectedValue(new Error('x'));
+    const { result } = renderHook(() => useContactDetailData('1'));
+    await act(() => result.current.refreshNotesAndActivities());
+    expect(consoleError).toHaveBeenCalledWith(
+      '[refreshing notes and activities] Error:',
+      expect.anything(),
+    );
+  });
+});
+
+describe('useContactDetailData state', () => {
+  test('starts with an empty picture, lists, and the default visible fields', () => {
+    const { result } = renderHook(() => useContactDetailData('1'));
+    expect(result.current.profilePic).toBe('');
+    expect(result.current.activities).toEqual([]);
+    expect(result.current.completions).toEqual([]);
+    expect(result.current.enabledFields.size).toBeGreaterThan(0);
+  });
+
+  test('a timeline refresh replaces notes, activities and completions, with empty fallbacks', async () => {
+    const activity = { ID: 4, title: 't' } as never;
+    const completion = { ID: 5 } as never;
+    vi.mocked(getContactActivities).mockResolvedValueOnce({ activities: [activity] });
+    vi.mocked(getCompletionsForContact).mockResolvedValueOnce([completion]);
+    const { result } = renderHook(() => useContactDetailData('7'));
+    await act(() => result.current.refreshNotesAndActivities());
+    expect(result.current.notes).toEqual([note]);
+    expect(result.current.activities).toEqual([activity]);
+    expect(result.current.completions).toEqual([completion]);
+    expect(getContactNotes).toHaveBeenCalledWith('7');
+    expect(getCompletionsForContact).toHaveBeenCalledWith(7);
+
+    vi.mocked(getContactNotes).mockResolvedValueOnce({} as never);
+    vi.mocked(getContactActivities).mockResolvedValueOnce({} as never);
+    vi.mocked(getCompletionsForContact).mockResolvedValueOnce(undefined as never);
+    await act(() => result.current.refreshNotesAndActivities());
+    expect(result.current.notes).toEqual([]);
+    expect(result.current.activities).toEqual([]);
+    expect(result.current.completions).toEqual([]);
+    expect(result.current.timelineRevision).toBe(2);
+  });
+
+  test('refresh and reload follow the contact id', async () => {
+    const { result, rerender } = renderHook(({ id }) => useContactDetailData(id), {
+      initialProps: { id: '1' },
+    });
+    rerender({ id: '9' });
+    await act(() => result.current.refreshNotesAndActivities());
+    await act(() => result.current.reloadRecord());
+    expect(getContactNotes).toHaveBeenLastCalledWith('9');
+    expect(getContactRecord).toHaveBeenLastCalledWith('9');
+  });
+});
+
+describe('useContactDetailLoader cancellation', () => {
+  function setup(id: string, loadDependents = vi.fn(async () => {})) {
+    const applyCore = vi.fn();
+    const setProfilePic = vi.fn();
+    const setLoading = vi.fn();
+    const onLoadError = vi.fn();
+    const hook = renderHook(() =>
+      useContactDetailLoader(id, {
+        applyCore,
+        setProfilePic,
+        setLoading,
+        loadDependents,
+        onAuxFetchFailed: vi.fn(),
+        onLoadError,
+      }),
+    );
+    return { ...hook, applyCore, setProfilePic, setLoading, onLoadError, loadDependents };
+  }
+
+  test('unmounting before the core load lands applies nothing', async () => {
+    const d = deferred<ContactRecordResponse>();
+    vi.mocked(getContactRecord).mockReturnValue(d.promise);
+    const { applyCore, setLoading, unmount } = setup('1');
+    unmount();
+    await act(async () => {
+      d.resolve(record);
+    });
+    expect(applyCore).not.toHaveBeenCalled();
+    expect(setLoading).not.toHaveBeenCalled();
+  });
+
+  test('unmounting while dependents load skips the picture fetch and the loading flip', async () => {
+    const d = deferred<void>();
+    const { setLoading, unmount } = setup(
+      '1',
+      vi.fn(() => d.promise),
+    );
+    await waitFor(() => expect(getContactRecord).toHaveBeenCalled());
+    await act(async () => {});
+    unmount();
+    await act(async () => {
+      d.resolve();
+    });
+    expect(getContactProfilePicture).not.toHaveBeenCalled();
+    expect(setLoading).not.toHaveBeenCalled();
+  });
+
+  test('a picture that arrives after unmount is revoked and never shown', async () => {
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:late', revokeObjectURL });
+    vi.mocked(getContactRecord).mockResolvedValue({ ...record, photo: 'p.jpg' });
+    const pic = deferred<Blob>();
+    vi.mocked(getContactProfilePicture).mockReturnValue(pic.promise as never);
+    const { setProfilePic, setLoading, unmount } = setup('1');
+    await waitFor(() => expect(getContactProfilePicture).toHaveBeenCalled());
+    unmount();
+    await act(async () => {
+      pic.resolve(new Blob(['x']));
+    });
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:late');
+    expect(setProfilePic).not.toHaveBeenCalled();
+    expect(setLoading).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  test('a failure that lands after unmount is not reported', async () => {
+    const d = deferred<ContactRecordResponse>();
+    vi.mocked(getContactRecord).mockReturnValue(d.promise);
+    const { onLoadError, setLoading, unmount } = setup('1');
+    unmount();
+    consoleError.mockClear();
+    await act(async () => {
+      d.reject(new Error('late'));
+    });
+    expect(onLoadError).not.toHaveBeenCalledWith(expect.any(Error));
+    expect(setLoading).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  test('a live load failure is logged and reported, and nothing is revoked without a picture', async () => {
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, revokeObjectURL });
+    const boom = new Error('503');
+    vi.mocked(getContactRecord).mockRejectedValue(boom);
+    const { onLoadError, setLoading, unmount } = setup('1');
+    await waitFor(() => expect(setLoading).toHaveBeenCalledWith(false));
+    expect(consoleError).toHaveBeenCalledWith('Error fetching data:', boom);
+    expect(onLoadError).toHaveBeenLastCalledWith(boom);
+    unmount();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  test('an empty picture result still clears the shown picture, and unmount revokes nothing', async () => {
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, revokeObjectURL });
+    const { setProfilePic, setLoading, unmount } = setup('1');
+    await waitFor(() => expect(setLoading).toHaveBeenCalledWith(false));
+    expect(setProfilePic).toHaveBeenCalledWith('');
+    unmount();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});

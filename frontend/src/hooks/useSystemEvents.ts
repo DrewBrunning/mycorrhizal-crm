@@ -36,6 +36,7 @@ const EMPTY_FILTERS: SystemEventFilters = {
 // 500 cap, mirroring useAudit.
 export function useSystemEvents() {
   const [events, setEvents] = useState<SystemEvent[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<SystemEventFilters>(EMPTY_FILTERS);
@@ -43,6 +44,7 @@ export function useSystemEvents() {
   const requestRef = useRef(0);
 
   const fetchEvents = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);
@@ -75,30 +77,46 @@ export function useSystemEvents() {
 
   // Any filter change restarts the window at the default limit, and leaves the
   // exact-ids drill-down (which is used alone) unless the patch sets it.
-  const patchFilters = useCallback((patch: Partial<SystemEventFilters>) => {
-    setFilters((prev) => ({ ...prev, ids: [], ...patch }));
-    setLimit(DEFAULT_LIMIT);
-  }, []);
+  const patchFilters = useCallback(
+    (patch: Partial<SystemEventFilters>) => {
+      setFilters((prev) => ({ ...prev, ids: [], ...patch }));
+      setLimit(DEFAULT_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const clearFilters = useCallback(() => {
-    setFilters(EMPTY_FILTERS);
-    setLimit(DEFAULT_LIMIT);
-  }, []);
+  const clearFilters = useCallback(
+    () => {
+      setFilters(EMPTY_FILTERS);
+      setLimit(DEFAULT_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Jump to every event sharing one correlation ID — the timeline's
   // "view related" drill-down. Clears the other filters so the chain is shown
   // whole.
-  const showRelated = useCallback((correlationId: string) => {
-    setFilters({ ...EMPTY_FILTERS, correlationId });
-    setLimit(MAX_LIMIT);
-  }, []);
+  const showRelated = useCallback(
+    (correlationId: string) => {
+      setFilters({ ...EMPTY_FILTERS, correlationId });
+      setLimit(MAX_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   // Jump to exactly the events behind one error-aggregation bucket (issue
   // #426). Clears every other filter so the bucket is shown whole.
-  const showErrors = useCallback((ids: number[]) => {
-    setFilters({ ...EMPTY_FILTERS, ids });
-    setLimit(MAX_LIMIT);
-  }, []);
+  const showErrors = useCallback(
+    (ids: number[]) => {
+      setFilters({ ...EMPTY_FILTERS, ids });
+      setLimit(MAX_LIMIT);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const hasFilters =
     filters.component !== '' ||
@@ -108,9 +126,13 @@ export function useSystemEvents() {
     filters.ids.length > 0;
 
   const canLoadMore = events.length >= limit && limit < MAX_LIMIT;
-  const loadMore = useCallback(() => {
-    setLimit((prev) => Math.min(prev + DEFAULT_LIMIT, MAX_LIMIT));
-  }, []);
+  const loadMore = useCallback(
+    () => {
+      setLimit((prev) => Math.min(prev + DEFAULT_LIMIT, MAX_LIMIT));
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return {
     events,

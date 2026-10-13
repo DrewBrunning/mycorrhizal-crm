@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
   deleteGeoPulseConfig,
@@ -247,4 +247,222 @@ test('clearSuggestions drops the list, any error, and an in-flight lookup', asyn
     result.current.suggestions,
     'a lookup that finishes after clear must not repopulate',
   ).toBeNull();
+});
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts unconfigured and idle', () => {
+  const { result } = renderHook(() => useGeoPulse());
+  expect(result.current.config).toBeNull();
+  expect(result.current.configLoading).toBe(false);
+  expect(result.current.configError).toBeNull();
+  expect(result.current.testing).toBe(false);
+  expect(result.current.testResult).toBeNull();
+  expect(result.current.suggestions).toBeNull();
+  expect(result.current.suggestionsLoading).toBe(false);
+  expect(result.current.suggestionsError).toBeNull();
+});
+
+test('refreshConfig reports loading, logs a failure by operation, and a retry clears the error', async () => {
+  vi.mocked(getGeoPulseConfig).mockRejectedValueOnce(new Error('boom'));
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.refreshConfig();
+  });
+  expect(result.current.configError).toBe('boom');
+  expect(console.error).toHaveBeenCalledWith(
+    '[fetching GeoPulse config] Error:',
+    expect.anything(),
+  );
+
+  const d = deferred<typeof config>();
+  vi.mocked(getGeoPulseConfig).mockReturnValueOnce(d.promise as never);
+  act(() => {
+    void result.current.refreshConfig();
+  });
+  await waitFor(() => expect(result.current.configLoading).toBe(true));
+  expect(result.current.configError).toBeNull();
+  await act(async () => {
+    d.resolve(config);
+  });
+  await waitFor(() => expect(result.current.configLoading).toBe(false));
+});
+
+test('saveConfig and testConnection log their operations and use the latest notifier', async () => {
+  vi.mocked(saveGeoPulseConfig).mockRejectedValue(new Error('s'));
+  vi.mocked(testGeoPulseConnection).mockRejectedValue(new Error('t'));
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useGeoPulse(n), {
+    initialProps: { n: first },
+  });
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.saveConfig({} as never)).rejects.toThrow('s');
+    await expect(result.current.testConnection()).rejects.toThrow('t');
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError.mock.calls.map((c) => c[0])).toEqual(['s', 't']);
+  expect(console.error).toHaveBeenCalledWith(
+    '[saving GeoPulse connection] Error:',
+    expect.anything(),
+  );
+  expect(console.error).toHaveBeenCalledWith(
+    '[testing GeoPulse connection] Error:',
+    expect.anything(),
+  );
+});
+
+test('testConnection drops the previous diagnosis while the next check runs', async () => {
+  vi.mocked(testGeoPulseConnection).mockResolvedValueOnce({ ok: true, stage: 'ok', message: 'a' });
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.testConnection();
+  });
+  expect(result.current.testResult?.message).toBe('a');
+
+  const d = deferred<Awaited<ReturnType<typeof testGeoPulseConnection>>>();
+  vi.mocked(testGeoPulseConnection).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.testConnection();
+  });
+  await waitFor(() => expect(result.current.testing).toBe(true));
+  expect(result.current.testResult).toBeNull();
+  await act(async () => {
+    d.resolve({ ok: true, stage: 'ok', message: 'b' });
+  });
+  await waitFor(() => expect(result.current.testing).toBe(false));
+  expect(result.current.testResult?.message).toBe('b');
+});
+
+test('lookup clears the previous suggestions and error, reports loading, and returns the result', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValueOnce(suggestions('2026-09-01'));
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.lookup('2026-09-01');
+  });
+  expect(getGeoPulseSuggestions).toHaveBeenLastCalledWith('2026-09-01', undefined);
+  expect(result.current.suggestions).toEqual(suggestions('2026-09-01'));
+
+  const d = deferred<GeoPulseSuggestionsResponse>();
+  vi.mocked(getGeoPulseSuggestions).mockReturnValueOnce(d.promise);
+  let returned: unknown;
+  act(() => {
+    void result.current.lookup('2026-09-02', 'UTC').then((r) => {
+      returned = r;
+    });
+  });
+  await waitFor(() => expect(result.current.suggestionsLoading).toBe(true));
+  expect(result.current.suggestions).toBeNull();
+  expect(result.current.suggestionsError).toBeNull();
+  await act(async () => {
+    d.resolve(suggestions('2026-09-02'));
+  });
+  await waitFor(() => expect(result.current.suggestionsLoading).toBe(false));
+  expect(returned).toEqual(suggestions('2026-09-02'));
+});
+
+test('a failed lookup logs its operation and a later lookup clears the inline error', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new Error('unreachable'));
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.lookup('2026-09-01');
+  });
+  expect(result.current.suggestionsError).toBe('unreachable');
+  expect(console.error).toHaveBeenCalledWith(
+    '[looking up GeoPulse location history] Error:',
+    expect.anything(),
+  );
+  const d = deferred<GeoPulseSuggestionsResponse>();
+  vi.mocked(getGeoPulseSuggestions).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.lookup('2026-09-02');
+  });
+  await waitFor(() => expect(result.current.suggestionsLoading).toBe(true));
+  expect(result.current.suggestionsError).toBeNull();
+  await act(async () => {
+    d.resolve(suggestions('2026-09-02'));
+  });
+});
+
+test('a superseded lookup finishing last does not clear the newer lookup spinner', async () => {
+  const older = deferred<GeoPulseSuggestionsResponse>();
+  const newer = deferred<GeoPulseSuggestionsResponse>();
+  vi.mocked(getGeoPulseSuggestions)
+    .mockReturnValueOnce(older.promise)
+    .mockReturnValueOnce(newer.promise);
+  const { result } = renderHook(() => useGeoPulse());
+  act(() => {
+    void result.current.lookup('2026-09-01');
+  });
+  act(() => {
+    void result.current.lookup('2026-09-02');
+  });
+  await act(async () => {
+    older.resolve(suggestions('2026-09-01'));
+  });
+  expect(result.current.suggestionsLoading).toBe(true);
+  expect(result.current.suggestions).toBeNull();
+  await act(async () => {
+    newer.resolve(suggestions('2026-09-02'));
+  });
+  await waitFor(() => expect(result.current.suggestionsLoading).toBe(false));
+  expect(result.current.suggestions?.date).toBe('2026-09-02');
+});
+
+test('clearSuggestions also stops the spinner and a pending lookup cannot clear it back', async () => {
+  const d = deferred<GeoPulseSuggestionsResponse>();
+  vi.mocked(getGeoPulseSuggestions).mockReturnValueOnce(d.promise);
+  const { result } = renderHook(() => useGeoPulse());
+  act(() => {
+    void result.current.lookup('2026-09-01');
+  });
+  await waitFor(() => expect(result.current.suggestionsLoading).toBe(true));
+  act(() => result.current.clearSuggestions());
+  expect(result.current.suggestionsLoading).toBe(false);
+  expect(result.current.suggestionsError).toBeNull();
+  await act(async () => {
+    d.resolve(suggestions('2026-09-01'));
+  });
+  expect(result.current.suggestions).toBeNull();
+});
+
+test('a lookup started before clearSuggestions stays stale even when a new lookup follows', async () => {
+  const first = deferred<GeoPulseSuggestionsResponse>();
+  const second = deferred<GeoPulseSuggestionsResponse>();
+  vi.mocked(getGeoPulseSuggestions)
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise);
+  const { result } = renderHook(() => useGeoPulse());
+  act(() => {
+    void result.current.lookup('2026-09-01');
+  });
+  act(() => result.current.clearSuggestions());
+  act(() => {
+    void result.current.lookup('2026-09-02');
+  });
+  await act(async () => {
+    first.resolve(suggestions('2026-09-01'));
+  });
+  expect(result.current.suggestions).toBeNull();
+  expect(result.current.suggestionsLoading).toBe(true);
+});
+
+test('clearSuggestions drops a lookup error shown inline', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new Error('unreachable'));
+  const { result } = renderHook(() => useGeoPulse());
+  await act(async () => {
+    await result.current.lookup('2026-09-01');
+  });
+  expect(result.current.suggestionsError).toBe('unreachable');
+  act(() => result.current.clearSuggestions());
+  expect(result.current.suggestionsError).toBeNull();
 });

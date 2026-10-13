@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { createMemoryRouter, Link, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import ConfirmDiscardDialog from '../components/ConfirmDiscardDialog';
@@ -214,3 +215,79 @@ describe('useDiscardGuard under a data router (in-app navigation guard)', () => 
     expect(router.state.location.pathname).toBe('/away');
   });
 });
+
+// --- behavior pins (issue #1662) ---
+
+describe('useDiscardGuard option handling', () => {
+  test('a navigation discard calls the latest onNavigationDiscard, not the one from first render', async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const router = createMemoryRouter(
+      [
+        { path: '/home', element: <SwappableHarness first={first} second={second} /> },
+        { path: '/away', element: <div>away</div> },
+      ],
+      { initialEntries: ['/home'] },
+    );
+    render(<RouterProvider router={router} />);
+    fireEvent.click(screen.getByText('swap'));
+    await act(async () => {
+      await router.navigate('/away');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  test('discarding a blocked navigation without any callback just lets it through', async () => {
+    const router = createMemoryRouter(
+      [
+        { path: '/home', element: <CallbackHarness cb={undefined} /> },
+        { path: '/away', element: <div>away</div> },
+      ],
+      { initialEntries: ['/home'] },
+    );
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      await router.navigate('/away');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(router.state.location.pathname).toBe('/away');
+  });
+
+  test('discarding a plain dialog close does not touch navigation', async () => {
+    const onNavigationDiscard = vi.fn();
+    const onClose = vi.fn();
+    const router = makeRouter(true, onNavigationDiscard, onClose);
+    render(<RouterProvider router={router} />);
+    fireEvent.click(screen.getByText('close'));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onNavigationDiscard).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe('/home');
+  });
+});
+
+function CallbackHarness({ cb }: { cb: (() => void) | undefined }) {
+  const { confirmDialogProps, navigationGuardElement } = useDiscardGuard(true, {
+    onNavigationDiscard: cb,
+  });
+  return (
+    <div>
+      {navigationGuardElement}
+      <ConfirmDiscardDialog {...confirmDialogProps} />
+    </div>
+  );
+}
+
+function SwappableHarness({ first, second }: { first: () => void; second: () => void }) {
+  const [cb, setCb] = useState<() => void>(() => first);
+  return (
+    <div>
+      <button type="button" onClick={() => setCb(() => second)}>
+        swap
+      </button>
+      <CallbackHarness cb={cb} />
+    </div>
+  );
+}

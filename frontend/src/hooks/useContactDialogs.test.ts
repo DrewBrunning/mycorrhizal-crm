@@ -133,3 +133,37 @@ test('handleSaveActivity errors notify through the notifier and rethrow', async 
   ).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('a failed note save is logged by operation, notified, and rethrown with the message', async () => {
+  vi.mocked(createNote).mockRejectedValue(new Error('note down'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
+  await act(async () => {
+    await expect(result.current.handleSaveNote('hello', '2026-08-12T10:00:00Z')).rejects.toThrow(
+      'note down',
+    );
+  });
+  expect(showError).toHaveBeenCalledWith('note down');
+  expect(console.error).toHaveBeenCalledWith('[saving note] Error:', expect.anything());
+});
+
+test('a failed activity save is logged by operation, notified, and rethrown with the message', async () => {
+  vi.mocked(createActivity).mockRejectedValue(new Error('activity down'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
+  await act(async () => {
+    await expect(
+      result.current.handleSaveActivity({
+        title: 't',
+        description: 'd',
+        location: 'l',
+        date: '2026-08-12T10:00:00Z',
+        contact_ids: [1],
+      }),
+    ).rejects.toThrow('activity down');
+  });
+  expect(showError).toHaveBeenCalledWith('activity down');
+  expect(console.error).toHaveBeenCalledWith('[saving activity] Error:', expect.anything());
+});

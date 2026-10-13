@@ -8,11 +8,13 @@ import { handleFetchError } from '../utils/errorHandler';
 export function useErrorAggregation(windowHours = 24) {
   const [buckets, setBuckets] = useState<ErrorBucket[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);

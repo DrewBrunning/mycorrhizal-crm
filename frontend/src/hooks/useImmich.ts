@@ -36,17 +36,21 @@ export function useImmich(notifier?: ErrorNotifier) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ImmichConnectionTestResult | null>(null);
 
-  const refreshConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError(null);
-    try {
-      setConfig(await getImmichConfig());
-    } catch (err) {
-      setConfigError(handleFetchError(err, 'fetching Immich config'));
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
+  const refreshConfig = useCallback(
+    async () => {
+      setConfigLoading(true);
+      setConfigError(null);
+      try {
+        setConfig(await getImmichConfig());
+      } catch (err) {
+        setConfigError(handleFetchError(err, 'fetching Immich config'));
+      } finally {
+        setConfigLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const saveConfig = useCallback(
     async (input: { base_url: string; api_key?: string; sync_enabled?: boolean }) => {
@@ -62,10 +66,14 @@ export function useImmich(notifier?: ErrorNotifier) {
     [notifier],
   );
 
-  const removeConfig = useCallback(async () => {
-    await deleteImmichConfig();
-    setConfig(null);
-  }, []);
+  const removeConfig = useCallback(
+    async () => {
+      await deleteImmichConfig();
+      setConfig(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const browsePeople = useCallback(async () => {
     setPeopleLoading(true);
@@ -81,30 +89,39 @@ export function useImmich(notifier?: ErrorNotifier) {
     }
   }, [notifier]);
 
-  const loadSummary = useCallback(async (contactUid: string) => {
-    setSummaryLoading(true);
-    try {
-      const fetched = await getImmichContactSummary(contactUid);
-      setSummary(fetched);
-      return fetched;
-    } catch {
-      return null;
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, []);
+  const loadSummary = useCallback(
+    async (contactUid: string) => {
+      setSummaryLoading(true);
+      try {
+        const fetched = await getImmichContactSummary(contactUid);
+        setSummary(fetched);
+        return fetched;
+      } catch {
+        return null;
+      } finally {
+        setSummaryLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const linkPerson = useCallback(
     async (contactUid: string, personId: string, personName: string) => {
       await linkImmichPerson(contactUid, personId, personName);
     },
+    // Stryker disable next-line ArrayDeclaration: callback closes over nothing reactive (stable), so its deps array is equivalent either way
     [],
   );
 
-  const unlinkPerson = useCallback(async (contactUid: string) => {
-    await unlinkImmichPerson(contactUid);
-    setSummary(null);
-  }, []);
+  const unlinkPerson = useCallback(
+    async (contactUid: string) => {
+      await unlinkImmichPerson(contactUid);
+      setSummary(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const runSync = useCallback(async () => {
     setSyncing(true);

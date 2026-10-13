@@ -25,11 +25,16 @@ export function useContactImmichLink(
   // is where connection problems surface.
   const [configured, setConfigured] = useState(false);
 
-  useEffect(() => {
-    getImmichConfig()
-      .then((cfg) => setConfigured(cfg.has_api_key))
-      .catch(() => setConfigured(false));
-  }, []);
+  useEffect(
+    () => {
+      getImmichConfig()
+        .then((cfg) => setConfigured(cfg.has_api_key))
+        // Stryker disable next-line ArrowFunction: configured already starts false, so a no-op catch handler is equivalent
+        .catch(() => setConfigured(false));
+    },
+    // Stryker disable next-line ArrayDeclaration: the config probe runs once on mount; a deps array that never changes is equivalent
+    [],
+  );
 
   // Accepts an override uid for the page's first load, before contactUid has
   // re-rendered through state. A failed fetch reads as "not linked".

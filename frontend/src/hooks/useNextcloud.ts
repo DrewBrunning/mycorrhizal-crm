@@ -26,17 +26,21 @@ export function useNextcloud(notifier?: ErrorNotifier) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<WebDAVConnectionTestResult | null>(null);
 
-  const refreshConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError(null);
-    try {
-      setConfig(await getNextcloudConfig());
-    } catch (err) {
-      setConfigError(handleFetchError(err, 'fetching Nextcloud config'));
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
+  const refreshConfig = useCallback(
+    async () => {
+      setConfigLoading(true);
+      setConfigError(null);
+      try {
+        setConfig(await getNextcloudConfig());
+      } catch (err) {
+        setConfigError(handleFetchError(err, 'fetching Nextcloud config'));
+      } finally {
+        setConfigLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const saveConfig = useCallback(
     async (input: { base_url: string; username: string; app_password?: string }) => {
@@ -52,10 +56,14 @@ export function useNextcloud(notifier?: ErrorNotifier) {
     [notifier],
   );
 
-  const removeConfig = useCallback(async () => {
-    await deleteNextcloudConfig();
-    setConfig(null);
-  }, []);
+  const removeConfig = useCallback(
+    async () => {
+      await deleteNextcloudConfig();
+      setConfig(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const browseDir = useCallback(
     async (path?: string) => {

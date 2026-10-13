@@ -76,13 +76,19 @@ export function useSourceImportWizard({
   const [busy, setBusy] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopPolling = useCallback(() => {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
-    }
-  }, []);
+  const stopPolling = useCallback(
+    () => {
+      // Stryker disable next-line ConditionalExpression: clearInterval(null) is a no-op, so always clearing is equivalent
+      if (pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over refs and state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
+  // Stryker disable next-line ArrayDeclaration: stopPolling is stable, so the unmount-cleanup effect runs once under either deps array
   useEffect(() => stopPolling, [stopPolling]);
 
   const poll = useCallback(
@@ -160,13 +166,17 @@ export function useSourceImportWizard({
     [startFetch, startPolling],
   );
 
-  const setRowAction = useCallback((rowIndex: number, action: RowSourceAction) => {
-    setRowActions((prev) => {
-      const next = new Map(prev);
-      next.set(rowIndex, action);
-      return next;
-    });
-  }, []);
+  const setRowAction = useCallback(
+    (rowIndex: number, action: RowSourceAction) => {
+      setRowActions((prev) => {
+        const next = new Map(prev);
+        next.set(rowIndex, action);
+        return next;
+      });
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over refs and state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const setAllActions = useCallback(
     (action: RowSourceAction) => {
@@ -224,17 +234,21 @@ export function useSourceImportWizard({
     if (sessionId) await cancelSourceImport(basePath, sessionId);
   }, [basePath, sessionId, stopPolling]);
 
-  const reset = useCallback(() => {
-    stopPolling();
-    setStep('connect');
-    setSessionId(null);
-    setStatus(null);
-    setPreview(null);
-    setResult(null);
-    setRowActions(new Map());
-    setError(null);
-    setBusy(false);
-  }, [stopPolling]);
+  const reset = useCallback(
+    () => {
+      stopPolling();
+      setStep('connect');
+      setSessionId(null);
+      setStatus(null);
+      setPreview(null);
+      setResult(null);
+      setRowActions(new Map());
+      setError(null);
+      setBusy(false);
+    },
+    // Stryker disable next-line ArrayDeclaration: stopPolling is stable, so reset's deps array is equivalent either way
+    [stopPolling],
+  );
 
   return {
     step,

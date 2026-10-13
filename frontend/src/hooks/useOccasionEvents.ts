@@ -22,25 +22,34 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 // useOccasionObligations' exact shape.
 export function useOccasionEvents(notifier?: ErrorNotifier) {
   const [events, setEvents] = useState<OccasionEvent[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getOccasionEvents({ limit: 100 });
-      setEvents(response.occasion_events || []);
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching occasion events'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await getOccasionEvents({ limit: 100 });
+        setEvents(response.occasion_events || []);
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching occasion events'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useEffect(
+    () => {
+      void refresh();
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable here, so the mount effect runs exactly once under either deps array
+    [refresh],
+  );
 
   const handleSave = useCallback(
     async (event: OccasionEvent | null, input: OccasionEventInput) => {
@@ -168,7 +177,11 @@ export function useOccasionEventAttendees(eventId: string | undefined, notifier?
     [eventId, notifier],
   );
 
-  const clearSuggestions = useCallback(() => setSuggestions([]), []);
+  const clearSuggestions = useCallback(
+    () => setSuggestions([]),
+    // Stryker disable next-line ArrayDeclaration: setSuggestions is stable, so the deps array is equivalent either way
+    [],
+  );
 
   return {
     attendees,

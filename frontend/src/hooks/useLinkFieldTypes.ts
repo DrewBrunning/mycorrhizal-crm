@@ -21,17 +21,21 @@ export function useLinkFieldTypes(notifier?: ErrorNotifier) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshLinkFieldTypes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setLinkFieldTypes(await getLinkFieldTypes());
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching link field types'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refreshLinkFieldTypes = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        setLinkFieldTypes(await getLinkFieldTypes());
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching link field types'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const handleSaveLinkFieldType = async (input: LinkFieldTypeInput) => {
     try {

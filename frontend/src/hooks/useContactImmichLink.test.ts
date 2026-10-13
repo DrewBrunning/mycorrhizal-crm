@@ -132,3 +132,84 @@ test('mutations are no-ops without a contact uid', async () => {
   expect(syncImmich).not.toHaveBeenCalled();
   expect(refreshExternalLinks).not.toHaveBeenCalled();
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts unconfigured with no summary and nothing in flight', () => {
+  vi.mocked(getImmichConfig).mockReturnValue(new Promise(() => {}));
+  const { result } = renderHook(() => useContactImmichLink('alice-uid', refreshExternalLinks));
+  expect(result.current.configured).toBe(false);
+  expect(result.current.summary).toBeNull();
+  expect(result.current.summaryLoading).toBe(false);
+  expect(result.current.syncing).toBe(false);
+});
+
+test('a failed summary fetch clears an earlier summary and ends loading', async () => {
+  const { result } = renderHook(() => useContactImmichLink('alice-uid', refreshExternalLinks));
+  await act(async () => {
+    await result.current.refreshSummary();
+  });
+  expect(result.current.summary).toEqual(summary);
+  vi.mocked(getImmichContactSummary).mockRejectedValueOnce(new Error('gone'));
+  await act(async () => {
+    await result.current.refreshSummary();
+  });
+  expect(result.current.summary).toBeNull();
+  expect(result.current.summaryLoading).toBe(false);
+});
+
+test('summaryLoading and syncing are true while their requests are in flight', async () => {
+  const sum = deferred<ImmichPersonSummary | null>();
+  vi.mocked(getImmichContactSummary).mockReturnValueOnce(sum.promise as never);
+  const { result } = renderHook(() => useContactImmichLink('alice-uid', refreshExternalLinks));
+  act(() => {
+    void result.current.refreshSummary();
+  });
+  await waitFor(() => expect(result.current.summaryLoading).toBe(true));
+  await act(async () => {
+    sum.resolve(summary);
+  });
+  await waitFor(() => expect(result.current.summaryLoading).toBe(false));
+
+  const sync = deferred<undefined>();
+  vi.mocked(syncImmich).mockReturnValueOnce(sync.promise as never);
+  act(() => {
+    void result.current.handleSync();
+  });
+  await waitFor(() => expect(result.current.syncing).toBe(true));
+  await act(async () => {
+    sync.resolve(undefined);
+  });
+  await waitFor(() => expect(result.current.syncing).toBe(false));
+});
+
+test('handlers follow the current contact uid and refresh callback', async () => {
+  const first = vi.fn(async () => {});
+  const second = vi.fn(async () => {});
+  vi.mocked(linkImmichPerson).mockResolvedValue(undefined);
+  vi.mocked(unlinkImmichPerson).mockResolvedValue(undefined);
+  vi.mocked(syncImmich).mockResolvedValue(undefined);
+  const { result, rerender } = renderHook(({ uid, cb }) => useContactImmichLink(uid, cb), {
+    initialProps: { uid: 'alice-uid', cb: first },
+  });
+  rerender({ uid: 'bob-uid', cb: second });
+  await act(async () => {
+    await result.current.refreshSummary();
+    await result.current.handleLink({ id: 'p1', name: 'Bob' } as never);
+    await result.current.handleUnlink();
+    await result.current.handleSync();
+  });
+  expect(getImmichContactSummary).toHaveBeenCalledWith('bob-uid');
+  expect(linkImmichPerson).toHaveBeenCalledWith('bob-uid', 'p1', 'Bob');
+  expect(unlinkImmichPerson).toHaveBeenCalledWith('bob-uid');
+  expect(first).not.toHaveBeenCalled();
+  expect(second).toHaveBeenCalledWith('bob-uid');
+});

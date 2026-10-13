@@ -312,3 +312,91 @@ test('suggest-relationships errors notify through the notifier and rethrow', asy
   await expect(result.current.handleSuggestRelationships('h-1')).rejects.toThrow('suggest failed');
   expect(showError).toHaveBeenCalledWith('suggest failed');
 });
+
+// --- behavior pins (issue #1662) ---
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('starts empty, asks for up to 200 households with members, and reports loading while in flight', async () => {
+  const d = deferred<HouseholdListResponse>();
+  vi.mocked(listHouseholds).mockReturnValue(d.promise);
+  const { result } = renderHook(() => useHouseholds());
+  expect(result.current.households).toEqual([]);
+  expect(result.current.members).toEqual([]);
+  expect(result.current.error).toBeNull();
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(listHouseholds).toHaveBeenCalledWith({ limit: 200, include_members: true });
+  await act(async () => {
+    d.resolve(listResponse([household], [member]));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.households).toEqual([household]);
+  expect(result.current.members).toEqual([member]);
+});
+
+test('a failed load logs its operation and the next refresh clears the error', async () => {
+  vi.mocked(listHouseholds).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useHouseholds());
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+  expect(console.error).toHaveBeenCalledWith('[fetching households] Error:', expect.anything());
+
+  const d = deferred<HouseholdListResponse>();
+  vi.mocked(listHouseholds).mockReturnValueOnce(d.promise);
+  act(() => {
+    void result.current.refresh();
+  });
+  await waitFor(() => expect(result.current.loading).toBe(true));
+  expect(result.current.error).toBeNull();
+  await act(async () => {
+    d.resolve(listResponse([], []));
+  });
+});
+
+test('every mutation logs its own operation and uses the latest notifier', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([], []));
+  const boom = new Error('x');
+  vi.mocked(createHousehold).mockRejectedValue(boom);
+  vi.mocked(updateHousehold).mockRejectedValue(boom);
+  vi.mocked(deleteHousehold).mockRejectedValue(boom);
+  vi.mocked(addHouseholdMember).mockRejectedValue(boom);
+  vi.mocked(removeHouseholdMember).mockRejectedValue(boom);
+  vi.mocked(updateHouseholdMember).mockRejectedValue(boom);
+  vi.mocked(suggestHouseholdRelationships).mockRejectedValue(boom);
+  const first = { showError: vi.fn() };
+  const second = { showError: vi.fn() };
+  const { result, rerender } = renderHook(({ n }) => useHouseholds(n), {
+    initialProps: { n: first },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ n: second });
+  await act(async () => {
+    await expect(result.current.handleCreate({} as HouseholdInput)).rejects.toThrow();
+    await expect(result.current.handleUpdate('h', {} as HouseholdInput)).rejects.toThrow();
+    await expect(result.current.handleDelete('h')).rejects.toThrow();
+    await expect(result.current.handleAddMember('h', 'u')).rejects.toThrow();
+    await expect(result.current.handleRemoveMember('h', 'u')).rejects.toThrow();
+    await expect(result.current.handleUpdateMember('h', 'u', 'r')).rejects.toThrow();
+    await expect(result.current.handleSuggestRelationships('h')).rejects.toThrow();
+  });
+  expect(first.showError).not.toHaveBeenCalled();
+  expect(second.showError).toHaveBeenCalledTimes(7);
+  for (const op of [
+    'creating household',
+    'updating household',
+    'deleting household',
+    'adding household member',
+    'removing household member',
+    'updating household member role',
+    'generating relationship suggestions',
+  ]) {
+    expect(console.error).toHaveBeenCalledWith(`[${op}] Error:`, expect.anything());
+  }
+  // None of the failed mutations reloaded the list.
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});

@@ -31,6 +31,7 @@ export function useActivities(
   const [activities, setActivities] = useState<Activity[]>([]);
   const [nextCursor, setNextCursor] = useState('');
   const [limit, setLimit] = useState(paramLimit || 25);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);

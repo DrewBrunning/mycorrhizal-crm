@@ -34,10 +34,14 @@ export function useErrorAlertFocus(initial: string | (() => string) = '') {
   // it's safe for a caller to list it in another effect's dependency array
   // (as ForgotPasswordDialog's open-reset effect does) without it forcing
   // that effect to re-run every render.
-  const setError = useCallback((message: string) => {
-    setErrorMessage(message);
-    if (message) setReportNonce((n) => n + 1);
-  }, []);
+  const setError = useCallback(
+    (message: string) => {
+      setErrorMessage(message);
+      if (message) setReportNonce((n) => n + 1);
+    },
+    // Stryker disable next-line ArrayDeclaration: setters are stable, so the deps array is equivalent either way
+    [],
+  );
 
   useEffect(() => {
     if (reportNonce > 0) errorRef.current?.focus();

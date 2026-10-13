@@ -17,26 +17,35 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 export function useHouseholds(notifier?: ErrorNotifier) {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await listHouseholds({ limit: 200, include_members: true });
-      setHouseholds(response.households || []);
-      setMembers(response.members || []);
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching households'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await listHouseholds({ limit: 200, include_members: true });
+        setHouseholds(response.households || []);
+        setMembers(response.members || []);
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching households'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useEffect(
+    () => {
+      void refresh();
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable here, so the mount effect runs exactly once under either deps array
+    [refresh],
+  );
 
   const handleCreate = useCallback(
     async (input: HouseholdInput) => {

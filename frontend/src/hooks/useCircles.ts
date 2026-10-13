@@ -16,26 +16,35 @@ export function useCircles(notifier?: ErrorNotifier) {
   // circles are genuinely absent rather than just not-yet-fetched (matches
   // useGraph's convention -- NetworkPage's stale-circle-filter cleanup
   // depends on this to tell "empty" apart from "not loaded yet").
+  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await listCircles({ limit: 200, include_members: true });
-      setCircles(response.circles || []);
-      setMembers(response.members || []);
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching circles'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refresh = useCallback(
+    async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await listCircles({ limit: 200, include_members: true });
+        setCircles(response.circles || []);
+        setMembers(response.members || []);
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching circles'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh closes over state setters only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useEffect(
+    () => {
+      void refresh();
+    },
+    // Stryker disable next-line ArrayDeclaration: refresh is stable here, so the mount effect runs exactly once under either deps array
+    [refresh],
+  );
 
   const circleById = useMemo(() => {
     const m = new Map<string, Circle>();

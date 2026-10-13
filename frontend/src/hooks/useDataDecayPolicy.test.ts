@@ -215,3 +215,80 @@ test('verify errors notify through the notifier and rethrow', async () => {
   await expect(result.current.handleVerify()).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
 });
+
+// --- behavior pins (issue #1662) ---
+
+test('a failed load is logged by operation, and the next refresh clears the error', async () => {
+  vi.mocked(getDataDecayPolicies).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useDataDecayPolicy('uid-1'));
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+  expect(console.error).toHaveBeenCalledWith(
+    '[loading data decay policy] Error:',
+    expect.anything(),
+  );
+
+  vi.mocked(getDataDecayPolicies).mockResolvedValueOnce(listResponse([policy]));
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.policy).toEqual(policy);
+});
+
+test('a list that comes back empty (or without the key) clears the policy', async () => {
+  vi.mocked(getDataDecayPolicies).mockResolvedValueOnce(listResponse([policy]));
+  const { result } = renderHook(() => useDataDecayPolicy('uid-1'));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+
+  vi.mocked(getDataDecayPolicies).mockResolvedValueOnce({} as DataDecayPoliciesResponse);
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.policy).toBeNull();
+});
+
+test('saving for a different entity than the loaded policy creates instead of updating', async () => {
+  vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([policy]));
+  vi.mocked(createDataDecayPolicy).mockResolvedValue(policy);
+  const { result } = renderHook(() => useDataDecayPolicy('uid-1'));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+  await act(async () => {
+    await result.current.handleSave({ entity_id: 'uid-2' } as DataDecayPolicyInput);
+  });
+  expect(createDataDecayPolicy).toHaveBeenCalledWith({ entity_id: 'uid-2' });
+  expect(updateDataDecayPolicy).not.toHaveBeenCalled();
+  expect(getDataDecayPolicies).toHaveBeenLastCalledWith('uid-2');
+});
+
+test('delete and verify failures log their operations, notify, and rethrow', async () => {
+  vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([policy]));
+  vi.mocked(deleteDataDecayPolicy).mockRejectedValue(new Error('d'));
+  vi.mocked(verifyDataDecayPolicy).mockRejectedValue(new Error('v'));
+  const showError = vi.fn();
+  const { result } = renderHook(() => useDataDecayPolicy('uid-1', { showError }));
+  await waitFor(() => expect(result.current.policy).toEqual(policy));
+  await act(async () => {
+    await expect(result.current.handleDelete()).rejects.toThrow('d');
+    await expect(result.current.handleVerify()).rejects.toThrow('v');
+  });
+  expect(showError.mock.calls.map((c) => c[0])).toEqual(['d', 'v']);
+  expect(console.error).toHaveBeenCalledWith(
+    '[deleting data decay policy] Error:',
+    expect.anything(),
+  );
+  expect(console.error).toHaveBeenCalledWith(
+    '[confirming contact info is current] Error:',
+    expect.anything(),
+  );
+  expect(result.current.policy).toEqual(policy);
+});
+
+test('refetches for the new entity when the entity id changes', async () => {
+  vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([]));
+  const { rerender } = renderHook(({ id }) => useDataDecayPolicy(id), {
+    initialProps: { id: 'uid-1' },
+  });
+  await waitFor(() => expect(getDataDecayPolicies).toHaveBeenCalledWith('uid-1'));
+  rerender({ id: 'uid-2' });
+  await waitFor(() => expect(getDataDecayPolicies).toHaveBeenLastCalledWith('uid-2'));
+});

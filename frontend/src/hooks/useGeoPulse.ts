@@ -31,17 +31,21 @@ export function useGeoPulse(notifier?: ErrorNotifier) {
   // in flight must not let the slower, older response overwrite the newer one.
   const lookupSeq = useRef(0);
 
-  const refreshConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError(null);
-    try {
-      setConfig(await getGeoPulseConfig());
-    } catch (err) {
-      setConfigError(handleFetchError(err, 'fetching GeoPulse config'));
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
+  const refreshConfig = useCallback(
+    async () => {
+      setConfigLoading(true);
+      setConfigError(null);
+      try {
+        setConfig(await getGeoPulseConfig());
+      } catch (err) {
+        setConfigError(handleFetchError(err, 'fetching GeoPulse config'));
+      } finally {
+        setConfigLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and refs only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const saveConfig = useCallback(
     async (input: GeoPulseConfigInput) => {
@@ -57,11 +61,15 @@ export function useGeoPulse(notifier?: ErrorNotifier) {
     [notifier],
   );
 
-  const removeConfig = useCallback(async () => {
-    await deleteGeoPulseConfig();
-    setConfig(null);
-    setTestResult(null);
-  }, []);
+  const removeConfig = useCallback(
+    async () => {
+      await deleteGeoPulseConfig();
+      setConfig(null);
+      setTestResult(null);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and refs only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   const testConnection = useCallback(async () => {
     setTesting(true);
@@ -81,30 +89,38 @@ export function useGeoPulse(notifier?: ErrorNotifier) {
   // A failed lookup is shown inline by the dialog (setSuggestionsError), not
   // toasted — the user is looking right at it and needs to see the reason
   // (not configured, bad token, unreachable) next to the date they picked.
-  const lookup = useCallback(async (date: string, timezone?: string) => {
-    const seq = ++lookupSeq.current;
-    setSuggestionsLoading(true);
-    setSuggestionsError(null);
-    setSuggestions(null);
-    try {
-      const result = await getGeoPulseSuggestions(date, timezone);
-      if (seq === lookupSeq.current) setSuggestions(result);
-      return result;
-    } catch (err) {
-      const message = handleFetchError(err, 'looking up GeoPulse location history');
-      if (seq === lookupSeq.current) setSuggestionsError(message);
-      return null;
-    } finally {
-      if (seq === lookupSeq.current) setSuggestionsLoading(false);
-    }
-  }, []);
+  const lookup = useCallback(
+    async (date: string, timezone?: string) => {
+      const seq = ++lookupSeq.current;
+      setSuggestionsLoading(true);
+      setSuggestionsError(null);
+      setSuggestions(null);
+      try {
+        const result = await getGeoPulseSuggestions(date, timezone);
+        if (seq === lookupSeq.current) setSuggestions(result);
+        return result;
+      } catch (err) {
+        const message = handleFetchError(err, 'looking up GeoPulse location history');
+        if (seq === lookupSeq.current) setSuggestionsError(message);
+        return null;
+      } finally {
+        if (seq === lookupSeq.current) setSuggestionsLoading(false);
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and refs only (stable), so its deps array is equivalent either way
+    [],
+  );
 
-  const clearSuggestions = useCallback(() => {
-    lookupSeq.current++; // invalidate any lookup still in flight
-    setSuggestions(null);
-    setSuggestionsError(null);
-    setSuggestionsLoading(false);
-  }, []);
+  const clearSuggestions = useCallback(
+    () => {
+      lookupSeq.current++; // invalidate any lookup still in flight
+      setSuggestions(null);
+      setSuggestionsError(null);
+      setSuggestionsLoading(false);
+    },
+    // Stryker disable next-line ArrayDeclaration: callback closes over state setters and refs only (stable), so its deps array is equivalent either way
+    [],
+  );
 
   return {
     config,

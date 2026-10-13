@@ -27,9 +27,13 @@ import { handleFetchError } from '../utils/errorHandler';
  * fresh ones.
  */
 export function useTimeline(contactId: string | number | undefined) {
+  // Stryker disable next-line ArrayDeclaration: the contact-change effect resets this to its idle value on mount, before the first observable commit
   const [items, setItems] = useState<TimelineItem[]>([]);
+  // Stryker disable next-line StringLiteral: the contact-change effect resets this to its idle value on mount, before the first observable commit
   const [nextCursor, setNextCursor] = useState('');
+  // Stryker disable next-line BooleanLiteral: the contact-change effect resets this to its idle value on mount, before the first observable commit
   const [loading, setLoading] = useState(false);
+  // Stryker disable next-line BooleanLiteral: the contact-change effect resets this to its idle value on mount, before the first observable commit
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Empty selection means "all types" (the backend treats an absent ?type=

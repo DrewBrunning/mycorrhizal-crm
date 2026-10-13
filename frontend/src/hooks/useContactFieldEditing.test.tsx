@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, expect, type Mock, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import '../i18n/config';
 import { ApiError } from '../api/client';
 import { type ContactRecordResponse, updateContactRecord } from '../api/contacts';
@@ -239,4 +239,147 @@ test('a 412 on a structured save calls onConflict and still rethrows', async () 
   });
   expect(onConflict).toHaveBeenCalledTimes(1);
   expect(showError).not.toHaveBeenCalled();
+});
+
+// --- behavior pins (issue #1662) ---
+
+test('starts with no field being edited and nothing entered', () => {
+  const { result } = setup();
+  expect(result.current.editingField).toBeNull();
+  expect(result.current.editValue).toBe('');
+  expect(result.current.validationError).toBe('');
+});
+
+test('starting an edit seeds an empty string for a missing value and clears an old validation error', async () => {
+  const { result } = setup();
+  act(() => result.current.handleEditStart('birthday', ''));
+  act(() => result.current.handleEditValueChange('99.99.9999'));
+  await act(() => result.current.handleEditSave('birthday'));
+  expect(result.current.validationError).not.toBe('');
+
+  act(() => result.current.handleEditStart('how_we_met', undefined as unknown as string));
+  expect(result.current.editValue).toBe('');
+  expect(result.current.validationError).toBe('');
+});
+
+test('cancel and value changes both clear a validation error', async () => {
+  const { result } = setup();
+  act(() => result.current.handleEditStart('birthday', ''));
+  act(() => result.current.handleEditValueChange('99.99.9999'));
+  await act(() => result.current.handleEditSave('birthday'));
+  expect(result.current.validationError).not.toBe('');
+  act(() => result.current.handleEditValueChange('30.04.1990'));
+  expect(result.current.validationError).toBe('');
+
+  act(() => result.current.handleEditValueChange('99.99.9999'));
+  await act(() => result.current.handleEditSave('birthday'));
+  expect(result.current.validationError).not.toBe('');
+  act(() => result.current.handleEditCancel());
+  expect(result.current.validationError).toBe('');
+  expect(result.current.editingField).toBeNull();
+  expect(result.current.editValue).toBe('');
+});
+
+test('a successful save after an error clears the field, value, and validation error', async () => {
+  const { result } = setup();
+  act(() => result.current.handleEditStart('how_we_met', 'School'));
+  vi.mocked(updateContactRecord).mockRejectedValueOnce(
+    new ApiError('bad input', 'VALIDATION', 400),
+  );
+  await act(() => result.current.handleEditSave('how_we_met'));
+  expect(result.current.validationError).not.toBe('');
+  expect(console.error).toHaveBeenCalledWith('Error updating contact:', expect.anything());
+
+  await act(() => result.current.handleEditSave('how_we_met'));
+  expect(result.current.editingField).toBeNull();
+  expect(result.current.editValue).toBe('');
+  expect(result.current.validationError).toBe('');
+});
+
+test('a non-date field is saved verbatim without date parsing', async () => {
+  const { result } = setup();
+  act(() => result.current.handleEditStart('how_we_met', 'not a date 99.99'));
+  await act(() => result.current.handleEditSave('how_we_met'));
+  expect(updateContactRecord).toHaveBeenCalledWith(
+    '1',
+    expect.objectContaining({ crm: { how_we_met: 'not a date 99.99' } }),
+    1,
+  );
+});
+
+test('a whitespace-only date is treated as blank (clears), not as invalid', async () => {
+  const { result } = setup();
+  act(() => result.current.handleEditStart('birthday', ''));
+  act(() => result.current.handleEditValueChange('   '));
+  await act(() => result.current.handleEditSave('birthday'));
+  expect(result.current.validationError).toBe('');
+  expect(updateContactRecord).toHaveBeenCalledTimes(1);
+});
+
+describe('conflict routing and guards', () => {
+  test('a non-412 failure with onConflict set still shows the normal error', async () => {
+    const onConflict = vi.fn();
+    const { result } = setupWithConflict(onConflict);
+    act(() => result.current.handleEditStart('how_we_met', 'School'));
+    vi.mocked(updateContactRecord).mockRejectedValueOnce(
+      new ApiError('Bad value', 'VALIDATION', 400),
+    );
+    await act(() => result.current.handleEditSave('how_we_met'));
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenLastCalledWith('Bad value');
+    expect(result.current.validationError).toBe('Bad value');
+
+    vi.mocked(updateContactRecord).mockRejectedValueOnce(
+      new ApiError('Bad value', 'VALIDATION', 400),
+    );
+    await act(async () => {
+      await expect(result.current.handleUpdateCard({})).rejects.toThrow('Bad value');
+    });
+    expect(onConflict).not.toHaveBeenCalled();
+  });
+
+  test('a 412 without an onConflict handler is shown like any other API error', async () => {
+    const { result } = setup();
+    act(() => result.current.handleEditStart('how_we_met', 'School'));
+    vi.mocked(updateContactRecord).mockRejectedValueOnce(
+      new ApiError('stale', 'PRECONDITION_FAILED', 412),
+    );
+    await act(() => result.current.handleEditSave('how_we_met'));
+    expect(showError).toHaveBeenLastCalledWith('stale');
+    expect(result.current.validationError).toBe('stale');
+  });
+
+  test('a non-date field value is seeded verbatim even when it looks like an ISO date', () => {
+    const { result } = setup();
+    act(() => result.current.handleEditStart('how_we_met', '1990-04-30'));
+    expect(result.current.editValue).toBe('1990-04-30');
+  });
+
+  test('saving needs both a record and an id', async () => {
+    const { result } = renderHook(
+      () =>
+        useContactFieldEditing({
+          id: undefined,
+          record,
+          setRecord,
+          refreshLifeEvents,
+          showError,
+        }),
+      { wrapper },
+    );
+    await act(async () => {
+      await result.current.handleEditSave('how_we_met');
+      await result.current.handleUpdateCard({});
+    });
+    expect(updateContactRecord).not.toHaveBeenCalled();
+  });
+
+  test('a structured save stores the server record and refreshes life events', async () => {
+    const updated = { ...record, revision: 9 };
+    vi.mocked(updateContactRecord).mockResolvedValueOnce(updated);
+    const { result } = setup();
+    await act(() => result.current.handleUpdateCard({}));
+    expect(setRecord).toHaveBeenCalledWith(updated);
+    expect(refreshLifeEvents).toHaveBeenCalledWith('alice-uid');
+  });
 });
