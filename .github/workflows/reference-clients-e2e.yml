@@ -31,6 +31,12 @@ on:
     - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
   workflow_dispatch:
   workflow_call:
+    inputs:
+      runner:
+        description: 'Runner image label (issue #1659 runner-image-preflight.yml). Empty keeps ubuntu-latest.'
+        required: false
+        type: string
+        default: ''
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -50,7 +56,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
       reference-clients: ${{ steps.filter.outputs.reference-clients }}
       workflows: ${{ steps.filter.outputs.workflows }}
@@ -79,7 +85,7 @@ jobs:
     permissions:
       contents: read
     name: Real vdirsyncer client against our server
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 25
     needs: changes
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
@@ -174,7 +180,7 @@ jobs:
     permissions:
       contents: read
     name: Real DAVx5 client against our server (emulator)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 30
     needs: changes
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'

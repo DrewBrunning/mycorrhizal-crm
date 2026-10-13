@@ -1,0 +1,72 @@
+name: Runner Image Preflight
+
+# Issue #1659: GitHub moves `ubuntu-latest` to Ubuntu 26.04 starting
+# 2026-10-19. This manual-only workflow runs the image-sensitive nightly-tier
+# suites on an explicit runner image BEFORE the label moves, so breakage
+# surfaces as a triaged list instead of a wave of red nightlies. Each callee
+# takes a `runner` input (empty = ubuntu-latest, so their normal triggers are
+# unchanged). Never scheduled, so it needs no nightly-failure-alert
+# registration (cmd/nightlyalertcheck only covers `schedule:` workflows).
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Runner image label to preflight (e.g. ubuntu-26.04).'
+        required: false
+        type: string
+        default: ubuntu-26.04
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      packages: read
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+      pull-requests: read
+      # unit-tests.yml's codecov-patch-stub job declares it; GitHub rejects a
+      # nested over-request. Inert on dispatch (needs a pull_request event).
+      statuses: write
+  android-tests:
+    uses: ./.github/workflows/android-tests.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+  min-version-tests:
+    uses: ./.github/workflows/min-version-tests.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+  reference-clients-e2e:
+    uses: ./.github/workflows/reference-clients-e2e.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+  deploy-smoke:
+    uses: ./.github/workflows/deploy-smoke.yml
+    with:
+      runner: ${{ inputs.image }}
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      packages: read
