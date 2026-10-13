@@ -915,15 +915,22 @@ jobs:
       # was invisible to codecov/patch/backend, pushing authors toward duplicate
       # same-package tests. One extra non-sharded, non-race `-coverpkg=./...` run
       # credits a file for ANY package's tests. The cmd merges repeated blocks
-      # itself. PR-only: RAPID_CHECKS is tiered by trigger (pinned to the PR tier
-      # here), so push/schedule numbers aren't comparable to the baseline.
-      # Test failures here are not this step's concern (the legs gate them,
-      # with retries) -- a package that fails to build or crashes just loses
-      # coverage, which the ratchet then reports as a drop. schemafixture is
-      # excluded as in every leg (migration-tests.yml owns it).
-      - name: Collect cross-package coverage (pull_request only)
+      # itself. pull_request + push to main, NOT schedule: RAPID_CHECKS is pinned
+      # to the PR tier in this step's own env (the job-level tiering does not
+      # apply), so a push-to-main run measures the same non-property package
+      # set at the same depth as a PR run and is comparable to the baseline; the
+      # nightly's deeper tiers are not. Running on push closes the gap where a PR
+      # merged with the ratchet red left main drifting unnoticed (main-failure-
+      # alert.yml alerts on a red "Unit Tests" push run).
+      # A failing test/package here is a REAL failure (the same tests must pass
+      # in the sharded legs), so it fails the job -- but deferred: the step
+      # records tests_ok and the final "Fail on cross-package test failures" step
+      # exits non-zero, so the merge, total, ratchet and Codecov steps still run
+      # and both signals are visible. schemafixture is excluded as in every leg
+      # (migration-tests.yml owns it).
+      - name: Collect cross-package coverage (pull_request and push to main)
         id: cross
-        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success'
+        if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && needs.backend-tests.result == 'success'
         working-directory: backend
         env:
           RAPID_CHECKS: "200"
@@ -931,7 +938,12 @@ jobs:
         run: |
           pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"
           # shellcheck disable=SC2086 # $pkgs is a controlled space-joined list
-          go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross-raw.out || echo "::warning::cross-package coverage run had failing tests/packages; ratchet judges what was collected"
+          if go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross-raw.out; then
+            echo "tests_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::cross-package coverage run had failing tests/packages; the profile is partial (the job fails in the final step, after the ratchet has reported)"
+            echo "tests_ok=false" >> "$GITHUB_OUTPUT"
+          fi
           # A -coverpkg profile repeats every block once per test binary (~180 MB
           # raw). The ratchet merges while reading; Codecov wants one line per
           # block and the raw upload would be needless, so merge by summing
@@ -944,6 +956,15 @@ jobs:
             END { for (i = 1; i <= n; i++) print order[i], stmt[order[i]], count[order[i]] }
           ' coverage-cross-raw.out > coverage-cross.out
           rm -f coverage-cross-raw.out
+          # The citable cross-package statement-coverage number (milestone
+          # gate #1497 wants >= 92%).
+          total="$(go tool cover -func=coverage-cross.out | tail -1 | awk '{print $NF}')"
+          echo "Cross-package statement coverage (total): $total"
+          {
+            echo "### Cross-package backend coverage"
+            echo ""
+            echo "Total statement coverage (\`-coverpkg=./...\`, merged): **$total**"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Issue #1477's patch-gate half: codecov/patch/backend reads the same
       # cross-package profile the ratchet does. Fall back to the per-package
@@ -972,10 +993,18 @@ jobs:
           flags: backend
           fail_ci_if_error: false
 
-      - name: Per-file coverage ratchet (pull_request only)
-        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success'
+      # !cancelled() + the cross step having run: judge the (possibly partial)
+      # profile even when its tests failed, so both signals show up.
+      - name: Per-file coverage ratchet (pull_request and push to main)
+        if: ${{ !cancelled() && needs.backend-tests.result == 'success' && steps.cross.conclusion == 'success' }}
         working-directory: backend
         run: go run ./cmd/coverageratchet -profile coverage-cross.out
+
+      - name: Fail on cross-package test failures
+        if: ${{ !cancelled() && steps.cross.outputs.tests_ok == 'false' }}
+        run: |
+          echo "::error::the cross-package coverage run had failing tests/packages (see 'Collect cross-package coverage')"
+          exit 1
 
       - name: Render HTML coverage report
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'

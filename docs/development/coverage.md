@@ -343,8 +343,8 @@ rather than *"does this package's own suite cover it?"*:
   against the committed baseline.
 - The **patch gate** reads the **same** profile: the `unit-tests.yml` Codecov
   upload selects `coverage-cross.out` whenever it exists (i.e. on
-  `pull_request`) and falls back to the per-package merge on push/schedule,
-  where the expensive cross run does not happen. A line proven only by an
+  `pull_request` and push to `main`) and falls back to the per-package merge on
+  schedule, where the expensive cross run does not happen. A line proven only by an
   integration test in another package (the routes DB-fault sweep, a routes
   service test) is now credited.
 
@@ -362,8 +362,12 @@ merge still drives the **informational** `codecov/project` trend and the
 profile (issue #979).
 
 The cross-package run is heavy (whole suite, a few minutes, hundreds of MB raw
-before merge), which is why it runs **once**, on `pull_request`, in the `backend` gate
-job rather than per leg.
+before merge), which is why it runs **once**, on `pull_request` and push to `main`, in the
+`backend` gate job rather than per leg. A failing test or unbuildable package in
+that run **fails the job** (deferred to the final "Fail on cross-package test
+failures" step so the ratchet still reports on the partial profile first), and
+the run prints the merged total statement coverage to the step log and the job
+summary — the citable cross-package number.
 
 **Regenerating the baseline** (a deliberate, reviewed act — the diff *is* the
 review, same convention as `bundle-budget.json`):
@@ -391,12 +395,16 @@ blocks was byte-identical. Coverage percentage is boolean per block
 (covered/not), not proportional to invocation count, so this variance does
 not by itself threaten the ratchet; the committed default (1.5 percentage
 points, both sides) is a safety margin above that empirical zero, not a
-number chosen to paper over observed flakiness. Because the tiered
-iteration count still means a push/schedule run's coverage numbers are not
-directly comparable to the PR-tier baseline, **the backend ratchet only runs
-on `pull_request`** (`unit-tests.yml`'s "Per-file coverage ratchet
-(pull_request only)" step) — matching the property-test depth the baseline
-was generated at. The frontend ratchet has no property/generative variance
+number chosen to paper over observed flakiness. Because the nightly's tiered
+iteration count means its coverage numbers are not directly comparable to the
+PR-tier baseline, **the backend ratchet runs on `pull_request` and push to
+`main`, never `schedule`** (`unit-tests.yml`'s "Per-file coverage ratchet
+(pull_request and push to main)" step). The cross-package step pins
+`RAPID_CHECKS`/`ADDRESS_PROPERTY_ITERATIONS` to the PR tier itself, so a push
+run measures the same package set at the depth the baseline was generated at.
+The push run exists so a PR merged with the ratchet red cannot leave `main`
+drifting silently; a red `Unit Tests` push run is alerted by
+`main-failure-alert.yml` (issue #1568). The frontend ratchet has no property/generative variance
 and runs on every trigger the `frontend` job runs on — but it does have
 *incidental* coverage: a line one component's own tests never reach, hit only
 because another test file happens to render it. That flipped on the first CI
