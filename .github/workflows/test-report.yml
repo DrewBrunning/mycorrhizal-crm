@@ -99,7 +99,7 @@ jobs:
       # #268 is after. The suite jobs also print/upload their own flake
       # reports for triage.
       - name: Backend test report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
         with:
           artifact: backend-junit-results
@@ -114,7 +114,7 @@ jobs:
           fail-on-empty: false
 
       - name: Frontend test report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
         with:
           artifact: frontend-junit-results
@@ -125,7 +125,7 @@ jobs:
           fail-on-empty: false
 
       - name: Android unit test report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
         with:
           artifact: android-unit-test-results
@@ -139,7 +139,7 @@ jobs:
       # XML is preserved under app/build/flaky-attempt-*/ (uploaded with this
       # artifact for triage) and would otherwise double-count as failures.
       - name: Android instrumented E2E report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
         with:
           artifact: android-e2e-results
