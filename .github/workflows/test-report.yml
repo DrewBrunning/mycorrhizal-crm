@@ -12,6 +12,18 @@ name: Test Report
 # from the workflow_run payload (see its getCheckRunContext), so annotations
 # land on the contributor's changes.
 #
+# Issue #1687: that resolution prefers `workflow_run.pull_requests[].head.sha`
+# (the PR's head at the moment this workflow starts) over
+# `workflow_run.head_sha` (the commit the triggering run actually tested), and
+# v3 has no `sha` input to override it. So a run superseded by a newer push
+# would publish its (possibly failing) report onto the NEW head commit. The
+# job-level `if` below therefore skips any run whose tested commit is no longer
+# the PR head, and skips cancelled runs (superseded runs are cancelled by
+# concurrency, and their partial results add nothing). Fork PRs carry an empty
+# `pull_requests` array, where dorny falls back to head_sha and is already
+# correct. The head's own run still reports its own results, so flake
+# reporting via retained failures is unaffected.
+#
 # Each suite job uploads its JUnit XML (+ flake reports) as a named artifact;
 # each report step below fetches its own artifact directly (dorny/test-
 # reporter's `artifact:` input, not a separate download step) and creates one
@@ -57,6 +69,10 @@ permissions:
 jobs:
   report:
     name: Test Report
+    if: >-
+      github.event.workflow_run.conclusion != 'cancelled' &&
+      (github.event.workflow_run.pull_requests[0].head.sha == null ||
+      github.event.workflow_run.pull_requests[0].head.sha == github.event.workflow_run.head_sha)
     runs-on: ubuntu-latest
     permissions:
       contents: read
