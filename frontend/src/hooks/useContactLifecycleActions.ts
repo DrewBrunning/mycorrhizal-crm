@@ -57,12 +57,16 @@ export function useContactLifecycleActions({
   // ADR 0008: favorite/archive PATCHes persist the contact, which bumps its
   // revision, but their flat response carries none. Re-read it so the next
   // save/delete sends the current If-Match instead of 412ing against our own
-  // toggle. Best-effort: on failure the held revision just stays as it was.
+  // toggle. Adopt the fresh record wholesale: merging only the revision onto
+  // the old card would pair a current If-Match with stale data and silently
+  // overwrite a concurrent remote edit. The GET is authoritative and already
+  // reflects the archive/favorite flip. Best-effort: on failure the held
+  // record just stays as it was.
   const syncRevision = async () => {
     if (!id) return;
     try {
       const fresh = await getContactRecord(id);
-      setRecord((prev) => (prev ? { ...prev, revision: fresh.revision } : prev));
+      setRecord((prev) => (prev ? fresh : prev));
     } catch (err) {
       console.error('Error refreshing contact revision:', err);
     }
