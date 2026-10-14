@@ -70,20 +70,62 @@ func startEmbedded(t *testing.T, delay time.Duration) *Server {
 	return srv
 }
 
+// fakeCatchUpTimer stands in for the deferred catch-up timer: it records the
+// callback and whether Stop cancelled it, and the test fires the callback by
+// hand. Nothing here depends on the wall clock.
+type fakeCatchUpTimer struct {
+	mu      sync.Mutex
+	fn      func()
+	stopped bool
+}
+
+func (f *fakeCatchUpTimer) Stop() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	was := !f.stopped
+	f.stopped = true
+	return was
+}
+
+func (f *fakeCatchUpTimer) isStopped() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.stopped
+}
+
 // Issue #1311 reproduction: Stop before the deferred catch-up fires must
 // cancel the burst — no job runs, in particular none against a closed DB.
 //
-// Hand-verified: with bg.shutdown's timer.Stop removed this fails (the burst
-// fires after Stop and jobs finish against the closed database).
+// Deterministic (issue #1689): the timer is a fake the test fires by hand. The
+// earlier version used a real 300ms delay and a sleep, and on a loaded runner
+// Start's tail (SLOW SQL 250-630ms) outlasted the delay, so the burst
+// legitimately fired *before* Stop and the test misread it as a leak.
+//
+// Hand-verified: with bg.shutdown's timer.Stop removed the stopped assertion
+// fails; with spawn's stopped guard removed the late-callback assertion fails.
 func TestStop_BeforeDeferredCatchUp_CancelsBurst(t *testing.T) {
 	rec := observeJobs(t)
-	const delay = 300 * time.Millisecond
-	srv := startEmbedded(t, delay)
+	fake := &fakeCatchUpTimer{}
+	cfg := newTestConfig(t, config.DeploymentEmbedded)
+	ln, _ := listenUnix(t, "s.sock")
+	srv, err := Start(context.Background(), cfg, Options{
+		Listener:     ln,
+		CatchUpDelay: time.Hour,
+		afterFunc: func(_ time.Duration, fn func()) stoppableTimer {
+			fake.fn = fn
+			return fake
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, fake.fn, "the deferred catch-up timer was armed")
 
 	require.NoError(t, srv.Stop(context.Background()))
+	require.True(t, fake.isStopped(), "Stop must cancel the deferred catch-up timer")
 
-	// A negative can only be shown by waiting past the deadline.
-	time.Sleep(delay + 400*time.Millisecond)
+	// A timer callback already running when Stop began lands after shutdown:
+	// it must dispatch nothing.
+	fake.fn()
+	require.NoError(t, srv.bg.shutdown(context.Background())) // drain anything the late callback spawned
 	for _, o := range rec.snapshot() {
 		require.NotEqual(t, "initial", o.trigger, "job %s must not run after Stop cancelled the deferred burst", o.job)
 	}

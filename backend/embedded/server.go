@@ -64,7 +64,16 @@ type Options struct {
 	// against the closed database. It is unexported deliberately — no
 	// production caller can set it, so the production path always dispatches.
 	disableInitialTriggers bool
+
+	// afterFunc is a test-only seam for the deferred catch-up timer (default
+	// time.AfterFunc). A test supplies a fake it fires by hand, so "Stop ran
+	// before the timer" is a fact of construction rather than a race against
+	// the wall clock on a loaded runner.
+	afterFunc func(d time.Duration, fn func()) stoppableTimer
 }
+
+// stoppableTimer is the slice of *time.Timer the catch-up runner needs.
+type stoppableTimer interface{ Stop() bool }
 
 // Server is a running backend instance returned by Start.
 type Server struct {
@@ -233,7 +242,7 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 	// Boot-time "Initial" triggers (ADR 0011 catch-up). In embedded mode these
 	// may be deferred so the first request is not stuck behind them (spike
 	// #1256).
-	bg = &initialRunner{}
+	bg = &initialRunner{afterFunc: opts.afterFunc}
 	dispatchInitial := func() { dispatchInitialTriggers(db, cfg, bg.spawn) }
 	deferredCatchUp := false
 	switch {
@@ -627,14 +636,20 @@ func splitLines(s string) []string {
 type initialRunner struct {
 	mu      sync.Mutex
 	stopped bool
-	timer   *time.Timer
+	timer   stoppableTimer
 	wg      sync.WaitGroup
+
+	afterFunc func(d time.Duration, fn func()) stoppableTimer // nil: time.AfterFunc
 }
 
 // deferStart runs fn after d unless shutdown happens first.
 func (r *initialRunner) deferStart(d time.Duration, fn func()) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.afterFunc != nil {
+		r.timer = r.afterFunc(d, fn)
+		return
+	}
 	r.timer = time.AfterFunc(d, fn)
 }
 
