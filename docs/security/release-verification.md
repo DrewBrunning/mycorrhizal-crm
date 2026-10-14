@@ -290,6 +290,33 @@ published APK with Google's own app-signing key, the upload key's fingerprint is
 user's install carries — verify Play installs through the Play client, not against
 `ANDROID_SIGNING_CERT_SHA256`.
 
+### Signing-certificate fingerprints (native passkeys)
+
+The server publishes these in `/.well-known/assetlinks.json` (ADR
+[0034](../adrs/0034-android-passkeys.md)); the one reviewed list is `channels` in
+[`backend/androidpasskey/androidpasskey.go`](../../backend/androidpasskey/androidpasskey.go). A
+channel missing from it cannot use native passkeys. The procedure for adding, rotating or
+verifying an entry is the [passkey fingerprint runbook](../development/android-passkey-fingerprints.md).
+
+| Channel | SHA-256 of the signing certificate | Read from | Verified |
+|---|---|---|---|
+| `obtainium` | `24:CF:16:6F:59:36:A6:AD:05:B4:4B:6B:56:9D:71:17:7A:03:8D:4A:06:0F:A4:85:E1:50:2E:73:29:EF:06:5E` | `apksigner verify --print-certs` on the `v1.2.0` `app-obtainium-release.apk`, cross-checked with `keytool -list -v` on the release keystore | 2026-09-29 (issue #1334) |
+| `play` | pending (issue #1201) | the **App signing key certificate** in Play Console | — |
+| `foss` | pending (issue #1199) | the signer of the APK published on f-droid.org | — |
+
+**Play has two different certificates; register only one.** The *upload key* (the project's
+`SIGNING_*` keystore, which signs the AAB sent to Play) is **not** what a user's installed APK
+carries. Play re-signs with the *app signing key*, and that is the fingerprint that goes in the
+registry. Record both here once known, clearly labelled, so the two are never confused.
+
+To re-derive the `obtainium` value from any release:
+
+```sh
+apksigner verify --print-certs app-obtainium-release.apk | grep 'Signer #1 certificate SHA-256'
+```
+
+(`apksigner` prints lowercase hex without colons; the registry parser accepts either form.)
+
 ## Verifying the SHA256SUMS manifest
 
 Every Release carries a `SHA256SUMS` file listing the sha256 of every other asset. After
