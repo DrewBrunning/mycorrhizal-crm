@@ -123,58 +123,139 @@ func TestAndroidCIEmulatorClaimsAreReal(t *testing.T) {
 var browserDownloadPattern = regexp.MustCompile(`(?m)^\s*- name: Download (Firefox|Chrome|Edge|Safari)\b`)
 
 // testedInCIPattern extracts the vendor list a "tested in CI" claim names,
-// e.g. "Chrome/Firefox: tested in CI" -> "Chrome/Firefox".
+// e.g. "Chrome: tested in CI" -> "Chrome".
 var testedInCIPattern = regexp.MustCompile(`([A-Za-z][A-Za-z/ ]*[A-Za-z]): tested in CI`)
 
+// advisoryCIPattern extracts the vendor list an advisory claim names, e.g.
+// "Firefox: advisory only" -> "Firefox". An advisory vendor is downloaded and
+// driven in CI, but its assertion step is continue-on-error (issue #1002).
+var advisoryCIPattern = regexp.MustCompile(`([A-Za-z][A-Za-z/ ]*[A-Za-z]): advisory only`)
+
+// assertStepPattern matches the browser-minimum assertion step for a vendor.
+var assertStepPattern = regexp.MustCompile(`(?m)^\s*- name: Assert the app loads on (Firefox|Chrome|Edge|Safari)\b`)
+
+func splitVendors(s string) map[string]bool {
+	out := make(map[string]bool)
+	for _, name := range strings.Split(s, "/") {
+		out[strings.TrimSpace(name)] = true
+	}
+	return out
+}
+
+// advisorySteps returns, per vendor, whether its assertion step carries
+// continue-on-error: true. A step block runs from its "- name:" line to the
+// next "- name:" line.
+func advisorySteps(wf string) map[string]bool {
+	out := make(map[string]bool)
+	locs := assertStepPattern.FindAllStringSubmatchIndex(wf, -1)
+	for _, loc := range locs {
+		rest := wf[loc[1]:]
+		end := len(rest)
+		if i := strings.Index(rest, "\n      - name:"); i >= 0 {
+			end = i
+		}
+		out[wf[loc[2]:loc[3]]] = strings.Contains(rest[:end], "continue-on-error: true")
+	}
+	return out
+}
+
+// checkBrowserClaims cross-checks the doc's tested/advisory claims against the
+// workflow; it returns one message per mismatch.
+func checkBrowserClaims(wf, doc string) []string {
+	var errs []string
+	downloaded := make(map[string]bool)
+	for _, m := range browserDownloadPattern.FindAllStringSubmatch(wf, -1) {
+		downloaded[m[1]] = true
+	}
+	tested, advisory := map[string]bool{}, map[string]bool{}
+	if m := testedInCIPattern.FindStringSubmatch(doc); m != nil {
+		tested = splitVendors(m[1])
+	}
+	if m := advisoryCIPattern.FindStringSubmatch(doc); m != nil {
+		advisory = splitVendors(m[1])
+	}
+	if len(tested) == 0 && len(advisory) == 0 {
+		return []string{"no \"<vendors>: tested in CI\" or \"<vendors>: advisory only\" claim in the Web browser row"}
+	}
+	blocking := advisorySteps(wf)
+	for name := range tested {
+		switch {
+		case !downloaded[name]:
+			errs = append(errs, name+" claimed \"tested in CI\" but has no Download step")
+		case blocking[name]:
+			errs = append(errs, name+" claimed \"tested in CI\" but its assertion step is continue-on-error (advisory)")
+		}
+	}
+	for name := range advisory {
+		switch {
+		case tested[name]:
+			errs = append(errs, name+" claimed both tested and advisory")
+		case !downloaded[name]:
+			errs = append(errs, name+" claimed \"advisory only\" but has no Download step")
+		case !blocking[name]:
+			errs = append(errs, name+" claimed \"advisory only\" but its assertion step is blocking (no continue-on-error: true)")
+		}
+	}
+	for name := range downloaded {
+		if !tested[name] && !advisory[name] {
+			errs = append(errs, name+" is downloaded and driven in CI but the Web browser row claims neither \"tested in CI\" nor \"advisory only\"")
+		}
+	}
+	return errs
+}
+
+func TestCheckBrowserClaims(t *testing.T) {
+	step := func(v string, coe bool) string {
+		s := "      - name: Download " + v + " 1\n        run: x\n      - name: Assert the app loads on " + v + " 1\n"
+		if coe {
+			s += "        continue-on-error: true\n"
+		}
+		return s + "        run: y\n"
+	}
+	wf := step("Firefox", true) + step("Chrome", false)
+	cases := []struct {
+		name, wf, doc string
+		want          int
+	}{
+		{"ok", wf, "Chrome: tested in CI. Firefox: advisory only", 0},
+		{"advisory called tested", wf, "Chrome/Firefox: tested in CI", 1},
+		{"blocking called advisory", step("Firefox", false) + step("Chrome", false), "Chrome: tested in CI. Firefox: advisory only", 1},
+		{"unclaimed download", wf, "Chrome: tested in CI", 1},
+		{"claimed not downloaded", wf, "Chrome/Edge: tested in CI. Firefox: advisory only", 1},
+		{"no claim", wf, "nothing", 1},
+	}
+	for _, c := range cases {
+		if got := checkBrowserClaims(c.wf, c.doc); len(got) != c.want {
+			t.Errorf("%s: got %v, want %d errors", c.name, got, c.want)
+		}
+	}
+}
+
 // TestSupportedVersionsBrowserCIClaimMatchesRealDownloads is the issue #993
-// regression guard for finding G8: docs/supported-versions.md's Browser row
-// claimed Edge was "tested in CI" alongside Chrome/Firefox, but
-// min-version-tests.yml's browser-minimum job never downloads an Edge
-// binary -- only Firefox and Chrome. This cross-checks the doc's
-// "<vendors>: tested in CI" claim against the workflow's real "Download
-// <vendor>" steps in both directions, so it fails on an overclaim (a vendor
-// the doc says is tested but CI doesn't download) and on a stale doc (a
-// vendor CI now downloads that the doc doesn't credit).
+// regression guard for finding G8, extended by issue #1002 with an advisory
+// tier: every vendor min-version-tests.yml downloads must be claimed in
+// docs/supported-versions.md's Web browser row as "tested in CI" (assertion
+// step blocking) or "advisory only" (assertion step continue-on-error), and
+// every claimed vendor must actually be downloaded.
 func TestSupportedVersionsBrowserCIClaimMatchesRealDownloads(t *testing.T) {
 	wfPath := filepath.Join(workflowsDirRel, "min-version-tests.yml")
 	wf, err := os.ReadFile(wfPath)
 	if err != nil {
 		t.Fatalf("reading %s: %v", wfPath, err)
 	}
-	downloaded := make(map[string]bool)
-	for _, m := range browserDownloadPattern.FindAllStringSubmatch(string(wf), -1) {
-		downloaded[m[1]] = true
-	}
-	if len(downloaded) == 0 {
+	if !browserDownloadPattern.Match(wf) {
 		t.Fatalf("found no \"Download <Browser>\" steps in %s's browser-minimum job -- did the step "+
 			"naming change? update browserDownloadPattern in %s", wfPath, "ci_claims_test.go")
 	}
-
+	if !assertStepPattern.Match(wf) {
+		t.Fatalf("found no \"Assert the app loads on <Browser>\" steps in %s -- update assertStepPattern", wfPath)
+	}
 	const docPath = "../../../docs/supported-versions.md"
 	doc, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("reading %s: %v", docPath, err)
 	}
-	m := testedInCIPattern.FindStringSubmatch(string(doc))
-	if m == nil {
-		t.Fatalf("%s: found no \"<vendors>: tested in CI\" claim in the Web browser row -- did the "+
-			"wording change? update testedInCIPattern in %s", docPath, "ci_claims_test.go")
-	}
-	claimed := make(map[string]bool)
-	for _, name := range strings.Split(m[1], "/") {
-		claimed[strings.TrimSpace(name)] = true
-	}
-
-	for name := range claimed {
-		if !downloaded[name] {
-			t.Errorf("%s claims %q is \"tested in CI\", but %s's browser-minimum job has no "+
-				"\"Download %s\" step -- fix the doc, or add real CI coverage for it", docPath, name, wfPath, name)
-		}
-	}
-	for name := range downloaded {
-		if !claimed[name] {
-			t.Errorf("%s's browser-minimum job downloads and drives %s, but %s's Web browser row "+
-				"doesn't claim it's tested in CI -- update the doc", wfPath, name, docPath)
-		}
+	for _, e := range checkBrowserClaims(string(wf), string(doc)) {
+		t.Errorf("%s vs %s: %s -- fix the doc or the workflow", docPath, wfPath, e)
 	}
 }
