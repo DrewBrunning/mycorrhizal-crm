@@ -39,6 +39,9 @@
 #
 # Exit 0: satisfied (a row exists, no surface class touched, a recorded ack, or
 # a dry-run warning). Exit 1: unsatisfied. Exit 2: usage error.
+#
+# cmd/adversarialdelta exits 1 for "unsatisfied" and 2 when it could not run;
+# only 1 is downgraded under --dry-run, any other status fails the script.
 
 set -u
 
@@ -169,12 +172,28 @@ run_adversarial() {
   # touched no recognised class exits 0 with nothing to record. This is the
   # per-release backstop for a new surface class none of §9's per-class checks
   # anticipated (#953).
-  local out rc
-  out="$(git diff --name-only "${prev}..HEAD" | (cd backend && go run ./cmd/adversarialdelta -release "$release" -ack "$ack"))"
+  #
+  # The diff is captured on its own (not piped) so a failing diff can never
+  # turn into empty input that cmd/adversarialdelta accepts as "no surface
+  # touched".
+  local changed out rc
+  if ! changed="$(git diff --name-only "${prev}..HEAD")"; then
+    emit_error "Adversarial-delta gate could not list the paths changed since $prev (git diff failed)."
+    return 1
+  fi
+  out="$(printf '%s\n' "$changed" | (cd backend && go run ./cmd/adversarialdelta -release "$release" -ack "$ack"))"
   rc=$?
   printf '%s\n' "$out"
   if [ "$rc" -eq 0 ]; then
     return 0
+  fi
+  # Only exit 1 is the tool's "unsatisfied" status. Anything else (2: usage or
+  # unreadable ledger; a `go run` compile error; a signal) means the check
+  # itself did not run. A dry run must not mask that as missing paperwork, so
+  # it fails in every mode.
+  if [ "$rc" -ne 1 ]; then
+    emit_error "Adversarial-delta gate could not run (cmd/adversarialdelta exited $rc, not the unsatisfied status 1). This is a tool failure, not missing paperwork."
+    return 1
   fi
   # A dry run rehearses the path; it does not release memory. A missing ledger
   # row while the register is being populated must not make the weekly
