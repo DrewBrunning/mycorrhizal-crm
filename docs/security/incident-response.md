@@ -167,7 +167,7 @@ escrow).
 
 ```bash
 # Old session cookie → rejected:
-curl -s -b old-cookies.txt https://<host>/api/v1/users/me      # {"error":"Invalid token signature"} [401]
+curl -s -b old-cookies.txt https://<host>/api/v1/users/me      # {"error":{"code":"UNAUTHORIZED","message":"Invalid token signature"},…} [401]
 # API token → still works (rotate/revoke it separately if needed):
 curl -s -H "Authorization: Bearer mycorrhizal_…" https://<host>/api/v1/users/me   # [200]
 # A stored integration credential → now fails until re-entered, e.g. a calendar sync:
