@@ -697,6 +697,7 @@ func DeleteUser(c *gin.Context) {
 	// Delete user's data in a transaction. The cascade itself is shared with
 	// the self-service DeleteOwnAccount (user_delete_cascade.go) — only the
 	// guards above and the audit/response handling below differ per caller.
+	flushAuditBeforeUserDelete(db, uint(id))
 	err = db.Transaction(func(tx *gorm.DB) error {
 		return deleteUserCascade(tx, uint(id))
 	})

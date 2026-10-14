@@ -72,6 +72,9 @@ type auditLogger struct {
 	wg      sync.WaitGroup
 	chainMu sync.Mutex
 	failed  atomic.Int64
+	// deleting holds the ids of users a hard delete is in progress for
+	// (issue #1693); see NoteUserDeletion.
+	deleting sync.Map
 }
 
 // NewAuditRecorder builds a recorder bound to db and installs it as db's audit
@@ -244,6 +247,19 @@ func (a *auditLogger) persist(db *gorm.DB, entityType, entityID, operation strin
 	event.Hash = AuditChainHash(prev, &event)
 
 	if err := db.Create(&event).Error; err != nil {
+		if a.userDeleting(userID) && auditActorGone(db, userID) {
+			// Issue #1693: the acting user was hard-deleted (DeleteUser /
+			// DeleteOwnAccount) after this event was queued and after the
+			// deletion's Flush. audit_events.user_id is an ON DELETE CASCADE
+			// FK, so the row would have been removed with the user anyway;
+			// dropping it is the intended end state, not a failure. Only this
+			// case is demoted (and not counted as failed) -- any other
+			// persist error still warns below.
+			logger.Debug().Err(err).
+				Str("entity_type", entityType).Str("operation", operation).
+				Msg("audit: dropped event for a user deleted before it persisted")
+			return
+		}
 		a.failed.Add(1)
 		logger.Warn().Err(err).
 			Str("entity_type", entityType).Str("entity_id", entityID).Str("operation", operation).
@@ -284,4 +300,35 @@ func recordAudit(db *gorm.DB, entityType, entityID, operation string, userID uin
 		auditPluginsMu.Unlock()
 	}
 	rec.Record(db, entityType, entityID, operation, userID, snapshotJSON)
+}
+
+// auditActorGone reports whether userID definitively no longer exists in
+// users (hard-deleted). A lookup error is treated as "not gone" so a genuine
+// failure keeps warning.
+func auditActorGone(db *gorm.DB, userID uint) bool {
+	var n int64
+	if err := db.Unscoped().Model(&User{}).Where("id = ?", userID).Count(&n).Error; err != nil {
+		return false
+	}
+	return n == 0
+}
+
+// NoteUserDeletion tells rec that userID is about to be hard-deleted, so an
+// event for that user that still fails the audit_events user_id FK afterwards
+// (queued after the deletion's Flush, before its commit) is recognised as the
+// expected race and dropped quietly (issue #1693). Only marked ids get that
+// treatment: an FK failure for any other user id is a genuine bug (the #1471
+// class) and keeps warning. Marking is harmless if the deletion then rolls
+// back, since an existing user never fails the FK.
+func NoteUserDeletion(rec AuditRecorder, userID uint) {
+	if n, ok := rec.(interface{ noteUserDeletion(uint) }); ok {
+		n.noteUserDeletion(userID)
+	}
+}
+
+func (a *auditLogger) noteUserDeletion(userID uint) { a.deleting.Store(userID, struct{}{}) }
+
+func (a *auditLogger) userDeleting(userID uint) bool {
+	_, ok := a.deleting.Load(userID)
+	return ok
 }
