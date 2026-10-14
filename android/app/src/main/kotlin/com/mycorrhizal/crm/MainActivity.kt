@@ -265,7 +265,7 @@ class MainActivity : FragmentActivity() {
         val current = intent ?: return
         val identity = launchIntentIdentity(current)
         if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags, identity, lastConsumedLaunchIdentity)) return
-        lastConsumedLaunchIdentity = identity
+        lastConsumedLaunchIdentity = nextConsumedLaunchIdentity(lastConsumedLaunchIdentity, identity)
         handleOidcReturn(current.data)
         handleDeepLink(current)
         handleShare(current)
@@ -476,6 +476,14 @@ internal fun shouldHandleLaunchIntent(
     if (savedStateIsNull) return true
     return identity != null && identity != consumedIdentity
 }
+
+/**
+ * The consumed-link record after handling an intent with [identity]. A
+ * payload-less intent (launcher tap via onNewIntent) must NOT erase the record
+ * that a link was consumed, or a later restore with the original task intent
+ * would replay it.
+ */
+internal fun nextConsumedLaunchIdentity(previous: String?, identity: String?): String? = identity ?: previous
 
 /**
  * Stable identity of a launch intent's payload (data URI, notification link,
