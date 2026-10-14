@@ -20,6 +20,14 @@ name: Bypassed check alert
 # skipped. Semantics of "green" (skipped/neutral pass, latest re-run wins,
 # merged-before-finished is its own category) live in
 # backend/internal/bypassedcheck.
+#
+# Race with the checks themselves: the push event fires the moment the PR
+# merges, so required checks may still be queued/in progress (real alerts
+# #1676/#1681 were exactly that). A failed/missing context alerts at once; if
+# the only non-green contexts are unfinished, cmd/bypassedcheck re-evaluates
+# every 2 minutes for up to 40 and the alert reports the settled state. A check
+# that was unfinished at merge but finished green is a job-summary line, not an
+# issue (docs/development/repo-governance.md).
 on:
   push:
     branches: [main]
@@ -46,7 +54,7 @@ jobs:
   alert:
     name: Alert on merge with non-green required checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 55
     permissions:
       contents: read
       checks: read
@@ -110,7 +118,8 @@ jobs:
         run: |
           go run ./cmd/bypassedcheck \
             -ruleset ../.github/rulesets/main-protection.json \
-            -repo "$GH_REPO" -sha "$HEAD_SHA" > "$RUNNER_TEMP/verdict.json"
+            -repo "$GH_REPO" -sha "$HEAD_SHA" \
+            -poll 2m -wait-max 40m > "$RUNNER_TEMP/verdict.json"
           cat "$RUNNER_TEMP/verdict.json"
 
       - name: Open/update the alert issue

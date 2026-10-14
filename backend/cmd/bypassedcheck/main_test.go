@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const rulesetJSON = `{"name":"main-protection","target":"branch","enforcement":"active",
@@ -183,5 +184,23 @@ func TestMainUsesOsExit(t *testing.T) {
 func TestTruncate(t *testing.T) {
 	if len(truncate(strings.Repeat("x", 500))) != 200 || truncate("ab") != "ab" {
 		t.Fatal("truncate")
+	}
+}
+
+func TestOfflineWaitReportsMergedEarly(t *testing.T) {
+	rs := writeTemp(t, "rs.json", rulesetJSON)
+	fx := writeTemp(t, "fx.json", `{"check_runs":[{"name":"Backend (Go)","status":"in_progress","at":"2026-10-01T00:00:00Z"}],
+"statuses":[{"context":"codecov/patch/backend","state":"success","at":"2026-10-01T00:00:00Z"}]}`)
+	var slept []time.Duration
+	sleep = func(d time.Duration) { slept = append(slept, d) }
+	defer func() { sleep = time.Sleep }()
+	code, out, _ := runCmd(t, nil, nil, "-ruleset", rs, "-input", fx, "-poll", "1m", "-wait-max", "3m")
+	var v Verdict
+	if err := json.Unmarshal([]byte(out), &v); code != 0 || err != nil {
+		t.Fatalf("exit %d err %v", code, err)
+	}
+	if len(slept) != 3 || v.WaitedSeconds != 180 || len(v.MergedEarly) != 1 || v.MergedEarly[0] != "Backend (Go)" ||
+		len(v.Findings) != 1 || v.Findings[0].Category != "incomplete" {
+		t.Fatalf("slept %v verdict %+v", slept, v)
 	}
 }

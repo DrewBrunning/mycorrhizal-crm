@@ -40,6 +40,7 @@ case "${1:-}" in
     if [ "${STUB_ASVS_ROW:-0}" = "1" ]; then
       printf '+| 2.10 | 2026-09-21 | (see PR) | ASVS L2 with 23 documented exceptions | a change |\n'
     fi
+    if [ "${STUB_DIFF_FAIL:-0}" = "1" ]; then exit 128; fi
     # Present regardless of the call form; only the `^\+\|N.N` row is counted.
     printf 'backend/routes/stub_test.go\n'
     exit 0
@@ -153,6 +154,24 @@ export STUB_ASVS_ROW=0
 assert_case "asvs: no row WITHOUT --dry-run still fails (real mode unchanged)" 1 "no new section-10 changelog row" asvs
 assert_case "adversarial: would-block WITHOUT --dry-run still fails" 1 "Adversarial-delta gate failed" adversarial --release v1.0.0
 unset PENDING_PAPERWORK_FILE
+
+# The tool failing to run (exit 2: usage/ledger; a compile error) is not
+# "paperwork would block": --dry-run must not downgrade it. Only the tool's
+# documented unsatisfied status (1) is downgraded.
+export STUB_ADV_EXIT=2
+assert_case "adversarial: tool error (exit 2) under --dry-run -> fails" 1 "could not run" adversarial --release v1.0.0 --dry-run
+assert_case "adversarial: tool error (exit 2) in real mode -> fails" 1 "could not run" adversarial --release v1.0.0
+export STUB_ADV_EXIT=127
+assert_case "adversarial: compile-style failure (exit 127) under --dry-run -> fails" 1 "exited 127" adversarial --release v1.0.0 --dry-run
+export STUB_ADV_EXIT=1
+assert_case "adversarial: unsatisfied (exit 1) under --dry-run -> warns, exit 0" 0 "would block a real release" adversarial --release v1.0.0 --dry-run
+# A failing producer must not become empty input the tool accepts.
+export STUB_ADV_EXIT=0
+export STUB_DIFF_FAIL=1
+assert_case "adversarial: failing diff producer -> fails even if the tool would pass" 1 "diff failed" adversarial --release v1.0.0
+assert_case "adversarial: failing diff producer under --dry-run -> fails" 1 "diff failed" adversarial --release v1.0.0 --dry-run
+unset STUB_DIFF_FAIL
+export STUB_ADV_EXIT=1
 
 assert_case "unknown command -> usage error" 2 "unknown command" frobnicate
 
