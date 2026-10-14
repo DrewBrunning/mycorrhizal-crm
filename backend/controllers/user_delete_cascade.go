@@ -388,8 +388,9 @@ func deleteUserAttachmentFiles(c *gin.Context, storedNames []string) {
 // single-row inserts). Call outside any transaction. An event queued after
 // this flush but before the delete commits is tolerated in
 // models.auditLogger.persist.
-func flushAuditBeforeUserDelete(db *gorm.DB) {
+func flushAuditBeforeUserDelete(db *gorm.DB, userID uint) {
 	if rec := models.AuditRecorderFor(db); rec != nil {
+		models.NoteUserDeletion(rec, userID)
 		rec.Flush()
 	}
 }
