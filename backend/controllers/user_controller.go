@@ -1124,6 +1124,7 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
+	flushAuditBeforeUserDelete(db)
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if promoteUser != nil {
 			if err := tx.Model(&models.User{}).Where("id = ?", promoteUser.ID).Update("is_admin", true).Error; err != nil {

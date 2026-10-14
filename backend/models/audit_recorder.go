@@ -244,6 +244,19 @@ func (a *auditLogger) persist(db *gorm.DB, entityType, entityID, operation strin
 	event.Hash = AuditChainHash(prev, &event)
 
 	if err := db.Create(&event).Error; err != nil {
+		if auditActorGone(db, userID) {
+			// Issue #1693: the acting user was hard-deleted (DeleteUser /
+			// DeleteOwnAccount) after this event was queued and after the
+			// deletion's Flush. audit_events.user_id is an ON DELETE CASCADE
+			// FK, so the row would have been removed with the user anyway;
+			// dropping it is the intended end state, not a failure. Only this
+			// case is demoted (and not counted as failed) -- any other
+			// persist error still warns below.
+			logger.Debug().Err(err).
+				Str("entity_type", entityType).Str("operation", operation).
+				Msg("audit: dropped event for a user deleted before it persisted")
+			return
+		}
 		a.failed.Add(1)
 		logger.Warn().Err(err).
 			Str("entity_type", entityType).Str("entity_id", entityID).Str("operation", operation).
@@ -284,4 +297,15 @@ func recordAudit(db *gorm.DB, entityType, entityID, operation string, userID uin
 		auditPluginsMu.Unlock()
 	}
 	rec.Record(db, entityType, entityID, operation, userID, snapshotJSON)
+}
+
+// auditActorGone reports whether userID definitively no longer exists in
+// users (hard-deleted). A lookup error is treated as "not gone" so a genuine
+// failure keeps warning.
+func auditActorGone(db *gorm.DB, userID uint) bool {
+	var n int64
+	if err := db.Unscoped().Model(&User{}).Where("id = ?", userID).Count(&n).Error; err != nil {
+		return false
+	}
+	return n == 0
 }

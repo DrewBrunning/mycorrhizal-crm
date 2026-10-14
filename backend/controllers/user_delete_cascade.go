@@ -380,3 +380,16 @@ func deleteUserAttachmentFiles(c *gin.Context, storedNames []string) {
 		}
 	}
 }
+
+// flushAuditBeforeUserDelete drains the async audit recorder before a user is
+// hard-deleted (issue #1693). Events queued for that user are persisted first
+// and then removed by the audit_events ON DELETE CASCADE FK, instead of racing
+// the delete and failing the FK. Waits for all in-flight audit writes (short
+// single-row inserts). Call outside any transaction. An event queued after
+// this flush but before the delete commits is tolerated in
+// models.auditLogger.persist.
+func flushAuditBeforeUserDelete(db *gorm.DB) {
+	if rec := models.AuditRecorderFor(db); rec != nil {
+		rec.Flush()
+	}
+}
