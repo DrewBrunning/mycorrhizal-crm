@@ -254,6 +254,20 @@ describe('revision stays current after whole-contact actions', () => {
     expect(applyUpdates(record).revision).toBe(bumped);
   });
 
+  test('the re-read adopts the whole fresh card, not just the revision', async () => {
+    vi.mocked(favoriteContact).mockResolvedValue({ is_favorite: true } as never);
+    const remoteEdited = {
+      ...record,
+      revision: bumped,
+      is_favorite: true,
+      card: { name: { full: 'Edited elsewhere' } },
+    } as unknown as ContactRecordResponse;
+    vi.mocked(getContactRecord).mockResolvedValue(remoteEdited);
+    const { result } = setup();
+    await act(() => result.current.handleToggleFavorite());
+    expect(applyUpdates(record)).toEqual(remoteEdited);
+  });
+
   test('a failed re-read leaves the held revision alone', async () => {
     vi.mocked(favoriteContact).mockResolvedValue({ is_favorite: true } as never);
     vi.mocked(getContactRecord).mockRejectedValue(new Error('offline'));
@@ -267,6 +281,8 @@ describe('revision stays current after whole-contact actions', () => {
 describe('favorite (#173)', () => {
   test('flips optimistically, then takes the server value', async () => {
     vi.mocked(favoriteContact).mockResolvedValue({ is_favorite: true } as never);
+    // The authoritative re-read reflects the flip.
+    vi.mocked(getContactRecord).mockResolvedValue({ ...record, revision: 2, is_favorite: true });
     const { result } = setup();
     await act(() => result.current.handleToggleFavorite());
     expect(favoriteContact).toHaveBeenCalledWith('1');
@@ -276,6 +292,7 @@ describe('favorite (#173)', () => {
   test('unfavorites a favorite', async () => {
     vi.mocked(unfavoriteContact).mockResolvedValue({ is_favorite: false } as never);
     const fav = { ...record, is_favorite: true };
+    vi.mocked(getContactRecord).mockResolvedValue({ ...record, revision: 2, is_favorite: false });
     const { result } = setup({ r: fav });
     await act(() => result.current.handleToggleFavorite());
     expect(unfavoriteContact).toHaveBeenCalledWith('1');

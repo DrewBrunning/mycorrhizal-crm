@@ -522,6 +522,15 @@ function mockFetch({
       for (const action of ['archive', 'unarchive', 'favorite', 'unfavorite'] as const) {
         if (path === `/contacts/1/${action}` && method === 'POST') {
           if (fail[action]) return errorResponse(`${action} failed`);
+          // The server persists the flip, so the authoritative re-read that
+          // follows (syncRevision) must reflect it with a bumped revision.
+          current = {
+            ...current,
+            revision: current.revision + 1,
+            ...(action.endsWith('archive')
+              ? { archived: action === 'archive' }
+              : { is_favorite: action === 'favorite' }),
+          };
           return json(
             action.endsWith('archive')
               ? { ID: 1, archived: action === 'archive' }

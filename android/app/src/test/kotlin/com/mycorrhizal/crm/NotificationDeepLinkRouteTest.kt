@@ -100,6 +100,16 @@ class NotificationDeepLinkRouteTest {
     }
 
     @Test
+    fun `payload-less intent does not erase the consumed link record`() {
+        val a = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
+        var consumed: String? = null
+        consumed = nextConsumedLaunchIdentity(consumed, a) // consume A
+        consumed = nextConsumedLaunchIdentity(consumed, null) // launcher tap via onNewIntent
+        // restore with the original task intent A: still recognised as consumed
+        assertFalse(shouldHandleLaunchIntent(false, 0, identity = a, consumedIdentity = consumed))
+    }
+
+    @Test
     fun `every shared vector resolves to its android route`() {
         val text = javaClass.classLoader!!.getResourceAsStream("vectors.json")!!
             .bufferedReader().use { it.readText() }

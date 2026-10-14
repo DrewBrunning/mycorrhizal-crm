@@ -167,8 +167,16 @@ func newInjector(ctx context.Context, faults []Fault, db *gorm.DB) (*injector, e
 	return in, nil
 }
 
+// maxMultiplier caps how many nominal intervals one Tick may leak at once. An
+// unbounded multiplier turns a long runner stall (m=60 after a minute) into a
+// ~480 MiB heap / ~6000 goroutine / ~2900 fd burst in a single tick, risking
+// OOM or ulimit on CI. Capping keeps detection intact: the leak fit is over
+// many ticks, so a stalled tick still leaks several intervals' worth, just not
+// unboundedly many.
+const maxMultiplier = 8
+
 // multiplier is how many nominal intervals elapsed since the previous Tick
-// (at least 1), and advances the clock.
+// (at least 1, at most maxMultiplier), and advances the clock.
 func (in *injector) multiplier() int {
 	now := time.Now()
 	m := 1
@@ -176,6 +184,9 @@ func (in *injector) multiplier() int {
 		if r := int((now.Sub(in.last) + in.every/2) / in.every); r > m {
 			m = r
 		}
+	}
+	if m > maxMultiplier {
+		m = maxMultiplier
 	}
 	in.last = now
 	return m

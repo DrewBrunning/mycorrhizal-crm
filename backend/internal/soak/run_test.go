@@ -50,6 +50,10 @@ func TestInjector_LeakScalesWithElapsedIntervals(t *testing.T) {
 	assert.Len(t, in.files, 3*leakFDs)
 	in.Tick() // back on cadence: one interval's worth (floor of 1)
 	assert.Len(t, in.retain, 4)
+	in.last = time.Now().Add(-60 * time.Second) // a long stall must not burst unboundedly
+	in.Tick()
+	assert.Len(t, in.retain, 4+maxMultiplier)
+	assert.Len(t, in.files, (3+1+maxMultiplier)*leakFDs)
 }
 
 func TestInjector_WALBallastScalesWithElapsedIntervals(t *testing.T) {
