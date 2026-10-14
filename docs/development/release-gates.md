@@ -413,6 +413,24 @@ paperwork** section ("a real release would currently be blocked on: ..."). Real 
 call in the else, no `if:`/`continue-on-error`, the summary section exists, the rehearsal passes no ack) and
 by `.github/scripts/tests/release-obligations.test.sh`.
 
+The downgrade covers only the tool's *unsatisfied* status (issue #1685): `cmd/adversarialdelta` exits `1`
+for "a touched surface class has no row" and `2` when it could not run, and only `1` becomes a dry-run
+warning. A usage error, a `go run` compile failure or a failing `git diff` fails the step in every mode,
+and the changed-path list is captured separately from the tool so a failed diff cannot become an empty
+input that passes. The App-token mints, the fixture commit, the push to `main` and the tag push in
+`release.yml` all carry `!inputs.dry_run`, so a dry run never writes to the repository or publishes.
+
+## Alarms that watch the gates (not gates)
+
+Three advisory workflows open `ci`-labelled issues when a gate was not honoured; none is a merge or
+release gate, none is in the ruleset or `release-gates.json`, and each holds only `issues: write`
+beyond read scopes: `main-failure-alert.yml` (a red `push` run on `main`), `nightly-failure-alert.yml`
+(a red scheduled run; `nightlyalertcheck` keeps its workflow list equal to the scheduled set) and
+`bypassed-check-alert.yml` (issue #1661: a PR merged with a context from `main-protection.json` not
+green, re-evaluated for up to 40 minutes when the only non-green contexts were still running at merge).
+Their semantics live in [`repo-governance.md`](repo-governance.md); the release-success-rate criterion
+reads the same signal from the `release.yml` run list.
+
 ## The gates
 
 Generated view of `.github/release-gates.json`. `releasegatecheck` asserts every row here has a

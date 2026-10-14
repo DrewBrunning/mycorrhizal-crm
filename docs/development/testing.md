@@ -142,6 +142,44 @@ time-based rule.
   `ChangePassword` fails the sweep. The sweep's first run found and fixed two
   partial-write bugs (reminder completion, password-change revocation) and a
   SQL-text leak in import row errors.
+  - **Read routes** (`TestDBFaultReadSweep`, `routes/db_fault_read_sweep_test.go`,
+    issue #1497): the same injection for every GET route in `faultReadRoutes`.
+    Reads never mutate, so one seeded database serves every injected
+    statement. For each statement after the auth middleware's own prefix the
+    response must be the route's normal 2xx (a declared best-effort enrichment
+    read) or a well-formed 5xx envelope with a documented server-fault code,
+    must leak no SQL or table name, and across the whole route **at least one**
+    failure must surface as a 5xx (a handler that swallowed every database
+    error would answer an outage with fabricated empty data). Integration
+    routes that need an external system are not listed; their own controller
+    tests cover them.
+  - **CRUD write scenarios** (`TestDBFaultSweepCRUD`,
+    `routes/db_fault_crud_scenarios_test.go`, issue #1497): 49 further
+    `faultScenario` entries (notes, activities, circles, households, tags,
+    field definitions, life events, gifts, obligations, events, cadence,
+    data-decay, webhooks, external identities, edges) run through the same
+    write sweep, with reasoned `faultAllowlist` entries for best-effort audit
+    reads. **Post-commit reads never turn a committed write into a 5xx**
+    (#1663): cadence create/update and activity update fall back to the
+    committed entity when the follow-up read fails, so the allowlist's old
+    "recorded post-commit 5xx" class is gone and those routes assert a 2xx
+    *and* that the write persisted. The sweep also found a real bug:
+    `CreateActivity` appended its contact links in a separate statement from the
+    insert, so a failed association left an orphan activity a client retry would
+    duplicate; both writes now share one transaction.
+- **The handler guard matrix** (`TestHandlerGuardMatrix`,
+  `controllers/handler_guard_matrix_test.go`, issue #1497) invokes every
+  route-bound handler directly on a bare gin context in two states — no
+  authenticated user (must answer `401 UNAUTHORIZED` and never touch the
+  database) and an authenticated user with no validated body, path id or query
+  (must answer its own typed 4xx envelope, or a well-formed success for a
+  handler that takes no input; never a panic or a bare error) — and pins
+  `"<status> <code>"` per handler in `guardExpect`, so a handler that drops its
+  auth, validation or path-id guard fails by name. The table is hand-listed
+  (`guardHandlers` and `guardExpect` must have the same length), **not** derived
+  from the router: a new handler is covered only once someone adds it, which is
+  why `routes/authorization_matrix_test.go` (derived from the live router) stays
+  the route-completeness gate and this matrix is the per-handler guard pin.
 - **The non-negotiable fixture rule** (CLAUDE.md trap #1): test against the real
   migrated schema, never `AutoMigrate`. Prefer `internal/dbtest.New(t)`, which
   builds the migrated template once per test binary and hands each test an
@@ -710,7 +748,13 @@ only a 5xx (or a genuinely swallowed internal failure) is `error`/`warn`.
   matching entry in file order takes a line, so a scoped entry never spills into
   a later catch-all's budget. Bounds are the exact count the spec produces times
   2 for Playwright's single CI retry, with any further headroom stated in the
-  entry's `reason`. Non-JSON lines (nginx, gin text) are ignored.
+  entry's `reason`; issue #1664 re-derived them from observed E2E counts so a
+  bound is not loose enough to hide a regression. Non-JSON lines (nginx, gin
+  text) are ignored. **Every run prints an `entry | observed | max_count`
+  table** to stdout on success *and* failure (zero-observed entries included),
+  and appends a markdown copy to `GITHUB_STEP_SUMMARY` titled with the job, so
+  a stale entry or a bound with a wide margin is visible without re-running
+  (`observedTable` / `appendSummary`, `cmd/logguard/main.go`).
   It runs after the Playwright suite in `e2e-tests.yml` (`e2e` and
   `e2e-prod-defaults`), after the workflow in `deploy-smoke.yml`, and over the
   server log in both `reference-clients-e2e.yml` legs (which set
@@ -1059,6 +1103,37 @@ variable the tests read is set by the workflow.
 `username` JSON tag on `PaperlessUser`, or change `sendNtfyMessage` to POST to
 `/<topic>` again — the unit tests stay green (the fakes follow the code) and
 the real-server leg goes red.
+
+## CI plumbing around the suites
+
+Three workflows exist to make the suites above trustworthy rather than to test
+anything themselves; none is a merge gate.
+
+- **Test Report** (`test-report.yml`, issue #268): a `workflow_run` job that turns
+  each suite's JUnit artifact into a check run. Since issue #1687 its job-level
+  `if` skips a run whose tested commit is no longer the PR head, and skips
+  cancelled runs, because `dorny/test-reporter` resolves the *current* PR head
+  rather than the tested commit and would otherwise publish a superseded run's
+  (possibly failing) report onto a newer commit. Fork PRs carry an empty
+  `pull_requests` array, where it falls back to `head_sha` and is already
+  correct. The head's own run still reports its own results.
+- **Runner-image preflight** (`runner-image-preflight.yml`, issue #1659):
+  dispatch-only, never scheduled (so `nightlyalertcheck` does not apply). GitHub
+  moves `ubuntu-latest` to Ubuntu 26.04 on 2026-10-19; the workflow runs the
+  image-sensitive suites (`e2e-tests`, `unit-tests`, `android-tests`,
+  `min-version-tests`, `reference-clients-e2e`, `deploy-smoke`) on an explicit
+  `image` (default `ubuntu-26.04`) through a new `runner` input on each of them
+  (empty keeps `ubuntu-latest`, so their normal triggers are unchanged), so
+  breakage arrives as a triaged list before the label moves instead of a wave of
+  red nightlies. The Playwright apt and browser caches key on the detected OS
+  image, so a stale cache from the old image cannot be restored onto the new one.
+- **Bypassed-check alert** (`bypassed-check-alert.yml`, issue #1661): on every
+  push to `main` it checks whether each context the `main-protection` ruleset
+  requires was green on the merged PR's head, and opens a `ci`+`p1` issue if not.
+  Advisory by design (it cannot block a merge that already happened), so it is
+  absent from the ruleset and `release-gates.json`; semantics, the 40-minute
+  settle window for checks still running at merge, and the `issues: write`
+  scope are in [`repo-governance.md`](repo-governance.md).
 
 ## Layers vs CI path gating
 
