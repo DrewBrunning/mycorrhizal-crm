@@ -132,6 +132,10 @@ var testedInCIPattern = regexp.MustCompile(`([A-Za-z][A-Za-z/ ]*[A-Za-z]): teste
 var advisoryCIPattern = regexp.MustCompile(`([A-Za-z][A-Za-z/ ]*[A-Za-z]): advisory only`)
 
 // assertStepPattern matches the browser-minimum assertion step for a vendor.
+// continueOnErrorPattern matches a real YAML key line, so a commented-out
+// "# continue-on-error: true" (or one inside prose) is not mistaken for it.
+var continueOnErrorPattern = regexp.MustCompile(`(?m)^\s*continue-on-error:\s*true\s*(#.*)?$`)
+
 var assertStepPattern = regexp.MustCompile(`(?m)^\s*- name: Assert the app loads on (Firefox|Chrome|Edge|Safari)\b`)
 
 func splitVendors(s string) map[string]bool {
@@ -154,7 +158,7 @@ func advisorySteps(wf string) map[string]bool {
 		if i := strings.Index(rest, "\n      - name:"); i >= 0 {
 			end = i
 		}
-		out[wf[loc[2]:loc[3]]] = strings.Contains(rest[:end], "continue-on-error: true")
+		out[wf[loc[2]:loc[3]]] = continueOnErrorPattern.MatchString(rest[:end])
 	}
 	return out
 }
@@ -205,6 +209,9 @@ func checkBrowserClaims(wf, doc string) []string {
 }
 
 func TestCheckBrowserClaims(t *testing.T) {
+	commented := func(v string) string {
+		return "      - name: Download " + v + " 1\n        run: x\n      - name: Assert the app loads on " + v + " 1\n        # continue-on-error: true\n        run: y\n"
+	}
 	step := func(v string, coe bool) string {
 		s := "      - name: Download " + v + " 1\n        run: x\n      - name: Assert the app loads on " + v + " 1\n"
 		if coe {
@@ -223,6 +230,9 @@ func TestCheckBrowserClaims(t *testing.T) {
 		{"unclaimed download", wf, "Chrome: tested in CI", 1},
 		{"claimed not downloaded", wf, "Chrome/Edge: tested in CI. Firefox: advisory only", 1},
 		{"no claim", wf, "nothing", 1},
+		{"commented-out continue-on-error is not advisory", commented("Firefox") + step("Chrome", false), "Chrome: tested in CI. Firefox: advisory only", 1},
+		{"commented-out continue-on-error: still blocking, claimed tested", commented("Firefox") + step("Chrome", false), "Chrome/Firefox: tested in CI", 0},
+		{"trailing comment on the real key still counts", strings.Replace(wf, "continue-on-error: true", "continue-on-error: true # #1002", 1), "Chrome: tested in CI. Firefox: advisory only", 0},
 	}
 	for _, c := range cases {
 		if got := checkBrowserClaims(c.wf, c.doc); len(got) != c.want {

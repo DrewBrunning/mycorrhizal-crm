@@ -312,10 +312,22 @@ jobs:
         continue-on-error: true
         run: |
           /tmp/geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
-          if ! .github/scripts/min-browser-check.sh 4444 firefox /tmp/firefox-111/firefox-bin http://127.0.0.1:8899/index.html; then
-            echo "::warning::Firefox 111 assertion FAILED (advisory, #1002) -- known hosted-runner crash; Chrome 115 is the blocking floor signal"
-            echo "### Firefox 111: assertion FAILED (advisory, #1002)" >> "$GITHUB_STEP_SUMMARY"
-            echo "Known unverifiable-on-hosted-runners crash; see docs/development/supported-runtime-matrix.md. Chrome for Testing 115 is the blocking signal." >> "$GITHUB_STEP_SUMMARY"
+          if ! .github/scripts/min-browser-check.sh 4444 firefox /tmp/firefox-111/firefox-bin http://127.0.0.1:8899/index.html 2>&1 | tee /tmp/firefox-check.out; then
+            # The step is advisory because of ONE known crash. Only that
+            # crash's signatures get the "known" wording; any other failure
+            # (the app not rendering, a changed error) may be a real Firefox
+            # 111 regression and must not be dismissed as the known crash.
+            if grep -q -E -e 'RenderCompositorSWGL failed mapping default framebuffer' \
+                 -e 'Failed to decode response from marionette' \
+                 -e 'returned error: 500' /tmp/geckodriver.log /tmp/firefox-check.out; then
+              echo "::warning::Firefox 111 assertion FAILED (advisory, #1002) -- known hosted-runner crash; Chrome 115 is the blocking floor signal"
+              echo "### Firefox 111: assertion FAILED (advisory, #1002)" >> "$GITHUB_STEP_SUMMARY"
+              echo "Known unverifiable-on-hosted-runners crash; see docs/development/supported-runtime-matrix.md. Chrome for Testing 115 is the blocking signal." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Firefox 111 assertion FAILED with an UNRECOGNISED signature (advisory, #1002) -- this may be a real Firefox 111 regression, NOT the known hosted-runner crash; read the log before dismissing"
+              echo "### :rotating_light: Firefox 111: UNRECOGNISED failure (advisory, #1002)" >> "$GITHUB_STEP_SUMMARY"
+              echo "None of the known hosted-runner crash signatures (RenderCompositorSWGL framebuffer, marionette decode, session-create 500) matched, so this may be a real Firefox 111 regression. Do not assume the known crash; inspect the geckodriver log and the check output." >> "$GITHUB_STEP_SUMMARY"
+            fi
             grep -v -E "AsyncShutdown|^ *(@|addBlocker|setup)" /tmp/geckodriver.log | head -80 || true
             exit 1
           fi
