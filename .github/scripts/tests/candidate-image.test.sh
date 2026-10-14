@@ -36,6 +36,12 @@ if [ "$1" = "pull" ] && [ -n "${DOCKER_FAIL_PULLS:-}" ]; then
   n=$(grep -c '^docker pull' "$DOCKER_LOG")
   [ "$n" -le "$DOCKER_FAIL_PULLS" ] && exit 1
 fi
+if [ "$1" = "buildx" ]; then
+  case "$*" in
+    *.Manifest*) [ "${BUILDX_FAIL:-}" = manifest ] && exit 1; printf '%s\n' "$MANIFEST_OUT"; exit 0 ;;
+    *.Image*) printf '%s\n' "$IMAGE_OUT"; exit 0 ;;
+  esac
+fi
 if [ "$1" = "image" ] && [ "$2" = "inspect" ]; then
   printf '%s\n' "${INSPECT_OUT:-[]}"
 fi
@@ -145,6 +151,35 @@ check "assert-match fails when the tested digest is missing" 1 "cannot compare" 
   bash "$CANDIDATE" assert-match "" "$D2" "all-in-one"
 check "assert-match fails when the published digest is garbage" 1 "cannot compare" -- \
   bash "$CANDIDATE" assert-match "$D1" "nope" "all-in-one"
+
+# --- verify-candidate (issue #1704) ----------------------------------------
+SHA_V="$(printf 'c%.0s' $(seq 1 40))"
+SHA_T="$(printf 'd%.0s' $(seq 1 40))"
+img_with() { # revision version -> a two-platform .Image document
+  printf '{"linux/amd64":{"config":{"Labels":{"org.opencontainers.image.revision":"%s","org.opencontainers.image.version":"%s"}}},"linux/arm64":{"config":{"Labels":{"org.opencontainers.image.revision":"%s","org.opencontainers.image.version":"%s"}}}}' "$1" "$2" "$1" "$2"
+}
+export MANIFEST_OUT="{\"digest\":\"${D1}\"}"
+IMAGE_OUT="$(img_with "$SHA_V" v1.2.3)"
+export IMAGE_OUT
+check "verify-candidate accepts the validated candidate" 0 "is the validated candidate" -- \
+  bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v1.2.3
+check "verify-candidate rejects the tag commit's sha (a rebuild, not the validated image)" 1 "does not carry revision=${SHA_T}" -- \
+  bash "$CANDIDATE" verify-candidate "$D1" "$SHA_T" v1.2.3
+check "verify-candidate rejects a version-label mismatch" 1 "does not carry revision" -- \
+  bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v9.9.9
+mixed="$(img_with "$SHA_V" v1.2.3 | jq -c --arg t "$SHA_T" '."linux/arm64".config.Labels["org.opencontainers.image.revision"] = $t')"
+check "verify-candidate rejects one platform with a different revision" 1 "does not carry revision" -- \
+  env IMAGE_OUT="$mixed" bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v1.2.3
+check "verify-candidate rejects an image with no platforms" 1 "does not carry revision" -- \
+  env IMAGE_OUT="{}" bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v1.2.3
+check "verify-candidate rejects a manifest that resolves to another digest" 1 "resolved to" -- \
+  env MANIFEST_OUT="{\"digest\":\"${D2}\"}" bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v1.2.3
+check "verify-candidate rejects a digest absent from the registry" 1 "does not resolve" -- \
+  env BUILDX_FAIL=manifest bash "$CANDIDATE" verify-candidate "$D1" "$SHA_V" v1.2.3
+check "verify-candidate rejects a non-digest" 1 "not a sha256 image digest" -- \
+  bash "$CANDIDATE" verify-candidate "candidate-abc" "$SHA_V" v1.2.3
+check "verify-candidate rejects a short commit sha" 2 "40-hex" -- \
+  bash "$CANDIDATE" verify-candidate "$D1" abc123 v1.2.3
 
 # --- usage ----------------------------------------------------------------
 check "unknown subcommand is a usage error" 2 "usage:" -- bash "$CANDIDATE" frobnicate

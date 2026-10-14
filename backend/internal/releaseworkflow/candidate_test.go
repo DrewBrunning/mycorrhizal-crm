@@ -81,7 +81,7 @@ func TestCheckCandidateCatchesEachRegression(t *testing.T) {
 			w.composer = replaceOnce(t, w.composer, "value: ${{ jobs.build-candidate.outputs.digest }}", "value: ''")
 		}, "must export workflow_call output `candidate_digest`"},
 		{"job output digest dropped", func(t *testing.T, w *wf) {
-			w.composer = replaceOnce(t, w.composer, "      digest: ${{ steps.build.outputs.digest }}\n", "")
+			w.composer = replaceOnce(t, w.composer, "      digest: ${{ steps.build.outputs.digest || steps.adopt.outputs.digest }}\n", "")
 		}, "must output `digest`"},
 		{"build step removed", func(t *testing.T, w *wf) {
 			w.composer = replaceOnce(t, w.composer, "uses: docker/build-push-action@", "uses: docker/xbuild-push-action@")
@@ -99,7 +99,7 @@ func TestCheckCandidateCatchesEachRegression(t *testing.T) {
 			w.composer = replaceOnce(t, w.composer, "          sbom: true", "          sbom: false")
 		}, "must set provenance: true and sbom: true"},
 		{"digest not validated", func(t *testing.T, w *wf) {
-			w.composer = replaceOnce(t, w.composer, "candidate-image.sh check-digest", "candidate-image.sh no-op")
+			w.composer = replaceAll(t, w.composer, "candidate-image.sh check-digest", "candidate-image.sh no-op")
 		}, "must validate its digest"},
 		{"candidate stamp not shared", func(t *testing.T, w *wf) {
 			w.composer = replaceOnce(t, w.composer, "bash .github/scripts/release-image-stamp.sh", "echo")
@@ -203,11 +203,58 @@ func TestCheckCandidateCatchesEachRegression(t *testing.T) {
 			w.publish = replaceOnce(t, w.publish, "        id: published\n", "        id: publishd\n")
 		}, "must resolve the published digest"},
 		{"verify-release-assets stops needing the gate", func(t *testing.T, w *wf) {
-			w.publish = replaceOnce(t, w.publish, "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan, release-gate]", "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan]")
+			w.publish = replaceOnce(t, w.publish, "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan, release-gate, reuse-decision]", "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan, reuse-decision]")
 		}, "`verify-release-assets` must `needs: release-gate`"},
 		{"verify-release-assets stops comparing digests", func(t *testing.T, w *wf) {
 			w.publish = replaceAfter(t, w.publish, "  verify-release-assets:\n", "has digest ${published}, but the release gates tested ${CANDIDATE_DIGEST}", "has digest ${published}")
 		}, "must fail (::error::) when the published image digest differs"},
+
+		// --- issue #1704: a reused battery publishes the VALIDATED digest ----
+		{"composer loses the adopt input", func(t *testing.T, w *wf) {
+			w.composer = replaceOnce(t, w.composer, "      adopt_candidate_digest:\n", "      adopt_candidate_digestx:\n")
+		}, "must declare a workflow_call `adopt_candidate_digest` input"},
+		{"adopt input defaults to something", func(t *testing.T, w *wf) {
+			w.composer = replaceOnce(t, w.composer, "Built by reuse-decision, never by hand.'\n        required: false\n        type: string\n        default: ''", "Built by reuse-decision, never by hand.'\n        required: false\n        type: string\n        default: 'sha256:x'")
+		}, "must default to empty"},
+		{"adopt step removed", func(t *testing.T, w *wf) {
+			w.composer = replaceOnce(t, w.composer, "        id: adopt\n", "        id: adoptx\n")
+		}, "has no step `adopt`"},
+		{"adopt step stops being conditional", func(t *testing.T, w *wf) {
+			w.composer = replaceOnce(t, w.composer, "if: ${{ inputs.adopt_candidate_digest != '' }}", "if: ${{ true }}")
+		}, "step `adopt` must run only when"},
+		{"adopted digest never becomes the job output", func(t *testing.T, w *wf) {
+			w.composer = replaceOnce(t, w.composer, "      digest: ${{ steps.build.outputs.digest || steps.adopt.outputs.digest }}", "      digest: ${{ steps.build.outputs.digest }}")
+		}, "must fall back to steps.adopt.outputs.digest"},
+		{"candidate build still runs when adopting", func(t *testing.T, w *wf) {
+			w.composer = replaceAfter(t, w.composer, "      - name: Build and push the candidate image\n", "        if: ${{ inputs.adopt_candidate_digest == '' }}\n", "")
+		}, "candidate build step must be skipped"},
+		{"reuse-decision stops exporting the digest", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "      candidate_digest: ${{ steps.decide.outputs.candidate_digest }}", "")
+		}, "must export output `candidate_digest`"},
+		{"reuse-decision loses packages read", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "      # Issue #1704: inspect the validated candidate in GHCR.\n      packages: read\n", "")
+		}, "must grant `packages: read`"},
+		{"reuse-decision stops verifying the candidate", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "candidate-image.sh verify-candidate", "candidate-image.sh check-digest")
+		}, "must verify the validated candidate"},
+		{"reuse-decision stops passing the digest to the planner", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, `-candidate-digest "$candidate"`, "")
+		}, "must pass the verified digest"},
+		{"release-gate stops adopting the digest", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "      adopt_candidate_digest: ${{ needs.reuse-decision.outputs.reuse == 'true' && needs.reuse-decision.outputs.candidate_digest || '' }}\n", "")
+		}, "`release-gate` must pass `adopt_candidate_digest`"},
+		{"adoption not gated on reuse", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "needs.reuse-decision.outputs.reuse == 'true' && needs.reuse-decision.outputs.candidate_digest || ''", "needs.reuse-decision.outputs.candidate_digest")
+		}, "`release-gate` must pass `adopt_candidate_digest`"},
+		{"verify-release-assets stops needing reuse-decision", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "scan, release-gate, reuse-decision]", "scan, release-gate]")
+		}, "must `needs: reuse-decision`"},
+		{"verify-release-assets loses the validated digest env", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "VALIDATED_DIGEST: ${{ needs.reuse-decision.outputs.candidate_digest }}", "VALIDATED_DIGEST: ''")
+		}, "must set env VALIDATED_DIGEST"},
+		{"verify-release-assets stops asserting published == validated", func(t *testing.T, w *wf) {
+			w.publish = replaceOnce(t, w.publish, "::error::The tag-time battery was reused, so the published image must be the validated candidate ${VALIDATED_DIGEST}, but", "::error::The tag-time battery was reused, so the published image must be the validated candidate, but")
+		}, "differs from the VALIDATED_DIGEST"},
 
 		// --- candidate / release parity ------------------------------------
 		{"build args drift", func(t *testing.T, w *wf) {
