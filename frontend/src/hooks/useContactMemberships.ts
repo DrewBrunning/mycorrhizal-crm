@@ -30,16 +30,14 @@ export function useContactMemberships(contactUid: string | undefined, notifier?:
   } = useTags(notifier);
 
   const contactCircles = useMemo(() => {
-    if (!contactUid) return [];
     // Stryker disable next-line ArrayDeclaration: an empty-names default and a non-matching sentinel both match nothing
-    const names = circleNamesByUid.get(contactUid) || [];
+    const names = (contactUid && circleNamesByUid.get(contactUid)) || [];
     return allCircles.filter((c) => names.includes(c.name));
   }, [contactUid, circleNamesByUid, allCircles]);
 
   const contactTags = useMemo(() => {
-    if (!contactUid) return [];
     // Stryker disable next-line ArrayDeclaration: an empty-names default and a non-matching sentinel both match nothing
-    const names = tagNamesByUid.get(contactUid) || [];
+    const names = (contactUid && tagNamesByUid.get(contactUid)) || [];
     return allTags.filter((t) => names.includes(t.name));
   }, [contactUid, tagNamesByUid, allTags]);
 

@@ -173,7 +173,7 @@ table and the `networkGraphScale.spec.ts` benchmark. Two-tier per #447: bundle b
 — not report-only, and not a per-PR or release gate, since mutation testing is O(test suite × mutant
 count). `stryker.yml` (frontend: `src/api/*.ts`, `src/hooks/use*.ts` since #1482, and `src/utils` as a third leg)
 sets `thresholds.break` in `frontend/stryker.conf.json` (combined break 74, for local `npx stryker run`); CI runs it as three parallel
-`api`/`hooks`/`utils` legs with their own `break` in the workflow matrix: 83/93/79 against measured api 89.41%, hooks ~99% (estimated after the #1662 survivor pass; 70.18% before),
+`api`/`hooks`/`utils` legs with their own `break` in the workflow matrix: 83/93/79 against measured api 89.41%, hooks ~99.18% (estimated after the #1662 survivor pass and disable audit; 70.18% before; a `// Stryker disable` is only valid when every replacement of the named mutator is equivalent),
 utils 85.07% (2026-10-13), since the full scope is ~5h on a 4-vCPU runner — issue #1571). `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
 paths coverage alone can't prove: migration/upgrade + backup/restore (`database`), data-integrity
 invariants (`atrest`), delete cascade (`services/contact_delete.go`'s registry, ADR 0035, plus `admin_user_controller.go`/`user_delete_cascade.go`, the trap 6

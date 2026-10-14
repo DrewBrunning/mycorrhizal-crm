@@ -27,7 +27,8 @@ name: Mutation Testing (Stryker)
 # Threshold-gated (issue #915): each leg's `break` is set ~6 points under the
 # score measured for its half (docs/development/testing.md: api 89.41%, hooks
 # 66.35% on 2026-10-06, 70.18% on 2026-10-13 after the #1624 §3 tests, then an
-# estimated 99.27% after the #1662 survivor pass (per-file re-measure);
+# estimated 99.18% after the #1662 survivor pass and its disable audit
+# (per-file re-measure substituted into the CI hooks report);
 # utils 85.07% on 2026-10-12; combined against
 # stryker.conf.json's 74), so `npx stryker run` itself exits non-zero — and
 # this job goes red — on a mutation-score drop below it, rather than the score
@@ -64,9 +65,13 @@ jobs:
           # 865 survivors); 70.18% on 2026-10-13. Issue #1662 classified the
           # residual (only 156 of 969 were dependency-array candidates) and
           # killed the real gaps with hook tests; proven-equivalent mutants
-          # carry per-site `// Stryker disable` reasons. Per-file re-measure
-          # estimate 99.27% (3113 killed / 3136 valid; 22 known survivors
-          # recorded on the issue). Break stays ~6 points under, rounded to 93.
+          # carry per-site `// Stryker disable` reasons. A follow-up audit of
+          # every disable removed the ones that also hid a real replacement
+          # (first-render loading state, never-clear/never-truncate branches,
+          # empty-id create guards) and killed them with tests: per-file
+          # re-measure estimate 99.18% (3134 killed / 3160 valid; 26 known
+          # survivors, 88 disable comments left, was 113). Break stays ~6
+          # points under, rounded to 93.
           - leg: hooks
             prefix: src/hooks/
             break: 93

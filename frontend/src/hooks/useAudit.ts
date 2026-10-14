@@ -101,6 +101,7 @@ export function useAudit() {
       await undoAuditEvent(id);
       await fetchEvents();
     },
+    // Stryker disable next-line ArrayDeclaration: fetchEvents is stable (its own deps array is constant), so the deps array is equivalent either way
     [fetchEvents],
   );
 
