@@ -15,7 +15,12 @@
 // The token is read from GITHUB_TOKEN (needs checks:read and statuses:read);
 // GITHUB_API_URL overrides the API base (tests, GHES).
 //
-// Output (stdout): {"sha":..., "required":N, "findings":[{context,category,detail}]}.
+// Checks still queued or running at merge time are re-evaluated every -poll
+// until none are left or -wait-max is spent (default 0: evaluate once); a
+// failed or missing context ends the wait at once so it alerts immediately.
+//
+// Output (stdout): {"sha":..., "required":N, "findings":[{context,category,detail}],
+// "merged_early":[contexts incomplete at the first look], "waited_seconds":N}.
 // Exit status 0 means the verdict was produced (findings may be non-empty --
 // the caller decides what to do with them); 2 means it could not be produced.
 package main
@@ -52,7 +57,14 @@ type Verdict struct {
 	SHA      string                  `json:"sha"`
 	Required int                     `json:"required"`
 	Findings []bypassedcheck.Finding `json:"findings"`
+	// MergedEarly: contexts not finished at the first look. One absent from
+	// Findings later finished green.
+	MergedEarly   []string `json:"merged_early"`
+	WaitedSeconds int      `json:"waited_seconds"`
 }
+
+// sleep is swapped by tests.
+var sleep = time.Sleep
 
 func run(args []string, stdout, stderr io.Writer, client *http.Client, getenv func(string) string) int {
 	fs := flag.NewFlagSet("bypassedcheck", flag.ContinueOnError)
@@ -61,6 +73,8 @@ func run(args []string, stdout, stderr io.Writer, client *http.Client, getenv fu
 	repo := fs.String("repo", "", "OWNER/REPO (live mode)")
 	sha := fs.String("sha", "", "commit SHA to evaluate (live mode; echoed in the output)")
 	input := fs.String("input", "", "offline fixture JSON instead of calling the API")
+	poll := fs.Duration("poll", 2*time.Minute, "re-evaluation interval while required checks are unfinished")
+	waitMax := fs.Duration("wait-max", 0, "longest to wait for unfinished required checks (0: evaluate once)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -83,14 +97,18 @@ func run(args []string, stdout, stderr io.Writer, client *http.Client, getenv fu
 		return fail(errors.New("ruleset has no required status checks"))
 	}
 
-	var fx Fixture
+	var fetch bypassedcheck.Fetch
 	if *input != "" {
 		raw, err := os.ReadFile(*input)
 		if err != nil {
 			return fail(err)
 		}
+		var fx Fixture
 		if err := json.Unmarshal(raw, &fx); err != nil {
 			return fail(fmt.Errorf("parse %s: %w", *input, err))
+		}
+		fetch = func() ([]bypassedcheck.CheckRun, []bypassedcheck.Status, error) {
+			return fx.CheckRuns, fx.Statuses, nil
 		}
 	} else {
 		if *repo == "" || *sha == "" {
@@ -105,19 +123,29 @@ func run(args []string, stdout, stderr io.Writer, client *http.Client, getenv fu
 			base = "https://api.github.com"
 		}
 		g := &ghClient{client: client, base: base, token: token}
-		if fx.CheckRuns, err = g.checkRuns(*repo, *sha); err != nil {
-			return fail(err)
-		}
-		if fx.Statuses, err = g.statuses(*repo, *sha); err != nil {
-			return fail(err)
+		fetch = func() ([]bypassedcheck.CheckRun, []bypassedcheck.Status, error) {
+			runs, err := g.checkRuns(*repo, *sha)
+			if err != nil {
+				return nil, nil, err
+			}
+			sts, err := g.statuses(*repo, *sha)
+			return runs, sts, err
 		}
 	}
 
-	findings := bypassedcheck.Evaluate(required, fx.CheckRuns, fx.Statuses)
+	set, err := bypassedcheck.Settle(required, fetch, *poll, *waitMax, sleep)
+	if err != nil {
+		return fail(err)
+	}
+	findings := set.Findings
 	if findings == nil {
 		findings = []bypassedcheck.Finding{}
 	}
-	out, err := json.MarshalIndent(Verdict{SHA: *sha, Required: len(required), Findings: findings}, "", "  ")
+	early := set.MergedEarly
+	if early == nil {
+		early = []string{}
+	}
+	out, err := json.MarshalIndent(Verdict{SHA: *sha, Required: len(required), Findings: findings, MergedEarly: early, WaitedSeconds: int(set.Waited / time.Second)}, "", "  ")
 	if err != nil {
 		return fail(err) // # pragma: no cover — plain structs always marshal.
 	}

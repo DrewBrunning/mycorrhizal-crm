@@ -116,6 +116,20 @@ each context.
   which is what the branch reaper produces for jobs still running at merge); a run still
   queued/in progress or a `pending` status is `incomplete` (merged before the check finished); no
   result at all is `missing`.
+- **Racing the checks (alerts #1676/#1681).** The push event fires the instant the PR merges, so
+  required checks are routinely still queued/in progress; evaluating once reported those as
+  `incomplete` and opened a p1 for a PR that went green minutes later. Now `failed`/`missing`
+  alert immediately (the wait ends at once), and when the only non-green contexts are unfinished
+  `cmd/bypassedcheck` re-evaluates every 2 min for up to 40 (`-poll`/`-wait-max`; the job timeout
+  is 55 min) and the alert reports the *settled* state: "merged before X finished; it later
+  finished red" and "still incomplete after 40 min" open the issue; **"merged before X finished;
+  it later finished green" is a job-summary line only, with no issue.** Reasoning: the alert
+  exists for the "gates are not silently weakened" case, a required gate that did not hold. A
+  check that finished green *did* hold, the fact is still recorded on the run (not silent), and a
+  p1 issue per early-but-green merge would train the maintainer to ignore the alert that matters.
+  A check that never finishes or finishes red keeps the full p1. A queued re-run with no
+  `started_at` sorts as the newest result for its context, so it is not hidden behind an older
+  completed one.
 - **Manual test:** dispatch the workflow with a merged `pr_number`; `dry_run` (default true) logs
   the issue body without writing it.
 

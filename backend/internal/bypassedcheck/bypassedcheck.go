@@ -20,6 +20,9 @@
 //   - A context with no check run and no status at all is "missing".
 //   - Check runs and statuses of one context are pooled and the latest by
 //     timestamp wins, so a re-run that went green supersedes the earlier red.
+//     A check run that is not completed and has no timestamp (a queued re-run
+//     has no started_at yet) is the newest of all: it was created after
+//     whatever completed before it.
 package bypassedcheck
 
 import (
@@ -46,7 +49,7 @@ type CheckRun struct {
 	Name       string    `json:"name"`
 	Status     string    `json:"status"`     // queued, in_progress, completed
 	Conclusion string    `json:"conclusion"` // success, failure, ... (completed only)
-	At         time.Time `json:"at"`         // completed_at, else started_at
+	At         time.Time `json:"at"`         // completed_at, else started_at; zero when a queued run has neither
 }
 
 // Status is the subset of a GitHub commit status this package reads.
@@ -66,10 +69,13 @@ type Finding struct {
 }
 
 type observation struct {
-	at     time.Time
-	done   bool
-	ok     bool
-	detail string
+	at time.Time
+	// unstamped: an unfinished check run with no timestamp. It outranks
+	// every stamped observation (see Evaluate).
+	unstamped bool
+	done      bool
+	ok        bool
+	detail    string
 }
 
 // Evaluate returns the required contexts that were not green, in the order the
@@ -78,12 +84,20 @@ func Evaluate(required []string, runs []CheckRun, statuses []Status) []Finding {
 	latest := map[string]observation{}
 	consider := func(ctx string, o observation) {
 		cur, seen := latest[ctx]
-		if !seen || o.at.After(cur.at) {
+		switch {
+		case !seen:
+			latest[ctx] = o
+		case cur.unstamped && !o.unstamped:
+			// A queued re-run stays newest until it gets a timestamp.
+		case o.unstamped, o.at.After(cur.at):
 			latest[ctx] = o
 		}
 	}
 	for _, r := range runs {
 		o := observation{at: r.At, detail: r.Status}
+		if r.Status != "completed" && r.At.IsZero() {
+			o.unstamped = true
+		}
 		if r.Status == "completed" {
 			o.done = true
 			o.detail = r.Conclusion
@@ -128,4 +142,55 @@ func Contexts(fs []Finding) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// Fetch returns the current check runs and commit statuses of the commit.
+type Fetch func() ([]CheckRun, []Status, error)
+
+// Settlement is the outcome of Settle.
+type Settlement struct {
+	// Findings is the final verdict (see Settle for when polling stops).
+	Findings []Finding
+	// MergedEarly lists the contexts that were incomplete at the first look,
+	// i.e. the PR merged before they finished. A context in here that is
+	// absent from Findings later finished green.
+	MergedEarly []string
+	// Waited is the time spent polling.
+	Waited time.Duration
+}
+
+// Settle evaluates once and, while required contexts are only Incomplete,
+// re-evaluates every interval until none are or maxWait is spent. It stops
+// at once when any context is Failed or Missing: that is already an alert
+// and must not wait on the slow checks. maxWait <= 0 never waits. The
+// caller supplies sleep so tests do not.
+func Settle(required []string, fetch Fetch, interval, maxWait time.Duration, sleep func(time.Duration)) (Settlement, error) {
+	var s Settlement
+	first := true
+	for {
+		runs, statuses, err := fetch()
+		if err != nil {
+			return s, err
+		}
+		s.Findings = Evaluate(required, runs, statuses)
+		if first {
+			for _, f := range s.Findings {
+				if f.Category == Incomplete {
+					s.MergedEarly = append(s.MergedEarly, f.Context)
+				}
+			}
+			first = false
+		}
+		onlyIncomplete := len(s.Findings) > 0
+		for _, f := range s.Findings {
+			if f.Category != Incomplete {
+				onlyIncomplete = false
+			}
+		}
+		if !onlyIncomplete || interval <= 0 || s.Waited+interval > maxWait {
+			return s, nil
+		}
+		sleep(interval)
+		s.Waited += interval
+	}
 }

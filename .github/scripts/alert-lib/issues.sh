@@ -19,11 +19,25 @@
 # `gh issue list` is not an option either: it is unreliable against this
 # repo (Projects-classic GraphQL error).
 
+# labeled_issues LABEL STATE -> JSON array of every LABEL-labelled issue
+# (pull requests excluded) in STATE (open|closed|all), newest first.
+labeled_issues() {
+	gh api --paginate "repos/${GH_REPO}/issues?labels=$1&state=$2&sort=created&direction=desc&per_page=100" |
+		jq -s '[.[][] | select(.pull_request | not)]'
+}
+
+# find_labeled_issue LABEL STATE TITLE -> the number of the newest LABEL
+# issue in STATE whose title is exactly TITLE, or nothing.
+find_labeled_issue() {
+	local issues
+	issues="$(labeled_issues "$1" "$2")"
+	jq -r --arg t "$3" '[.[] | select(.title == $t)][0].number // empty' <<<"$issues"
+}
+
 # alert_issues STATE -> JSON array of every `nightly-failure`-labelled issue
 # (pull requests excluded) in STATE (open|closed|all), newest first.
 alert_issues() {
-	gh api --paginate "repos/${GH_REPO}/issues?labels=nightly-failure&state=$1&sort=created&direction=desc&per_page=100" |
-		jq -s '[.[][] | select(.pull_request | not)]'
+	labeled_issues nightly-failure "$1"
 }
 
 # find_alert_issue STATE TITLE -> the number of the newest issue in STATE
