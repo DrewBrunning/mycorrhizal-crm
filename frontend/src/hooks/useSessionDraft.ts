@@ -19,7 +19,6 @@ function storageKey(key: string): string {
 export function readSessionDraft<T>(key: string): T | null {
   try {
     const raw = sessionStorage.getItem(storageKey(key));
-    // Stryker disable next-line ConditionalExpression: JSON.parse(null) is null, so skipping the empty-value guard yields the same result
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {

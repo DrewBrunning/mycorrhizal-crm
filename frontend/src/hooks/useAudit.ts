@@ -16,7 +16,6 @@ const MAX_LIMIT = 500;
 // grows in 100-event steps up to the 500 cap when the list fills the window.
 export function useAudit() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<AuditEntityType | ''>('');
