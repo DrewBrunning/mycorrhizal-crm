@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -304,18 +305,32 @@ type ReuseInput struct {
 	Tag          string
 	TagSHA       string
 	ChangedFiles []string // `git diff --name-only <validated>..<tag>`
+	// CandidateDigest is the digest of the candidate image the pre-tag battery
+	// validated (release-readiness.json's validated_candidate.digest), already
+	// verified by the caller to exist in the registry and to carry the
+	// validated commit as its OCI revision label. Reuse REQUIRES it: the image
+	// that publishes is that digest, never a rebuild (issue #1704).
+	CandidateDigest string
 }
+
+var digestRE = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// ValidDigest reports whether s is a well-formed `sha256:<64 hex>` digest.
+func ValidDigest(s string) bool { return digestRE.MatchString(s) }
 
 // ReuseDecision is recorded in the release's readiness record.
 type ReuseDecision struct {
-	Reuse        bool     `json:"reuse"`
-	Reason       string   `json:"reason"`
-	ValidatedSHA string   `json:"validated_sha,omitempty"`
-	TagSHA       string   `json:"tag_sha"`
-	ChangedFiles []string `json:"changed_files"`
-	Skip         []string `json:"skip_gates"`
-	Retest       []string `json:"retest_gates"`
-	Carried      Ledger   `json:"carried"`
+	Reuse        bool   `json:"reuse"`
+	Reason       string `json:"reason"`
+	ValidatedSHA string `json:"validated_sha,omitempty"`
+	// CandidateDigest is the validated image digest that publishes when Reuse
+	// is true (issue #1704); empty otherwise.
+	CandidateDigest string   `json:"candidate_digest,omitempty"`
+	TagSHA          string   `json:"tag_sha"`
+	ChangedFiles    []string `json:"changed_files"`
+	Skip            []string `json:"skip_gates"`
+	Retest          []string `json:"retest_gates"`
+	Carried         Ledger   `json:"carried"`
 }
 
 // ValidatedSHA returns the single commit the ledger's entries cover for tag, or
@@ -377,6 +392,10 @@ func DecideReuse(r ReuseInput) ReuseDecision {
 			return no("the tag differs from the validated commit %s beyond the schema-fixture registration (%s): running the full battery", d.ValidatedSHA, strings.Join(stray, ", "))
 		}
 	}
+	if !ValidDigest(r.CandidateDigest) {
+		return no("the pre-tag readiness record carries no verified validated-candidate digest (got %q), so there is no tested image to publish instead of a rebuild (issue #1704): running the full battery", r.CandidateDigest)
+	}
+	d.CandidateDigest = r.CandidateDigest
 	d.Reuse = true
 	if d.Reason == "" {
 		if d.ValidatedSHA == r.TagSHA {

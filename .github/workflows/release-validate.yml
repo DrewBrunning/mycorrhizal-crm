@@ -38,6 +38,11 @@ on:
         required: false
         type: string
         default: ''
+      adopt_candidate_digest:
+        description: 'Issue #1704: a candidate image digest (sha256:...) the pre-tag release run already validated, which docker-publish.yml verified (exists in GHCR, revision = the validated commit, version = the tag) when it accepted a tag-time battery reuse. Non-empty: build-candidate does NOT build a new image, it ADOPTS this digest as its output, so deploy-smoke (and anything not carried) runs against the very bytes the battery validated and the release publishes. Empty (release.yml, and any docker-publish.yml run without reuse) builds the candidate from source_ref as before. Built by reuse-decision, never by hand.'
+        required: false
+        type: string
+        default: ''
       carried_ledger:
         description: 'JSON gate ledger holding the carried successes for skip_gates (issue #1487); the results job re-records them with the run that earned them.'
         required: false
@@ -122,8 +127,8 @@ jobs:
       # workflow cannot exceed its caller's permissions).
       packages: write
     outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image: ${{ steps.record.outputs.image }}
+      digest: ${{ steps.build.outputs.digest || steps.adopt.outputs.digest }}
+      image: ${{ steps.record.outputs.image || steps.adopt.outputs.image }}
     steps:
       - name: Checkout the commit to release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,11 +139,13 @@ jobs:
       # Same pinned BuildKit builder as docker-publish.yml's build-and-push
       # (issue #1109).
       - name: Set up Docker Buildx
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           driver-opts: image=moby/buildkit:buildx-stable-1@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8 # v0.32.2
 
       - name: Log in to Container Registry
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -146,12 +153,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute build stamp
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         id: stamp
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: bash .github/scripts/release-image-stamp.sh "$RELEASE_TAG"
 
       - name: Compute lowercase candidate reference
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         id: ref
         env:
           SHA7: ${{ steps.stamp.outputs.sha7 }}
@@ -165,6 +174,7 @@ jobs:
       # metadata step (REL-04, #448) -- plus metadata-action's repo-derived
       # defaults, so the candidate carries every label the release image does.
       - name: Extract metadata (labels)
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -177,6 +187,7 @@ jobs:
             org.opencontainers.image.created=${{ steps.stamp.outputs.created }}
 
       - name: Build and push the candidate image
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
@@ -203,6 +214,7 @@ jobs:
           sbom: true
 
       - name: Record the candidate digest
+        if: ${{ inputs.adopt_candidate_digest == '' }}
         id: record
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -214,6 +226,29 @@ jobs:
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "Candidate image (tested by every image-running gate, re-tagged by the release): $image"
           echo "### Candidate image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$image\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # Issue #1704: adopt the pre-tag-validated candidate instead of building a
+      # new one. docker-publish.yml's reuse-decision already proved this digest
+      # exists in GHCR and carries the validated commit / this release tag; here
+      # it is only shape-checked and published as the job's output, so every
+      # image-running gate that still runs (deploy-smoke, the floor) boots it BY
+      # DIGEST and build-and-push re-tags exactly it.
+      - name: Adopt the validated candidate (no build)
+        id: adopt
+        if: ${{ inputs.adopt_candidate_digest != '' }}
+        env:
+          DIGEST: ${{ inputs.adopt_candidate_digest }}
+        run: |
+          set -eu
+          bash .github/scripts/candidate-image.sh check-digest "$DIGEST"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}@${DIGEST}"
+          {
+            echo "digest=$DIGEST"
+            echo "image=$image"
+          } >> "$GITHUB_OUTPUT"
+          echo "Adopted the validated candidate (NOT rebuilt): $image"
+          echo "### Candidate image (adopted from the release run's validated battery)" >> "$GITHUB_STEP_SUMMARY"
           echo "\`$image\`" >> "$GITHUB_STEP_SUMMARY"
 
 

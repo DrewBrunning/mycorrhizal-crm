@@ -7,7 +7,7 @@
 //	    Write the per-gate ledger release-validate.yml's `results` job uploads.
 //	releaseplan rerun  -composer F -rerun a,b|failed -ledger F -sha S -tag T
 //	    Plan a `rerun_gates` dispatch; prints key=value lines for $GITHUB_OUTPUT.
-//	releaseplan reuse  -composer F -ledger F -tag T -tag-sha S -changed-files F
+//	releaseplan reuse  -composer F -ledger F -tag T -tag-sha S -changed-files F [-candidate-digest D]
 //	    Decide tag-time reuse of the pre-tag battery; prints key=value lines.
 //
 // Exit 0 on success; `ledger` and `rerun` exit 1 on an input they cannot act
@@ -177,6 +177,7 @@ func cmdReuse(args []string, stdout, stderr io.Writer, read readFileFn) int {
 	ledger := fs.String("ledger", "", "pre-tag release-gate-ledger.json (may be missing)")
 	tag := fs.String("tag", "", "release tag")
 	tagSHA := fs.String("tag-sha", "", "commit the tag points at")
+	candidateDigest := fs.String("candidate-digest", "", "validated candidate image digest (already verified against the registry); reuse requires it")
 	changed := fs.String("changed-files", "", "file listing `git diff --name-only <validated>..<tag>` (may be missing)")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -208,17 +209,18 @@ func cmdReuse(args []string, stdout, stderr io.Writer, read readFileFn) int {
 		note = "the changed-file list could not be read (" + err.Error() + ")"
 		prior = nil
 	}
-	d := releaseplan.DecideReuse(releaseplan.ReuseInput{Gates: gates, Prior: prior, Tag: *tag, TagSHA: *tagSHA, ChangedFiles: files})
+	d := releaseplan.DecideReuse(releaseplan.ReuseInput{Gates: gates, Prior: prior, Tag: *tag, TagSHA: *tagSHA, ChangedFiles: files, CandidateDigest: *candidateDigest})
 	if note != "" {
 		d.Reuse = false
 		d.Reason = note + ": running the full battery"
-		d.Skip, d.Retest, d.Carried = []string{}, []string{}, releaseplan.Ledger{}
+		d.Skip, d.Retest, d.Carried, d.CandidateDigest = []string{}, []string{}, releaseplan.Ledger{}, ""
 	}
 	fmt.Fprintf(stderr, "releaseplan: reuse=%t: %s\n", d.Reuse, d.Reason)
 	fmt.Fprintf(stdout, "reuse=%t\n", d.Reuse)
 	fmt.Fprintf(stdout, "reason=%s\n", strings.ReplaceAll(d.Reason, "\n", " "))
 	fmt.Fprintf(stdout, "skip_gates=%s\n", strings.Join(d.Skip, ","))
 	fmt.Fprintf(stdout, "carried=%s\n", compact(d.Carried))
+	fmt.Fprintf(stdout, "candidate_digest=%s\n", d.CandidateDigest)
 	fmt.Fprintf(stdout, "decision=%s\n", compact(d))
 	return 0
 }

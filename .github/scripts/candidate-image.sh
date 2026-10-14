@@ -17,6 +17,11 @@
 #       log shows the same one, and exports MYCORRHIZAL_IMAGE=<repo>@<digest>
 #       to $GITHUB_ENV when set. <repo> is $CANDIDATE_IMAGE_REPO or
 #       ghcr.io/<lowercased $GITHUB_REPOSITORY>.
+#   verify-candidate <digest> <commit-sha> <release-tag>
+#       Issue #1704: exit 0 iff <repo>@<digest> resolves in the registry and
+#       every platform's config carries revision=<commit-sha> and
+#       version=<release-tag>. Gates docker-publish.yml adopting the release
+#       run's validated candidate rather than rebuilding.
 #   assert-match <tested-digest> <published-digest> <what>
 #       Exit 1 with an ::error:: unless the two digests are equal -- the
 #       "published digest == tested digest" assertion in verify-release-assets.
@@ -80,6 +85,44 @@ case "$cmd" in
       echo "Candidate image under test: \`${ref}\`" >> "$GITHUB_STEP_SUMMARY"
     fi
     ;;
+  verify-candidate)
+    # Issue #1704: before docker-publish.yml adopts the release run's validated
+    # candidate instead of rebuilding, prove it is really that candidate: the
+    # digest resolves in GHCR AND every platform's image config carries the
+    # validated commit as org.opencontainers.image.revision and the release tag
+    # as org.opencontainers.image.version. Any doubt exits non-zero, which the
+    # caller turns into reuse=false (the full tag-time battery + a tag-commit
+    # candidate, exactly as before) -- never into publishing an unproven image.
+    digest="${1:-}"
+    want_sha="${2:-}"
+    want_tag="${3:-}"
+    if ! check_digest "$digest"; then
+      echo "::error::'${digest}' is not a sha256 image digest" >&2
+      exit 1
+    fi
+    if ! [[ "$want_sha" =~ ^[0-9a-f]{40}$ ]] || [ -z "$want_tag" ]; then
+      echo "::error::verify-candidate needs a full 40-hex commit SHA and a release tag" >&2
+      exit 2
+    fi
+    repo="$(repo_ref)" || { echo "::error::set CANDIDATE_IMAGE_REPO or GITHUB_REPOSITORY" >&2; exit 2; }
+    ref="${repo}@${digest}"
+    resolved="$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r '.digest')" \
+      || { echo "::error::${ref} does not resolve in the registry" >&2; exit 1; }
+    if [ "$resolved" != "$digest" ]; then
+      echo "::error::${ref} resolved to '${resolved}'" >&2
+      exit 1
+    fi
+    cfg="$(docker buildx imagetools inspect "$ref" --format '{{json .Image}}')" \
+      || { echo "::error::cannot read the image config of ${ref}" >&2; exit 1; }
+    if ! jq -e --arg sha "$want_sha" --arg tag "$want_tag" '
+        (to_entries | length) > 0 and
+        all(.[]; .config.Labels["org.opencontainers.image.revision"] == $sha
+                 and .config.Labels["org.opencontainers.image.version"] == $tag)' <<<"$cfg" >/dev/null; then
+      echo "::error::${ref} does not carry revision=${want_sha} / version=${want_tag} on every platform: $(jq -c 'map_values(.config.Labels | {revision: .["org.opencontainers.image.revision"], version: .["org.opencontainers.image.version"]})' <<<"$cfg")" >&2
+      exit 1
+    fi
+    echo "ok: ${ref} is the validated candidate (revision ${want_sha}, version ${want_tag})"
+    ;;
   assert-match)
     tested="${1:-}"
     published="${2:-}"
@@ -95,7 +138,7 @@ case "$cmd" in
     echo "ok: ${what} published digest == tested digest (${published})"
     ;;
   *)
-    echo "usage: candidate-image.sh check-digest <digest> | pull <digest> <local-tag> | assert-match <tested> <published> <what>" >&2
+    echo "usage: candidate-image.sh check-digest <digest> | pull <digest> <local-tag> | assert-match <tested> <published> <what> | verify-candidate <digest> <sha> <tag>" >&2
     exit 2
     ;;
 esac

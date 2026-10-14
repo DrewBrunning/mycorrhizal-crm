@@ -211,10 +211,12 @@ func TestRerun(t *testing.T) {
 	})
 }
 
+const testDigest = "sha256:" + "a9fcef63159a63ff829ebaa7018b021103bea477129611ce1c18276d7fcfd0e6"
+
 func TestReuse(t *testing.T) {
 	green := ledgerJSON(sha1, map[string]string{"unit-tests": "success", "e2e-tests": "success", "deploy-smoke": "success"})
 	fixture := "backend/database/testdata/schemas/v1.0.0.sql\nbackend/internal/schemafixture/releases.go\n"
-	base := []string{"reuse", "-composer", "c.yml", "-ledger", "l.json", "-tag", "v1.0.0", "-tag-sha", sha2, "-changed-files", "d.txt"}
+	base := []string{"reuse", "-composer", "c.yml", "-ledger", "l.json", "-tag", "v1.0.0", "-tag-sha", sha2, "-changed-files", "d.txt", "-candidate-digest", testDigest}
 	files := func(l, d string) *fs {
 		m := map[string]string{"c.yml": composer}
 		if l != "" {
@@ -234,9 +236,22 @@ func TestReuse(t *testing.T) {
 		assert.Equal(t, "e2e-tests,unit-tests", m["skip_gates"])
 		var d map[string]any
 		require.NoError(t, json.Unmarshal([]byte(m["decision"]), &d))
+		assert.Equal(t, testDigest, m["candidate_digest"])
+		assert.Equal(t, testDigest, d["candidate_digest"])
 		assert.Equal(t, sha1, d["validated_sha"])
 		assert.Equal(t, []any{"deploy-smoke"}, d["retest_gates"])
 		assert.Contains(t, errb, "reuse=true")
+	})
+
+	t.Run("no candidate digest does not reuse (issue #1704)", func(t *testing.T) {
+		noDigest := base[:len(base)-2]
+		rc, out, _ := exec(files(green, fixture), noDigest...)
+		require.Equal(t, 0, rc)
+		m := kv(out)
+		assert.Equal(t, "false", m["reuse"])
+		assert.Empty(t, m["candidate_digest"])
+		assert.Empty(t, m["skip_gates"])
+		assert.Contains(t, m["reason"], "validated-candidate digest")
 	})
 
 	t.Run("a source change does not", func(t *testing.T) {

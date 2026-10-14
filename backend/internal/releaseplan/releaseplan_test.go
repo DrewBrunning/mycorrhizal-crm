@@ -322,10 +322,19 @@ func TestPlanRerun(t *testing.T) {
 	})
 }
 
+const goodDigest = "sha256:a9fcef63159a63ff829ebaa7018b021103bea477129611ce1c18276d7fcfd0e6"
+
+func TestValidDigest(t *testing.T) {
+	assert.True(t, ValidDigest(goodDigest))
+	for _, bad := range []string{"", "sha256:abc", goodDigest[7:], goodDigest + "0", "sha256:A9FCEF63159A63FF829EBAA7018B021103BEA477129611CE1C18276D7FCFD0E6", "ghcr.io/x@" + goodDigest} {
+		assert.False(t, ValidDigest(bad), bad)
+	}
+}
+
 func TestDecideReuse(t *testing.T) {
 	fixture := []string{"backend/database/testdata/schemas/" + tagV + ".sql", "backend/internal/schemafixture/releases.go"}
 	in := func() ReuseInput {
-		return ReuseInput{Gates: gates, Prior: green(shaR), Tag: tagV, TagSHA: shaTag, ChangedFiles: fixture}
+		return ReuseInput{Gates: gates, Prior: green(shaR), Tag: tagV, TagSHA: shaTag, ChangedFiles: fixture, CandidateDigest: goodDigest}
 	}
 
 	t.Run("fixture-only diff reuses everything except the retest floor", func(t *testing.T) {
@@ -339,6 +348,28 @@ func TestDecideReuse(t *testing.T) {
 			assert.Equal(t, shaR, e.SHA)
 		}
 		assert.Contains(t, d.Reason, "schema-fixture registration")
+		assert.Equal(t, goodDigest, d.CandidateDigest, "the published image is the validated digest (issue #1704)")
+	})
+
+	t.Run("no verified candidate digest means no reuse (issue #1704)", func(t *testing.T) {
+		for _, bad := range []string{"", "sha256:short", "latest", "ghcr.io/x@" + goodDigest} {
+			r := in()
+			r.CandidateDigest = bad
+			d := DecideReuse(r)
+			assert.False(t, d.Reuse, bad)
+			assert.Empty(t, d.CandidateDigest)
+			assert.Empty(t, d.Skip)
+			assert.Contains(t, d.Reason, "validated-candidate digest")
+		}
+	})
+
+	t.Run("a same-commit tag also adopts the validated digest", func(t *testing.T) {
+		r := in()
+		r.TagSHA = shaR
+		r.ChangedFiles = nil
+		d := DecideReuse(r)
+		require.True(t, d.Reuse, d.Reason)
+		assert.Equal(t, goodDigest, d.CandidateDigest)
 	})
 
 	t.Run("either fixture file alone is within the allowlist", func(t *testing.T) {

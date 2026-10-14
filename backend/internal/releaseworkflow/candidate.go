@@ -189,6 +189,7 @@ func CheckCandidate(composer, publish string, gates map[string]string) []string 
 	}
 	findings = append(findings, checkPublishRetag(pub)...)
 	findings = append(findings, checkCandidateParity(comp, pub)...)
+	findings = append(findings, CheckReusePublishesValidated(composer, publish)...)
 	return findings
 }
 

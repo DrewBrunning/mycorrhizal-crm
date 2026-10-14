@@ -132,12 +132,40 @@ later, so a green battery said nothing about the bytes published. Now:
    image is exercised.
 
 Two honest limits. **(a)** `release.yml` validates the release commit *before* the fixture commit and
-tag exist, so its pre-tag battery tests a candidate built from that commit; `docker-publish.yml`'s
-`release-gate` then builds and tests a candidate from the **tagged** commit, and *that* digest is what
-publishes. `release.yml` records its own candidate in `release-readiness.json` (`validated_candidate`)
-for comparison; the two coincide whenever the fixture commit does not change the image build context.
-When the tag-time battery is *reused* (issue #1487, below), the carried gates cover the pre-tag candidate's
-tree and only `deploy-smoke` boots the digest that publishes.
+tag exist, so its pre-tag battery tests a candidate built from that commit. What publishes depends on
+the tag-time decision (issue #1487, below): when the battery is **not** reused (any file beyond the
+fixture registration changed, no readiness record, …), `docker-publish.yml`'s `release-gate` builds
+and tests a candidate from the **tagged** commit and *that* digest publishes, exactly as above. When
+the battery **is** reused, **the image that publishes is the digest the pre-tag battery validated
+(issue #1704)**: a rebuild from the tag commit could never equal it (the build stamp carries the
+built commit and its committer date, so any new commit changes the digest) and would have left
+`deploy-smoke` as the only check on the bytes that ship. So on reuse `reuse-decision` reads
+`validated_candidate.digest` from `release-readiness.json`, **verifies it against GHCR**
+(`candidate-image.sh verify-candidate`: the digest resolves, and every platform's image config
+carries `org.opencontainers.image.revision` = the validated commit and `…version` = the release tag;
+anything less is `reuse=false`, the full tag-time battery), and passes it to `release-gate` as
+`adopt_candidate_digest`. `build-candidate` then **adopts** it instead of building; `deploy-smoke`
+(the retest floor) boots that digest; `build-and-push` re-tags it; and `verify-release-assets`
+asserts `published digest == the pre-tag validated digest == this run's candidate`, failing with an
+`::error::` otherwise. `releaseplan reuse` itself refuses reuse without a well-formed digest
+(`-candidate-digest`).
+
+Why adopting is sound: the reuse allowlist is exactly the schema-fixture registration
+(`backend/database/testdata/schemas/<tag>.sql`, `backend/internal/schemafixture/releases.go`). Those
+files are in the Docker build context (`COPY backend/ .`) but are **not part of the runtime image**:
+the Dockerfile's final stage copies only the compiled server binary, `static/styles.css`, the built
+frontend and `docker/` config, and the server binary neither links `internal/schemafixture` nor
+`go:embed`s a schema dump (the `database` package embeds `migrations/*.sql` only).
+`TestFixtureAllowlistIsNotInTheRuntimeBinary` (`backend/internal/releaseplan`) asks `go list -deps`
+for the server's exact build inputs on `linux/amd64` and `linux/arm64` and fails if either allowlisted
+file, or the `schemafixture` package, ever becomes one. The consequence is deliberate and accepted: the
+published image's OCI `revision` label and `/health` commit show the **validated** commit (the code that
+shipped; the tag commit only adds test fixtures), its `version` label and reported version are the
+release tag, and the extra short-sha image tag (`<sha7>`) is the tag commit's. Residual limits:
+a `release.yml` run resumed with `rerun_gates` carries earlier runs' gate successes while its own
+candidate is rebuilt, so carried image-running gates may have exercised an earlier same-commit build
+of the candidate (identical source, different build-attestation digest); and a `candidate-*` GHCR
+tag pruned before the tag-time run makes reuse fall back to the full battery rather than fail.
 **(b)** With the gate overridden (`override_reason`) there is no tested candidate, so the all-in-one
 image builds from source and `verify-release-assets` only warns that digest equality cannot be asserted.
 
@@ -190,7 +218,7 @@ The tag push used to re-run the entire battery that `release.yml` had just passe
    `backend/database/testdata/schemas/<tag>.sql` and `backend/internal/schemafixture/releases.go`
    (an RC tag *is* the validated commit: empty diff).
 
-Anything else — no artifact (a hand-pushed tag, expired, pre-ledger), a gate not green, a stray file,
+Anything else — no artifact (a hand-pushed tag, expired, pre-ledger), a gate not green, a stray file, a validated candidate image that cannot be verified in GHCR (#1704),
 an unreadable diff — is `reuse=false` and the **full battery runs, exactly as before**: the tool never
 errors toward reuse, and the job is `continue-on-error` so it can only ever cost the reuse, never block
 a release. On reuse, `release-gate` is called with `skip_gates` (every gate except the retest floor)
@@ -198,13 +226,13 @@ and the carried rows; the composer's per-gate `if:` skips them. The decision —
 reason, the changed files, which gates were carried — is written to the run summary and recorded in
 the attached `release-readiness.json` as `tag_time_battery`.
 
-**The retest floor is `deploy-smoke`.** `build-candidate` still builds the image from the **tag** (its
-digest is what `build-and-push` re-tags and `verify-release-assets` compares), and that fresh build
-differs from the pre-tag candidate by its stamped commit and the inert fixture files, so under reuse
-the exact published digest was *not* exercised by the carried gates. The clean-install smoke is cheap
-and boots exactly those bytes, so it always re-runs (`releaseplan.RetestOnReuse`). This is the
-honest weakening of #1484's "tested image == shipped image" under reuse: the carried gates vouch for
-the **tree** (identical but for the allowlisted fixture), the smoke for the **bytes**. A partial
+**The retest floor is `deploy-smoke`, and it boots the validated bytes.** Under reuse `build-candidate`
+*adopts* the digest the pre-tag battery validated instead of building one from the tag (issue #1704,
+"Build once" limit (a) above), so the carried gates, the floor and the published image all name the
+same digest, and `verify-release-assets` asserts it. The carried gates vouch for the **tree** (identical
+but for the allowlisted, binary-inert fixture) and, for the image-running ones, for those very bytes;
+the smoke re-boots them as defense in depth. (Before #1704 the tag commit was rebuilt into a different
+digest that only the smoke had exercised -- the honest weakening this replaced.) A partial
 policy ("run only the gates whose inputs differ" when the diff is *not* fixture-only) was deliberately
 not built: a hand-kept path-to-gate map is exactly the kind of table that silently goes stale, and a
 source change in the diff simply runs everything.
@@ -218,7 +246,7 @@ newest `release-gate-results` ledger recorded for the release commit (or the nam
 pinned by `releaseplan`'s tests: only a recorded `success` for **exactly this commit and this version**
 is carried; a gate with no such row re-runs even if not named; an unknown id, or a request with
 nothing left to run, fails in `preflight` before any gate; a ledger for a different commit carries
-nothing. `build-candidate` always rebuilds (cache-warm) so re-run image gates test the digest the
+nothing. `build-candidate` always rebuilds (cache-warm) in `release.yml` so re-run image gates test the digest the
 readiness record names. Ledgers live in a 5-day artifact; past that, dispatch without `rerun_gates`.
 Dependent gates are handled explicitly: `reference-clients-e2e` needs `android-tests`, so its `if:`
 accepts a *skipped* (carried) `android-tests` while a *failed* one still blocks it.
