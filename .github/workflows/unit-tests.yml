@@ -932,7 +932,13 @@ jobs:
       # in the sharded legs), so it fails the job -- but deferred: the step
       # records tests_ok and the final "Fail on cross-package test failures" step
       # exits non-zero, so the merge, total, ratchet and Codecov steps still run
-      # and both signals are visible. schemafixture is excluded as in every leg
+      # and both signals are visible. Time budget: this step took 3.7-5.5 min on
+      # recent main/PR runs (Backend (Go) job 4-6 min total), so `go test
+      # -timeout=30m` is ~5x the worst observed and sits well under the job's
+      # 45 min timeout (30 + checkout/merge/ratchet/Codecov post-processing +
+      # headroom): a hang is killed by go test itself, so the deferred
+      # tests_ok reporting still runs instead of the whole job being cancelled
+      # with nothing reported. Push to main now pays this same budget. schemafixture is excluded as in every leg
       # (migration-tests.yml owns it).
       - name: Collect cross-package coverage (pull_request and push to main)
         id: cross
@@ -944,7 +950,7 @@ jobs:
         run: |
           pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"
           # shellcheck disable=SC2086 # $pkgs is a controlled space-joined list
-          if go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=55m -coverprofile=coverage-cross-raw.out; then
+          if go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=30m -coverprofile=coverage-cross-raw.out; then
             echo "tests_ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "::error::cross-package coverage run had failing tests/packages; the profile is partial (the job fails in the final step, after the ratchet has reported)"
@@ -974,7 +980,8 @@ jobs:
 
       # Issue #1477's patch-gate half: codecov/patch/backend reads the same
       # cross-package profile the ratchet does. Fall back to the per-package
-      # merge on push/schedule, where the (expensive) cross run does not happen.
+      # merge on schedule, where the (expensive) cross run does not happen
+      # (pull_request and push to main both run it, see the step above).
       - name: Select the Codecov profile
         id: covprofile
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
