@@ -1182,6 +1182,11 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          # Issue #1702: required. Without it trivy-action unsets
+          # TRIVY_SEVERITY in SARIF mode and the gate fails on a finding of
+          # ANY severity (v1.4.2 was blocked by a single MEDIUM). Same flag,
+          # same reason as container-hardening.yml (#578).
+          limit-severities-for-sarif: 'true'
           # Only gate on vulnerabilities that actually have a fix, so an
           # unfixable advisory doesn't block every release indefinitely.
           ignore-unfixed: true
@@ -1190,7 +1195,10 @@ jobs:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #1702: upload whenever a SARIF was written, including when the
+      # scan step failed -- otherwise a red gate shows only "exit code 1".
       - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ always() && hashFiles('trivy-results.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: 'trivy-results.sarif'
