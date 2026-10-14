@@ -9,7 +9,7 @@ require (
 	github.com/arran4/golang-ical v0.3.7
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
-	github.com/fxamacker/cbor/v2 v2.9.4
+	github.com/fxamacker/cbor/v2 v2.9.6
 	github.com/gen2brain/heic v0.7.2
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/gin-contrib/cors v1.7.9
@@ -32,7 +32,7 @@ require (
 	golang.org/x/mod v0.41.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/time v0.16.0
-	golang.org/x/tools v0.50.0
+	golang.org/x/tools v0.51.0
 	gorm.io/gorm v1.31.2
 	pgregory.net/rapid v1.3.0
 )

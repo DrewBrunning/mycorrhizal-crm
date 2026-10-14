@@ -143,7 +143,7 @@ jobs:
       # Hardcoded, not node-version-file: that's the floor being proven, so
       # it must not be masked by setup-node's own resolution.
       - name: Install Node.js at the declared floor
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22.22.2'
 
@@ -191,7 +191,7 @@ jobs:
           persist-credentials: false
 
       - name: Install a Node one patch below the floor
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22.22.1'
 
@@ -238,7 +238,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: frontend/package.json
           cache: 'yarn'
