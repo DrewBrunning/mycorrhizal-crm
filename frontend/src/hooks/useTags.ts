@@ -5,7 +5,6 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 export function useTags(notifier?: ErrorNotifier) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [contacts, setContacts] = useState<ContactTag[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

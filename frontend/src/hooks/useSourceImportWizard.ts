@@ -78,11 +78,11 @@ export function useSourceImportWizard({
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopPolling = useCallback(
     () => {
-      // Stryker disable next-line ConditionalExpression: clearInterval(null) is a no-op, so always clearing is equivalent
-      if (pollTimer.current) {
-        clearInterval(pollTimer.current);
-        pollTimer.current = null;
-      }
+      // Unconditional on purpose: clearInterval(undefined) is a no-op, and an
+      // `if (pollTimer.current)` guard would have an equivalent always-true
+      // branch while its never-clear branch is a real polling leak.
+      clearInterval(pollTimer.current ?? undefined);
+      pollTimer.current = null;
     },
     // Stryker disable next-line ArrayDeclaration: callback closes over refs and state setters only (stable), so its deps array is equivalent either way
     [],

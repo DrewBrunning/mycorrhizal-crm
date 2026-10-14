@@ -49,7 +49,6 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
   const [hiddenCount, setHiddenCount] = useState<number | undefined>(undefined);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -58,3 +58,10 @@ test('repeated onAdd calls keep every key unique, including keys padded afterwar
   rerender({ n: 6 });
   expect(keysOf(result.current, 6)).toEqual([0, 1, 2, 3, 4, 5]);
 });
+
+test('shrinking without onRemove discards the trailing keys, so regrowing hands out fresh ones', () => {
+  const { result, rerender } = renderHook(({ n }) => useRowKeys(n), { initialProps: { n: 3 } });
+  rerender({ n: 1 });
+  rerender({ n: 3 });
+  expect(keysOf(result.current, 3)).toEqual([0, 3, 4]);
+});

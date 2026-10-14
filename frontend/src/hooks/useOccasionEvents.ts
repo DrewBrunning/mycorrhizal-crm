@@ -22,7 +22,6 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 // useOccasionObligations' exact shape.
 export function useOccasionEvents(notifier?: ErrorNotifier) {
   const [events, setEvents] = useState<OccasionEvent[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
