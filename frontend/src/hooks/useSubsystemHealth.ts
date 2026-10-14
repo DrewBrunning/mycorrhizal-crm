@@ -8,7 +8,6 @@ import { handleFetchError } from '../utils/errorHandler';
 // useSystemEvents.
 export function useSubsystemHealth() {
   const [data, setData] = useState<SubsystemHealth[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);

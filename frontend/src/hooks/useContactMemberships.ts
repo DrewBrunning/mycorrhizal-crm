@@ -30,18 +30,14 @@ export function useContactMemberships(contactUid: string | undefined, notifier?:
   } = useTags(notifier);
 
   const contactCircles = useMemo(() => {
-    // Stryker disable next-line ConditionalExpression: without a uid the lookup below yields no names, so skipping it is equivalent
-    if (!contactUid) return [];
     // Stryker disable next-line ArrayDeclaration: an empty-names default and a non-matching sentinel both match nothing
-    const names = circleNamesByUid.get(contactUid) || [];
+    const names = (contactUid && circleNamesByUid.get(contactUid)) || [];
     return allCircles.filter((c) => names.includes(c.name));
   }, [contactUid, circleNamesByUid, allCircles]);
 
   const contactTags = useMemo(() => {
-    // Stryker disable next-line ConditionalExpression: without a uid the lookup below yields no names, so skipping it is equivalent
-    if (!contactUid) return [];
     // Stryker disable next-line ArrayDeclaration: an empty-names default and a non-matching sentinel both match nothing
-    const names = tagNamesByUid.get(contactUid) || [];
+    const names = (contactUid && tagNamesByUid.get(contactUid)) || [];
     return allTags.filter((t) => names.includes(t.name));
   }, [contactUid, tagNamesByUid, allTags]);
 
@@ -52,7 +48,7 @@ export function useContactMemberships(contactUid: string | undefined, notifier?:
         await addCircleMember(circle.id, contactUid);
       } else {
         const created = await handleCreateCircle(circle.name);
-        // Stryker disable next-line ConditionalExpression,OptionalChaining: a missing created entity throws into the catch below, which refreshes exactly as the skipped branch does
+        // Stryker disable next-line OptionalChaining: `created.id` on a missing entity throws into the catch below, which refreshes exactly as the skipped branch does
         if (created?.id) await addCircleMember(created.id, contactUid);
       }
       await refreshCircles();
@@ -78,7 +74,7 @@ export function useContactMemberships(contactUid: string | undefined, notifier?:
         await addContactTag(tag.id, contactUid);
       } else {
         const created = await handleCreateTag(tag.name);
-        // Stryker disable next-line ConditionalExpression,OptionalChaining: a missing created entity throws into the catch below, which refreshes exactly as the skipped branch does
+        // Stryker disable next-line OptionalChaining: `created.id` on a missing entity throws into the catch below, which refreshes exactly as the skipped branch does
         if (created?.id) await addContactTag(created.id, contactUid);
       }
       await refreshTags();

@@ -16,7 +16,6 @@ const MAX_LIMIT = 500;
 // grows in 100-event steps up to the 500 cap when the list fills the window.
 export function useAudit() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<AuditEntityType | ''>('');
@@ -102,6 +101,7 @@ export function useAudit() {
       await undoAuditEvent(id);
       await fetchEvents();
     },
+    // Stryker disable next-line ArrayDeclaration: fetchEvents is stable (its own deps array is constant), so the deps array is equivalent either way
     [fetchEvents],
   );
 

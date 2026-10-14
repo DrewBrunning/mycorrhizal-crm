@@ -11,7 +11,6 @@ import {
 
 export function useWebAuthn() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect's refresh settles loading before any consumer can act on the first value
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(

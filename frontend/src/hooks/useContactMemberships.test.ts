@@ -122,6 +122,13 @@ describe('circles', () => {
     expect(addCircleMember).not.toHaveBeenCalled();
   });
 
+  test('a create that returns an empty id skips the membership call', async () => {
+    vi.mocked(createCircle).mockResolvedValue({ message: '', circle: circle('', 'New') });
+    const { result } = await renderLoaded();
+    await act(() => result.current.handleCircleAdd(circle('', 'New')));
+    expect(addCircleMember).not.toHaveBeenCalled();
+  });
+
   test('a failed create is reported by useCircles and still refreshes', async () => {
     vi.mocked(createCircle).mockRejectedValue(new Error('dup'));
     const { result, notifier } = await renderLoaded();
@@ -161,6 +168,10 @@ describe('tags', () => {
     vi.mocked(addContactTag).mockClear();
     vi.mocked(createTag).mockResolvedValueOnce({ message: '', tag: undefined as never });
     await act(() => result.current.handleTagAdd(tag('', 'other')));
+    expect(addContactTag).not.toHaveBeenCalled();
+
+    vi.mocked(createTag).mockResolvedValueOnce({ message: '', tag: tag('', 'blank') });
+    await act(() => result.current.handleTagAdd(tag('', 'blank')));
     expect(addContactTag).not.toHaveBeenCalled();
   });
 

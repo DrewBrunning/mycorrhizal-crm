@@ -14,10 +14,10 @@ export function useRowKeys(length: number) {
   while (keys.current.length < length) {
     keys.current.push(next.current++);
   }
-  // Stryker disable next-line ConditionalExpression,EqualityOperator: the padding loop above leaves keys.length >= length, so truncating at equality (or always) is a no-op
-  if (keys.current.length > length) {
-    keys.current.length = length;
-  }
+  // The padding loop leaves keys.length >= length, so this only ever truncates
+  // (a no-op at equality). Unconditional so there is no equivalent guard mutant
+  // sitting next to the real never-truncate one.
+  keys.current.length = length;
 
   return {
     keyAt: (index: number) => keys.current[index],

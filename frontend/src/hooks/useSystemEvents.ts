@@ -36,7 +36,6 @@ const EMPTY_FILTERS: SystemEventFilters = {
 // 500 cap, mirroring useAudit.
 export function useSystemEvents() {
   const [events, setEvents] = useState<SystemEvent[]>([]);
-  // Stryker disable next-line BooleanLiteral: the mount effect sets loading=true before the first observable commit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<SystemEventFilters>(EMPTY_FILTERS);

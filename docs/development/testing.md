@@ -1251,9 +1251,24 @@ criterion.**
     real gaps (stale-request guards, loading/error flags, `||` fallbacks,
     payload shape, unexercised branches). Hook tests now pin those; the
     proven-equivalent mutants carry per-site `// Stryker disable` comments with
-    reasons, so ignored mutants leave the score denominator. A per-file
-    re-measure (never the full leg locally) estimates the hooks half at
-    **99.27%** (3113 killed / 3136 valid). **Directive trap:** Stryker only
+    reasons, so ignored mutants leave the score denominator. A follow-up
+    audit of all 113 disables found 28 that were too broad — Stryker's
+    `disable` suppresses *every* replacement of the named mutator, so
+    `ConditionalExpression` hid the `false` (or `true`) replacement even where
+    the reason only justified the other: the `useState(true)` initial values
+    (the first render *is* observable — NetworkPage tells "empty" from "not
+    loaded yet" by `useCircles`' initial `loading`), the never-clear
+    `pollTimer` guard, the never-truncate `useRowKeys` guard, the
+    `created?.id` empty-id guards, the birthday blank guard. Those guards were
+    rewritten without the redundant branch (unconditional
+    `clearInterval(timer ?? undefined)` / `keys.length = length`) or killed by
+    tests (`useFirstRenderState.test.tsx` records every render's value), and
+    88 disables remain, each equivalent for *all* of its replacements. A
+    per-file re-measure (never the full leg locally) of the 22 touched hooks,
+    substituted into the CI hooks report, estimates the hooks half at
+    **99.18%** (3134 killed / 3160 valid; 26 survivors). **Rule for new
+    disables:** only when every replacement of the mutator is equivalent;
+    otherwise restructure so the equivalent branch disappears. **Directive trap:** Stryker only
     honors `disable next-line` as a *leading comment of a node that starts on
     the mutant's line* — a comment above a closing `}, []);` attaches to
     nothing and is silently ignored, so for deps arrays pass the array as its
