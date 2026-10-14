@@ -37,7 +37,10 @@ git config user.email t@example.invalid
 git config user.name "Test Attester"
 git config commit.gpgsign false
 mkdir -p .github
-cp "$LEDGER_SRC" .github/manual-gates.json
+# Start from the real gate definitions but an empty attestation history: these
+# cases pin what one --record writes (attestations[0], then a count of 2), and
+# the committed ledger accumulates real attestations over time.
+jq '.gates[].attestations = []' "$LEDGER_SRC" > .github/manual-gates.json
 git add -A && git commit -q -m init
 head_sha="$(git rev-parse HEAD)"
 
