@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"mycorrhizal/internal/manualgates"
 	"mycorrhizal/internal/releaseworkflow"
 
 	"github.com/stretchr/testify/assert"
@@ -34,10 +37,32 @@ func copyRepoTree(t *testing.T) string {
 	// Issue #1487: the retry script and zapgate source CheckResilience reads.
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapScript), filepath.Join(dst, releaseworkflow.ZapScript))
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapgateSource), filepath.Join(dst, releaseworkflow.ZapgateSource))
-	// Issue #1486: the manual-gate attestation ledger.
+	// Issue #1486: the manual-gate attestation ledger, and the evidence its
+	// attestations retain (runAt verifies each cited file exists).
 	copyFile(t, filepath.Join(root, releaseworkflow.ManualGatesFile), filepath.Join(dst, releaseworkflow.ManualGatesFile))
+	copyTreeIfExists(t, filepath.Join(root, manualgates.EvidenceDir), filepath.Join(dst, manualgates.EvidenceDir))
 
 	return dst
+}
+
+// copyTreeIfExists recursively copies src to dst; a missing src (a ledger with
+// no attestations yet retains no evidence) copies nothing.
+func copyTreeIfExists(t *testing.T, src, dst string) {
+	t.Helper()
+	if _, err := os.Stat(src); os.IsNotExist(err) {
+		return
+	}
+	require.NoError(t, filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		copyFile(t, path, filepath.Join(dst, rel))
+		return nil
+	}))
 }
 
 func copyFile(t *testing.T, src, dstPath string) {
@@ -373,14 +398,43 @@ func TestRunAtFailsOnInvalidManualGateLedger(t *testing.T) {
 	assert.Contains(t, out.String(), "max_age_days must be positive")
 }
 
+// appendAttestation adds att to gate id's attestations in the ledger at path.
+func appendAttestation(t *testing.T, path, id string, att map[string]any) {
+	t.Helper()
+	b, err := os.ReadFile(path) // #nosec G304 -- temp copy
+	require.NoError(t, err)
+	var ledger map[string]any
+	require.NoError(t, json.Unmarshal(b, &ledger))
+	gates, ok := ledger["gates"].([]any)
+	require.True(t, ok, "ledger has no gates array")
+	found := false
+	for _, g := range gates {
+		gate, ok := g.(map[string]any)
+		require.True(t, ok)
+		if gate["id"] != id {
+			continue
+		}
+		atts, _ := gate["attestations"].([]any)
+		gate["attestations"] = append(atts, att)
+		found = true
+	}
+	require.Truef(t, found, "gate %q not in ledger", id)
+	out, err := json.MarshalIndent(ledger, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, out, 0o644))
+}
+
 // An attestation claiming retained evidence that is not there is caught.
 func TestRunAtFailsOnMissingManualGateEvidence(t *testing.T) {
 	dst := copyRepoTree(t)
-	rewrite(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), `"attestations": []`, `"attestations": [{
-	  "date": "2026-10-01", "commit": "1111111111111111111111111111111111111111", "attester": "Drew",
-	  "evidence": ".github/manual-gates-evidence/android-local-mode-device/gone.xml", "device": "Pixel 8a",
-	  "abi": "arm64-v8a", "tests": 1, "skipped": 0, "failures": 0,
-	  "junit_sha256": "abababababababababababababababababababababababababababababababab"}]`)
+	// Appended through JSON (not a string rewrite of an empty array) so the
+	// case holds however many real attestations the committed ledger carries.
+	appendAttestation(t, filepath.Join(dst, releaseworkflow.ManualGatesFile), "android-local-mode-device", map[string]any{
+		"date": "2026-10-01", "commit": "1111111111111111111111111111111111111111", "attester": "Drew",
+		"evidence": ".github/manual-gates-evidence/android-local-mode-device/gone.xml", "device": "Pixel 8a",
+		"abi": "arm64-v8a", "tests": 1, "skipped": 0, "failures": 0,
+		"junit_sha256": "abababababababababababababababababababababababababababababababab",
+	})
 	var out bytes.Buffer
 	assert.Equal(t, 1, runAt(&out, dst))
 	assert.Contains(t, out.String(), "does not exist")

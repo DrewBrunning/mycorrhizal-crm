@@ -24,7 +24,20 @@
       "require_abi": "arm64-v8a",
       "evidence_marker": "LocalOnlyModeE2eTest",
       "run": "scripts/android-local-mode-device-test.sh --record",
-      "attestations": []
+      "attestations": [
+        {
+          "date": "2026-10-14",
+          "commit": "3bd082166fda96f9c6404566974b0803331a0a65",
+          "attester": "Drew Brunning",
+          "evidence": ".github/manual-gates-evidence/android-local-mode-device/2026-10-14-3bd0821.xml",
+          "device": "Pixel 8a",
+          "abi": "arm64-v8a",
+          "tests": 1,
+          "skipped": 0,
+          "failures": 0,
+          "junit_sha256": "edbc1141eb9be715b783358d9a371dfaab841092fc078a8be5dc05e03835c8ec"
+        }
+      ]
     }
   ]
 }
