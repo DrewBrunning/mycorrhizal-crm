@@ -71,8 +71,15 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b54ac358b83fc6c965793fd27183
 # 2026-09-30: bumped 3.5.8-r0 -> 3.5.9-r0. Alpine published 3.5.9-r0 to
 # alpine/v3.24/main and pruned 3.5.8-r0 from the index, so the old pin became
 # unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
+# 2026-10-14 (issue #1703): zlib pinned explicitly, above the 1.3.2-r0 the
+# base image ships, for CVE-2026-85091 (heap overflow, fixed 1.3.2-r1) -- caught
+# by the v1.4.2 publish scan. The pinned alpine:3.24 digest is still the
+# current one and still carries r0, so no digest bump helps; r1 is in the same
+# alpine/v3.24/main index. Exact pin, like the rest of this list (DL3018); if
+# Alpine prunes 1.3.2-r1 the build fails loudly and the pin is bumped, as with
+# libssl3 above (#1062/#1131).
 USER 0
-RUN apk add --no-cache libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
+RUN apk add --no-cache libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
 USER 101
 
 # Copy custom nginx config

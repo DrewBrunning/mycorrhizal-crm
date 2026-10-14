@@ -51,7 +51,14 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # 2026-09-30: bumped 3.5.8-r0 -> 3.5.9-r0. Alpine published 3.5.9-r0 to
 # alpine/v3.24/main and pruned 3.5.8-r0 from the index, so the old pin became
 # unsatisfiable (`apk add` exit 3) -- the same pruned-pin class as #1062/#1131.
-RUN apk add --no-cache ca-certificates=20260909-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
+# 2026-10-14 (issue #1703): zlib pinned explicitly, above the 1.3.2-r0 the
+# base image ships, for CVE-2026-85091 (heap overflow, fixed 1.3.2-r1) -- caught
+# by the v1.4.2 publish scan. The pinned alpine:3.24 digest is still the
+# current one and still carries r0, so no digest bump helps; r1 is in the same
+# alpine/v3.24/main index. Exact pin, like the rest of this list (DL3018); if
+# Alpine prunes 1.3.2-r1 the build fails loudly and the pin is bumped, as with
+# libssl3 above (#1062/#1131).
+RUN apk add --no-cache ca-certificates=20260909-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
 
 WORKDIR /app
 
