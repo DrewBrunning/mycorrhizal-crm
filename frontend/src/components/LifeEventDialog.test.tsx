@@ -1,9 +1,27 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { getContacts, getContactsByUid } from '../api/contacts';
 import LifeEventDialog from './LifeEventDialog';
 
 afterEach(cleanup);
+
+// The dialog fetches related-contact options on mount. Left unmocked, that
+// real fetch rejects under jsdom and `handleFetchError`'s console.error lands
+// after the test (or file) finishes — vitest then reports `EnvironmentTeardownError:
+// Closing rpc while "onUserConsoleLog" was pending` even though every
+// assertion passed (same class as the SettingsPage fix, PR #905).
+vi.mock('../api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/contacts')>();
+  return { ...actual, getContacts: vi.fn(), getContactsByUid: vi.fn() };
+});
+
+beforeEach(() => {
+  vi.mocked(getContacts).mockReset();
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [], next_cursor: '' } as never);
+  vi.mocked(getContactsByUid).mockReset();
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map() as never);
+});
 
 function renderDialog(props: Partial<React.ComponentProps<typeof LifeEventDialog>> = {}) {
   const defaults: React.ComponentProps<typeof LifeEventDialog> = {
