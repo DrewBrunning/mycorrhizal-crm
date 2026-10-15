@@ -969,10 +969,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 80.62,
-      "linesTotal": 289,
-      "branches": 76.02,
-      "branchesTotal": 196
+      "lines": 81.01,
+      "linesTotal": 295,
+      "branches": 76.5,
+      "branchesTotal": 200
     },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,
@@ -1957,6 +1957,12 @@
       "linesTotal": 43,
       "branches": 100,
       "branchesTotal": 63
+    },
+    "src/utils/contactPicker.ts": {
+      "lines": 100,
+      "linesTotal": 68,
+      "branches": 93.24,
+      "branchesTotal": 74
     },
     "src/utils/contactTimeline.ts": {
       "lines": 100,

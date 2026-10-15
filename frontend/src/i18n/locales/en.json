@@ -306,7 +306,10 @@
         "dragDrop": "Drag and drop a CSV or VCF file here, or click to select",
         "maxSize": "Maximum file size: 50MB (VCF) / 20MB (CSV)",
         "uploading": "Uploading...",
-        "supportedFormats": "Supported formats: CSV (spreadsheet), VCF (vCard)"
+        "supportedFormats": "Supported formats: CSV (spreadsheet), VCF (vCard)",
+        "pickFromDevice": "Pick from this device's contacts",
+        "pickFromDeviceHint": "Opens your phone's contact picker. You choose which contacts to share; you'll review duplicates before anything is imported.",
+        "pickerError": "Couldn't read the selected contacts."
       },
       "mapping": {
         "title": "Map Columns",
