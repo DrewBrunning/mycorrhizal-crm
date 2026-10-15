@@ -99,6 +99,13 @@ func TestRun_RejectsBadConfig(t *testing.T) {
 // (…1, 2.5, 5 s) and a single contention burst moves it a whole bucket — a
 // healthy server failed this twice in a row. The committed budgets still gate
 // the long soak, where the window is minutes, not seconds.
+//
+// For the same reason the smoke tolerates a few shed writes (503
+// DATABASE_BUSY): on that runner a write can genuinely wait out the 5s
+// busy_timeout — the nightly order-dependence pass hit one in 170 operations
+// (issue #1720). smokeShedFraction mirrors the 5% rate-limit allowance and is
+// far below what a lock-holding regression sheds (every concurrent write).
+// The long soak keeps the default 0.
 func smokeConfig(t *testing.T) Config {
 	budgets := DefaultBudgets()
 	for i := range budgets {
@@ -108,9 +115,11 @@ func smokeConfig(t *testing.T) Config {
 	}
 	return Config{
 		Duration: 14 * time.Second, SampleEvery: time.Second, Users: 4, Rate: 25, Seed: 5,
-		MinOps: 100, Dir: t.TempDir(), Budgets: budgets,
+		MinOps: 100, MaxShedFraction: smokeShedFraction, Dir: t.TempDir(), Budgets: budgets,
 	}
 }
+
+const smokeShedFraction = 0.05
 
 // healthySmokeGrowthSlack widens the growth budgets for the per-PR healthy
 // smoke. Over a 9 s tail on a runner shared with the rest of the package shard
@@ -271,6 +280,34 @@ func TestJudge_AlwaysOnAssertions(t *testing.T) {
 	for _, want := range []string{"never exported", "only 10 operations", "server errors", "5xx", "failed scheduled-job", "rate-limited"} {
 		assert.Contains(t, joined, want)
 	}
+}
+
+// Shed writes (503 DATABASE_BUSY, issue #1720) are judged against
+// MaxShedFraction, not as server errors; and a 503 the server counted that the
+// workload never saw as DATABASE_BUSY is still a finding.
+func TestJudge_ShedWrites(t *testing.T) {
+	judge := func(maxShed float64, shed int64, metrics503 float64) string {
+		r := &Report{Series: map[string]Series{SigShed: {{V: 2}}}}
+		r.Workload = Result{Total: 100, Shed: shed, ShedSamples: []string{"PUT /x -> 503"}}
+		r.judge(Config{MinOps: 10, MaxShedFraction: maxShed}, nil,
+			Snapshot{Values: map[string]float64{SigShed: 2 + metrics503}})
+		var got []string
+		for _, f := range r.Failures {
+			if !strings.Contains(f, "never exported") { // no series here; not what this test judges
+				got = append(got, f)
+			}
+		}
+		return strings.Join(got, "\n")
+	}
+
+	assert.Empty(t, judge(0, 0, 0), "no shed, no finding")
+	assert.Contains(t, judge(0, 1, 1), "shed with 503 DATABASE_BUSY", "the default 0 fails on any shed write")
+	assert.Contains(t, judge(0, 1, 1), "PUT /x -> 503", "the failure carries the samples")
+	assert.Empty(t, judge(0.05, 5, 5), "at the allowance passes")
+	assert.Contains(t, judge(0.05, 6, 6), "6/100 operations were shed")
+	assert.NotContains(t, judge(0.05, 1, 1), "server errors", "a shed write is not a server error")
+	assert.Contains(t, judge(0.05, 1, 2), "counts 2 HTTP 503 responses but the workload saw only 1",
+		"a 503 the workload did not classify as DATABASE_BUSY fails")
 }
 
 // The 5xx / job-failure counters are cumulative and the metrics registry is

@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"mycorrhizal/database"
+	apperrors "mycorrhizal/errors"
 )
 
 type loadConfig struct {
@@ -362,8 +363,9 @@ const (
 )
 
 // classify maps one HTTP response to the outcome runLoad cares about. A 2xx
-// is always ok; a 500 mentioning either sentinel string trap #9 documents is
-// "busy"; a 429 is "rate limited"; anything else unexpected (a validation
+// is always ok; a 503 DATABASE_BUSY (the server's mapping of SQLITE_BUSY,
+// issue #1720) or a 500 mentioning either sentinel string trap #9 documents
+// is "busy"; a 429 is "rate limited"; anything else unexpected (a validation
 // error, a transient 404, etc.) is "other" — logged toward the total but not
 // itself a failure, since this tool's job is to catch the two specific
 // documented regressions, not to be a general-purpose API fuzzer.
@@ -373,6 +375,12 @@ func classify(status int, body []byte) classification {
 	}
 	if status == http.StatusTooManyRequests {
 		return classifyRateLimited
+	}
+	// The standard error envelope never echoes the driver error, so since
+	// issue #1720 the 503 code is the signal a busy write actually carries;
+	// the 500 strings below predate that and only match an older server.
+	if status == http.StatusServiceUnavailable && bytes.Contains(body, []byte(apperrors.ErrCodeDatabaseBusy)) {
+		return classifyBusy
 	}
 	if status == http.StatusInternalServerError &&
 		(bytes.Contains(body, []byte("database is locked")) || bytes.Contains(body, []byte("SQLITE_BUSY"))) {

@@ -24,12 +24,16 @@ const (
 	SigLimiterEntries = "ratelimiter_entries"
 	SigDBConnsOpen    = "db_connections_open"
 	SigInFlight       = "http_in_flight"
-	SigServerErrors   = "http_5xx_total"
-	SigJobFailures    = "job_failures_total"
-	SigJobSuccesses   = "job_successes_total"
-	SigP95Read        = "p95_read_s"
-	SigP95Write       = "p95_write_s"
-	SigP95Auth        = "p95_auth_s"
+	// SigServerErrors counts every 5xx except 503, which SigShed counts:
+	// since issue #1720 a 503 is how the server sheds a write it could not get
+	// the SQLite lock for, so it is judged as load, not as a fault.
+	SigServerErrors = "http_5xx_total"
+	SigShed         = "http_503_total"
+	SigJobFailures  = "job_failures_total"
+	SigJobSuccesses = "job_successes_total"
+	SigP95Read      = "p95_read_s"
+	SigP95Write     = "p95_write_s"
+	SigP95Auth      = "p95_auth_s"
 )
 
 // Metric is one parsed exposition sample.
@@ -211,7 +215,10 @@ func Reduce(ms []Metric) Snapshot {
 		case "mycorrhizal_ratelimiter_entries":
 			snap.Values[SigLimiterEntries] += m.Value
 		case "http_requests_total":
-			if strings.HasPrefix(m.Labels["status"], "5") {
+			switch st := m.Labels["status"]; {
+			case st == "503":
+				snap.Values[SigShed] += m.Value
+			case strings.HasPrefix(st, "5"):
 				snap.Values[SigServerErrors] += m.Value
 			}
 		case "job_runs_total":

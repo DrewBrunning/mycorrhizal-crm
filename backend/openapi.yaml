@@ -45,6 +45,15 @@ info:
       (200/503), /auth/oidc/config (200), the OIDC login/callback redirects
       (302), and /logout (200) — do not add fake 4xx responses to silence
       them.
+    - **503 `DATABASE_BUSY` (any endpoint that writes):** when a write cannot
+      get the database's write lock within the server's 5 s lock wait (other
+      writes held it — overload, not a fault), the response is a 503 with the
+      standard `Error` envelope, `error.code: "DATABASE_BUSY"` and a
+      `Retry-After: 1` header, instead of a 500 `DATABASE_ERROR` (issue
+      #1720). It is not listed per operation, the same way the generic 500
+      is not. The failed statement did not apply, but a handler that commits
+      in more than one step may have applied an earlier one: retry a PUT or
+      DELETE freely, and a POST only with an `Idempotency-Key`.
     - **Pagination:** every list endpoint returns the offset-shaped envelope
       `{ <items>: [...], "total", "page", "limit" }` documented below. T17
       (T17) will replace this with

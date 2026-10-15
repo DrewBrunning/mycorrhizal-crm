@@ -26,6 +26,8 @@ func TestClassify(t *testing.T) {
 		{"429 rate limited", http.StatusTooManyRequests, `{"error":"rate limit exceeded"}`, classifyRateLimited},
 		{"500 database is locked", http.StatusInternalServerError, `{"error":{"message":"database is locked"}}`, classifyBusy},
 		{"500 SQLITE_BUSY", http.StatusInternalServerError, `SQLITE_BUSY: database is locked`, classifyBusy},
+		{"503 database busy", http.StatusServiceUnavailable, `{"error":{"code":"DATABASE_BUSY","message":"The database is busy; retry the request shortly"}}`, classifyBusy},
+		{"503 unrelated", http.StatusServiceUnavailable, `{"error":{"code":"EXTERNAL_SERVICE_ERROR"}}`, classifyOther},
 		{"500 unrelated", http.StatusInternalServerError, `{"error":"disk full"}`, classifyOther},
 		{"404 not found", http.StatusNotFound, `{"error":"not found"}`, classifyOther},
 		{"422 validation", http.StatusUnprocessableEntity, `{"error":"validation failed"}`, classifyOther},

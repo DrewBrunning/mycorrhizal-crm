@@ -65,6 +65,13 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 
 // RespondWithError sends a formatted error response
 func RespondWithError(c *gin.Context, err *AppError) {
+	// Issue #1720: a lock timeout is overload, not a bug — answer 503 +
+	// Retry-After instead of the handler's generic 500.
+	err = busyOverride(err)
+	if err.Code == ErrCodeDatabaseBusy {
+		c.Header("Retry-After", retryAfterHeader)
+	}
+
 	requestID, _ := c.Get("request_id")
 	requestIDStr, _ := requestID.(string)
 

@@ -81,6 +81,27 @@ func TestRecord_ClassifiesOutcomes(t *testing.T) {
 	assert.LessOrEqual(t, len(w.Result().Samples), maxSamples)
 }
 
+// Issue #1720: only a 503 carrying the DATABASE_BUSY code is a shed write; any
+// other 503 (an external service down, an unready server) is still a server
+// error.
+func TestRecord_DatabaseBusyIsShedNotServerError(t *testing.T) {
+	w := &Workload{opCounts: map[string]int64{}}
+	busy := []byte(`{"error":{"code":"DATABASE_BUSY","message":"The database is busy; retry the request shortly"}}`)
+	w.record("a", "PUT", "/x", 503, busy, nil)
+	w.record("a", "PUT", "/x", 503, []byte(`{"error":{"code":"EXTERNAL_SERVICE_ERROR"}}`), nil)
+	w.record("a", "PUT", "/x", 503, []byte(`not json DATABASE_BUSY`), nil)
+	w.record("a", "PUT", "/x", 500, busy, nil)
+	res := w.Result()
+	assert.EqualValues(t, 1, res.Shed)
+	assert.Len(t, res.ShedSamples, 1)
+	assert.EqualValues(t, 3, res.ServerErrs, "a non-busy 503 and a 500 are server errors whatever the body")
+
+	for i := 0; i < 20; i++ {
+		w.addShedSample("more")
+	}
+	assert.LessOrEqual(t, len(w.Result().ShedSamples), maxSamples)
+}
+
 func TestSearchResultHasFirstname(t *testing.T) {
 	body := []byte(`{"query":"Zed","contacts":[{"firstname":"Alpha"}]}`)
 	assert.True(t, searchResultHasFirstname(body, "alpha"))

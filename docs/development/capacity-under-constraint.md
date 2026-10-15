@@ -115,6 +115,12 @@ more `SQLITE_BUSY` pressure, which **is** reproduced:
 - `backend/database/concurrent_write_test.go` — `_txlock=immediate` +
   `busy_timeout` make concurrent writers queue, never error (CLAUDE.md
   backend trap #9).
+- Past the queue: a write still waiting when the 5 s `busy_timeout` expires
+  gets `SQLITE_BUSY`, which the API answers as a retryable **503
+  `DATABASE_BUSY` with `Retry-After: 1`** instead of a generic 500
+  (`errors.IsDatabaseBusy`, issue #1720) — pinned end to end by
+  `backend/controllers/database_busy_test.go`, which really holds the write lock
+  past the timeout.
 - `backend/internal/perfbench` `TestConcurrentWriteShape` — the in-process
   analogue.
 - `backend/cmd/loadsmoke` against the deployed artifact (see below).

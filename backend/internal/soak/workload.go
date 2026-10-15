@@ -15,6 +15,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	apperrors "mycorrhizal/errors"
 )
 
 // password is the throwaway password every soak account registers with.
@@ -169,12 +171,14 @@ type Workload struct {
 	total       atomic.Int64
 	rateLimited atomic.Int64
 	serverErrs  atomic.Int64
+	shed        atomic.Int64
 	dropped     atomic.Int64
 	counterMu   sync.Mutex
 	opCounts    map[string]int64
 
-	sampleMu sync.Mutex
-	samples  []string
+	sampleMu    sync.Mutex
+	samples     []string
+	shedSamples []string
 
 	nameSeq atomic.Int64
 }
@@ -300,7 +304,10 @@ func truncate(b []byte, n int) string {
 // record tallies one response. Only 5xx (a server fault) and transport errors
 // count as failures; 4xx outside 429 are expected churn (a contact another op
 // just deleted, a validation reject) — this tool judges server health, not
-// API semantics.
+// API semantics. A 503 DATABASE_BUSY is the server shedding a write it could
+// not get the SQLite lock for within busy_timeout (issue #1720): overload,
+// not a fault, so it is counted apart and judged against
+// Config.MaxShedFraction rather than failing the run outright.
 func (w *Workload) record(op, method, path string, status int, body []byte, err error) {
 	w.total.Add(1)
 	w.counterMu.Lock()
@@ -312,6 +319,9 @@ func (w *Workload) record(op, method, path string, status int, body []byte, err 
 		w.addSample(fmt.Sprintf("%s %s -> transport error: %v", method, path, err))
 	case status == http.StatusTooManyRequests:
 		w.rateLimited.Add(1)
+	case isDatabaseBusy(status, body):
+		w.shed.Add(1)
+		w.addShedSample(fmt.Sprintf("%s %s -> %d: %s", method, path, status, truncate(body, 200)))
 	case status >= 500:
 		w.serverErrs.Add(1)
 		w.addSample(fmt.Sprintf("%s %s -> %d: %s", method, path, status, truncate(body, 200)))
@@ -324,6 +334,29 @@ func (w *Workload) addSample(s string) {
 	if len(w.samples) < maxSamples {
 		w.samples = append(w.samples, s)
 	}
+}
+
+func (w *Workload) addShedSample(s string) {
+	w.sampleMu.Lock()
+	defer w.sampleMu.Unlock()
+	if len(w.shedSamples) < maxSamples {
+		w.shedSamples = append(w.shedSamples, s)
+	}
+}
+
+// isDatabaseBusy reports whether a response is the server's 503
+// DATABASE_BUSY. The error code is matched exactly; any other 503 (an
+// external-service failure, an unready server) stays a server error.
+func isDatabaseBusy(status int, body []byte) bool {
+	if status != http.StatusServiceUnavailable {
+		return false
+	}
+	var env struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &env) == nil && env.Error.Code == apperrors.ErrCodeDatabaseBusy
 }
 
 func contactBody(name string) map[string]any {
@@ -573,10 +606,12 @@ func (w *Workload) importVCF(ctx context.Context, u *user) {
 type Result struct {
 	Total       int64            `json:"total"`
 	ServerErrs  int64            `json:"server_errors"`
+	Shed        int64            `json:"shed"`
 	RateLimited int64            `json:"rate_limited"`
 	Dropped     int64            `json:"dropped"`
 	Ops         map[string]int64 `json:"ops"`
 	Samples     []string         `json:"failure_samples,omitempty"`
+	ShedSamples []string         `json:"shed_samples,omitempty"`
 }
 
 // Result snapshots the counters.
@@ -589,10 +624,12 @@ func (w *Workload) Result() Result {
 	w.counterMu.Unlock()
 	w.sampleMu.Lock()
 	samples := append([]string(nil), w.samples...)
+	shedSamples := append([]string(nil), w.shedSamples...)
 	w.sampleMu.Unlock()
 	return Result{
-		Total: w.total.Load(), ServerErrs: w.serverErrs.Load(), RateLimited: w.rateLimited.Load(),
-		Dropped: w.dropped.Load(), Ops: ops, Samples: samples,
+		Total: w.total.Load(), ServerErrs: w.serverErrs.Load(), Shed: w.shed.Load(),
+		RateLimited: w.rateLimited.Load(), Dropped: w.dropped.Load(), Ops: ops,
+		Samples: samples, ShedSamples: shedSamples,
 	}
 }
 

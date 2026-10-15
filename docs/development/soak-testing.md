@@ -45,6 +45,14 @@ absent elsewhere).
    exported must not read as "no growth".
 2. Any **5xx** or transport error, a failed scheduled-job run, or more than 5 %
    of operations rate-limited (then the run measured throttling, not the server).
+   A **503 `DATABASE_BUSY`** — a write the server shed because it waited out
+   SQLite's 5 s `busy_timeout` (issue #1720) — is overload, not a fault: it is
+   counted separately as *shed* (the `http_503_total` signal; `http_5xx_total`
+   excludes 503) and fails the run only past `-max-shed-fraction` (default 0, so
+   the long soak fails on any). The per-PR smoke allows 5 %, the same allowance
+   as rate limiting, because on a shared `-race` runner a lock wait over 5 s is
+   the runner; a regression that holds the write lock sheds every concurrent
+   write, far past it. A 503 with any other code is still a server error.
 3. End-of-run checks: `PRAGMA integrity_check` / `foreign_key_check`; **FTS row
    counts equal live row counts** in all three indexes; a **search freshness
    probe** (a created-and-untouched contact is found by name, a deleted one is
