@@ -1534,3 +1534,22 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose -f docker-compose.published-smoke.yml down -v
+
+  # Issue #1713: the just-published release's "Real-release data vX.Y.Z ->
+  # current" leg. migration-tests.yml's matrix covers every OTHER supported
+  # release, but the release-registration commit lands on main before this
+  # workflow has pushed the new image, so that run skips this one tag (with a
+  # ::notice::). The leg runs here instead, once the image exists, against the
+  # tag's own tree. Not a release gate: the image is already published, so a
+  # failure here is a red signal on the run (and a real regression to chase),
+  # not a veto. Final releases only -- RCs are never registered in
+  # SupportedReleases.
+  real-release-leg:
+    name: Real-release data (just-published ${{ inputs.tag || github.ref_name }})
+    needs: [post-publish-smoke]
+    if: ${{ always() && needs.post-publish-smoke.result == 'success' && !contains(inputs.tag || github.ref_name, '-rc.') }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/real-release-leg.yml
+    with:
+      release: ${{ inputs.tag || github.ref_name }}

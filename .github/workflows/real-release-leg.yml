@@ -1,0 +1,62 @@
+name: Real-release leg
+
+# Issue #1713: one "Real-release data vX.Y.Z -> current" leg
+# (scripts/realrelease-leg.sh, issue #1489) for a single, already-published
+# release. Called by docker-publish.yml's `real-release-leg` job once the tag's
+# image is on GHCR, so a newly cut release's leg runs at release time instead
+# of only on whatever push happens next. migration-tests.yml's
+# `real-release-upgrade` matrix runs the same script for every supported
+# release but, on the release-registration commit, skips the not-yet-published
+# new tag (.github/scripts/realrelease-image-expected.sh).
+#
+# Reusable only: it has no trigger of its own, so there is nothing for the
+# main-failure / nightly alert registries to register (a failure surfaces on
+# the docker-publish.yml run that calls it).
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        description: 'Published release tag to test (e.g. v1.4.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  real-release-leg:
+    name: Real-release data ${{ inputs.release }} → current
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      # The tag's own tree is "current": the leg proves the code being
+      # released upgrades what its published image wrote.
+      - name: Checkout the released tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      # RELEASE via env, never inline (zizmor).
+      - name: Seed ${{ inputs.release }} through its published image, upgrade, roll back
+        env:
+          RELEASE: ${{ inputs.release }}
+        run: scripts/realrelease-leg.sh "$RELEASE" "$RUNNER_TEMP/realrelease-$RELEASE"
+
+      - name: Upload the leg's snapshots on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: realrelease-${{ inputs.release }}
+          path: |
+            ${{ runner.temp }}/realrelease-${{ inputs.release }}/out
+          retention-days: 7

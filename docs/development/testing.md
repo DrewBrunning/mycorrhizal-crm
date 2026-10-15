@@ -276,7 +276,11 @@ time-based rule.
     wrote with the current boot path, compare the API read-back, run
     doctor/audit-chain, then roll back to the pre-migration backup with the old
     image. The `real-release-upgrade` job in `migration-tests.yml` runs it per
-    `SupportedReleases` entry (main/nightly/dispatch; needs the network). See
+    `SupportedReleases` entry (main/nightly/dispatch; needs the network). The
+    release-registration commit's push skips the just-cut tag (its image isn't
+    published yet, `.github/scripts/realrelease-image-expected.sh`); that
+    release's leg runs from `docker-publish.yml`'s `real-release-leg` job after
+    publication (issue #1713). See
     `docs/upgrade-compatibility.md#how-upgrades-are-tested`.
 - **Must not be used for** current-schema application behavior (DB/integration)
   or deploy sequencing (release/install smoke).

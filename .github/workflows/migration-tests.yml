@@ -339,6 +339,7 @@ jobs:
   real-release-upgrade:
     permissions:
       contents: read
+      actions: read
     name: Real-release data ${{ matrix.entry }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -353,9 +354,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # HEAD^ is needed to tell the release-registration commit apart
+          # (realrelease-image-expected.sh, issue #1713).
+          fetch-depth: 2
           persist-credentials: false
 
+      # Issue #1713: the release commit registers the new tag and pushes to
+      # main BEFORE docker-publish.yml has pushed its image. Skip (with a
+      # ::notice::) only that case; a published release with a missing image
+      # still falls through to the leg and fails. The new release's own leg
+      # runs from docker-publish.yml once it is published (real-release-leg.yml).
+      - name: Skip a release whose image is not published yet
+        id: expected
+        env:
+          RELEASE: ${{ matrix.release }}
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/realrelease-image-expected.sh "$RELEASE"
+
       - name: Set up Go
+        if: steps.expected.outputs.skip != 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
@@ -363,6 +380,7 @@ jobs:
 
       # RELEASE via env, never inline (zizmor).
       - name: Seed ${{ matrix.release }} through its published image, upgrade, roll back
+        if: steps.expected.outputs.skip != 'true'
         env:
           RELEASE: ${{ matrix.release }}
         run: scripts/realrelease-leg.sh "$RELEASE" "$RUNNER_TEMP/realrelease-$RELEASE"
