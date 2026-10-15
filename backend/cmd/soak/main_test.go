@@ -16,6 +16,8 @@ func TestRun_UsageErrors(t *testing.T) {
 	var out, errb bytes.Buffer
 	assert.Equal(t, 2, run(context.Background(), []string{"-nope"}, &out, &errb))
 	assert.Equal(t, 2, run(context.Background(), []string{"-fault", "bogus"}, &out, &errb))
+	assert.Equal(t, 2, run(context.Background(), []string{"-max-shed-fraction", "-0.1"}, &out, &errb))
+	assert.Equal(t, 2, run(context.Background(), []string{"-max-shed-fraction", "1.5"}, &out, &errb))
 	assert.Equal(t, 2, run(context.Background(), []string{"-target", "http://127.0.0.1:1", "-metrics-token", ""}, &out, &errb))
 	assert.Contains(t, errb.String(), "metrics-token")
 	// Unreachable target: a harness error, not a finding.
@@ -56,6 +58,12 @@ func TestRun_WriteBudgetsDoc(t *testing.T) {
 // proven. The committed limits keep gating the long soak.
 const growthSlack = "4"
 
+// maxShedFraction mirrors internal/soak's smokeShedFraction: on the same
+// contended runner a write can wait out SQLite's 5s busy_timeout and be shed
+// with 503 DATABASE_BUSY — this test hit exactly that, one in 170 operations,
+// on the nightly order-dependence pass (issue #1720).
+const maxShedFraction = "0.05"
+
 func TestRun_HealthyPassesFaultyFailsAndReportsAreWritten(t *testing.T) {
 	if testing.Short() {
 		t.Skip("boots a real server")
@@ -66,7 +74,7 @@ func TestRun_HealthyPassesFaultyFailsAndReportsAreWritten(t *testing.T) {
 	base := []string{"-duration", "12s", "-sample", "1s", "-users", "3", "-rate", "20", "-min-ops", "50", "-advisory-latency", "-md", md, "-json", js}
 
 	var out, errb bytes.Buffer
-	healthy := append([]string{"-growth-slack", growthSlack}, base...)
+	healthy := append([]string{"-growth-slack", growthSlack, "-max-shed-fraction", maxShedFraction}, base...)
 	require.Equal(t, 0, run(context.Background(), healthy, &out, &errb), out.String()+errb.String())
 	assert.Contains(t, out.String(), "Soak run: PASS")
 	assert.Contains(t, out.String(), "t=", "progress lines are printed unless -quiet")

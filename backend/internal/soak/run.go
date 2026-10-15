@@ -41,6 +41,13 @@ type Config struct {
 	// MinOps is the fewest operations the workload must complete for the run to
 	// count — a harness that silently did nothing must not pass.
 	MinOps int64
+	// MaxShedFraction is the largest share of operations the server may shed
+	// with a 503 DATABASE_BUSY (a write that waited out SQLite's busy_timeout,
+	// issue #1720) before the run fails. 0, the default and what the long soak
+	// uses, fails on any: on a real box at the soak's rate, a write waiting
+	// over 5s for the lock is itself a finding. The per-PR smoke on a shared
+	// -race runner raises it.
+	MaxShedFraction float64
 	// Budgets override the committed table (tests only).
 	Budgets []Budget
 	// Faults inject deliberate leaks (harness self-test; in-process only).
@@ -282,6 +289,19 @@ func (r *Report) judge(cfg Config, budgets []Budget, final Snapshot) {
 	}
 	if n := final.Values[SigJobFailures] - seriesBase(r.Series[SigJobFailures]); n > 0 {
 		r.fail("/metrics counts %.0f failed scheduled-job runs", n)
+	}
+	// A shed write is overload, not a fault, but only up to the configured
+	// share: a regression that holds the write lock for seconds sheds every
+	// concurrent write, far past any allowance.
+	if r.Workload.Shed > 0 && float64(r.Workload.Shed) > cfg.MaxShedFraction*float64(r.Workload.Total) {
+		r.fail("%d/%d operations were shed with 503 DATABASE_BUSY (max %.0f%%) — writes waited out SQLite's busy_timeout; samples: %s",
+			r.Workload.Shed, r.Workload.Total, 100*cfg.MaxShedFraction, strings.Join(r.Workload.ShedSamples, " | "))
+	}
+	// Every 503 the server counted must be one the workload saw as
+	// DATABASE_BUSY: the workload already fails any other 503 as a server
+	// error, and this closes the gap for a 503 it never saw (same delta rule).
+	if n := final.Values[SigShed] - seriesBase(r.Series[SigShed]); n > float64(r.Workload.Shed) {
+		r.fail("/metrics counts %.0f HTTP 503 responses but the workload saw only %d DATABASE_BUSY", n, r.Workload.Shed)
 	}
 	// 429s are the production limiter doing its job on the auth routes, but a
 	// large share means the offered load or the raised API limit is

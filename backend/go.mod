@@ -14,6 +14,7 @@ require (
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-gonic/gin v1.12.0
+	github.com/glebarez/go-sqlite v1.22.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-playground/validator/v10 v10.30.5
@@ -34,6 +35,7 @@ require (
 	golang.org/x/time v0.16.0
 	golang.org/x/tools v0.51.0
 	gorm.io/gorm v1.31.2
+	modernc.org/sqlite v1.53.0
 	pgregory.net/rapid v1.3.0
 )
 
@@ -41,7 +43,6 @@ require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.1 // indirect
-	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
@@ -68,7 +69,6 @@ require (
 	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.53.0 // indirect
 )
 
 require (

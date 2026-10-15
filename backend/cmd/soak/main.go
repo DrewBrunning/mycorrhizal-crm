@@ -55,6 +55,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	mdOut := fs.String("md", "", "write the markdown report to this file (e.g. $GITHUB_STEP_SUMMARY)")
 	advisoryLatency := fs.Bool("advisory-latency", false, "report latency-degradation budgets without failing on them (for runs too short, or too contended, for a head/tail p95 ratio to mean anything)")
 	growthSlack := fs.Float64("growth-slack", 1, "multiply every growth budget by this factor (for runs too short, or too contended, for a fitted growth over a handful of samples to mean anything); 1 = the committed limits")
+	maxShed := fs.Float64("max-shed-fraction", 0, "largest share of operations the server may shed with 503 DATABASE_BUSY (a write that waited out SQLite's busy_timeout) before the run fails; 0 = fail on any (for a contended -race runner, where a lock wait over 5s is the runner, not the server)")
 	quiet := fs.Bool("quiet", false, "suppress per-sample progress lines")
 	budgetsDoc := fs.String("write-budgets-doc", "", "regenerate the budget table in this markdown file (docs/development/soak-baseline.md) and exit")
 	if err := fs.Parse(args); err != nil {
@@ -78,6 +79,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	if *maxShed < 0 || *maxShed > 1 {
+		fmt.Fprintln(stderr, "soak: -max-shed-fraction must be between 0 and 1")
+		return 2
+	}
+
 	faults, err := soak.ParseFaults(*faultNames)
 	if err != nil {
 		fmt.Fprintln(stderr, "soak:", err)
@@ -86,7 +92,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 	cfg := soak.Config{
 		Duration: *duration, SampleEvery: *sample, Users: *users, Rate: *rate, Seed: *seed,
-		MinOps: *minOps, Faults: faults,
+		MinOps: *minOps, MaxShedFraction: *maxShed, Faults: faults,
 	}
 	if *advisoryLatency || *growthSlack != 1 {
 		cfg.Budgets = soak.DefaultBudgets()

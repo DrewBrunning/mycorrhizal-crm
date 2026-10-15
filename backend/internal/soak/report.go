@@ -95,8 +95,8 @@ func (r *Report) Markdown() string {
 	if len(r.Faults) > 0 {
 		fmt.Fprintf(&sb, ", **injected faults %v** (harness self-test)", r.Faults)
 	}
-	fmt.Fprintf(&sb, "\n- workload: %d operations, %d server errors, %d rate-limited, %d dropped (server slower than offered rate)\n\n",
-		r.Workload.Total, r.Workload.ServerErrs, r.Workload.RateLimited, r.Workload.Dropped)
+	fmt.Fprintf(&sb, "\n- workload: %d operations, %d server errors, %d shed (503 DATABASE_BUSY), %d rate-limited, %d dropped (server slower than offered rate)\n\n",
+		r.Workload.Total, r.Workload.ServerErrs, r.Workload.Shed, r.Workload.RateLimited, r.Workload.Dropped)
 
 	sb.WriteString("| Signal | Start | End | Tail max | Tail growth | Budget | Verdict | Shape |\n|---|---|---|---|---|---|---|---|\n")
 	order := append([]string(nil), seriesOrder...)
