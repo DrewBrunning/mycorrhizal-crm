@@ -667,6 +667,10 @@
     "required": "Inhalt ist erforderlich",
     "saveError": "Notiz konnte nicht gespeichert werden"
   },
+  "shareTarget": {
+    "missing": "Der geteilte Text ist nicht mehr verfügbar. Teile ihn erneut, um eine neue Notiz zu beginnen.",
+    "backHome": "Zurück zum Dashboard"
+  },
   "activityDialog": {
     "title": "Aktivität hinzufügen",
     "activityTitle": "Titel",

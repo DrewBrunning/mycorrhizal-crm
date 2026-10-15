@@ -307,3 +307,20 @@ describe('AddNoteDialog in-app route navigation guard (issue #805)', () => {
     expect(screen.queryByText('Discard unsaved changes?')).toBeNull();
   });
 });
+
+// Issue #1294: the Web Share Target prefills the content; a stale session
+// draft must not win over it, and nothing is saved until the user taps Save.
+test('initialContent prefills the content and beats a stale session draft', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  sessionStorage.setItem(
+    'mycorrhizal:draft:note-dialog:unassigned',
+    JSON.stringify({ content: 'old draft', date: '2026-01-01', selectedContact: null }),
+  );
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ initialContent: 'shared text', onSave });
+
+  await waitFor(() => {
+    expect((screen.getByLabelText('Content *') as HTMLTextAreaElement).value).toBe('shared text');
+  });
+  expect(onSave).not.toHaveBeenCalled();
+});

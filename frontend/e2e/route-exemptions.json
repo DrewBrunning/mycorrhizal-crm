@@ -1,1 +1,3 @@
-{}
+{
+  "/share": "Landing page of the Web Share Target (issue #1294). It is only reachable through the installed PWA's service worker handling a POST from the OS share sheet, which Playwright cannot drive; the sanitiser, the service-worker fetch handler and the page are covered by shareTarget.test.ts, serviceWorkerShare.test.ts and ShareTargetPage.test.tsx."
+}

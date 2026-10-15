@@ -13,6 +13,7 @@ import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate } from 'workbox-strategies';
 import { notificationTargetPath } from './utils/notificationTarget';
+import { composeSharedDraft, SHARE_TARGET_PATH, storeSharedDraft } from './utils/shareTarget';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -124,6 +125,32 @@ self.addEventListener('notificationclick', (event) => {
       await self.clients.openWindow(target);
     })(),
   );
+});
+
+// Issue #1294 -- Web Share Target. The manifest's share_target POSTs the shared
+// title/text/url to /share, which the SPA cannot render, so the worker reads the
+// form, sanitises it, parks the draft in the Cache API under a random single-use
+// key and 303-redirects to /share?key=... . The text never appears in a URL.
+async function handleShare(request: Request): Promise<Response> {
+  const target = (query: string) =>
+    new URL(`${SHARE_TARGET_PATH}${query}`, self.location.origin).href;
+  try {
+    const form = await request.formData();
+    const draft = composeSharedDraft(form.get('title'), form.get('text'), form.get('url'));
+    if (draft === null) return Response.redirect(target(''), 303);
+    const key = await storeSharedDraft(self.caches, self.location.origin, draft);
+    return Response.redirect(target(`?key=${key}`), 303);
+  } catch {
+    return Response.redirect(target(''), 303);
+  }
+}
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'POST') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || url.pathname !== SHARE_TARGET_PATH) return;
+  event.respondWith(handleShare(request));
 });
 
 // Any other custom service worker logic can go here.

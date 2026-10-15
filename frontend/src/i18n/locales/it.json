@@ -667,6 +667,10 @@
     "required": "Il contenuto è obbligatorio",
     "saveError": "Impossibile salvare la nota"
   },
+  "shareTarget": {
+    "missing": "Il testo condiviso non è più disponibile. Condividilo di nuovo per iniziare una nuova nota.",
+    "backHome": "Torna alla dashboard"
+  },
   "activityDialog": {
     "title": "Aggiungi Attività",
     "activityTitle": "Titolo",
