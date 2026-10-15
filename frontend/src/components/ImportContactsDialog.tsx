@@ -57,6 +57,7 @@ import {
 } from '../api/import';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
+import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -376,6 +377,18 @@ export default function ImportContactsDialog({
     return { toCreate, toUpdate, toSkip };
   };
 
+  // Issue #164: import straight from the device's contacts via the W3C Contact
+  // Picker (Chrome on Android). The selection becomes a VCF file and takes the
+  // normal upload path. Cancelling the picker is not an error.
+  const handlePickDeviceContacts = async () => {
+    try {
+      const file = await pickContactsAsVCardFile();
+      if (file) await handleFileUpload(file);
+    } catch {
+      setError(t('contacts.import.upload.pickerError'));
+    }
+  };
+
   // Render upload step
   const renderUploadStep = () => (
     <Box sx={{ py: 4 }}>
@@ -431,6 +444,16 @@ export default function ImportContactsDialog({
           {t('contacts.import.upload.maxSize', 'Maximum file size: 50MB (VCF) / 20MB (CSV)')}
         </Typography>
       </Box>
+      {isContactPickerSupported() && (
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Button variant="outlined" onClick={() => void handlePickDeviceContacts()}>
+            {t('contacts.import.upload.pickFromDevice')}
+          </Button>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+            {t('contacts.import.upload.pickFromDeviceHint')}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 

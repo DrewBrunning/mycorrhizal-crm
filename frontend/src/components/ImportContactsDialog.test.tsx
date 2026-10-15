@@ -717,3 +717,62 @@ test('paginates a preview larger than one page', async () => {
   await waitFor(() => expect(screen.getByText('C20')).toBeInTheDocument());
   expect(screen.queryByText('C0')).not.toBeInTheDocument();
 });
+
+// Issue #164: the W3C Contact Picker button is offered only where the browser
+// implements it, and its selection is uploaded as a VCF through the normal path.
+function stubContactPicker(select: () => Promise<unknown[]>) {
+  Object.defineProperty(navigator, 'contacts', {
+    configurable: true,
+    value: { getProperties: async () => ['name', 'email', 'tel'], select },
+  });
+  vi.stubGlobal('ContactsManager', class {});
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(navigator, 'contacts');
+  vi.unstubAllGlobals();
+});
+
+test('hides the device-contacts button when the Contact Picker is unsupported', () => {
+  renderDialog();
+  expect(screen.queryByText("Pick from this device's contacts")).toBeNull();
+});
+
+test('device-contacts button uploads the picked contacts as a VCF', async () => {
+  stubContactPicker(async () => [{ name: ['Grace Hopper'], email: ['grace@navy.test'] }]);
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-picker',
+    rows: [row({ parsed_contact: { firstname: 'Grace', lastname: 'Hopper', email: '' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog();
+  fireEvent.click(screen.getByText("Pick from this device's contacts"));
+
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+  const uploaded = vi.mocked(uploadVCFForImport).mock.calls[0][0];
+  expect(uploaded.name).toBe('device-contacts.vcf');
+  expect(await uploaded.text()).toContain('FN:Grace Hopper');
+});
+
+test('cancelling the picker uploads nothing and shows no error', async () => {
+  stubContactPicker(async () => {
+    throw new DOMException('dismissed', 'AbortError');
+  });
+  renderDialog();
+  fireEvent.click(screen.getByText("Pick from this device's contacts"));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(uploadVCFForImport).not.toHaveBeenCalled();
+  expect(screen.queryByText("Couldn't read the selected contacts.")).toBeNull();
+});
+
+test('a picker failure shows an error', async () => {
+  stubContactPicker(async () => {
+    throw new DOMException('blocked', 'SecurityError');
+  });
+  renderDialog();
+  fireEvent.click(screen.getByText("Pick from this device's contacts"));
+  expect(await screen.findByText("Couldn't read the selected contacts.")).toBeInTheDocument();
+});

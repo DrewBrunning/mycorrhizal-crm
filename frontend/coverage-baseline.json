@@ -23,7 +23,7 @@
     "src/AuditPage.tsx": {
       "lines": 87.67,
       "linesTotal": 73,
-      "branches": 81.39,
+      "branches": 83.72,
       "branchesTotal": 43
     },
     "src/CircleTagTriagePage.tsx": {
@@ -969,10 +969,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 80.62,
-      "linesTotal": 289,
-      "branches": 76.02,
-      "branchesTotal": 196
+      "lines": 81.01,
+      "linesTotal": 295,
+      "branches": 76.5,
+      "branchesTotal": 200
     },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,
@@ -993,7 +993,7 @@
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
-      "lines": 84,
+      "lines": 83.33,
       "linesTotal": 150,
       "branches": 85.08,
       "branchesTotal": 114
@@ -1221,7 +1221,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 83.33,
+      "lines": 84.21,
       "linesTotal": 114,
       "branches": 79.77,
       "branchesTotal": 89
@@ -1957,6 +1957,12 @@
       "linesTotal": 43,
       "branches": 100,
       "branchesTotal": 63
+    },
+    "src/utils/contactPicker.ts": {
+      "lines": 100,
+      "linesTotal": 68,
+      "branches": 93.24,
+      "branchesTotal": 74
     },
     "src/utils/contactTimeline.ts": {
       "lines": 100,
