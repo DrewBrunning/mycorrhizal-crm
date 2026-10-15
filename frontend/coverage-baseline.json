@@ -5,12 +5,12 @@
     "src/ActivitiesPage.tsx": {
       "lines": 92.39,
       "linesTotal": 92,
-      "branches": 79.41,
+      "branches": 89.7,
       "branchesTotal": 68
     },
     "src/App.tsx": {
-      "lines": 72.64,
-      "linesTotal": 106,
+      "lines": 72.89,
+      "linesTotal": 107,
       "branches": 54,
       "branchesTotal": 50
     },
@@ -39,7 +39,7 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.73,
+      "lines": 86.42,
       "linesTotal": 280,
       "branches": 75.18,
       "branchesTotal": 133
@@ -93,15 +93,15 @@
       "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
-      "lines": 81.72,
+      "lines": 83.87,
       "linesTotal": 93,
-      "branches": 62.82,
+      "branches": 73.07,
       "branchesTotal": 78
     },
     "src/NotesPage.tsx": {
-      "lines": 86.25,
+      "lines": 88.75,
       "linesTotal": 80,
-      "branches": 86.27,
+      "branches": 92.15,
       "branchesTotal": 51
     },
     "src/OccasionsPage.tsx": {
@@ -127,6 +127,12 @@
       "linesTotal": 216,
       "branches": 66.05,
       "branchesTotal": 109
+    },
+    "src/ShareTargetPage.tsx": {
+      "lines": 92.59,
+      "linesTotal": 27,
+      "branches": 90,
+      "branchesTotal": 10
     },
     "src/SystemEventsPage.tsx": {
       "lines": 75,
@@ -255,9 +261,9 @@
       "branchesTotal": 6
     },
     "src/api/contacts.ts": {
-      "lines": 99.08,
+      "lines": 98.73,
       "linesTotal": 238,
-      "branches": 94.4,
+      "branches": 94.37,
       "branchesTotal": 409
     },
     "src/api/contractConformance.ts": {
@@ -591,10 +597,10 @@
       "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
-      "lines": 84.28,
-      "linesTotal": 70,
-      "branches": 73.52,
-      "branchesTotal": 34
+      "lines": 84.72,
+      "linesTotal": 72,
+      "branches": 76.31,
+      "branchesTotal": 38
     },
     "src/components/AddressFields.tsx": {
       "lines": 100,
@@ -911,7 +917,7 @@
     "src/components/GeoPulseSettings.tsx": {
       "lines": 100,
       "linesTotal": 51,
-      "branches": 94,
+      "branches": 93.18,
       "branchesTotal": 44
     },
     "src/components/GeoPulseSuggestionsDialog.tsx": {
@@ -1215,7 +1221,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 84.21,
+      "lines": 83.33,
       "linesTotal": 114,
       "branches": 79.77,
       "branchesTotal": 89
@@ -1474,9 +1480,9 @@
     },
     "src/hooks/useContactFieldEditing.ts": {
       "lines": 100,
-      "linesTotal": 53,
+      "linesTotal": 54,
       "branches": 100,
-      "branchesTotal": 36
+      "branchesTotal": 32
     },
     "src/hooks/useContactFileLinks.ts": {
       "lines": 100,
@@ -1493,14 +1499,14 @@
     "src/hooks/useContactLifecycleActions.ts": {
       "lines": 100,
       "linesTotal": 63,
-      "branches": 97.5,
+      "branches": 95.45,
       "branchesTotal": 44
     },
     "src/hooks/useContactMemberships.ts": {
       "lines": 100,
-      "linesTotal": 41,
+      "linesTotal": 39,
       "branches": 100,
-      "branchesTotal": 24
+      "branchesTotal": 22
     },
     "src/hooks/useContactMerge.ts": {
       "lines": 100,
@@ -1649,7 +1655,7 @@
     "src/hooks/useLifeEvents.ts": {
       "lines": 100,
       "linesTotal": 45,
-      "branches": 95.45,
+      "branches": 100,
       "branchesTotal": 22
     },
     "src/hooks/useLinkFieldTypes.ts": {
@@ -1732,9 +1738,9 @@
     },
     "src/hooks/useRowKeys.ts": {
       "lines": 100,
-      "linesTotal": 10,
+      "linesTotal": 9,
       "branches": 100,
-      "branchesTotal": 2
+      "branchesTotal": 0
     },
     "src/hooks/useSeafile.ts": {
       "lines": 100,
@@ -1756,7 +1762,7 @@
     },
     "src/hooks/useSourceImportWizard.ts": {
       "lines": 100,
-      "linesTotal": 105,
+      "linesTotal": 104,
       "branches": 100,
       "branchesTotal": 40
     },
@@ -1791,9 +1797,9 @@
       "branchesTotal": 26
     },
     "src/hooks/useTimelineEditing.ts": {
-      "lines": 94,
+      "lines": 100,
       "linesTotal": 50,
-      "branches": 78,
+      "branches": 100,
       "branchesTotal": 50
     },
     "src/hooks/useWebAuthn.ts": {
@@ -1863,10 +1869,10 @@
       "branchesTotal": 4
     },
     "src/service-worker.ts": {
-      "lines": 77.77,
-      "linesTotal": 36,
-      "branches": 66.66,
-      "branchesTotal": 24
+      "lines": 84.31,
+      "linesTotal": 51,
+      "branches": 75,
+      "branchesTotal": 32
     },
     "src/serviceWorkerRegistration.ts": {
       "lines": 100,
@@ -1909,6 +1915,12 @@
       "linesTotal": 43,
       "branches": 86.2,
       "branchesTotal": 58
+    },
+    "src/test/fakeCaches.ts": {
+      "lines": 100,
+      "linesTotal": 10,
+      "branches": 100,
+      "branchesTotal": 6
     },
     "src/test/mswServer.ts": {
       "lines": 100,
@@ -1987,6 +1999,12 @@
       "linesTotal": 9,
       "branches": 100,
       "branchesTotal": 10
+    },
+    "src/utils/shareTarget.ts": {
+      "lines": 100,
+      "linesTotal": 28,
+      "branches": 100,
+      "branchesTotal": 23
     },
     "src/utils/statusText.ts": {
       "lines": 100,

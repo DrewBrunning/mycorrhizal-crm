@@ -134,6 +134,7 @@ import { AuthContext, useAuth } from './context/AuthContext';
 // The first React.lazy route in the app (ADR 0031): MapLibre GL JS is heavy, so the
 // map page (and the `map-vendor` chunk it pulls in) loads only when /map is opened.
 const MapPage = lazy(() => import('./MapPage'));
+const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
 
 const drawerWidth = 256;
 
@@ -778,6 +779,14 @@ function AppContent({
               }
             />
             <Route path="/search" element={<SearchRedirect />} />
+            <Route
+              path="/share"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ShareTargetPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/audit"
               element={

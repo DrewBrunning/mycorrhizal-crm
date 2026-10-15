@@ -667,6 +667,10 @@
     "required": "Le contenu est requis",
     "saveError": "Échec de l'enregistrement de la note"
   },
+  "shareTarget": {
+    "missing": "Le texte partagé n'est plus disponible. Partagez-le à nouveau pour commencer une nouvelle note.",
+    "backHome": "Retour au tableau de bord"
+  },
   "activityDialog": {
     "title": "Ajouter une activité",
     "activityTitle": "Titre",

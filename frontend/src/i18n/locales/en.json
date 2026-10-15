@@ -667,6 +667,10 @@
     "required": "Content is required",
     "saveError": "Failed to save note"
   },
+  "shareTarget": {
+    "missing": "This shared text is no longer available. Share it again to start a new note.",
+    "backHome": "Back to dashboard"
+  },
   "activityDialog": {
     "title": "Add Activity",
     "activityTitle": "Title",

@@ -42,6 +42,9 @@ interface AddNoteDialogProps {
   onSave: (content: string, date: string, contactId?: number) => Promise<void>;
   noteContactId?: number;
   noteContactName?: string;
+  // Prefills the content (the Web Share Target, issue #1294). The user still
+  // has to save by hand.
+  initialContent?: string;
 }
 
 interface NoteDraft {
@@ -56,6 +59,7 @@ export default function AddNoteDialog({
   onSave,
   noteContactId,
   noteContactName,
+  initialContent,
 }: AddNoteDialogProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
@@ -85,6 +89,11 @@ export default function AddNoteDialog({
     setDate(draft.date);
     if (!lockedContact) setSelectedContact(draft.selectedContact);
   }, [open, draftKey, lockedContact]);
+
+  // Declared after the draft restore above so shared text wins over a stale draft.
+  useEffect(() => {
+    if (open && initialContent) setContent(initialContent);
+  }, [open, initialContent]);
 
   const isDirty = content.trim().length > 0 || (!lockedContact && selectedContact !== null);
   const { clearDraft } = useSessionDraft(

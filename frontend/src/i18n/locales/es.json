@@ -667,6 +667,10 @@
     "required": "El contenido es obligatorio",
     "saveError": "Error al guardar la nota"
   },
+  "shareTarget": {
+    "missing": "El texto compartido ya no está disponible. Compártelo de nuevo para empezar una nota nueva.",
+    "backHome": "Volver al panel"
+  },
   "activityDialog": {
     "title": "Agregar Actividad",
     "activityTitle": "Título",
