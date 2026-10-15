@@ -38,6 +38,7 @@ vi.mock('./components/PaperlessSettings', () => ({ default: () => null }));
 vi.mock('./components/SeafileSettings', () => ({ default: () => null }));
 vi.mock('./components/NextcloudSettings', () => ({ default: () => null }));
 vi.mock('./components/LinkFieldTypesSettings', () => ({ default: () => null }));
+vi.mock('./components/GeoPulseSettings', () => ({ default: () => null }));
 
 vi.mock('./api/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/auth')>();
