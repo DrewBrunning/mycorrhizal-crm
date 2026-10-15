@@ -12,6 +12,8 @@
   problem" below explains what carries over and what does not),
   `docs/adrs/0028-local-only-android-mode-and-server-profiles.md` (the Local profile has no domain, so it
   has no passkeys).
+- **Runbook:** `docs/development/android-passkey-fingerprints.md` (adding, rotating and verifying the
+  per-channel signing fingerprints; issue #1334).
 
 ## Context
 
