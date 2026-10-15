@@ -89,6 +89,20 @@ push event never produced a run. That path runs `main`'s copy of the workflow ag
 | `create-release` | skipped | the Release already exists; re-uploads use `--clobber` |
 | `verify-release-assets` | **runs** | rebuilds `SHA256SUMS`, checks every asset (incl. the attached APK's `libmycorrhizal.so`) and the images. With no `mycorrhizal-apk.intoto.jsonl` it **fails** and says the release is not promotable |
 | `post-publish-smoke` | runs | it only needs the published image |
+| `real-release-leg` | runs (final tags only) | it only needs the published image; see below |
+
+### The new release's real-release leg (issue #1713)
+
+`migration-tests.yml`'s `Real-release data vX.Y.Z → current` matrix covers every release in
+`SupportedReleases`, but the release commit registers the new tag on `main` **before** the tag-triggered
+`docker-publish.yml` has pushed its image. That `push:main` run therefore **skips** the new tag's leg
+(`.github/scripts/realrelease-image-expected.sh`, `::notice::`) instead of failing on `manifest unknown`
+and raising a false `Main failure: Migration Tests` alert. It skips only when the image is definitively
+absent **and** the release is unpublished by construction (HEAD is the registration commit, or the tag's
+`docker-publish.yml` run has not completed); a published release whose image is missing still fails. The
+new release's own leg then runs from `docker-publish.yml`'s `real-release-leg` job
+(`real-release-leg.yml`, reusable) after `post-publish-smoke` — final releases only, not a release gate
+(the image is already out), but a red job there is a real regression.
 
 So a release published **only** via the fallback concludes **red**, not green, and `promote-rc.yml` refuses
 to promote an RC whose Release lacks the provenance or `SHA256SUMS`. Recover by cutting the next release
