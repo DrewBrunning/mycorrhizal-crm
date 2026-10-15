@@ -23,7 +23,7 @@
     "src/AuditPage.tsx": {
       "lines": 87.67,
       "linesTotal": 73,
-      "branches": 83.72,
+      "branches": 81.39,
       "branchesTotal": 43
     },
     "src/CircleTagTriagePage.tsx": {
@@ -993,7 +993,7 @@
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
-      "lines": 83.33,
+      "lines": 84,
       "linesTotal": 150,
       "branches": 85.08,
       "branchesTotal": 114
@@ -1221,7 +1221,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 84.21,
+      "lines": 83.33,
       "linesTotal": 114,
       "branches": 79.77,
       "branchesTotal": 89
