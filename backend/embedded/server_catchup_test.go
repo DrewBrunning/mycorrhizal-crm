@@ -245,4 +245,9 @@ func TestStop_ContextExpiryStillCloses(t *testing.T) {
 	require.NoError(t, dbErr)
 	require.Error(t, sqlDB.Ping())
 	close(release)
+	// The cancelled Stop returned without waiting, so the real catch-up jobs
+	// (delay 0) are still running against the closed DB and logging. Drain them
+	// before returning, or they race the next test's logger.InitLogger write to
+	// zerolog's globals (a -race failure in TestStartStop_Lifecycle).
+	require.NoError(t, srv.bg.shutdown(context.Background()))
 }
