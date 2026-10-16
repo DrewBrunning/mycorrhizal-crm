@@ -98,7 +98,7 @@ flags in `codecov.yml`:
 |---|---|---|
 | Backend (Go) | merged `coverage.out` (coverprofile, atomic mode, all three test legs) | `unit-tests.yml` → `backend` job |
 | Frontend (vitest) | `coverage/lcov.info` (v8) | `unit-tests.yml` → `frontend` job |
-| Android (JaCoCo) | `jacocoTestReportAggregated.xml` | `android-tests.yml` → `test` job |
+| Android (lcov, converted from JaCoCo) | `jacocoTestReportAggregated.lcov`, written from `jacocoTestReportAggregated.xml` by `cmd/jacoco2lcov` | `android-tests.yml` → `test` job |
 
 ## What counts as "uncovered"
 
@@ -108,6 +108,8 @@ executed by no test:
 - Go coverprofile: a statement block with count `0`.
 - lcov: a `DA:<line>,<count>` record with count `0`.
 - JaCoCo: a `<line nr=".." mi=".." ci=".."/>` with all instructions missed.
+  Android reaches Codecov as lcov converted from that line (`DA:<nr>,0`), so
+  the rule is unchanged; see [Android coverage is uploaded as lcov](#android-coverage-is-uploaded-as-lcov).
 
 Non-executable lines (comments, blank lines, braces, declarations with no
 statement coverage) are **not** recorded by the tooling and therefore never
@@ -226,6 +228,52 @@ request**, the same gap is a hard failure of the `Backend (Go)` job instead
 against stale carryforward data, with only a warning annotation as
 evidence, is the exact failure mode that motivated this doc's own
 `cmd/codecovcheck` gate above.
+
+### Android coverage is uploaded as lcov
+
+Since 2026-10-16, Codecov's processing has ended every JaCoCo upload for this
+repository in upload state `error`, with no detail and no incident on its
+status page (reported upstream as
+[codecov/feedback#988](https://github.com/codecov/feedback/issues/988)). A commit with no processed upload gets no `codecov/patch/*`
+check runs, so every Android-only PR sat waiting for `codecov/patch/android`
+and needed a bypass (#1742, #1744). The probe in PR #1748 isolated it to the
+format: a 13 KB single-package JaCoCo report errors under any flag, network
+filter, file-fix or upload-endpoint setting, while the same coverage
+converted to lcov merges.
+
+So the gating `android` flag is uploaded as **lcov**, converted in CI from
+the aggregated JaCoCo XML by `go run ./cmd/jacoco2lcov` (rules in
+`backend/internal/jacocolcov`):
+
+- `DA:<nr>,1|0` per JaCoCo line (covered if any instruction ran), and the
+  line's branch counters as `BRDA` records, so branch-partial lines stay
+  partial in Codecov.
+- Each `<package>/<sourcefile>` is resolved to the one file under `android/`
+  whose path ends with it. Generated or inlined code with no repository file
+  (Hilt factories, Kotlin stdlib inlined into our packages) and source files
+  with no lines are dropped; a key matching more than one file is dropped
+  with a `::warning::` rather than guessed. The command fails if nothing
+  resolves, rather than uploading an empty report.
+- Instruction-only partials (some instructions of a branchless line missed)
+  have no lcov form and count as covered. Codecov's own JaCoCo processing
+  already scored them as hits: its last good `android` totals on `main`
+  (`28a259f2`: 2,678 partials) line up with the report's branch-partial
+  lines, not with branch plus instruction partials. The converter prints
+  the count anyway.
+
+Every run appends a JaCoCo-vs-lcov reconciliation (files, lines, covered
+lines, branches, what was dropped) to the job's step summary. On the
+2026-10-16 report it was 30,939 covered lines and 11,665/17,916 covered
+branches in both, with 13 uncovered lines dropped (generated code),
+82.29% → 82.32%.
+
+The JaCoCo XML stays the source of truth: the per-file ratchet below reads
+it unchanged, and it is still uploaded to Codecov under the **non-gating**
+`android-jacoco` flag (no patch area, no carryforward). Once Codecov
+processes JaCoCo again, compare the `android` and `android-jacoco` flag
+totals on the same commit. If they agree, delete the `android-jacoco` flag
+and its upload step; lcov stays the gating format either way unless the
+comparison shows a real difference.
 
 ## The exec'd server binary (`package main`) is not measured
 

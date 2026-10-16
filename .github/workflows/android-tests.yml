@@ -206,13 +206,41 @@ jobs:
         working-directory: backend
         run: go run ./cmd/androidcoverageratchet
 
+      # Codecov's processing has ended every JaCoCo upload for this repo in
+      # state `error` since 2026-10-16 (PR #1748 isolated it to the format;
+      # upstream codecov/feedback#988),
+      # so codecov/patch/android never reported. The gating `android` flag
+      # is therefore uploaded as lcov converted from the same JaCoCo report
+      # (internal/jacocolcov has the rules); the converter's JaCoCo-vs-lcov
+      # reconciliation lands in the step summary on every run.
+      - name: Convert JaCoCo to lcov for Codecov
+        working-directory: backend
+        run: go run ./cmd/jacoco2lcov -summary "$GITHUB_STEP_SUMMARY"
+
       # Issue #294: informational only, see unit-tests.yml's backend job.
-      - name: Upload coverage to Codecov
+      - name: Upload coverage to Codecov (lcov, gating android flag)
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.lcov
+          flags: android
+          name: android-lcov
+          disable_search: true
+          fail_ci_if_error: false
+
+      # The original JaCoCo XML, under the non-gating `android-jacoco` flag
+      # (no patch status in codecov.yml): once Codecov processes JaCoCo
+      # again, the two flags' totals are the side-by-side comparison
+      # (docs/development/coverage.md). Remove this step when that
+      # comparison is done.
+      - name: Upload coverage to Codecov (JaCoCo, comparison-only flag)
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml
-          flags: android
+          flags: android-jacoco
+          name: android-jacoco
+          disable_search: true
           fail_ci_if_error: false
 
       # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
