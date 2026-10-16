@@ -206,17 +206,87 @@ jobs:
         working-directory: backend
         run: go run ./cmd/androidcoverageratchet
 
-      # Issue #294: informational only, see unit-tests.yml's backend job.
-      - name: Upload coverage to Codecov
+      # PROBE (#1748, not for merge): bisect the report content. Codecov keeps a
+      # state per upload, so each variant is its own named upload.
+      - name: "Probe: split the JaCoCo report into variants"
+        run: |
+          python3 - <<'PY'
+          import copy, xml.etree.ElementTree as ET
+          src = "android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml"
+          tree = ET.parse(src); root = tree.getroot()
+          pkgs = [p for p in root if p.tag == "package"]
+          def write(name, keep):
+              r = copy.deepcopy(root)
+              for p in [p for p in r if p.tag == "package"]:
+                  if p.get("name") not in keep:
+                      r.remove(p)
+              ET.ElementTree(r).write(f"probe-{name}.xml", encoding="UTF-8", xml_declaration=True)
+              print(name, len(keep), "packages")
+          names = [p.get("name") for p in pkgs]
+          half = len(names) // 2
+          write("full-reserialized", set(names))
+          write("first-half", set(names[:half]))
+          write("second-half", set(names[half:]))
+          with_lines = [p for p in pkgs if p.find("sourcefile/line") is not None]
+          small = min(with_lines, key=lambda p: len(p.findall("sourcefile")))
+          print("single package:", small.get("name"))
+          write("single", {small.get("name")})
+          PY
+
+      - name: "Probe upload: full report (control)"
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml
           flags: android
+          name: probe-full
           fail_ci_if_error: false
           disable_search: true
           verbose: true
-          use_legacy_upload_endpoint: true
+
+      - name: "Probe upload: full report re-serialized (no DOCTYPE)"
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: probe-full-reserialized.xml
+          flags: android
+          name: probe-full-reserialized
+          fail_ci_if_error: false
+          disable_search: true
+          verbose: true
+
+      - name: "Probe upload: first half of packages"
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: probe-first-half.xml
+          flags: android
+          name: probe-first-half
+          fail_ci_if_error: false
+          disable_search: true
+          verbose: true
+
+      - name: "Probe upload: second half of packages"
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: probe-second-half.xml
+          flags: android
+          name: probe-second-half
+          fail_ci_if_error: false
+          disable_search: true
+          verbose: true
+
+      - name: "Probe upload: single small package"
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: probe-single.xml
+          flags: android
+          name: probe-single
+          fail_ci_if_error: false
+          disable_search: true
+          verbose: true
 
       # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
       # cross-compiled from backend/ at the same commit and packaged as
