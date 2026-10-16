@@ -1,4 +1,5 @@
 package com.mycorrhizal.crm
+// Codecov Android upload probe: comment-only change on a throwaway PR (not for merge).
 
 import android.content.Context
 import android.content.Intent
