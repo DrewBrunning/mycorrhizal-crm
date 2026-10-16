@@ -135,6 +135,14 @@ jobs:
         working-directory: backend
         run: go run ./cmd/citecheck
 
+      # Issue #939's census gate compares every stated level claim / count
+      # with the checklists. It is a Go test, so it otherwise ran only in the
+      # path-filtered backend legs: an Android+docs PR (#1744) flipped a MASVS
+      # row, skipped them, and broke main (#1747). Run it here unconditionally.
+      - name: Verify ASVS/MASVS claims match the checklist census
+        working-directory: backend
+        run: go test ./cmd/citecheck -run '^TestVerificationReportClaimsMatchCensus$' -count=1
+
       # COMPAT-03 (#474): the dependency-advisory exception ledger promises a
       # fix/renewal before its `expires` date. Unconditional like citecheck
       # above (and every check below) so an expired exception surfaces even
