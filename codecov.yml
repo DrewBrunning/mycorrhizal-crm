@@ -121,6 +121,16 @@ flags:
     paths:
       - android/
     carryforward: true
+  # Comparison-only: the raw JaCoCo XML, uploaded beside the gating `android`
+  # flag (which is lcov converted from the same report, cmd/jacoco2lcov)
+  # while Codecov's JaCoCo processing errors (PR #1748). Deliberately in no
+  # coverage.status.patch area, so it can never gate a merge; no
+  # carryforward, so a stale number can't pose as a fresh one. Remove it with
+  # android-tests.yml's JaCoCo upload step once the comparison is done.
+  android-jacoco:
+    paths:
+      - android/
+    carryforward: false
 
 comment:
   layout: "reach, diff, flags, files"
