@@ -612,6 +612,20 @@ func countStatuses(rows []controlRow) map[string]int {
 	return counts
 }
 
+// l1Rows drops the MASVS rows tagged "(L2)" in their ID column. Those are
+// satisfied-or-partial as a documented bonus, not part of the MASVS-L1 level
+// claim (masvs-l1.md "Level claimed", P6), so a `partial` L2 row is not an
+// L1 exception — but it still counts in the report's all-rows census.
+func l1Rows(rows []controlRow) []controlRow {
+	var out []controlRow
+	for _, r := range rows {
+		if !strings.HasSuffix(r.id, "(L2)") {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // readReportFile reads a repo-relative file as a string, failing the test if it
 // cannot be read.
 func readReportFile(t *testing.T, root, rel string) string {
@@ -655,7 +669,9 @@ func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 	}
 
 	asvs := countStatuses(parseControlRows(strings.Split(readReportFile(t, root, "docs/security/asvs-l2.md"), "\n")))
-	masvs := countStatuses(parseControlRows(strings.Split(readReportFile(t, root, "docs/security/masvs-l1.md"), "\n")))
+	masvsRows := parseControlRows(strings.Split(readReportFile(t, root, "docs/security/masvs-l1.md"), "\n"))
+	masvs := countStatuses(masvsRows)
+	masvsL1 := countStatuses(l1Rows(masvsRows))
 	report := readReportFile(t, root, "docs/security/asvs-l2-verification-report.md")
 	asvsHeader := readReportFile(t, root, "docs/security/asvs-l2.md")
 	masvsHeader := readReportFile(t, root, "docs/security/masvs-l1.md")
@@ -670,7 +686,9 @@ func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 		what  string
 	}{
 		{"asvs-l2.md Level claimed", asvsHeader, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
-		{"masvs-l1.md Level claimed", masvsHeader, `MASVS-L1 with (\d+) documented exception`, 1, masvs["partial"], "MASVS partial"},
+		{"masvs-l1.md Level claimed", masvsHeader, `MASVS-L1 with (\d+) documented exception`, 1, masvsL1["partial"], "MASVS-L1 partial"},
+		{"report MASVS claim", report, `MASVS-L1, with (\d+) documented exception`, 1, masvsL1["partial"], "MASVS-L1 partial"},
+		{"report §7 MASVS heading", report, "The (\\d+) MASVS `partial` row", 1, masvsL1["partial"], "MASVS-L1 partial"},
 		{"report claim", report, `ASVS Level 2, with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
 		{"report §7 heading", report, "The (\\d+) ASVS `partial` rows", 1, asvs["partial"], "ASVS partial"},
 		{"report claim satisfied count", report, `(\d+) of \d+ ASVS control rows are ` + "`satisfied`", 1, asvs["satisfied"], "ASVS satisfied"},
@@ -678,8 +696,10 @@ func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 		{"report census ASVS total satisfied", report, `\*\*ASVS total\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["satisfied"], "ASVS satisfied"},
 		{"report census ASVS total partial", report, `\*\*ASVS total\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["partial"], "ASVS partial"},
 		{"report census ASVS total not-applicable", report, `\*\*ASVS total\*\* \| \*\*\d+\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["not-applicable"], "ASVS not-applicable"},
+		{"report census MASVS total satisfied", report, `\*\*MASVS total\*\* \| \*\*(\d+)\*\* \|`, 1, masvs["satisfied"], "MASVS satisfied"},
 		{"report census MASVS total partial", report, `\*\*MASVS total\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, masvs["partial"], "MASVS partial"},
 		{"CLAUDE.md level claim", claude, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
+		{"CLAUDE.md MASVS level claim", claude, `MASVS-L1 with (\d+)\*\*`, 1, masvsL1["partial"], "MASVS-L1 partial"},
 	}
 	for _, c := range checks {
 		if got := declaredCount(t, c.body, c.re, c.group, c.where); got != c.want {
