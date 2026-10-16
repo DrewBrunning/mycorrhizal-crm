@@ -231,42 +231,54 @@ jobs:
           small = min(with_lines, key=lambda p: len(p.findall("sourcefile")))
           print("single package:", small.get("name"))
           write("single", {small.get("name")})
+
+          # Step 6: JaCoCo -> lcov, resolving package/File.kt to a repo path.
+          import subprocess, collections
+          tracked = subprocess.run(["git", "ls-files", "*.kt", "*.java"], capture_output=True, text=True, check=True).stdout.split()
+          by_suffix = collections.defaultdict(list)
+          for f in tracked:
+              parts = f.split("/")
+              for i in range(len(parts)):
+                  by_suffix["/".join(parts[i:])].append(f)
+          def to_lcov(xml_path, out_path):
+              r = ET.parse(xml_path).getroot(); n = skipped = 0
+              with open(out_path, "w") as out:
+                  for pk in r.iter("package"):
+                      for sf in pk.findall("sourcefile"):
+                          m = by_suffix.get(pk.get("name") + "/" + sf.get("name"), [])
+                          lines = sf.findall("line")
+                          if len(m) != 1 or not lines:
+                              skipped += 1; continue
+                          out.write(f"SF:{m[0]}\n")
+                          for ln in lines:
+                              out.write(f"DA:{ln.get('nr')},{1 if int(ln.get('ci')) > 0 else 0}\n")
+                          out.write("end_of_record\n"); n += 1
+              print(out_path, "files:", n, "skipped:", skipped)
+          to_lcov("probe-single.xml", "probe-single.lcov")
+          to_lcov(src, "probe-full.lcov")
           PY
 
-      - name: "Probe upload: single package, new flag androidprobe"
+      - name: "Probe upload: single package as lcov"
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-single.xml
-          flags: androidprobe
-          name: probe-newflag
+          files: probe-single.lcov
+          flags: android
+          name: probe-single-lcov
           fail_ci_if_error: false
           disable_search: true
           verbose: true
 
-      - name: "Probe upload: single package, network_filter android/"
+      - name: "Probe upload: full report as lcov"
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-single.xml
+          files: probe-full.lcov
           flags: android
-          name: probe-netfilter
+          name: probe-full-lcov
           fail_ci_if_error: false
           disable_search: true
           verbose: true
-          network_filter: android/
-
-      - name: "Probe upload: single package, disable_file_fixes"
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-single.xml
-          flags: android
-          name: probe-nofilefixes
-          fail_ci_if_error: false
-          disable_search: true
-          verbose: true
-          disable_file_fixes: true
 
       # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
       # cross-compiled from backend/ at the same commit and packaged as
