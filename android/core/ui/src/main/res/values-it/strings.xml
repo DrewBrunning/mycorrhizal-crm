@@ -531,6 +531,10 @@
     <string name="settings_local_auth">Blocco dell\'app</string>
     <string name="settings_local_auth_enable">Richiedi impronta, volto o PIN del dispositivo per aprire l\'app</string>
     <string name="settings_local_auth_enable_hint">All\'apertura dell\'app, o dopo un po\' in background, sblocca con impronta, volto o PIN del dispositivo prima di mostrare i tuoi contatti.</string>
+    <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
+    <string name="settings_block_screenshots">Blocca screenshot e registrazione dello schermo</string>
+    <string name="settings_block_screenshots_hint">Nasconde anche questa app nella vista delle app recenti su tutte le versioni di Android.</string>
+    <string name="settings_block_screenshots_hint_legacy">Su questa versione di Android, l\'anteprima nelle app recenti è nascosta solo quando questa opzione è attiva.</string>
     <string name="settings_local_auth_delay">Blocca automaticamente dopo</string>
     <string name="settings_local_auth_delay_immediately">Immediatamente</string>
     <string name="settings_local_auth_delay_1m">1 minuto</string>

@@ -531,6 +531,10 @@
     <string name="settings_local_auth">App-Sperre</string>
     <string name="settings_local_auth_enable">Biometrie oder Geräte-PIN zum Öffnen der App verlangen</string>
     <string name="settings_local_auth_enable_hint">Beim Öffnen der App, oder nachdem sie eine Weile im Hintergrund war, mit Fingerabdruck, Gesicht oder Geräte-PIN entsperren, bevor deine Kontakte angezeigt werden.</string>
+    <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
+    <string name="settings_block_screenshots">Screenshots und Bildschirmaufnahmen blockieren</string>
+    <string name="settings_block_screenshots_hint">Blendet diese App außerdem in der Übersicht der zuletzt verwendeten Apps auf allen Android-Versionen aus.</string>
+    <string name="settings_block_screenshots_hint_legacy">Unter dieser Android-Version wird die Vorschau in der App-Übersicht nur verborgen, solange dies aktiviert ist.</string>
     <string name="settings_local_auth_delay">Automatisch sperren nach</string>
     <string name="settings_local_auth_delay_immediately">Sofort</string>
     <string name="settings_local_auth_delay_1m">1 Minute</string>

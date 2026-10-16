@@ -82,6 +82,8 @@ data class SettingsUiState(
     // Issue #722: the opt-in local app lock.
     val requireLocalAuth: Boolean = false,
     val autoLockDelay: AutoLockDelay = AutoLockDelay.DEFAULT,
+    // Issue #1741: opt-in FLAG_SECURE (block screenshots / screen recording). Device-local.
+    val blockScreenshots: Boolean = false,
     /** Whether the device can currently satisfy the local gate (strong biometric or secure lock screen). */
     val localAuthSupported: Boolean = true,
     // Issue #722: fully biometric login — enrollment state + in-flight flags.
@@ -174,6 +176,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             localAuthSettings.requireLocalAuth().collect { enabled ->
                 _uiState.update { it.copy(requireLocalAuth = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            localAuthSettings.blockScreenshots().collect { enabled ->
+                _uiState.update { it.copy(blockScreenshots = enabled) }
             }
         }
         viewModelScope.launch {
@@ -330,6 +337,12 @@ class SettingsViewModel @Inject constructor(
         if (enabled && !_uiState.value.localAuthSupported) return
         _uiState.update { it.copy(requireLocalAuth = enabled) }
         viewModelScope.launch { localAuthSettings.setRequireLocalAuth(enabled) }
+    }
+
+    /** Issue #1741: opt in/out of FLAG_SECURE; MainActivity observes the stored value live. */
+    fun setBlockScreenshots(enabled: Boolean) {
+        _uiState.update { it.copy(blockScreenshots = enabled) }
+        viewModelScope.launch { localAuthSettings.setBlockScreenshots(enabled) }
     }
 
     /** Change how long the app may sit in the background before re-locking. */

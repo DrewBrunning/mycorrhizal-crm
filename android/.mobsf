@@ -26,10 +26,20 @@ ignore-rules:
   # (SafetyNet is deprecated; root detection would punish the self-hosted
   # audience, who overlap heavily with legitimate rooted-device users).
   #
-  # android_prevent_screenshot and android_detect_tapjacking/android_tapjacking
-  # are deliberately NOT in this ignore-list any more — issue #507 reversed
-  # both (MainActivity.kt: FLAG_SECURE + filterTouchesWhenObscured), so mobsf
-  # should flag their absence if they ever regress.
+  # android_detect_tapjacking/android_tapjacking are deliberately NOT in this
+  # ignore-list — issue #507 reversed them (MainActivity.kt:
+  # filterTouchesWhenObscured, unconditional), so mobsf should flag their
+  # absence if they ever regress.
+  #
+  # android_prevent_screenshot is ignored again (issue #1741): FLAG_SECURE is
+  # now an opt-in, device-local "Block screenshots and screen recording"
+  # setting (default off) rather than unconditional, so the rule's "FLAG_SECURE
+  # not set unconditionally" finding is by design. The recents thumbnail is
+  # blanked separately via setRecentsScreenshotEnabled(false) on API 33+; the
+  # API < 33 residual risk is the accepted position recorded in
+  # docs/security/masvs-l1.md P6 and STORAGE-9, and
+  # docs/security/threat-model.md gating decision 3.
+  - android_prevent_screenshot
   - android_certificate_pinning
   - android_certificate_transparency
   - android_ssl_pinning

@@ -523,6 +523,7 @@ class SettingsScreenTest {
         coEvery { trackingSettings.includeUnknownNumbers() } returns false
         coEvery { trackingSettings.filteredUnknownCount() } returns 0
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
+        every { localAuthSettings.blockScreenshots() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
@@ -741,6 +742,28 @@ class SettingsScreenTest {
 
         composeTestRule.onNodeWithText("Log unknown numbers too").performScrollTo().performClick()
         assertEquals(true, changed)
+    }
+
+    // --- Issue #1741: opt-in screenshot / screen-recording block -----------
+
+    @Test
+    fun `the block-screenshots toggle shows its hint and invokes its callback`() {
+        var changed: Boolean? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(blockScreenshots = false),
+                    onBlockScreenshotsChange = { changed = it },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Block screenshots and screen recording").performScrollTo().performClick()
+        assertEquals(true, changed)
+        composeTestRule
+            .onNodeWithText("Also hides this app in the recent-apps view on all Android versions.", substring = true)
+            .assertExists()
     }
 
     @Test

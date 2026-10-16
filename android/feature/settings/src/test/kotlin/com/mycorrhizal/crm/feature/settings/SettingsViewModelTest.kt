@@ -85,6 +85,7 @@ class SettingsViewModelTest {
         every { authRepository.observeSession() } returns MutableStateFlow(session)
         coEvery { appSettings.themePreference() } returns flowOf(themePreference)
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
+        every { localAuthSettings.blockScreenshots() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
@@ -671,6 +672,21 @@ class SettingsViewModelTest {
         assertEquals(R.string.biometric_enroll_error, vm.uiState.value.biometricErrorRes)
         assertFalse(vm.uiState.value.isBiometricBusy)
     }
+
+    @Test
+    fun `block screenshots defaults to off and setting it persists device-locally`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setBlockScreenshots(any()) } returns Unit
+            val vm = viewModel()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.blockScreenshots)
+
+            vm.setBlockScreenshots(true)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.blockScreenshots)
+            coVerify { localAuthSettings.setBlockScreenshots(true) }
+        }
 
     @Test
     fun `removing biometric sign-in calls the device grant manager`() = runTest(mainDispatcherRule.testDispatcher) {

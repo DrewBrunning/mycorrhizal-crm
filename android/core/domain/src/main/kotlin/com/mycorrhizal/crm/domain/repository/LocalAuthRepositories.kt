@@ -55,6 +55,15 @@ interface LocalAuthSettingsRepository {
     fun biometricEnrollmentStatus(): Flow<BiometricEnrollmentStatus>
 
     suspend fun setBiometricEnrollmentStatus(status: BiometricEnrollmentStatus)
+
+    /**
+     * Issue #1741: whether the window is flagged `FLAG_SECURE` (blocks screenshots
+     * and screen recording; also hides the recent-apps preview on every Android
+     * version). Opt-in, default `false`; a property of this device, never synced.
+     */
+    fun blockScreenshots(): Flow<Boolean>
+
+    suspend fun setBlockScreenshots(enabled: Boolean)
 }
 
 /**

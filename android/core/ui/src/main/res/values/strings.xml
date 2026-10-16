@@ -565,6 +565,10 @@
     <string name="settings_local_auth">App lock</string>
     <string name="settings_local_auth_enable">Require biometric or device PIN to open the app</string>
     <string name="settings_local_auth_enable_hint">When the app opens, or after it has been in the background for a while, unlock with your fingerprint, face or device PIN before your contacts are shown.</string>
+    <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
+    <string name="settings_block_screenshots">Block screenshots and screen recording</string>
+    <string name="settings_block_screenshots_hint">Also hides this app in the recent-apps view on all Android versions.</string>
+    <string name="settings_block_screenshots_hint_legacy">On this Android version, the recent-apps preview is only hidden while this is on.</string>
     <string name="settings_local_auth_delay">Lock automatically after</string>
     <string name="settings_local_auth_delay_immediately">Immediately</string>
     <string name="settings_local_auth_delay_1m">1 minute</string>

@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.settings
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -246,6 +247,7 @@ fun SettingsScreen(
             onIncludeUnknownChange = viewModel::setIncludeUnknownNumbers,
             onRequireLocalAuthChange = viewModel::setRequireLocalAuth,
             onAutoLockDelayChange = viewModel::setAutoLockDelay,
+            onBlockScreenshotsChange = viewModel::setBlockScreenshots,
             onEnrollBiometricSignIn = viewModel::enrollBiometricSignIn,
             onRemoveBiometricSignIn = viewModel::removeBiometricSignIn,
             onPermissionDialogDismiss = viewModel::onPermissionDialogDismiss,
@@ -307,6 +309,8 @@ fun SettingsContent(
     // Issue #722: the opt-in local app lock.
     onRequireLocalAuthChange: (Boolean) -> Unit = {},
     onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
+    // Issue #1741: opt-in FLAG_SECURE.
+    onBlockScreenshotsChange: (Boolean) -> Unit = {},
     // Issue #722: fully biometric login.
     onEnrollBiometricSignIn: () -> Unit = {},
     onRemoveBiometricSignIn: () -> Unit = {},
@@ -586,6 +590,25 @@ fun SettingsContent(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
         }
+
+        // Issue #1741: opt-in screenshot / screen-recording block (FLAG_SECURE).
+        // Default off. The recent-apps preview is blanked on API 33+ regardless;
+        // below that this switch is the only thing hiding it.
+        ToggleRow(
+            label = stringResource(R.string.settings_block_screenshots),
+            checked = state.blockScreenshots,
+            onCheckedChange = onBlockScreenshotsChange,
+        )
+        Text(
+            text = stringResource(R.string.settings_block_screenshots_hint) +
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    " " + stringResource(R.string.settings_block_screenshots_hint_legacy)
+                } else {
+                    ""
+                },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         HorizontalDivider()
 

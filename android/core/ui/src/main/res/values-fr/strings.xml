@@ -531,6 +531,10 @@
     <string name="settings_local_auth">Verrouillage de l\'app</string>
     <string name="settings_local_auth_enable">Exiger la biométrie ou le code PIN de l\'appareil pour ouvrir l\'application</string>
     <string name="settings_local_auth_enable_hint">À l\'ouverture de l\'application, ou après un passage en arrière-plan, déverrouillez avec votre empreinte, visage ou code PIN avant que vos contacts ne soient affichés.</string>
+    <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
+    <string name="settings_block_screenshots">Bloquer les captures d\'écran et l\'enregistrement de l\'écran</string>
+    <string name="settings_block_screenshots_hint">Masque aussi cette application dans la vue des applications récentes sur toutes les versions d\'Android.</string>
+    <string name="settings_block_screenshots_hint_legacy">Sur cette version d\'Android, l\'aperçu des applications récentes n\'est masqué que lorsque cette option est activée.</string>
     <string name="settings_local_auth_delay">Verrouiller automatiquement après</string>
     <string name="settings_local_auth_delay_immediately">Immédiatement</string>
     <string name="settings_local_auth_delay_1m">1 minute</string>

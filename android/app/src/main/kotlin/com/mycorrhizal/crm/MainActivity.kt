@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.SystemBarStyle
@@ -34,14 +35,16 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Issue #1740: FLAG_SECURE is applied in release (and benchmark) builds only;
- * debug builds allow screenshots. Pure so the release behaviour is pinned by a
- * JVM unit test even though the instrumented suite runs the debug variant.
+ * Issue #1741: FLAG_SECURE is governed solely by the opt-in, device-local
+ * "Block screenshots and screen recording" setting, in every build type (the
+ * #1740 debug-build exemption is gone). Kept as a named pure function so the
+ * policy is pinned by a JVM unit test.
  */
-internal fun shouldSetFlagSecure(isDebugBuild: Boolean): Boolean = !isDebugBuild
+internal fun shouldSetFlagSecure(blockScreenshotsSetting: Boolean): Boolean = blockScreenshotsSetting
 
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
     android.graphics.Color.argb(
@@ -141,26 +144,53 @@ class MainActivity : FragmentActivity() {
         super.attachBaseContext(LocaleContextWrapper.wrap(newBase, AppLocale.languageTag))
     }
 
+    /**
+     * Test seam (issue #1741): `Activity` has no getter for
+     * `setRecentsScreenshotEnabled`, so record that `onCreate` made the call
+     * (API 33+ only; stays false below that).
+     */
+    internal var recentsScreenshotDisabled: Boolean = false
+        private set
+
+    private fun applyFlagSecure(enabled: Boolean) {
+        if (enabled) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // T106: must precede super.onCreate() -- required by the library, not stylistic.
         installSplashScreen()
         super.onCreate(savedInstanceState)
         lastConsumedLaunchIdentity = savedInstanceState?.getString(STATE_CONSUMED_LAUNCH_IDENTITY)
 
-        // Issue #507 (MASVS-L2 resilience re-evaluation): every screen in this
-        // single-Activity app renders relationship PII, so both are applied
-        // applied once here rather than per-screen.
+        // Issue #507 (MASVS-L2 resilience re-evaluation), reshaped by #1741:
+        // every screen in this single-Activity app renders relationship PII.
         //
-        // FLAG_SECURE blocks screenshots/screen recording and blanks the
-        // recent-apps thumbnail — the thumbnail case is the concrete threat
-        // (anyone with a moment's physical access to an unlocked phone can
-        // open the app switcher without unlocking the app itself). Reverses
-        // masvs-l1.md P3 for android_prevent_screenshot; see that file (P6) and
-        // threat-model.md gating decision 3 for the full cost/benefit writeup.
-        // Issue #1740: release (non-debuggable) builds only — debug builds are
-        // never distributed and need screenshots for the UX audit (#1718).
-        if (shouldSetFlagSecure(BuildConfig.DEBUG)) {
-            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // The recent-apps thumbnail is the concrete threat (anyone with a
+        // moment's physical access to an unlocked phone can open the app
+        // switcher without unlocking the app itself). On API 33+
+        // setRecentsScreenshotEnabled(false) blanks it WITHOUT blocking
+        // screenshots, so it is applied always, in every build type.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setRecentsScreenshotEnabled(false)
+            recentsScreenshotDisabled = true
+        }
+
+        // FLAG_SECURE (blocks screenshots/screen recording and, on every API
+        // level, the recent-apps preview) is an opt-in, device-local setting
+        // (masvs-l1.md P6). Read it synchronously from the DataStore before the
+        // first frame so a user who turned it on never sees one unprotected
+        // frame on cold start, then follow later changes live.
+        applyFlagSecure(
+            shouldSetFlagSecure(
+                kotlinx.coroutines.runBlocking { localAuthSettings.blockScreenshots().first() },
+            ),
+        )
+        lifecycleScope.launch {
+            localAuthSettings.blockScreenshots().collect { applyFlagSecure(shouldSetFlagSecure(it)) }
         }
 
         // filterTouchesWhenObscured rejects touches while another app's window

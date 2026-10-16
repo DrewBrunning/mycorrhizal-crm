@@ -31,6 +31,7 @@ class LocalAuthSettingsRepositoryImplTest {
         // the backing file (see TrackingSettingsRepositoryImplTest).
         repository.setRequireLocalAuth(false)
         repository.setAutoLockDelay(AutoLockDelay.DEFAULT)
+        repository.setBlockScreenshots(false)
     }
 
     @Test
@@ -78,5 +79,19 @@ class LocalAuthSettingsRepositoryImplTest {
 
         repository.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT)
         assertEquals(BiometricEnrollmentStatus.OPTED_OUT, repository.biometricEnrollmentStatus().first())
+    }
+
+    @Test
+    fun `blockScreenshots defaults to off`() = runTest {
+        assertFalse(repository.blockScreenshots().first())
+    }
+
+    @Test
+    fun `setBlockScreenshots persists the value`() = runTest {
+        repository.setBlockScreenshots(true)
+        assertTrue(repository.blockScreenshots().first())
+
+        repository.setBlockScreenshots(false)
+        assertFalse(repository.blockScreenshots().first())
     }
 }

@@ -315,10 +315,15 @@ two kept declined, two reversed.** All four were re-examined individually agains
   already covered by data-at-rest controls (SQLCipher Room mirror, Keystore session token) that hold
   regardless of root status. Blocking on root would punish this project's own audience for a threat
   it doesn't add protection against. SafetyNet is additionally deprecated.
-- **Screenshot prevention — reversed** (`masvs-l1.md` P6, MSTG-STORAGE-9). Every screen renders
-  relationship PII; the recent-apps thumbnail is a concrete, zero-sophistication disclosure vector
-  (anyone with a moment's access to an unlocked-but-idle phone). `MainActivity` now sets
-  `FLAG_SECURE` in release builds (debug builds are exempt, issue #1740).
+- **Screenshot prevention — reversed, then reshaped to opt-in** (`masvs-l1.md` P6, MSTG-STORAGE-9;
+  issue #1741). Every screen renders relationship PII; the recent-apps thumbnail is a concrete,
+  zero-sophistication disclosure vector (anyone with a moment's access to an unlocked-but-idle phone).
+  The original unconditional `FLAG_SECURE` (#507) also blocked screenshots and screen recording, a cost
+  larger than first assumed. `MainActivity` now always blanks the thumbnail on API 33+ via
+  `setRecentsScreenshotEnabled(false)` (no screenshot block), and sets `FLAG_SECURE` only when the user
+  opts in to the device-local "Block screenshots and screen recording" setting (default off). Accepted
+  residual risk: on API 26-32 with the setting off the thumbnail shows app content; mitigated by the
+  opt-in app lock (P7) and the setting itself.
 - **Tapjacking protection — reversed** (`masvs-l1.md` P6, MSTG-PLATFORM-9). Near-zero cost —
   `filterTouchesWhenObscured` only changes behavior when an overlay is actually present — against a
   real actor class (malicious overlay apps tricking a tap on a destructive confirmation). `MainActivity`
