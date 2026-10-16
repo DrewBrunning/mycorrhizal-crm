@@ -233,60 +233,40 @@ jobs:
           write("single", {small.get("name")})
           PY
 
-      - name: "Probe upload: full report (control)"
+      - name: "Probe upload: single package, new flag androidprobe"
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml
-          flags: android
-          name: probe-full
+          files: probe-single.xml
+          flags: androidprobe
+          name: probe-newflag
           fail_ci_if_error: false
           disable_search: true
           verbose: true
 
-      - name: "Probe upload: full report re-serialized (no DOCTYPE)"
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-full-reserialized.xml
-          flags: android
-          name: probe-full-reserialized
-          fail_ci_if_error: false
-          disable_search: true
-          verbose: true
-
-      - name: "Probe upload: first half of packages"
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-first-half.xml
-          flags: android
-          name: probe-first-half
-          fail_ci_if_error: false
-          disable_search: true
-          verbose: true
-
-      - name: "Probe upload: second half of packages"
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: probe-second-half.xml
-          flags: android
-          name: probe-second-half
-          fail_ci_if_error: false
-          disable_search: true
-          verbose: true
-
-      - name: "Probe upload: single small package"
+      - name: "Probe upload: single package, network_filter android/"
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: probe-single.xml
           flags: android
-          name: probe-single
+          name: probe-netfilter
           fail_ci_if_error: false
           disable_search: true
           verbose: true
+          network_filter: android/
+
+      - name: "Probe upload: single package, disable_file_fixes"
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: probe-single.xml
+          flags: android
+          name: probe-nofilefixes
+          fail_ci_if_error: false
+          disable_search: true
+          verbose: true
+          disable_file_fixes: true
 
       # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
       # cross-compiled from backend/ at the same commit and packaged as
