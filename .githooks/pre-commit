@@ -151,6 +151,7 @@ fi
 echo ""
 echo "${BOLD}## Docs & governance checks (always — CI runs these unconditionally too)${RESET}"
 run "citecheck (security-doc citations)" backend go run ./cmd/citecheck
+run "citecheck census (ASVS/MASVS claims match checklists, issue #1747)" backend go test ./cmd/citecheck -run '^TestVerificationReportClaimsMatchCensus$' -count=1
 run "depexceptions (dependency-exception ledger)" backend go run ./cmd/depexceptions
 run "deprecations (deprecation register)" backend go run ./cmd/deprecations
 run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
