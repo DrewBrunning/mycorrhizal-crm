@@ -233,7 +233,8 @@ evidence, is the exact failure mode that motivated this doc's own
 
 Since 2026-10-16, Codecov's processing has ended every JaCoCo upload for this
 repository in upload state `error`, with no detail and no incident on its
-status page. A commit with no processed upload gets no `codecov/patch/*`
+status page (reported upstream as
+[codecov/feedback#988](https://github.com/codecov/feedback/issues/988)). A commit with no processed upload gets no `codecov/patch/*`
 check runs, so every Android-only PR sat waiting for `codecov/patch/android`
 and needed a bypass (#1742, #1744). The probe in PR #1748 isolated it to the
 format: a 13 KB single-package JaCoCo report errors under any flag, network

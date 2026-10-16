@@ -207,7 +207,8 @@ jobs:
         run: go run ./cmd/androidcoverageratchet
 
       # Codecov's processing has ended every JaCoCo upload for this repo in
-      # state `error` since 2026-10-16 (PR #1748 isolated it to the format),
+      # state `error` since 2026-10-16 (PR #1748 isolated it to the format;
+      # upstream codecov/feedback#988),
       # so codecov/patch/android never reported. The gating `android` flag
       # is therefore uploaded as lcov converted from the same JaCoCo report
       # (internal/jacocolcov has the rules); the converter's JaCoCo-vs-lcov
