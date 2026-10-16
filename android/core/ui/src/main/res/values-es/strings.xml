@@ -531,6 +531,10 @@
     <string name="settings_local_auth">Bloqueo de la app</string>
     <string name="settings_local_auth_enable">Exigir biometría o PIN del dispositivo para abrir la app</string>
     <string name="settings_local_auth_enable_hint">Al abrir la app, o después de estar un rato en segundo plano, desbloquéala con tu huella, rostro o PIN del dispositivo antes de mostrar tus contactos.</string>
+    <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
+    <string name="settings_block_screenshots">Bloquear capturas y grabación de pantalla</string>
+    <string name="settings_block_screenshots_hint">También oculta esta app en la vista de apps recientes en todas las versiones de Android.</string>
+    <string name="settings_block_screenshots_hint_legacy">En esta versión de Android, la vista previa en apps recientes solo se oculta mientras esto esté activado.</string>
     <string name="settings_local_auth_delay">Bloquear automáticamente después de</string>
     <string name="settings_local_auth_delay_immediately">Inmediatamente</string>
     <string name="settings_local_auth_delay_1m">1 minuto</string>

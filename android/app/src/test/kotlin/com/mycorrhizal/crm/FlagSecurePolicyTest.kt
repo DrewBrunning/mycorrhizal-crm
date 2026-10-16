@@ -5,17 +5,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Issue #1740: pins the release behaviour of FLAG_SECURE (masvs-l1.md P6) even
- * though the instrumented suite only ever runs the debug variant.
+ * Issue #1741: FLAG_SECURE follows the opt-in "Block screenshots and screen
+ * recording" setting exactly, in every build type (masvs-l1.md P6).
  */
 class FlagSecurePolicyTest {
     @Test
-    fun releaseBuildsSetFlagSecure() {
-        assertTrue(shouldSetFlagSecure(isDebugBuild = false))
+    fun settingOnSetsFlagSecure() {
+        assertTrue(shouldSetFlagSecure(blockScreenshotsSetting = true))
     }
 
     @Test
-    fun debugBuildsAllowScreenshots() {
-        assertFalse(shouldSetFlagSecure(isDebugBuild = true))
+    fun settingOffAllowsScreenshots() {
+        assertFalse(shouldSetFlagSecure(blockScreenshotsSetting = false))
     }
 }

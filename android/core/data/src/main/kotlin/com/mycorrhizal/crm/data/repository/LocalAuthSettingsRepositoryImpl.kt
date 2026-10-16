@@ -33,6 +33,7 @@ class LocalAuthSettingsRepositoryImpl @Inject constructor(
     private val requireLocalAuthKey = booleanPreferencesKey("require_local_auth")
     private val autoLockDelayMinutesKey = longPreferencesKey("auto_lock_delay_minutes")
     private val enrollmentStatusKey = stringPreferencesKey("biometric_enrollment_status")
+    private val blockScreenshotsKey = booleanPreferencesKey("block_screenshots")
 
     override fun requireLocalAuth(): Flow<Boolean> =
         context.localAuthDataStore.data.map { it[requireLocalAuthKey] ?: false }
@@ -57,5 +58,12 @@ class LocalAuthSettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setBiometricEnrollmentStatus(status: BiometricEnrollmentStatus) {
         context.localAuthDataStore.edit { it[enrollmentStatusKey] = status.name }
+    }
+
+    override fun blockScreenshots(): Flow<Boolean> =
+        context.localAuthDataStore.data.map { it[blockScreenshotsKey] ?: false }
+
+    override suspend fun setBlockScreenshots(enabled: Boolean) {
+        context.localAuthDataStore.edit { it[blockScreenshotsKey] = enabled }
     }
 }

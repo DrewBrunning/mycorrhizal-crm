@@ -38,6 +38,9 @@ class DefaultAppLockControllerTest {
         override suspend fun setBiometricEnrollmentStatus(status: BiometricEnrollmentStatus) {
             enrollment.value = status
         }
+        private val blockShots = MutableStateFlow(false)
+        override fun blockScreenshots(): Flow<Boolean> = blockShots
+        override suspend fun setBlockScreenshots(enabled: Boolean) { blockShots.value = enabled }
     }
 
     private class Harness(var now: Long = 0L) {

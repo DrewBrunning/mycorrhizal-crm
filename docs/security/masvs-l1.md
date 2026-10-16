@@ -134,40 +134,61 @@ the real app, which opens the encrypted DB through `DataModule`.
 (`core/data/.../Migrations.kt`, `Migration13To14Test.kt`) — compile-time SQL with no injection
 surface.
 
-### P6 — Screenshot prevention + tapjacking protection (resolved 2026-08-25, issue #507)
+### P6 — Screenshot prevention (opt-in, reshaped 2026-10-16 by issue #1741) + tapjacking protection (resolved 2026-08-25, issue #507)
 
-The other two of the four MASVS-L2 resilience items issue #507 asked to re-evaluate — **reversed**,
-not kept declined.
+The other two of the four MASVS-L2 resilience items issue #507 asked to re-evaluate. Tapjacking
+protection stays **reversed** (unconditional). Screenshot prevention was first adopted unconditionally
+(#507), then reshaped by issue #1741 into an **opt-in, device-local setting** (default off) once its
+cost proved larger than this position first assumed.
 
 **MSTG-STORAGE-9** ("the app removes sensitive data from views when moved to the background"):
 every screen in this single-Activity app renders relationship PII (contact records, personal notes,
 `secret`-sensitivity fields), so the concrete threat is the recent-apps thumbnail — anyone with brief
 physical access to an unlocked-but-idle phone can open the app switcher and read a contact's data
-without ever unlocking the app itself, no attacker sophistication required. **Cost:** the user can no
-longer screenshot or screen-record their own contact data — a real but narrow loss (sharing a contact
-card is already a first-class feature via the vCard share sheet, `AndroidManifest.xml#androidx.core.content.FileProvider`, so
-screenshotting isn't the only way to get data out). `MainActivity.onCreate` sets
-`WindowManager.LayoutParams.FLAG_SECURE` in release (non-debuggable) builds only (`MainActivity.kt`,
-via `shouldSetFlagSecure`, pinned by `FlagSecurePolicyTest`; debug builds are exempt for development
-and UX-audit screenshot evidence, issue #1740, and are never distributed), which also blocks
-screenshots and screen recording as a side effect of blanking the thumbnail — the same primitive
-covers both. **MSTG-PLATFORM-9** ("the app protects itself against screen overlay attacks"): a
+without ever unlocking the app itself, no attacker sophistication required. **Cost of the original
+unconditional `FLAG_SECURE`** (#507): it blanked the thumbnail but also blocked screenshots and screen
+recording as a side effect, so users could not screenshot their own data, screen sharing for support
+failed, Circle to Search and screenshot-based accessibility tools were blocked, and UX-audit evidence
+could not be collected (issue #1718; interim debug-build exemption #1740). **Current position (#1741):**
+
+- *Recents thumbnail, API 33+, always:* `MainActivity.onCreate` calls
+  `Activity.setRecentsScreenshotEnabled(false)` on API 33+ in every build type regardless of the setting.
+  That blanks the thumbnail **without** blocking screenshots.
+- *Opt-in `FLAG_SECURE`:* Settings -> App lock carries a switch "Block screenshots and screen
+  recording", **default off**, stored device-locally in `LocalAuthSettingsRepository` (never synced).
+  `MainActivity` reads the stored value synchronously before the first frame on cold start (so a user who
+  turned it on never gets one unprotected frame) and then sets/clears `FLAG_SECURE` live as the setting
+  changes (`shouldSetFlagSecure`, `MainActivity.kt`). When on, it blocks screenshots, screen recording,
+  and the recents preview on every Android version.
+- *Accepted residual risk:* on API 26-32 with the setting off (the default) the recents thumbnail shows
+  app content — there is no targeted API on those versions. Mitigations: the opt-in app lock (P7) and the
+  opt-in setting itself, whose supporting text tells API < 33 users the preview is only hidden while it
+  is on. Sharing a contact card remains a first-class feature via the vCard share sheet
+  (`AndroidManifest.xml#androidx.core.content.FileProvider`).
+
+**MSTG-PLATFORM-9** ("the app protects itself against screen overlay attacks"): a
 malicious overlay app could tapjack a user into confirming a destructive action (e.g. contact/account
 deletion) they can't see underneath the overlay. **Cost:** effectively none — `filterTouchesWhenObscured`
 only changes behavior when another window is actually drawn on top, which never happens during normal
 single-window use. `MainActivity.onCreate` sets `window.decorView.filterTouchesWhenObscured = true`
-(`MainActivity.kt`), which gates touch dispatch to the whole view tree from the decor view down — no
-per-screen wiring needed. Both reversed the earlier positions recorded in `.mobsf`/P3 above (mobsf's
-`android_prevent_screenshot` and `android_detect_tapjacking`/`android_tapjacking` ignore-rules were
-removed in the same change, so mobsfscan now asserts their presence rather than staying silent on
-them). Verified by the instrumented `ScreenResilienceTest`
-(`app/src/androidTest/.../security/ScreenResilienceTest.kt`, issue #238's suite) — a Robolectric JVM
-test's shadow `Window` doesn't model `FLAG_SECURE` or touch filtering, so this can only be verified on
-a real device/emulator. See `threat-model.md` gating decision 3 for the assurance-level consequence:
+(`MainActivity.kt`), unconditionally in every build type, which gates touch dispatch to the whole view
+tree from the decor view down — no per-screen wiring needed. The tapjacking ignore-rules
+(`android_detect_tapjacking`/`android_tapjacking`) were removed from `.mobsf` in the #507 change, so
+mobsfscan asserts their presence. The `android_prevent_screenshot` rule is **ignored again** in `.mobsf`
+(issue #1741) with a reason pointing here: the flag is no longer unconditional, so the scan would flag
+it by design.
+
+Verified by the instrumented `ScreenResilienceTest`
+(`app/src/androidTest/.../security/ScreenResilienceTest.kt`, issue #238's suite): flag absent with the
+setting off, present on cold start with it on, flips live when toggled, recents screenshots disabled on
+API 33+ in both cases, tapjacking flag set — plus the JVM `FlagSecurePolicyTest` and
+`LocalAuthSettingsRepositoryImplTest` (default off, persistence). A Robolectric JVM test's shadow
+`Window` doesn't model `FLAG_SECURE` or touch filtering, so the window behavior can only be verified on a
+real device/emulator. See `threat-model.md` gating decision 3 for the assurance-level consequence:
 this does **not** make MASVS-L2 claimable (root detection and certificate pinning above stay declined,
 and several other L2 rows — STORAGE-10/11/13/14/15, the entire V8 Resiliency chapter — remain
-out of scope) — the client's claimed target is still MASVS-L1, now with two L2 controls satisfied
-as a documented bonus rather than a level claim.
+out of scope) — the client's claimed target is still MASVS-L1, with L2 controls satisfied or partial as
+a documented bonus rather than a level claim.
 
 ### P7 — Opt-in local app lock: biometric / device-credential gate before a resumed session (issue #722)
 
@@ -251,7 +272,7 @@ source guard test in the same file's module, like the token/device-grant stores.
 L2-only, out of scope: STORAGE-8, STORAGE-10, STORAGE-11, STORAGE-13, STORAGE-14, STORAGE-15.
 (STORAGE-8 is met anyway — backups are disabled: `allowBackup="false"` and `data_extraction_rules` exclude
 every domain, `app/src/main/AndroidManifest.xml#android:allowBackup="false"`, `res/xml/data_extraction_rules.xml`. STORAGE-9 is
-L2 but satisfied — see the row below and P6.)
+L2 and `partial` (satisfied on API 33+) — see the row below and P6.)
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
@@ -262,7 +283,7 @@ L2 but satisfied — see the row below and P6.)
 | STORAGE-5 | Keyboard cache disabled on sensitive inputs | partial | Register / forgot-password / settings / users secret fields use `KeyboardType.Password` (the Android signal that disables IME personalized learning) alongside `PasswordVisualTransformation` — `feature/auth/.../RegisterScreen.kt#password`, `ForgotPasswordScreen.kt#confirmPassword`, `feature/settings/.../SettingsScreen.kt#activity`, and the GeoPulse API-token field (`feature/settings/.../GeoPulseSettingsScreen.kt#GeoPulseSettingsScreen`, issue #160 — the token is write-only: sent once, cleared from UI state on save, never read back or persisted on the device, `feature/settings/.../GeoPulseSettingsViewModel.kt#GeoPulseSettingsUiState`). **Gap:** the login screen's password field (`feature/auth/.../LoginScreen.kt#twoFactorCode`) masks via `PasswordVisualTransformation` + autofill `ContentType.Password` but keeps default keyboard options — no `KeyboardType.Password` on the one field where a password is typed most often. |
 | STORAGE-6 | No sensitive data exposed via IPC | satisfied | The only exported components are system-driven: `MainActivity` (launcher + OIDC deep link + the public navigation-only `mycorrhizal://` deep-link filter, issue #1269 / ADR 0029 §2 — six explicit hosts, no scheme-only filter, `AndroidManifest.xml#android:scheme="mycorrhizal"`; pinned by `NotificationDeepLinkRouteTest` `the manifest resolves allowed deep-link hosts to MainActivity and nothing else`) and the `PHONE_STATE`/`SMS_RECEIVED` receivers (the latter guarded by `android.permission.BROADCAST_SMS`); and, for share-to-CRM (issue #1271 / ADR 0029 §6), a second `MainActivity` filter for `ACTION_SEND` `text/plain` only — no `text/vcard`/image/stream, no permission implied; it only ever *prefills* a note draft (pinned by `NotificationDeepLinkRouteTest` `the manifest offers ACTION_SEND text plain to MainActivity only`). Everything else is `exported="false"` (`AndroidManifest.xml#android:scheme="mycorrhizal"`, `AndroidManifest.xml#com.google.firebase.MESSAGING_EVENT`). The FileProvider is `exported="false"` with per-URI grants (`:80-81`). |
 | STORAGE-7 | No sensitive data exposed via UI | satisfied | Passwords are masked via `PasswordVisualTransformation` on all secret fields (see STORAGE-5 citations); no secret is rendered readably. |
-| STORAGE-9 (L2) | App removes sensitive data from views when backgrounded | satisfied | `MainActivity.onCreate` sets `WindowManager.LayoutParams.FLAG_SECURE` in release builds (`shouldSetFlagSecure`; debug builds are exempt for development and audit screenshot evidence, issue #1740, and are never distributed), blanking the recent-apps thumbnail and blocking screenshots/screen recording across every screen (`MainActivity.kt`) — issue #507, see P6. Verified by `ScreenResilienceTest.mainActivityWindowFlagSecureMatchesBuildPolicy` and `FlagSecurePolicyTest` (`app/src/androidTest/.../security/ScreenResilienceTest.kt`). |
+| STORAGE-9 (L2) | App removes sensitive data from views when backgrounded | partial | **Satisfied on API 33+, partial overall** (issue #1741, see P6). `MainActivity.onCreate` calls `setRecentsScreenshotEnabled(false)` on API 33+ in every build type, blanking the recent-apps thumbnail without blocking screenshots; an opt-in, default-off, device-local "Block screenshots and screen recording" setting additionally sets `WindowManager.LayoutParams.FLAG_SECURE` live (`shouldSetFlagSecure`, `MainActivity.kt`), which hides the preview on every API level. **Gap:** on API 26-32 with the setting off (the default) the thumbnail shows app content — no targeted API exists there; accepted residual risk, mitigated by the opt-in app lock (P7) and the opt-in setting. Verified by `ScreenResilienceTest.screenshotsAreAllowedByDefault`, `ScreenResilienceTest.settingOnSetsFlagSecureBeforeTheFirstFrameOnColdStart`, `ScreenResilienceTest.togglingTheSettingFlipsTheFlagLiveWithoutARestart`, `ScreenResilienceTest.recentsScreenshotsAreDisabledOnApi33PlusRegardlessOfTheSetting` (`app/src/androidTest/.../security/ScreenResilienceTest.kt`) and `FlagSecurePolicyTest`. |
 | STORAGE-12 | App educates user on PII handling | satisfied | Self-hosted personal CRM: the privacy stance (data stays on the operator's server) is documented in `docs/deployment.md` and `CLAUDE.md`; no third-party collection exists to disclose. |
 
 ## V3 — Cryptography (MSTG-CRYPTO)
