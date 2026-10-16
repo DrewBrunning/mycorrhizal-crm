@@ -36,6 +36,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Issue #1740: FLAG_SECURE is applied in release (and benchmark) builds only;
+ * debug builds allow screenshots. Pure so the release behaviour is pinned by a
+ * JVM unit test even though the instrumented suite runs the debug variant.
+ */
+internal fun shouldSetFlagSecure(isDebugBuild: Boolean): Boolean = !isDebugBuild
+
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
     android.graphics.Color.argb(
         (alpha * 255).toInt(),
@@ -142,15 +149,19 @@ class MainActivity : FragmentActivity() {
 
         // Issue #507 (MASVS-L2 resilience re-evaluation): every screen in this
         // single-Activity app renders relationship PII, so both are applied
-        // unconditionally rather than per-screen.
+        // applied once here rather than per-screen.
         //
         // FLAG_SECURE blocks screenshots/screen recording and blanks the
         // recent-apps thumbnail — the thumbnail case is the concrete threat
         // (anyone with a moment's physical access to an unlocked phone can
         // open the app switcher without unlocking the app itself). Reverses
-        // masvs-l1.md P3 for android_prevent_screenshot; see that file and
+        // masvs-l1.md P3 for android_prevent_screenshot; see that file (P6) and
         // threat-model.md gating decision 3 for the full cost/benefit writeup.
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // Issue #1740: release (non-debuggable) builds only — debug builds are
+        // never distributed and need screenshots for the UX audit (#1718).
+        if (shouldSetFlagSecure(BuildConfig.DEBUG)) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        }
 
         // filterTouchesWhenObscured rejects touches while another app's window
         // overlays this one (a tapjacking/overlay attack tricking the user into

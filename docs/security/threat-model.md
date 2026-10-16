@@ -318,7 +318,7 @@ two kept declined, two reversed.** All four were re-examined individually agains
 - **Screenshot prevention — reversed** (`masvs-l1.md` P6, MSTG-STORAGE-9). Every screen renders
   relationship PII; the recent-apps thumbnail is a concrete, zero-sophistication disclosure vector
   (anyone with a moment's access to an unlocked-but-idle phone). `MainActivity` now sets
-  `FLAG_SECURE` unconditionally.
+  `FLAG_SECURE` in release builds (debug builds are exempt, issue #1740).
 - **Tapjacking protection — reversed** (`masvs-l1.md` P6, MSTG-PLATFORM-9). Near-zero cost —
   `filterTouchesWhenObscured` only changes behavior when an overlay is actually present — against a
   real actor class (malicious overlay apps tricking a tap on a destructive confirmation). `MainActivity`

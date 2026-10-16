@@ -89,6 +89,7 @@
   - The suite registers its own seed account (`e2euser`) and creates/cleans up its own `E2E *` contacts; it never touches user data. It needs registration enabled, which `docker-compose.test.yml` already sets.
   - The seed backend data is persistent — `docker compose -f docker-compose.test.yml down -v` resets it between runs if you want a clean slate.
   - CI runs this on every push/PR to main via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml).
+  - Debug builds allow screenshots and screen recording (issue #1740): `MainActivity` sets `FLAG_SECURE` only when `shouldSetFlagSecure(BuildConfig.DEBUG)` is true, i.e. in release/benchmark builds, so `adb exec-out screencap -p` returns a real frame on a debug install. `ScreenResilienceTest` asserts the window flag equals that policy; `FlagSecurePolicyTest` (JVM) pins the release behavior.
 
 **Android call/SMS tracking runbook (issue #721)**
 - The "Log calls as activities" / "Log messages as activities" toggles in Settings (Tracking & notifications) are **opt-in and runtime-permission-gated**: flipping a toggle on requests the matching dangerous permissions (`READ_CALL_LOG` + `READ_PHONE_STATE` for calls; `READ_SMS` + `RECEIVE_SMS` for messages) through the system dialog. The opt-in flag is only stored once the grant lands.
