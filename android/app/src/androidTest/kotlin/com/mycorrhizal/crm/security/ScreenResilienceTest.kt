@@ -3,8 +3,10 @@ package com.mycorrhizal.crm.security
 import android.view.WindowManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.mycorrhizal.crm.BuildConfig
 import com.mycorrhizal.crm.MainActivity
-import org.junit.Assert.assertNotEquals
+import com.mycorrhizal.crm.shouldSetFlagSecure
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,15 +27,16 @@ import org.junit.runner.RunWith
 class ScreenResilienceTest {
 
     @Test
-    fun mainActivityWindowIsFlaggedSecure() {
+    fun mainActivityWindowFlagSecureMatchesBuildPolicy() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 val flags = activity.window.attributes.flags
-                assertNotEquals(
-                    "MainActivity's window must set FLAG_SECURE so screenshots, screen " +
-                        "recording, and the recent-apps thumbnail never expose contact PII",
-                    0,
-                    flags and WindowManager.LayoutParams.FLAG_SECURE,
+                assertEquals(
+                    "MainActivity's window FLAG_SECURE must equal shouldSetFlagSecure(BuildConfig.DEBUG): " +
+                        "set in release builds (screenshots, recording and the recent-apps " +
+                        "thumbnail never expose contact PII), absent in debug builds (issue #1740)",
+                    shouldSetFlagSecure(BuildConfig.DEBUG),
+                    (flags and WindowManager.LayoutParams.FLAG_SECURE) != 0,
                 )
             }
         }
