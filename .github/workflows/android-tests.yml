@@ -214,6 +214,8 @@ jobs:
           files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml
           flags: android
           fail_ci_if_error: false
+          disable_search: true
+          verbose: true
 
       # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
       # cross-compiled from backend/ at the same commit and packaged as
