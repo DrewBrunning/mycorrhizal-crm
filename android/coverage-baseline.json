@@ -151,7 +151,7 @@
     "com/mycorrhizal/crm/data/repository/UserManagementRepositoryImpl.kt": 23.68,
     "com/mycorrhizal/crm/data/session/DataStoreSessionPrefsStorage.kt": 96.15,
     "com/mycorrhizal/crm/data/session/DefaultAppLockController.kt": 93.21,
-    "com/mycorrhizal/crm/data/session/DefaultSessionManager.kt": 97.42,
+    "com/mycorrhizal/crm/data/session/DefaultSessionManager.kt": 97.47,
     "com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt": 8.88,
     "com/mycorrhizal/crm/data/session/Emitters.kt": 100,
     "com/mycorrhizal/crm/data/session/EncryptedProfileSecretStorage.kt": 98.73,
