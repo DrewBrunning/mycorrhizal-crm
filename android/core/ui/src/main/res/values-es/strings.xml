@@ -1545,6 +1545,10 @@
     <string name="import_empty">No hay contactos del dispositivo para importar.</string>
     <string name="import_unnamed">(sin nombre)</string>
     <string name="import_button">Importar %1$d seleccionados (%2$d posibles duplicados)</string>
+    <string name="import_button_none">Importar</string>
+    <string name="import_permission_rationale">Se necesita el permiso de contactos para mostrar los contactos de este dispositivo. No se sube nada hasta que confirmes en el paso de revisión.</string>
+    <string name="import_permission_grant">Conceder acceso</string>
+    <string name="import_permission_open_settings">Abrir ajustes</string>
     <string name="import_done">%1$d contactos importados.</string>
     <string name="import_duplicate">Posible duplicado de %1$s</string>
 

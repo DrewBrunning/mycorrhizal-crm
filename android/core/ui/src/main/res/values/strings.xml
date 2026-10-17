@@ -1560,6 +1560,10 @@
     <string name="import_empty">No device contacts to import.</string>
     <string name="import_unnamed">(unnamed)</string>
     <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
+    <string name="import_button_none">Import</string>
+    <string name="import_permission_rationale">Contacts permission is needed to list the contacts on this device. Only the contacts you select are read, and nothing is uploaded until you confirm on the review step.</string>
+    <string name="import_permission_grant">Grant access</string>
+    <string name="import_permission_open_settings">Open settings</string>
     <string name="import_done">Imported %1$d contacts.</string>
     <string name="import_duplicate">Possible duplicate of %1$s</string>
 

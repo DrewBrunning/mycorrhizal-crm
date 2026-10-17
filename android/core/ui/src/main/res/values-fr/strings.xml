@@ -1545,6 +1545,10 @@
     <string name="import_empty">Aucun contact de l\'appareil à importer.</string>
     <string name="import_unnamed">(sans nom)</string>
     <string name="import_button">Importer %1$d sélectionnés (%2$d doublons possibles)</string>
+    <string name="import_button_none">Importer</string>
+    <string name="import_permission_rationale">L\'autorisation d\'accès aux contacts est nécessaire pour lister les contacts de cet appareil. Rien n\'est envoyé avant que vous ne confirmiez à l\'étape de vérification.</string>
+    <string name="import_permission_grant">Autoriser l\'accès</string>
+    <string name="import_permission_open_settings">Ouvrir les paramètres</string>
     <string name="import_done">%1$d contacts importés.</string>
     <string name="import_duplicate">Doublon possible de %1$s</string>
 
