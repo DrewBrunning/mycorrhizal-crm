@@ -349,13 +349,115 @@ class DefaultSessionManagerTest {
     fun `setProfile merges profile without clearing login`() = runTest {
         val (manager, _) = managerPair()
         manager.setSession("https://crm.example.com", "jwt", SessionState(username = "alice"))
-        manager.setProfile(SessionState(isAdmin = true, language = "de"))
+        manager.setProfile(ProfileUpdate(isAdmin = true, language = "de"))
 
         val state = manager.observeSession().first()
         assertTrue(state.isLoggedIn)
         assertTrue(state.isAdmin)
         assertEquals("de", state.language)
         assertEquals("alice", state.username)
+    }
+
+    // Issue #1767: AuthRepositoryImpl.updateLanguage / updateDateFormat /
+    // getEnabledContactFields send a partial update; none may clear isAdmin
+    // (or any other field they do not name).
+    private suspend fun adminManager(): DefaultSessionManager {
+        val (manager, _) = managerPair()
+        manager.setSession("https://crm.example.com", "jwt", SessionState(language = "en"))
+        manager.setProfile(
+            ProfileUpdate(
+                userId = 7,
+                username = "alice",
+                isAdmin = true,
+                language = "en",
+                dateFormat = "DMY",
+                enabledContactFields = listOf("email"),
+            ),
+        )
+        manager.setSelfContactVCardUid("uid-me")
+        return manager
+    }
+
+    @Test
+    fun `a language-only setProfile keeps isAdmin and every other field`() = runTest {
+        val manager = adminManager()
+        manager.setProfile(ProfileUpdate(language = "de"))
+
+        val state = manager.observeSession().first()
+        assertTrue(state.isAdmin)
+        assertEquals("de", state.language)
+        assertEquals(7, state.userId)
+        assertEquals("alice", state.username)
+        assertEquals("DMY", state.dateFormat)
+        assertEquals(listOf("email"), state.enabledContactFields)
+        assertEquals("uid-me", state.selfContactVCardUid)
+        assertTrue(state.isLoggedIn)
+        assertEquals("https://crm.example.com", state.serverUrl)
+    }
+
+    @Test
+    fun `a date-format-only setProfile keeps isAdmin`() = runTest {
+        val manager = adminManager()
+        manager.setProfile(ProfileUpdate(dateFormat = "MDY"))
+
+        val state = manager.observeSession().first()
+        assertTrue(state.isAdmin)
+        assertEquals("MDY", state.dateFormat)
+        assertEquals("en", state.language)
+    }
+
+    @Test
+    fun `an enabled-fields-only setProfile keeps isAdmin`() = runTest {
+        val manager = adminManager()
+        manager.setProfile(ProfileUpdate(enabledContactFields = listOf("phone")))
+
+        val state = manager.observeSession().first()
+        assertTrue(state.isAdmin)
+        assertEquals(listOf("phone"), state.enabledContactFields)
+    }
+
+    @Test
+    fun `an explicit isAdmin false still demotes`() = runTest {
+        val manager = adminManager()
+        manager.setProfile(ProfileUpdate(isAdmin = false))
+
+        assertFalse(manager.observeSession().first().isAdmin)
+    }
+
+    @Test
+    fun `a non-admin stays non-admin across a partial update`() = runTest {
+        val (manager, _) = managerPair()
+        manager.setSession("https://crm.example.com", "jwt", SessionState())
+        manager.setProfile(ProfileUpdate(username = "bob", isAdmin = false))
+        manager.setProfile(ProfileUpdate(language = "fr"))
+
+        assertFalse(manager.observeSession().first().isAdmin)
+    }
+
+    // Issue #1769: the Auth screens call setServerUrl on every keystroke.
+    @Test
+    fun `typing a url one character at a time leaves a label derived from the final url`() = runTest {
+        val (manager, _) = managerPair()
+        val typed = "https://crm.example.com"
+        for (i in 1..typed.length) manager.setServerUrl(typed.take(i))
+
+        val profile = manager.profiles().single()
+        assertEquals(typed, profile.remoteUrl)
+        assertEquals("crm.example.com", profile.label)
+    }
+
+    @Test
+    fun `a renamed profile keeps its label when its url is edited`() = runTest {
+        val (manager, _) = managerPair()
+        manager.setServerUrl("https://crm.example.com")
+        val id = manager.profiles().single().id
+        manager.renameProfile(id, "Work")
+
+        manager.setServerUrl("https://crm.example.org")
+
+        val profile = manager.profiles().single()
+        assertEquals("https://crm.example.org", profile.remoteUrl)
+        assertEquals("Work", profile.label)
     }
 
     // T90 / issue #831: setSelfContactVCardUid always overwrites (unlike

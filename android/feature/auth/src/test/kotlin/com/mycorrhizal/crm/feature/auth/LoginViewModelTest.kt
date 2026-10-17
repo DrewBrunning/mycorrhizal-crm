@@ -174,6 +174,43 @@ class LoginViewModelTest {
             assertFalse(viewModel.uiState.value.twoFactorStep)
         }
 
+    // Issue #1769, integration: the form calls setServerUrl per keystroke; the
+    // one profile that results must be labelled for the whole URL, not "h".
+    @Test
+    fun `typing a url then signing in creates one profile labelled for the host`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val manager = DefaultSessionManager(
+                tokenStorage = InMemoryTokenStorage(),
+                prefsStorage = InMemorySessionPrefsStorage(),
+            )
+            manager.init()
+            val authRepository = mockk<AuthRepository>()
+            coEvery { authRepository.observeSession() } returns MutableStateFlow(SessionState())
+            coEvery { authRepository.login("alice", "secret") } returns
+                Result.success(LoginOutcome.SessionEstablished)
+            val viewModel = LoginViewModel(
+                loginUseCase = LoginUseCase(authRepository),
+                loginWithApiTokenUseCase = LoginWithApiTokenUseCase(authRepository),
+                sessionManager = manager,
+                authRepository = authRepository,
+                passkeyAvailability = PasskeyAvailability { false },
+                passkeyClient = FakePasskeyClient(),
+            )
+            advanceUntilIdle()
+
+            val typed = "https://crm.example.com"
+            for (i in 1..typed.length) {
+                viewModel.onServerUrlChange(typed.take(i))
+                advanceUntilIdle()
+            }
+            viewModel.onSubmit(typed, "alice", "secret", "")
+            advanceUntilIdle()
+
+            val profile = manager.profiles().single()
+            assertEquals(typed, profile.remoteUrl)
+            assertEquals("crm.example.com", profile.label)
+        }
+
     private class InMemoryTokenStorage : TokenStorage {
         private val tokens = mutableMapOf<String, String>()
         private var legacy: String? = null

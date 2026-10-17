@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm
 
 import com.mycorrhizal.crm.data.session.OidcPendingRequestStore
+import com.mycorrhizal.crm.data.session.ProfileUpdate
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
@@ -115,7 +116,7 @@ internal class OidcLoginCoordinator(
         return profile.fold(
             onSuccess = { user ->
                 sessionManager.setProfile(
-                    SessionState(
+                    ProfileUpdate(
                         userId = user.id.takeIf { it != 0 },
                         username = user.username,
                         isAdmin = user.isAdmin,
