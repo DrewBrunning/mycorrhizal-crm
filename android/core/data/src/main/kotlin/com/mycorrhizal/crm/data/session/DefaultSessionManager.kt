@@ -144,11 +144,19 @@ class DefaultSessionManager(
         }
         // An existing active profile: re-point it in place. The label is the
         // user's (possibly renamed) metadata — editing the URL must not
-        // silently rewrite it.
+        // silently rewrite it. The one exception (issue #1769): a label that
+        // still equals the auto-derived label of the previous URL was never
+        // renamed, so it follows the URL (the Auth screens call this on every
+        // keystroke, so the first character would otherwise stick as the label).
         if (active.remoteUrl != trimmed) {
+            val previousUrl = active.remoteUrl
+            val labelIsDerived = previousUrl != null && active.label == labelForUrl(previousUrl)
             cachedProfiles = cachedProfiles.map { profile ->
                 if (profile.id == active.id) {
-                    profile.copy(kind = ServerProfileKind.Remote(trimmed))
+                    profile.copy(
+                        kind = ServerProfileKind.Remote(trimmed),
+                        label = if (labelIsDerived) labelForUrl(trimmed) else profile.label,
+                    )
                 } else {
                     profile
                 }
@@ -183,12 +191,15 @@ class DefaultSessionManager(
         )
     }
 
-    override suspend fun setProfile(profile: SessionState) {
+    override suspend fun setProfile(profile: ProfileUpdate) {
         val current = sessionState.value
         sessionState.value = current.copy(
             userId = profile.userId ?: current.userId,
             username = profile.username ?: current.username,
-            isAdmin = profile.isAdmin,
+            // Issue #1767: null means "unchanged" like every other field. A
+            // partial update (language, date format, enabled fields) must not
+            // clear the admin flag; only a fetched user states it explicitly.
+            isAdmin = profile.isAdmin ?: current.isAdmin,
             language = profile.language ?: current.language,
             dateFormat = profile.dateFormat ?: current.dateFormat,
             enabledContactFields = profile.enabledContactFields ?: current.enabledContactFields,

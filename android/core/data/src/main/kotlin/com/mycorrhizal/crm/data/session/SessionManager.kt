@@ -98,6 +98,21 @@ object NoopSessionTeardown : SessionTeardown {
 }
 
 /**
+ * A partial update to the signed-in user's profile fields (issue #1767). Every
+ * field is nullable and null means "leave the session's current value alone",
+ * so a caller that only knows the language cannot clear [isAdmin] by omission.
+ * Full sign-in paths set the whole state via [SessionManager.setSession].
+ */
+data class ProfileUpdate(
+    val userId: Int? = null,
+    val username: String? = null,
+    val isAdmin: Boolean? = null,
+    val language: String? = null,
+    val dateFormat: String? = null,
+    val enabledContactFields: List<String>? = null,
+)
+
+/**
  * Central session holder. Implements [TokenProvider] and [BaseUrlProvider]
  * from an in-memory cache so the synchronous OkHttp interceptors never touch
  * disk. The cache is hydrated at startup (see AppSessionManager).
@@ -123,7 +138,7 @@ interface SessionManager : TokenProvider, BaseUrlProvider, ArchivedProfileProvid
     suspend fun awaitHydrated()
 
     /** Merge profile details (userId, admin, language, …) into the session. */
-    suspend fun setProfile(profile: SessionState)
+    suspend fun setProfile(profile: ProfileUpdate)
 
     /**
      * Set the caller's "Me" contact pointer (T90, issue #831 Android parity)

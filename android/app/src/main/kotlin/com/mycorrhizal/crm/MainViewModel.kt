@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.AppLockState
+import com.mycorrhizal.crm.data.session.ProfileUpdate
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.compat.Compatibility
 import com.mycorrhizal.crm.domain.compat.CompatibilityResolver
@@ -205,7 +206,7 @@ class MainViewModel @Inject constructor(
             } ?: return@launch
             if (sessionManager.activeProfile()?.id != profileId) return@launch
             sessionManager.setProfile(
-                SessionState(
+                ProfileUpdate(
                     userId = user.id.takeIf { it != 0 },
                     username = user.username,
                     isAdmin = user.isAdmin,

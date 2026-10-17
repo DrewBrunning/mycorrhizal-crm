@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.data.session.ProfileUpdate
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
@@ -238,14 +239,14 @@ class AuthRepositoryImpl @Inject constructor(
         result.getOrElse { return Result.failure(it.toApiError()) }
         // Merge into the session so observeSession() re-emits and every screen
         // that reads SessionState.language picks up the change immediately.
-        sessionManager.setProfile(SessionState(language = language))
+        sessionManager.setProfile(ProfileUpdate(language = language))
         return Result.success(Unit)
     }
 
     override suspend fun updateDateFormat(dateFormat: String): Result<Unit> {
         val result = apiClient.updateDateFormat(dateFormat)
         result.getOrElse { return Result.failure(it.toApiError()) }
-        sessionManager.setProfile(SessionState(dateFormat = dateFormat))
+        sessionManager.setProfile(ProfileUpdate(dateFormat = dateFormat))
         return Result.success(Unit)
     }
 
@@ -273,7 +274,7 @@ class AuthRepositoryImpl @Inject constructor(
         // unlike selfContactVCardUid, there is no "clear to null" case to
         // worry about; see AuthRepository.updateEnabledContactFields's doc.
         val stored = response.enabledContactFields.orEmpty()
-        sessionManager.setProfile(SessionState(enabledContactFields = stored))
+        sessionManager.setProfile(ProfileUpdate(enabledContactFields = stored))
         return Result.success(stored)
     }
 

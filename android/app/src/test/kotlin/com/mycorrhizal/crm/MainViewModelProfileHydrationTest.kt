@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.AppLockState
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
+import com.mycorrhizal.crm.data.session.ProfileUpdate
 import com.mycorrhizal.crm.data.session.ProfilesSnapshot
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
@@ -190,7 +191,7 @@ class MainViewModelProfileHydrationTest {
     @Test
     fun `an already-populated session is not refetched`() = runTest(mainDispatcherRule.testDispatcher) {
         val manager = restoredManager()
-        manager.setProfile(SessionState(username = "alice", isAdmin = true))
+        manager.setProfile(ProfileUpdate(username = "alice", isAdmin = true))
         val auth = mockk<AuthRepository>()
 
         vm(manager, auth)
