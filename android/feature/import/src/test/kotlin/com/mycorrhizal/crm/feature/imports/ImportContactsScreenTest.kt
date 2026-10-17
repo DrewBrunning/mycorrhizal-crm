@@ -7,6 +7,19 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.core.app.ActivityOptionsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import android.content.Intent
+import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import org.robolectric.Shadows.shadowOf
 import org.junit.Assert.assertEquals
@@ -56,11 +69,12 @@ class ImportContactsScreenTest {
         onImportVcf: () -> Unit = {},
         onImportCsv: () -> Unit = {},
         readDevice: () -> List<DeviceContact> = { listOf(jane) },
+        // null: the real host Activity's registry. Otherwise the system dialog's
+        // answer, delivered through a fake registry (granting it in the shadow
+        // package manager first when true, as the OS would).
+        permissionDialogAnswer: Boolean? = null,
     ) {
-        if (grantPermission) {
-            shadowOf(ApplicationProvider.getApplicationContext<Application>())
-                .grantPermissions(Manifest.permission.READ_CONTACTS)
-        }
+        if (grantPermission) grantContacts()
         val apiClient = mockk<ApiClient>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { contactRepository.findByEmail(any()) } returns null
@@ -73,11 +87,63 @@ class ImportContactsScreenTest {
             readDeviceContacts = { readDevice() }
         }
 
-        composeTestRule.setContent {
-            MycorrhizalTheme(darkTheme = darkTheme) {
-                ImportContactsScreen(viewModel = viewModel, onImportVcf = onImportVcf, onImportCsv = onImportCsv)
+        val registryOwner = permissionDialogAnswer?.let { answer ->
+            object : ActivityResultRegistryOwner {
+                override val activityResultRegistry = object : ActivityResultRegistry() {
+                    override fun <I, O> onLaunch(
+                        requestCode: Int,
+                        contract: ActivityResultContract<I, O>,
+                        input: I,
+                        options: ActivityOptionsCompat?,
+                    ) {
+                        dialogLaunches++
+                        if (answer) grantContacts()
+                        dispatchResult(requestCode, answer)
+                    }
+                }
             }
         }
+
+        composeTestRule.setContent {
+            MycorrhizalTheme(darkTheme = darkTheme) {
+                CompositionLocalProvider(LocalLifecycleOwner provides lifecycleOwner) {
+                    val screen = @Composable {
+                        ImportContactsScreen(viewModel = viewModel, onImportVcf = onImportVcf, onImportCsv = onImportCsv)
+                    }
+                    if (registryOwner != null) {
+                        CompositionLocalProvider(LocalActivityResultRegistryOwner provides registryOwner) { screen() }
+                    } else {
+                        screen()
+                    }
+                }
+            }
+        }
+    }
+
+    private var dialogLaunches = 0
+
+    /** A lifecycle the test drives, so pause/resume can be simulated. */
+    private val lifecycleOwner = object : LifecycleOwner {
+        val registry = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+        override val lifecycle: Lifecycle get() = registry
+    }
+
+    private fun pauseAndResume() {
+        composeTestRule.runOnIdle {
+            lifecycleOwner.registry.currentState = Lifecycle.State.STARTED
+            lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    private fun grantContacts() {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>())
+            .grantPermissions(Manifest.permission.READ_CONTACTS)
+    }
+
+    private fun setOsRationale(show: Boolean) {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>().packageManager)
+            .setShouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS, show)
     }
 
     @Test
@@ -143,5 +209,81 @@ class ImportContactsScreenTest {
     fun `permanent denial is when the OS offers no rationale`() {
         org.junit.Assert.assertTrue(isPermanentlyDenied(shouldShowRationale = false))
         org.junit.Assert.assertFalse(isPermanentlyDenied(shouldShowRationale = true))
+    }
+
+    @Test
+    fun `permission rationale state has no accessibility violations`() {
+        setScreen(grantPermission = false)
+
+        composeTestRule.onNodeWithText("Grant access").assertIsDisplayed()
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    // Issue #1750 review: the launcher callback, not just the pure helper.
+    @Test
+    fun `granting from the system dialog loads the device list`() {
+        setScreen(grantPermission = false, permissionDialogAnswer = true)
+
+        composeTestRule.onNodeWithText("Grant access").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(1, dialogLaunches)
+        composeTestRule.onNodeWithText("Jane Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Grant access").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a first denial keeps the rationale with Grant access`() {
+        setOsRationale(true)
+        setScreen(grantPermission = false, permissionDialogAnswer = false)
+
+        composeTestRule.onNodeWithText("Grant access").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Grant access").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Open settings").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a permanent denial offers Open settings, which opens this app's settings page`() {
+        setOsRationale(false)
+        setScreen(grantPermission = false, permissionDialogAnswer = false)
+
+        composeTestRule.onNodeWithText("Grant access").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Open settings").performClick()
+
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val intent: Intent = shadowOf(app).nextStartedActivity
+        assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, intent.action)
+        assertEquals("package:${app.packageName}", intent.data.toString())
+    }
+
+    @Test
+    fun `granting in system settings loads the list on return`() {
+        var reads = 0
+        setScreen(grantPermission = false, readDevice = { reads++; listOf(jane) })
+        composeTestRule.onNodeWithText("Grant access").assertIsDisplayed()
+
+        grantContacts()
+        pauseAndResume()
+
+        assertEquals(1, reads)
+        composeTestRule.onNodeWithText("Jane Smith").assertIsDisplayed()
+    }
+
+    // Issue #1750 review: reloading on every resume wiped the selection
+    // whenever the app was backgrounded or the screen locked.
+    @Test
+    fun `a resume after the list loaded keeps the selection and does not re-read`() {
+        var reads = 0
+        setScreen(readDevice = { reads++; listOf(jane) })
+        composeTestRule.onNodeWithText("Jane Smith").performClick()
+        composeTestRule.onNodeWithText("Import 1 selected (0 possible duplicates)").assertIsDisplayed()
+
+        pauseAndResume()
+
+        assertEquals(1, reads)
+        composeTestRule.onNodeWithText("Import 1 selected (0 possible duplicates)").assertIsDisplayed()
     }
 }

@@ -47,6 +47,10 @@ data class ImportUiState(
      *  [SecurityException] (READ_CONTACTS not held, or revoked while the screen
      *  was open). The screen shows its permission rationale instead of crashing. */
     val permissionRequired: Boolean = false,
+    /** Issue #1750: a device read has completed. The screen reloads on resume
+     *  only until this is set (or after a permission change), so backgrounding
+     *  the app does not wipe the user's selection with a fresh load. */
+    val loaded: Boolean = false,
 )
 
 /**
@@ -85,7 +89,13 @@ class ImportContactsViewModel @Inject constructor(
             } catch (_: SecurityException) {
                 // Issue #1750: READ_CONTACTS not granted (or revoked mid-session).
                 _uiState.update {
-                    it.copy(isLoading = false, contacts = emptyList(), selected = emptySet(), permissionRequired = true)
+                    it.copy(
+                        isLoading = false,
+                        contacts = emptyList(),
+                        selected = emptySet(),
+                        permissionRequired = true,
+                        loaded = false,
+                    )
                 }
                 return@launch
             }
@@ -99,7 +109,7 @@ class ImportContactsViewModel @Inject constructor(
                 DeviceContactCandidate(device, duplicate)
             }
             _uiState.update {
-                it.copy(isLoading = false, contacts = candidates, selected = emptySet())
+                it.copy(isLoading = false, contacts = candidates, selected = emptySet(), loaded = true)
             }
         }
     }

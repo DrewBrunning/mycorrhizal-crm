@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -86,7 +87,9 @@ fun ImportContactsScreen(
     // Issue #1750: nothing reads device contacts until READ_CONTACTS is held.
     var granted by remember { mutableStateOf(hasContactsPermission()) }
     // Set once the user has refused the system dialog and it will not show again.
-    var permanentlyDenied by remember { mutableStateOf(false) }
+    // Saveable so a rotation or a trip to the VCF/CSV screens does not flip the
+    // button back to a Grant access that the OS would silently refuse.
+    var permanentlyDenied by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -103,9 +106,12 @@ fun ImportContactsScreen(
         }
     }
 
-    // Re-check on every resume: a grant/revoke in system settings (the Open
-    // settings route) is reflected on return, and the device list refreshes
-    // instead of staying stale until an app restart.
+    // Re-check the permission on every resume, so a grant in system settings
+    // (the Open settings route) is reflected on return and loads the list. A
+    // revoke there kills the process, so it arrives as a fresh screen. Only
+    // load when nothing has loaded yet (or the last read was refused):
+    // reloading on every resume would wipe the user's selection each time the
+    // app is backgrounded or the screen is locked.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -113,7 +119,7 @@ fun ImportContactsScreen(
                 granted = hasContactsPermission()
                 if (granted) {
                     permanentlyDenied = false
-                    if (viewModel.uiState.value.let { it.step == ImportStep.LIST && !it.isLoading }) viewModel.load()
+                    if (shouldLoadOnResume(viewModel.uiState.value)) viewModel.load()
                 }
             }
         }
@@ -264,6 +270,11 @@ fun ImportContactsScreen(
         }
     }
 }
+
+/** Issue #1750: with READ_CONTACTS held, a resume loads the device list only
+ *  if it has never loaded or the last read was refused. */
+internal fun shouldLoadOnResume(state: ImportUiState): Boolean =
+    state.step == ImportStep.LIST && !state.isLoading && (!state.loaded || state.permissionRequired)
 
 /** After a refused request, the OS will not show the dialog again exactly when
  *  it also says no rationale should be shown (the user ticked "don't ask again"). */
