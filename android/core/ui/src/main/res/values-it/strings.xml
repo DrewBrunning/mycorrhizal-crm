@@ -1545,6 +1545,10 @@
     <string name="import_empty">Nessun contatto del dispositivo da importare.</string>
     <string name="import_unnamed">(senza nome)</string>
     <string name="import_button">Importa %1$d selezionati (%2$d possibili duplicati)</string>
+    <string name="import_button_none">Importa</string>
+    <string name="import_permission_rationale">Serve l\'autorizzazione ai contatti per elencare i contatti di questo dispositivo. L\'elenco viene letto solo su questo dispositivo. Durante l\'importazione vengono inviati al tuo server solo i contatti selezionati, e non viene salvato nulla finché non confermi nel passaggio di revisione.</string>
+    <string name="import_permission_grant">Concedi accesso</string>
+    <string name="import_permission_open_settings">Apri impostazioni</string>
     <string name="import_done">%1$d contatti importati.</string>
     <string name="import_duplicate">Possibile duplicato di %1$s</string>
 

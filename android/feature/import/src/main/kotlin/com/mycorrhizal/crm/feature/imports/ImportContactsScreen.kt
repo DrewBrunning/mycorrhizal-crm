@@ -1,6 +1,23 @@
 package com.mycorrhizal.crm.feature.imports
 
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,7 +78,55 @@ fun ImportContactsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) { viewModel.load() }
+    val context = LocalContext.current
+
+    fun hasContactsPermission() =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    // Issue #1750: nothing reads device contacts until READ_CONTACTS is held.
+    var granted by remember { mutableStateOf(hasContactsPermission()) }
+    // Set once the user has refused the system dialog and it will not show again.
+    // Saveable so a rotation or a trip to the VCF/CSV screens does not flip the
+    // button back to a Grant access that the OS would silently refuse.
+    var permanentlyDenied by rememberSaveable { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        granted = isGranted
+        if (isGranted) {
+            permanentlyDenied = false
+            viewModel.load()
+        } else {
+            permanentlyDenied = isPermanentlyDenied(
+                shouldShowRationale = (context as? Activity)
+                    ?.shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS) == true,
+            )
+        }
+    }
+
+    // Re-check the permission on every resume, so a grant in system settings
+    // (the Open settings route) is reflected on return and loads the list. A
+    // revoke there kills the process, so it arrives as a fresh screen. Only
+    // load when nothing has loaded yet (or the last read was refused):
+    // reloading on every resume would wipe the user's selection each time the
+    // app is backgrounded or the screen is locked.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = hasContactsPermission()
+                if (granted) {
+                    permanentlyDenied = false
+                    if (shouldLoadOnResume(viewModel.uiState.value)) viewModel.load()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val needsPermission = !granted || state.permissionRequired
 
     Scaffold(
         topBar = {
@@ -94,7 +159,38 @@ fun ImportContactsScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val preview = state.preview
+            val showFileEntries = state.step == ImportStep.LIST && preview == null
+            if (showFileEntries) {
+                // M9 item 4 / issue #834: file-based imports. Issue #1750: always
+                // reachable, independent of the contacts permission or whether the
+                // device has any contacts to list.
+                TextButton(
+                    onClick = onImportVcf,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text(stringResource(R.string.import_vcf_entry))
+                }
+                TextButton(
+                    onClick = onImportCsv,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text(stringResource(R.string.import_csv_entry))
+                }
+            }
             when {
+                state.step == ImportStep.LIST && needsPermission ->
+                    ContactsPermissionRationale(
+                        permanentlyDenied = permanentlyDenied,
+                        onGrant = { permissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
+                        onOpenSettings = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        },
+                    )
                 state.isLoading -> LoadingSkeleton()
                 state.step == ImportStep.REVIEW && preview != null ->
                     ImportReviewStep(
@@ -136,24 +232,6 @@ fun ImportContactsScreen(
                     )
                 }
                 else -> {
-                    // M9 item 4: a second, file-based import path alongside this screen's existing
-                    // device-contacts import — ApiClient.uploadVcfImport() already hit this backend
-                    // endpoint but had zero callers.
-                    TextButton(
-                        onClick = onImportVcf,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    ) {
-                        Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text(stringResource(R.string.import_vcf_entry))
-                    }
-                    // Issue #834: CSV-file import — the client methods existed with zero UI caller.
-                    TextButton(
-                        onClick = onImportCsv,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    ) {
-                        Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text(stringResource(R.string.import_csv_entry))
-                    }
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.contacts, key = { it.device.contactId }) { candidate ->
                             DeviceContactRow(
@@ -169,11 +247,15 @@ fun ImportContactsScreen(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                     ) {
                         Text(
-                            stringResource(
-                                R.string.import_button,
-                                state.selected.size,
-                                state.contacts.count { it.duplicateOf != null },
-                            ),
+                            if (state.selected.isEmpty()) {
+                                stringResource(R.string.import_button_none)
+                            } else {
+                                stringResource(
+                                    R.string.import_button,
+                                    state.selected.size,
+                                    state.contacts.count { it.duplicateOf != null },
+                                )
+                            },
                         )
                     }
                 }
@@ -185,6 +267,38 @@ fun ImportContactsScreen(
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
+        }
+    }
+}
+
+/** Issue #1750: with READ_CONTACTS held, a resume loads the device list only
+ *  if it has never loaded or the last read was refused. */
+internal fun shouldLoadOnResume(state: ImportUiState): Boolean =
+    state.step == ImportStep.LIST && !state.isLoading && (!state.loaded || state.permissionRequired)
+
+/** After a refused request, the OS will not show the dialog again exactly when
+ *  it also says no rationale should be shown (the user ticked "don't ask again"). */
+internal fun isPermanentlyDenied(shouldShowRationale: Boolean): Boolean = !shouldShowRationale
+
+@Composable
+private fun ContactsPermissionRationale(
+    permanentlyDenied: Boolean,
+    onGrant: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.import_permission_rationale),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (permanentlyDenied) {
+            Button(onClick = onOpenSettings) { Text(stringResource(R.string.import_permission_open_settings)) }
+        } else {
+            Button(onClick = onGrant) { Text(stringResource(R.string.import_permission_grant)) }
         }
     }
 }

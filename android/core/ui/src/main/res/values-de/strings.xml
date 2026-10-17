@@ -1545,6 +1545,10 @@
     <string name="import_empty">Keine Gerätekontakte zum Importieren.</string>
     <string name="import_unnamed">(unbenannt)</string>
     <string name="import_button">%1$d ausgewählte importieren (%2$d mögliche Duplikate)</string>
+    <string name="import_button_none">Importieren</string>
+    <string name="import_permission_rationale">Zum Auflisten der Kontakte auf diesem Gerät wird die Kontaktberechtigung benötigt. Die Liste wird nur auf diesem Gerät gelesen. Beim Import werden nur die ausgewählten Kontakte an Ihren Server gesendet, und gespeichert wird nichts, bevor Sie im Prüfschritt bestätigen.</string>
+    <string name="import_permission_grant">Zugriff erlauben</string>
+    <string name="import_permission_open_settings">Einstellungen öffnen</string>
     <string name="import_done">%1$d Kontakte importiert.</string>
     <string name="import_duplicate">Mögliches Duplikat von %1$s</string>
 

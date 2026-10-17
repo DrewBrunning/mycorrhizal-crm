@@ -43,6 +43,14 @@ data class ImportUiState(
     val rowActions: Map<Int, String> = emptyMap(),
     val importedCount: Int = 0,
     val error: String? = null,
+    /** Issue #1750: the device-contacts read was refused with a
+     *  [SecurityException] (READ_CONTACTS not held, or revoked while the screen
+     *  was open). The screen shows its permission rationale instead of crashing. */
+    val permissionRequired: Boolean = false,
+    /** Issue #1750: a device read has completed. The screen reloads on resume
+     *  only until this is set (or after a permission change), so backgrounding
+     *  the app does not wipe the user's selection with a fresh load. */
+    val loaded: Boolean = false,
 )
 
 /**
@@ -75,9 +83,21 @@ class ImportContactsViewModel @Inject constructor(
 
     fun load(contentResolver: ContentResolver = appContext.contentResolver) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            val deviceContacts = withContext(ioDispatcher) {
-                readDeviceContacts(contentResolver)
+            _uiState.update { it.copy(isLoading = true, error = null, permissionRequired = false) }
+            val deviceContacts = try {
+                withContext(ioDispatcher) { readDeviceContacts(contentResolver) }
+            } catch (_: SecurityException) {
+                // Issue #1750: READ_CONTACTS not granted (or revoked mid-session).
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        contacts = emptyList(),
+                        selected = emptySet(),
+                        permissionRequired = true,
+                        loaded = false,
+                    )
+                }
+                return@launch
             }
             // Dedup against the local cache (§7.4): match by email then phone.
             // This flag only decorates the LIST step — the actual duplicate
@@ -89,7 +109,7 @@ class ImportContactsViewModel @Inject constructor(
                 DeviceContactCandidate(device, duplicate)
             }
             _uiState.update {
-                it.copy(isLoading = false, contacts = candidates, selected = emptySet())
+                it.copy(isLoading = false, contacts = candidates, selected = emptySet(), loaded = true)
             }
         }
     }

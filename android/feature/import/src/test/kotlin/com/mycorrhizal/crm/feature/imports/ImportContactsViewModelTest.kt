@@ -233,4 +233,32 @@ class ImportContactsViewModelTest {
             assertNull(state.importedCount.takeIf { it > 0 })
             assertEquals(1, state.contacts.size)
         }
+
+    // Issue #1750: a refused ContactsProvider query must become state, not a crash.
+    @Test
+    fun `load maps a SecurityException from the device read to permissionRequired`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vm(emptyList()).apply { readDeviceContacts = { throw SecurityException("READ_CONTACTS") } }
+            vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            org.junit.Assert.assertTrue(state.permissionRequired)
+            org.junit.Assert.assertFalse(state.isLoading)
+            assertEquals(emptyList<DeviceContactCandidate>(), state.contacts)
+        }
+
+    @Test
+    fun `a later successful load clears permissionRequired`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vm(emptyList())
+            vm.readDeviceContacts = { throw SecurityException("READ_CONTACTS") }
+            vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+            vm.readDeviceContacts = { emptyList() }
+            vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+
+            org.junit.Assert.assertFalse(vm.uiState.value.permissionRequired)
+        }
 }
