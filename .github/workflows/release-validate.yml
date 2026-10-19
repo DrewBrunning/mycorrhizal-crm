@@ -88,6 +88,11 @@ on:
 # grants it too, and so do the two callers above. That job's own `if:` requires
 # `github.event_name == 'pull_request'`, so it is skipped in a composed run and
 # the scope is inert there -- the same shape as the SARIF uploads.
+#
+# `migration-tests.yml`'s `real-release-upgrade` job (issue #1713) declares
+# `actions: read` to tell the release-registration commit apart, so the
+# `migration-tests` call-job below grants it too (both callers already do).
+# Omitting it fails the whole composed run at startup, before any job runs.
 # Recorded in asvs-l2-verification-report.md §9.
 permissions:
   contents: read
@@ -321,6 +326,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # real-release-upgrade reads the release image through the Actions API
+      # (issue #1713); GitHub validates this statically up the whole chain.
+      actions: read
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   arm64-tests:
