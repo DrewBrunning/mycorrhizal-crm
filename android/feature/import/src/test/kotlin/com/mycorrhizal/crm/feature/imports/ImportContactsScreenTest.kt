@@ -26,10 +26,13 @@ import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +47,7 @@ import org.robolectric.annotation.GraphicsMode
  * with `readDeviceContacts` swapped for canned data (no real ContentResolver
  * query) — and sweeps it for static a11y invariants.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -59,6 +63,14 @@ class ImportContactsScreenTest {
         organization = null,
         birthday = null,
     )
+
+    // The screen's load runs viewModelScope (Dispatchers.Main) and
+    // withContext(Dispatchers.IO). Unconfined replaces both so a load finishes
+    // before control returns to the test -- otherwise waitForIdle can return
+    // after the IO read but before the state update recomposes (issue #1802:
+    // the resume-reload test flaked on exactly that gap).
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -85,6 +97,7 @@ class ImportContactsScreenTest {
             appContext = mockk<Context>(relaxed = true),
         ).apply {
             readDeviceContacts = { readDevice() }
+            ioDispatcher = mainDispatcherRule.testDispatcher
         }
 
         val registryOwner = permissionDialogAnswer?.let { answer ->
