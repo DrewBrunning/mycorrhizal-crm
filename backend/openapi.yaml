@@ -15320,7 +15320,7 @@ components:
     # --- Custom fields ---
     FieldDefinition:
       type: object
-      required: [id, created_at, updated_at, label, key, target, type, projection, sensitivity, position]
+      required: [id, created_at, updated_at, label, key, target, type, projection, sensitivity, position, group]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -15334,6 +15334,18 @@ components:
         projection: { type: string, description: "internal-only, or vcard:X-<NAME>.", pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
         position: { type: integer, description: "The user's display order for this definition (ascending)." }
+        group:
+          type: string
+          maxLength: 100
+          description: >
+            Optional display-only group label (e.g. "Travel profile"); "" means
+            ungrouped. A group is just a shared label string: there is no group
+            entity, and renaming means updating each definition. Clients bucket
+            definitions by this string; fields within a group keep their
+            `position` order, and ordering the groups themselves (and placing
+            the ungrouped bucket) is left to the client. Never projected to
+            vCard/sync/exports.
+          example: ""
     FieldDefinitionInput:
       type: object
       required: [label, key, type]
@@ -15346,6 +15358,13 @@ components:
           $ref: "#/components/schemas/FieldConstraints"
         projection: { type: string, pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
+        group:
+          type: string
+          maxLength: 100
+          description: >
+            Optional display-only group label; trimmed, "" or whitespace-only
+            means ungrouped. On update, omitting it keeps the current group and
+            sending "" clears it.
     FieldDefinitionReorderInput:
       type: object
       required: [order]

@@ -250,6 +250,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Projection:  d.Projection,
 			Sensitivity: d.Sensitivity,
 			Position:    d.Position,
+			Group:       d.Group,
 		})
 	}
 
