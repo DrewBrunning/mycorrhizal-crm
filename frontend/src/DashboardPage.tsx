@@ -46,6 +46,7 @@ import UpcomingOccasionsWidget from './components/UpcomingOccasionsWidget';
 import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { dashboardGridSx } from './utils/dashboardGrid';
 import { handleError, handleFetchError } from './utils/errorHandler';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
@@ -301,8 +302,7 @@ function DashboardPage() {
         </Typography>
         <Box
           sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+            ...dashboardGridSx,
             gap: 3,
           }}
         >
@@ -401,8 +401,7 @@ function DashboardPage() {
 
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+          ...dashboardGridSx,
           gap: 2,
         }}
       >
