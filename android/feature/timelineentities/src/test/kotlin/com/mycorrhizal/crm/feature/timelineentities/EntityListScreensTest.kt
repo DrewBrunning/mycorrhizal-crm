@@ -270,7 +270,7 @@ class EntityListScaffoldTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class LifeEventDialogTest {
+class LifeEventFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -280,7 +280,7 @@ class LifeEventDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = initial,
                     relatedContacts = emptyList(),
                     contactSearchQuery = "",
@@ -416,7 +416,7 @@ class LifeEventDialogTest {
         var removed: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = null,
                     relatedContacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice")),
                     contactSearchQuery = "",
@@ -431,7 +431,7 @@ class LifeEventDialogTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Remove Alice").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove Alice").performScrollTo().performClick()
 
         assertEquals("u1", removed)
     }
@@ -440,7 +440,7 @@ class LifeEventDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class GiftDialogTest {
+class GiftFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -450,7 +450,7 @@ class GiftDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                GiftDialog(
+                GiftForm(
                     initial = initial,
                     lifeEvents = emptyList(),
                     activities = emptyList(),
