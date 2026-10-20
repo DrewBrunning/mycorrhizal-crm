@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
@@ -1761,7 +1762,10 @@ fun ConversationAgendaScreen(
     val discussingId by viewModel.discussingId.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<ConversationAgenda?>(null) }
-    var pendingDiscussId by remember { mutableStateOf<String?>(null) }
+    // Issue #1723: the open mark-discussed dialog is ViewModel state (saved in
+    // its SavedStateHandle), so it survives rotation and process death, and the
+    // ViewModel closes it only on a successful PATCH or a dismiss.
+    val pendingDiscussId by viewModel.pendingDiscussId.collectAsStateWithLifecycle()
 
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
@@ -1785,7 +1789,7 @@ fun ConversationAgendaScreen(
         extraAction = { item ->
             val agenda = viewModel.findById(item.id)
             if (agenda != null && agenda.discussedAt == null) {
-                IconButton(onClick = { pendingDiscussId = item.id }) {
+                IconButton(onClick = { viewModel.openDiscuss(item.id) }) {
                     Icon(
                         Icons.Outlined.Done,
                         contentDescription = stringResource(R.string.agenda_mark_discussed),
@@ -1815,17 +1819,8 @@ fun ConversationAgendaScreen(
                     activities = activities,
                     confirming = discussingId == id,
                     onConfirm = { activityId -> viewModel.markDiscussed(id, activityId) },
-                    onDismiss = {
-                        viewModel.clearDiscussing()
-                        pendingDiscussId = null
-                    },
+                    onDismiss = viewModel::dismissDiscuss,
                 )
-                // Keep the dialog open (button disabled) while the PATCH is in
-                // flight, and close it once it resolves — so the in-flight
-                // state is real, not dead (review-pass fix).
-                LaunchedEffect(discussingId) {
-                    if (discussingId == null) pendingDiscussId = null
-                }
             }
         }
     }
@@ -1840,7 +1835,8 @@ internal fun MarkDiscussedDialog(
     onConfirm: (Int?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var activityId by remember(item.id) { mutableStateOf<Int?>(null) }
+    // rememberSaveable: the picked activity survives rotation (issue #1723 review).
+    var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.agenda_mark_discussed)) },
