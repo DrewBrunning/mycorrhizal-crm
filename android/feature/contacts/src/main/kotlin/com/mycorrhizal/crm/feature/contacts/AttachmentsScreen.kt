@@ -49,6 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -170,9 +174,22 @@ fun AttachmentsScreenContent(
         // #1760: the same FAB add affordance every other list uses (this screen
         // used to carry a top-bar icon *and* an inline button for the same action).
         floatingActionButton = {
+            // While uploading the spinner replaces the icon, so the FAB keeps its
+            // label and says it is busy (and disabled) rather than announcing an
+            // unlabelled button that silently ignores taps (review of #1760).
+            val uploadLabel = stringResource(R.string.attachments_upload)
+            val savingLabel = stringResource(R.string.a11y_state_saving)
             BrandFab(
                 onClick = { if (!uiState.isUploading) onAddClick() },
-                modifier = Modifier.testTag("add-attachment"),
+                modifier = Modifier
+                    .testTag("add-attachment")
+                    .semantics {
+                        if (uiState.isUploading) {
+                            contentDescription = uploadLabel
+                            stateDescription = savingLabel
+                            disabled()
+                        }
+                    },
             ) {
                 if (uiState.isUploading) {
                     CircularProgressIndicator(
