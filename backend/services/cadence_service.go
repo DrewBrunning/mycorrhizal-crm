@@ -147,7 +147,11 @@ func policyAcceptsGifts(p *models.CadencePolicy) bool {
 func givenGiftDateRows(db *gorm.DB, userID uint, uids []string, since *time.Time) ([]activityDateRow, error) {
 	q := db.Table("contacts c").
 		Select("g.date AS date, ? AS type, c.vcard_uid AS vcard_uid", giftInteractionType).
-		Joins("CROSS JOIN gifts g ON g.entity_id = c.vcard_uid").
+		// INDEXED BY: otherwise the planner probes g through idx_gifts_user_id
+		// (or status), rescanning every gift of the user once per contact --
+		// O(contacts x gifts), the bulk of graph.full's time at the large
+		// profile. The entity index makes it one probe per contact.
+		Joins("CROSS JOIN gifts g INDEXED BY idx_gifts_entity_id ON g.entity_id = c.vcard_uid").
 		Where("c.vcard_uid IN ? AND c.user_id = ? AND g.user_id = ? AND g.deleted_at IS NULL AND g.status = ? AND g.date IS NOT NULL",
 			uids, userID, userID, models.GiftStatusGiven).
 		Where(`(g.activity_id IS NULL OR NOT EXISTS (

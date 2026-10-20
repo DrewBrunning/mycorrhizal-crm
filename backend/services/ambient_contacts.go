@@ -99,7 +99,13 @@ func ambientByEntityID(db *gorm.DB, userID uint, uids []string, now time.Time) (
 		Select("c.vcard_uid AS vcard_uid, c.ambient AS flag, hs.id AS shared_row, "+
 			"COALESCE(hm.since, '') AS since, COALESCE(hm.until, '') AS until, "+
 			"COALESCE(hs.since, '') AS self_since, COALESCE(hs.until, '') AS self_until").
-		Joins("LEFT JOIN household_members hm ON hm.member_vcard_uid = c.vcard_uid AND hm.user_id = ?", userID).
+		// INDEXED BY: left to itself the planner probes hm through
+		// idx_household_members_user_id, rescanning every membership of the
+		// user once per contact -- O(contacts x memberships), 19s for
+		// graph.full at the PERF-01 large profile. The member index makes it
+		// one probe per contact.
+		Joins("LEFT JOIN household_members hm INDEXED BY idx_household_members_member_vcard_uid "+
+			"ON hm.member_vcard_uid = c.vcard_uid AND hm.user_id = ?", userID).
 		Joins("LEFT JOIN household_members hs ON hs.household_id = hm.household_id AND hs.id <> hm.id "+
 			"AND hs.user_id = ? AND hs.member_vcard_uid = "+selfUID, userID, userID).
 		Where("c.user_id = ? AND c.vcard_uid IN ? AND c.deleted_at IS NULL AND c.vcard_uid <> COALESCE("+selfUID+", '') "+
