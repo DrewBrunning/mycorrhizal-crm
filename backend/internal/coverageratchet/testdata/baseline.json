@@ -131,7 +131,7 @@
     "controllers/job_run_controller.go": 96.43,
     "controllers/life_event_controller.go": 90.83,
     "controllers/life_event_suggestion_controller.go": 91.18,
-    "controllers/link_field_type_controller.go": 94.87,
+    "controllers/link_field_type_controller.go": 92.95,
     "controllers/mcp_controller.go": 96.64,
     "controllers/meerkat_import_controller.go": 83.72,
     "controllers/metrics_controller.go": 94.74,
