@@ -95,4 +95,47 @@ class LabelledDropdownTest {
         composeTestRule.onNodeWithText("Create").performClick()
         assertEquals(0, clicks)
     }
+
+    @Test
+    fun `a save bar with defaults is enabled and a saving bar shows no hint`() {
+        var clicks = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.foundation.layout.Column {
+                    PinnedSaveBar(label = "Plain", isSaving = false, onClick = { clicks++ })
+                    PinnedSaveBar(
+                        label = "Busy",
+                        isSaving = true,
+                        onClick = {},
+                        enabled = false,
+                        disabledHint = "Should not show",
+                    )
+                }
+            }
+        }
+        composeTestRule.onNodeWithText("Plain").performClick()
+        assertEquals(1, clicks)
+        composeTestRule.onNodeWithText("Should not show").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the form scaffold can hide its save bar and shows it with the hint when asked`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.foundation.layout.Column {
+                    FormScaffold(
+                        title = "Loading form",
+                        onBack = {},
+                        saveLabel = "Hidden save",
+                        isSaving = false,
+                        onSave = {},
+                        snackbarHostState = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() },
+                        showSaveBar = false,
+                    ) {}
+                }
+            }
+        }
+        composeTestRule.onNodeWithText("Loading form").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hidden save").assertDoesNotExist()
+    }
 }
