@@ -31,6 +31,7 @@ import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import { timelineMobileDateSx, timelinePhoneSx } from './components/timelineLayout';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useActivities } from './hooks/useActivities';
@@ -334,7 +335,7 @@ const ActivitiesPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <Timeline position="right">
+        <Timeline position="right" sx={timelinePhoneSx}>
           {activities.map((activity, index) => (
             <TimelineItem key={activity.ID}>
               <TimelineOppositeContent
@@ -351,7 +352,10 @@ const ActivitiesPage: React.FC = () => {
                 </TimelineDot>
                 {index < activities.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
-              <TimelineContent sx={{ flex: 0.8 }}>
+              <TimelineContent sx={{ flex: { sm: 0.8 } }}>
+                <Typography variant="caption" sx={timelineMobileDateSx}>
+                  {formatDate(activity.date)}
+                </Typography>
                 <Paper
                   elevation={2}
                   sx={{
@@ -410,7 +414,12 @@ const ActivitiesPage: React.FC = () => {
                       </Box>
                       <Box
                         className="edit-actions"
-                        sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
+                        sx={{
+                          opacity: { xs: 1, sm: 0 },
+                          transition: 'opacity 0.2s',
+                          display: 'flex',
+                          gap: 1,
+                        }}
                       >
                         <IconButton
                           size="small"
