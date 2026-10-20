@@ -234,7 +234,7 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("URL").performTextInput("https://example.com/a")
         composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
 
-        composeTestRule.onNodeWithText("Contact Created").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Contact created").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Save").performClick()
 
         val input = confirmed
@@ -261,7 +261,7 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("Edit").assertIsDisplayed()
         // The existing event chip is already selected and the active switch off —
         // both reflected via their labels.
-        composeTestRule.onNodeWithText("Note Created").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Note created").performScrollTo().assertIsDisplayed()
     }
 
     @Test

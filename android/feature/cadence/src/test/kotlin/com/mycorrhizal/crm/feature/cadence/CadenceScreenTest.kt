@@ -142,13 +142,13 @@ class CadenceScreenTest {
     @Test
     fun `the add fab shows only in the empty state`() {
         setScreen(policy = null)
-        composeTestRule.onNodeWithContentDescription("Add Cadence").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add cadence").assertIsDisplayed()
     }
 
     @Test
     fun `the add fab is hidden once a policy exists`() {
         setScreen(policy())
-        composeTestRule.onNodeWithContentDescription("Add Cadence").assertIsNotDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add cadence").assertIsNotDisplayed()
     }
 
     @Test
@@ -177,7 +177,7 @@ class CadenceScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithContentDescription("Add Cadence").performClick()
+        composeTestRule.onNodeWithContentDescription("Add cadence").performClick()
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 

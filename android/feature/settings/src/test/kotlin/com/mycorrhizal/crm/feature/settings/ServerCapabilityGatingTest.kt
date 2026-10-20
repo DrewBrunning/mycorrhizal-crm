@@ -68,13 +68,13 @@ class ServerCapabilityGatingTest {
 
         composeTestRule.onNodeWithText("Two-factor authentication").assertDoesNotExist()
         composeTestRule.onNodeWithText("Webhooks").assertDoesNotExist()
-        composeTestRule.onNodeWithText("API Tokens").assertDoesNotExist()
+        composeTestRule.onNodeWithText("API tokens").assertDoesNotExist()
         composeTestRule.onNodeWithText("Notification channels").assertDoesNotExist()
         composeTestRule.onNodeWithText("User management").assertDoesNotExist()
         composeTestRule.onNodeWithText("System events").assertDoesNotExist()
         composeTestRule.onNodeWithText("Set up biometric sign-in").assertDoesNotExist()
         // Issue #1367: storage only — no outbound integrations, no calendar sync.
-        composeTestRule.onNodeWithText("Calendar Sync").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Calendar sync").assertDoesNotExist()
         composeTestRule.onNodeWithText("Immich").assertDoesNotExist()
         composeTestRule.onNodeWithText("Paperless-ngx").assertDoesNotExist()
         composeTestRule.onNodeWithText("Seafile").assertDoesNotExist()
@@ -96,8 +96,8 @@ class ServerCapabilityGatingTest {
         // Fail open: an unreachable /health never strips settings.
         composeTestRule.onNodeWithText("Two-factor authentication").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Webhooks").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API Tokens").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Calendar Sync").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API tokens").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Calendar sync").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Immich").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("GeoPulse").performScrollTo().assertIsDisplayed()
     }

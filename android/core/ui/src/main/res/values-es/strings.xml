@@ -13,7 +13,7 @@
     <string name="dashboard_data_decay_overdue">Datos por revisar</string>
     <!-- Issue #177: event-driven reach-out suggestions. -->
     <string name="dashboard_reach_out">Motivos para contactar</string>
-    <string name="dashboard_random_contacts">Mantente en Contacto</string>
+    <string name="dashboard_random_contacts">Mantente en contacto</string>
     <!-- Issue #212: the favorites quick-access block (web #173). -->
     <string name="dashboard_favorites">Favoritos</string>
     <string name="dashboard_no_favorites">Aún no hay favoritos</string>
@@ -335,11 +335,11 @@
     <!-- M7: editor de direcciones -->
     <string name="contact_address_street">Calle</string>
     <string name="contact_address_city">Ciudad</string>
-    <string name="contact_address_region">Provincia / Región</string>
+    <string name="contact_address_region">Provincia / región</string>
     <string name="contact_address_postal">Código postal</string>
     <string name="contact_address_country">País</string>
     <string name="contact_address_pobox">Apartado de correos</string>
-    <string name="contact_address_apartment">Apartamento / Suite</string>
+    <string name="contact_address_apartment">Apartamento / suite</string>
     <string name="contact_address_floor">Planta</string>
     <string name="contact_address_additional">Campos adicionales</string>
     <string name="map_show_list">Mostrar como lista</string>
@@ -520,7 +520,7 @@
     <string name="settings_date_format_eu_mmmm">Europeo completo (DD MMMM, AAAA)</string>
 
     <!-- Settings: password change (M25) -->
-    <string name="settings_password_title">Cambiar Contraseña</string>
+    <string name="settings_password_title">Cambiar contraseña</string>
     <string name="settings_password_current">Contraseña actual</string>
     <string name="settings_password_new">Nueva contraseña</string>
     <string name="settings_password_confirm">Confirmar nueva contraseña</string>
@@ -577,12 +577,12 @@
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>
     <string name="settings_webhooks_description">Recibe notificaciones HTTP POST cuando ocurren eventos en tu CRM.</string>
-    <string name="settings_webhooks_add">Agregar Webhook</string>
+    <string name="settings_webhooks_add">Agregar webhook</string>
     <string name="settings_webhooks_edit">Editar</string>
     <string name="settings_webhooks_edit_named">Editar %1$s</string>
     <string name="settings_webhooks_delete">Eliminar</string>
     <string name="settings_webhooks_delete_named">Eliminar %1$s</string>
-    <string name="settings_webhooks_delete_title">Eliminar Webhook</string>
+    <string name="settings_webhooks_delete_title">Eliminar webhook</string>
     <string name="settings_webhooks_delete_body">¿Eliminar "%1$s"? Se detendrán todas las entregas futuras.</string>
     <string name="settings_webhooks_test">Probar</string>
     <string name="settings_webhooks_test_named">Probar %1$s</string>
@@ -597,7 +597,7 @@
     <string name="settings_webhooks_hide_deliveries">Ocultar entregas</string>
     <string name="settings_webhooks_no_deliveries">Aún no hay entregas.</string>
     <string name="settings_webhooks_test_success">Prueba entregada (%1$s)</string>
-    <string name="settings_webhooks_secret_title">Secreto del Webhook</string>
+    <string name="settings_webhooks_secret_title">Secreto del webhook</string>
     <string name="settings_webhooks_secret_warning">Este secreto se muestra solo una vez. Cópialo antes de cerrar.</string>
     <string name="settings_webhooks_event_contact_created">Contacto creado</string>
     <string name="settings_webhooks_event_contact_updated">Contacto actualizado</string>
@@ -613,7 +613,7 @@
 
     <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
     <string name="settings_api_tokens_title">Tokens API</string>
-    <string name="settings_api_tokens_create">Crear Token</string>
+    <string name="settings_api_tokens_create">Crear token</string>
     <string name="settings_api_tokens_revoke_all">Revocar todo</string>
     <string name="settings_api_tokens_empty">Aún no hay tokens API</string>
     <string name="settings_api_tokens_active">Activo</string>
@@ -627,20 +627,20 @@
     <string name="settings_api_tokens_expires">Caduca %1$s</string>
     <string name="settings_api_tokens_rotate_named">Rotar %1$s</string>
     <string name="settings_api_tokens_revoke_named">Revocar %1$s</string>
-    <string name="settings_api_tokens_create_title">Crear Token API</string>
-    <string name="settings_api_tokens_name_label">Nombre del Token</string>
+    <string name="settings_api_tokens_create_title">Crear token API</string>
+    <string name="settings_api_tokens_name_label">Nombre del token</string>
     <string name="settings_api_tokens_expiry_label">Caduca en</string>
     <string name="settings_api_tokens_expiry_days">%1$d días</string>
     <string name="settings_api_tokens_scope_label">Acceso</string>
     <string name="settings_api_tokens_scope_full_help">Se puede usar en cualquier lugar donde la API acepte un token, incluida la sincronización de CardDAV.</string>
     <string name="settings_api_tokens_scope_carddav_help">Solo funciona para la sincronización de contactos CardDAV. Una credencial de dispositivo filtrada no se puede usar contra el resto de la API.</string>
-    <string name="settings_api_tokens_created_title">Token Creado</string>
+    <string name="settings_api_tokens_created_title">Token creado</string>
     <string name="settings_api_tokens_created_warning">Este token no se mostrará de nuevo. Cópialo ahora y guárdalo de forma segura.</string>
-    <string name="settings_api_tokens_rotated_title">Token Rotado</string>
+    <string name="settings_api_tokens_rotated_title">Token rotado</string>
     <string name="settings_api_tokens_rotated_warning">El token anterior ya está revocado. Este nuevo token no se volverá a mostrar; cópialo ahora y guárdalo de forma segura.</string>
     <string name="settings_api_tokens_copy">Copiar</string>
     <string name="settings_api_tokens_done">Listo, lo guardé</string>
-    <string name="settings_api_tokens_revoke_title">Revocar Token</string>
+    <string name="settings_api_tokens_revoke_title">Revocar token</string>
     <string name="settings_api_tokens_revoke_body">¿Revocar \"%1$s\"? Esto no se puede deshacer.</string>
     <string name="settings_api_tokens_revoke_confirm">Revocar</string>
     <string name="settings_api_tokens_revoke_all_title">Revocar todos los tokens</string>
@@ -1347,7 +1347,7 @@
     <string name="life_events_category_work_education">Trabajo y educación</string>
     <string name="life_events_category_travel_experiences">Viajes y experiencias</string>
     <string name="life_events_category_family_relationships">Familia y relaciones</string>
-    <string name="life_events_category_uncategorized">Otros / Sin categoría</string>
+    <string name="life_events_category_uncategorized">Otros / sin categoría</string>
     <string name="gifts_status_idea">Idea</string>
     <string name="gifts_status_purchased">Comprado</string>
     <string name="gifts_status_given">Regalado</string>
@@ -1599,34 +1599,34 @@
     <!-- Etiquetas de campo para la asignación de columnas CSV (issue #834) -->
     <string name="import_field_firstname">Nombre</string>
     <string name="import_field_lastname">Apellido</string>
-    <string name="import_field_middle_name">Segundo Nombre</string>
-    <string name="import_field_prefix">Prefijo del Nombre</string>
-    <string name="import_field_suffix">Sufijo del Nombre</string>
+    <string name="import_field_middle_name">Segundo nombre</string>
+    <string name="import_field_prefix">Prefijo del nombre</string>
+    <string name="import_field_suffix">Sufijo del nombre</string>
     <string name="import_field_nickname">Apodo</string>
     <string name="import_field_gender">Género</string>
     <string name="import_field_birthday">Cumpleaños</string>
     <string name="import_field_anniversary">Aniversario</string>
     <string name="import_field_email">Correo electrónico</string>
-    <string name="import_field_email_label">Correo electrónico – Tipo</string>
+    <string name="import_field_email_label">Correo electrónico – tipo</string>
     <string name="import_field_phone">Teléfono</string>
-    <string name="import_field_phone_label">Teléfono – Tipo</string>
-    <string name="import_field_address_street">Dirección – Calle</string>
-    <string name="import_field_address_city">Dirección – Ciudad</string>
+    <string name="import_field_phone_label">Teléfono – tipo</string>
+    <string name="import_field_address_street">Dirección – calle</string>
+    <string name="import_field_address_city">Dirección – ciudad</string>
     <string name="import_field_address_region">Dirección – Región/Provincia</string>
-    <string name="import_field_address_postal">Dirección – Código Postal</string>
-    <string name="import_field_address_country">Dirección – País</string>
-    <string name="import_field_address_label">Dirección – Tipo</string>
+    <string name="import_field_address_postal">Dirección – código postal</string>
+    <string name="import_field_address_country">Dirección – país</string>
+    <string name="import_field_address_label">Dirección – tipo</string>
     <string name="import_field_url">Sitio web</string>
-    <string name="import_field_url_label">Sitio web – Tipo</string>
-    <string name="import_field_impp">MI / Redes sociales</string>
-    <string name="import_field_impp_label">MI / Redes sociales – Tipo</string>
+    <string name="import_field_url_label">Sitio web – tipo</string>
+    <string name="import_field_impp">MI / redes sociales</string>
+    <string name="import_field_impp_label">MI / redes sociales – tipo</string>
     <string name="import_field_organization">Organización</string>
     <string name="import_field_department">Departamento</string>
-    <string name="import_field_job_title">Puesto de Trabajo</string>
+    <string name="import_field_job_title">Puesto de trabajo</string>
     <string name="import_field_role">Rol</string>
-    <string name="import_field_how_we_met">Cómo nos Conocimos</string>
-    <string name="import_field_work_information">Información Laboral</string>
-    <string name="import_field_contact_information">Información de Contacto</string>
+    <string name="import_field_how_we_met">Cómo nos conocimos</string>
+    <string name="import_field_work_information">Información laboral</string>
+    <string name="import_field_contact_information">Información de contacto</string>
     <string name="import_field_circles">Círculos</string>
     <string name="import_field_tags">Etiquetas</string>
 

@@ -281,7 +281,7 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("English").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Theme").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Use system default").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Change Password").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Change password").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Current password").performScrollTo().assertIsDisplayed()
     }
 
@@ -426,7 +426,7 @@ class SettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("API Tokens").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("API tokens").performScrollTo().performClick()
         assertTrue(apiTokens)
     }
 
@@ -444,7 +444,7 @@ class SettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Calendar Sync").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Calendar sync").performScrollTo().performClick()
         assertTrue(calendarSync)
     }
 

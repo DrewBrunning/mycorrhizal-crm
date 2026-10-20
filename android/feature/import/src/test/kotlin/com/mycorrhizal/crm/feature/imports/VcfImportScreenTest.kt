@@ -96,7 +96,7 @@ class VcfImportScreenTest {
             ),
             onRowActionChange = { row, action -> changedRow = row; changedAction = action },
         )
-        composeTestRule.onNodeWithText("Discard New").performClick()
+        composeTestRule.onNodeWithText("Discard new").performClick()
         assertEquals(0, changedRow)
         assertEquals("skip", changedAction)
     }
@@ -124,7 +124,7 @@ class VcfImportScreenTest {
                                 updated = listOf(
                                     com.mycorrhizal.crm.model.network.ImportScalarChange(
                                         field = "job_title",
-                                        label = "Job Title",
+                                        label = "Job title",
                                         old = "Engineer",
                                         new = "Staff Engineer",
                                     ),

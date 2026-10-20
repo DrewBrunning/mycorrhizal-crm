@@ -285,7 +285,7 @@ class CalendarSyncScreenTest {
         }
 
         composeTestRule.onNodeWithText("No calendars added yet.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Contact Sync").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Contact sync").assertIsDisplayed()
         composeTestRule.onNodeWithText("Address Book").assertIsDisplayed()
     }
 
@@ -344,7 +344,7 @@ class CalendarSyncScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Add Calendar").performClick()
+        composeTestRule.onNodeWithContentDescription("Add calendar").performClick()
         composeTestRule.onNodeWithText("Name").performTextInput("New Calendar")
         composeTestRule.onNodeWithText("Calendar URL").performTextInput("https://example.com/new.ics")
         composeTestRule.onNodeWithText("Save").performClick()
@@ -370,7 +370,7 @@ class CalendarSyncScreenTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Edit Personal").performClick()
-        composeTestRule.onNodeWithText("Edit Calendar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Edit calendar").assertIsDisplayed()
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals(7, savedEditingId)
@@ -395,7 +395,7 @@ class CalendarSyncScreenTest {
         composeTestRule.onNodeWithContentDescription("Delete Personal").performClick()
         // Confirmation dialog: not deleted yet.
         assertEquals(null, deleted)
-        composeTestRule.onNodeWithText("Delete Calendar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Delete calendar").assertIsDisplayed()
         composeTestRule.onNodeWithText("Delete").performClick()
 
         assertEquals(calendar, deleted)

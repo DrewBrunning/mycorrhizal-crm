@@ -286,7 +286,7 @@ class LifeEventDialogTest {
 
         // Pick the family category, then a category-scoped type.
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("married").performClick()
 
@@ -304,7 +304,7 @@ class LifeEventDialogTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("anniversary").performClick()
 
@@ -329,7 +329,7 @@ class LifeEventDialogTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("anniversary").performClick()
 
@@ -380,7 +380,7 @@ class LifeEventDialogTest {
             onConfirm = { confirmed = it },
         )
 
-        composeTestRule.onNodeWithText("Other / Uncategorized").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Other / uncategorized").assertIsDisplayed()
         // The type is free text under the sentinel, and editable.
         composeTestRule.onNodeWithText("went to the lake").assertIsDisplayed()
         composeTestRule.onNodeWithText("went to the lake").performTextReplacement("went to the sea")
@@ -564,9 +564,9 @@ class PreferenceDialogTest {
         setContent()
 
         composeTestRule.onNodeWithTag("preference-category").performClick()
-        composeTestRule.onNodeWithText("Food & Drink").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Food & drink").assertIsDisplayed()
         // Further down the (scrollable) popup — scroll each into view first.
-        composeTestRule.onNodeWithText("Jewelry & Style").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Jewelry & style").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Jewelry — metal").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Flowers").performScrollTo().assertIsDisplayed()
     }
