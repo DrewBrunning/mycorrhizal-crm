@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.timelineentities
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -12,6 +13,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
@@ -25,6 +27,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,17 +59,23 @@ class ConversationAgendaMarkDiscussedTest {
 
     private val repo = mockk<ConversationAgendaRepository>()
 
-    private fun show() {
+    private fun vm(
+        saved: SavedStateHandle = SavedStateHandle(mapOf("contactId" to 5)),
+        activities: List<Activity> = emptyList(),
+    ): ConversationAgendaViewModel {
         val activityRepo = mockk<ActivityRepository>()
         val contacts = mockk<ContactRepository>()
         coEvery { contacts.getContact(5) } returns Result.success(
             ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
         )
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
-            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
-        val vm = ConversationAgendaViewModel(repo, activityRepo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+            Result.success(ContactActivitiesPage(activities = activities, nextCursor = null))
+        return ConversationAgendaViewModel(repo, activityRepo, contacts, saved)
+    }
+
+    private fun show(viewModel: ConversationAgendaViewModel = vm()) {
         composeTestRule.setContent {
-            MycorrhizalTheme { ConversationAgendaScreen(onBack = {}, viewModel = vm) }
+            MycorrhizalTheme { ConversationAgendaScreen(onBack = {}, viewModel = viewModel) }
         }
     }
 
@@ -132,5 +142,84 @@ class ConversationAgendaMarkDiscussedTest {
 
         composeTestRule.onNodeWithText("Mark discussed").assertIsDisplayed()
         composeTestRule.onNodeWithText("Discuss").assertIsEnabled()
+    }
+
+    // Review follow-up: the close signal must not depend on the screen
+    // collecting at the moment the PATCH lands (rotation mid-request). A
+    // success with no UI attached still leaves the dialog closed.
+    @Test
+    fun `a success while no screen is attached still closes the dialog`() = runTest {
+        coEvery { repo.listForContact(uid) } returnsMany
+            listOf(Result.success(listOf(open)), Result.success(listOf(discussed)))
+        coEvery { repo.discuss("a1", null) } returns Result.success(discussed)
+        val viewModel = vm()
+
+        viewModel.openDiscuss("a1")
+        viewModel.markDiscussed("a1", null)
+
+        assertNull(viewModel.pendingDiscussId.value)
+    }
+
+    // Process death: the open dialog is restored from the SavedStateHandle.
+    @Test
+    fun `an open dialog is restored after process death`() {
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(open))
+        val saved = SavedStateHandle(mapOf("contactId" to 5))
+        vm(saved).openDiscuss("a1")
+
+        // A fresh ViewModel over the same saved state, as after process death.
+        show(vm(saved))
+
+        composeTestRule.onNodeWithText("Mark discussed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Discuss").assertIsEnabled()
+    }
+
+    // Process death after the PATCH landed: nothing left to confirm.
+    @Test
+    fun `a restored dialog for an already discussed item is dropped`() {
+        coEvery { repo.listForContact(uid) } returnsMany
+            listOf(Result.success(listOf(open)), Result.success(listOf(discussed)))
+        val saved = SavedStateHandle(mapOf("contactId" to 5))
+        vm(saved).openDiscuss("a1")
+
+        val restored = vm(saved)
+
+        assertNull(restored.pendingDiscussId.value)
+    }
+
+    @Test
+    fun `cancel closes the dialog`() {
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(open))
+        show()
+
+        composeTestRule.onNodeWithContentDescription("Mark discussed").performClick()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Mark discussed").assertDoesNotExist()
+    }
+
+    // Rotation: the picked activity survives an activity recreation.
+    @Test
+    fun `the picked activity survives a configuration change`() {
+        val restoration = StateRestorationTester(composeTestRule)
+        restoration.setContent {
+            MycorrhizalTheme {
+                MarkDiscussedDialog(
+                    item = open,
+                    activities = listOf(Activity(id = 9, title = "Coffee", date = "2026-10-18")),
+                    confirming = false,
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("None").performClick()
+        composeTestRule.onNodeWithText("Coffee").performClick()
+        composeTestRule.onNodeWithText("Coffee").assertIsDisplayed()
+
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeTestRule.onNodeWithText("Coffee").assertIsDisplayed()
     }
 }
