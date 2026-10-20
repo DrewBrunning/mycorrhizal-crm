@@ -31,8 +31,11 @@ import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -773,6 +776,13 @@ class ConversationAgendaViewModel @Inject constructor(
     private val _discussingId = MutableStateFlow<String?>(null)
     val discussingId: StateFlow<String?> = _discussingId.asStateFlow()
 
+    // One-shot "this item was discussed" signal (issue #1723). The screen closes
+    // the mark-discussed dialog on it -- only on success, so a failed PATCH
+    // leaves the dialog open next to the error snackbar. Deliberately not
+    // derived from discussingId going null: that is also its initial value.
+    private val _discussed = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val discussed: SharedFlow<String> = _discussed.asSharedFlow()
+
     init { load() }
 
     fun load() {
@@ -867,6 +877,7 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.discuss(id, activityId).foldApiError(
                 onSuccess = {
                     _discussingId.value = null
+                    _discussed.tryEmit(id)
                     load()
                 },
                 onError = { e ->

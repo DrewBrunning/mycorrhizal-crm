@@ -1401,7 +1401,7 @@
     <string name="gifts_shopping_notes_header">Clothing sizes &amp; gift preferences (%1$d)</string>
     <string name="gifts_clothing_type">Type</string>
     <string name="gifts_preferences_heading">Gift preferences</string>
-    <string name="preferences_key">Key</string>
+    <string name="preferences_key">Kind</string>
     <string name="preferences_notes">Notes</string>
     <string name="preferences_level">Proficiency</string>
     <string name="preferences_level_none">No level</string>
@@ -1990,4 +1990,13 @@
     <string name="conflict_load_latest">Load latest version</string>
     <string name="conflict_keep_editing">Keep editing</string>
     <string name="conflict_dismiss">Not now</string>
+    <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
+    <string name="life_events_category_label">Category</string>
+    <string name="life_events_type_label">Event type</string>
+    <string name="life_events_save_hint">Choose an event type to continue</string>
+    <string name="gifts_status_label">Status</string>
+    <string name="gifts_save_hint_description">Enter a description to continue</string>
+    <string name="form_save_hint_fix_fields">Fix the highlighted fields to continue</string>
+    <string name="preferences_key_suggestions">Suggestions</string>
+    <string name="note_change_contact">Change</string>
 </resources>
