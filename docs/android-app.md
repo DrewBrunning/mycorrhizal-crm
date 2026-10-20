@@ -289,23 +289,23 @@ its empty states are tracked in issue #1779).
   "Enter your new password and confirm it to continue". A dialog's confirm button that waits for a required text
   field is the one standard exception: the field itself is already marked required.
 
-- **Dialog or full-screen form (issue #1773).** A create/edit form is an `AlertDialog` only when it is short and
-  single-purpose: **at most about four typed (text) fields**, no contact search, and it fits without scrolling at
-  the default font size: conversation agenda, mark discussed, preference. A dropdown over a fixed list
-  (`LabelledDropdown`) does not count against that budget; "a picker means full screen" in the issue is read as a
-  *search-and-pick* (a contact search), which is what makes a dialog scroll. Anything bigger (more than about four
-  typed fields, a contact search, or a body that scrolls) is a full-screen form built on `FormScaffold`
+- **Dialog or full-screen form (issue #1773).** **Any picker, including a fixed-list dropdown
+  (`LabelledDropdown`), means a full-screen form.** A create/edit form that has a picker, a contact search, more
+  than about four typed (text) fields, or a body that scrolls is a full-screen form built on `FormScaffold`
   (`EntityFormScreen` for the timeline entities) with the pinned Save/Create button: note, activity, reminder,
-  gift and life event.
-  - Preference stays a dialog on purpose: three typed fields (kind, value, notes) plus up to three fixed-list
-    dropdowns, and it does not scroll at font scale 1.0. Revisit it if a field is added.
-  - Known exception: the **relationship** dialog has a contact search and is still a dialog. Moving it is out of
-    #1773's scope (the issue names gift and life event); it is the next candidate under this rule.
+  gift, life event, preference, relationship and mark discussed. There is no recorded exception: the
+  preference form (category, level and sensitivity dropdowns) and the relationship form (contact search plus
+  type and sensitivity dropdowns) were dialogs before the maintainer's 2026-10-20 decision and are full screen
+  now. An `AlertDialog` is only for a **short, picker-free** interaction: a confirmation (delete, discard,
+  reject) or a form of a few typed fields that fits without scrolling at the default font size and has no
+  picker (the conversation agenda item: content and a reference URL). Dialogs on other screens that predate this
+  rule and still carry a picker are converted as those screens are next touched, not by exception.
   - A full-screen entity form keeps the list underneath where it was (the list's scroll state is hoisted above
     the form/list switch), and the open form and its typed input survive rotation and process death
-    (`rememberSaveable`). System back and the top-bar arrow leave the form and discard what was typed, the same
-    as Cancel did in the dialogs; the "Discard changes?" guard is #1751's, and `EntityFormScreen` is the one
-    place it plugs into for both forms.
+    (`rememberSaveable`, or the ViewModel's `SavedStateHandle` for mark discussed). System back and the top-bar
+    arrow leave the form and discard what was typed, the same as Cancel did in the dialogs; the "Discard
+    changes?" guard is #1751's, and `EntityFormScreen` is the one place it plugs into for the timeline
+    entities.
 - **Pickers are labelled dropdowns.** A choice among a fixed list is a `LabelledDropdown` (`core/ui`): a read-only
   outlined field with a visible label and a trailing arrow, never a bare button showing only the current value.
   TalkBack hears "<label>, <value>, drop-down list". Quick-fill values for a text field (the preference "Kind")

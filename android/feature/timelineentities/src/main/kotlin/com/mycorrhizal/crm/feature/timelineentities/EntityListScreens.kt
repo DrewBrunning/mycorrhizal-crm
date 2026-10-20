@@ -1767,6 +1767,22 @@ fun ConversationAgendaScreen(
     // its SavedStateHandle), so it survives rotation and process death, and the
     // ViewModel closes it only on a successful PATCH or a dismiss.
     val pendingDiscussId by viewModel.pendingDiscussId.collectAsStateWithLifecycle()
+    // Hoisted above the form/list switch so Back returns to where the list was scrolled.
+    val listState = rememberLazyListState()
+
+    // Issue #1773: marking discussed carries a picker (the activity to link), so by the
+    // "any picker means a full-screen form" rule it is a full-screen form, not a dialog.
+    val discussItem = pendingDiscussId?.let { viewModel.findById(it) }
+    if (discussItem != null) {
+        MarkDiscussedForm(
+            item = discussItem,
+            activities = activities,
+            confirming = discussingId == discussItem.id,
+            onConfirm = { activityId -> viewModel.markDiscussed(discussItem.id, activityId) },
+            onDismiss = viewModel::dismissDiscuss,
+        )
+        return
+    }
 
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
@@ -1780,6 +1796,7 @@ fun ConversationAgendaScreen(
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
         onRefresh = viewModel::load,
+        listState = listState,
         sectionLabel = { section ->
             if (section == "discussed") {
                 stringResource(R.string.agenda_section_discussed)
@@ -1812,24 +1829,17 @@ fun ConversationAgendaScreen(
                 onDismiss = { showAdd = false; editingItem = null },
             )
         }
-        pendingDiscussId?.let { id ->
-            val item = viewModel.findById(id)
-            if (item != null) {
-                MarkDiscussedDialog(
-                    item = item,
-                    activities = activities,
-                    confirming = discussingId == id,
-                    onConfirm = { activityId -> viewModel.markDiscussed(id, activityId) },
-                    onDismiss = viewModel::dismissDiscuss,
-                )
-            }
-        }
     }
 }
 
-/** Web's MarkDiscussedDialog — marks an item discussed, optionally linked to an activity. */
+/**
+ * Web's MarkDiscussedDialog -- marks an item discussed, optionally linked to an activity.
+ * Issue #1773: a full-screen form (it has an activity picker). The open form is ViewModel
+ * state ([ConversationAgendaViewModel.pendingDiscussId]); the picked activity is
+ * `rememberSaveable`.
+ */
 @Composable
-internal fun MarkDiscussedDialog(
+internal fun MarkDiscussedForm(
     item: ConversationAgenda,
     activities: List<Activity>,
     confirming: Boolean,
@@ -1838,38 +1848,27 @@ internal fun MarkDiscussedDialog(
 ) {
     // rememberSaveable: the picked activity survives rotation (issue #1723 review).
     var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.agenda_mark_discussed)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
-                Text(
-                    text = item.content,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                if (activities.isNotEmpty()) {
-                    SelectField(
-                        label = stringResource(R.string.agenda_discussed_link_activity),
-                        value = activityId?.toString(),
-                        placeholder = stringResource(R.string.gifts_none),
-                        options = activities.map { it.id.toString() },
-                        optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
-                        onSelect = { activityId = it?.toIntOrNull() },
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(activityId) },
-                enabled = !confirming,
-            ) { Text(stringResource(R.string.agenda_discussed_button)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !confirming) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
+    EntityFormScreen(
+        title = stringResource(R.string.agenda_mark_discussed),
+        saveLabel = stringResource(R.string.agenda_discussed_button),
+        saveEnabled = !confirming,
+        saveDisabledHint = null,
+        onSave = { onConfirm(activityId) },
+        onBack = { if (!confirming) onDismiss() },
+    ) {
+        Text(
+            text = item.content,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (activities.isNotEmpty()) {
+            SelectField(
+                label = stringResource(R.string.agenda_discussed_link_activity),
+                value = activityId?.toString(),
+                placeholder = stringResource(R.string.gifts_none),
+                options = activities.map { it.id.toString() },
+                optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
+                onSelect = { activityId = it?.toIntOrNull() },
+            )
+        }
+    }
 }

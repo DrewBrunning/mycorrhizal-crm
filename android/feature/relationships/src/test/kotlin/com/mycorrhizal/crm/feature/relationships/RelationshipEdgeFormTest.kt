@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -206,8 +207,9 @@ class RelationshipEdgeFormTest {
 
         restoration.emulateSavedInstanceStateRestore()
 
+        // Still selected (not just listed as a search result again): Create is enabled.
+        composeTestRule.onNodeWithText("Create").assertIsEnabled()
         composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
     }
 
     @Test

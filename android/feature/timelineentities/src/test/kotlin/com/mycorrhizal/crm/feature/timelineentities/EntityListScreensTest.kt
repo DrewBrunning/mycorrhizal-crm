@@ -887,7 +887,7 @@ class AgendaDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class MarkDiscussedDialogTest {
+class MarkDiscussedFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -897,7 +897,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = emptyList(),
                     confirming = false,
@@ -919,7 +919,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = listOf(
                         com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat"),

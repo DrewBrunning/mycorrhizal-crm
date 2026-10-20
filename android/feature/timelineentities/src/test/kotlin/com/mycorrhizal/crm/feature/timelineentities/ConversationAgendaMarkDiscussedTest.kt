@@ -80,7 +80,7 @@ class ConversationAgendaMarkDiscussedTest {
     }
 
     @Test
-    fun `tapping mark discussed opens the dialog and it stays open`() {
+    fun `tapping mark discussed opens the full-screen form and it stays open`() {
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(open))
         show()
 
@@ -92,7 +92,7 @@ class ConversationAgendaMarkDiscussedTest {
     }
 
     @Test
-    fun `confirming PATCHes discuss, closes the dialog and moves the item to Discussed`() {
+    fun `confirming PATCHes discuss, closes the form and moves the item to Discussed`() {
         coEvery { repo.listForContact(uid) } returnsMany
             listOf(Result.success(listOf(open)), Result.success(listOf(discussed)))
         coEvery { repo.discuss("a1", null) } returns Result.success(discussed)
@@ -148,7 +148,7 @@ class ConversationAgendaMarkDiscussedTest {
     // collecting at the moment the PATCH lands (rotation mid-request). A
     // success with no UI attached still leaves the dialog closed.
     @Test
-    fun `a success while no screen is attached still closes the dialog`() = runTest {
+    fun `a success while no screen is attached still closes the form`() = runTest {
         coEvery { repo.listForContact(uid) } returnsMany
             listOf(Result.success(listOf(open)), Result.success(listOf(discussed)))
         coEvery { repo.discuss("a1", null) } returns Result.success(discussed)
@@ -188,12 +188,12 @@ class ConversationAgendaMarkDiscussedTest {
     }
 
     @Test
-    fun `cancel closes the dialog`() {
+    fun `cancel closes the form`() {
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(open))
         show()
 
         composeTestRule.onNodeWithContentDescription("Mark discussed").performClick()
-        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Mark discussed").assertDoesNotExist()
@@ -205,7 +205,7 @@ class ConversationAgendaMarkDiscussedTest {
         val restoration = StateRestorationTester(composeTestRule)
         restoration.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = open,
                     activities = listOf(Activity(id = 9, title = "Coffee", date = "2026-10-18")),
                     confirming = false,
