@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { OverdueDataDecayPolicy } from '../api/dataDecayPolicies';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface DataDecayOverdueListProps {
   overdue: OverdueDataDecayPolicy[];
@@ -113,7 +114,9 @@ export default function DataDecayOverdueList({
                           color: 'text.secondary',
                         }}
                       >
-                        {t('dataDecay.dueOn', { date: formatDate(item.health.next_due) })}
+                        {t('dataDecay.dueOn', {
+                          date: formatDate(calendarDateOnly(item.health.next_due)),
+                        })}
                       </Typography>
                     )}
                   </Box>

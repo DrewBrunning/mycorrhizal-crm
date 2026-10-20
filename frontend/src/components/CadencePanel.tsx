@@ -8,6 +8,7 @@ import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { CadencePolicy } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface CadencePanelProps {
   policy: CadencePolicy | null;
@@ -169,7 +170,7 @@ export default function CadencePanel({
                 display: 'block',
               }}
             >
-              {t('cadence.nextDue', { date: formatDate(health.next_due) })}
+              {t('cadence.nextDue', { date: formatDate(calendarDateOnly(health.next_due)) })}
             </Typography>
           )}
           {hasInteraction && health?.last_interaction && (

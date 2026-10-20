@@ -9,6 +9,7 @@ import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { DataDecayPolicy } from '../api/dataDecayPolicies';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface DataDecayPanelProps {
   policy: DataDecayPolicy | null;
@@ -157,7 +158,7 @@ export default function DataDecayPanel({
                 display: 'block',
               }}
             >
-              {t('dataDecay.nextDue', { date: formatDate(health.next_due) })}
+              {t('dataDecay.nextDue', { date: formatDate(calendarDateOnly(health.next_due)) })}
             </Typography>
           )}
           <Typography

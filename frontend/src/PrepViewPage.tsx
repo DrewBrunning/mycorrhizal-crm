@@ -32,6 +32,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
+import { calendarDateOnly } from './utils/localDate';
 
 // N2 prep view: the "person
 // briefing" — everything the user wants to remember in the five minutes
@@ -191,7 +192,9 @@ export default function PrepViewPage() {
                       color: 'text.secondary',
                     }}
                   >
-                    {t('cadence.nextDue', { date: formatDate(briefing.cadence.health.next_due) })}
+                    {t('cadence.nextDue', {
+                      date: formatDate(calendarDateOnly(briefing.cadence.health.next_due)),
+                    })}
                   </Typography>
                 )}
                 {briefing.cadence.health.last_interaction && (
