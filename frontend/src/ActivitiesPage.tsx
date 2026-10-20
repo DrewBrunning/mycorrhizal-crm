@@ -237,7 +237,7 @@ const ActivitiesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', maxWidth: '100%', minWidth: 0 }}>
           <Button
             variant="outlined"
             startIcon={
@@ -246,6 +246,7 @@ const ActivitiesPage: React.FC = () => {
               </SvgIcon>
             }
             onClick={() => setLocationDialogOpen(true)}
+            sx={{ minWidth: 0, maxWidth: '100%' }}
           >
             {t('activities.logFromLocation')}
           </Button>
@@ -258,6 +259,7 @@ const ActivitiesPage: React.FC = () => {
               </SvgIcon>
             }
             onClick={handleAddActivity}
+            sx={{ minWidth: 0, maxWidth: '100%' }}
           >
             {t('activities.addActivity')}
           </Button>
@@ -359,7 +361,7 @@ const ActivitiesPage: React.FC = () => {
                 <Paper
                   elevation={2}
                   sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     // #196: :focus-within reveals the actions once a button
                     // inside is keyboard-focused, not just on mouse hover.
                     '&:hover .edit-actions, &:focus-within .edit-actions': {
@@ -375,7 +377,7 @@ const ActivitiesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Box sx={{ flex: 1, pr: 2 }}>
+                      <Box sx={{ flex: 1, minWidth: 0, pr: { xs: 1, sm: 2 } }}>
                         {activity.title && (
                           // T98: subtitle1 matches the activity title size on
                           // the contact timeline. The color override is gone
@@ -387,7 +389,7 @@ const ActivitiesPage: React.FC = () => {
                             component="p"
                             sx={{
                               fontWeight: 600,
-                              wordBreak: 'break-word',
+                              overflowWrap: 'anywhere',
                             }}
                           >
                             {activity.title}
@@ -395,7 +397,11 @@ const ActivitiesPage: React.FC = () => {
                         )}
                         <Typography
                           variant="body2"
-                          sx={{ whiteSpace: 'pre-wrap', mt: activity.title ? 0.5 : 0 }}
+                          sx={{
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'anywhere',
+                            mt: activity.title ? 0.5 : 0,
+                          }}
                         >
                           {activity.description}
                         </Typography>

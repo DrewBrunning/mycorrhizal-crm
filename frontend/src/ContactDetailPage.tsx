@@ -1,5 +1,6 @@
 import { mdiCalendarPlus, mdiNotePlusOutline } from '@mdi/js';
 import AddIcon from '@mui/icons-material/Add';
+import ListIcon from '@mui/icons-material/List';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
   Alert,
@@ -1182,8 +1183,13 @@ export default function ContactDetailPage() {
                 variant="outlined"
                 color="primary"
                 size="small"
+                // Icon only below sm (the label is hidden there); at sm+ it is a text button.
+                startIcon={<ListIcon />}
                 aria-label={t('timeline.viewAll')}
-                sx={timelineActionButtonSx}
+                sx={{
+                  ...timelineActionButtonSx,
+                  '& .MuiButton-startIcon': { display: { xs: 'inherit', sm: 'none' }, m: 0 },
+                }}
               >
                 <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
                   {t('timeline.viewAll')}
