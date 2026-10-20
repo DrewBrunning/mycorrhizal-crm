@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -144,6 +146,9 @@ internal fun EntityListScaffold(
     // as an overlapping sibling of it (that overlap was a real bug — review-pass fix).
     header: (@Composable () -> Unit)? = null,
     onRefresh: () -> Unit = {},
+    // Issue #1773 review: a screen whose full-screen form replaces the list (gifts, life
+    // events) hoists this so the scroll position survives the round trip to the form.
+    listState: LazyListState = rememberLazyListState(),
     dialog: @Composable () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -189,7 +194,7 @@ internal fun EntityListScaffold(
                 // it. Every state (loading/empty/error/populated) is an item too,
                 // so the header stays reachable regardless of list contents.
                 val uriHandler = LocalUriHandler.current
-                LazyColumn(modifier = Modifier.fillMaxSize().testTag("entity-list")) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("entity-list")) {
                     if (header != null) {
                         item(key = "scaffold-header") { header() }
                     }
@@ -427,26 +432,26 @@ internal fun LifeEventForm(
     // pick a real category). The sentinel falls back on `initial != null`,
     // NOT `initial?.category != null`: pre-T36 rows carry category NULL, which
     // Go serializes as an absent JSON key (review-pass fix).
-    var category by remember(initial) {
+    var category by rememberSaveable(initial?.id) {
         mutableStateOf(
             initial?.category
                 ?.takeIf { it in LifeEventCategory.ALL }
                 ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else ""),
         )
     }
-    var type by remember(initial) { mutableStateOf(initial?.type ?: "") }
-    var customType by remember(initial) {
+    var type by rememberSaveable(initial?.id) { mutableStateOf(initial?.type ?: "") }
+    var customType by rememberSaveable(initial?.id) {
         mutableStateOf(
             initial?.type != null &&
                 category in LifeEventCategory.ALL &&
                 initial.type !in LifeEventTypes.forCategory(category),
         )
     }
-    var description by remember(initial) { mutableStateOf(initial?.description ?: "") }
-    var year by remember(initial) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
-    var month by remember(initial) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
-    var day by remember(initial) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
-    var remind by remember(initial) { mutableStateOf(initial?.remind == true) }
+    var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
+    var year by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
+    var month by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
+    var day by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
+    var remind by rememberSaveable(initial?.id) { mutableStateOf(initial?.remind == true) }
 
     val canRemind = month.toIntOrNull() != null && day.toIntOrNull() != null
     val typeEnabled = category.isNotEmpty()
@@ -665,11 +670,16 @@ fun LifeEventsScreen(
     val relatedQuery by viewModel.relatedSearchQuery.collectAsStateWithLifecycle()
     val relatedResults by viewModel.relatedSearchResults.collectAsStateWithLifecycle()
     val relatedLoading by viewModel.relatedSearchLoading.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<LifeEvent?>(null) }
+    // Issue #1773 review: the full-screen form survives rotation and process death
+    // (saved open flag + the edited item's id, not the item), and the list keeps its
+    // scroll position while the form is up.
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val listState = rememberLazyListState()
 
     if (showAdd || editingItem != null) {
-        LaunchedEffect(editingItem) { viewModel.onDialogOpened(editingItem) }
+        LaunchedEffect(editingItem?.id) { viewModel.onDialogOpened(editingItem) }
         LifeEventForm(
             initial = editingItem,
             relatedContacts = relatedContacts,
@@ -682,14 +692,14 @@ fun LifeEventsScreen(
             onConfirm = { form ->
                 editingItem?.let { viewModel.update(it, form) }
                     ?: viewModel.create(form)
-                viewModel.clearRelatedSearch()
+                viewModel.onFormClosed()
                 showAdd = false
-                editingItem = null
+                editingId = null
             },
             onDismiss = {
-                viewModel.clearRelatedSearch()
+                viewModel.onFormClosed()
                 showAdd = false
-                editingItem = null
+                editingId = null
             },
         )
     } else {
@@ -700,11 +710,12 @@ fun LifeEventsScreen(
             emptyBody = stringResource(R.string.life_events_empty_body),
             uiState = state,
             onAdd = { showAdd = true },
-            onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
+            onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
             onDelete = viewModel::delete,
             onErrorShown = viewModel::onErrorShown,
             onBack = onBack,
             onRefresh = viewModel::load,
+            listState = listState,
         ) {}
     }
 
@@ -741,16 +752,16 @@ internal fun GiftForm(
     onDismiss: () -> Unit,
 ) {
     val isEditing = initial != null
-    var status by remember(initial) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
-    var description by remember(initial) { mutableStateOf(initial?.description ?: "") }
-    var url by remember(initial) { mutableStateOf(initial?.url ?: "") }
-    var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
-    var occasion by remember(initial) { mutableStateOf(initial?.occasion ?: "") }
-    var date by remember(initial) { mutableStateOf(giftDateFromIso(initial?.date)) }
-    var amount by remember(initial) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
-    var currency by remember(initial) { mutableStateOf(initial?.currency ?: "") }
-    var lifeEventId by remember(initial) { mutableStateOf(initial?.lifeEventId) }
-    var activityId by remember(initial) { mutableStateOf(initial?.activityId) }
+    var status by rememberSaveable(initial?.id) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
+    var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
+    var url by rememberSaveable(initial?.id) { mutableStateOf(initial?.url ?: "") }
+    var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+    var occasion by rememberSaveable(initial?.id) { mutableStateOf(initial?.occasion ?: "") }
+    var date by rememberSaveable(initial?.id) { mutableStateOf(giftDateFromIso(initial?.date)) }
+    var amount by rememberSaveable(initial?.id) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
+    var currency by rememberSaveable(initial?.id) { mutableStateOf(initial?.currency ?: "") }
+    var lifeEventId by rememberSaveable(initial?.id) { mutableStateOf(initial?.lifeEventId) }
+    var activityId by rememberSaveable(initial?.id) { mutableStateOf(initial?.activityId) }
 
     val parsedAmount = amount.toBigDecimalOrNull()
     val hasAmount = parsedAmount != null && parsedAmount >= BigDecimal.ZERO
@@ -944,8 +955,12 @@ fun GiftsScreen(
     val activities by viewModel.activities.collectAsStateWithLifecycle()
     val clothingSizes by viewModel.clothingSizes.collectAsStateWithLifecycle()
     val giftPreferences by viewModel.giftPreferences.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<Gift?>(null) }
+    // Issue #1773 review: as LifeEventsScreen, the full-screen form survives rotation
+    // and process death, and the list keeps its scroll position under it.
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val listState = rememberLazyListState()
     var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
     var newClothingKey by remember { mutableStateOf("") }
     var newClothingValue by remember { mutableStateOf("") }
@@ -961,9 +976,9 @@ fun GiftsScreen(
                 editingItem?.let { viewModel.update(it, form) }
                     ?: viewModel.create(form)
                 showAdd = false
-                editingItem = null
+                editingId = null
             },
-            onDismiss = { showAdd = false; editingItem = null },
+            onDismiss = { showAdd = false; editingId = null },
         )
     } else {
         EntityListScaffold(
@@ -973,11 +988,12 @@ fun GiftsScreen(
             emptyBody = stringResource(R.string.gifts_empty_body),
             uiState = state,
             onAdd = { showAdd = true },
-            onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
+            onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
             onDelete = viewModel::delete,
             onErrorShown = viewModel::onErrorShown,
             onBack = onBack,
             onRefresh = viewModel::load,
+            listState = listState,
             extraAction = { item ->
                 val gift = viewModel.findById(item.id)
                 if (gift != null && gift.status != GiftStatuses.GIVEN && gift.status != GiftStatuses.RECEIVED) {

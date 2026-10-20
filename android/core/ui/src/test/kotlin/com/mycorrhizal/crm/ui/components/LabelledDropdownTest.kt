@@ -2,7 +2,13 @@ package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -59,6 +65,27 @@ class LabelledDropdownTest {
         composeTestRule.onNodeWithText("Letters").assertDoesNotExist()
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `a focused dropdown opens from the keyboard and reads as a drop-down list`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LabelledDropdown(
+                    label = "Pick",
+                    valueText = "Alpha",
+                    options = options,
+                    onSelect = {},
+                    modifier = Modifier.testTag("dd"),
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("dd")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList))
+            .requestFocus()
+            .performKeyInput { pressKey(Key.Enter) }
+        composeTestRule.onNodeWithText("Beta").assertIsDisplayed()
+    }
+
     @Test
     fun `a disabled dropdown does not open`() {
         composeTestRule.setContent {
@@ -73,7 +100,8 @@ class LabelledDropdownTest {
                 )
             }
         }
-        composeTestRule.onNodeWithTag("dd").assertIsNotEnabled()
+        composeTestRule.onNodeWithTag("dd").assertIsNotEnabled().performClick()
+        composeTestRule.onNodeWithText("Beta").assertDoesNotExist()
     }
 
     @Test
