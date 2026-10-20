@@ -88,6 +88,24 @@ class LoginScreenTest {
     }
 
     @Test
+    fun `sso hands the typed server url to the callback`() {
+        var ssoUrl: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LoginScreenContent(
+                    uiState = LoginUiState(serverUrl = "https://crm.example.com"),
+                    onServerUrlChange = {},
+                    onModeChange = {},
+                    onSubmit = { _, _, _, _ -> },
+                    onSignInWithSso = { ssoUrl = it },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Sign in with SSO").performScrollTo().performClick()
+        assertEquals("https://crm.example.com", ssoUrl)
+    }
+
+    @Test
     fun `typing server url forwards the change`() {
         var value: String? = null
         setContent(onServerUrlChange = { value = it })

@@ -60,6 +60,15 @@ class OccasionsScreenTest {
             .assertIsDisplayed()
     }
 
+    // Issue #1760: the empty state carries the same create action as the FAB.
+    @Test
+    fun `the empty state action opens the create dialog and explains events`() {
+        render(emptyList())
+        composeTestRule.onNodeWithText("Create one to start planning who to invite.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New event").performClick()
+        composeTestRule.onNodeWithText("Create an event").assertIsDisplayed()
+    }
+
     @Test
     fun `the add button opens the create dialog`() {
         render(emptyList())

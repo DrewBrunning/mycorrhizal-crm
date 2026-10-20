@@ -135,6 +135,7 @@ class MapScreenTest {
         composeTestRule.onNodeWithText(
             "No mapped contacts yet",
         ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add coordinates to a contact's address to see it here.").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Show as list").assertDoesNotExist()
     }
 
