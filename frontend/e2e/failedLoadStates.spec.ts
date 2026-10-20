@@ -31,37 +31,49 @@ test.describe('Failed load states', { tag: '@failure-modes' }, () => {
     );
   }
 
+  // /users is admin-only and the per-worker e2e accounts are not admins; its failed-load state is
+  // covered by src/loadFailure.test.tsx.
+
   // Empty-state copy (en) that would be a lie on a failed load.
   const EMPTY_COPY =
     /No unfiled notes|No activities found|No events yet|No passkeys yet|No webhooks|No custom fields|No calendar|No households|No circles yet|No tags yet|No incoming|No outgoing|No audit|No events|No users|No legacy circles/i;
 
-  const routes: Array<{ path: string; name: string }> = [
-    { path: '/notes', name: 'Notes' },
-    { path: '/activities', name: 'Activities' },
-    { path: '/occasions', name: 'Occasions' },
-    { path: '/settings', name: 'Settings' },
-    { path: '/settings/data', name: 'Data settings' },
-    { path: '/households', name: 'Households' },
-    { path: '/circles', name: 'Circles' },
-    { path: '/circles?tab=tags', name: 'Tags' },
-    { path: '/shares', name: 'Shares' },
-    { path: '/audit', name: 'Audit log' },
-    { path: '/users', name: 'Users' },
-    { path: '/system-events', name: 'System events' },
-    { path: '/circle-tag-triage', name: 'Circle and tag triage' },
+  const routes: Array<{ path: string; name: string; shared?: boolean }> = [
+    { path: '/notes', name: 'Notes', shared: true },
+    { path: '/activities', name: 'Activities', shared: true },
+    { path: '/occasions', name: 'Occasions', shared: true },
+    { path: '/settings', name: 'Settings', shared: true },
+    { path: '/settings/data', name: 'Data settings', shared: true },
+    { path: '/households', name: 'Households', shared: true },
+    { path: '/circles', name: 'Circles', shared: true },
+    { path: '/circles?tab=tags', name: 'Tags', shared: true },
+    { path: '/shares', name: 'Shares', shared: true },
+    { path: '/audit', name: 'Audit log', shared: true },
+    { path: '/system-events', name: 'System events', shared: true },
+    { path: '/circle-tag-triage', name: 'Circle and tag triage', shared: true },
     // Already correct before #1779; pinned so they stay that way.
     { path: '/', name: 'Dashboard' },
     { path: '/contacts', name: 'Contacts' },
     { path: '/network', name: 'Network' },
   ];
 
-  for (const { path, name } of routes) {
+  for (const { path, name, shared } of routes) {
     test(`${name} (${path}): a 500 shows an error alert, not an empty state`, async ({ page }) => {
       await failAllDataApis(page);
       await page.goto(path);
 
-      await expect(page.getByRole('alert').first()).toBeVisible();
-      await expect(page.locator('main, body').first()).not.toContainText(EMPTY_COPY);
+      // Pages on the shared LoadError carry its title; the three pinned pages have their own
+      // (already-correct) error UI, so any alert will do there.
+      const alert = shared
+        ? page
+            .getByRole('alert')
+            .filter({ hasText: /couldn.t load this data/i })
+            .first()
+        : page.getByRole('alert').first();
+      await expect(alert).toBeVisible();
+      // Settle first: asserting the empty copy is absent while a skeleton is still up proves nothing.
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('body')).not.toContainText(EMPTY_COPY);
     });
   }
 

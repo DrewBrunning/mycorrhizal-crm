@@ -202,6 +202,11 @@ test('/circles?tab=tags: a 500 shows the shared error, not the empty tags copy',
 
   expect((await screen.findAllByText(i18n.t('common.loadFailed'))).length).toBeGreaterThan(0);
   expect(screen.queryByText(i18n.t('circlesTags.noTags'))).not.toBeInTheDocument();
+
+  const fetchMock = vi.mocked(fetch);
+  const before = fetchMock.mock.calls.length;
+  fireEvent.click(screen.getAllByRole('button', { name: i18n.t('common.retry') })[0]);
+  await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
 });
 
 test('Notes: Retry recovers once the API is back, and the empty state is then legitimate', async () => {
