@@ -674,7 +674,7 @@ class ContactDetailScreenTest {
         }
         composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
         composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("wedding: 1 June 2020").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Wedding: 1 June 2020").performScrollTo().assertIsDisplayed()
     }
 
     @Test

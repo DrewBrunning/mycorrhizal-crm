@@ -91,7 +91,39 @@ class RelationshipsScreenTest {
         )
 
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
-        composeTestRule.onNodeWithText("friend of").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Friend").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an asymmetric edge reads as the other party's role from either direction`() {
+        // parent_of stored as source=viewed -> target=other means "viewed is other's parent",
+        // so the OTHER party is the viewed contact's child; and the reverse.
+        setScreen(
+            edges = listOf(
+                confirmedEdge("e1", "u-viewed", "u-kid", RelationshipEdgeTypes.PARENT_OF),
+                confirmedEdge("e2", "u-mom", "u-viewed", RelationshipEdgeTypes.PARENT_OF),
+            ),
+            resolve = mapOf(
+                "u-kid" to ContactSummary(id = 9, uid = "u-kid", firstname = "Kid"),
+                "u-mom" to ContactSummary(id = 10, uid = "u-mom", firstname = "Mom"),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("Child").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Parent").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("parent of").assertCountEquals(0)
+    }
+
+    @Test
+    fun `an unknown relationship token is humanized not shown raw`() {
+        setScreen(
+            edges = listOf(confirmedEdge("e1", "u-other", "u-viewed", "godparent_of")),
+            resolve = mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
+        )
+
+        // Unregistered tokens collapse to related_to in effectiveType; either way never raw.
+        composeTestRule.onAllNodesWithText("godparent_of").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Related to").assertIsDisplayed()
     }
 
     @Test

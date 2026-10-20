@@ -638,6 +638,10 @@ class PreferencesViewModelTest {
         // M18: section grouping mirrors web's PreferenceList (food+drink / media / hobby).
         assertEquals(listOf("food_drink", "media", "hobby"), vm.uiState.value.items.map { it.sectionKey })
         assertEquals("food: allergy = peanuts", vm.uiState.value.items[0].label)
+        // #1755: the UI localizes from the raw category token, not from the English label.
+        assertEquals(EntityLabelFamily.PREFERENCE, vm.uiState.value.items[0].labelFamily)
+        assertEquals("food", vm.uiState.value.items[0].labelToken)
+        assertEquals("peanuts", vm.uiState.value.items[0].labelDetail)
     }
 
     @Test fun `an unrecognized category falls to the other section`() = runTest(mainDispatcherRule.testDispatcher) {
