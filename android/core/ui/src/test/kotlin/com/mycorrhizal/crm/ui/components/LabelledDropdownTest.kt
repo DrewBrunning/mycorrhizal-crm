@@ -6,6 +6,10 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
@@ -84,6 +88,27 @@ class LabelledDropdownTest {
             .requestFocus()
             .performKeyInput { pressKey(Key.Enter) }
         composeTestRule.onNodeWithText("Beta").assertIsDisplayed()
+    }
+
+    // Review of #1773: an OutlinedTextField anchor left TalkBack two stops, a bare
+    // "<label>, <value>" node and a separate "<value>, edit box". The control is one
+    // actionable node, and nothing in it is editable text.
+    @Test
+    fun `the dropdown is one actionable node with no editable text inside`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LabelledDropdown(
+                    label = "Pick",
+                    valueText = "Alpha",
+                    options = options,
+                    onSelect = {},
+                    modifier = Modifier.testTag("dd"),
+                )
+            }
+        }
+        composeTestRule.onAllNodes(hasSetTextAction(), useUnmergedTree = true).assertCountEquals(0)
+        composeTestRule.onAllNodes(hasContentDescription("Pick, Alpha")).assertCountEquals(1)
+        composeTestRule.onNodeWithTag("dd").assert(hasClickAction())
     }
 
     @Test

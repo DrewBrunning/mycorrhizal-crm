@@ -290,12 +290,22 @@ its empty states are tracked in issue #1779).
   field is the one standard exception: the field itself is already marked required.
 
 - **Dialog or full-screen form (issue #1773).** A create/edit form is an `AlertDialog` only when it is short and
-  single-purpose: **at most about four typed fields**, no search-and-pick, and it fits without scrolling at the
-  default font size (relationship, conversation agenda, preference, mark discussed). Anything bigger (more
-  than about four typed fields, a contact search, or a body that scrolls) is a full-screen form built on
-  `FormScaffold` (`EntityFormScreen` for the timeline entities) with the pinned Save/Create button: note,
-  activity, reminder, gift and life event. System back and the top-bar arrow leave a form and discard what was
-  typed, the same as Cancel did in the dialogs.
+  single-purpose: **at most about four typed (text) fields**, no contact search, and it fits without scrolling at
+  the default font size: conversation agenda, mark discussed, preference. A dropdown over a fixed list
+  (`LabelledDropdown`) does not count against that budget; "a picker means full screen" in the issue is read as a
+  *search-and-pick* (a contact search), which is what makes a dialog scroll. Anything bigger (more than about four
+  typed fields, a contact search, or a body that scrolls) is a full-screen form built on `FormScaffold`
+  (`EntityFormScreen` for the timeline entities) with the pinned Save/Create button: note, activity, reminder,
+  gift and life event.
+  - Preference stays a dialog on purpose: three typed fields (kind, value, notes) plus up to three fixed-list
+    dropdowns, and it does not scroll at font scale 1.0. Revisit it if a field is added.
+  - Known exception: the **relationship** dialog has a contact search and is still a dialog. Moving it is out of
+    #1773's scope (the issue names gift and life event); it is the next candidate under this rule.
+  - A full-screen entity form keeps the list underneath where it was (the list's scroll state is hoisted above
+    the form/list switch), and the open form and its typed input survive rotation and process death
+    (`rememberSaveable`). System back and the top-bar arrow leave the form and discard what was typed, the same
+    as Cancel did in the dialogs; the "Discard changes?" guard is #1751's, and `EntityFormScreen` is the one
+    place it plugs into for both forms.
 - **Pickers are labelled dropdowns.** A choice among a fixed list is a `LabelledDropdown` (`core/ui`): a read-only
   outlined field with a visible label and a trailing arrow, never a bare button showing only the current value.
   TalkBack hears "<label>, <value>, drop-down list". Quick-fill values for a text field (the preference "Kind")
