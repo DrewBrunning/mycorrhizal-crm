@@ -293,7 +293,14 @@
     "favoriteContact": "Mark {{name}} as favorite",
     "unfavoriteContact": "Unmark {{name}} as favorite",
     "favoriteError": "Failed to update favorite",
-    "showAll": "Show all",
+    "onlyWithContactInfo": "Only with contact info",
+    "filters": {
+      "button": "Filters",
+      "buttonActive": "Filters ({{count}})",
+      "title": "Filters",
+      "done": "Done"
+    },
+    "moreActions": "More actions",
     "hiddenContactable_one": "{{count}} contact without contact info is hidden",
     "hiddenContactable_other": "{{count}} contacts without contact info are hidden",
     "archived": "Archived",
