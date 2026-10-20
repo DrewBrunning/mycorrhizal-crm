@@ -71,4 +71,15 @@ type DashboardResponse struct {
 	// DataDecayOverdue (issue #352): contacts whose info is due for
 	// re-verification. Same no-omitempty discipline as every other block.
 	DataDecayOverdue []DashboardOverdueDataDecay `json:"data_decay_overdue"`
+
+	// Issue #1791: every list block above is capped server-side (see
+	// controllers.DashboardSectionLimit); these are each block's size BEFORE
+	// the cap, so a client can render "showing N of total". When the block
+	// is not truncated the total equals its length.
+	BirthdaysTotal            int `json:"birthdays_total"`
+	UpcomingRemindersTotal    int `json:"upcoming_reminders_total"`
+	OverdueTotal              int `json:"overdue_total"`
+	ReachOutSuggestionsTotal  int `json:"reach_out_suggestions_total"`
+	ContactSyncConflictsTotal int `json:"contact_sync_conflicts_total"`
+	DataDecayOverdueTotal     int `json:"data_decay_overdue_total"`
 }

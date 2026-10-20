@@ -29,6 +29,14 @@ export interface DashboardResponse {
   contact_sync_conflicts: ContactSyncConflict[];
   // Issue #352: contacts whose info is due for re-verification.
   data_decay_overdue: OverdueDataDecayPolicy[];
+  // Issue #1791: every list block above is capped server-side at 25 rows;
+  // these are each block's size before the cap ("showing 25 of N").
+  birthdays_total: number;
+  upcoming_reminders_total: number;
+  overdue_total: number;
+  reach_out_suggestions_total: number;
+  contact_sync_conflicts_total: number;
+  data_decay_overdue_total: number;
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
