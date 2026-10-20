@@ -238,6 +238,8 @@ export type BriefingCadence = {
 };
 
 export type BriefingCadenceHealth = {
+  ambient?: boolean;
+  ambient_reason?: 'household' | 'flag';
   has_qualifying_interaction?: boolean;
   last_interaction?: string | null;
   next_due?: string | null;
@@ -277,6 +279,7 @@ export type BulkOperationResult = {
 };
 
 export type CRMEnvelope = {
+  ambient?: boolean;
   circles?: string[];
   contact_information?: string;
   gender?: string;
@@ -287,6 +290,8 @@ export type CRMEnvelope = {
 };
 
 export type CadenceHealth = {
+  ambient: boolean;
+  ambient_reason?: 'household' | 'flag';
   has_qualifying_interaction: boolean;
   last_interaction?: string | null;
   next_due?: string | null;
@@ -658,6 +663,8 @@ export type ContactScoreFacet = {
 };
 
 export type ContactScoreResponse = {
+  ambient?: boolean;
+  ambient_reason?: 'household' | 'flag';
   band?: 'moss' | 'chanterelle' | 'russula';
   closeness?: ContactScoreFacet;
   contact_id?: number;

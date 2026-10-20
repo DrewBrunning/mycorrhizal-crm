@@ -3,10 +3,12 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -57,6 +59,17 @@ func verifyOwnedActivity(c *gin.Context, db *gorm.DB, userID uint, id *uint) boo
 		return false
 	}
 	return true
+}
+
+// defaultGivenGiftDate stamps now onto a "given" gift that has no date (issue
+// #1736): a given gift counts as a qualifying interaction on its date, so a gift
+// marked given without one must still count. An explicit date is kept as is, and
+// a gift in any other status (idea/purchased/received) is left dateless.
+func defaultGivenGiftDate(gift *models.Gift, now time.Time) {
+	if gift.Status == models.GiftStatusGiven && gift.Date == nil {
+		d := now
+		gift.Date = &d
+	}
 }
 
 // CreateGift creates a new Gift (gift.go) for the authenticated
@@ -110,6 +123,7 @@ func CreateGift(c *gin.Context) {
 		LifeEventID: input.LifeEventID,
 		ActivityID:  input.ActivityID,
 	}
+	defaultGivenGiftDate(&gift, clock.FromContext(c).Now())
 
 	if err := db.Create(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
@@ -273,6 +287,7 @@ func UpdateGift(c *gin.Context) {
 		status = models.GiftStatusIdea
 	}
 
+	previousStatus, previousDate := gift.Status, gift.Date
 	gift.EntityID = input.EntityID
 	gift.Status = status
 	gift.Occasion = input.Occasion
@@ -284,6 +299,12 @@ func UpdateGift(c *gin.Context) {
 	gift.Currency = input.Currency
 	gift.LifeEventID = input.LifeEventID
 	gift.ActivityID = input.ActivityID
+	if previousStatus == models.GiftStatusGiven && gift.Date == nil {
+		// Already given before this edit: a full-replace body that merely omits
+		// the date must not discard a recorded handover date in favour of "now".
+		gift.Date = previousDate
+	}
+	defaultGivenGiftDate(&gift, clock.FromContext(c).Now())
 
 	if err := db.Save(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))

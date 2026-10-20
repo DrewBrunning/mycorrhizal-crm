@@ -6,6 +6,7 @@
   `User.SelfContactVCardUID` (T90), the sensitivity model (`normal|private|secret`)
 - **Implements:** issue #383
 - **Amended:** 2026-10-16 — per-contact target closeness (issue #1737), see the amendment at the end
+- **Amended:** 2026-10-20 — ambient contacts (issue #1733) and given gifts as interactions (issue #1736), see the amendment at the end
 
 ## Context
 
@@ -363,3 +364,110 @@ depend on #1796.
 - Additive to the `/api/v1` contract (new routes, a new field, a new enum value). The
   `reach_out_suggested` webhook's `kind` gains a value, so webhook consumers that switch on `kind`
   should treat unknown values as generic.
+
+
+## Amendment, 2026-10-20 (ambient contacts and given gifts, issues #1733 and #1736)
+
+### Context
+
+Recency, Frequency and cadence only counted logged activities. That mis-scores two kinds of
+real contact. The people you live with, or see every day, are in constant contact that nobody
+logs, so their score decays and cadence calls them overdue. And handing someone a gift is an
+interaction that no activity records.
+
+### Decision: ambient contacts (#1733)
+
+A contact is **ambient** when either of these holds:
+
+1. **Co-resident (derived, nothing stored).** The user's self-contact (`User.SelfContactVCardUID`)
+   and the contact are both **current** members of the same household. A membership is current
+   on a day when `since` is empty or not after that day, and `until` is empty or not before it.
+   The comparison is on the wall-clock date in the reminder location (ADR 0015) and respects the
+   partial-date precision of `since`/`until`: an `until` of `2026-10` is still current throughout
+   October, and a `since` of `2026-11` has not started in October. Both memberships must be
+   current, so a user who has moved out is no longer co-resident with the flatmates who stayed.
+   **A user with no self-contact has no co-residents.** The flag below still applies to them.
+2. **Flag (stored).** The per-contact `contacts.ambient` boolean, set by the user for people they
+   see daily but do not live with (a coworker at the next desk, a caregiver).
+
+When both hold, the reported reason is `household`.
+
+**Effect on the score.** `RawInputs.Ambient` and `AmbientReason` (`household` | `flag`). When set,
+`computeRecency` and `computeFrequency` return `Value: 100` with the reason "Ambient contact
+(lives with you)" or "Ambient contact (marked)", instead of the days/count math. Closeness,
+ReachOut and LastUpdated are unchanged, and so is the interval resolution. `scoring.Result` and
+`GET /contacts/:id/score` carry `ambient` (always present) and `ambient_reason` (absent when not
+ambient), so a UI can explain the 100s.
+
+**Effect on cadence.** An ambient contact is never overdue: `CadenceHealth.OverdueBy` is forced to
+0 and `CadenceHealth.ambient` / `ambient_reason` are set, in the single-policy read, the
+overdue list, the dashboard and the `cadence.overdue` webhook job. The truthful
+`last_interaction` and `next_due` are still reported. The overdue list and the `cadence.overdue`
+webhook are the cadence nudges, so an ambient contact generates none. (The #1737 amendment's
+`target_behind` reach-out suggestions exclude ambient contacts separately.)
+
+**Storage and the write rule for the flag.** `contacts.ambient BOOLEAN NOT NULL DEFAULT 0`
+(migration `000075_contact_ambient`; no backfill needed, every existing row is non-ambient, which
+is today's behavior). On the Go side `models.Contact.Ambient bool` carries
+`gorm:"column:ambient"` with no `default:` tag (backend trap 1, issue #1240).
+
+The clients (#1734, #1735) bind the toggle to `crm.ambient`, so the flag rides the contact save,
+unlike `target_closeness`, which has its own sub-resource. The reason for that sub-resource, though,
+applies here too: Android rebuilds `crm` from its own model on every save, so a build that predates
+the field would send a body without it. A plain boolean would read that as "false" and silently
+wipe every flag on the user's next save. **So `CRMEnvelope.Ambient` is a `*bool` with
+preserve-when-absent semantics.** `ApplyRecordToContact` writes the flat column only when the
+envelope value is non-nil: absent keeps the stored value, an explicit `true` or `false` sets it.
+Reads emit `crm.ambient` only when true (a non-ambient contact's envelope is byte-identical to
+before the flag existed), and clients treat absent as false. A client that wants to clear the flag
+sends an explicit `false`. This keeps the issue's `crm.ambient` binding without a second
+endpoint and without the wipe hazard. The flat column is authoritative: `BeforeSave` and the read
+path mirror it into the envelope, and `mergeRecordFromFlat` takes it from the fresh derivation.
+
+Everything that moves a contact carries it: the account bundle (via `crm`, restored on import by
+`ApplyRecordToContact`; a bundle that predates the flag imports as non-ambient), the flat CSV
+export (an `Ambient` column right after `Periods`), and a contact merge (the flag is a
+union: either record being ambient makes the keeper ambient). vCard/JSContact exports never
+serialize the envelope, so the DATA-01 matrix gains a `crm.ambient` no-home row with a loss report,
+and `EnvelopeExportLossDiagnostics` names it when the flag is set.
+
+**Cost.** One extra bulk query per score or cadence evaluation (`ambientByEntityID`: contacts
+left-joined to the household rows they share with the self-contact, with the self-contact read in
+a subquery). Never one query per contact.
+
+### Decision: given gifts as interactions (#1736)
+
+A gift with `status = given` and a non-null `date` is a **qualifying interaction for its recipient**
+(`gifts.entity_id`) on its `date`, exactly like an activity of the synthetic type **`gift`**.
+Recency (last qualifying interaction), Frequency (count in the window) and the cadence
+last-interaction date all union it in. A cadence policy with empty `qualifying_types` counts it,
+and a policy listing specific types counts it only if `gift` is listed (`gift` is already in the
+frontend suggestion list). `received`, `purchased` and `idea` gifts do not count, and neither do
+soft-deleted gifts or another user's rows. A given gift whose `activity_id` points at a live
+activity linked to the same contact is not counted again, because that activity already is the
+interaction.
+
+**Date defaulting.** When a gift is saved as `given` (create or update) with no `date`, the server
+stamps the request clock's now, so marking a gift given always counts. An explicit date is kept as
+is. An update that omits the date on a gift that was **already** given keeps its stored date,
+since the update is a full replace and an omitted date there is not a request to rewrite history.
+The default applies on the REST write path only: gifts arriving through an import keep exactly the
+date the source carried.
+
+**Cost.** One extra bulk query per facet (last interaction, frequency window) and one in the
+cadence batch path. The PERF-02 baseline is regenerated.
+
+### Composition with target closeness (#1737)
+
+An ambient contact is always on track (the explicit short-circuit in the #1737 amendment), and a
+given gift is simply one more qualifying interaction for that amendment's Recency, Frequency and
+"last qualifying interaction" inputs. Nothing in the target logic changes.
+
+### Consequences
+
+- The additive fields (`ambient` on the score and cadence-health responses, `crm.ambient`) pass the
+  `/api/v1` baseline drift check; the baseline is regenerated.
+- A user who flags a lot of people ambient will see their scores rise, by design. The flag is
+  explicit and reversible, and the breakdown always says why.
+- Cadence for an ambient contact is a deliberate no-op: a policy can still exist (it is the user's
+  record of intent), but it never fires.
