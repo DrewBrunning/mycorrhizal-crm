@@ -289,8 +289,17 @@ its empty states are tracked in issue #1779).
   "Enter your new password and confirm it to continue". A dialog's confirm button that waits for a required text
   field is the one standard exception: the field itself is already marked required.
 
-Presentation of the entity create/edit forms (dialog or full screen) is decided in issue #1773, which records its
-rule in this section.
+- **Dialog or full-screen form (issue #1773).** A create/edit form is an `AlertDialog` only when it is short and
+  single-purpose: **at most about four typed fields**, no search-and-pick, and it fits without scrolling at the
+  default font size (relationship, conversation agenda, preference, mark discussed). Anything bigger (more
+  than about four typed fields, a contact search, or a body that scrolls) is a full-screen form built on
+  `FormScaffold` (`EntityFormScreen` for the timeline entities) with the pinned Save/Create button: note,
+  activity, reminder, gift and life event. System back and the top-bar arrow leave a form and discard what was
+  typed, the same as Cancel did in the dialogs.
+- **Pickers are labelled dropdowns.** A choice among a fixed list is a `LabelledDropdown` (`core/ui`): a read-only
+  outlined field with a visible label and a trailing arrow, never a bare button showing only the current value.
+  TalkBack hears "<label>, <value>, drop-down list". Quick-fill values for a text field (the preference "Kind")
+  are a labelled row of `SuggestionChip`s under a "Suggestions" caption, not text buttons.
 
 ## Passkeys
 
