@@ -250,6 +250,20 @@ func TestGetGraph_ScopeLookupFailuresUseErrorEnvelope(t *testing.T) {
 		dbtest.HideTable(t, db, "users")
 		getGraphResp(t, router, "/graph", http.StatusInternalServerError)
 	})
+	t.Run("edges table unavailable for connections traversal", func(t *testing.T) {
+		db, router := setupRouter(t)
+		router.GET("/graph/connections", GetGraphConnections)
+		var user models.User
+		require.NoError(t, db.First(&user).Error)
+		contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+		require.NoError(t, db.Create(&contact).Error)
+		dbtest.HideTable(t, db, "relationship_edges")
+		req, _ := http.NewRequest("GET", "/graph/connections?from="+contact.VCardUID, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+		assert.Contains(t, w.Body.String(), "Failed to traverse graph")
+	})
 	t.Run("contacts table unavailable for from lookup", func(t *testing.T) {
 		db, router := setupRouter(t)
 		router.GET("/graph", GetGraph)

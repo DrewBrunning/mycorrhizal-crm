@@ -121,7 +121,7 @@
     "controllers/field_definition_controller.go": 87.56,
     "controllers/geopulse_controller.go": 100,
     "controllers/gift_controller.go": 93.25,
-    "controllers/graph_controller.go": 95.73,
+    "controllers/graph_controller.go": 100,
     "controllers/health_controller.go": 89.04,
     "controllers/helpers.go": 97.56,
     "controllers/household_controller.go": 88.43,
