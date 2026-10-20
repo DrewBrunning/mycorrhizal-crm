@@ -89,3 +89,63 @@ test.describe('contact map CSP (#1286)', () => {
     expect(csp).not.toMatch(/\s(https?:|\*)(\s|;)/); // no blanket scheme/wildcard
   });
 });
+
+/**
+ * Issue #1777: maplibre-gl 6 loads its worker as a sibling file of its bundle,
+ * which Vite never emitted, so /assets/maplibre-gl-worker.mjs fell through to
+ * the SPA fallback (200 text/html) and the map never rendered. Runs against the
+ * production build behind nginx.
+ */
+test.describe('contact map worker (#1777)', () => {
+  test('the MapLibre worker loads as JavaScript with no worker errors', async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === 'firefox',
+      'headless CI Firefox has no WebGL, so the map never mounts',
+    );
+    const errors: string[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error') errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+    const workerResponses: { url: string; type: string; status: number }[] = [];
+    page.on('response', (r) => {
+      if (r.url().includes('maplibre-gl-worker')) {
+        workerResponses.push({
+          url: r.url(),
+          type: r.headers()['content-type'] ?? '',
+          status: r.status(),
+        });
+      }
+    });
+    await page.route(`${TILE_ORIGIN}/**`, (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        json: { version: 8, sources: {}, layers: [] },
+      }),
+    );
+    await page.route('**/api/v1/config/map', (route) =>
+      route.fulfill({ json: { tile_style_url: `${TILE_ORIGIN}/styles/liberty` } }),
+    );
+
+    await page.goto('/map');
+    await waitForLoading(page);
+    await expect(page.getByTestId('contact-map')).toBeVisible();
+    await expect
+      .poll(() => workerResponses.length, { message: 'worker requested' })
+      .toBeGreaterThan(0);
+
+    for (const r of workerResponses) {
+      expect(r.status, r.url).toBe(200);
+      expect(r.type, r.url).toMatch(/javascript/);
+    }
+    expect(errors.filter((e) => /worker/i.test(e))).toEqual([]);
+  });
+
+  test('a missing /assets/* file is a 404, not the SPA fallback', async ({ request }) => {
+    const res = await request.get('/assets/definitely-missing-0000.js');
+    expect(res.status()).toBe(404);
+  });
+});
