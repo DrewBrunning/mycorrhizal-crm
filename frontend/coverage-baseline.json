@@ -633,9 +633,9 @@
       "branchesTotal": 14
     },
     "src/components/AuthImg.tsx": {
-      "lines": 96.55,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 68.75,
+      "branches": 87.5,
       "branchesTotal": 16
     },
     "src/components/BackgroundJobsPanel.tsx": {
@@ -1993,6 +1993,12 @@
       "linesTotal": 38,
       "branches": 93.75,
       "branchesTotal": 32
+    },
+    "src/utils/localDate.ts": {
+      "lines": 100,
+      "linesTotal": 9,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,
