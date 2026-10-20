@@ -1,6 +1,8 @@
 package services
 
 import (
+	"regexp"
+	"strings"
 	"time"
 
 	"mycorrhizal/internal/scoring"
@@ -26,14 +28,38 @@ import (
 // on today (a YYYY-MM-DD wall-clock date, ADR 0015). Partial dates compare by
 // the prefix they specify, so until "2026-10" is still current on 2026-10-20
 // (through the end of that month) and since "2026-11" has not started yet.
+//
+// household_members.since/until are not format-validated on write, so a bound
+// that is not a leading YYYY[-MM[-DD]] (free text, a year-less "--MM-DD") cannot
+// be placed on the calendar: the membership is then NOT current. Failing closed
+// is the safe side here, since ambient suppresses overdue nudges -- a wrongly
+// non-ambient contact just scores from logged activity, as before #1733. A
+// trailing time ("2026-10-20T00:00:00Z") is tolerated and ignored.
 func ambientTenureCurrent(since, until, today string) bool {
-	if since != "" && !partialDateNotAfter(since, today) {
-		return false
+	if since != "" {
+		s, ok := tenureDatePrefix(since)
+		if !ok || !partialDateNotAfter(s, today) {
+			return false
+		}
 	}
-	if until != "" && !partialDateNotAfter(today, until) {
-		return false
+	if until != "" {
+		u, ok := tenureDatePrefix(until)
+		if !ok || !partialDateNotAfter(today, u) {
+			return false
+		}
 	}
 	return true
+}
+
+// tenureDateRE matches the calendar part of a tenure bound: a zero-padded ISO
+// partial date (YYYY, YYYY-MM or YYYY-MM-DD) at the start of the value.
+var tenureDateRE = regexp.MustCompile(`^\d{4}(-\d{2}(-\d{2})?)?`)
+
+// tenureDatePrefix returns the leading ISO partial date of a tenure bound, or
+// ok=false when the value does not start with one.
+func tenureDatePrefix(v string) (string, bool) {
+	m := tenureDateRE.FindString(strings.TrimSpace(v))
+	return m, m != ""
 }
 
 // partialDateNotAfter reports whether a <= b, comparing only the precision

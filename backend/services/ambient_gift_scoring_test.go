@@ -127,6 +127,15 @@ func TestAmbient_PartialDatesAndFutureSince(t *testing.T) {
 	assert.True(t, ambientTenureCurrent("2026-10-20", "", "2026-10-20"), "since today has started")
 	assert.False(t, ambientTenureCurrent("2026-11-01", "", "2026-10-20"), "a future move-in has not started")
 	assert.False(t, ambientTenureCurrent("2026-11", "", "2026-10-20"))
+
+	// since/until are not format-validated on write: a bound that cannot be
+	// placed on the calendar fails closed (not current), and a trailing time
+	// is ignored.
+	assert.False(t, ambientTenureCurrent("", "moved out", "2026-10-20"), "free-text until is not current")
+	assert.False(t, ambientTenureCurrent("", "--10-31", "2026-10-20"), "a year-less until is not comparable")
+	assert.False(t, ambientTenureCurrent("someday", "", "2026-10-20"), "free-text since is not current")
+	assert.True(t, ambientTenureCurrent(" 2020-01-01", "2026-10-20T00:00:00Z", "2026-10-20"), "a trailing time is ignored")
+	assert.False(t, ambientTenureCurrent("", "2026-10-19T23:59:59Z", "2026-10-20"))
 }
 
 func TestAmbient_NoSelfContactMeansNoCoResidents(t *testing.T) {
