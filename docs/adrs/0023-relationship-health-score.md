@@ -447,12 +447,15 @@ soft-deleted gifts or another user's rows. A given gift whose `activity_id` poin
 activity linked to the same contact is not counted again, because that activity already is the
 interaction.
 
-**Date defaulting.** When a gift is saved as `given` (create or update) with no `date`, the server
-stamps the request clock's now, so marking a gift given always counts. An explicit date is kept as
-is. An update that omits the date on a gift that was **already** given keeps its stored date,
-since the update is a full replace and an omitted date there is not a request to rewrite history.
-The default applies on the REST write path only: gifts arriving through an import keep exactly the
-date the source carried.
+**Date defaulting.** When a gift **transitions** to `given` with no `date` (created as `given`, or
+updated from another status to `given`), the server stamps the request clock's now, so marking a
+gift given always counts. An explicit date is kept as is. A gift that was already `given` is saved
+with exactly the date the full-replace body carries: an update that omits it leaves the gift undated
+(the user cleared it, and it stops counting), and an edit to a `given` gift stored without a date
+(one that predates this rule, or arrived through an import) does not stamp it. Stamping there would
+invent an interaction on the day of an unrelated edit and reset the contact's cadence. The default
+applies on the REST write path only: gifts arriving through an import keep exactly the date the
+source carried.
 
 **Cost.** One extra bulk query per facet (last interaction, frequency window) and one in the
 cadence batch path. The PERF-02 baseline is regenerated.

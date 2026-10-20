@@ -14950,9 +14950,11 @@ components:
           description: >
             When the gift was given/received. An idea may have no date. A gift
             with status given counts as a qualifying interaction of type gift
-            for its recipient on this date (issue #1736); when a gift is saved as
-            given without a date, the server sets it to now. An update that
-            omits the date on a gift that was already given keeps the stored date.
+            for its recipient on this date (issue #1736). When a gift is marked
+            given without a date (created as given, or updated from another
+            status to given), the server sets it to now. A gift that was already
+            given is saved with exactly the date the body carries, so an update
+            that omits it leaves the gift undated (and no longer counted).
         value_cents:
           type: integer
           description: Optional value in the currency's minor unit; must pair with currency.

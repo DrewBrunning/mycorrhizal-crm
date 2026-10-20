@@ -173,11 +173,25 @@ func TestGiftController_GivenWithoutDateIsStampedNow(t *testing.T) {
 	require.NotNil(t, moved.Date)
 	assert.True(t, fixed.Equal(*moved.Date))
 
-	// An already-given gift saved again with the date omitted keeps its date
-	// rather than being re-stamped to now.
-	kept := update(g2.ID, models.GiftStatusGiven, nil)
+	// An already-given gift re-saved with its date is untouched.
+	kept := update(g2.ID, models.GiftStatusGiven, &explicit)
 	require.NotNil(t, kept.Date)
-	assert.True(t, explicit.Equal(*kept.Date), "a full-replace body that omits the date must not rewrite history")
+	assert.True(t, explicit.Equal(*kept.Date))
+
+	// The default fires only on the transition INTO given. An already-given
+	// gift whose full-replace body carries no date (the user cleared it) stays
+	// dateless rather than being restored or re-stamped.
+	cleared := update(g2.ID, models.GiftStatusGiven, nil)
+	assert.Nil(t, cleared.Date, "clearing the date of an already-given gift is the user's explicit edit")
+
+	// A given gift that predates the default (stored undated, e.g. before
+	// #1736 or via an import) is NOT stamped by an unrelated edit: that would
+	// invent an interaction "today" and reset the contact's cadence.
+	legacy := models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Status: models.GiftStatusGiven, Description: "old"}
+	require.NoError(t, db.Create(&legacy).Error)
+	require.Nil(t, legacy.Date)
+	edited := update(legacy.ID, models.GiftStatusGiven, nil)
+	assert.Nil(t, edited.Date, "an edit to an already-given undated gift must not stamp now")
 
 	// given -> received keeps whatever date it had; nothing is stamped on a non-given status.
 	recv := create(models.GiftStatusReceived, nil)

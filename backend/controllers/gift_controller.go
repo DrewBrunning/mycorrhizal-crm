@@ -61,12 +61,18 @@ func verifyOwnedActivity(c *gin.Context, db *gorm.DB, userID uint, id *uint) boo
 	return true
 }
 
-// defaultGivenGiftDate stamps now onto a "given" gift that has no date (issue
-// #1736): a given gift counts as a qualifying interaction on its date, so a gift
-// marked given without one must still count. An explicit date is kept as is, and
-// a gift in any other status (idea/purchased/received) is left dateless.
-func defaultGivenGiftDate(gift *models.Gift, now time.Time) {
-	if gift.Status == models.GiftStatusGiven && gift.Date == nil {
+// defaultGivenGiftDate stamps now onto a gift that is being marked "given"
+// without a date (issue #1736): a given gift counts as a qualifying interaction
+// on its date, so marking a gift given must still count. It applies only on the
+// transition INTO given (previousStatus is the stored status, "" on create): a
+// gift that was already given keeps exactly the date the full-replace body
+// carries -- an explicit date, or none when the user cleared it or it was never
+// recorded. Stamping an already-given undated gift on an unrelated edit (a typo
+// fix in the notes) would invent an interaction "today" that never happened. An
+// explicit date is always kept, and a gift in any other status
+// (idea/purchased/received) is left as sent.
+func defaultGivenGiftDate(gift *models.Gift, previousStatus string, now time.Time) {
+	if gift.Status == models.GiftStatusGiven && previousStatus != models.GiftStatusGiven && gift.Date == nil {
 		d := now
 		gift.Date = &d
 	}
@@ -123,7 +129,7 @@ func CreateGift(c *gin.Context) {
 		LifeEventID: input.LifeEventID,
 		ActivityID:  input.ActivityID,
 	}
-	defaultGivenGiftDate(&gift, clock.FromContext(c).Now())
+	defaultGivenGiftDate(&gift, "", clock.FromContext(c).Now())
 
 	if err := db.Create(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
@@ -287,7 +293,7 @@ func UpdateGift(c *gin.Context) {
 		status = models.GiftStatusIdea
 	}
 
-	previousStatus, previousDate := gift.Status, gift.Date
+	previousStatus := gift.Status
 	gift.EntityID = input.EntityID
 	gift.Status = status
 	gift.Occasion = input.Occasion
@@ -299,12 +305,7 @@ func UpdateGift(c *gin.Context) {
 	gift.Currency = input.Currency
 	gift.LifeEventID = input.LifeEventID
 	gift.ActivityID = input.ActivityID
-	if previousStatus == models.GiftStatusGiven && gift.Date == nil {
-		// Already given before this edit: a full-replace body that merely omits
-		// the date must not discard a recorded handover date in favour of "now".
-		gift.Date = previousDate
-	}
-	defaultGivenGiftDate(&gift, clock.FromContext(c).Now())
+	defaultGivenGiftDate(&gift, previousStatus, clock.FromContext(c).Now())
 
 	if err := db.Save(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
