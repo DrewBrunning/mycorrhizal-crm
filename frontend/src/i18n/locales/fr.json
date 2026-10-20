@@ -144,7 +144,8 @@
     "yearsOld": "({{age}} ans)",
     "birthdaysInfo": "Affiche les anniversaires pour au moins les deux prochaines semaines.",
     "remindersInfo": "Affiche tous les rappels échéants jusqu'à aujourd'hui inclus. Les rappels restent visibles jusqu'à ce qu'ils soient marqués comme terminés.",
-    "stayInTouchInfo": "Affiche cinq contacts au hasard pour vous aider à rester en contact. La liste est actualisée à chaque rechargement de page."
+    "stayInTouchInfo": "Affiche cinq contacts au hasard pour vous aider à rester en contact. La liste est actualisée à chaque rechargement de page.",
+    "showingOf": "{{shown}} affichés sur {{total}}"
   },
   "login": {
     "title": "Connexion",
@@ -1747,7 +1748,9 @@
     "panUp": "Déplacer vers le haut",
     "panDown": "Déplacer vers le bas",
     "panLeft": "Déplacer vers la gauche",
-    "panRight": "Déplacer vers la droite"
+    "panRight": "Déplacer vers la droite",
+    "egoNotice": "Affichage de votre propre contact et de toutes les personnes à {{depth}} connexions maximum. Activez « Afficher tout le réseau » pour charger tous les contacts.",
+    "showEntireNetwork": "Afficher tout le réseau"
   },
   "map": {
     "title": "Carte des contacts",

@@ -229,3 +229,42 @@ func TestGetDashboard_DataDecayQueryFails(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 	assert.Contains(t, w.Body.String(), "overdue data decay")
 }
+
+// Issue #1791: every list block is capped server-side and reports its
+// uncapped size, so the page's DOM stays bounded however much is due.
+func TestGetDashboard_CapsListBlocksAndReportsTotals(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/dashboard", GetDashboard)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Cap"}
+	require.NoError(t, db.Create(&contact).Error)
+	total := DashboardSectionLimit + 7
+	for i := 0; i < total; i++ {
+		require.NoError(t, db.Create(&models.Reminder{
+			UserID: user.ID, ContactID: &contact.ID, Message: "due", Recurrence: "once", RemindAt: time.Now().Add(time.Duration(i+1) * time.Hour),
+		}).Error)
+	}
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.DashboardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Len(t, resp.UpcomingReminders, DashboardSectionLimit)
+	assert.Equal(t, total, resp.UpcomingRemindersTotal)
+	// The cap keeps the service ordering: soonest first.
+	assert.True(t, resp.UpcomingReminders[0].RemindAt.Before(resp.UpcomingReminders[1].RemindAt))
+	// Untruncated blocks report their true size.
+	assert.Equal(t, 0, resp.OverdueTotal)
+	assert.Equal(t, 0, resp.BirthdaysTotal)
+}
+
+func TestCapDashboardSection(t *testing.T) {
+	assert.Len(t, capDashboardSection(make([]int, DashboardSectionLimit)), DashboardSectionLimit)
+	assert.Len(t, capDashboardSection(make([]int, DashboardSectionLimit+1)), DashboardSectionLimit)
+	assert.Empty(t, capDashboardSection([]int(nil)))
+}

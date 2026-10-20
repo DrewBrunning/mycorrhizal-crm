@@ -4715,14 +4715,38 @@
     {
       "method": "GET",
       "path": "/graph",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "depth",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "from",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "full",
+          "in": "query",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "status": "200",
           "schema": "ref:GraphResponse"
         },
         {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
           "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
           "schema": "ref:Error"
         },
         {
@@ -12393,13 +12417,28 @@
           "required": true
         },
         {
+          "name": "birthdays_total",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "contact_sync_conflicts",
           "type": "array\u003cobject\u003e",
           "required": true
         },
         {
+          "name": "contact_sync_conflicts_total",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "data_decay_overdue",
           "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "data_decay_overdue_total",
+          "type": "integer",
           "required": true
         },
         {
@@ -12413,6 +12452,11 @@
           "required": true
         },
         {
+          "name": "overdue_total",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "random_contacts",
           "type": "array\u003ccomposed[object,object]\u003e",
           "required": true
@@ -12423,8 +12467,18 @@
           "required": true
         },
         {
+          "name": "reach_out_suggestions_total",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "upcoming_reminders",
           "type": "array\u003ccomposed[object,object]\u003e",
+          "required": true
+        },
+        {
+          "name": "upcoming_reminders_total",
+          "type": "integer",
           "required": true
         }
       ]
@@ -14329,13 +14383,28 @@
       "name": "GraphResponse",
       "properties": [
         {
+          "name": "depth",
+          "type": "integer",
+          "required": false
+        },
+        {
           "name": "edges",
           "type": "array\u003cobject\u003e",
           "required": false
         },
         {
+          "name": "from_vcard_uid",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "nodes",
           "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "scoped",
+          "type": "boolean",
           "required": false
         }
       ]

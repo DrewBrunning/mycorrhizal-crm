@@ -183,3 +183,32 @@ test('a stale response that lands last neither overwrites nor ends loading', asy
   expect(result.current.data).toBeNull();
   expect(result.current.loading).toBe(true);
 });
+
+// Issue #1791: the default request is the ego-network; `full` opts into the
+// whole account and refetches when it changes.
+test('useGraph(true) requests the full graph', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue(graphResponse);
+
+  const { result } = renderHook(() => useGraph(true));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  expect(getGraph).toHaveBeenCalledWith({ full: true });
+});
+
+test('the default request takes no params, and flipping full refetches', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue({ ...graphResponse, scoped: true, depth: 2 });
+
+  const { result, rerender } = renderHook(({ full }) => useGraph(full), {
+    initialProps: { full: false },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getGraph).toHaveBeenLastCalledWith();
+  expect(result.current.data?.scoped).toBe(true);
+  expect(result.current.data?.depth).toBe(2);
+
+  rerender({ full: true });
+  await waitFor(() => expect(getGraph).toHaveBeenCalledTimes(2));
+  expect(getGraph).toHaveBeenLastCalledWith({ full: true });
+});
