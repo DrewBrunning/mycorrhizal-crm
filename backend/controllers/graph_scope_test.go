@@ -8,8 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -191,4 +194,58 @@ func TestGraphAndDashboard_StopWhenClientDisconnects(t *testing.T) {
 			assert.NotEqual(t, http.StatusInternalServerError, w.Code)
 		})
 	}
+}
+
+func TestGetGraph_ScopeLookupFailuresUseErrorEnvelope(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs: Request error")
+	t.Run("users table unavailable", func(t *testing.T) {
+		db, router := setupRouter(t)
+		router.GET("/graph", GetGraph)
+		dbtest.HideTable(t, db, "users")
+		getGraphResp(t, router, "/graph", http.StatusInternalServerError)
+	})
+	t.Run("contacts table unavailable for from lookup", func(t *testing.T) {
+		db, router := setupRouter(t)
+		router.GET("/graph", GetGraph)
+		dbtest.HideTable(t, db, "contacts")
+		getGraphResp(t, router, "/graph?from=abc", http.StatusInternalServerError)
+	})
+}
+
+// A user row that no longer exists has no self contact to centre on: the full
+// (empty) graph, not an error.
+func TestGetGraph_MissingUserRowFallsBackToFull(t *testing.T) {
+	db := dbtest.New(t)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", uint(424242))
+		c.Next()
+	})
+	router.GET("/graph", GetGraph)
+	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	assert.False(t, resp.Scoped)
+	assert.Empty(t, resp.Nodes)
+}
+
+func TestGetGraphConnections_TooDeepAndBlankName(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/graph/connections", GetGraphConnections)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	blank := models.Contact{UserID: user.ID}
+	require.NoError(t, db.Create(&blank).Error)
+
+	req, _ := http.NewRequest("GET", "/graph/connections?depth=6&from="+blank.VCardUID, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	req, _ = http.NewRequest("GET", "/graph/connections?from="+blank.VCardUID, nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp models.GraphConnectionsResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "Unknown", resp.FromName)
 }

@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	apperrors "mycorrhizal/errors"
@@ -133,14 +132,9 @@ func GetGraph(c *gin.Context) {
 	// Relationship health score (issue #383), computed once in bulk -- never
 	// per-node -- and only for the contacts being returned. A scoring failure
 	// degrades the graph to its pre-#383 uncolored shape rather than 500ing
-	// the whole graph, since coloring is an enhancement, not core graph data;
-	// a cancelled request is not a degradation, it aborts.
+	// the whole graph, since coloring is an enhancement, not core graph data.
 	scores, scoreErr := services.ComputeContactScores(db, userID, reminderNow(c), contacts)
 	if scoreErr != nil {
-		if errors.Is(scoreErr, context.Canceled) {
-			c.Abort()
-			return
-		}
 		scores = nil
 	}
 
