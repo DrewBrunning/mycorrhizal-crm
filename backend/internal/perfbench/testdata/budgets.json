@@ -42,7 +42,7 @@
     "dashboard": {
       "max_wall_ms": 300,
       "large_max_wall_ms": 2000,
-      "reason": "Interactive: the home screen. 12 fixed aggregate queries is the gate. 300ms is ~230x the 1.3ms median at `typical`. large_max_wall_ms (issue #1791): at the `large` profile (15k contacts) it took 14.1s -- an activities-driven join that re-probed a 1.7k-entry vcard_uid IN list per activity row (~17M index probes); measured 129ms after the fix, so 2000ms (the issue's acceptance bar) is ~15x headroom and only a return of that class of bug trips it."
+      "reason": "Interactive: the home screen. 14 fixed aggregate queries is the gate (12 before #1733/#1736 added the overdue list's given-gift and ambient reads). 300ms is ~230x the 1.3ms median at `typical`. large_max_wall_ms (issue #1791): at the `large` profile (15k contacts) it took 14.1s -- an activities-driven join that re-probed a 1.7k-entry vcard_uid IN list per activity row (~17M index probes); measured 129ms after the fix, so 2000ms (the issue's acceptance bar) is ~15x headroom and only a return of that class of bug trips it."
     },
     "delete_cascade": {
       "max_wall_ms": 1000,
@@ -71,12 +71,12 @@
     "graph.ego": {
       "max_wall_ms": 500,
       "large_max_wall_ms": 2000,
-      "reason": "Interactive: the default GET /graph, loaded on every /network visit -- the depth-2 ego-network of the self contact (issue #1791). Bounded by the neighbourhood, not the account: 11 queries is the gate, 43ms measured at `large`. 500ms at `typical` and 2000ms at `large` are order-of-magnitude margins; it only fires if the scoped path regresses to scanning the account."
+      "reason": "Interactive: the default GET /graph, loaded on every /network visit -- the depth-2 ego-network of the self contact (issue #1791). Bounded by the neighbourhood, not the account: 14 queries is the gate (11 before #1733/#1736 added the score's ambient and two given-gift reads), 43ms measured at `large`. 500ms at `typical` and 2000ms at `large` are order-of-magnitude margins; it only fires if the scoped path regresses to scanning the account."
     },
     "graph.full": {
       "max_wall_ms": 1000,
       "large_max_wall_ms": 8000,
-      "reason": "The explicit ?full=true 'entire network' view (issue #1791): every non-archived contact, scored in bulk, linear in the account by design with a constant 10 queries as the gate. Before the fix it took 8-9 MINUTES at `large` (the closeness score enumerated every simple path to depth 5); measured 1.9s for ~16.7k nodes after (BFS over one edge query). 8000ms at `large` stays well under the web client's 30s timeout while leaving ~4x headroom for slow CI; 1000ms at `typical` is ~100x the measured median."
+      "reason": "The explicit ?full=true 'entire network' view (issue #1791): every non-archived contact, scored in bulk, linear in the account by design with a constant 13 queries as the gate (10 before #1733/#1736 added the score's ambient and two given-gift reads; those lookups must probe by entity/member index, since a user_id-index plan rescans per contact and took this op to 19.6s at `large`). Before the fix it took 8-9 MINUTES at `large` (the closeness score enumerated every simple path to depth 5); measured 1.9s for ~16.7k nodes after (BFS over one edge query). 8000ms at `large` stays well under the web client's 30s timeout while leaving ~4x headroom for slow CI; 1000ms at `typical` is ~100x the measured median."
     },
     "graph.traverse_deep": {
       "max_wall_ms": 0,
