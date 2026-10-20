@@ -23,6 +23,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -196,5 +197,122 @@ class EntityFormScreensFlowTest {
         vm.onFormClosed()
         vm.onDialogOpened(event)
         assertEquals(listOf("u2"), vm.relatedContacts.value.map { it.uid })
+    }
+
+    // ---- Preference (maintainer decision 2026-10-20: full screen, no dialog exception) ----
+
+    private fun preferencesViewModel(repo: PreferenceRepository) =
+        PreferencesViewModel(repo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
+
+    @Test
+    fun `new preference replaces the list with a full-screen form, back discards, save creates`() {
+        val repo = mockk<PreferenceRepository>()
+        coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
+        coEvery { repo.create(any()) } returns Result.success(
+            Preference(id = "p1", entityId = uid, category = "food", value = "Pizza"),
+        )
+        val vm = preferencesViewModel(repo)
+        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithContentDescription("New preference").performClick()
+        composeTestRule.onNodeWithContentDescription("New preference").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("preference-category").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Enter a value to continue").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithTag("preference-category").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("New preference").assertIsDisplayed()
+        coVerify(exactly = 0) { repo.create(any()) }
+
+        composeTestRule.onNodeWithContentDescription("New preference").performClick()
+        composeTestRule.onNodeWithText("Value").performTextReplacement("Pizza")
+        composeTestRule.onNodeWithText("Create").performClick()
+        coVerify(exactly = 1) { repo.create(any()) }
+        composeTestRule.onNodeWithContentDescription("New preference").assertIsDisplayed()
+    }
+
+    @Test
+    fun `editing a preference opens the form pre-filled and save updates it`() {
+        val repo = mockk<PreferenceRepository>()
+        val pref = Preference(id = "p1", entityId = uid, category = "drink", key = "favorite", value = "matcha")
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(pref))
+        coEvery { repo.update("p1", any()) } returns Result.success(pref)
+        val vm = preferencesViewModel(repo)
+        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithText("Edit preference").assertIsDisplayed()
+        composeTestRule.onNodeWithText("matcha").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Save").performClick()
+        coVerify(exactly = 1) { repo.update("p1", any()) }
+        composeTestRule.onNodeWithContentDescription("New preference").assertIsDisplayed()
+    }
+
+    @Test
+    fun `back from a preference form returns to the same scroll position in the list`() {
+        val repo = mockk<PreferenceRepository>()
+        val prefs = (0 until 40).map { Preference(id = "p$it", entityId = uid, category = "food", value = "Dish $it") }
+        coEvery { repo.listForContact(uid) } returns Result.success(prefs)
+        val vm = preferencesViewModel(repo)
+        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithTag("entity-list").performScrollToIndex(30)
+        composeTestRule.onNodeWithText("Dish 29").performClick()
+        composeTestRule.onNodeWithTag("preference-category").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Dish 29").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dish 0").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an open preference form and its input survive a configuration change`() {
+        val repo = mockk<PreferenceRepository>()
+        coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
+        val vm = preferencesViewModel(repo)
+        val restoration = StateRestorationTester(composeTestRule)
+        restoration.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithContentDescription("New preference").performClick()
+        composeTestRule.onNodeWithText("Value").performTextReplacement("Pizza")
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeTestRule.onNodeWithTag("preference-category").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Pizza").assertIsDisplayed()
+        coVerify(exactly = 0) { repo.create(any()) }
+    }
+
+    @Test
+    fun `the gift preference form is full screen too, and the panel stays open after back`() {
+        val giftRepo = mockk<GiftRepository>()
+        coEvery { giftRepo.listForContact(uid) } returns Result.success(emptyList())
+        val lifeRepo = mockk<LifeEventRepository>()
+        val activityRepo = mockk<ActivityRepository>()
+        val prefRepo = mockk<PreferenceRepository>()
+        coEvery { lifeRepo.listForContact(uid) } returns Result.success(emptyList())
+        coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
+            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+        coEvery { prefRepo.listForContact(uid) } returns Result.success(emptyList())
+        coEvery { prefRepo.create(any()) } returns Result.success(
+            Preference(id = "p1", entityId = uid, category = "jewelry_metal", value = "Gold"),
+        )
+        val vm = GiftsViewModel(giftRepo, lifeRepo, activityRepo, prefRepo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
+        composeTestRule.setContent { MycorrhizalTheme { GiftsScreen(onBack = {}, viewModel = vm) } }
+
+        composeTestRule.onNodeWithText("Clothing sizes & gift preferences (0)").performClick()
+        composeTestRule.onNodeWithText("New preference").performClick()
+        composeTestRule.onNodeWithContentDescription("New gift").assertDoesNotExist()
+        // Scoped to the Gifts-tab sections: the default category is jewelry, not food.
+        composeTestRule.onNodeWithText("Jewelry — metal").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithText("New preference").assertIsDisplayed() // panel still expanded
+        coVerify(exactly = 0) { prefRepo.create(any()) }
+
+        composeTestRule.onNodeWithText("New preference").performClick()
+        composeTestRule.onNodeWithText("Value").performTextReplacement("Gold")
+        composeTestRule.onNodeWithText("Create").performClick()
+        coVerify(exactly = 1) { prefRepo.create(any()) }
+        composeTestRule.onNodeWithContentDescription("New gift").assertIsDisplayed()
     }
 }

@@ -1981,6 +1981,9 @@
     <string name="life_events_save_hint">Wähle einen Ereignistyp, um fortzufahren</string>
     <string name="gifts_status_label">Status</string>
     <string name="gifts_save_hint_description">Gib eine Beschreibung ein, um fortzufahren</string>
+    <string name="preferences_save_hint">Gib einen Wert ein, um fortzufahren</string>
+    <string name="relationships_save_hint_name">Gib einen Namen ein, um fortzufahren</string>
+    <string name="relationships_save_hint_contact">Wähle einen Kontakt, um fortzufahren</string>
     <string name="form_save_hint_fix_fields">Korrigiere die markierten Felder, um fortzufahren</string>
     <string name="preferences_key_suggestions">Vorschläge</string>
     <string name="note_change_contact">Ändern</string>

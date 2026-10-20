@@ -1996,6 +1996,9 @@
     <string name="life_events_save_hint">Choose an event type to continue</string>
     <string name="gifts_status_label">Status</string>
     <string name="gifts_save_hint_description">Enter a description to continue</string>
+    <string name="preferences_save_hint">Enter a value to continue</string>
+    <string name="relationships_save_hint_name">Enter a name to continue</string>
+    <string name="relationships_save_hint_contact">Choose a contact to continue</string>
     <string name="form_save_hint_fix_fields">Fix the highlighted fields to continue</string>
     <string name="preferences_key_suggestions">Suggestions</string>
     <string name="note_change_contact">Change</string>

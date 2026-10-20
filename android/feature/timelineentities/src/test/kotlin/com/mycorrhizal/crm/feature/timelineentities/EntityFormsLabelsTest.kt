@@ -55,9 +55,9 @@ class EntityFormsLabelsTest {
         }
     }
 
-    private fun preferenceDialog() = composeTestRule.setContent {
+    private fun preferenceForm() = composeTestRule.setContent {
         MycorrhizalTheme {
-            PreferenceDialog(initial = null, onConfirm = {}, onDismiss = {})
+            PreferenceForm(initial = null, onConfirm = {}, onDismiss = {})
         }
     }
 
@@ -72,7 +72,7 @@ class EntityFormsLabelsTest {
 
     @Test
     fun `preference pickers are labelled and named with their current value`() {
-        preferenceDialog()
+        preferenceForm()
         composeTestRule.onNodeWithTag("preference-category")
             .assert(hasContentDescription("Category, Food")).assert(isDropdown)
         composeTestRule.onNodeWithTag("preference-sensitivity")
@@ -108,7 +108,7 @@ class EntityFormsLabelsTest {
 
     @Test
     fun `an empty kind shows labelled suggestion chips that fill the field when tapped`() {
-        preferenceDialog()
+        preferenceForm()
         composeTestRule.onNodeWithText("Suggestions").assertIsDisplayed()
         composeTestRule.onNodeWithText("Kind").assertIsDisplayed()
         composeTestRule.onNodeWithText("Allergy").performScrollTo().assertIsDisplayed().performClick()

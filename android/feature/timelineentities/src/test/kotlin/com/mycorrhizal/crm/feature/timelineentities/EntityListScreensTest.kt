@@ -540,7 +540,7 @@ class GiftFormTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class PreferenceDialogTest {
+class PreferenceFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -551,7 +551,7 @@ class PreferenceDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = initial,
                     sections = sections,
                     onConfirm = onConfirm,
@@ -631,7 +631,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills category value notes and sensitivity`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",
@@ -701,7 +701,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills an existing hobby level`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",

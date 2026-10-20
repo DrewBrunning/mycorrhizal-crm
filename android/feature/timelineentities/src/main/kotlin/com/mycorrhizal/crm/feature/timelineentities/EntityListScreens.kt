@@ -962,10 +962,13 @@ fun GiftsScreen(
     val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
     val listState = rememberLazyListState()
     var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
-    var newClothingKey by remember { mutableStateOf("") }
-    var newClothingValue by remember { mutableStateOf("") }
-    var showAddGiftPreference by remember { mutableStateOf(false) }
-    var editingGiftPreference by remember { mutableStateOf<Preference?>(null) }
+    var newClothingKey by rememberSaveable { mutableStateOf("") }
+    var newClothingValue by rememberSaveable { mutableStateOf("") }
+    // Hoisted (and saved) so the panel stays open when Back returns from a preference form.
+    var shoppingNotesExpanded by rememberSaveable { mutableStateOf(false) }
+    var showAddGiftPreference by rememberSaveable { mutableStateOf(false) }
+    var editingGiftPreferenceId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingGiftPreference = editingGiftPreferenceId?.let { id -> giftPreferences.firstOrNull { it.id == id } }
 
     if (showAdd || editingItem != null) {
         GiftForm(
@@ -979,6 +982,18 @@ fun GiftsScreen(
                 editingId = null
             },
             onDismiss = { showAdd = false; editingId = null },
+        )
+    } else if (showAddGiftPreference || editingGiftPreference != null) {
+        PreferenceForm(
+            initial = editingGiftPreference,
+            sections = PreferenceSection.GIFTS_TAB,
+            onConfirm = { form ->
+                editingGiftPreference?.let { viewModel.updateGiftPreference(it, form) }
+                    ?: viewModel.createGiftPreference(form)
+                showAddGiftPreference = false
+                editingGiftPreferenceId = null
+            },
+            onDismiss = { showAddGiftPreference = false; editingGiftPreferenceId = null },
         )
     } else {
         EntityListScaffold(
@@ -1019,10 +1034,12 @@ fun GiftsScreen(
             // PreferenceCategory-driven list: clothing sizes' fast inline
             // edit-in-place add flow (several sizes entered in one sitting) would
             // regress to a per-item modal if it went through the shared
-            // PreferenceDialog the way jewelry/flowers do.
+            // PreferenceForm the way jewelry/flowers do.
             header = {
                 if (!state.isLoading) {
                     GiftShoppingNotesSection(
+                        expanded = shoppingNotesExpanded,
+                        onExpandedChange = { shoppingNotesExpanded = it },
                         clothingSizes = clothingSizes,
                         giftPreferences = giftPreferences,
                         newClothingKey = newClothingKey,
@@ -1043,26 +1060,12 @@ fun GiftsScreen(
                         onEditCancelClothingSize = { editingClothingItem = null },
                         onDeleteClothingSize = viewModel::deleteClothingSize,
                         onAddGiftPreference = { showAddGiftPreference = true },
-                        onEditGiftPreference = { item -> editingGiftPreference = item },
+                        onEditGiftPreference = { item -> editingGiftPreferenceId = item.id },
                         onDeleteGiftPreference = viewModel::deleteGiftPreference,
                     )
                 }
             },
-        ) {
-            if (showAddGiftPreference || editingGiftPreference != null) {
-                PreferenceDialog(
-                    initial = editingGiftPreference,
-                    sections = PreferenceSection.GIFTS_TAB,
-                    onConfirm = { form ->
-                        editingGiftPreference?.let { viewModel.updateGiftPreference(it, form) }
-                            ?: viewModel.createGiftPreference(form)
-                        showAddGiftPreference = false
-                        editingGiftPreference = null
-                    },
-                    onDismiss = { showAddGiftPreference = false; editingGiftPreference = null },
-                )
-            }
-        }
+        ) {}
     }
 }
 
@@ -1070,11 +1073,18 @@ fun GiftsScreen(
 // Preferences
 // ---------------------------------------------------------------------------
 
+/**
+ * Issue #1773 (maintainer decision 2026-10-20): the preference create/edit form is full
+ * screen -- it carries up to three fixed-list pickers (category, level, sensitivity) and
+ * the "any picker means a full-screen form" rule has no dialog exception. Shared by the
+ * Preferences screen and the Gifts screen's gift-preference panel. Its state is
+ * `rememberSaveable`, so an open form and what was typed survive rotation and process death.
+ */
 @Composable
-internal fun PreferenceDialog(
+internal fun PreferenceForm(
     initial: Preference?,
     // Restricts the category dropdown (and the default selected category) to
-    // these sections — e.g. the Gifts tab's dialog only offers
+    // these sections — e.g. the Gifts tab's form only offers
     // jewelry/giftPreferences/giftAvoid, so a shopping-focused "Add
     // Preference" can't accidentally create a food preference that then
     // hides in the Overview tab's list instead (web's PreferenceDialog
@@ -1086,78 +1096,72 @@ internal fun PreferenceDialog(
     val availableCategories = remember(sections) { PreferenceCategory.CONFIG.filter { it.section in sections } }
     val defaultCategory = availableCategories.firstOrNull()?.category ?: PreferenceCategory.FOOD
     val isEditing = initial != null
-    var category by remember(initial) { mutableStateOf(initial?.category ?: defaultCategory) }
-    var key by remember(initial) { mutableStateOf(initial?.key ?: "") }
-    var value by remember(initial) { mutableStateOf(initial?.value ?: "") }
-    var level by remember(initial) { mutableStateOf(initial?.level) }
-    var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
-    var sensitivity by remember(initial) { mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL) }
+    var category by rememberSaveable(initial?.id) { mutableStateOf(initial?.category ?: defaultCategory) }
+    var key by rememberSaveable(initial?.id) { mutableStateOf(initial?.key ?: "") }
+    var value by rememberSaveable(initial?.id) { mutableStateOf(initial?.value ?: "") }
+    var level by rememberSaveable(initial?.id) { mutableStateOf(initial?.level) }
+    var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+    var sensitivity by rememberSaveable(initial?.id) {
+        mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL)
+    }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
-                CategoryField(
+    EntityFormScreen(
+        title = stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new),
+        saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
+        saveEnabled = category.isNotBlank() && value.isNotBlank(),
+        saveDisabledHint = stringResource(R.string.preferences_save_hint),
+        onSave = {
+            onConfirm(
+                PreferenceFormData(
                     category = category,
-                    categories = availableCategories,
-                    onCategoryChange = {
-                        category = it
-                        // A level only means something for hobby/skill
-                        // categories (issue #246) — clear it when switching
-                        // away rather than stranding it.
-                        if (!PreferenceCategory.supportsLevelFor(it)) level = null
-                    },
-                )
-                OutlinedTextField(
-                    value = key, onValueChange = { key = it },
-                    label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
-                )
-                if (key.isBlank()) {
-                    KeySuggestions(
-                        suggestions = PreferenceCategory.keySuggestionsFor(category),
-                        onPick = { key = it },
-                    )
-                }
-                OutlinedTextField(
-                    value = value, onValueChange = { value = it },
-                    label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
-                )
-                if (PreferenceCategory.supportsLevelFor(category)) {
-                    LevelField(level = level, onLevelChange = { level = it })
-                }
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text(stringResource(R.string.preferences_notes)) },
-                )
-                SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
-            }
+                    key = key,
+                    value = value,
+                    // Only for hobby/skill categories; null otherwise.
+                    level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
+                    notes = notes,
+                    sensitivity = sensitivity,
+                ),
+            )
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        PreferenceFormData(
-                            category = category,
-                            key = key,
-                            value = value,
-                            // Only for hobby/skill categories; null otherwise.
-                            level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
-                            notes = notes,
-                            sensitivity = sensitivity,
-                        ),
-                    )
-                },
-                enabled = category.isNotBlank() && value.isNotBlank(),
-            ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
+        onBack = onDismiss,
+    ) {
+        CategoryField(
+            category = category,
+            categories = availableCategories,
+            onCategoryChange = {
+                category = it
+                // A level only means something for hobby/skill
+                // categories (issue #246) — clear it when switching
+                // away rather than stranding it.
+                if (!PreferenceCategory.supportsLevelFor(it)) level = null
+            },
+        )
+        OutlinedTextField(
+            value = key, onValueChange = { key = it },
+            label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (key.isBlank()) {
+            KeySuggestions(
+                suggestions = PreferenceCategory.keySuggestionsFor(category),
+                onPick = { key = it },
+            )
+        }
+        OutlinedTextField(
+            value = value, onValueChange = { value = it },
+            label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (PreferenceCategory.supportsLevelFor(category)) {
+            LevelField(level = level, onLevelChange = { level = it })
+        }
+        OutlinedTextField(
+            value = notes, onValueChange = { notes = it },
+            label = { Text(stringResource(R.string.preferences_notes)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
+    }
 }
 
 @Composable
@@ -1320,8 +1324,26 @@ fun PreferencesScreen(
     viewModel: PreferencesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<Preference?>(null) }
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { viewModel.findById(it) }
+    // Hoisted above the form/list switch so Back returns to where the list was scrolled.
+    val listState = rememberLazyListState()
+
+    if (showAdd || editingItem != null) {
+        PreferenceForm(
+            initial = editingItem,
+            sections = PreferenceSection.OVERVIEW_TAB,
+            onConfirm = { form ->
+                editingItem?.let { viewModel.update(it, form) }
+                    ?: viewModel.create(form)
+                showAdd = false
+                editingId = null
+            },
+            onDismiss = { showAdd = false; editingId = null },
+        )
+        return
+    }
 
     EntityListScaffold(
         title = stringResource(R.string.preferences_title),
@@ -1330,11 +1352,12 @@ fun PreferencesScreen(
         emptyBody = stringResource(R.string.preferences_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
-        onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
+        onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
         onRefresh = viewModel::load,
+        listState = listState,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
         // #386: rich preference rows (category + key + value + notes +
         // sensitivity) instead of the scaffold's flat label, matching web's
@@ -1346,33 +1369,14 @@ fun PreferencesScreen(
         // #386: explicit edit affordance next to the scaffold's delete, so the
         // edit path isn't only the row tap.
         extraAction = { item ->
-            IconButton(onClick = { viewModel.findById(item.id)?.let { editingItem = it } }) {
+            IconButton(onClick = { editingId = item.id }) {
                 Icon(
                     Icons.Outlined.Edit,
                     contentDescription = stringResource(R.string.action_edit),
                 )
             }
         },
-    ) {
-        // Clothing sizes and the gift-shopping-relevant categories (jewelry/
-        // flowers/color/fragrance/cause/gift-avoid) live in the Gifts screen
-        // now (web's Gifts tab, "check this right before buying") — see
-        // GiftsScreen. This dialog is scoped to Overview's own sections so it
-        // can't create a category that would then only show up there instead.
-        if (showAdd || editingItem != null) {
-            PreferenceDialog(
-                initial = editingItem,
-                sections = PreferenceSection.OVERVIEW_TAB,
-                onConfirm = { form ->
-                    editingItem?.let { viewModel.update(it, form) }
-                        ?: viewModel.create(form)
-                    showAdd = false
-                    editingItem = null
-                },
-                onDismiss = { showAdd = false; editingItem = null },
-            )
-        }
-    }
+    ) {}
 }
 
 @androidx.annotation.StringRes
@@ -1469,6 +1473,8 @@ private fun SensitivityBadge(sensitivity: String) {
  */
 @Composable
 private fun GiftShoppingNotesSection(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     clothingSizes: List<Preference>,
     giftPreferences: List<Preference>,
     newClothingKey: String,
@@ -1485,14 +1491,13 @@ private fun GiftShoppingNotesSection(
     onEditGiftPreference: (Preference) -> Unit,
     onDeleteGiftPreference: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val total = clothingSizes.size + giftPreferences.size
 
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .clickable { onExpandedChange(!expanded) }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1639,7 +1644,7 @@ private fun ClothingSizesPanel(
 /**
  * Web's Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel —
  * shopping-relevant preferences grouped by section, each row tappable to
- * edit. Adding/editing goes through the shared PreferenceDialog, scoped to
+ * edit. Adding/editing goes through the shared PreferenceForm, scoped to
  * PreferenceSection.GIFTS_TAB so it can't create a food/media/hobby
  * preference that would then only show up in PreferencesScreen instead.
  */
