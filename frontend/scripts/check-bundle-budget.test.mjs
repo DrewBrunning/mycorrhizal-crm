@@ -6,7 +6,12 @@
 // pins the regression logic itself so a loosened tolerance or a swallowed
 // violation fails loudly.
 import { describe, expect, test } from 'vitest';
-import { compareBudget, measureBundle, renderTable } from './check-bundle-budget.mjs';
+import {
+  checkRequiredAssets,
+  compareBudget,
+  measureBundle,
+  renderTable,
+} from './check-bundle-budget.mjs';
 
 const baseline = {
   tolerancePct: 0.05,
@@ -124,5 +129,19 @@ describe('measureBundle', () => {
       return;
     }
     expect(Object.keys(measured.chunks).length).toBeGreaterThan(0);
+  });
+});
+
+describe('checkRequiredAssets (issue #1777)', () => {
+  const worker = 'maplibre-gl-worker-AbCdEf12.mjs';
+  test('passes when the worker is emitted and referenced', () => {
+    const js = { 'map-vendor-x.js': `new URL("${worker}")` };
+    expect(checkRequiredAssets([worker, 'map-vendor-x.js'], (f) => js[f] ?? '')).toEqual([]);
+  });
+  test('fails when the worker is not emitted', () => {
+    expect(checkRequiredAssets(['map-vendor-x.js'], () => '')).toHaveLength(1);
+  });
+  test('fails when the worker is emitted but unreferenced', () => {
+    expect(checkRequiredAssets([worker, 'map-vendor-x.js'], () => '')).toHaveLength(1);
   });
 });
