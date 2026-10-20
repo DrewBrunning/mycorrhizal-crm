@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
@@ -50,6 +51,9 @@ object DateFormat {
 
     fun monthNameShort(month: Int): String = monthsShort[month - 1]
 
+    // The wire shape of a calendar-only field (`next_due`, issue #1778).
+    private val DATE_ONLY = Regex("\\d{4}-\\d{2}-\\d{2}")
+
     /**
      * Formats an ISO-8601 timestamp as a date in [format], or "" when
      * unparseable/absent. The single shared implementation for server-derived
@@ -66,6 +70,14 @@ object DateFormat {
      */
     fun formatTimestamp(iso: String?, format: String): String {
         if (iso.isNullOrBlank()) return ""
+        // A date-only `YYYY-MM-DD` (the wire shape of calendar-only fields such as
+        // `next_due`, issue #1778) has no zone to convert: read its digits as-is.
+        if (DATE_ONLY.matches(iso)) {
+            return runCatching {
+                val date = LocalDate.parse(iso)
+                formatFull(date.year, date.monthValue, date.dayOfMonth, format)
+            }.getOrDefault("")
+        }
         return runCatching {
             val zoned = Instant.parse(iso).atZone(ZoneOffset.UTC)
             formatFull(zoned.year, zoned.monthValue, zoned.dayOfMonth, format)

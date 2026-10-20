@@ -339,6 +339,7 @@
     "models/audit_hooks.go": 100,
     "models/audit_recorder.go": 96.7,
     "models/cadence_policy.go": 100,
+    "models/calendar_date.go": 100,
     "models/carddav.go": 100,
     "models/circle.go": 100,
     "models/contact.go": 100,

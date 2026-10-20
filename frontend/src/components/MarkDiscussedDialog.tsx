@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import type { Activity } from '../api/activities';
 import type { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 import AppDialog from './AppDialog';
 
 interface MarkDiscussedDialogProps {
@@ -82,7 +83,7 @@ export default function MarkDiscussedDialog({
               {activities.map((a) => (
                 <MenuItem key={a.ID} value={a.ID}>
                   {a.title}
-                  {formatDate(a.date) ? ` — ${formatDate(a.date)}` : ''}
+                  {a.date ? ` — ${formatDate(calendarDateOnly(a.date))}` : ''}
                 </MenuItem>
               ))}
             </TextField>

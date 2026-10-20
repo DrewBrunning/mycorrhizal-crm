@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { OverdueCadence } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface OverdueCadenceListProps {
   overdue: OverdueCadence[];
@@ -110,7 +111,9 @@ export default function OverdueCadenceList({ overdue, loading, error }: OverdueC
                           color: 'text.secondary',
                         }}
                       >
-                        {t('cadence.dueOn', { date: formatDate(item.health.next_due) })}
+                        {t('cadence.dueOn', {
+                          date: formatDate(calendarDateOnly(item.health.next_due)),
+                        })}
                       </Typography>
                     )}
                   </Box>
