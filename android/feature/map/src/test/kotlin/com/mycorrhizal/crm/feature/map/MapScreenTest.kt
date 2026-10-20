@@ -8,9 +8,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.domain.repository.MapRepository
+import com.mycorrhizal.crm.model.network.ContactMapResponse
 import com.mycorrhizal.crm.model.network.LatLng
+import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -137,6 +142,27 @@ class MapScreenTest {
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Add coordinates to a contact's address to see it here.").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Show as list").assertDoesNotExist()
+    }
+
+    // The top-level screen wires the ViewModel's state and handlers into the
+    // stateless content; holding it here exercises that wiring (and the shared
+    // empty state it ends up showing for a map with no coordinates yet).
+    @Test
+    fun `the top-level screen renders the empty map from its view model`() {
+        val repository = mockk<MapRepository>()
+        coEvery { repository.getMapConfig() } returns Result.success(MapConfig("https://tiles.example/s"))
+        coEvery { repository.getContactMap() } returns
+            Result.success(ContactMapResponse(points = emptyList(), truncated = false))
+        val viewModel = MapViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MapScreen(onOpenContact = {}, onMenuClick = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("No mapped contacts yet").assertIsDisplayed()
     }
 
     @Test
