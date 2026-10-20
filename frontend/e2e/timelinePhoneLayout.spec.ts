@@ -65,6 +65,30 @@ for (const width of [320, 360]) {
 
           // No "No description" placeholder for an activity without one.
           await expect(page.getByText('No description')).toHaveCount(0);
+
+          // A long unbroken word in a description wraps inside its card instead
+          // of pushing past the card's right edge (the /activities text column
+          // needs `minWidth: 0` + `overflowWrap: anywhere`; without them the
+          // flex child grows to the word's min-content width). The page-level
+          // scrollWidth check above does not see this on its own.
+          const longText = page.getByText(LONG_WORD, { exact: false }).first();
+          await expect(longText).toBeVisible();
+          const longCard = page
+            .locator('.MuiTimelineContent-root .MuiPaper-root')
+            .filter({ has: longText })
+            .first();
+          const [textBox, longCardBox] = await Promise.all([
+            longText.boundingBox(),
+            longCard.boundingBox(),
+          ]);
+          expect(
+            (textBox?.x ?? 0) + (textBox?.width ?? 0),
+            `${route} long-word description stays inside its card`,
+          ).toBeLessThanOrEqual((longCardBox?.x ?? 0) + (longCardBox?.width ?? 0) + 1);
+          const cardOverflows = await longCard.evaluate(
+            (el) => el.scrollWidth > el.clientWidth + 1,
+          );
+          expect(cardOverflows, `${route} card content does not overflow the card`).toBe(false);
         }
       } finally {
         await deleteTestContact(page.request, contact.ID);
