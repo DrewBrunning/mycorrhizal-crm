@@ -379,8 +379,9 @@ fun MycorrhizalApp(
     val surfaceArgb = MaterialTheme.colorScheme.surface.toArgbCompat()
     val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
     val onPrimaryBar = session.isLoggedIn && !drawerOpen
-    // Issue #1771: keyed on the resolved `darkTheme` and applied synchronously so a
-    // live Settings theme switch updates both bars (see SystemBars.kt).
+    // Issue #1771: both bars follow the resolved `darkTheme` on a live Settings theme
+    // switch. Before, only the status bar was re-applied; the navigation bar kept its
+    // onCreate (enableEdgeToEdge) appearance until the next cold start (see SystemBars.kt).
     SystemBarsEffect(
         window = activity.window,
         darkTheme = darkTheme,
