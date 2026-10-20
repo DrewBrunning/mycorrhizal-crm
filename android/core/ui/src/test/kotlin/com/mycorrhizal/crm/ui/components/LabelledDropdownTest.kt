@@ -9,7 +9,6 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
@@ -106,9 +105,13 @@ class LabelledDropdownTest {
                 )
             }
         }
-        composeTestRule.onAllNodes(hasSetTextAction(), useUnmergedTree = true).assertCountEquals(0)
-        composeTestRule.onAllNodes(hasContentDescription("Pick, Alpha")).assertCountEquals(1)
-        composeTestRule.onNodeWithTag("dd").assert(hasClickAction())
+        composeTestRule.onAllNodes(
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText),
+            useUnmergedTree = true,
+        ).assertCountEquals(0)
+        composeTestRule.onNode(hasContentDescription("Pick, Alpha"))
+            .assert(hasClickAction())
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList))
     }
 
     @Test
