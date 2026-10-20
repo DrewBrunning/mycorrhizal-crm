@@ -1749,7 +1749,7 @@
     "panDown": "Nach unten verschieben",
     "panLeft": "Nach links verschieben",
     "panRight": "Nach rechts verschieben",
-    "egoNotice": "Angezeigt werden dein eigener Kontakt und alle Kontakte innerhalb von {{depth}} Verbindungen. Aktiviere „Gesamtes Netzwerk anzeigen“, um alle Kontakte zu laden.",
+    "egoNotice": "Angezeigt werden Ihr eigener Kontakt und alle Kontakte innerhalb von {{depth}} Verbindungen. Aktivieren Sie „Gesamtes Netzwerk anzeigen“, um alle Kontakte zu laden.",
     "showEntireNetwork": "Gesamtes Netzwerk anzeigen"
   },
   "map": {
