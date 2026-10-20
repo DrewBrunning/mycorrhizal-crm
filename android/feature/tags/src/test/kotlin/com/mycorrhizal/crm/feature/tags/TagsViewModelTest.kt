@@ -1,8 +1,10 @@
 package com.mycorrhizal.crm.feature.tags
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagDetail
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiError
@@ -122,9 +124,12 @@ class TagDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val tagRepository = mockk<TagRepository>()
+    private val contactRepository = mockk<ContactRepository>().also {
+        coEvery { it.resolveByUid(any()) } returns Result.success(emptyMap())
+    }
 
     private fun viewModel(id: String = "t1"): TagDetailViewModel =
-        TagDetailViewModel(tagRepository, SavedStateHandle(mapOf("tagId" to id)))
+        TagDetailViewModel(tagRepository, contactRepository, SavedStateHandle(mapOf("tagId" to id)))
 
     @Test
     fun `loads tag and contacts on init`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -182,5 +187,83 @@ class TagDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("uid-2"), vm.uiState.value.contacts.map { it.contactVCardUid })
+    }
+
+    @Test
+    fun `resolves tagged contact names by uid`() = runTest(mainDispatcherRule.testDispatcher) {
+        val alice = ContactSummary(id = 7, uid = "uid-1", firstname = "Alice", lastname = "Smith")
+        coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
+            TagDetail(
+                tag = Tag(id = "t1", name = "Friend"),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1")),
+            ),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns
+            Result.success(mapOf("uid-1" to alice))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(alice, vm.uiState.value.contactsByUid["uid-1"])
+    }
+
+    @Test
+    fun `a failed name lookup is not surfaced as the screen error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
+            TagDetail(
+                tag = Tag(id = "t1", name = "Friend"),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1")),
+            ),
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.failure(ApiError.Client(500, "x"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.error)
+        assertTrue(vm.uiState.value.contactsByUid.isEmpty())
+    }
+
+    @Test
+    fun `addContact resolves the new contact's name`() = runTest(mainDispatcherRule.testDispatcher) {
+        val bob = ContactSummary(id = 8, uid = "uid-2", firstname = "Bob")
+        coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
+            TagDetail(tag = Tag(id = "t1", name = "Friend"), contacts = emptyList()),
+        )
+        coEvery { tagRepository.addContact("t1", "uid-2") } returns Result.success(
+            ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2"),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns
+            Result.success(mapOf("uid-2" to bob))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.addContact("uid-2")
+        advanceUntilIdle()
+
+        assertEquals(bob, vm.uiState.value.contactsByUid["uid-2"])
+    }
+
+    @Test
+    fun `blank and duplicate uids are resolved once`() = runTest(mainDispatcherRule.testDispatcher) {
+        val alice = ContactSummary(id = 7, uid = "uid-1", firstname = "Alice")
+        coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
+            TagDetail(
+                tag = Tag(id = "t1", name = "Friend"),
+                contacts = listOf(
+                    ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"),
+                    ContactTag(id = 2, tagId = "t1", contactVCardUid = ""),
+                    ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-1"),
+                ),
+            ),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns
+            Result.success(mapOf("uid-1" to alice))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.resolveByUid(listOf("uid-1")) }
+        assertEquals(alice, vm.uiState.value.contactsByUid["uid-1"])
     }
 }

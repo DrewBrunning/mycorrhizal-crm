@@ -227,11 +227,8 @@ fun HouseholdDetailScreen(
 }
 
 fun displayNameFor(contact: ContactSummary?): String? {
-    if (contact == null) return null
-    // M5 §3.2: use the shared components-first derivation (firstname "nickname"
-    // lastname) instead of a local fn-first copy that regressed to
-    // given-name-only — same fix as RelationshipsScreen.
-    return contact.displayName.takeIf { !it.startsWith("#") } ?: contact.nickname
+    // Shared with circle/tag detail (issue #1768).
+    return com.mycorrhizal.crm.feature.contacts.memberDisplayName(contact)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -281,9 +278,9 @@ private fun HouseholdMemberRow(
         AccessibleIconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
-                // #205: the remove action carries the member's identifier so
-                // TalkBack doesn't read a bare "Remove member" on every row.
-                contentDescription = stringResource(R.string.households_remove_member_named, member.memberVCardUid),
+                // #205/#1768: the remove action carries the member's name (never the
+                // raw UID) so TalkBack doesn't read a bare "Remove member" on every row.
+                contentDescription = stringResource(R.string.households_remove_member_named, displayName),
             )
         }
     }
