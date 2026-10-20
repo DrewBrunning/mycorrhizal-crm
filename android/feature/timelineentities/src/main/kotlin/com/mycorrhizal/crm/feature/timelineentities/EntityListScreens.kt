@@ -1750,6 +1750,13 @@ fun ConversationAgendaScreen(
     var editingItem by remember { mutableStateOf<ConversationAgenda?>(null) }
     var pendingDiscussId by remember { mutableStateOf<String?>(null) }
 
+    // Close the mark-discussed dialog only when a PATCH actually succeeded
+    // (issue #1723). The dialog stays open, button disabled, while the request
+    // is in flight, and stays open with the error snackbar if it fails.
+    LaunchedEffect(viewModel) {
+        viewModel.discussed.collect { pendingDiscussId = null }
+    }
+
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
         addLabel = stringResource(R.string.agenda_new),
@@ -1805,12 +1812,6 @@ fun ConversationAgendaScreen(
                         pendingDiscussId = null
                     },
                 )
-                // Keep the dialog open (button disabled) while the PATCH is in
-                // flight, and close it once it resolves — so the in-flight
-                // state is real, not dead (review-pass fix).
-                LaunchedEffect(discussingId) {
-                    if (discussingId == null) pendingDiscussId = null
-                }
             }
         }
     }
