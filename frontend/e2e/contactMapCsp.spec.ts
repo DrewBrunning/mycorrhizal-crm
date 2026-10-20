@@ -144,8 +144,16 @@ test.describe('contact map worker (#1777)', () => {
     expect(errors.filter((e) => /worker/i.test(e))).toEqual([]);
   });
 
-  test('a missing /assets/* file is a 404, not the SPA fallback', async ({ request }) => {
-    const res = await request.get('/assets/definitely-missing-0000.js');
-    expect(res.status()).toBe(404);
-  });
+  // A missing `.js` already 404ed before #1777 (the static-asset regex location
+  // has no try_files), so it alone proves nothing about the fix. `.mjs` is the
+  // extension the worker bug actually hit, and `.map` stands for every other
+  // extension under /assets/ that no regex location matches -- both reached the
+  // SPA fallback (200 text/html) before the new `location /assets/`.
+  for (const ext of ['js', 'mjs', 'map']) {
+    test(`a missing /assets/*.${ext} file is a 404, not the SPA fallback`, async ({ request }) => {
+      const res = await request.get(`/assets/definitely-missing-0000.${ext}`);
+      expect(res.status()).toBe(404);
+      expect(await res.text()).not.toContain('<div id="root"');
+    });
+  }
 });
