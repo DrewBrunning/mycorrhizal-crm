@@ -12,6 +12,7 @@
     "com/mycorrhizal/crm/OidcLoginCoordinator.kt": 96.02,
     "com/mycorrhizal/crm/OidcPkce.kt": 100,
     "com/mycorrhizal/crm/ShareIntakeViewModel.kt": 100,
+    "com/mycorrhizal/crm/SystemBars.kt": 97.32,
     "com/mycorrhizal/crm/applock/AppLockScreen.kt": 57.02,
     "com/mycorrhizal/crm/applock/AppLockViewModel.kt": 97.83,
     "com/mycorrhizal/crm/applock/AppUnlockPrompter.kt": 22.89,
