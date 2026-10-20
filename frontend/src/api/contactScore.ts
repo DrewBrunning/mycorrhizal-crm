@@ -31,8 +31,9 @@ export interface ContactScoreResponse {
   last_updated: ContactScoreFacet;
   // Issue #1733: true when Recency and Frequency were forced to 100 because the
   // contact lives with the user (reason 'household') or is flagged ('flag').
-  // The server always sends ambient (typed optional so existing fixtures stay valid;
-  // treat absent as false); ambient_reason is absent when ambient is false.
+  // The server always sends ambient; it is optional here only because the
+  // spec's ContactScoreResponse declares no required fields (treat absent as
+  // false). ambient_reason is absent when ambient is false.
   ambient?: boolean;
   ambient_reason?: AmbientReason;
 }

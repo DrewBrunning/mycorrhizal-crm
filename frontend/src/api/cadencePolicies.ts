@@ -35,9 +35,9 @@ export interface CadenceHealth {
   // undefined. "Due today" is not overdue.
   overdue_by: number;
   // Issue #1733: an ambient contact (lives with the user, or flagged) is never
-  // overdue -- overdue_by is 0. The server always sends ambient (typed optional so
-  // existing fixtures stay valid; treat absent as false); the reason is absent when false.
-  ambient?: boolean;
+  // overdue -- overdue_by is 0. Always sent (required in the spec's
+  // CadenceHealth); the reason is absent when false.
+  ambient: boolean;
   ambient_reason?: 'household' | 'flag';
 }
 
