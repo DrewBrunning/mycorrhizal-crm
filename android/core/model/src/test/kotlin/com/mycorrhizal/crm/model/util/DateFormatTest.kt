@@ -224,15 +224,28 @@ class DateFormatTest {
     // --- formatTime ---
 
     @Test
-    fun `formatTime renders the local wall time without seconds`() {
-        assertEquals("13:06", DateFormat.formatTime("2026-10-26T18:06:42Z", chicago, Locale.GERMANY))
-        assertEquals("18:06", DateFormat.formatTime("2026-10-26T18:06:00Z", utc, Locale.UK))
-        // en-US is 12-hour; newer JDKs use a narrow no-break space before the marker.
-        assertEquals(
-            "1:06 PM",
-            DateFormat.formatTime("2026-10-26T18:06:00Z", chicago, Locale.US).replace(' ', ' '),
-        )
-        assertEquals("", DateFormat.formatTime(null))
-        assertEquals("", DateFormat.formatTime("nope"))
+    fun `formatTime follows the 24-hour flag, not the locale default`() {
+        val noon = "2026-10-26T19:30:00Z" // 14:30 in Chicago (CDT)
+        // en-US with the device on 24-hour shows 14:30 even though en-US defaults to 12-hour.
+        assertEquals("14:30", DateFormat.formatTime(noon, true, chicago, Locale.US))
+        // en-US with 12-hour (newer JDKs put a narrow no-break space before PM).
+        assertEquals("2:30 PM", DateFormat.formatTime(noon, false, chicago, Locale.US).replace('\u202f', ' '))
+        // de defaults to 24-hour, but a 12-hour preference wins.
+        assertEquals("2:30 PM", DateFormat.formatTime(noon, false, chicago, Locale.GERMANY).replace('\u202f', ' '))
+        assertEquals("14:30", DateFormat.formatTime(noon, true, chicago, Locale.GERMANY))
+        assertEquals("", DateFormat.formatTime(null, true))
+        assertEquals("", DateFormat.formatTime("nope", false))
+    }
+
+    @Test
+    fun `TimeFormatPreference auto defers to the device, overrides win`() {
+        assertEquals(true, TimeFormatPreference.AUTO.is24Hour(true))
+        assertEquals(false, TimeFormatPreference.AUTO.is24Hour(false))
+        assertEquals(false, TimeFormatPreference.H12.is24Hour(true))
+        assertEquals(true, TimeFormatPreference.H24.is24Hour(false))
+        assertEquals(TimeFormatPreference.H12, TimeFormatPreference.fromToken("12h"))
+        assertEquals(TimeFormatPreference.H24, TimeFormatPreference.fromToken("24h"))
+        assertEquals(TimeFormatPreference.AUTO, TimeFormatPreference.fromToken("auto"))
+        assertEquals(TimeFormatPreference.AUTO, TimeFormatPreference.fromToken(null))
     }
 }

@@ -21,8 +21,8 @@ class OccasionsDateFormattingTest {
     private fun event(start: String, end: String? = null) =
         OccasionEvent(id = "e1", title = "BBQ", startsAt = start, endsAt = end)
 
-    private fun `when`(event: OccasionEvent, format: String = "eu", zone: ZoneId = chicago) =
-        formatEventWhen(event, format, zone, locale)
+    private fun `when`(event: OccasionEvent, format: String = "eu", zone: ZoneId = chicago, is24Hour: Boolean = true) =
+        formatEventWhen(event, format, is24Hour, zone, locale)
 
     @Test
     fun `a start is shown in the device zone, not UTC`() {
@@ -31,6 +31,16 @@ class OccasionsDateFormattingTest {
         assertEquals("26.10.2026 18:06", `when`(event("2026-10-26T18:06:00Z"), zone = utc))
         // Another zone converts again, and can move the date.
         assertEquals("27.10.2026 07:06", `when`(event("2026-10-26T18:06:00Z"), zone = auckland))
+    }
+
+    @Test
+    fun `times follow the 12-24 hour flag in an en-US or de locale`() {
+        val e = event("2026-10-26T19:30:00Z", "2026-10-26T21:00:00Z") // 14:30 - 16:00 CDT
+        val us = { h: Boolean -> formatEventWhen(e, "eu", h, chicago, Locale.US).replace('\u202f', ' ') }
+        assertEquals("26.10.2026 14:30 – 16:00", us(true))
+        assertEquals("26.10.2026 2:30 PM – 4:00 PM", us(false))
+        val de = formatEventWhen(e, "eu", false, chicago, Locale.GERMANY).replace('\u202f', ' ')
+        assertEquals("26.10.2026 2:30 PM – 4:00 PM", de)
     }
 
     @Test
@@ -85,8 +95,8 @@ class OccasionsDateFormattingTest {
 
     @Test
     fun `an unparseable value is shown as-is instead of throwing`() {
-        assertEquals("soon", instantToDisplay("soon", "eu", chicago, locale))
-        assertEquals("", instantToDisplay("", "eu", chicago, locale))
+        assertEquals("soon", instantToDisplay("soon", "eu", true, chicago, locale))
+        assertEquals("", instantToDisplay("", "eu", true, chicago, locale))
     }
 
     // --- picker round trip (#1753: confirm create and display agree on the zone) ---
@@ -97,10 +107,10 @@ class OccasionsDateFormattingTest {
         val dateMillis = Instant.parse("2026-10-26T00:00:00Z").toEpochMilli()
         val stored = toRfc3339(dateMillis, 18, 0, chicago)
         assertEquals("2026-10-26T23:00:00Z", stored) // CDT is UTC-5
-        assertEquals("26.10.2026 18:00", instantToDisplay(stored, "eu", chicago, locale))
+        assertEquals("26.10.2026 18:00", instantToDisplay(stored, "eu", true, chicago, locale))
         // On a device in another zone the same stored instant shows the converted time.
-        assertEquals("26.10.2026 23:00", instantToDisplay(stored, "eu", utc, locale))
-        assertEquals("27.10.2026 12:00", instantToDisplay(stored, "eu", auckland, locale))
+        assertEquals("26.10.2026 23:00", instantToDisplay(stored, "eu", true, utc, locale))
+        assertEquals("27.10.2026 12:00", instantToDisplay(stored, "eu", true, auckland, locale))
     }
 
     @Test

@@ -60,6 +60,7 @@ import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
 import java.time.Instant
 import java.time.ZoneId
@@ -185,7 +186,7 @@ private fun OccasionEventRow(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp),
     ) {
         Text(event.title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(formatEventWhen(event, LocalDateFormat.current), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(formatEventWhen(event, LocalDateFormat.current, LocalIs24Hour.current), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         event.location?.takeIf { it.isNotBlank() }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -337,7 +338,7 @@ private fun sensitivityLabel(value: String): String = when (value) {
 private fun InstantField(label: String, value: String, onChange: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = instantToDisplay(value, LocalDateFormat.current),
+        value = instantToDisplay(value, LocalDateFormat.current, LocalIs24Hour.current),
         onValueChange = {},
         readOnly = true,
         label = { Text(label) },
@@ -363,12 +364,13 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
     val fallback = remember { Instant.now() }
     val initialInstant = remember(initial) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
     val initialLocal = remember(initialInstant) { pickerInitial(initialInstant) }
+    val is24Hour = LocalIs24Hour.current
     var step by remember { mutableStateOf(0) }
     val dateState = rememberDatePickerState(initialSelectedDateMillis = initialLocal.dateMillis)
     val timeState = rememberTimePickerState(
         initialHour = initialLocal.hour,
         initialMinute = initialLocal.minute,
-        is24Hour = true,
+        is24Hour = is24Hour,
     )
 
     if (step == 0) {
@@ -405,6 +407,7 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
 internal fun instantToDisplay(
     iso: String,
     dateFormat: String = DateFormat.EU,
+    is24Hour: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale.getDefault(),
 ): String {
@@ -412,7 +415,7 @@ internal fun instantToDisplay(
     val instant = runCatching { Instant.parse(iso) }.getOrNull() ?: return iso
     val local = instant.atZone(zone)
     val date = DateFormat.formatFull(local.year, local.monthValue, local.dayOfMonth, dateFormat, locale)
-    return "$date ${DateFormat.formatTime(iso, zone, locale)}"
+    return "$date ${DateFormat.formatTime(iso, is24Hour, zone, locale)}"
 }
 
 /**
@@ -425,17 +428,18 @@ internal fun instantToDisplay(
 internal fun formatEventWhen(
     event: OccasionEvent,
     dateFormat: String = DateFormat.EU,
+    is24Hour: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale.getDefault(),
 ): String {
-    val start = instantToDisplay(event.startsAt, dateFormat, zone, locale)
+    val start = instantToDisplay(event.startsAt, dateFormat, is24Hour, zone, locale)
     val endIso = event.endsAt?.takeIf { it.isNotBlank() } ?: return start
-    val full = "$start – ${instantToDisplay(endIso, dateFormat, zone, locale)}"
+    val full = "$start – ${instantToDisplay(endIso, dateFormat, is24Hour, zone, locale)}"
     val startInstant = runCatching { Instant.parse(event.startsAt) }.getOrNull() ?: return full
     val endInstant = runCatching { Instant.parse(endIso) }.getOrNull() ?: return full
     if (endInstant == startInstant) return start
     val sameDay = startInstant.atZone(zone).toLocalDate() == endInstant.atZone(zone).toLocalDate()
-    return if (sameDay) "$start – ${DateFormat.formatTime(endIso, zone, locale)}" else full
+    return if (sameDay) "$start – ${DateFormat.formatTime(endIso, is24Hour, zone, locale)}" else full
 }
 
 /** True when both are parseable instants and [endsAt] is strictly before [startsAt]. */

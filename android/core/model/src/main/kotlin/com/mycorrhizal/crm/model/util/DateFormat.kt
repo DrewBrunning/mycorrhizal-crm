@@ -5,7 +5,6 @@ import java.time.Instant
 import java.time.Month
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -159,15 +158,21 @@ object DateFormat {
         }.getOrDefault("")
     }
 
-    /** The time of day of a real instant in [zone], locale-short (no seconds). */
+    /**
+     * The time of day of a real instant in [zone], without seconds. The hour
+     * cycle follows the *user's* preference ([is24Hour], see
+     * [TimeFormatPreference]), not the locale default: 24-hour is `HH:mm`,
+     * 12-hour is `h:mm a` with the locale's AM/PM marker (#1830).
+     */
     fun formatTime(
         iso: String?,
+        is24Hour: Boolean,
         zone: ZoneId = ZoneId.systemDefault(),
         locale: Locale = Locale.getDefault(),
     ): String {
         if (iso.isNullOrBlank()) return ""
         return runCatching {
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+            DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a", locale)
                 .format(Instant.parse(iso).atZone(zone))
         }.getOrDefault("")
     }
