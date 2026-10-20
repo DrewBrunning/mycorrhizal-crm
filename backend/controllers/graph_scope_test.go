@@ -134,6 +134,52 @@ func TestGetGraph_DefaultsToEgoNetworkOfSelfContact(t *testing.T) {
 	})
 }
 
+// The ego-network is the visible graph's neighbourhood: a hop never lands on
+// (or walks through) an archived or soft-deleted contact, and a soft-deleted
+// activity participant is not counted. Otherwise a contact two hops away via a
+// hidden middle node shows up in "within 2 connections of you" with no path
+// back, and an activity star edge points at a node the response does not have.
+func TestGetGraph_EgoNetworkSkipsHiddenContacts(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/graph", GetGraph)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	mk := func(name string) models.Contact {
+		c := models.Contact{UserID: user.ID, Firstname: name}
+		require.NoError(t, db.Create(&c).Error)
+		return c
+	}
+	self, archived, behindArchived, deleted, behindDeleted, friend := mk("Self"), mk("Archived"), mk("BehindArchived"), mk("Deleted"), mk("BehindDeleted"), mk("Friend")
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+	seedFriendEdge(t, db, user.ID, self, archived)
+	seedFriendEdge(t, db, user.ID, archived, behindArchived)
+	seedFriendEdge(t, db, user.ID, deleted, self) // the source side of the walk
+	seedFriendEdge(t, db, user.ID, behindDeleted, deleted)
+	seedFriendEdge(t, db, user.ID, self, friend)
+
+	// An activity between friend and the (soon) deleted contact: only one
+	// visible participant, so no activity node in either view.
+	act := models.Activity{UserID: user.ID, Title: "WithDeleted", Date: time.Now()}
+	require.NoError(t, db.Create(&act).Error)
+	require.NoError(t, db.Model(&act).Association("Contacts").Append(&friend, &deleted))
+
+	require.NoError(t, db.Model(&archived).Update("archived", true).Error)
+	// A bare soft delete (no cascade) leaves the edges and the activity link
+	// in place -- the graph must not lean on the cascade to hide them.
+	require.NoError(t, db.Delete(&deleted).Error)
+
+	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	require.True(t, resp.Scoped)
+	assert.ElementsMatch(t, []string{contactNodeID(self), contactNodeID(friend)}, nodeIDs(resp.Nodes))
+
+	full := getGraphResp(t, router, "/graph?full=true", http.StatusOK)
+	assert.NotContains(t, nodeIDs(full.Nodes), "a-"+itoa(act.ID))
+	for _, e := range full.Edges {
+		assert.NotEmpty(t, findGraphNode(full.Nodes, e.Target), "edge %s target must be a returned node", e.ID)
+	}
+}
+
 func TestGetGraph_NoSelfContactFallsBackToFullGraph(t *testing.T) {
 	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
