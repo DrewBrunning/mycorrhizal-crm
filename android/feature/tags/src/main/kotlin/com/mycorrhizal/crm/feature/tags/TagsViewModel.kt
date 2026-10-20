@@ -4,7 +4,9 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.foldApiError
@@ -118,6 +120,8 @@ data class TagDetailUiState(
     val tagId: String = "",
     val tag: Tag? = null,
     val contacts: List<ContactTag> = emptyList(),
+    /** Tagged contact VCardUID -> resolved summary (issue #1768: names, not UIDs). */
+    val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
@@ -127,6 +131,7 @@ data class TagDetailUiState(
 @HiltViewModel
 class TagDetailViewModel @Inject constructor(
     private val tagRepository: TagRepository,
+    private val contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -154,11 +159,27 @@ class TagDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(isLoading = false, tag = detail.tag, contacts = detail.contacts)
                     }
+                    resolveContactNames(detail.contacts)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
+        }
+    }
+
+    /**
+     * Best-effort name resolution for tagged VCardUIDs (mirrors
+     * CircleDetailViewModel.resolveMemberNames). A failure is NOT surfaced as the
+     * screen's primary error; unresolved rows show "Unknown contact".
+     */
+    private fun resolveContactNames(contacts: List<ContactTag>) {
+        val uids = contacts.map { it.contactVCardUid }.filter { it.isNotBlank() }.distinct()
+        if (uids.isEmpty()) return
+        viewModelScope.launch {
+            contactRepository.resolveByUid(uids).onSuccess { resolved ->
+                _uiState.update { it.copy(contactsByUid = it.contactsByUid + resolved) }
+            }
         }
     }
 
@@ -169,6 +190,7 @@ class TagDetailViewModel @Inject constructor(
             tagRepository.addContact(tagId, uid).foldApiError(
                 onSuccess = { tagging ->
                     _uiState.update { it.copy(contacts = it.contacts + tagging) }
+                    resolveContactNames(listOf(tagging))
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
