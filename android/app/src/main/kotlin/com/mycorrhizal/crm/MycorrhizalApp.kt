@@ -1694,6 +1694,7 @@ private fun AppNavGraph(
         ) {
             CircleDetailScreen(
                 onBack = { navController.popBackStack() },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
             )
         }
         composable("tags") {
@@ -1708,6 +1709,7 @@ private fun AppNavGraph(
         ) {
             TagDetailScreen(
                 onBack = { navController.popBackStack() },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
             )
         }
         // M14: the ego-centric network list (drawer entry — "start from"
