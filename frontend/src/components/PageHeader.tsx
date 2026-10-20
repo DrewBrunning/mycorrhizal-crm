@@ -76,6 +76,12 @@ export default function PageHeader({ title, leading, actions, sx }: PageHeaderPr
           flex: '1 1 16rem',
           minWidth: 0,
           maxWidth: '100%',
+          // Icon buttons beside the title (e.g. the Activities/Notes info
+          // button) get the same 44px phone touch target as the actions.
+          '& .MuiIconButton-root': {
+            minWidth: { xs: 44, sm: 'auto' },
+            minHeight: { xs: 44, sm: 'auto' },
+          },
         }}
       >
         {leading ?? (

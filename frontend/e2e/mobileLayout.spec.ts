@@ -109,6 +109,8 @@ test.describe('Mobile layout: page headers wrap in every locale (#1785)', () => 
           await page.setViewportSize({ width, height: 800 });
           await page.goto(route);
           await expect(page.locator('h1').first(), `${route} renders its heading`).toBeVisible();
+          // The sweep is only a locale sweep if the locale actually applied.
+          await expect(page.locator('html')).toHaveAttribute('lang', locale);
           // Let the lazily loaded panels (system events, triage) lay out.
           await page.waitForLoadState('networkidle');
           expect(await documentOverflowPx(page), 'page overflows horizontally (px)').toBe(0);
@@ -119,6 +121,17 @@ test.describe('Mobile layout: page headers wrap in every locale (#1785)', () => 
             .all()) {
             const box = await button.boundingBox();
             if (box) expect(box.height, 'header action height').toBeGreaterThanOrEqual(44);
+          }
+          // ...and so are icon buttons beside the title (the Activities/Notes info button).
+          for (const iconButton of await page
+            .getByTestId('page-header')
+            .locator('.MuiIconButton-root')
+            .all()) {
+            const box = await iconButton.boundingBox();
+            if (box) {
+              expect(box.height, 'header icon button height').toBeGreaterThanOrEqual(44);
+              expect(box.width, 'header icon button width').toBeGreaterThanOrEqual(44);
+            }
           }
         });
       }
