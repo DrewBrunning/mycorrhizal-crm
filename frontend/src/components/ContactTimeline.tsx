@@ -231,6 +231,9 @@ export default function ContactTimeline({
             : item.type === 'activity'
               ? (item.data as Activity).description
               : (item.data as ReminderCompletion).message;
+        // One label for both the sm+ date column and the phone caption, so a
+        // change to how the date is rendered cannot reach only one of them.
+        const dateLabel = isValidDate ? formatDate(item.date) : item.date || 'N/A';
 
         return (
           <TimelineItem
@@ -242,9 +245,7 @@ export default function ContactTimeline({
                 flex: 0.3,
               }}
             >
-              <Typography variant="caption">
-                {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
-              </Typography>
+              <Typography variant="caption">{dateLabel}</Typography>
             </TimelineOppositeContent>
             <TimelineSeparator>
               <TimelineDot
@@ -270,7 +271,7 @@ export default function ContactTimeline({
             </TimelineSeparator>
             <TimelineContent>
               <Typography variant="caption" sx={timelineMobileDateSx}>
-                {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                {dateLabel}
               </Typography>
               <Paper
                 elevation={1}

@@ -44,6 +44,8 @@ const ActivitiesPage: React.FC = () => {
   useDocumentTitle(t('nav.activities'));
   const { announce } = useAnnouncer();
   const { formatDate, getDatePlaceholder } = useDateFormat();
+  // #1783: one formatter for both the sm+ date column and the phone caption.
+  const activityDateLabel = (activity: Activity) => formatDate(activity.date);
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
@@ -346,7 +348,7 @@ const ActivitiesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(activity.date)}</Typography>
+                <Typography variant="body2">{activityDateLabel(activity)}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
@@ -356,7 +358,7 @@ const ActivitiesPage: React.FC = () => {
               </TimelineSeparator>
               <TimelineContent sx={{ flex: { sm: 0.8 } }}>
                 <Typography variant="caption" sx={timelineMobileDateSx}>
-                  {formatDate(activity.date)}
+                  {activityDateLabel(activity)}
                 </Typography>
                 <Paper
                   elevation={2}
