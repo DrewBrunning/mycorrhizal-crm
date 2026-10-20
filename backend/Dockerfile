@@ -58,7 +58,11 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # alpine/v3.24/main index. Exact pin, like the rest of this list (DL3018); if
 # Alpine prunes 1.3.2-r1 the build fails loudly and the pin is bumped, as with
 # libssl3 above (#1062/#1131).
-RUN apk add --no-cache ca-certificates=20260909-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
+# 2026-10-20: bumped ca-certificates 20260909-r0 -> 20261020-r0. Alpine
+# published 20261020-r0 and pruned the old one from alpine/v3.24/main, so the
+# old pin became unsatisfiable (`apk add`: "breaks: world[...]") -- the same
+# pruned-pin class as libssl3 above.
+RUN apk add --no-cache ca-certificates=20261020-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
 
 WORKDIR /app
 

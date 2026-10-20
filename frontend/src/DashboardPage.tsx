@@ -47,6 +47,24 @@ import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
+
+// Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
+// sync. Used only to re-cap a block the page refetches from an uncapped
+// per-entity endpoint (reminders after complete/skip).
+const DASHBOARD_SECTION_LIMIT = 25;
+
+// "Showing 25 of 112" under a block the server capped (issue #1791). Renders
+// nothing when the block was not truncated.
+function TruncationNote({ shown, total }: { shown: number; total: number }) {
+  const { t } = useTranslation();
+  if (total <= shown) return null;
+  return (
+    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+      {t('dashboard.showingOf', { shown, total })}
+    </Typography>
+  );
+}
 
 function DashboardPage() {
   const { t } = useTranslation();
@@ -62,6 +80,16 @@ function DashboardPage() {
   const [reachOutSuggestions, setReachOutSuggestions] = useState<ReachOutSuggestion[]>([]);
   const [syncConflicts, setSyncConflicts] = useState<ContactSyncConflict[]>([]);
   const [dataDecayOverdue, setDataDecayOverdue] = useState<OverdueDataDecayPolicy[]>([]);
+  // Issue #1791: each list block is capped server-side; these are the uncapped
+  // sizes, so a truncated block can say "showing 25 of N".
+  const [totals, setTotals] = useState({
+    birthdays: 0,
+    reminders: 0,
+    overdue: 0,
+    reachOut: 0,
+    syncConflicts: 0,
+    dataDecay: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -99,6 +127,14 @@ function DashboardPage() {
       setReachOutSuggestions(dashboard.reach_out_suggestions);
       setSyncConflicts(dashboard.contact_sync_conflicts);
       setDataDecayOverdue(dashboard.data_decay_overdue);
+      setTotals({
+        birthdays: dashboard.birthdays_total,
+        reminders: dashboard.upcoming_reminders_total,
+        overdue: dashboard.overdue_total,
+        reachOut: dashboard.reach_out_suggestions_total,
+        syncConflicts: dashboard.contact_sync_conflicts_total,
+        dataDecay: dashboard.data_decay_overdue_total,
+      });
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -145,12 +181,21 @@ function DashboardPage() {
     return reminders.map((r) => ({ ...r, contact_name: nameById.get(r.ID) || '' }));
   };
 
+  // The plain reminders endpoint is uncapped; re-apply the dashboard's
+  // section cap (issue #1791) so completing one reminder on an account with
+  // thousands does not swap the 25-row block for all of them.
+  const applyReminderRefetch = (reminders: Awaited<ReturnType<typeof getUpcomingReminders>>) => {
+    setUpcomingReminders((prev) =>
+      attachKnownContactNames(prev, reminders.slice(0, DASHBOARD_SECTION_LIMIT)),
+    );
+    setTotals((prev) => ({ ...prev, reminders: reminders.length }));
+  };
+
   const handleCompleteReminder = async (reminderId: number) => {
     try {
       await completeReminder(reminderId);
       // Reload reminders after completion
-      const reminders = await getUpcomingReminders();
-      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
+      applyReminderRefetch(await getUpcomingReminders());
     } catch (err) {
       handleError(err, { operation: 'completing reminder' });
     }
@@ -163,8 +208,7 @@ function DashboardPage() {
     try {
       await skipReminder(reminderId);
       // Reload reminders after skipping
-      const reminders = await getUpcomingReminders();
-      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
+      applyReminderRefetch(await getUpcomingReminders());
     } catch (err) {
       handleError(err, { operation: 'skipping reminder' });
     }
@@ -174,6 +218,7 @@ function DashboardPage() {
     try {
       await dismissReachOutSuggestion(id);
       setReachOutSuggestions((prev) => prev.filter((s) => s.id !== id));
+      setTotals((prev) => ({ ...prev, reachOut: Math.max(prev.reachOut - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'dismissing reach-out suggestion' });
     }
@@ -188,6 +233,7 @@ function DashboardPage() {
     try {
       await restoreContactSyncConflict(conflict.id);
       setSyncConflicts((prev) => prev.filter((c) => c.id !== conflict.id));
+      setTotals((prev) => ({ ...prev, syncConflicts: Math.max(prev.syncConflicts - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'restoring sync conflict' });
     }
@@ -197,14 +243,16 @@ function DashboardPage() {
     try {
       await dismissContactSyncConflict(id);
       setSyncConflicts((prev) => prev.filter((c) => c.id !== id));
+      setTotals((prev) => ({ ...prev, syncConflicts: Math.max(prev.syncConflicts - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'dismissing sync conflict' });
     }
   };
 
-  const isOverdue = (remindAt: string) => {
-    return new Date(remindAt) < new Date();
-  };
+  // remind_at is a calendar day stored at 00:00Z: compare days, not instants.
+  // Comparing the instant to "now" flagged a reminder as overdue from 00:00Z on
+  // its own due day, which west of UTC is the evening before (#1778).
+  const isOverdue = (remindAt: string) => isBeforeLocalToday(remindAt);
 
   const isBirthdayToday = (birthday: string | undefined) => {
     if (!birthday) return false;
@@ -306,6 +354,7 @@ function DashboardPage() {
       {overdueCadences.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <OverdueCadenceList overdue={overdueCadences} loading={loading} error={null} />
+          <TruncationNote shown={overdueCadences.length} total={totals.overdue} />
         </Box>
       )}
 
@@ -321,6 +370,7 @@ function DashboardPage() {
             error={null}
             onDismiss={(p0) => void handleDismissReachOutSuggestion(p0)}
           />
+          <TruncationNote shown={reachOutSuggestions.length} total={totals.reachOut} />
         </Box>
       )}
 
@@ -337,6 +387,7 @@ function DashboardPage() {
             onRestore={(p0) => void handleRestoreSyncConflict(p0)}
             onDismiss={(p0) => void handleDismissSyncConflict(p0)}
           />
+          <TruncationNote shown={syncConflicts.length} total={totals.syncConflicts} />
         </Box>
       )}
 
@@ -346,6 +397,7 @@ function DashboardPage() {
       {dataDecayOverdue.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <DataDecayOverdueList overdue={dataDecayOverdue} loading={loading} error={null} />
+          <TruncationNote shown={dataDecayOverdue.length} total={totals.dataDecay} />
         </Box>
       )}
 
@@ -563,6 +615,7 @@ function DashboardPage() {
                   </Card>
                 );
               })}
+              <TruncationNote shown={birthdays.length} total={totals.birthdays} />
             </Stack>
           )}
         </Box>
@@ -659,7 +712,7 @@ function DashboardPage() {
                           >
                             <Chip
                               icon={overdue ? <WarningIcon fontSize="small" /> : undefined}
-                              label={formatDate(reminder.remind_at)}
+                              label={formatDate(calendarDateOnly(reminder.remind_at))}
                               size="small"
                               color={overdue ? 'warning' : 'default'}
                               sx={{ height: 20, fontSize: '0.7rem' }}
@@ -731,6 +784,7 @@ function DashboardPage() {
                   </Card>
                 );
               })}
+              <TruncationNote shown={upcomingReminders.length} total={totals.reminders} />
             </Stack>
           )}
         </Box>

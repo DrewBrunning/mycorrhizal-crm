@@ -817,13 +817,19 @@ export type DashboardReminder = Reminder & {
 
 export type DashboardResponse = {
   birthdays: Birthday[];
+  birthdays_total: number;
   contact_sync_conflicts: ContactSyncConflict[];
+  contact_sync_conflicts_total: number;
   data_decay_overdue: OverdueDataDecayPolicy[];
+  data_decay_overdue_total: number;
   favorites: ContactResponse[];
   overdue: OverdueCadence[];
+  overdue_total: number;
   random_contacts: ContactResponse[];
   reach_out_suggestions: ReachOutSuggestion[];
+  reach_out_suggestions_total: number;
   upcoming_reminders: DashboardReminder[];
+  upcoming_reminders_total: number;
 };
 
 export type DataDecayHealth = {
@@ -1095,6 +1101,7 @@ export type FieldConstraints = {
 export type FieldDefinition = {
   constraints?: FieldConstraints;
   created_at: string;
+  group: string;
   id: string;
   key: string;
   label: string;
@@ -1108,6 +1115,7 @@ export type FieldDefinition = {
 
 export type FieldDefinitionInput = {
   constraints?: FieldConstraints;
+  group?: string;
   key: string;
   label: string;
   projection?: string;
@@ -1288,8 +1296,11 @@ export type GraphNode = {
 };
 
 export type GraphResponse = {
+  depth?: number;
   edges?: GraphEdge[];
+  from_vcard_uid?: string;
   nodes?: GraphNode[];
+  scoped?: boolean;
 };
 
 export type HealthCheckDetail = {

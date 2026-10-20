@@ -378,16 +378,21 @@ fun MycorrhizalApp(
     val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
     val surfaceArgb = MaterialTheme.colorScheme.surface.toArgbCompat()
     val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
-    LaunchedEffect(session.isLoggedIn, darkTheme, drawerOpen, primaryArgb, surfaceArgb, surfaceContainerLowArgb) {
-        val onPrimaryBar = session.isLoggedIn && !drawerOpen
-        activity.window.statusBarColor = when {
+    val onPrimaryBar = session.isLoggedIn && !drawerOpen
+    // Issue #1771: both bars follow the resolved `darkTheme` on a live Settings theme
+    // switch. Before, only the status bar was re-applied; the navigation bar kept its
+    // onCreate (enableEdgeToEdge) appearance until the next cold start (see SystemBars.kt).
+    SystemBarsEffect(
+        window = activity.window,
+        darkTheme = darkTheme,
+        onPrimaryBar = onPrimaryBar,
+        statusBarColor = when {
             onPrimaryBar -> primaryArgb
             session.isLoggedIn -> surfaceContainerLowArgb
             else -> surfaceArgb
-        }
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-            .isAppearanceLightStatusBars = if (onPrimaryBar) darkTheme else !darkTheme
-    }
+        },
+        navigationBarColor = surfaceArgb,
+    )
 
     // Issue #722: the root branches on where the user is in the session +
     // local-auth flow. While the app-lock controller is still deciding

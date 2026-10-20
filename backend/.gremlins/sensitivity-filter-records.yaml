@@ -17,6 +17,7 @@ unleash:
         - ^briefing\.go$
         - ^bulk_operation\.go$
         - ^cadence_policy\.go$
+        - ^calendar_date\.go$
         - ^calendar_subscription\.go$
         - ^carddav\.go$
         - ^circle\.go$

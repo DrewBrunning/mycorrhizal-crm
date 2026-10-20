@@ -257,6 +257,7 @@ func (e *Env) Router() *gin.Engine {
 	r.GET("/contacts/map", controllers.GetContactMap)
 	r.GET("/dashboard", controllers.GetDashboard)
 	r.GET("/search", controllers.SearchAll)
+	r.GET("/graph", controllers.GetGraph)
 	r.GET("/graph/connections", controllers.GetGraphConnections)
 	r.POST("/contacts/merge", middleware.ValidateJSONMiddleware(&models.ContactMergeRequest{}), controllers.CommitContactMerge)
 	e.router = r

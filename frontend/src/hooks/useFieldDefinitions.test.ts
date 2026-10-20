@@ -35,6 +35,7 @@ function definition(id: string, label: string, position: number): FieldDefinitio
     projection: 'internal-only',
     sensitivity: 'normal',
     position,
+    group: '',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   };

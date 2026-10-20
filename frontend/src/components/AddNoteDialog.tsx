@@ -15,6 +15,7 @@ import { type Contact, getContacts } from '../api/contacts';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import { handleFetchError } from '../utils/errorHandler';
+import { todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
@@ -63,7 +64,7 @@ export default function AddNoteDialog({
 }: AddNoteDialogProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayLocalISODate());
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -107,7 +108,7 @@ export default function AddNoteDialog({
   const handleClose = useCallback(() => {
     clearDraft();
     setContent('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(todayLocalISODate());
     setError('');
     setSelectedContact(null);
     setSearchInput('');
