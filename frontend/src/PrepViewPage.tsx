@@ -206,7 +206,7 @@ export default function PrepViewPage() {
                     }}
                   >
                     {t('cadence.lastInteraction', {
-                      date: formatDate(briefing.cadence.health.last_interaction),
+                      date: formatDate(calendarDateOnly(briefing.cadence.health.last_interaction)),
                     })}
                   </Typography>
                 )}
@@ -287,7 +287,7 @@ export default function PrepViewPage() {
                   color: 'text.secondary',
                 }}
               >
-                {formatDate(briefing.last_activity.date)}
+                {formatDate(calendarDateOnly(briefing.last_activity.date))}
               </Typography>
               {briefing.last_activity.description && (
                 <Typography
@@ -435,7 +435,7 @@ export default function PrepViewPage() {
                       color: 'text.secondary',
                     }}
                   >
-                    ({formatDate(reminder.remind_at)})
+                    ({formatDate(calendarDateOnly(reminder.remind_at))})
                   </Typography>
                 </Typography>
               ))}

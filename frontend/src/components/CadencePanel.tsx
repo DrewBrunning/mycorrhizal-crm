@@ -181,7 +181,9 @@ export default function CadencePanel({
                 display: 'block',
               }}
             >
-              {t('cadence.lastInteraction', { date: formatDate(health.last_interaction) })}
+              {t('cadence.lastInteraction', {
+                date: formatDate(calendarDateOnly(health.last_interaction)),
+              })}
             </Typography>
           )}
 

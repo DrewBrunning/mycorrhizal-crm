@@ -51,6 +51,9 @@ object DateFormat {
 
     fun monthNameShort(month: Int): String = monthsShort[month - 1]
 
+    // The wire shape of a calendar-only field (`next_due`, issue #1778).
+    private val DATE_ONLY = Regex("\\d{4}-\\d{2}-\\d{2}")
+
     /**
      * Formats an ISO-8601 timestamp as a date in [format], or "" when
      * unparseable/absent. The single shared implementation for server-derived
@@ -65,8 +68,6 @@ object DateFormat {
      * the same value rendered as two different days across clients (a real bug
      * M11's review pass fixed in the prep view).
      */
-    private val DATE_ONLY = Regex("\\d{4}-\\d{2}-\\d{2}")
-
     fun formatTimestamp(iso: String?, format: String): String {
         if (iso.isNullOrBlank()) return ""
         // A date-only `YYYY-MM-DD` (the wire shape of calendar-only fields such as
