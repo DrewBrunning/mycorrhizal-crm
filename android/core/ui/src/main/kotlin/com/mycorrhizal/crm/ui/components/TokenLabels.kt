@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.ui.components
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -20,7 +21,7 @@ import com.mycorrhizal.crm.ui.R
  * `core/model/.../registry/Registries.kt`. `TokenLabelsTest` reads those backend Go
  * sources directly and fails when a token there has no label here. The wording of the
  * relationship and life-event labels mirrors the web locales
- * (`frontend/src/i18n/locales/*.json`, `relationships.types.*` / `lifeEvent.types.*`).
+ * (`the frontend locale JSON files`, `relationships.types.*` / `lifeEvent.types.*`).
  */
 
 /** Lookup key: stored tokens are lowercase, but legacy/imported data may differ in case. */
@@ -193,3 +194,7 @@ fun lifeEventTypeLabel(token: String): String =
 @Composable
 fun giftStatusLabel(token: String): String =
     giftStatusLabelRes(token)?.let { stringResource(it) } ?: humanizeToken(token)
+
+/** Non-composable variant for callbacks that cannot compose (e.g. a plain `(String) -> String`). */
+fun lifeEventTypeLabelText(context: Context, token: String): String =
+    lifeEventTypeLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)

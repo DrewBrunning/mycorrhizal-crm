@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.relationships
 
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -349,8 +350,9 @@ private fun RelationshipEdgeRow(
 }
 
 /** Human label for an edge's effective type token. */
+@Composable
 fun relationshipLabel(@Suppress("UnusedParameter") type: String, edge: RelationshipEdge, viewedUid: String): String {
-    return effectiveType(edge, viewedUid).replace('_', ' ')
+    return relationshipRoleLabel(effectiveType(edge, viewedUid))
 }
 
 private enum class EntryMode { MANUAL, LINKED }
@@ -517,7 +519,7 @@ fun RelationshipEdgeDialog(
                     onExpandedChange = { typeExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = type.replace('_', ' '),
+                        value = relationshipRoleLabel(type),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.relationships_type)) },
@@ -532,7 +534,7 @@ fun RelationshipEdgeDialog(
                     ) {
                         RelationshipEdgeTypes.TYPE_TOKENS.forEach { t ->
                             DropdownMenuItem(
-                                text = { Text(t.replace('_', ' ')) },
+                                text = { Text(relationshipRoleLabel(t)) },
                                 onClick = { type = t; typeExpanded = false },
                             )
                         }

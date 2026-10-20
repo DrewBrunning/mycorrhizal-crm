@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.network
 
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -421,6 +422,7 @@ private fun NetworkRow(
     // dot below and this description) -- recency-of-interaction health
     // scoring is meaningless once someone has died, so it never competes
     // with the deceased state for the same indicator.
+    val readablePath = chain.readablePath(chain.stepsOrEmpty.map { relationshipRoleLabel(it.relation) })
     val band = chain.healthBand
     val statusLabel = if (chain.deceased) {
         stringResource(R.string.contact_deceased_badge)
@@ -431,14 +433,14 @@ private fun NetworkRow(
         stringResource(
             R.string.network_row_description_with_health,
             chain.displayName,
-            chain.readablePath,
+            readablePath,
             statusLabel,
         )
     } else {
         stringResource(
             R.string.network_row_description,
             chain.displayName,
-            chain.readablePath,
+            readablePath,
         )
     }
     val clickable = if (chain.targetId != 0) {
@@ -470,7 +472,7 @@ private fun NetworkRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = chain.readablePath,
+                text = readablePath,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,

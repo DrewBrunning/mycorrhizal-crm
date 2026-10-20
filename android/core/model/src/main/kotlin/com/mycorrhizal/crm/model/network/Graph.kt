@@ -71,10 +71,16 @@ data class GraphChain(
      * there is no per-token translation table on Android.
      */
     val readablePath: String
-        get() = stepsOrEmpty.joinToString(" → ") { step ->
-            val relation = step.relation.replace('_', ' ')
-            "${step.contactName.ifBlank { "Unknown" }} ($relation)"
-        }
+        get() = readablePath(stepsOrEmpty.map { it.relation.replace('_', ' ') })
+
+    /**
+     * Issue #1755: the same path with caller-supplied (translated) relation labels, one per
+     * step in [stepsOrEmpty] order -- the UI passes `relationshipRoleLabel(step.relation)`.
+     */
+    fun readablePath(relationLabels: List<String>): String =
+        stepsOrEmpty.mapIndexed { i, step ->
+            "${step.contactName.ifBlank { "Unknown" }} (${relationLabels.getOrElse(i) { step.relation.replace('_', ' ') }})"
+        }.joinToString(" → ")
 }
 
 /** One hop: the intermediate contact and the relation from it to the next. */
