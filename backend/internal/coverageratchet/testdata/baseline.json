@@ -118,7 +118,7 @@
     "controllers/external_activity_controller.go": 90.91,
     "controllers/external_identity_controller.go": 95.97,
     "controllers/feed_controller.go": 100,
-    "controllers/field_definition_controller.go": 87.56,
+    "controllers/field_definition_controller.go": 87.83,
     "controllers/geopulse_controller.go": 100,
     "controllers/gift_controller.go": 93.25,
     "controllers/graph_controller.go": 100,

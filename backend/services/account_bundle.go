@@ -538,6 +538,7 @@ func loadBundleCustomFields(db *gorm.DB, userID uint) ([]models.AccountBundleFie
 			Projection:  d.Projection,
 			Sensitivity: d.Sensitivity,
 			Position:    d.Position,
+			Group:       d.Group,
 		})
 	}
 	var vals []models.FieldValue

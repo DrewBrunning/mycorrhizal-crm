@@ -61,6 +61,9 @@ export interface FieldDefinition {
   // The user's display order for this definition (issue #1210). Always
   // present on the wire; the list endpoint returns rows ordered by it.
   position: number;
+  // Optional display-only group label (issue #1730); "" means ungrouped.
+  // Always present on the wire.
+  group: string;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +76,8 @@ export interface FieldDefinitionInput {
   constraints?: FieldConstraints;
   projection?: string;
   sensitivity?: FieldSensitivity;
+  // Omitted on update keeps the current group; "" clears it. Max 100 chars.
+  group?: string;
 }
 
 // FieldValue.value is the raw JSON payload: a scalar definition holds

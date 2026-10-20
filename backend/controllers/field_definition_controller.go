@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -87,6 +88,7 @@ func CreateFieldDefinition(c *gin.Context) {
 		Projection:  orDefault(input.Projection, "internal-only"),
 		Sensitivity: orDefault(input.Sensitivity, models.RelationshipSensitivityNormal),
 		Position:    position,
+		Group:       trimmedGroup(input.Group),
 	}
 	if err := db.Create(&def).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save field definition").WithError(err))
@@ -229,6 +231,9 @@ func UpdateFieldDefinition(c *gin.Context) {
 	}
 	if input.Sensitivity != "" {
 		def.Sensitivity = input.Sensitivity
+	}
+	if input.Group != nil {
+		def.Group = trimmedGroup(input.Group)
 	}
 	// Key is intentionally not assigned -- see the doc comment above.
 
@@ -530,4 +535,13 @@ func orDefault(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// trimmedGroup normalises the optional group label (issue #1730): nil and
+// whitespace-only both mean ungrouped (""). Length is validated on the DTO.
+func trimmedGroup(g *string) string {
+	if g == nil {
+		return ""
+	}
+	return strings.TrimSpace(*g)
 }
