@@ -66,6 +66,23 @@ function TruncationNote({ shown, total }: { shown: number; total: number }) {
   );
 }
 
+// Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
+// sync. Used only to re-cap a block the page refetches from an uncapped
+// per-entity endpoint (reminders after complete/skip).
+const DASHBOARD_SECTION_LIMIT = 25;
+
+// "Showing 25 of 112" under a block the server capped (issue #1791). Renders
+// nothing when the block was not truncated.
+function TruncationNote({ shown, total }: { shown: number; total: number }) {
+  const { t } = useTranslation();
+  if (total <= shown) return null;
+  return (
+    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+      {t('dashboard.showingOf', { shown, total })}
+    </Typography>
+  );
+}
+
 function DashboardPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.dashboard'));
