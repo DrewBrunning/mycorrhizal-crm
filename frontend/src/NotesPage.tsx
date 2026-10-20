@@ -27,6 +27,7 @@ import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/n
 import AddNoteDialog from './components/AddNoteDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
@@ -188,56 +189,48 @@ const NotesPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       {conflictDialog}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Typography variant="h5" component="h1">
-            {t('notes.title')}
-          </Typography>
-          {/* Queue depth from the server's `total`, not notes.length -- the
-              latter is the loaded page, so this under-counted anyone with
-              more than one page of unfiled notes and then grew as they
-              clicked "Load more". */}
-          <Chip
-            label={unfiledTotal}
-            size="small"
-            color={unfiledTotal > 0 ? 'primary' : 'default'}
-            variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
-          />
-          <IconButton
-            size="small"
-            aria-describedby={infoPopoverId}
-            aria-label={t('common.info')}
-            onClick={handleInfoClick}
+      <PageHeader
+        sx={{ mb: 2 }}
+        leading={
+          <>
+            <Typography variant="h5" component="h1">
+              {t('notes.title')}
+            </Typography>
+            {/* Queue depth from the server's `total`, not notes.length -- the
+                latter is the loaded page, so this under-counted anyone with
+                more than one page of unfiled notes and then grew as they
+                clicked "Load more". */}
+            <Chip
+              label={unfiledTotal}
+              size="small"
+              color={unfiledTotal > 0 ? 'primary' : 'default'}
+              variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
+            />
+            <IconButton
+              size="small"
+              aria-describedby={infoPopoverId}
+              aria-label={t('common.info')}
+              onClick={handleInfoClick}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </>
+        }
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={
+              <SvgIcon>
+                <path d={mdiNotePlusOutline} />
+              </SvgIcon>
+            }
+            onClick={handleAddNote}
           >
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={
-            <SvgIcon>
-              <path d={mdiNotePlusOutline} />
-            </SvgIcon>
-          }
-          onClick={handleAddNote}
-        >
-          {t('notes.addNote')}
-        </Button>
-      </Box>
+            {t('notes.addNote')}
+          </Button>
+        }
+      />
       <Popover
         id={infoPopoverId}
         open={infoOpen}

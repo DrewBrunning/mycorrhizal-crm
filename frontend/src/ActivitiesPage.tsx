@@ -31,6 +31,7 @@ import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useActivities } from './hooks/useActivities';
@@ -209,59 +210,51 @@ const ActivitiesPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       {conflictDialog}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Typography variant="h5" component="h1">
-            {t('activities.title')}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-describedby={infoPopoverId}
-            aria-label={t('common.info')}
-            onClick={handleInfoClick}
-          >
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiMapMarkerOutline} />
-              </SvgIcon>
-            }
-            onClick={() => setLocationDialogOpen(true)}
-          >
-            {t('activities.logFromLocation')}
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiCalendarPlus} />
-              </SvgIcon>
-            }
-            onClick={handleAddActivity}
-          >
-            {t('activities.addActivity')}
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        sx={{ mb: 2 }}
+        leading={
+          <>
+            <Typography variant="h5" component="h1">
+              {t('activities.title')}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-describedby={infoPopoverId}
+              aria-label={t('common.info')}
+              onClick={handleInfoClick}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiMapMarkerOutline} />
+                </SvgIcon>
+              }
+              onClick={() => setLocationDialogOpen(true)}
+            >
+              {t('activities.logFromLocation')}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiCalendarPlus} />
+                </SvgIcon>
+              }
+              onClick={handleAddActivity}
+            >
+              {t('activities.addActivity')}
+            </Button>
+          </>
+        }
+      />
 
       <Popover
         id={infoPopoverId}

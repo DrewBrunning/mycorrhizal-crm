@@ -24,6 +24,7 @@ import {
 } from './api/systemStatus';
 import { isAdmin } from './auth';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import PageHeader from './components/PageHeader';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemStatus } from './hooks/useSystemStatus';
 import { statusTextColor } from './utils/statusText';
@@ -109,9 +110,7 @@ export default function SystemStatusPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
-        {t('systemStatus.title')}
-      </Typography>
+      <PageHeader title={t('systemStatus.title')} />
       <Typography
         variant="body2"
         sx={{
@@ -150,40 +149,26 @@ function Snapshot({
   return (
     <>
       <Paper sx={{ p: 1.5, mb: 2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 1,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-            }}
-          >
-            <Typography variant="subtitle1" component="h2">
-              {t('systemStatus.overall')}
-            </Typography>
-            <Chip
-              size="small"
-              color={OVERALL_COLORS[status.overall] ?? 'default'}
-              label={t(`systemStatus.status.${status.overall}`)}
-            />
-          </Box>
-          <Button
-            size="small"
-            startIcon={<RefreshIcon />}
-            onClick={onRefresh}
-            disabled={loading}
-            sx={{ flexShrink: 0 }}
-          >
-            {t('systemStatus.refresh')}
-          </Button>
-        </Box>
+        <PageHeader
+          sx={{ mb: 0 }}
+          leading={
+            <>
+              <Typography variant="subtitle1" component="h2">
+                {t('systemStatus.overall')}
+              </Typography>
+              <Chip
+                size="small"
+                color={OVERALL_COLORS[status.overall] ?? 'default'}
+                label={t(`systemStatus.status.${status.overall}`)}
+              />
+            </>
+          }
+          actions={
+            <Button size="small" startIcon={<RefreshIcon />} onClick={onRefresh} disabled={loading}>
+              {t('systemStatus.refresh')}
+            </Button>
+          }
+        />
       </Paper>
 
       <VersionUptimeCard status={status} />
