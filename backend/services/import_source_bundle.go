@@ -29,6 +29,7 @@ type MappedFieldDefinition struct {
 	Projection  string
 	Sensitivity string
 	Position    int
+	Group       string
 }
 
 // MappedReminderCompletion is one reminder completion.
@@ -144,6 +145,7 @@ func importFieldDefinitions(tx *gorm.DB, userID uint, plan *ImportSourcePlan, im
 			Projection:  d.Projection,
 			Sensitivity: d.Sensitivity,
 			Position:    d.Position,
+			Group:       d.Group,
 		}
 		if err := tx.Create(&def).Error; err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") && def.Key != "" {

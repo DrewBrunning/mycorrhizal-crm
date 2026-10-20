@@ -25,6 +25,7 @@ import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import type { Note } from '../api/notes';
 import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
 interface ContactTimelineProps {
@@ -233,7 +234,9 @@ export default function ContactTimeline({
               : (item.data as ReminderCompletion).message;
         // One label for both the sm+ date column and the phone caption, so a
         // change to how the date is rendered cannot reach only one of them.
-        const dateLabel = isValidDate ? formatDate(item.date) : item.date || 'N/A';
+        const dateLabel = isValidDate
+          ? formatDate(calendarDateOnly(item.date))
+          : item.date || 'N/A';
 
         return (
           <TimelineItem
@@ -316,7 +319,7 @@ export default function ContactTimeline({
                 )}
                 {item.type === 'activity' &&
                   (item.data as Activity).contacts &&
-                  (item.data as Activity).contacts!.length > 0 && (
+                  ((item.data as Activity).contacts?.length ?? 0) > 0 && (
                     <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
                       <Typography
                         variant="caption"
@@ -327,7 +330,7 @@ export default function ContactTimeline({
                       >
                         👥
                       </Typography>
-                      {(item.data as Activity).contacts!.map((activityContact, idx) => (
+                      {(item.data as Activity).contacts?.map((activityContact, idx) => (
                         <Fragment key={activityContact.ID}>
                           <Link
                             component="button"
@@ -346,7 +349,7 @@ export default function ContactTimeline({
                             {activityContact.nickname ? `"${activityContact.nickname}" ` : ''}
                             {activityContact.lastname}
                           </Link>
-                          {idx < (item.data as Activity).contacts!.length - 1 && (
+                          {idx < ((item.data as Activity).contacts?.length ?? 0) - 1 && (
                             <Typography
                               variant="caption"
                               sx={{

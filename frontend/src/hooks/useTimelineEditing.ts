@@ -39,6 +39,7 @@ export function useTimelineEditing(
       const note = item as Note;
       setEditTimelineValues({
         noteContent: note.content || '',
+        // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
         noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
       });
     } else {
@@ -58,6 +59,7 @@ export function useTimelineEditing(
         activityTitle: activity.title || '',
         activityDescription: activity.description || '',
         activityLocation: activity.location || '',
+        // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
         activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
         activityContacts: activity.contacts || [],
       });
