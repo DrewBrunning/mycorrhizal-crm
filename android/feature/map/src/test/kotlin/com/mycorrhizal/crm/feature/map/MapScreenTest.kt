@@ -133,7 +133,7 @@ class MapScreenTest {
         content(loaded(points = emptyList()))
 
         composeTestRule.onNodeWithText(
-            "No contacts have coordinates yet. Add coordinates to an address on a contact to see it here.",
+            "No mapped contacts yet",
         ).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Show as list").assertDoesNotExist()
     }

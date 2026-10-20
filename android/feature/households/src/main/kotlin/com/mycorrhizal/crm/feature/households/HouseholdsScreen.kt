@@ -29,6 +29,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.RowAction
+import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -338,21 +340,15 @@ private fun HouseholdListItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        AccessibleIconButton(onClick = { editing = true }) {
-            Icon(
-                Icons.Outlined.Edit,
-                // #205: the row-action label carries the household name so TalkBack
-                // doesn't read a bare "Rename" on every row.
-                contentDescription = stringResource(R.string.households_rename_named, household.name),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
-        AccessibleIconButton(onClick = { deleting = true }) {
-            Icon(
-                Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.households_delete_named, household.name),
-            )
-        }
+        // #1760: secondary actions behind one overflow button; its label carries
+        // the household name so TalkBack doesn't read a bare "More actions" per row (#205).
+        RowOverflowMenu(
+            rowName = household.name,
+            actions = listOf(
+                RowAction(stringResource(R.string.action_rename), onClick = { editing = true }),
+                RowAction(stringResource(R.string.action_delete), onClick = { deleting = true }, destructive = true),
+            ),
+        )
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }
 }

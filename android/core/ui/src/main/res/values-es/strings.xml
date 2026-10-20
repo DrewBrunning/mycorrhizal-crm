@@ -31,6 +31,7 @@
     <string name="nav_shares">Compartidos</string>
     <string name="nav_households">Hogares</string>
     <string name="cd_menu">Menú</string>
+    <string name="row_more_actions_named">Más acciones para %1$s</string>
     <string name="cd_back">Atrás</string>
 
     <!-- Inicio de sesión -->
@@ -985,11 +986,9 @@
     <string name="circles_title">Círculos</string>
     <string name="circles_new">Nuevo círculo</string>
     <string name="circles_rename">Renombrar círculo</string>
-    <string name="circles_rename_named">Renombrar %1$s</string>
     <string name="circles_name">Nombre</string>
     <string name="circles_delete_title">¿Eliminar círculo?</string>
     <string name="circles_delete_confirm">¿Eliminar «%1$s»? Esto quita el círculo y sus membresías.</string>
-    <string name="circles_delete_named">Eliminar %1$s</string>
     <string name="circles_add_member">Añadir miembro</string>
     <string name="circles_remove_member">Quitar miembro</string>
     <string name="circles_remove_member_named">Eliminar miembro %1$s</string>
@@ -1055,11 +1054,9 @@
     <string name="tags_title">Etiquetas</string>
     <string name="tags_new">Nueva etiqueta</string>
     <string name="tags_rename">Renombrar etiqueta</string>
-    <string name="tags_rename_named">Renombrar %1$s</string>
     <string name="tags_name">Nombre</string>
     <string name="tags_delete_title">¿Eliminar etiqueta?</string>
     <string name="tags_delete_confirm">¿Eliminar «%1$s»? Esto quita la etiqueta y sus etiquetados de contacto.</string>
-    <string name="tags_delete_named">Eliminar %1$s</string>
     <string name="tags_add_contact">Etiquetar contacto</string>
     <string name="tags_remove_contact">Quitar etiqueta del contacto</string>
     <string name="tags_remove_contact_named">Quitar etiqueta del contacto %1$s</string>
@@ -1127,12 +1124,10 @@
     <string name="households_title">Hogares</string>
     <string name="households_new">Nuevo hogar</string>
     <string name="households_edit">Editar hogar</string>
-    <string name="households_rename_named">Renombrar %1$s</string>
     <string name="households_name">Nombre</string>
     <string name="households_type">Tipo</string>
     <string name="households_delete_title">¿Eliminar hogar?</string>
     <string name="households_delete_confirm">¿Eliminar «%1$s»? Esto quita el hogar y sus membresías.</string>
-    <string name="households_delete_named">Eliminar %1$s</string>
     <string name="households_add_member">Añadir miembro</string>
     <string name="households_remove_member">Quitar miembro</string>
     <string name="households_remove_member_named">Eliminar miembro %1$s</string>

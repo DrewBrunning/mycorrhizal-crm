@@ -69,6 +69,18 @@ class AttachmentsScreenTest {
         composeTestRule.onNodeWithText("Add attachment").assertIsDisplayed()
     }
 
+    // Issue #1760: one add affordance (the FAB, like every other list) plus the
+    // empty-state action -- no more top-bar icon *and* inline button.
+    @Test
+    fun `empty state action and the fab both open the picker`() {
+        setContent(AttachmentUiState(attachments = emptyList(), total = 0, isLoading = false))
+        composeTestRule.onNodeWithText("Attach files such as scans, contracts or photos to this contact.")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add attachment").performClick()
+        composeTestRule.onNodeWithTag("add-attachment").performClick()
+        assertEquals(2, added)
+    }
+
     @Test
     fun `populated list shows rows and tapping one downloads it`() {
         setContent(AttachmentUiState(attachments = listOf(scan), total = 1, isLoading = false))

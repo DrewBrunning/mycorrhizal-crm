@@ -69,7 +69,7 @@ class WebhooksScreenTest {
         composeTestRule
             .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertExists()
-        composeTestRule.onNodeWithText("No webhooks configured yet.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No webhooks yet").assertDoesNotExist()
     }
 
     @Test
@@ -79,7 +79,7 @@ class WebhooksScreenTest {
 
         setScreen(WebhooksViewModel(repository))
 
-        composeTestRule.onNodeWithText("No webhooks configured yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No webhooks yet").assertIsDisplayed()
     }
 
     @Test
@@ -212,7 +212,7 @@ class WebhooksScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No deliveries yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No deliveries yet").assertIsDisplayed()
     }
 
     @Test

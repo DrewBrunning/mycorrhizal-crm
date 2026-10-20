@@ -31,6 +31,7 @@
     <string name="nav_shares">Condivisioni</string>
     <string name="nav_households">Nuclei familiari</string>
     <string name="cd_menu">Menu</string>
+    <string name="row_more_actions_named">Altre azioni per %1$s</string>
     <string name="cd_back">Indietro</string>
 
     <!-- Login -->
@@ -985,11 +986,9 @@
     <string name="circles_title">Cerchi</string>
     <string name="circles_new">Nuovo cerchio</string>
     <string name="circles_rename">Rinomina cerchio</string>
-    <string name="circles_rename_named">Rinomina %1$s</string>
     <string name="circles_name">Nome</string>
     <string name="circles_delete_title">Eliminare il cerchio?</string>
     <string name="circles_delete_confirm">Eliminare «%1$s»? Questo rimuove il cerchio e le sue appartenenze.</string>
-    <string name="circles_delete_named">Elimina %1$s</string>
     <string name="circles_add_member">Aggiungi membro</string>
     <string name="circles_remove_member">Rimuovi membro</string>
     <string name="circles_remove_member_named">Rimuovi il membro %1$s</string>
@@ -1055,11 +1054,9 @@
     <string name="tags_title">Etichette</string>
     <string name="tags_new">Nuova etichetta</string>
     <string name="tags_rename">Rinomina etichetta</string>
-    <string name="tags_rename_named">Rinomina %1$s</string>
     <string name="tags_name">Nome</string>
     <string name="tags_delete_title">Eliminare l\'etichetta?</string>
     <string name="tags_delete_confirm">Eliminare «%1$s»? Questo rimuove l\'etichetta e le sue etichettature di contatto.</string>
-    <string name="tags_delete_named">Elimina %1$s</string>
     <string name="tags_add_contact">Etichetta contatto</string>
     <string name="tags_remove_contact">Rimuovi etichetta dal contatto</string>
     <string name="tags_remove_contact_named">Rimuovi l\'etichetta dal contatto %1$s</string>
@@ -1127,12 +1124,10 @@
     <string name="households_title">Famiglie</string>
     <string name="households_new">Nuova famiglia</string>
     <string name="households_edit">Modifica famiglia</string>
-    <string name="households_rename_named">Rinomina %1$s</string>
     <string name="households_name">Nome</string>
     <string name="households_type">Tipo</string>
     <string name="households_delete_title">Eliminare la famiglia?</string>
     <string name="households_delete_confirm">Eliminare «%1$s»? Questo rimuove la famiglia e le sue appartenenze.</string>
-    <string name="households_delete_named">Elimina %1$s</string>
     <string name="households_add_member">Aggiungi membro</string>
     <string name="households_remove_member">Rimuovi membro</string>
     <string name="households_remove_member_named">Rimuovi il membro %1$s</string>

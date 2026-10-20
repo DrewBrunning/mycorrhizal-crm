@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.settings
 
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import android.content.Context
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -337,6 +340,34 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("European (DD.MM.YYYY)").performScrollTo().performClick()
         composeTestRule.onNodeWithText("ISO (YYYY-MM-DD)").performClick()
         assertEquals("iso", changedTo)
+    }
+
+    // Issue #1760: the disabled "Update password" button says what enables it.
+    @Test
+    fun `update password explains what enables it and drops the hint once filled`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(state = SettingsUiState(), onLogout = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Update password").performScrollTo().assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Enter your new password and confirm it to continue")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Update password")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Enter your new password and confirm it to continue",
+                ),
+            )
+
+        composeTestRule.onNodeWithText("New password").performScrollTo().performTextInput("hunter22")
+        composeTestRule.onNodeWithText("Confirm new password").performScrollTo().performTextInput("hunter22")
+
+        composeTestRule.onNodeWithText("Update password").performScrollTo().assertIsEnabled()
+        composeTestRule.onNodeWithText("Enter your new password and confirm it to continue").assertDoesNotExist()
     }
 
     @Test

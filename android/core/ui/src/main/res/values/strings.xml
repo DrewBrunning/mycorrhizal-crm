@@ -31,6 +31,7 @@
     <string name="nav_circles">Circles</string>
     <string name="nav_tags">Tags</string>
     <string name="cd_menu">Menu</string>
+    <string name="row_more_actions_named">More actions for %1$s</string>
     <string name="cd_back">Back</string>
 
     <!-- Login -->
@@ -1002,11 +1003,9 @@
     <string name="circles_title">Circles</string>
     <string name="circles_new">New circle</string>
     <string name="circles_rename">Rename circle</string>
-    <string name="circles_rename_named">Rename %1$s</string>
     <string name="circles_name">Name</string>
     <string name="circles_delete_title">Delete circle?</string>
     <string name="circles_delete_confirm">Delete “%1$s”? This removes the circle and its memberships.</string>
-    <string name="circles_delete_named">Delete %1$s</string>
     <string name="circles_add_member">Add member</string>
     <string name="circles_remove_member">Remove member</string>
     <string name="circles_remove_member_named">Remove member %1$s</string>
@@ -1073,11 +1072,9 @@
     <string name="tags_title">Tags</string>
     <string name="tags_new">New tag</string>
     <string name="tags_rename">Rename tag</string>
-    <string name="tags_rename_named">Rename %1$s</string>
     <string name="tags_name">Name</string>
     <string name="tags_delete_title">Delete tag?</string>
     <string name="tags_delete_confirm">Delete “%1$s”? This removes the tag and its contact taggings.</string>
-    <string name="tags_delete_named">Delete %1$s</string>
     <string name="tags_add_contact">Tag contact</string>
     <string name="tags_remove_contact">Remove tag from contact</string>
     <string name="tags_remove_contact_named">Remove tag from contact %1$s</string>
@@ -1144,12 +1141,10 @@
     <string name="households_title">Households</string>
     <string name="households_new">New household</string>
     <string name="households_edit">Edit household</string>
-    <string name="households_rename_named">Rename %1$s</string>
     <string name="households_name">Name</string>
     <string name="households_type">Type</string>
     <string name="households_delete_title">Delete household?</string>
     <string name="households_delete_confirm">Delete “%1$s”? This removes the household and its memberships.</string>
-    <string name="households_delete_named">Delete %1$s</string>
     <string name="households_add_member">Add member</string>
     <string name="households_remove_member">Remove member</string>
     <string name="households_remove_member_named">Remove member %1$s</string>

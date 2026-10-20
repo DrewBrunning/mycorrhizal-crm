@@ -141,7 +141,7 @@ class VcfImportScreenTest {
         )
         composeTestRule.onNodeWithText("Matches: Bob Smith (same email)").assertIsDisplayed()
         composeTestRule.onNodeWithText("+ new phone: +15559998888").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Job Title: Engineer \u2192 Staff Engineer").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job title: Engineer \u2192 Staff Engineer").assertIsDisplayed()
     }
 
     @Test

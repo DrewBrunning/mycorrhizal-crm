@@ -64,7 +64,7 @@ class DuplicatePairsScreenTest {
     fun `empty scan shows the no-duplicates message`() {
         setContent(DuplicatePairsUiState(pairs = emptyList(), total = 0, isLoading = false))
         composeTestRule.onNodeWithTag("duplicates-empty").assertIsDisplayed()
-        composeTestRule.onNodeWithText("No duplicate contacts found.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No duplicate contacts found").assertIsDisplayed()
     }
 
     @Test

@@ -136,7 +136,7 @@ class CadenceScreenTest {
         composeTestRule.waitForIdle()
 
         coVerify { policyRepository.delete("p1") }
-        composeTestRule.onNodeWithText("No cadence set for this contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No cadence yet").assertIsDisplayed()
     }
 
     @Test
@@ -183,7 +183,7 @@ class CadenceScreenTest {
 
         // The empty state is restored so the user can retry — a transient write
         // failure must not leave the no-policy body replaced by dead error text.
-        composeTestRule.onNodeWithText("No cadence set for this contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No cadence yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("A cadence already exists").assertIsDisplayed()
     }
 

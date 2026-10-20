@@ -31,6 +31,7 @@
     <string name="nav_shares">Partages</string>
     <string name="nav_households">Foyers</string>
     <string name="cd_menu">Menu</string>
+    <string name="row_more_actions_named">Plus d\'actions pour %1$s</string>
     <string name="cd_back">Retour</string>
 
     <!-- Login -->
@@ -985,11 +986,9 @@
     <string name="circles_title">Cercles</string>
     <string name="circles_new">Nouveau cercle</string>
     <string name="circles_rename">Renommer le cercle</string>
-    <string name="circles_rename_named">Renommer %1$s</string>
     <string name="circles_name">Nom</string>
     <string name="circles_delete_title">Supprimer le cercle ?</string>
     <string name="circles_delete_confirm">Supprimer « %1$s » ? Cela retire le cercle et ses adhésions.</string>
-    <string name="circles_delete_named">Supprimer %1$s</string>
     <string name="circles_add_member">Ajouter un membre</string>
     <string name="circles_remove_member">Retirer un membre</string>
     <string name="circles_remove_member_named">Retirer le membre %1$s</string>
@@ -1055,11 +1054,9 @@
     <string name="tags_title">Étiquettes</string>
     <string name="tags_new">Nouvelle étiquette</string>
     <string name="tags_rename">Renommer l\'étiquette</string>
-    <string name="tags_rename_named">Renommer %1$s</string>
     <string name="tags_name">Nom</string>
     <string name="tags_delete_title">Supprimer l\'étiquette ?</string>
     <string name="tags_delete_confirm">Supprimer « %1$s » ? Cela retire l\'étiquette et ses étiquetages de contact.</string>
-    <string name="tags_delete_named">Supprimer %1$s</string>
     <string name="tags_add_contact">Étiqueter le contact</string>
     <string name="tags_remove_contact">Retirer l\'étiquette du contact</string>
     <string name="tags_remove_contact_named">Retirer l\'étiquette du contact %1$s</string>
@@ -1127,12 +1124,10 @@
     <string name="households_title">Foyers</string>
     <string name="households_new">Nouveau foyer</string>
     <string name="households_edit">Modifier le foyer</string>
-    <string name="households_rename_named">Renommer %1$s</string>
     <string name="households_name">Nom</string>
     <string name="households_type">Type</string>
     <string name="households_delete_title">Supprimer le foyer ?</string>
     <string name="households_delete_confirm">Supprimer « %1$s » ? Cela retire le foyer et ses adhésions.</string>
-    <string name="households_delete_named">Supprimer %1$s</string>
     <string name="households_add_member">Ajouter un membre</string>
     <string name="households_remove_member">Retirer un membre</string>
     <string name="households_remove_member_named">Retirer le membre %1$s</string>

@@ -56,7 +56,7 @@ class OccasionsScreenTest {
     fun `shows the empty state when there are no events`() {
         render(emptyList())
         composeTestRule
-            .onNodeWithText("No events yet. Create one to start planning who to invite.")
+            .onNodeWithText("No events yet")
             .assertIsDisplayed()
     }
 

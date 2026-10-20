@@ -208,7 +208,7 @@ class CalendarSyncScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No calendars added yet.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No calendars yet").assertDoesNotExist()
     }
 
     @Test
@@ -225,7 +225,7 @@ class CalendarSyncScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No calendars added yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No calendars yet").assertIsDisplayed()
     }
 
     @Test
@@ -284,7 +284,7 @@ class CalendarSyncScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No calendars added yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No calendars yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("Contact sync").assertIsDisplayed()
         composeTestRule.onNodeWithText("Address Book").assertIsDisplayed()
     }
