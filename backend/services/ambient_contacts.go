@@ -85,19 +85,20 @@ func ambientByEntityID(db *gorm.DB, userID uint, uids []string, now time.Time) (
 	}
 
 	type ambientRow struct {
-		VCardUID  string  `gorm:"column:vcard_uid"`
-		Flag      bool    `gorm:"column:flag"`
-		SharedRow *uint   `gorm:"column:shared_row"` // hs.id; nil unless the self-contact shares this household
-		Since     *string `gorm:"column:since"`
-		Until     *string `gorm:"column:until"`
-		SelfSince *string `gorm:"column:self_since"`
-		SelfUntil *string `gorm:"column:self_until"`
+		VCardUID  string `gorm:"column:vcard_uid"`
+		Flag      bool   `gorm:"column:flag"`
+		SharedRow *uint  `gorm:"column:shared_row"` // hs.id; nil unless the self-contact shares this household
+		Since     string `gorm:"column:since"`      // COALESCEd: the columns are nullable TEXT
+		Until     string `gorm:"column:until"`
+		SelfSince string `gorm:"column:self_since"`
+		SelfUntil string `gorm:"column:self_until"`
 	}
 	const selfUID = "(SELECT self_contact_vcard_uid FROM users WHERE id = ?)"
 	var rows []ambientRow
 	if err := db.Table("contacts c").
 		Select("c.vcard_uid AS vcard_uid, c.ambient AS flag, hs.id AS shared_row, "+
-			"hm.since AS since, hm.until AS until, hs.since AS self_since, hs.until AS self_until").
+			"COALESCE(hm.since, '') AS since, COALESCE(hm.until, '') AS until, "+
+			"COALESCE(hs.since, '') AS self_since, COALESCE(hs.until, '') AS self_until").
 		Joins("LEFT JOIN household_members hm ON hm.member_vcard_uid = c.vcard_uid AND hm.user_id = ?", userID).
 		Joins("LEFT JOIN household_members hs ON hs.household_id = hm.household_id AND hs.id <> hm.id "+
 			"AND hs.user_id = ? AND hs.member_vcard_uid = "+selfUID, userID, userID).
@@ -108,16 +109,10 @@ func ambientByEntityID(db *gorm.DB, userID uint, uids []string, now time.Time) (
 	}
 
 	today := now.Format("2006-01-02")
-	str := func(p *string) string {
-		if p == nil {
-			return ""
-		}
-		return *p
-	}
 	for _, r := range rows {
 		if r.SharedRow != nil &&
-			ambientTenureCurrent(str(r.Since), str(r.Until), today) &&
-			ambientTenureCurrent(str(r.SelfSince), str(r.SelfUntil), today) {
+			ambientTenureCurrent(r.Since, r.Until, today) &&
+			ambientTenureCurrent(r.SelfSince, r.SelfUntil, today) {
 			result[r.VCardUID] = scoring.AmbientReasonHousehold // co-residence wins the reason
 			continue
 		}

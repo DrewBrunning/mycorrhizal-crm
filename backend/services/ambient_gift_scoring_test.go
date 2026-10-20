@@ -6,6 +6,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/internal/scoring"
 	"mycorrhizal/models"
 
@@ -523,4 +524,48 @@ func TestComputeCadenceHealthBatch_PropagatesDBErrors(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+// No contacts asked about: no query, an empty (non-nil) map.
+func TestAmbient_EmptyUIDsIsEmptyMap(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	got, err := ambientByEntityID(db, 1, nil, ambientTestNow)
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
+}
+
+// household_members.since/until are nullable TEXT: a NULL tenure (raw SQL,
+// legacy rows) reads as open, exactly like "".
+func TestAmbient_NullTenureColumnsReadAsOpen(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "amb-null")
+	self := createScoreTestContact(t, db, user.ID, "Self")
+	mate := createScoreTestContact(t, db, user.ID, "Mate")
+	setSelfContact(t, db, user.ID, self.VCardUID)
+	seedHousehold(t, db, user.ID,
+		models.HouseholdMember{MemberVCardUID: self.VCardUID},
+		models.HouseholdMember{MemberVCardUID: mate.VCardUID})
+	require.NoError(t, db.Exec("UPDATE household_members SET since = NULL, until = NULL WHERE user_id = ?", user.ID).Error)
+
+	got, err := ambientByEntityID(db, user.ID, []string{mate.VCardUID}, ambientTestNow)
+	require.NoError(t, err)
+	assert.Equal(t, scoring.AmbientReasonHousehold, got[mate.VCardUID])
+}
+
+// The ambient lookup failing is an error from the overdue list, and a skipped
+// user (no webhooks, logged) in the webhook job -- never a silent "nobody is
+// ambient" that would fire nudges for the people the user lives with.
+func TestAmbientLookupFailure_ListOverdueErrorsAndWebhookJobSkipsUser(t *testing.T) {
+	db, user, contact := setupCadenceServiceTestDB(t)
+	seedOverduePolicy(t, db, user, contact)
+	logtest.AllowWarnings(t, "the path under test legitimately logs: cadence: failed to resolve ambient contacts for webhooks")
+	dbtest.HideTable(t, db, "household_members")
+
+	_, err := ListOverdueCadences(db, user.ID, time.Now())
+	assert.Error(t, err)
+
+	emitted, err := ProcessOverdueCadences(db, config.Config{})
+	require.NoError(t, err)
+	assert.Zero(t, emitted, "no cadence.overdue webhook when ambient cannot be resolved")
 }
