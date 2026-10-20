@@ -41,14 +41,22 @@ export const lightTheme = createTheme({
     // close in hue to mycelium/lichen; laccaria/info's light value didn't
     // clear 4.5:1 with any label color).
     success: {
-      main: '#0D844C', // moss
-      dark: '#0B7643', // moss hover
+      // #1792: status colours double as *text* (outlined chips, "On track"
+      // lines), so every `main` below must clear 4.5:1 on all three light
+      // surfaces (parchment is the hardest). moss was #0D844C (3.87:1 on
+      // parchment) -> 5.16:1; white labels on the fill 6.33:1.
+      main: '#0A6E3F', // moss
+      dark: '#046136', // moss hover
       contrastText: '#FFFFFF',
     },
     warning: {
-      main: '#D3A563', // chanterelle
-      dark: '#C39553', // chanterelle hover
-      contrastText: '#30271F', // bark -- chanterelle is light in both modes, needs a dark label in both
+      // #1792: chanterelle was #D3A563 -- 1.83:1 as text on parchment (the
+      // "Degraded" chip). Darkened to an amber-brown (4.83:1 on parchment); it
+      // is now dark enough that the fill takes a white label (5.93:1) instead
+      // of bark. Dark mode keeps the bright chanterelle (7.41:1 as text).
+      main: '#8A5A00', // chanterelle
+      dark: '#784D00', // chanterelle hover
+      contrastText: '#FFFFFF',
     },
     error: {
       // #187/#195: russula was #AD5349 (oklch 0.55) — as *text* on the
@@ -59,8 +67,9 @@ export const lightTheme = createTheme({
       contrastText: '#FFFFFF',
     },
     info: {
-      main: '#7B6B98', // laccaria (corrected from the original oklch(0.60 0.070 300))
-      dark: '#6C5D89', // laccaria hover
+      // #1792: was #7B6B98 (3.89:1 as text on parchment); now 4.99:1.
+      main: '#6A5A87', // laccaria (corrected from the original oklch(0.60 0.070 300))
+      dark: '#5B4D75', // laccaria hover
       contrastText: '#FFFFFF',
     },
   },
@@ -225,8 +234,11 @@ export const darkTheme = createTheme({
     divider: '#45423B', // hypha
 
     success: {
-      main: '#349D62', // moss
-      dark: '#318F5A', // moss hover
+      // #1792: every dark `main` must clear 4.5:1 as text on all three dark
+      // surfaces, including the elevated dialog paper (#393226). moss was
+      // #349D62 (4.40:1 on parchment, 3.71:1 on dialogs) -> 5.38 / 4.53.
+      main: '#3FAE72', // moss
+      dark: '#3AA069', // moss hover
       contrastText: '#1E1A13', // bone -- moss is bright in dark mode, same reasoning as mycelium
     },
     warning: {
@@ -240,13 +252,15 @@ export const darkTheme = createTheme({
       // (#1E1A13 on it) 4.49:1. Brightened to oklch 0.67 (#D5776B): 4.79:1 as
       // text on dark surfaces, 5.51:1 for the dark label on fills — same
       // "status colors are bright in dark mode" rule as the others.
-      main: '#D5776B', // russula
-      dark: '#C4675D', // russula hover
+      // #1792: brightened again (#DE8579) so error text also clears 4.5:1 on
+      // the elevated dialog paper (was 4.03:1 there).
+      main: '#DE8579', // russula
+      dark: '#C9786D', // russula hover
       contrastText: '#1E1A13', // bone
     },
     info: {
-      main: '#9F8FBE', // laccaria
-      dark: '#8F80AE', // laccaria hover
+      main: '#A898C7', // laccaria (#1792: was #9F8FBE, 4.31:1 on dialog paper)
+      dark: '#9889B5', // laccaria hover
       contrastText: '#1E1A13', // bone
     },
   },
