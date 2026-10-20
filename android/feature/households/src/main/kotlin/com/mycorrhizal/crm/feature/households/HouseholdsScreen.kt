@@ -242,9 +242,9 @@ private fun AddressSuggestionCard(
     onAccept: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val unknownMember = stringResource(R.string.households_member_unknown)
     val membersText = suggestion.memberVCardUids.joinToString(" · ") { uid ->
-        val contact = contactsByUid[uid]
-        if (contact != null) displayNameFor(contact) ?: uid else uid
+        displayNameFor(contactsByUid[uid]) ?: unknownMember
     }
     OutlinedCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {

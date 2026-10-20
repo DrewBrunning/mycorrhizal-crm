@@ -199,15 +199,8 @@ func TraverseGraph(db *gorm.DB, userID uint, fromUID string, maxDepth int, filte
 		steps := make([]models.GraphChainStep, 0, len(uids)-1)
 		for i := 0; i < len(uids)-1; i++ {
 			raw := rawTypes[i]
-			relation := raw
-			// dir '0' = forward along the stored edge → the next contact is
-			// the inverse of the stored type relative to the current one;
-			// dir '1' = against the stored direction → the stored type stands.
-			if dirs[i] == "0" {
-				if inv := models.InverseRelationType(raw); inv != "" {
-					relation = inv
-				}
-			}
+			// dir '0' = forward along the stored edge; '1' = against it.
+			relation := traversalStepRelation(raw, dirs[i] == "0")
 			steps = append(steps, models.GraphChainStep{
 				ContactID:       ids[uids[i+1]],
 				ContactVCardUID: uids[i+1],
@@ -252,6 +245,22 @@ func TraverseGraph(db *gorm.DB, userID uint, fromUID string, maxDepth int, filte
 		sortChainsByDepth(result)
 	}
 	return result, nil
+}
+
+// traversalStepRelation is the display relation of one hop: what the NEXT
+// contact is to the CURRENT one. Walking forward along the stored edge
+// (source -> target) the target is the INVERSE of the stored type relative to
+// the source (parent_of walked parent -> child displays child_of); walking
+// against it the stored type stands. Shared by TraverseGraph and the
+// closeness score's BFS (structuralHopsByEntityID) so the two can never
+// disagree on direction.
+func traversalStepRelation(rawType string, forward bool) string {
+	if forward {
+		if inv := models.InverseRelationType(rawType); inv != "" {
+			return inv
+		}
+	}
+	return rawType
 }
 
 // chainHasRelation reports whether any step's display relation equals want.

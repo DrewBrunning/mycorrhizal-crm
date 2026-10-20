@@ -31,11 +31,8 @@ import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -755,6 +752,9 @@ fun preferenceSection(category: String): String = PreferenceCategory.sectionOf(c
 // Conversation agenda
 // ---------------------------------------------------------------------------
 
+/** SavedStateHandle key for the open mark-discussed dialog's item id (issue #1723). */
+private const val PENDING_DISCUSS_KEY = "agenda_pending_discuss_id"
+
 @HiltViewModel
 class ConversationAgendaViewModel @Inject constructor(
     private val agendaRepository: ConversationAgendaRepository,
@@ -776,12 +776,14 @@ class ConversationAgendaViewModel @Inject constructor(
     private val _discussingId = MutableStateFlow<String?>(null)
     val discussingId: StateFlow<String?> = _discussingId.asStateFlow()
 
-    // One-shot "this item was discussed" signal (issue #1723). The screen closes
-    // the mark-discussed dialog on it -- only on success, so a failed PATCH
-    // leaves the dialog open next to the error snackbar. Deliberately not
-    // derived from discussingId going null: that is also its initial value.
-    private val _discussed = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val discussed: SharedFlow<String> = _discussed.asSharedFlow()
+    // The item whose mark-discussed dialog is open (issue #1723). It is state,
+    // not a one-shot event: a success-only SharedFlow with no replay drops the
+    // close signal if it lands while the screen is not collecting (rotation
+    // mid-request). Held in the SavedStateHandle, so the open dialog survives
+    // rotation and process death. Closed only by a successful PATCH or a dismiss,
+    // so a failed PATCH leaves the dialog open next to the error snackbar.
+    private val savedState = savedStateHandle
+    val pendingDiscussId: StateFlow<String?> = savedStateHandle.getStateFlow(PENDING_DISCUSS_KEY, null)
 
     init { load() }
 
@@ -799,6 +801,14 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
+                    // A dialog restored after process death whose item is gone or
+                    // already discussed (the PATCH landed before the process died)
+                    // has nothing left to confirm.
+                    savedState.get<String>(PENDING_DISCUSS_KEY)?.let { pending ->
+                        if (items.none { it.id == pending && it.discussedAt == null }) {
+                            savedState[PENDING_DISCUSS_KEY] = null
+                        }
+                    }
                     // M18: open/discussed section split (discussed_at == null),
                     // sorted so open items come first regardless of the
                     // server's updated_at order — the scaffold's section
@@ -877,7 +887,7 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.discuss(id, activityId).foldApiError(
                 onSuccess = {
                     _discussingId.value = null
-                    _discussed.tryEmit(id)
+                    if (savedState.get<String>(PENDING_DISCUSS_KEY) == id) savedState[PENDING_DISCUSS_KEY] = null
                     load()
                 },
                 onError = { e ->
@@ -890,6 +900,17 @@ class ConversationAgendaViewModel @Inject constructor(
 
     fun clearDiscussing() {
         _discussingId.value = null
+    }
+
+    /** Opens the mark-discussed dialog for [id]. */
+    fun openDiscuss(id: String) {
+        savedState[PENDING_DISCUSS_KEY] = id
+    }
+
+    /** Closes the mark-discussed dialog (Cancel / outside tap). */
+    fun dismissDiscuss() {
+        clearDiscussing()
+        savedState[PENDING_DISCUSS_KEY] = null
     }
 
     fun delete(id: String) {

@@ -12,6 +12,8 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
     implementation(project(":core:ui"))
+    // Issue #1768: ContactAvatar + the shared member display-name helper.
+    implementation(project(":feature:contacts"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

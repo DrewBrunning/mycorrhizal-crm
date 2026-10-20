@@ -163,6 +163,28 @@ func Registry() []Operation {
 			},
 		},
 
+		// --- network graph (issue #1791) -----------------------------------
+		{
+			// The default GET /graph: the depth-2 ego-network of the user's
+			// self contact. Must stay cheap however large the account is --
+			// the web /network page loads this on every visit.
+			Name: "graph.ego", Category: "read", ExpectedGrowth: GrowthConstant,
+			Run: func(e *Env) (int, error) {
+				return e.arrayLen(e.get("/graph"), "nodes")
+			},
+		},
+		{
+			// The explicit "entire network" view (?full=true): every
+			// non-archived contact, scored in bulk. Linear in the account by
+			// definition, but a bounded number of queries; at the `large`
+			// scale it used to take 8-9 minutes (the score's whole-graph
+			// path enumeration).
+			Name: "graph.full", Category: "read", ExpectedGrowth: GrowthConstant,
+			Run: func(e *Env) (int, error) {
+				return e.arrayLen(e.get("/graph?full=true"), "nodes")
+			},
+		},
+
 		// --- contact map (issue #1427) -------------------------------------
 		{
 			Name: "contact_map", Category: "read", ExpectedGrowth: GrowthConstant,

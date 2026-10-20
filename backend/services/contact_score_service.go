@@ -28,6 +28,14 @@ func ComputeAllContactScores(db *gorm.DB, userID uint, now time.Time) (map[uint]
 	return computeContactScores(db, userID, now, contacts)
 }
 
+// ComputeContactScores computes the score for exactly the given, already
+// loaded contacts (each needs ID, VCardUID and UpdatedAt). GET /graph's
+// ego-network mode uses it to score only the contacts it returns instead of
+// the whole account (issue #1791). The caller owns the archived filter.
+func ComputeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []models.Contact) (map[uint]scoring.Result, error) {
+	return computeContactScores(db, userID, now, contacts)
+}
+
 // ComputeContactScore computes the score for exactly one contact — the
 // GET /contacts/:id/score breakdown endpoint's entry point. It reuses
 // computeContactScores rather than a second facet-assembly implementation,
@@ -169,15 +177,16 @@ func cadencePoliciesByEntityID(db *gorm.DB, userID uint, uids []string) (map[str
 // uses, just batched by contact instead of by a single policy.
 func lastQualifyingInteractionByEntityID(db *gorm.DB, userID uint, uids []string, realPolicies map[string]models.CadencePolicy) (map[string]*time.Time, error) {
 	var rows []activityDateRow
-	if err := db.Table("activities").
-		Select("activities.date, activities.type, c.vcard_uid").
-		Joins("JOIN activity_contacts ac ON ac.activity_id = activities.id").
-		Joins("JOIN contacts c ON c.id = ac.contact_id").
-		Where("c.vcard_uid IN ? AND c.user_id = ? AND activities.user_id = ? AND activities.deleted_at IS NULL", uids, userID, userID).
-		Order("activities.date DESC").
+	if err := activityDateRowsQuery(db, userID, uids).
+		Order("a.date DESC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
+
+	// Group once by contact (rows are date DESC): O(rows + contacts) rather
+	// than rescanning every row per contact (issue #1791, the 15k x rows
+	// nested loop behind contact_score_service's SLOW SQL / CPU burn).
+	byUID := groupActivityRowsByUID(rows)
 
 	result := make(map[string]*time.Time, len(uids))
 	for _, uid := range uids {
@@ -185,16 +194,8 @@ func lastQualifyingInteractionByEntityID(db *gorm.DB, userID uint, uids []string
 		if !ok {
 			policy = models.CadencePolicy{EntityID: uid}
 		}
-		for i := range rows {
-			if rows[i].VCardUID != uid {
-				continue
-			}
-			candidate := models.Activity{Type: rows[i].Type, Date: rows[i].Date}
-			if policy.Qualifies(&candidate) {
-				t := rows[i].Date
-				result[uid] = &t
-				break
-			}
+		if t := firstQualifyingDate(byUID[uid], &policy); t != nil {
+			result[uid] = t
 		}
 	}
 	return result, nil
@@ -205,12 +206,8 @@ func lastQualifyingInteractionByEntityID(db *gorm.DB, userID uint, uids []string
 // raw input.
 func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []string, realPolicies map[string]models.CadencePolicy, since time.Time) (map[string]int, error) {
 	var rows []activityDateRow
-	if err := db.Table("activities").
-		Select("activities.date, activities.type, c.vcard_uid").
-		Joins("JOIN activity_contacts ac ON ac.activity_id = activities.id").
-		Joins("JOIN contacts c ON c.id = ac.contact_id").
-		Where("c.vcard_uid IN ? AND c.user_id = ? AND activities.user_id = ? AND activities.deleted_at IS NULL AND activities.date >= ?",
-			uids, userID, userID, since).
+	if err := activityDateRowsQuery(db, userID, uids).
+		Where("a.date >= ?", since).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -277,39 +274,80 @@ func directRelationTypesByEntityID(db *gorm.DB, userID uint, selfUID string, uid
 }
 
 // structuralHopsByEntityID finds the shortest structural-only path length
-// from selfUID to each reachable contact, via one TraverseGraph call. A
-// chain only counts when every one of its steps is a relation type present
-// in cfg.RelationCloseness — a chain reachable only through an affinity edge
-// (gets_along_with/conflicts_with) is deliberately excluded (ADR-0023), so
-// it falls through to the "unknown" closeness default exactly like an
-// unreachable contact, rather than reading as hop-close.
+// from selfUID to each reachable contact. A step only counts when its display
+// relation is a relation type present in cfg.RelationCloseness -- a contact
+// reachable only through an affinity edge (gets_along_with/conflicts_with) is
+// deliberately excluded (ADR-0023), so it falls through to the "unknown"
+// closeness default exactly like an unreachable contact, rather than reading
+// as hop-close.
+//
+// Issue #1791: this used to call TraverseGraph at maxTraversalDepth and
+// filter the resulting chains. That CTE enumerates every simple PATH to depth
+// 5 (exponential in a dense graph -- the cause of the 8-9 minute GET /graph
+// at the `large` scale) only for this function to keep the shortest depth per
+// target. A shortest-path question is a BFS: one edge query, then a linear
+// in-memory walk. Same step semantics as TraverseGraph (traversalStepRelation)
+// and the same maxTraversalDepth cap, so a contact is hop-reachable exactly
+// when a fully structural simple path of <= maxTraversalDepth steps exists.
 func structuralHopsByEntityID(db *gorm.DB, userID uint, selfUID string, cfg scoring.Config) (map[string]int, error) {
-	chains, err := TraverseGraph(db, userID, selfUID, maxTraversalDepth, "")
-	if err != nil {
+	type edgeRow struct {
+		SourceID string
+		TargetID string
+		Type     string
+	}
+	var rows []edgeRow
+	if err := db.Table("relationship_edges").
+		Select("source_id, target_id, type").
+		Where("user_id = ? AND status = ? AND sensitivity != ?",
+			userID, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret).
+		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	result := make(map[string]int, len(chains))
-	for _, chain := range chains {
-		if !isStructuralChain(chain, cfg) {
-			continue
+	adjacency := make(map[string][]string, len(rows))
+	for _, r := range rows {
+		// Forward hop (source -> target): the target is the INVERSE of the
+		// stored type relative to the source. Backward hop: the stored type.
+		if _, ok := cfg.RelationCloseness[traversalStepRelation(r.Type, true)]; ok {
+			adjacency[r.SourceID] = append(adjacency[r.SourceID], r.TargetID)
 		}
-		if existing, ok := result[chain.TargetVCardUID]; !ok || chain.Depth < existing {
-			result[chain.TargetVCardUID] = chain.Depth
+		if _, ok := cfg.RelationCloseness[traversalStepRelation(r.Type, false)]; ok {
+			adjacency[r.TargetID] = append(adjacency[r.TargetID], r.SourceID)
 		}
+	}
+
+	result := make(map[string]int)
+	visited := map[string]bool{selfUID: true}
+	frontier := []string{selfUID}
+	for depth := 1; depth <= maxTraversalDepth && len(frontier) > 0; depth++ {
+		if err := statementContextErr(db); err != nil {
+			return nil, err
+		}
+		var next []string
+		for _, uid := range frontier {
+			for _, n := range adjacency[uid] {
+				if visited[n] {
+					continue
+				}
+				visited[n] = true
+				result[n] = depth
+				next = append(next, n)
+			}
+		}
+		frontier = next
 	}
 	return result, nil
 }
 
-// isStructuralChain reports whether every step of chain is a relation type
-// with a closeness tier — see structuralHopsByEntityID's doc comment.
-func isStructuralChain(chain models.GraphChain, cfg scoring.Config) bool {
-	for _, step := range chain.Steps {
-		if _, ok := cfg.RelationCloseness[step.Relation]; !ok {
-			return false
-		}
+// statementContextErr returns the request context's error (cancelled or
+// deadline exceeded) when db carries a context, so a long in-memory loop can
+// stop promptly after the client disconnects (issue #1791). The SQL layer
+// already honours the context; this covers the Go-side work between queries.
+func statementContextErr(db *gorm.DB) error {
+	if db == nil || db.Statement == nil || db.Statement.Context == nil {
+		return nil
 	}
-	return true
+	return db.Statement.Context.Err()
 }
 
 // pendingReachOutEntityIDs returns the set of contacts with at least one

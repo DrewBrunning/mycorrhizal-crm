@@ -54,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
@@ -1741,14 +1742,10 @@ fun ConversationAgendaScreen(
     val discussingId by viewModel.discussingId.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<ConversationAgenda?>(null) }
-    var pendingDiscussId by remember { mutableStateOf<String?>(null) }
-
-    // Close the mark-discussed dialog only when a PATCH actually succeeded
-    // (issue #1723). The dialog stays open, button disabled, while the request
-    // is in flight, and stays open with the error snackbar if it fails.
-    LaunchedEffect(viewModel) {
-        viewModel.discussed.collect { pendingDiscussId = null }
-    }
+    // Issue #1723: the open mark-discussed dialog is ViewModel state (saved in
+    // its SavedStateHandle), so it survives rotation and process death, and the
+    // ViewModel closes it only on a successful PATCH or a dismiss.
+    val pendingDiscussId by viewModel.pendingDiscussId.collectAsStateWithLifecycle()
 
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
@@ -1772,7 +1769,7 @@ fun ConversationAgendaScreen(
         extraAction = { item ->
             val agenda = viewModel.findById(item.id)
             if (agenda != null && agenda.discussedAt == null) {
-                IconButton(onClick = { pendingDiscussId = item.id }) {
+                IconButton(onClick = { viewModel.openDiscuss(item.id) }) {
                     Icon(
                         Icons.Outlined.Done,
                         contentDescription = stringResource(R.string.agenda_mark_discussed),
@@ -1802,10 +1799,7 @@ fun ConversationAgendaScreen(
                     activities = activities,
                     confirming = discussingId == id,
                     onConfirm = { activityId -> viewModel.markDiscussed(id, activityId) },
-                    onDismiss = {
-                        viewModel.clearDiscussing()
-                        pendingDiscussId = null
-                    },
+                    onDismiss = viewModel::dismissDiscuss,
                 )
             }
         }
@@ -1821,7 +1815,8 @@ internal fun MarkDiscussedDialog(
     onConfirm: (Int?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var activityId by remember(item.id) { mutableStateOf<Int?>(null) }
+    // rememberSaveable: the picked activity survives rotation (issue #1723 review).
+    var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.agenda_mark_discussed)) },

@@ -64,6 +64,12 @@ function emptyDashboard(): DashboardResponse {
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
     data_decay_overdue: [],
+    birthdays_total: 0,
+    upcoming_reminders_total: 0,
+    overdue_total: 0,
+    reach_out_suggestions_total: 0,
+    contact_sync_conflicts_total: 0,
+    data_decay_overdue_total: 0,
   };
 }
 
@@ -137,6 +143,12 @@ test('fetches the dashboard composite once and renders all four blocks', async (
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
     data_decay_overdue: [],
+    birthdays_total: 1,
+    upcoming_reminders_total: 1,
+    overdue_total: 0,
+    reach_out_suggestions_total: 0,
+    contact_sync_conflicts_total: 0,
+    data_decay_overdue_total: 0,
   });
 
   renderPage();
@@ -333,4 +345,97 @@ test('an all-clear data decay block is not rendered at all', async () => {
 
   await waitFor(() => expect(getDashboardMock).toHaveBeenCalled());
   expect(screen.queryByText('Info Needs a Check')).not.toBeInTheDocument();
+});
+
+// Issue #1791: the server caps every list block and reports the uncapped size,
+// so a truncated block says so (and an un-truncated one stays quiet).
+test('shows "showing N of total" under a block the server truncated', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
+    birthdays_total: 40,
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Bea Birthday')).toBeInTheDocument());
+  expect(screen.getByText('Showing 1 of 40')).toBeInTheDocument();
+});
+
+test('shows no truncation note when every row fits', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
+    birthdays_total: 1,
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Bea Birthday')).toBeInTheDocument());
+  expect(screen.queryByText(/^Showing \d+ of \d+$/)).not.toBeInTheDocument();
+});
+
+// Issue #1791: the complete/skip refetch reads the plain, UNCAPPED reminders
+// endpoint; the page must re-apply the section cap and refresh the total, or
+// one completed reminder on a large account swaps 25 rows for all of them.
+test('a reminder refetch after completion keeps the block capped and the total current', async () => {
+  const reminder = (id: number) => ({
+    ID: id,
+    message: `Reminder ${id}`,
+    by_mail: false,
+    remind_at: '2026-08-12T00:00:00Z',
+    recurrence: 'once' as const,
+    reoccur_from_completion: true,
+    completed: false,
+    email_sent: false,
+    contact_id: 3,
+  });
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    upcoming_reminders: Array.from({ length: 25 }, (_, i) => ({
+      ...reminder(i + 1),
+      contact_name: 'Nicky Name',
+    })),
+    upcoming_reminders_total: 60,
+  });
+  completeReminderMock.mockResolvedValue({ message: 'ok' });
+  getUpcomingRemindersMock.mockResolvedValue(Array.from({ length: 59 }, (_, i) => reminder(i + 2)));
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Showing 25 of 60')).toBeInTheDocument());
+  fireEvent.click(screen.getAllByRole('button', { name: 'Complete' })[0]);
+
+  await waitFor(() => expect(screen.getByText('Showing 25 of 59')).toBeInTheDocument());
+  expect(screen.getAllByRole('button', { name: 'Complete' })).toHaveLength(25);
+  expect(screen.queryByText('Reminder 27')).not.toBeInTheDocument();
+});
+
+test('dismissing a sync conflict decrements its block total', async () => {
+  const conflict = (id: string) => ({
+    id,
+    created_at: '2026-08-24T00:00:00Z',
+    updated_at: '2026-08-24T00:00:00Z',
+    subscription_id: 5,
+    contact_id: 42,
+    field: 'job_title' as const,
+    local_value: 'Local Title',
+    remote_value: 'Remote Title',
+    status: 'pending' as const,
+    contact_vcard_uid: `uid-${id}`,
+    contact_name: `Conflict ${id}`,
+    subscription_name: 'Work address book',
+  });
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    contact_sync_conflicts: [conflict('c1'), conflict('c2')],
+    contact_sync_conflicts_total: 30,
+  });
+  dismissSyncConflictMock.mockResolvedValue();
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Showing 2 of 30')).toBeInTheDocument());
+  fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
+  await waitFor(() => expect(screen.getByText('Showing 1 of 29')).toBeInTheDocument());
 });

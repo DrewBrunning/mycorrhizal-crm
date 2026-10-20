@@ -17,14 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.ui.R
 
-/** One entry of a [RowOverflowMenu]. */
-data class RowAction(
-    val label: String,
-    val onClick: () -> Unit,
-    /** Draw the label in the error colour (destructive actions). */
-    val destructive: Boolean = false,
-)
-
 /**
  * Issue #1760: a list row's secondary actions (rename, delete, …) live behind
  * one `⋮` button instead of a pair of icon buttons per row. The trigger's
