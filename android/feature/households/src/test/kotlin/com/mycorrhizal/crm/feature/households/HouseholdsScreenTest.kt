@@ -11,6 +11,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.model.network.AddressHouseholdSuggestion
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.network.ApiError
@@ -119,12 +120,13 @@ class HouseholdsScreenTest {
         suggestions: List<AddressHouseholdSuggestion>,
         onAccept: (() -> Unit)? = null,
         onDismiss: (() -> Unit)? = null,
+        resolve: Map<String, ContactSummary> = emptyMap(),
     ) {
         val householdRepository = mockk<HouseholdRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(suggestions)
-        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(resolve)
         coEvery { householdRepository.acceptAddressSuggestion(any()) } returns Result.success(
             Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT),
         )
@@ -156,6 +158,23 @@ class HouseholdsScreenTest {
 
         composeTestRule.onNodeWithText(str(R.string.households_address_suggestions)).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.households_accept_suggestion)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `suggestions show resolved member names and Unknown for stragglers`() {
+        setScreenWithSuggestions(
+            listOf(
+                AddressHouseholdSuggestion(
+                    addressHash = "ah1",
+                    memberHash = "mh1",
+                    memberVCardUids = listOf("u1", "u2"),
+                ),
+            ),
+            resolve = mapOf("u1" to ContactSummary(id = 7, uid = "u1", firstname = "Alice")),
+        )
+
+        composeTestRule.onNodeWithText("Alice · ${str(R.string.households_member_unknown)}")
+            .assertIsDisplayed()
     }
 
     @Test

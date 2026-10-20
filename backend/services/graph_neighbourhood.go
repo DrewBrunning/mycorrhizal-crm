@@ -27,7 +27,14 @@ const MaxGraphDepth = maxTraversalDepth
 // separately with INDEXED BY, for the same reason traversalCTE's are (an OR
 // falls back to the far less selective user_id index, issue #792).
 //
-// Bind order: from_uid, then per term (user_id, status, max_depth) twice.
+// A hop only lands on a contact the graph actually shows -- owned, live and
+// not archived (GetGraph's own node filter). Walking THROUGH an archived or
+// deleted contact would pull in contacts that, with the hidden middle node
+// dropped from the response, appear in the "N hops of you" view with no path
+// back to you.
+//
+// Bind order: from_uid, then per term (user_id, status, user_id, archived,
+// max_depth) twice.
 const neighbourhoodCTE = `
 	WITH RECURSIVE nb(uid, depth) AS (
 		SELECT CAST(? AS TEXT), 0
@@ -36,12 +43,16 @@ const neighbourhoodCTE = `
 		FROM nb
 		JOIN relationship_edges e INDEXED BY idx_relationship_edges_source_id
 			ON e.source_id = nb.uid AND e.user_id = ? AND e.status = ?
+		JOIN contacts c
+			ON c.user_id = ? AND c.vcard_uid = e.target_id AND c.archived = ? AND c.deleted_at IS NULL
 		WHERE nb.depth < ?
 		UNION
 		SELECT e.source_id, nb.depth + 1
 		FROM nb
 		JOIN relationship_edges e INDEXED BY idx_relationship_edges_target_id
 			ON e.target_id = nb.uid AND e.user_id = ? AND e.status = ?
+		JOIN contacts c
+			ON c.user_id = ? AND c.vcard_uid = e.source_id AND c.archived = ? AND c.deleted_at IS NULL
 		WHERE nb.depth < ?
 	)
 	SELECT DISTINCT uid FROM nb`
@@ -54,7 +65,7 @@ const neighbourhoodCTE = `
 func GraphNeighbourhood(db *gorm.DB, userID uint, fromUID string, depth int) *gorm.DB {
 	return db.Raw(neighbourhoodCTE,
 		fromUID,
-		userID, models.RelationshipStatusConfirmed, depth,
-		userID, models.RelationshipStatusConfirmed, depth,
+		userID, models.RelationshipStatusConfirmed, userID, false, depth,
+		userID, models.RelationshipStatusConfirmed, userID, false, depth,
 	)
 }

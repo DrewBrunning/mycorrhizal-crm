@@ -93,11 +93,14 @@ func GetGraph(c *gin.Context) {
 
 	// 3. Fetch the (activity, participant) pairs for the in-scope contacts in
 	// one join -- never a Preload, whose IN (every activity id) list grows
-	// with the account.
+	// with the account. The participant filter is the contact node filter
+	// above (owned, not archived, not soft-deleted -- a raw JOIN gets no GORM
+	// soft-delete scope, so deleted_at is spelled out), so every star edge
+	// lands on a returned node.
 	activityQuery := db.Table("activities").
 		Select("activities.id AS activity_id, activities.title AS title, ac.contact_id AS contact_id").
 		Joins("JOIN activity_contacts ac ON ac.activity_id = activities.id").
-		Joins("JOIN contacts c ON c.id = ac.contact_id AND c.user_id = ? AND c.archived = ?", userID, false).
+		Joins("JOIN contacts c ON c.id = ac.contact_id AND c.user_id = ? AND c.archived = ? AND c.deleted_at IS NULL", userID, false).
 		Where("activities.user_id = ? AND activities.deleted_at IS NULL", userID).
 		Order("activities.id ASC, ac.contact_id ASC")
 	if !scope.full {

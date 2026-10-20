@@ -246,3 +246,42 @@ func TestStatementContextErr(t *testing.T) {
 	cancel()
 	assert.ErrorIs(t, statementContextErr(db.WithContext(ctx)), context.Canceled)
 }
+
+// The shipped weights tier every relation AND its inverse, so they cannot see
+// which way the BFS reads a stored edge. A config that tiers parent_of but not
+// its inverse child_of can: a hop counts only when what the NEXT contact is to
+// the CURRENT one (the display relation, traversalStepRelation) is tiered.
+// Stored edge "Parent parent_of Child": walked from Child (against the stored
+// direction) the next contact displays parent_of -> tiered -> reachable;
+// walked from Parent (along it) the next contact displays child_of -> untiered
+// -> unreachable. Swapping the forward/backward flags in
+// structuralHopsByEntityID's adjacency build inverts both assertions.
+func TestStructuralHops_EdgeDirectionWithAsymmetricTiers(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "hops-asym")
+
+	cfg := scoringCfg(t)
+	tier, ok := cfg.RelationCloseness["parent_of"]
+	require.True(t, ok, "fixture assumes parent_of is tiered in the shipped config")
+	cfg.RelationCloseness = map[string]scoring.RelationCloseness{"parent_of": tier}
+
+	parent := createScoreTestContact(t, db, user.ID, "Parent")
+	child := createScoreTestContact(t, db, user.ID, "Child")
+	createScoreTestEdge(t, db, user.ID, parent.VCardUID, child.VCardUID, "parent_of", models.RelationshipSensitivityNormal)
+
+	fromChild, err := structuralHopsByEntityID(db, user.ID, child.VCardUID, cfg)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{parent.VCardUID: 1}, fromChild, "from the child, the parent is its parent_of: tiered")
+
+	fromParent, err := structuralHopsByEntityID(db, user.ID, parent.VCardUID, cfg)
+	require.NoError(t, err)
+	assert.Empty(t, fromParent, "from the parent, the child is its child_of: untiered in this config")
+
+	// The path-enumerating oracle reads direction the same way.
+	want, err := structuralHopsViaTraversal(db, user.ID, child.VCardUID, cfg)
+	require.NoError(t, err)
+	assert.Equal(t, want, fromChild)
+	want, err = structuralHopsViaTraversal(db, user.ID, parent.VCardUID, cfg)
+	require.NoError(t, err)
+	assert.Equal(t, want, fromParent)
+}

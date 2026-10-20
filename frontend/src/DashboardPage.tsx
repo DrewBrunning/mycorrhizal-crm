@@ -48,6 +48,11 @@ import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleError, handleFetchError } from './utils/errorHandler';
 
+// Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
+// sync. Used only to re-cap a block the page refetches from an uncapped
+// per-entity endpoint (reminders after complete/skip).
+const DASHBOARD_SECTION_LIMIT = 25;
+
 // "Showing 25 of 112" under a block the server capped (issue #1791). Renders
 // nothing when the block was not truncated.
 function TruncationNote({ shown, total }: { shown: number; total: number }) {
@@ -175,12 +180,21 @@ function DashboardPage() {
     return reminders.map((r) => ({ ...r, contact_name: nameById.get(r.ID) || '' }));
   };
 
+  // The plain reminders endpoint is uncapped; re-apply the dashboard's
+  // section cap (issue #1791) so completing one reminder on an account with
+  // thousands does not swap the 25-row block for all of them.
+  const applyReminderRefetch = (reminders: Awaited<ReturnType<typeof getUpcomingReminders>>) => {
+    setUpcomingReminders((prev) =>
+      attachKnownContactNames(prev, reminders.slice(0, DASHBOARD_SECTION_LIMIT)),
+    );
+    setTotals((prev) => ({ ...prev, reminders: reminders.length }));
+  };
+
   const handleCompleteReminder = async (reminderId: number) => {
     try {
       await completeReminder(reminderId);
       // Reload reminders after completion
-      const reminders = await getUpcomingReminders();
-      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
+      applyReminderRefetch(await getUpcomingReminders());
     } catch (err) {
       handleError(err, { operation: 'completing reminder' });
     }
@@ -193,8 +207,7 @@ function DashboardPage() {
     try {
       await skipReminder(reminderId);
       // Reload reminders after skipping
-      const reminders = await getUpcomingReminders();
-      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
+      applyReminderRefetch(await getUpcomingReminders());
     } catch (err) {
       handleError(err, { operation: 'skipping reminder' });
     }
@@ -204,6 +217,7 @@ function DashboardPage() {
     try {
       await dismissReachOutSuggestion(id);
       setReachOutSuggestions((prev) => prev.filter((s) => s.id !== id));
+      setTotals((prev) => ({ ...prev, reachOut: Math.max(prev.reachOut - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'dismissing reach-out suggestion' });
     }
@@ -218,6 +232,7 @@ function DashboardPage() {
     try {
       await restoreContactSyncConflict(conflict.id);
       setSyncConflicts((prev) => prev.filter((c) => c.id !== conflict.id));
+      setTotals((prev) => ({ ...prev, syncConflicts: Math.max(prev.syncConflicts - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'restoring sync conflict' });
     }
@@ -227,6 +242,7 @@ function DashboardPage() {
     try {
       await dismissContactSyncConflict(id);
       setSyncConflicts((prev) => prev.filter((c) => c.id !== id));
+      setTotals((prev) => ({ ...prev, syncConflicts: Math.max(prev.syncConflicts - 1, 0) }));
     } catch (err) {
       handleError(err, { operation: 'dismissing sync conflict' });
     }
