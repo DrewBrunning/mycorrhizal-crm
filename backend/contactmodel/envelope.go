@@ -35,6 +35,16 @@ type CRMEnvelope struct {
 	// never by array position. Dropped from file export by design and
 	// reported by name (models.EnvelopeExportLossDiagnostics).
 	Periods []EntryPeriod `json:"periods,omitempty"`
+	// Ambient is the user's explicit "I see them all the time" flag (issue
+	// #1733, ADR 0023 amendment). A pointer so a write can say "I have no
+	// opinion": a nil (absent) value PRESERVES the stored flag, which is what
+	// lets a client built before this field existed (Android rebuilds crm on
+	// every save) save a contact without silently clearing it. A non-nil value,
+	// true or false, is authoritative. Responses carry it only when true (absent
+	// reads as false), so a non-ambient contact's envelope is unchanged. The flat
+	// Contact.Ambient column is the store; the format adapters ignore it (CRM
+	// data with no standards home).
+	Ambient *bool `json:"ambient,omitempty"`
 	// Reminders/Activities/Relationships remain separate GORM tables keyed by contact ID;
 	// they are NOT embedded here.
 }

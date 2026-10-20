@@ -186,6 +186,17 @@ type Contact struct {
 	// backend trap 1). Rides through BeforeSave/BeforeCreate untouched.
 	IsFavorite bool `gorm:"column:is_favorite;default:false" json:"is_favorite"`
 
+	// Ambient is the user's explicit "I see this person all the time" flag
+	// (issue #1733, ADR 0023 amendment): an ambient contact counts as in
+	// regular contact for the relationship health score and for cadence overdue
+	// without logging activities. It is the flat, authoritative store of
+	// CRMEnvelope.Ambient. Deliberately no `default:` tag (backend trap 1,
+	// issue #1240: GORM would write the default over an explicit false).
+	// Co-residence, the other source of "ambient", is derived from households at
+	// read time and never stored here. Internal CRM data: never projected to
+	// vCard/JSContact.
+	Ambient bool `gorm:"column:ambient" json:"ambient"`
+
 	// Neutral RFC 9553/9554/9555 representation (P1 — see
 	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). This is a second,
 	// parallel representation of the same data already held in the legacy
@@ -450,6 +461,12 @@ func (c *Contact) deriveDenormalized() {
 		// that is present is a real edit and wins — see the helper.
 		c.convergeAddressMapFieldsFromCard()
 	}
+
+	// The flat column is authoritative for Ambient (issue #1733): mirror it into
+	// the persisted envelope on every save, so the crm JSON column never
+	// disagrees with it (ApplyRecordToContact already folded an incoming
+	// non-nil envelope value into the flat column).
+	c.CRM.Ambient = ambientPtr(c.Ambient)
 
 	proj := contactmodel.DeriveProjection(record)
 	if proj.Firstname != "" {
