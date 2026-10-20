@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
@@ -64,8 +65,18 @@ object DateFormat {
      * the same value rendered as two different days across clients (a real bug
      * M11's review pass fixed in the prep view).
      */
+    private val DATE_ONLY = Regex("\\d{4}-\\d{2}-\\d{2}")
+
     fun formatTimestamp(iso: String?, format: String): String {
         if (iso.isNullOrBlank()) return ""
+        // A date-only `YYYY-MM-DD` (the wire shape of calendar-only fields such as
+        // `next_due`, issue #1778) has no zone to convert: read its digits as-is.
+        if (DATE_ONLY.matches(iso)) {
+            return runCatching {
+                val date = LocalDate.parse(iso)
+                formatFull(date.year, date.monthValue, date.dayOfMonth, format)
+            }.getOrDefault("")
+        }
         return runCatching {
             val zoned = Instant.parse(iso).atZone(ZoneOffset.UTC)
             formatFull(zoned.year, zoned.monthValue, zoned.dayOfMonth, format)

@@ -28,10 +28,10 @@ import (
 //     future, or undefined). "Due today" is deliberately not overdue,
 //     matching reminders' day boundary.
 type CadenceHealth struct {
-	HasQualifyingInteraction bool       `json:"has_qualifying_interaction"`
-	LastInteraction          *time.Time `json:"last_interaction,omitempty"`
-	NextDue                  *time.Time `json:"next_due,omitempty"`
-	OverdueBy                int        `json:"overdue_by"`
+	HasQualifyingInteraction bool                 `json:"has_qualifying_interaction"`
+	LastInteraction          *time.Time           `json:"last_interaction,omitempty"`
+	NextDue                  *models.CalendarDate `json:"next_due,omitempty"`
+	OverdueBy                int                  `json:"overdue_by"`
 }
 
 // calendarDaysBetween counts whole calendar days from a to b (negative when
@@ -101,7 +101,7 @@ func deriveHealth(last *time.Time, intervalDays int, now time.Time) CadenceHealt
 	health := CadenceHealth{
 		HasQualifyingInteraction: true,
 		LastInteraction:          last,
-		NextDue:                  &nextDue,
+		NextDue:                  &models.CalendarDate{Time: nextDue},
 	}
 	if overdue := -calendarDaysBetween(now, nextDue); overdue > 0 {
 		health.OverdueBy = overdue
