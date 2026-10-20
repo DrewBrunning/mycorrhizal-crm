@@ -137,7 +137,12 @@ fun ApiTokensScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.tokens.isEmpty()) {
-                EmptyState(message = stringResource(R.string.settings_api_tokens_empty))
+                EmptyState(
+                    title = stringResource(R.string.settings_api_tokens_empty),
+                    body = stringResource(R.string.settings_api_tokens_empty_body),
+                    actionLabel = stringResource(R.string.settings_api_tokens_create),
+                    onAction = { createOpen = true },
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (state.error != null) {

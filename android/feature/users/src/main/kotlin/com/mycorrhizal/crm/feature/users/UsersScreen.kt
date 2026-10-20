@@ -127,7 +127,15 @@ fun UsersScreen(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
                     state.users.isEmpty() ->
-                        EmptyState(message = stringResource(R.string.users_empty))
+                        EmptyState(
+                            title = stringResource(R.string.users_empty),
+                            body = stringResource(R.string.users_empty_body),
+                            actionLabel = stringResource(R.string.users_add),
+                            onAction = {
+                                editingUser = null
+                                editorOpen = true
+                            },
+                        )
                     else -> {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(state.users, key = { it.id }) { user ->

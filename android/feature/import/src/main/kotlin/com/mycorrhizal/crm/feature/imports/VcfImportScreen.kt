@@ -154,7 +154,7 @@ fun VcfImportScreenContent(
                     )
                 uiState.step == VcfImportStep.RESULT && uiState.result != null ->
                     ResultStep(created = uiState.result.created, updated = uiState.result.updated, skipped = uiState.result.skipped, onDone = onDone)
-                else -> EmptyState(message = stringResource(R.string.import_vcf_error_invalid_file))
+                else -> EmptyState(title = stringResource(R.string.import_vcf_error_invalid_file))
             }
         }
     }

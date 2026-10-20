@@ -77,7 +77,7 @@ class ImportHistoryScreenTest {
 
         setScreen(apiClient)
 
-        composeTestRule.onNodeWithText("No imports yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No imports yet").assertIsDisplayed()
     }
 
     @Test
