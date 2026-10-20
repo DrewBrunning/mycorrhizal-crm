@@ -104,10 +104,10 @@ class HouseholdDetailScreenTest {
             MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown))
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown))
             .assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_remove_member_named, str(R.string.households_member_unknown)),
+            str(R.string.households_remove_member_named, str(R.string.contact_unknown)),
         ).assertIsDisplayed()
     }
 

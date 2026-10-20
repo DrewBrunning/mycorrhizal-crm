@@ -1128,7 +1128,7 @@
     <string name="households_type_to_search">Saisissez pour rechercher</string>
     <string name="households_no_contacts_found">Aucun contact trouvé</string>
     <string name="households_change_selection">Modifier</string>
-    <string name="households_member_unknown">Contact inconnu</string>
+    <string name="contact_unknown">Contact inconnu</string>
     <string name="households_role">Rôle</string>
     <string name="households_no_role">Aucun rôle</string>
     <string name="households_role_adult">Adulte</string>

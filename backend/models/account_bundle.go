@@ -292,6 +292,7 @@ type AccountBundleFieldDefinition struct {
 	Projection  string           `json:"projection"`
 	Sensitivity string           `json:"sensitivity"`
 	Position    int              `json:"position"`
+	Group       string           `json:"group"`
 }
 
 // AccountBundleFieldValue is one custom-field value; the definition is

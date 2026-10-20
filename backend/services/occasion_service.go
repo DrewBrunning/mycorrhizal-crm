@@ -94,7 +94,12 @@ func GetUpcomingOccasions(db *gorm.DB, userID uint, now time.Time, days int, inc
 	var out []models.UpcomingOccasion
 
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND archived = ? AND (birthday IS NOT NULL AND birthday != '' OR anniversary IS NOT NULL AND anniversary != '')", userID, false).
+	// Narrow projection (issue #1791): the encrypted Card column is decoded
+	// on every row that selects it, and nothing below reads it -- only the
+	// display name and the two flat date scalars. Selecting "all" decoded the
+	// card of every contact with a birthday (thousands at the `large` scale).
+	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "nickname", "birthday", "anniversary").
+		Where("user_id = ? AND archived = ? AND (birthday IS NOT NULL AND birthday != '' OR anniversary IS NOT NULL AND anniversary != '')", userID, false).
 		Find(&contacts).Error; err != nil {
 		return nil, fmt.Errorf("failed to retrieve contacts for upcoming occasions: %w", err)
 	}
@@ -211,7 +216,9 @@ func contactsByVCardUID[T any](db *gorm.DB, userID uint, rows []T, entityIDFn fu
 		return map[string]models.Contact{}, nil
 	}
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
+	// Callers read only the id and display name (never the encrypted Card).
+	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "nickname").
+		Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
 		return nil, fmt.Errorf("failed to batch-load contacts: %w", err)
 	}
 	out := make(map[string]models.Contact, len(contacts))

@@ -57,7 +57,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import type { Circle, CircleMember } from '../src/api/circles';
 import type { Birthday, Contact, ContactSummaryDTO } from '../src/api/contacts';
-import type { DashboardReminder } from '../src/api/dashboard';
+import type { DashboardReminder, DashboardResponse } from '../src/api/dashboard';
 import {
   createTestContact,
   deleteTestContact,
@@ -327,7 +327,10 @@ const FIXED_RANDOM_CONTACTS: Contact[] = [
   legacyContact({ ID: 3, uid: 'uid-carol-williams', firstname: 'Carol', lastname: 'Williams' }),
 ];
 
-const FIXED_DASHBOARD = {
+// Typed against the wire contract so a new required field (issue #1791's
+// `*_total`) cannot silently go missing from this hand-written fixture -- an
+// old fixture left the dashboard rendering "Showing N of" with a blank total.
+const FIXED_DASHBOARD: DashboardResponse = {
   birthdays: FIXED_BIRTHDAYS,
   random_contacts: FIXED_RANDOM_CONTACTS,
   upcoming_reminders: FIXED_REMINDERS,
@@ -336,6 +339,12 @@ const FIXED_DASHBOARD = {
   reach_out_suggestions: [],
   contact_sync_conflicts: [],
   data_decay_overdue: [],
+  birthdays_total: FIXED_BIRTHDAYS.length,
+  upcoming_reminders_total: FIXED_REMINDERS.length,
+  overdue_total: 0,
+  reach_out_suggestions_total: 0,
+  contact_sync_conflicts_total: 0,
+  data_decay_overdue_total: 0,
 };
 
 /** Fixed circles response — drives the list's filter dropdown and row chips. */

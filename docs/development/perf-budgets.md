@@ -24,6 +24,7 @@ permanently red. So:
 |---|---|---|---|---|
 | **Deterministic** | query count (PERF-02), rows touched (PERF-03) | the committed `baseline.json` / `datamovement-baseline.json` themselves | **every PR** (smoke) + release validation (typical/large) | **hard fail** |
 | **Absolute wall-clock** | median at the anchor profile | `testdata/budgets.json` → `max_wall_ms` | **release validation only** (gated at-scale tests) | **hard fail** |
+| **Absolute wall-clock (large)** | median at the `large` profile, for the few operations that scale with the account | `testdata/budgets.json` → `large_max_wall_ms` | **release validation only** (same gated job) | **hard fail** |
 | **Absolute memory** | peak heap at the anchor profile | `testdata/budgets.json` → `max_peak_heap_mib` | **release validation only** | **hard fail** |
 | **Wall-clock trend** | median / duration vs the last committed run | `testdata/wallclock-trend.json` | release validation | **`::warning::` for human review — never fails** |
 
@@ -41,6 +42,12 @@ is too slow for every PR, so those checks ride the gated
 The deterministic budget is cheap and deterministic, so it runs at `smoke` on
 every PR — that is the N+1 tripwire.
 
+An operation whose cost scales with the account can be fine at `typical` and
+unusable at `large` (issue #1791: `GET /dashboard` took 14s and `GET /graph`
+8-9 minutes at 15k contacts while both were instant at 900). Such an entry
+also carries an optional `large_max_wall_ms`, evaluated at the `large` profile
+by the same gated at-scale job (`TestBenchmarksAtScale/LargeProfileWithinBudgets`).
+
 ## The budgets
 
 Hand-authored in [`backend/internal/perfbench/testdata/budgets.json`](../../backend/internal/perfbench/testdata/budgets.json)
@@ -54,7 +61,6 @@ were sized against are in [perf-benchmarks.md](perf-benchmarks.md) /
 
 | Operation | `max_wall_ms` | Note |
 |---|--:|---|
-| `cadence.list_overdue` | 200 | home-screen widget, one indexed query |
 | `contact_create` | 500 | form submit |
 | `contact_detail` | 300 | contact drawer — the classic N+1 target |
 | `contact_detail.pathological` | 300 | same handler, awkward record |
@@ -62,7 +68,10 @@ were sized against are in [perf-benchmarks.md](perf-benchmarks.md) /
 | `contact_list.plain` | 300 | first screen after login |
 | `contact_merge` | 1500 | explicit admin action, run once |
 | `contact_update` | 500 | form save |
-| `dashboard` | 300 | home screen, 8 fixed aggregates |
+| `dashboard` | 300 (`large`: 2000) | home screen, 12 fixed aggregates; 14s at `large` before issue #1791 |
+| `cadence.list_overdue` | 200 (`large`: 1000) | home-screen widget, one indexed query |
+| `graph.ego` | 500 (`large`: 2000) | default `GET /graph`: depth-2 ego-network of the self contact (issue #1791) |
+| `graph.full` | 1000 (`large`: 8000) | explicit `?full=true` entire-network view; 8-9 minutes at `large` before issue #1791 |
 | `delete_cascade` | 1000 | explicit delete, 35-query manual cascade |
 | `duplicates.find_pairs` | — *(waived)* | background / review surface, not interactive; already a super-linear finding |
 | `fts.contact_list_search` | 300 | list search box |

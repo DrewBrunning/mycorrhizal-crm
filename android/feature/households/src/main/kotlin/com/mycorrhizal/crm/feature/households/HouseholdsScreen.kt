@@ -235,7 +235,7 @@ private fun AddressSuggestionCard(
     onAccept: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val unknownMember = stringResource(R.string.households_member_unknown)
+    val unknownMember = stringResource(R.string.contact_unknown)
     val membersText = suggestion.memberVCardUids.joinToString(" · ") { uid ->
         displayNameFor(contactsByUid[uid]) ?: unknownMember
     }
