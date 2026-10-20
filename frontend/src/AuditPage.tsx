@@ -36,6 +36,7 @@ import {
 } from './api/audit';
 import { ApiError } from './api/client';
 import { getContactsByUid } from './api/contacts';
+import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useSnackbar } from './context/SnackbarContext';
 import { useAudit } from './hooks/useAudit';
@@ -76,6 +77,7 @@ export default function AuditPage() {
     events,
     loading,
     error,
+    refetch,
     entityType,
     applyEntityType,
     applyEntityId,
@@ -222,15 +224,11 @@ export default function AuditPage() {
         </Box>
       </Paper>
 
-      {error && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography color="error">{error}</Typography>
-        </Paper>
-      )}
+      {error && <LoadError message={error} onRetry={() => void refetch()} sx={{ mb: 2 }} />}
 
       {loading && events.length === 0 ? (
         <ListSkeleton count={8} />
-      ) : events.length === 0 ? (
+      ) : events.length === 0 && error ? null : events.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography
             variant="body1"

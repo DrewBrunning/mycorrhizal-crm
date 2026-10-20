@@ -93,13 +93,22 @@ test('shows an empty state when there are none', async () => {
   expect(await screen.findByText('No passkeys yet.')).toBeInTheDocument();
 });
 
-test('a failed list load leaves the card usable (empty state)', async () => {
+test('a failed list load shows the error with Retry, never the empty state (issue #1779)', async () => {
   stubWebAuthn();
+  let fail = true;
   mockFetch({
-    'GET /webauthn/credentials': () => ({ ok: false, body: { error: { message: 'x' } } }),
+    'GET /webauthn/credentials': () =>
+      fail ? { ok: false, body: { error: { message: 'boom' } } } : { credentials: [laptop] },
   });
   renderCard();
-  expect(await screen.findByText('No passkeys yet.')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+  expect(screen.queryByText('No passkeys yet.')).not.toBeInTheDocument();
+
+  // Retry refetches in place.
+  fail = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 test('explains and disables enrollment when the browser has no WebAuthn', async () => {

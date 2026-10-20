@@ -45,6 +45,7 @@ import {
   type WebhookCreateResponse,
   type WebhookDelivery,
 } from '../api/webhooks';
+import LoadError from './LoadError';
 
 const SUPPORTED_EVENTS = [
   'contact.created',
@@ -90,6 +91,9 @@ export default function WebhooksSettings() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // The list-load failure is its own state (not `error`, which is the dismissible
+  // mutation banner): it replaces the list and its empty copy, with a Retry.
+  const [loadError, setLoadError] = useState('');
   const [success, setSuccess] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -113,10 +117,11 @@ export default function WebhooksSettings() {
   const loadWebhooks = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const data = await getWebhooks();
       setWebhooks(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.webhooks.loadError'));
+      setLoadError(err instanceof Error ? err.message : t('settings.webhooks.loadError'));
     } finally {
       setLoading(false);
     }
@@ -267,6 +272,7 @@ export default function WebhooksSettings() {
               {t('settings.webhooks.description')}
             </Typography>
 
+            {loadError && <LoadError message={loadError} onRetry={() => void loadWebhooks()} />}
             {error && (
               <Alert severity="error" sx={{ py: 0 }} onClose={() => setError('')}>
                 {error}
@@ -287,7 +293,7 @@ export default function WebhooksSettings() {
               >
                 {t('settings.webhooks.loading')}
               </Typography>
-            ) : webhooks.length === 0 ? (
+            ) : webhooks.length === 0 && loadError ? null : webhooks.length === 0 ? (
               <Typography
                 variant="body2"
                 sx={{

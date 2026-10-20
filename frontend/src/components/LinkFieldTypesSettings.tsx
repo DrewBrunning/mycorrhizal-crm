@@ -40,6 +40,7 @@ import { useSnackbar } from '../context/SnackbarContext';
 import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
 import { LINK_FIELD_TYPE_ICON_OPTIONS, resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 import { getErrorMessage } from '../utils/errorHandler';
+import LoadError from './LoadError';
 
 const CATEGORIES: LinkFieldTypeCategory[] = ['messaging', 'social', 'other'];
 
@@ -165,11 +166,7 @@ export default function LinkFieldTypesSettings() {
               {t('settings.linkFieldTypes.description')}
             </Typography>
 
-            {error && (
-              <Alert severity="error" sx={{ py: 0 }}>
-                {error}
-              </Alert>
-            )}
+            {error && <LoadError message={error} onRetry={() => void refreshLinkFieldTypes()} />}
 
             {loading ? (
               <Typography
@@ -180,7 +177,7 @@ export default function LinkFieldTypesSettings() {
               >
                 {t('settings.linkFieldTypes.loading')}
               </Typography>
-            ) : linkFieldTypes.length === 0 ? (
+            ) : linkFieldTypes.length === 0 && error ? null : linkFieldTypes.length === 0 ? (
               <Typography
                 variant="body2"
                 sx={{

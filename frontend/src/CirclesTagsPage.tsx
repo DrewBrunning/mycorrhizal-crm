@@ -1,8 +1,9 @@
-import { Alert, Box, LinearProgress, Tab, Tabs, Typography } from '@mui/material';
+import { Box, LinearProgress, Tab, Tabs, Typography } from '@mui/material';
 import { type SyntheticEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import CircleTagEntityList from './components/CircleTagEntityList';
+import LoadError from './components/LoadError';
 import { useSnackbar } from './context/SnackbarContext';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -78,14 +79,17 @@ export default function CirclesTagsPage() {
       {tab === 'circles' ? (
         <>
           {circlesError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {circlesError}
-            </Alert>
+            <LoadError
+              message={circlesError}
+              onRetry={() => void refreshCircles()}
+              sx={{ mb: 2 }}
+            />
           )}
           {circlesLoading && <LinearProgress sx={{ mb: 2 }} />}
           <CircleTagEntityList
             items={circleItems}
             loading={circlesLoading}
+            loadFailed={Boolean(circlesError)}
             newPlaceholder={t('circlesTags.newCirclePlaceholder')}
             addLabel={t('circlesTags.add')}
             emptyLabel={t('circlesTags.noCircles')}
@@ -111,14 +115,13 @@ export default function CirclesTagsPage() {
       ) : (
         <>
           {tagsError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {tagsError}
-            </Alert>
+            <LoadError message={tagsError} onRetry={() => void refreshTags()} sx={{ mb: 2 }} />
           )}
           {tagsLoading && <LinearProgress sx={{ mb: 2 }} />}
           <CircleTagEntityList
             items={tagItems}
             loading={tagsLoading}
+            loadFailed={Boolean(tagsError)}
             newPlaceholder={t('circlesTags.newTagPlaceholder')}
             addLabel={t('circlesTags.add')}
             emptyLabel={t('circlesTags.noTags')}

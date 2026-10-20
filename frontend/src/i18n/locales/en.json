@@ -837,7 +837,8 @@
     "createEntities": "Create Entities",
     "addMembers": "Add Members",
     "noLegacyCircles": "No legacy circles found. You may not need this migration.",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "countsPartial": "Couldn't load the contact count for {{count}} circle(s); they show 0 until you retry."
   },
   "reminders": {
     "title": "Reminders",
@@ -919,7 +920,9 @@
     "keepEditing": "Keep editing",
     "conflictTitle": "Changed elsewhere",
     "conflictMessage": "This record was changed somewhere else (another tab, device or sync) after you opened it, so your edit was not saved. Changes are never merged automatically. Load the latest version to continue (your edit will be discarded), or keep this edit open to copy your changes first.",
-    "conflictReload": "Load latest version"
+    "conflictReload": "Load latest version",
+    "retry": "Retry",
+    "loadFailed": "Couldn't load this data"
   },
   "externalLinks": {
     "title": "External Links",

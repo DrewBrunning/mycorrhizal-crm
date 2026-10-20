@@ -892,7 +892,9 @@
     "keepEditing": "Continua a modificare",
     "conflictTitle": "Modificato altrove",
     "conflictMessage": "Questo record è stato modificato altrove (un'altra scheda, un altro dispositivo o la sincronizzazione) dopo che lo hai aperto, quindi la tua modifica non è stata salvata. Le modifiche non vengono mai unite automaticamente. Carica l'ultima versione per continuare (la tua modifica verrà scartata) oppure lascia aperta questa modifica per copiare prima i tuoi cambiamenti.",
-    "conflictReload": "Carica l'ultima versione"
+    "conflictReload": "Carica l'ultima versione",
+    "retry": "Riprova",
+    "loadFailed": "Impossibile caricare questi dati"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",
@@ -2086,7 +2088,8 @@
     "createEntities": "Crea entità",
     "addMembers": "Aggiungi membri",
     "noLegacyCircles": "Nessuna vecchia cerchia trovata. Potresti non aver bisogno di questa migrazione.",
-    "refresh": "Aggiorna"
+    "refresh": "Aggiorna",
+    "countsPartial": "Impossibile caricare il numero di contatti di {{count}} cerchio/i; mostrano 0 finché non riprovi."
   },
   "customFields": {
     "addTitle": "Aggiungi campo personalizzato",

@@ -30,6 +30,7 @@ import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
+import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -64,12 +65,14 @@ const ActivitiesPage: React.FC = () => {
     [debouncedSearch, fromDate, toDate],
   );
 
-  const { activities, nextCursor, loading, refetch, loadMore } = useActivities(activityParams);
+  const { activities, nextCursor, loading, error, refetch, loadMore } =
+    useActivities(activityParams);
 
   // #211: result-count announcement, once per settled fetch.
   useEffect(() => {
-    if (!loading) announce(t('common.resultsCount', { count: activities.length }));
-  }, [loading, activities.length, announce, t]);
+    // A failed load is announced by LoadError's role="alert"; "0 results" would be a lie.
+    if (!loading && !error) announce(t('common.resultsCount', { count: activities.length }));
+  }, [loading, error, activities.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -320,9 +323,11 @@ const ActivitiesPage: React.FC = () => {
         </Box>
       </Paper>
 
+      {error && <LoadError message={error} onRetry={() => void refetch()} sx={{ mb: 2 }} />}
+
       {isInitialLoading ? (
         <ListSkeleton count={8} />
-      ) : activities.length === 0 ? (
+      ) : activities.length === 0 && error ? null : activities.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography
             variant="body1"
