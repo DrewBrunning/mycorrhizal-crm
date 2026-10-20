@@ -222,6 +222,36 @@ func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy
 	return deriveHealth(last, policy.TargetIntervalDays, now).withAmbient(ambient[policy.EntityID]), nil
 }
 
+// ComputeCadenceHealthBatch is ComputeCadenceHealth for a page of policies in a
+// constant number of queries (the batch last-interaction fetch, its gift union
+// and one ambient lookup), keyed by policy ID. It agrees with
+// ComputeCadenceHealth policy for policy; the list endpoint uses it so a page
+// of N policies is not 3N queries (issue #1733/#1736 added the gift and ambient
+// reads to the per-policy path).
+func ComputeCadenceHealthBatch(db *gorm.DB, userID uint, policies []models.CadencePolicy, now time.Time) (map[string]CadenceHealth, error) {
+	out := make(map[string]CadenceHealth, len(policies))
+	if len(policies) == 0 {
+		return out, nil
+	}
+	lastByPolicy, err := fetchLastInteractionDates(db, userID, policies)
+	if err != nil {
+		return nil, err
+	}
+	uids := make([]string, 0, len(policies))
+	for i := range policies {
+		uids = append(uids, policies[i].EntityID)
+	}
+	ambient, err := ambientForUIDs(db, userID, uids, now)
+	if err != nil {
+		return nil, err
+	}
+	for i := range policies {
+		p := &policies[i]
+		out[p.ID] = deriveHealth(lastByPolicy[p.ID], p.TargetIntervalDays, now).withAmbient(ambient[p.EntityID])
+	}
+	return out, nil
+}
+
 // activityDateRow is the light scan target for the batch activity pre-fetch.
 // The VCardUID column tag is mandatory: without it GORM derives v_card_uid
 // from the Go field name while the SQL alias is the raw column name vcard_uid.

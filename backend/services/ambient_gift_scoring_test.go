@@ -448,3 +448,79 @@ func TestAccountBundle_CarriesAmbientFlag(t *testing.T) {
 		assert.False(t, c.Ambient)
 	}
 }
+
+// ComputeCadenceHealthBatch (the list endpoint's page derivation) agrees with
+// ComputeCadenceHealth policy for policy across the #1733/#1736 inputs --
+// ambient (flag and household), gift-only, call-restricted, nothing -- and
+// costs a constant number of queries for the page.
+func TestComputeCadenceHealthBatch_AgreesWithSinglePolicyPath(t *testing.T) {
+	db, user, flagged := setupCadenceServiceTestDB(t)
+	now := time.Date(2026, 3, 31, 12, 0, 0, 0, time.UTC)
+	mk := func(name string) models.Contact {
+		c := models.Contact{UserID: user.ID, Firstname: name}
+		require.NoError(t, db.Create(&c).Error)
+		return c
+	}
+	self, housemate, gifted, restricted, silent := mk("Self"), mk("Housemate"), mk("Gifted"), mk("Restricted"), mk("Silent")
+	setSelfContact(t, db, user.ID, self.VCardUID)
+	seedHousehold(t, db, user.ID,
+		models.HouseholdMember{MemberVCardUID: self.VCardUID},
+		models.HouseholdMember{MemberVCardUID: housemate.VCardUID})
+	require.NoError(t, db.Model(&models.Contact{}).Where("id = ?", flagged.ID).Update("ambient", true).Error)
+	old := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	recent := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	for _, c := range []models.Contact{flagged, housemate, gifted, restricted} {
+		seedActivity(t, db, user, c, models.InteractionTypeCall, old)
+	}
+	seedGift(t, db, user.ID, gifted.VCardUID, models.GiftStatusGiven, &recent)
+	seedGift(t, db, user.ID, restricted.VCardUID, models.GiftStatusGiven, &recent)
+
+	var policies []models.CadencePolicy
+	for _, c := range []models.Contact{flagged, housemate, gifted, restricted, silent} {
+		p := models.CadencePolicy{UserID: user.ID, EntityID: c.VCardUID, TargetIntervalDays: 30}
+		if c.ID == restricted.ID {
+			p.QualifyingTypes = []string{"call"}
+		}
+		require.NoError(t, db.Create(&p).Error)
+		policies = append(policies, p)
+	}
+
+	counter := &queryCounter{}
+	require.NoError(t, db.Callback().Query().Register("test:batch_count_q", counter.count))
+	require.NoError(t, db.Callback().Row().Register("test:batch_count_r", counter.count))
+	batch, err := ComputeCadenceHealthBatch(db, user.ID, policies, now)
+	_ = db.Callback().Query().Remove("test:batch_count_q")
+	_ = db.Callback().Row().Remove("test:batch_count_r")
+	require.NoError(t, err)
+	assert.LessOrEqual(t, counter.n, 3, "activities + given gifts + ambient, independent of the page size")
+
+	for i := range policies {
+		single, err := ComputeCadenceHealth(db, user.ID, &policies[i], now)
+		require.NoError(t, err)
+		assert.Equal(t, single, batch[policies[i].ID], "policy %d: batch must equal the single-policy path", i)
+	}
+	assert.Equal(t, scoring.AmbientReasonFlag, batch[policies[0].ID].AmbientReason)
+	assert.Equal(t, scoring.AmbientReasonHousehold, batch[policies[1].ID].AmbientReason)
+	assert.Zero(t, batch[policies[2].ID].OverdueBy, "the given gift resets the gift-accepting policy")
+	assert.Greater(t, batch[policies[3].ID].OverdueBy, 0, "a call-only policy ignores the gift")
+	assert.False(t, batch[policies[4].ID].HasQualifyingInteraction)
+
+	empty, err := ComputeCadenceHealthBatch(db, user.ID, nil, now)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}
+
+// A DB failure in either batch read surfaces as an error (the list endpoint
+// turns it into a 500 for a pure read).
+func TestComputeCadenceHealthBatch_PropagatesDBErrors(t *testing.T) {
+	for _, table := range []string{"activities", "gifts", "household_members"} {
+		t.Run(table, func(t *testing.T) {
+			db, user, contact := setupCadenceServiceTestDB(t)
+			policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}
+			require.NoError(t, db.Create(&policy).Error)
+			dbtest.HideTable(t, db, table)
+			_, err := ComputeCadenceHealthBatch(db, user.ID, []models.CadencePolicy{policy}, time.Now())
+			assert.Error(t, err)
+		})
+	}
+}
