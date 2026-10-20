@@ -13553,6 +13553,11 @@
           "required": true
         },
         {
+          "name": "group",
+          "type": "string",
+          "required": true
+        },
+        {
           "name": "id",
           "type": "string",
           "required": true
@@ -13625,6 +13630,11 @@
         {
           "name": "constraints",
           "type": "ref:FieldConstraints",
+          "required": false
+        },
+        {
+          "name": "group",
+          "type": "string",
           "required": false
         },
         {

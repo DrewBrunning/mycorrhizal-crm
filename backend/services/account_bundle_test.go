@@ -267,6 +267,7 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 	def := models.FieldDefinition{
 		UserID: user.ID, Label: "Zodiac", Key: "zodiac_" + marker, Target: models.FieldDefinitionTargetContact,
 		Type: models.FieldTypeText, Projection: "internal-only", Sensitivity: models.RelationshipSensitivityNormal,
+		Group: "Travel profile", // issue #1730: the group label must survive the bundle round-trip
 	}
 	require.NoError(t, db.Create(&def).Error)
 	require.NoError(t, db.Create(&models.FieldValue{
@@ -368,6 +369,7 @@ func TestBuildAccountBundle_ScopesAndIncludesEverything(t *testing.T) {
 	assert.Len(t, bundle.Plan.Circles, 1)
 	assert.Len(t, bundle.Plan.Tags, 1)
 	assert.Len(t, bundle.Plan.CustomFieldDefinitions, 1)
+	assert.Equal(t, "Travel profile", bundle.Plan.CustomFieldDefinitions[0].Group)
 	assert.Len(t, bundle.Plan.CustomFieldValues, 1)
 	assert.Len(t, bundle.Plan.Occasions, 1)
 	assert.Len(t, bundle.Plan.OccasionEvents, 1)

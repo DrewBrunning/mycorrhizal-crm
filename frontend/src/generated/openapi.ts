@@ -1101,6 +1101,7 @@ export type FieldConstraints = {
 export type FieldDefinition = {
   constraints?: FieldConstraints;
   created_at: string;
+  group: string;
   id: string;
   key: string;
   label: string;
@@ -1114,6 +1115,7 @@ export type FieldDefinition = {
 
 export type FieldDefinitionInput = {
   constraints?: FieldConstraints;
+  group?: string;
   key: string;
   label: string;
   projection?: string;

@@ -217,6 +217,11 @@ type FieldDefinitionInput struct {
 	Constraints FieldConstraints `json:"constraints,omitempty"`
 	Projection  string           `json:"projection,omitempty" validate:"omitempty,fielddefprojection"`
 	Sensitivity string           `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+	// Group is the optional display-only group label (issue #1730). Trimmed by
+	// the controller; "" (or whitespace-only) means ungrouped. A pointer so
+	// update can tell "omitted -> keep the current group" (an older client that
+	// does not know the field must not wipe groups on edit) from "" -> clear.
+	Group *string `json:"group,omitempty" validate:"omitempty,max=100"`
 }
 
 // FieldValueInput is one element of ContactFieldValuesInput — a

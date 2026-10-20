@@ -104,10 +104,10 @@ type BriefingCadence struct {
 // false until the contact has at least one qualifying interaction; OverdueBy
 // is whole calendar days past due (0 when due today or later).
 type BriefingCadenceHealth struct {
-	HasQualifyingInteraction bool       `json:"has_qualifying_interaction"`
-	LastInteraction          *time.Time `json:"last_interaction,omitempty"`
-	NextDue                  *time.Time `json:"next_due,omitempty"`
-	OverdueBy                int        `json:"overdue_by"`
+	HasQualifyingInteraction bool          `json:"has_qualifying_interaction"`
+	LastInteraction          *time.Time    `json:"last_interaction,omitempty"`
+	NextDue                  *CalendarDate `json:"next_due,omitempty"`
+	OverdueBy                int           `json:"overdue_by"`
 }
 
 // BriefingRelationship is one confirmed edge resolved for display: the raw

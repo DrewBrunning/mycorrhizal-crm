@@ -47,6 +47,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
 // sync. Used only to re-cap a block the page refetches from an uncapped
@@ -248,9 +249,10 @@ function DashboardPage() {
     }
   };
 
-  const isOverdue = (remindAt: string) => {
-    return new Date(remindAt) < new Date();
-  };
+  // remind_at is a calendar day stored at 00:00Z: compare days, not instants.
+  // Comparing the instant to "now" flagged a reminder as overdue from 00:00Z on
+  // its own due day, which west of UTC is the evening before (#1778).
+  const isOverdue = (remindAt: string) => isBeforeLocalToday(remindAt);
 
   const isBirthdayToday = (birthday: string | undefined) => {
     if (!birthday) return false;
@@ -710,7 +712,7 @@ function DashboardPage() {
                           >
                             <Chip
                               icon={overdue ? <WarningIcon fontSize="small" /> : undefined}
-                              label={formatDate(reminder.remind_at)}
+                              label={formatDate(calendarDateOnly(reminder.remind_at))}
                               size="small"
                               color={overdue ? 'warning' : 'default'}
                               sx={{ height: 20, fontSize: '0.7rem' }}
