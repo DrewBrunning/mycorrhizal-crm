@@ -48,6 +48,18 @@ import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleError, handleFetchError } from './utils/errorHandler';
 
+// "Showing 25 of 112" under a block the server capped (issue #1791). Renders
+// nothing when the block was not truncated.
+function TruncationNote({ shown, total }: { shown: number; total: number }) {
+  const { t } = useTranslation();
+  if (total <= shown) return null;
+  return (
+    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+      {t('dashboard.showingOf', { shown, total })}
+    </Typography>
+  );
+}
+
 function DashboardPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.dashboard'));
@@ -62,6 +74,16 @@ function DashboardPage() {
   const [reachOutSuggestions, setReachOutSuggestions] = useState<ReachOutSuggestion[]>([]);
   const [syncConflicts, setSyncConflicts] = useState<ContactSyncConflict[]>([]);
   const [dataDecayOverdue, setDataDecayOverdue] = useState<OverdueDataDecayPolicy[]>([]);
+  // Issue #1791: each list block is capped server-side; these are the uncapped
+  // sizes, so a truncated block can say "showing 25 of N".
+  const [totals, setTotals] = useState({
+    birthdays: 0,
+    reminders: 0,
+    overdue: 0,
+    reachOut: 0,
+    syncConflicts: 0,
+    dataDecay: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -99,6 +121,14 @@ function DashboardPage() {
       setReachOutSuggestions(dashboard.reach_out_suggestions);
       setSyncConflicts(dashboard.contact_sync_conflicts);
       setDataDecayOverdue(dashboard.data_decay_overdue);
+      setTotals({
+        birthdays: dashboard.birthdays_total,
+        reminders: dashboard.upcoming_reminders_total,
+        overdue: dashboard.overdue_total,
+        reachOut: dashboard.reach_out_suggestions_total,
+        syncConflicts: dashboard.contact_sync_conflicts_total,
+        dataDecay: dashboard.data_decay_overdue_total,
+      });
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -306,6 +336,7 @@ function DashboardPage() {
       {overdueCadences.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <OverdueCadenceList overdue={overdueCadences} loading={loading} error={null} />
+          <TruncationNote shown={overdueCadences.length} total={totals.overdue} />
         </Box>
       )}
 
@@ -321,6 +352,7 @@ function DashboardPage() {
             error={null}
             onDismiss={(p0) => void handleDismissReachOutSuggestion(p0)}
           />
+          <TruncationNote shown={reachOutSuggestions.length} total={totals.reachOut} />
         </Box>
       )}
 
@@ -337,6 +369,7 @@ function DashboardPage() {
             onRestore={(p0) => void handleRestoreSyncConflict(p0)}
             onDismiss={(p0) => void handleDismissSyncConflict(p0)}
           />
+          <TruncationNote shown={syncConflicts.length} total={totals.syncConflicts} />
         </Box>
       )}
 
@@ -346,6 +379,7 @@ function DashboardPage() {
       {dataDecayOverdue.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <DataDecayOverdueList overdue={dataDecayOverdue} loading={loading} error={null} />
+          <TruncationNote shown={dataDecayOverdue.length} total={totals.dataDecay} />
         </Box>
       )}
 
@@ -563,6 +597,7 @@ function DashboardPage() {
                   </Card>
                 );
               })}
+              <TruncationNote shown={birthdays.length} total={totals.birthdays} />
             </Stack>
           )}
         </Box>
@@ -731,6 +766,7 @@ function DashboardPage() {
                   </Card>
                 );
               })}
+              <TruncationNote shown={upcomingReminders.length} total={totals.reminders} />
             </Stack>
           )}
         </Box>

@@ -64,6 +64,12 @@ function emptyDashboard(): DashboardResponse {
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
     data_decay_overdue: [],
+    birthdays_total: 0,
+    upcoming_reminders_total: 0,
+    overdue_total: 0,
+    reach_out_suggestions_total: 0,
+    contact_sync_conflicts_total: 0,
+    data_decay_overdue_total: 0,
   };
 }
 
@@ -137,6 +143,12 @@ test('fetches the dashboard composite once and renders all four blocks', async (
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
     data_decay_overdue: [],
+    birthdays_total: 1,
+    upcoming_reminders_total: 1,
+    overdue_total: 0,
+    reach_out_suggestions_total: 0,
+    contact_sync_conflicts_total: 0,
+    data_decay_overdue_total: 0,
   });
 
   renderPage();
@@ -333,4 +345,32 @@ test('an all-clear data decay block is not rendered at all', async () => {
 
   await waitFor(() => expect(getDashboardMock).toHaveBeenCalled());
   expect(screen.queryByText('Info Needs a Check')).not.toBeInTheDocument();
+});
+
+// Issue #1791: the server caps every list block and reports the uncapped size,
+// so a truncated block says so (and an un-truncated one stays quiet).
+test('shows "showing N of total" under a block the server truncated', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
+    birthdays_total: 40,
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Bea Birthday')).toBeInTheDocument());
+  expect(screen.getByText('Showing 1 of 40')).toBeInTheDocument();
+});
+
+test('shows no truncation note when every row fits', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
+    birthdays_total: 1,
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Bea Birthday')).toBeInTheDocument());
+  expect(screen.queryByText(/^Showing \d+ of \d+$/)).not.toBeInTheDocument();
 });

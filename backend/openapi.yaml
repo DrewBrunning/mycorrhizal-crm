@@ -1439,7 +1439,13 @@ paths:
         overdue cadences. Same pattern as the N2 briefing composite
         (GET /contacts/{id}/briefing) — pure aggregation, no writes, no
         cache. Every collection block is always present and serializes as
-        `[]` when empty, never `null`/absent.
+        `[]` when empty, never `null`/absent. Issue #1791: the list blocks
+        (birthdays, upcoming_reminders, overdue, reach_out_suggestions,
+        contact_sync_conflicts, data_decay_overdue) are capped at 25 rows
+        each, keeping the service's own ordering (most overdue / soonest /
+        newest first); the matching `*_total` field carries the uncapped
+        size so a client can say "showing 25 of N". The request stops
+        working when the client disconnects.
       responses:
         "200":
           description: The dashboard composite.
@@ -1570,6 +1576,12 @@ paths:
                 reach_out_suggestions: []
                 contact_sync_conflicts: []
                 data_decay_overdue: []
+                birthdays_total: 0
+                upcoming_reminders_total: 1
+                overdue_total: 0
+                reach_out_suggestions_total: 0
+                contact_sync_conflicts_total: 0
+                data_decay_overdue_total: 0
 
   # --- Contacts ---
   /contacts:
@@ -8617,11 +8629,41 @@ paths:
       summary: Get the network graph (contacts + confirmed edges + activities)
       operationId: getGraph
       description: >
-        Contact nodes (all non-archived contacts), activity nodes (only
-        activities with 2+ participants), relationship edges (only status=confirmed),
-        and activity star-edges. Error responses on this endpoint use a plain
-        {"error": "..."} body, not the standard Error envelope.
+        Contact nodes, activity nodes (only activities with 2+ participants
+        among the returned contacts), relationship edges (only
+        status=confirmed), and activity star-edges. Issue #1791: by default
+        this is the ego-network (`depth` hops, default 2) of the caller's
+        self contact, or of `from`; pass `full=true` for every non-archived
+        contact (the explicit "entire network" view). An account with no
+        self contact and no `from` has nothing to centre on and gets the
+        full graph (`scoped: false`). The request stops working when the
+        client disconnects.
+      parameters:
+        - name: full
+          in: query
+          description: "true returns the whole account's graph instead of an ego-network."
+          schema: { type: boolean, default: false }
+        - name: from
+          in: query
+          description: "Ego-network anchor: a Contact.VCardUID the caller owns (default: the caller's self contact)."
+          schema: { type: string, format: uuid }
+        - name: depth
+          in: query
+          description: "Ego-network radius in hops (1..5, default 2). Ignored with full=true."
+          schema: { type: integer, minimum: 1, maximum: 5, default: 2 }
       responses:
+        "404":
+          description: "`from` is not one of the caller's contacts."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: "Malformed `full` / `depth`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -12918,8 +12960,14 @@ components:
         Read-only M3 dashboard composite (GET /dashboard). Pure aggregation
         of existing per-user queries; every block is always present and
         serializes as `[]` when empty, never `null`/absent.
-      required: [birthdays, random_contacts, upcoming_reminders, overdue, favorites, reach_out_suggestions, contact_sync_conflicts, data_decay_overdue]
+      required: [birthdays, random_contacts, upcoming_reminders, overdue, favorites, reach_out_suggestions, contact_sync_conflicts, data_decay_overdue, birthdays_total, upcoming_reminders_total, overdue_total, reach_out_suggestions_total, contact_sync_conflicts_total, data_decay_overdue_total]
       properties:
+        birthdays_total: { type: integer, description: "Issue #1791: size of `birthdays` before the server-side cap (25). Equals its length when not truncated." }
+        upcoming_reminders_total: { type: integer, description: "Issue #1791: size of `upcoming_reminders` before the server-side cap (25)." }
+        overdue_total: { type: integer, description: "Issue #1791: size of `overdue` before the server-side cap (25)." }
+        reach_out_suggestions_total: { type: integer, description: "Issue #1791: size of `reach_out_suggestions` before the server-side cap (25)." }
+        contact_sync_conflicts_total: { type: integer, description: "Issue #1791: size of `contact_sync_conflicts` before the server-side cap (25)." }
+        data_decay_overdue_total: { type: integer, description: "Issue #1791: size of `data_decay_overdue` before the server-side cap (25)." }
         birthdays:
           type: array
           items: { $ref: "#/components/schemas/Birthday" }
@@ -15691,6 +15739,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GraphEdge"
+        scoped:
+          type: boolean
+          description: "Issue #1791: true when the graph is an ego-network (contacts within `depth` hops of `from_vcard_uid`) rather than the whole account."
+        from_vcard_uid: { type: string, format: uuid, description: "The ego-network's anchor; absent when `scoped` is false." }
+        depth: { type: integer, description: "The ego-network's radius in hops; absent when `scoped` is false." }
     GraphConnectionsResponse:
       type: object
       description: The result of a multi-hop traversal from a starting contact.

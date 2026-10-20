@@ -1,9 +1,13 @@
 {
   "birthdays": [],
+  "birthdays_total": 0,
   "contact_sync_conflicts": [],
+  "contact_sync_conflicts_total": 0,
   "data_decay_overdue": [],
+  "data_decay_overdue_total": 0,
   "favorites": [],
   "overdue": [],
+  "overdue_total": 0,
   "random_contacts": [
     {
       "CreatedAt": "0001-01-01T00:00:00Z",
@@ -77,6 +81,7 @@
     }
   ],
   "reach_out_suggestions": [],
+  "reach_out_suggestions_total": 0,
   "upcoming_reminders": [
     {
       "CreatedAt": "2026-08-21T00:08:44Z",
@@ -129,5 +134,6 @@
       "reoccur_from_completion": false,
       "revision": 1
     }
-  ]
+  ],
+  "upcoming_reminders_total": 1
 }
