@@ -1082,3 +1082,25 @@ test('wider screens keep the inline toolbar (no Filters button, no FAB)', async 
   expect(screen.getAllByRole('button', { name: 'Add Contact' })).toHaveLength(1);
   expect(screen.getByLabelText('Only with contact info')).toBeInTheDocument();
 });
+
+test('phones: the overflow menu items and the FAB open their dialogs', async () => {
+  setPhoneViewport(true);
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Import' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Review duplicates' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+});
