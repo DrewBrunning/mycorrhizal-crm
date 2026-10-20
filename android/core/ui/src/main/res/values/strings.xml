@@ -1145,7 +1145,8 @@
     <string name="households_type_to_search">Type to search</string>
     <string name="households_no_contacts_found">No contacts found</string>
     <string name="households_change_selection">Change</string>
-    <string name="households_member_unknown">Unknown contact</string>
+    <!-- Shared fallback for an unresolved member on circle/tag/household detail and the network start row (issue #1768). -->
+    <string name="contact_unknown">Unknown contact</string>
     <string name="households_role">Role</string>
     <string name="households_no_role">No role</string>
     <string name="households_role_adult">Adult</string>
