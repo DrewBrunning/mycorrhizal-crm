@@ -169,10 +169,47 @@ test('renders the standalone action buttons at md and above (T28)', () => {
   renderHeader({ onStayInTouch: vi.fn(), onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
 
   expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument();
+  // Issue #1782: three primary actions inline, the rest behind "More".
   expect(screen.getByText('Stay in Touch')).toBeInTheDocument();
-  expect(screen.getByText('Export vCard')).toBeInTheDocument();
-  expect(screen.getByText('Merge')).toBeInTheDocument();
-  expect(screen.getByText('Archive')).toBeInTheDocument();
+  expect(screen.queryByText('Export vCard')).not.toBeInTheDocument();
+  expect(screen.queryByText('Merge')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  expect(screen.getByRole('menuitem', { name: 'Merge' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Archive' })).toBeInTheDocument();
+  // Stay in touch is inline, so it is not duplicated in the menu.
+  expect(screen.queryByRole('menuitem', { name: 'Stay in Touch' })).not.toBeInTheDocument();
+});
+
+test('the More menu lists Delete last, after a separator (#1782)', () => {
+  mockMatchMedia(false);
+  renderHeader({ onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
+
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  const items = screen.getAllByRole('menuitem');
+  expect(items[items.length - 1]).toHaveTextContent('Delete Contact');
+  expect(screen.getByRole('separator')).toBeInTheDocument();
+});
+
+test('the More button is a focusable menu button (#1782)', () => {
+  mockMatchMedia(false);
+  renderHeader({ onMergeContact: vi.fn() });
+
+  const more = screen.getByRole('button', { name: 'More' });
+  expect(more).toHaveAttribute('aria-haspopup', 'menu');
+  more.focus();
+  expect(more).toHaveFocus();
+});
+
+test('the compact menu also lists Delete last, after a separator (#1782)', () => {
+  mockMatchMedia(true);
+  renderHeader({ onArchiveContact: vi.fn() });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  const items = screen.getAllByRole('menuitem');
+  expect(items[items.length - 1]).toHaveTextContent('Delete Contact');
+  expect(screen.getByRole('separator')).toBeInTheDocument();
 });
 
 // --- T90: "You" badge + toggle from the overflow menu ----------------------
@@ -381,9 +418,10 @@ test('wide layout: a non-archived contact shows Archive and Delete, not Unarchiv
   mockMatchMedia(false);
   renderHeader({ onArchiveContact: vi.fn(), onUnarchiveContact: vi.fn() });
 
-  expect(screen.getByRole('button', { name: 'Archive' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Unarchive' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  expect(screen.getByRole('menuitem', { name: 'Archive' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Delete Contact' })).toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: 'Unarchive' })).not.toBeInTheDocument();
 });
 
 test("compact layout: an archived contact's overflow menu offers only Unarchive", () => {
@@ -566,12 +604,13 @@ test('the overflow menu offers "Subscribe via feed" and reports the click (#1276
   expect(onSubscribeFeed).toHaveBeenCalledTimes(1);
 });
 
-test('the wide layout shows a standalone "Subscribe via feed" button (#1276)', () => {
+test('the wide layout shows a "Subscribe via feed" item in the More menu (#1276)', () => {
   mockMatchMedia(false);
   const onSubscribeFeed = vi.fn();
   renderHeader({ onSubscribeFeed });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Subscribe via feed' }));
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Subscribe via feed' }));
 
   expect(onSubscribeFeed).toHaveBeenCalledTimes(1);
 });
@@ -630,7 +669,7 @@ test('wide layout: choosing vCard 4.0 in the export menu reports the format', as
   const onExportContact = vi.fn();
   renderHeader({ onExportContact });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
   fireEvent.click(await screen.findByText('vCard 4.0'));
 
   expect(onExportContact).toHaveBeenCalledWith('vcf4');
@@ -641,7 +680,7 @@ test('wide layout: choosing JSContact in the export menu reports the format', as
   const onExportContact = vi.fn();
   renderHeader({ onExportContact });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
   fireEvent.click(await screen.findByText('JSContact'));
 
   expect(onExportContact).toHaveBeenCalledWith('jscontact');

@@ -304,7 +304,9 @@ function ContactJumpNav({
           href={`#${s.id}`}
           size="small"
           color="inherit"
-          sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+          // Issue #1782: flexShrink 0 -- the default shrink squeezed the
+          // nowrap labels into each other instead of scrolling the strip.
+          sx={{ whiteSpace: 'nowrap', textTransform: 'none', flexShrink: 0 }}
         >
           {s.label}
         </Button>
