@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -108,6 +109,18 @@ func TestFieldDefinitionGroup(t *testing.T) {
 			"label": "maxlen", "key": "maxlen", "type": "string", "group": strings.Repeat("g", 101),
 		})
 		assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	})
+
+	t.Run("the 100 limit counts characters, not bytes", func(t *testing.T) {
+		// "é" is 2 bytes and "✈" is 3 in UTF-8: 100 of either is 200/300
+		// bytes but still 100 characters, so it must be accepted; 101 is not.
+		for i, ch := range []string{"é", "✈"} {
+			w := create("mb"+strconv.Itoa(i), map[string]any{"group": strings.Repeat(ch, 100)})
+			require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+			assert.Equal(t, strings.Repeat(ch, 100), decodeDef(w).Group)
+			w = create("mbx"+strconv.Itoa(i), map[string]any{"group": strings.Repeat(ch, 101)})
+			assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+		}
 	})
 
 	t.Run("update sets, keeps on omission, and clears", func(t *testing.T) {
