@@ -322,7 +322,13 @@ function HealthChecksCard({ status }: { status: SystemStatusResponse }) {
       {facets.length === 0 ? (
         <Typography variant="body2">{t('common.none')}</Typography>
       ) : (
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          tabIndex={0}
+          role="region"
+          aria-label={t('systemStatus.health.title')}
+        >
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -412,7 +418,14 @@ function ConfigCard({ status }: { status: SystemStatusResponse }) {
           {t('systemStatus.config.validationPass')}
         </Typography>
       ) : (
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 1.5 }}>
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ mb: 1.5 }}
+          tabIndex={0}
+          role="region"
+          aria-label={t('systemStatus.config.title')}
+        >
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -579,7 +592,13 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
           >
             {t('systemStatus.storage.directories')}
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            tabIndex={0}
+            role="region"
+            aria-label={t('systemStatus.storage.title')}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>

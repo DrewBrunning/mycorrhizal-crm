@@ -66,7 +66,18 @@ export default function PageHeader({ title, leading, actions, sx }: PageHeaderPr
         ...sxList,
       ]}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, maxWidth: '100%' }}>
+      {/* flex-basis 16rem (not auto): a long description's max-content width must
+          not force the actions onto their own line at desktop widths. */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flex: '1 1 16rem',
+          minWidth: 0,
+          maxWidth: '100%',
+        }}
+      >
         {leading ?? (
           <Typography variant="h5" component="h1" sx={{ overflowWrap: 'anywhere' }}>
             {title}
