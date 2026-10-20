@@ -8,8 +8,17 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.data.session.AppLockController
+import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.ui.R
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -125,5 +134,43 @@ class AppLockScreenTest {
 
         composeTestRule.onNodeWithText("Your data is locked")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    // The stateful host (review of #1773): with a fake prompter it auto-prompts
+    // once on first display, a cancel keeps the lock screen, the Unlock button
+    // retries, and a success hands the unlock to the controller. Added because
+    // Compose codegen growth in this untested host pushed the file past the
+    // coverage ratchet with no source change.
+    @Test
+    fun `the host auto-prompts once, retries on Unlock and reports success`() {
+        val controller = mockk<AppLockController>(relaxed = true)
+        val capabilities = mockk<LocalAuthCapabilities> { every { canEnableLocalAuth() } returns true }
+        val sessionManager = mockk<SessionManager> {
+            every { observeSession() } returns MutableStateFlow(SessionState(isLoggedIn = true, username = "alice"))
+        }
+        val viewModel = AppLockViewModel(controller, mockk(relaxed = true), capabilities, sessionManager)
+        val outcomes = ArrayDeque(listOf(AppLockAuthOutcome.Cancelled, AppLockAuthOutcome.Success))
+        var prompts = 0
+        val prompter = object : AppUnlockPrompter {
+            override suspend fun requestUnlock(
+                title: String,
+                subtitle: String,
+                negativeButtonText: String?,
+            ): AppLockAuthOutcome {
+                prompts++
+                return outcomes.removeFirst()
+            }
+        }
+        composeTestRule.setContent {
+            MycorrhizalTheme { AppLockScreen(viewModel = viewModel, prompter = prompter) }
+        }
+        composeTestRule.waitForIdle()
+        assertEquals(1, prompts)
+        verify(exactly = 0) { controller.onUserAuthenticated() }
+
+        composeTestRule.onNodeWithText("Unlock").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(2, prompts)
+        verify(exactly = 1) { controller.onUserAuthenticated() }
     }
 }
