@@ -200,3 +200,33 @@ func TestLoadBudgetsErrors(t *testing.T) {
 	_, err = LoadBudgets(bad)
 	assert.ErrorContains(t, err, "parsing budgets")
 }
+
+func TestCheckCoreLargeProfileWallClockBudget(t *testing.T) {
+	bg := Budgets{AnchorProfile: "typical", CoreOperations: map[string]CoreBudget{
+		"scaled":   {MaxWallMS: 300, LargeMaxWallMS: 2000, Reason: "x"},
+		"typicalo": {MaxWallMS: 300, Reason: "x"},
+	}}
+	base := Baseline{}
+	over := int64(3) * int64(time.Second)
+
+	br := bg.CheckCore([]Result{{Operation: "scaled", Profile: "large", MedianNanos: over}}, base)
+	require.Len(t, br, 1)
+	assert.Equal(t, BreachWallClock, br[0].Kind)
+	assert.Equal(t, int64(2000)*wallMSToNano, br[0].Budget)
+
+	assert.Empty(t, bg.CheckCore([]Result{{Operation: "scaled", Profile: "large", MedianNanos: int64(1) * int64(time.Second)}}, base),
+		"under the large ceiling is fine")
+	assert.Empty(t, bg.CheckCore([]Result{{Operation: "scaled", Profile: "smoke", MedianNanos: over}}, base),
+		"the large ceiling applies only at the large profile")
+	assert.Empty(t, bg.CheckCore([]Result{{Operation: "typicalo", Profile: "large", MedianNanos: over}}, base),
+		"no large_max_wall_ms means no large-profile ceiling")
+}
+
+func TestValidateChecksLargeWallBudgetBand(t *testing.T) {
+	bg := Budgets{AnchorProfile: "typical", CoreOperations: map[string]CoreBudget{
+		"op": {MaxWallMS: 300, LargeMaxWallMS: 5, Reason: "x"},
+	}}
+	problems := bg.Validate([]Operation{{Name: "op"}}, nil)
+	require.Len(t, problems, 1)
+	assert.Contains(t, problems[0], "large_max_wall_ms 5 outside")
+}
