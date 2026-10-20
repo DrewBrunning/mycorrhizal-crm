@@ -80,6 +80,10 @@ fun <T> LabelledDropdown(
         Box(
             modifier = modifier
                 .fillMaxWidth()
+                // OutlinedTextField reserves this room for its floating label; the
+                // decoration box does not, so a dropdown first in a scrolling dialog
+                // had its label clipped (seen on the emulator in New preference).
+                .padding(top = 8.dp)
                 // Typed anchor (the no-argument overload is deprecated): read-only, so
                 // tap, Enter/Space and D-pad centre open the menu, and a disabled
                 // field is not expandable from the keyboard either.
@@ -92,6 +96,9 @@ fun <T> LabelledDropdown(
                     contentDescription = "$label, $valueText"
                     if (!enabled) disabled()
                 },
+            // The decoration box sizes to its content; stretch it to the field width
+            // (seen on the emulator: the outline hugged "Idea" instead of the row).
+            propagateMinConstraints = true,
         ) {
             OutlinedTextFieldDefaults.DecorationBox(
                 value = valueText,
