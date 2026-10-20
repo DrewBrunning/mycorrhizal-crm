@@ -27,6 +27,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -49,6 +50,8 @@ class CircleDetailScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val alice = ContactSummary(id = 42, uid = "uid-alice", firstname = "Alice", lastname = "Smith")
+
     private fun str(@StringRes res: Int, vararg args: Any): String =
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
@@ -57,6 +60,7 @@ class CircleDetailScreenTest {
             CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
         ),
         resolve: Map<String, ContactSummary> = emptyMap(),
+        onNavigate: (Int) -> Unit = {},
     ) {
         val circleRepository = mockk<CircleRepository>()
         val contactRepository = mockk<ContactRepository>()
@@ -67,17 +71,56 @@ class CircleDetailScreenTest {
         val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = false) {
-                CircleDetailScreen(onBack = {}, viewModel = vm)
+                CircleDetailScreen(onBack = {}, onNavigateToContact = onNavigate, viewModel = vm)
             }
         }
     }
 
     @Test
     fun `circle detail renders the circle name and its members`() {
-        setScreen()
+        setScreen(resolve = mapOf("uid-alice" to alice))
 
         composeTestRule.onNodeWithText("Family").assertIsDisplayed()
-        composeTestRule.onNodeWithText("uid-alice").assertIsDisplayed()
+        // Issue #1768: the contact's name, never the raw vCard UID.
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a member missing from the cache shows Unknown contact never its UID`() {
+        setScreen()
+
+        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.circles_remove_member_named, str(R.string.households_member_unknown)),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping a resolved row opens the contact and an unresolved row is inert`() {
+        var opened: Int? = null
+        setScreen(
+            members = listOf(
+                CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
+                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-ghost"),
+            ),
+            resolve = mapOf("uid-alice" to alice),
+            onNavigate = { opened = it },
+        )
+
+        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).performClick()
+        assertEquals(null, opened)
+        composeTestRule.onNodeWithText("Alice Smith").performClick()
+        assertEquals(42, opened)
+    }
+
+    @Test
+    fun `the remove button announces the member name`() {
+        setScreen(resolve = mapOf("uid-alice" to alice))
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.circles_remove_member_named, "Alice Smith"))
+            .assertIsDisplayed()
     }
 
     @Test
@@ -104,18 +147,18 @@ class CircleDetailScreenTest {
                 members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")),
             ),
         )
-        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(mapOf("uid-alice" to alice))
         coEvery { circleRepository.removeMember("c1", "uid-alice") } returns Result.success(Unit)
         val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
         composeTestRule.setContent {
             MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.circles_remove_member_named, "uid-alice"))
+        composeTestRule.onNodeWithContentDescription(str(R.string.circles_remove_member_named, "Alice Smith"))
             .performClick()
 
         coVerify(exactly = 1) { circleRepository.removeMember("c1", "uid-alice") }
-        composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Alice Smith").assertDoesNotExist()
     }
 
     @Test
@@ -141,7 +184,7 @@ class CircleDetailScreenTest {
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsEnabled().performClick()
 
         coVerify(exactly = 1) { circleRepository.addMember("c1", "uid-new") }
-        composeTestRule.onNodeWithText("uid-new").assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
     }
 
     @Test

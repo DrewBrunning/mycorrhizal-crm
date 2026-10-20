@@ -77,6 +77,11 @@ class HouseholdDetailScreenTest {
 
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        // Issue #1768: the remove button announces the name, never the UID.
+        composeTestRule.onNodeWithContentDescription(str(R.string.households_remove_member_named, "Alice"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(str(R.string.households_remove_member_named, "uid-1"))
+            .assertDoesNotExist()
     }
 
     @Test
@@ -101,6 +106,9 @@ class HouseholdDetailScreenTest {
 
         composeTestRule.onNodeWithText(str(R.string.households_member_unknown))
             .assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.households_remove_member_named, str(R.string.households_member_unknown)),
+        ).assertIsDisplayed()
     }
 
     @Test
