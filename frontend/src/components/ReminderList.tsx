@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Reminder } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly, isBeforeLocalToday } from '../utils/localDate';
 
 interface ReminderListProps {
   reminders: Reminder[];
@@ -75,12 +76,8 @@ export default function ReminderList({
     return t(`reminders.recurrence.${recurrence}`);
   };
 
-  const isOverdue = (dateString: string) => {
-    const reminderDate = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return reminderDate < today;
-  };
+  // remind_at is a calendar day stored at 00:00Z: compare days, not instants (#1778).
+  const isOverdue = (dateString: string) => isBeforeLocalToday(dateString);
 
   if (reminders.length === 0) {
     return (
@@ -125,7 +122,7 @@ export default function ReminderList({
 
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                     <Chip
-                      label={formatDate(reminder.remind_at)}
+                      label={formatDate(calendarDateOnly(reminder.remind_at))}
                       size="small"
                       color={isOverdue(reminder.remind_at) ? 'warning' : 'default'}
                     />

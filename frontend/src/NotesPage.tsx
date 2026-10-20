@@ -34,6 +34,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
+import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -319,7 +320,7 @@ const NotesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(note.date)}</Typography>
+                <Typography variant="body2">{formatDate(calendarDateOnly(note.date))}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">

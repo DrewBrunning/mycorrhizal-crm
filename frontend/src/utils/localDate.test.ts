@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { formatDateWithFormat } from '../DateFormatProvider';
-import { calendarDateOnly, localISODate, todayLocalISODate } from './localDate';
+import { calendarDateOnly, isBeforeLocalToday, localISODate, todayLocalISODate } from './localDate';
 
 // Changing process.env.TZ at runtime moves Date's local getters in this
 // Node/V8 build (same technique as DateFormatProvider.test.ts), so these are
@@ -60,5 +60,26 @@ describe('calendarDateOnly (#1778)', () => {
     );
     // And the new date-only wire value is unaffected by the zone.
     expect(formatDateWithFormat(calendarDateOnly('2026-09-21'), 'eu')).toBe('21.09.2026');
+  });
+});
+
+describe('isBeforeLocalToday (#1778)', () => {
+  test('compares calendar days west of UTC, not instants', () => {
+    process.env.TZ = 'America/Chicago';
+    // 10:00 local on 11 March; today's 00:00Z is the previous evening locally.
+    const now = new Date('2026-03-11T15:00:00Z');
+    expect(isBeforeLocalToday('2026-03-11T00:00:00Z', now)).toBe(false);
+    expect(isBeforeLocalToday('2026-03-11', now)).toBe(false);
+    expect(isBeforeLocalToday('2026-03-10T00:00:00Z', now)).toBe(true);
+    expect(isBeforeLocalToday('2026-03-12', now)).toBe(false);
+  });
+
+  test('a real instant is compared against local midnight', () => {
+    process.env.TZ = 'America/Chicago';
+    const now = new Date('2026-03-11T15:00:00Z');
+    // 04:00Z on 11 March is 23:00 on 10 March locally: before today.
+    expect(isBeforeLocalToday('2026-03-11T04:00:00Z', now)).toBe(true);
+    // 06:00Z on 11 March is 01:00 on 11 March locally: today.
+    expect(isBeforeLocalToday('2026-03-11T06:00:00Z', now)).toBe(false);
   });
 });

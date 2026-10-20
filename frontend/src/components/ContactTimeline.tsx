@@ -25,6 +25,7 @@ import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import type { Note } from '../api/notes';
 import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface ContactTimelineProps {
   timelineItems: Array<{
@@ -224,7 +225,7 @@ export default function ContactTimeline({
               }}
             >
               <Typography variant="caption">
-                {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                {isValidDate ? formatDate(calendarDateOnly(item.date)) : item.date || 'N/A'}
               </Typography>
             </TimelineOppositeContent>
             <TimelineSeparator>

@@ -47,6 +47,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { calendarDateOnly } from './utils/localDate';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
 // sync. Used only to re-cap a block the page refetches from an uncapped
@@ -710,7 +711,7 @@ function DashboardPage() {
                           >
                             <Chip
                               icon={overdue ? <WarningIcon fontSize="small" /> : undefined}
-                              label={formatDate(reminder.remind_at)}
+                              label={formatDate(calendarDateOnly(reminder.remind_at))}
                               size="small"
                               color={overdue ? 'warning' : 'default'}
                               sx={{ height: 20, fontSize: '0.7rem' }}

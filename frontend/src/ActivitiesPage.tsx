@@ -37,6 +37,7 @@ import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useRecordConflict } from './hooks/useRecordConflict';
+import { calendarDateOnly } from './utils/localDate';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -344,7 +345,9 @@ const ActivitiesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(activity.date)}</Typography>
+                <Typography variant="body2">
+                  {formatDate(calendarDateOnly(activity.date))}
+                </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
