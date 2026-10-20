@@ -472,6 +472,13 @@ type GraphEdge struct {
 type GraphResponse struct {
 	Nodes []GraphNode `json:"nodes"`
 	Edges []GraphEdge `json:"edges"`
+	// Scoped (issue #1791) is true when the graph is an ego-network -- the
+	// contacts within Depth hops of FromVCardUID -- rather than the caller's
+	// whole account (GET /graph?full=true, or an account with no self
+	// contact to centre on).
+	Scoped       bool   `json:"scoped"`
+	FromVCardUID string `json:"from_vcard_uid,omitempty"`
+	Depth        int    `json:"depth,omitempty"`
 }
 
 // GraphChainStep is one hop in a traversal chain (T10). Relation is

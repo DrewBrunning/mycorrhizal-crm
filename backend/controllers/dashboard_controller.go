@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
@@ -25,7 +24,9 @@ import (
 // per-user-scoped queries the individual endpoints already run, following
 // the N2 briefing composite's pattern (briefing_controller.go).
 func GetDashboard(c *gin.Context) {
-	db := c.MustGet("db").(*gorm.DB)
+	// Bound to the request context (issue #1791): a disconnected or timed-out
+	// client must stop the aggregation, not leave it burning CPU.
+	db := requestDB(c)
 	userID, ok := currentUserID(c)
 	if !ok {
 		return
@@ -35,66 +36,103 @@ func GetDashboard(c *gin.Context) {
 
 	birthdays, err := services.GetUpcomingBirthdays(db, userID, now)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve upcoming birthdays").WithError(err))
+		abortQueryFailure(c, "Failed to retrieve upcoming birthdays", err)
 		return
 	}
 
 	randomContacts, err := fetchRandomContacts(db, userID)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contacts").WithError(err))
+		abortQueryFailure(c, "Failed to retrieve contacts", err)
 		return
 	}
 
 	favoriteContacts, err := fetchFavoriteContacts(db, userID)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve favorite contacts").WithError(err))
+		abortQueryFailure(c, "Failed to retrieve favorite contacts", err)
 		return
 	}
 
 	reminders, err := services.GetUpcomingReminders(db, userID, now)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve reminders").WithError(err))
+		abortQueryFailure(c, "Failed to retrieve reminders", err)
 		return
 	}
+	remindersTotal := len(reminders)
+	reminders = capDashboardSection(reminders)
 	dashboardReminders := attachReminderContactNames(db, userID, reminders)
 
 	overdue, err := services.ListOverdueCadences(db, userID, cadenceNow(c))
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute overdue cadences").WithError(err))
+		abortQueryFailure(c, "Failed to compute overdue cadences", err)
 		return
 	}
+	overdueTotal := len(overdue)
+	overdue = capDashboardSection(overdue)
 
 	reachOutSuggestions, err := services.ListReachOutSuggestions(db, userID)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load reach-out suggestions").WithError(err))
+		abortQueryFailure(c, "Failed to load reach-out suggestions", err)
 		return
 	}
+	reachOutTotal := len(reachOutSuggestions)
+	reachOutSuggestions = capDashboardSection(reachOutSuggestions)
 
 	syncConflicts, err := services.ListContactSyncConflicts(db, userID)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load sync conflicts").WithError(err))
+		abortQueryFailure(c, "Failed to load sync conflicts", err)
 		return
 	}
+	syncConflictsTotal := len(syncConflicts)
+	syncConflicts = capDashboardSection(syncConflicts)
 
 	dataDecayOverdue, err := services.ListOverdueDataDecayPolicies(db, userID, now)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute overdue data decay policies").WithError(err))
+		abortQueryFailure(c, "Failed to compute overdue data decay policies", err)
 		return
 	}
+	dataDecayTotal := len(dataDecayOverdue)
+	dataDecayOverdue = capDashboardSection(dataDecayOverdue)
+
+	birthdaysTotal := len(birthdays)
+	birthdays = capDashboardSection(birthdays)
 
 	resp := models.DashboardResponse{
-		Birthdays:            birthdays,
-		RandomContacts:       randomContacts,
-		UpcomingReminders:    dashboardReminders,
-		Overdue:              toDashboardOverdueCadences(overdue),
-		Favorites:            favoriteContacts,
-		ReachOutSuggestions:  reachOutSuggestions,
-		ContactSyncConflicts: syncConflicts,
-		DataDecayOverdue:     toDashboardOverdueDataDecay(dataDecayOverdue),
+		Birthdays:                 birthdays,
+		RandomContacts:            randomContacts,
+		UpcomingReminders:         dashboardReminders,
+		Overdue:                   toDashboardOverdueCadences(overdue),
+		Favorites:                 favoriteContacts,
+		ReachOutSuggestions:       reachOutSuggestions,
+		ContactSyncConflicts:      syncConflicts,
+		DataDecayOverdue:          toDashboardOverdueDataDecay(dataDecayOverdue),
+		BirthdaysTotal:            birthdaysTotal,
+		UpcomingRemindersTotal:    remindersTotal,
+		OverdueTotal:              overdueTotal,
+		ReachOutSuggestionsTotal:  reachOutTotal,
+		ContactSyncConflictsTotal: syncConflictsTotal,
+		DataDecayOverdueTotal:     dataDecayTotal,
 	}
 	normalizeDashboardSlices(&resp)
 
 	c.JSON(http.StatusOK, resp)
+}
+
+// DashboardSectionLimit caps every list block of the dashboard composite
+// (issue #1791). The blocks are each "what needs attention", not "everything
+// there is": an account with thousands of overdue cadences or pending
+// suggestions made the dashboard ship -- and the page render -- ~15k DOM
+// nodes. The response carries each block's pre-cap `*_total` so a client can
+// say "showing 25 of N" and point at the full list endpoint.
+const DashboardSectionLimit = 25
+
+// capDashboardSection truncates a dashboard block to DashboardSectionLimit,
+// keeping the service's own ordering (most overdue / newest / soonest first),
+// so the cap keeps the most urgent rows.
+func capDashboardSection[T any](items []T) []T {
+	if len(items) > DashboardSectionLimit {
+		return items[:DashboardSectionLimit]
+	}
+	return items
 }
 
 // fetchRandomContacts mirrors GetContactsRandom's query exactly

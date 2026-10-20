@@ -5,13 +5,23 @@ import {
   Map as MapLibreMap,
   NavigationControl,
   Popup,
+  setWorkerUrl,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// Issue #1777: maplibre-gl 6 resolves its worker as a sibling of its own bundle
+// (new URL('./maplibre-gl-worker.mjs', import.meta.url)), a file Vite never sees
+// and so never emits; /assets/maplibre-gl-worker.mjs then fell through to the SPA
+// fallback (text/html) and the worker failed to load. Importing it with ?url makes
+// Vite emit it as a hashed asset (it is self-contained), and setWorkerUrl points
+// MapLibre at that URL.
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MapPoint } from '../api/map';
 
 const STYLE_LOAD_TIMEOUT_MS = 10_000;
+
+setWorkerUrl(workerUrl);
 
 interface ContactMapProps {
   styleUrl: string;
