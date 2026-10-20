@@ -34,7 +34,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -392,9 +392,14 @@ fun ContactListScreenContent(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                             ) {
-                                EmptyState(message = stringResource(R.string.contacts_empty))
+                                EmptyState(
+                                    title = stringResource(R.string.contacts_empty),
+                                    body = if (isPicker) null else stringResource(R.string.contacts_empty_body),
+                                    actionLabel = if (isPicker) null else stringResource(R.string.contacts_new),
+                                    onAction = if (isPicker) null else onCreateContact,
+                                )
                                 if (!isPicker) {
-                                    Button(onClick = onImportContacts) {
+                                    OutlinedButton(onClick = onImportContacts) {
                                         Text(stringResource(R.string.import_title))
                                     }
                                 }

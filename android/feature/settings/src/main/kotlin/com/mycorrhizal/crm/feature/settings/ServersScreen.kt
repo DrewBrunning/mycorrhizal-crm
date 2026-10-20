@@ -124,7 +124,12 @@ fun ServersScreen(
                 )
             }
             if (state.profiles.isEmpty()) {
-                EmptyState(message = stringResource(R.string.settings_servers_empty))
+                EmptyState(
+                    title = stringResource(R.string.settings_servers_empty),
+                    body = stringResource(R.string.settings_servers_empty_body),
+                    actionLabel = stringResource(R.string.settings_servers_add),
+                    onAction = { addOpen = true },
+                )
             } else {
                 // Issue #1398: weight(1f), not fillMaxSize() — a full-height list leaves the
                 // "Use on this device only" button below it with zero height.

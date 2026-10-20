@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -66,30 +69,80 @@ fun LoadingSkeleton(
     }
 }
 
+/**
+ * The one empty state every list screen uses (issue #1760): an optional [icon],
+ * a [title] following the "No <things> yet" pattern (no trailing period), at
+ * most one sentence of [body] saying what the list is for, and — where the
+ * screen can create the thing — the primary create action as a button
+ * ([actionLabel] + [onAction], both or neither).
+ *
+ * Pass only [title] for a plain "nothing here" or a fatal-error message; the
+ * layout degrades to a single centred line. Wording rules live in
+ * `docs/android-app.md` ("Design system").
+ */
 @Composable
 fun EmptyState(
-    message: String,
+    title: String,
     modifier: Modifier = Modifier,
-    icon: (@Composable () -> Unit)? = null,
+    body: String? = null,
+    icon: ImageVector? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
-    // #203: nothing announced an empty result to TalkBack — the message Text
-    // reads fine once focused, but nothing spoke it when it replaced the
-    // loading skeleton.
+    // #203: nothing announced an empty result to TalkBack — the title reads
+    // fine once focused, but nothing spoke it when it replaced the loading
+    // skeleton. The live region sits on the text block only, so the action
+    // button stays an ordinary focusable control.
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(32.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
+            .padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            icon?.invoke()
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp).padding(bottom = 8.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.semantics(mergeDescendants = true) {
+                    liveRegion = LiveRegionMode.Polite
+                },
+            ) {
+                Text(
+                    text = title,
+                    style = if (body != null || onAction != null) {
+                        MaterialTheme.typography.titleMedium
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    },
+                    color = if (body != null || onAction != null) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center,
+                )
+                if (body != null) {
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            if (actionLabel != null && onAction != null) {
+                FilledTonalButton(onClick = onAction, modifier = Modifier.padding(top = 16.dp)) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }

@@ -981,7 +981,7 @@ private fun ContactListPlaceholder() {
         },
     ) { padding ->
         EmptyState(
-            message = stringResource(R.string.contacts_select_contact),
+            title = stringResource(R.string.contacts_select_contact),
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }

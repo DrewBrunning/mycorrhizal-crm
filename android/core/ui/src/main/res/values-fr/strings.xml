@@ -43,6 +43,7 @@
     <string name="login_api_token">Jeton API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Se connecter avec SSO</string>
+    <string name="login_sso_disabled_hint">Saisissez l\'URL d\'un serveur pour utiliser le SSO</string>
     <string name="oidc_login_failed">La connexion SSO a échoué. Réessayez ou connectez-vous avec votre mot de passe.</string>
     <string name="login_sign_in">Se connecter</string>
     <string name="login_error_valid_server_url">Saisissez une URL de serveur valide, p. ex. https://crm.example.com</string>
@@ -105,6 +106,7 @@
     <!-- Contact list -->
     <string name="contacts_search_hint">Rechercher des contacts</string>
     <string name="contacts_empty">Aucun contact pour le moment</string>
+    <string name="contacts_empty_body">Ajoutez quelqu\'un pour commencer, ou importez vos contacts.</string>
     <string name="contacts_new">Nouveau contact</string>
     <string name="contacts_photo_description">Photo de %1$s</string>
     <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
@@ -346,7 +348,8 @@
     <string name="map_show_map">Afficher la carte</string>
     <string name="map_open_contact">Ouvrir le contact</string>
     <string name="map_truncated">Seules les %1$d premières adresses sont affichées ; la carte est limitée à ce nombre de points.</string>
-    <string name="map_empty">Aucun contact n\'a encore de coordonnées. Ajoutez des coordonnées à l\'adresse d\'un contact pour la voir ici.</string>
+    <string name="map_empty">Aucun contact sur la carte pour le moment</string>
+    <string name="map_empty_body">Ajoutez des coordonnées à l\'adresse d\'un contact pour le voir ici.</string>
     <string name="contact_address_coordinates">Coordonnées (latitude, longitude)</string>
     <string name="contact_address_coordinates_hint">Par exemple 51.5007, -0.1246</string>
     <string name="contact_address_coordinates_invalid">Saisissez la latitude (-90 à 90) et la longitude (-180 à 180), séparées par une virgule.</string>
@@ -439,7 +442,7 @@
     <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
     <string name="settings_passkeys_title">Clés d\'accès</string>
     <string name="settings_passkeys_description">Utilisez l\'empreinte digitale, le visage ou le verrouillage d\'écran de votre appareil (ou une clé de sécurité) comme seconde étape de connexion, à la place d\'un code. Les clés d\'accès fonctionnent en complément d\'une application d\'authentification.</string>
-    <string name="settings_passkeys_empty">Aucune clé d\'accès pour le moment.</string>
+    <string name="settings_passkeys_empty">Aucune clé d\'accès pour le moment</string>
     <string name="settings_passkeys_add_button">Ajouter une clé d\'accès</string>
     <string name="settings_passkeys_add_title">Ajouter une clé d\'accès</string>
     <string name="settings_passkeys_add_confirm">Continuer</string>
@@ -496,7 +499,7 @@
     <string name="settings_sms_tracking">Journaliser les messages comme activités</string>
         <string name="custom_links_title">Actions de lien personnalisées</string>
     <string name="custom_links_new">Nouvelle action</string>
-    <string name="custom_links_empty">Aucune action de lien personnalisée pour le moment.</string>
+    <string name="custom_links_empty">Aucune action de lien personnalisée pour le moment</string>
     <string name="custom_links_protocol">Protocole (p. ex. matrix)</string>
     <string name="custom_links_label">Libellé</string>
     <string name="custom_links_mime">MIMETYPE</string>
@@ -525,6 +528,7 @@
     <string name="settings_password_new">Nouveau mot de passe</string>
     <string name="settings_password_confirm">Confirmer le nouveau mot de passe</string>
     <string name="settings_password_change_button">Mettre à jour le mot de passe</string>
+    <string name="settings_password_change_hint">Saisissez votre nouveau mot de passe et confirmez-le pour continuer</string>
     <string name="settings_password_mismatch">Les nouveaux mots de passe ne correspondent pas.</string>
 
     <!-- Réglages : verrouillage local de l'app (issue #722) -->
@@ -592,10 +596,10 @@
     <string name="settings_webhooks_events_count">%1$d événements</string>
     <string name="settings_webhooks_name">Nom</string>
     <string name="settings_webhooks_url">URL</string>
-    <string name="settings_webhooks_empty">Aucun webhook configuré pour l\'instant.</string>
+    <string name="settings_webhooks_empty">Aucun webhook pour le moment</string>
     <string name="settings_webhooks_show_deliveries">Livraisons récentes</string>
     <string name="settings_webhooks_hide_deliveries">Masquer les livraisons</string>
-    <string name="settings_webhooks_no_deliveries">Aucune livraison pour l\'instant.</string>
+    <string name="settings_webhooks_no_deliveries">Aucune livraison pour le moment</string>
     <string name="settings_webhooks_test_success">Test livré (%1$s)</string>
     <string name="settings_webhooks_secret_title">Secret du webhook</string>
     <string name="settings_webhooks_secret_warning">Ce secret n\'est affiché qu\'une seule fois. Copiez-le avant de fermer.</string>
@@ -615,7 +619,8 @@
     <string name="settings_api_tokens_title">Jetons API</string>
     <string name="settings_api_tokens_create">Créer un jeton</string>
     <string name="settings_api_tokens_revoke_all">Tout révoquer</string>
-    <string name="settings_api_tokens_empty">Aucun jeton API pour l\'instant</string>
+    <string name="settings_api_tokens_empty">Aucun jeton API pour le moment</string>
+    <string name="settings_api_tokens_empty_body">Les jetons permettent à d\'autres applications et scripts d\'utiliser votre compte.</string>
     <string name="settings_api_tokens_active">Actif</string>
     <string name="settings_api_tokens_revoked">Révoqué</string>
     <string name="settings_api_tokens_expired">Expiré</string>
@@ -668,7 +673,7 @@
     <string name="settings_calendar_sync_future_days">Importer le futur (jours)</string>
     <string name="settings_calendar_sync_auto_sync">Synchroniser automatiquement</string>
     <string name="settings_calendar_sync_dialog_info">Mycorrhizal importe régulièrement les événements de ce calendrier en tant qu\'activités. La suppression de l\'abonnement conserve les activités déjà importées.</string>
-    <string name="settings_calendar_sync_empty">Aucun calendrier ajouté pour le moment.</string>
+    <string name="settings_calendar_sync_empty">Aucun calendrier pour le moment</string>
     <string name="settings_calendar_sync_disabled">Désactivé</string>
     <string name="settings_calendar_sync_sync_now">Synchroniser maintenant</string>
     <string name="settings_calendar_sync_sync_now_named">Synchroniser %1$s maintenant</string>
@@ -844,6 +849,7 @@
     <!-- Activities -->
     <string name="activities_title">Activités</string>
     <string name="activities_empty">Aucune activité pour le moment</string>
+    <string name="activities_empty_body">Consignez appels, rencontres et messages pour suivre vos échanges.</string>
     <string name="activities_search">Rechercher des activités</string>
     <string name="activities_no_results">Aucune activité ne correspond à vos filtres</string>
     <string name="activities_delete_title">Supprimer l\'activité ?</string>
@@ -870,6 +876,7 @@
     <!-- Notes -->
     <string name="notes_title">Notes</string>
     <string name="notes_empty">Aucune note pour le moment</string>
+    <string name="notes_empty_body">Les notes conservent ce que vous voulez retenir sur quelqu\'un.</string>
     <string name="notes_search">Rechercher des notes</string>
     <string name="notes_no_results">Aucune note ne correspond à vos filtres</string>
     <string name="notes_delete_title">Supprimer la note ?</string>
@@ -906,6 +913,7 @@
     <!-- Reminders -->
     <string name="reminders_title">Rappels</string>
     <string name="reminders_empty">Aucun rappel pour le moment</string>
+    <string name="reminders_empty_body">Les rappels vous incitent à reprendre contact au bon moment.</string>
     <string name="reminder_new">Nouveau rappel</string>
     <string name="reminder_edit">Modifier le rappel</string>
     <string name="reminder_message">Message</string>
@@ -987,6 +995,7 @@
     <string name="circles_remove_member_named">Retirer le membre %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard du contact</string>
     <string name="circles_empty">Aucun cercle pour le moment</string>
+    <string name="circles_empty_body">Les cercles sont des groupes de personnes avec qui vous gardez le contact.</string>
     <string name="circles_members_empty">Aucun membre pour le moment</string>
     <string name="circles_error_missing_id">Identifiant de cercle manquant</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1002,7 +1011,7 @@
     <string name="triage_contacts_count">%1$d contacts</string>
     <string name="triage_summary">%1$d cercles, %2$d étiquettes, %3$d ignorés</string>
     <string name="triage_apply">Appliquer</string>
-    <string name="triage_empty">Aucune ancienne chaîne de cercle à nettoyer.</string>
+    <string name="triage_empty">Aucune ancienne chaîne de cercle à nettoyer</string>
     <string name="triage_done_title">Tri terminé</string>
     <string name="triage_done_message">%1$d cercle(s) et %2$d étiquette(s) créés.</string>
     <string name="triage_done_partial">%1$d élément(s) n\'ont pas pu être créés et %2$d ajout(s) de membre ont échoué. Relancez le tri pour réessayer.</string>
@@ -1010,7 +1019,8 @@
 
     <!-- Admin user management (issue #348) -->
     <string name="users_title">Gestion des utilisateurs</string>
-    <string name="users_empty">Aucun utilisateur pour le moment. Créez le premier compte pour partager cette instance.</string>
+    <string name="users_empty">Aucun utilisateur pour le moment</string>
+    <string name="users_empty_body">Créez un compte pour partager cette instance.</string>
     <string name="users_add">Ajouter un utilisateur</string>
     <string name="users_edit">Modifier l\'utilisateur</string>
     <string name="users_username">Nom d\'utilisateur</string>
@@ -1055,7 +1065,8 @@
     <string name="tags_remove_contact_named">Retirer l\'étiquette du contact %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard du contact</string>
     <string name="tags_empty">Aucune étiquette pour le moment</string>
-    <string name="tags_contacts_empty">Aucun contact étiqueté</string>
+    <string name="tags_empty_body">Les étiquettes regroupent les contacts par thème, comme travail ou famille.</string>
+    <string name="tags_contacts_empty">Aucun contact étiqueté pour le moment</string>
 
     <!-- Custom field definitions (issue #830) -->
     <!-- Contact field settings (issue #832, web parity) -->
@@ -1069,6 +1080,7 @@
 
     <string name="settings_custom_fields_title">Champs personnalisés</string>
     <string name="settings_custom_fields_empty">Aucun champ personnalisé pour le moment</string>
+    <string name="settings_custom_fields_empty_body">Ajoutez vos propres champs pour stocker des détails supplémentaires sur les contacts.</string>
     <string name="settings_custom_fields_new_title">Nouveau champ personnalisé</string>
     <string name="settings_custom_fields_edit_title">Modifier le champ personnalisé</string>
     <string name="settings_custom_fields_delete_title">Supprimer le champ personnalisé ?</string>
@@ -1136,6 +1148,7 @@
     <string name="households_role_pet">Animal</string>
     <string name="households_role_roommate">Colocataire</string>
     <string name="households_empty">Aucun foyer pour le moment</string>
+    <string name="households_empty_body">Les foyers regroupent les personnes qui vivent ensemble.</string>
     <string name="households_members_empty">Aucun membre pour le moment</string>
     <string name="households_error_missing_id">Identifiant de foyer manquant</string>
     <string name="households_suggest_relationships">Suggérer des relations</string>
@@ -1163,6 +1176,7 @@
     <string name="relationships_accept">Accepter</string>
     <string name="relationships_suggested">Suggéré</string>
     <string name="relationships_empty">Aucune relation pour le moment</string>
+    <string name="relationships_empty_body">Les relations relient les personnes, comme parent, partenaire ou collègue.</string>
     <string name="relationships_error_missing_contact_id">Identifiant de contact manquant</string>
     <string name="relationships_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
     <string name="relationships_entry_mode">Comment cette personne est-elle connue ?</string>
@@ -1208,7 +1222,8 @@
     <string name="network_relation_hint">p. ex. sibling_of ou brother</string>
     <string name="network_relation_apply">Appliquer</string>
     <string name="network_all_circles">Tous les cercles</string>
-    <string name="network_empty">Aucune connexion trouvée. Ajoutez des relations pour construire un réseau ici.</string>
+    <string name="network_empty">Aucune connexion pour le moment</string>
+    <string name="network_empty_body">Ajoutez des relations pour construire un réseau ici.</string>
     <string name="network_row_description">%1$s — %2$s</string>
     <string name="network_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
 
@@ -1216,8 +1231,8 @@
     <string name="shares_title">Partages de contacts</string>
     <string name="shares_tab_incoming">Entrants</string>
     <string name="shares_tab_outgoing">Sortants</string>
-    <string name="shares_incoming_empty">Aucun partage entrant.</string>
-    <string name="shares_outgoing_empty">Vous n\'avez encore partagé aucun contact.</string>
+    <string name="shares_incoming_empty">Aucun partage entrant pour le moment</string>
+    <string name="shares_outgoing_empty">Aucun partage sortant pour le moment</string>
     <string name="shares_from">De %1$s</string>
     <string name="shares_to">À %1$s</string>
     <string name="shares_status_pending">En attente</string>
@@ -1237,7 +1252,7 @@
     <string name="shares_share_dialog_title">Partager le contact</string>
     <string name="shares_share_dialog_description">Envoyez une copie filtrée et unique de ce contact à un autre utilisateur de cette instance. Il choisit de l\'accepter ou non.</string>
     <string name="shares_recipient">Destinataire</string>
-    <string name="shares_no_recipients">Il n\'y a aucun autre utilisateur sur cette instance avec qui partager.</string>
+    <string name="shares_no_recipients">Il n\'y a aucun autre utilisateur sur cette instance avec qui partager</string>
     <string name="shares_error_no_vcard_uid">Ce contact n\'a pas d\'UID vCard — il ne peut pas être partagé.</string>
     <string name="shares_share_button">Partager</string>
     <string name="shares_sharing">Partage…</string>
@@ -1282,7 +1297,8 @@
     <string name="cadence_type_gift">Cadeau</string>
     <string name="cadence_type_message">Message</string>
     <string name="cadence_type_shared_activity">Activité partagée</string>
-    <string name="cadence_no_policy">Aucune cadence définie pour ce contact.</string>
+    <string name="cadence_no_policy">Aucune cadence pour le moment</string>
+    <string name="cadence_no_policy_body">Définissez à quelle fréquence vous souhaitez rester en contact avec ce contact.</string>
     <string name="cadence_no_interactions_yet">Aucune interaction prise en compte pour l\'instant — la cadence démarre dès la première.</string>
     <string name="cadence_on_track">Dans les temps</string>
     <string name="cadence_overdue_by">%1$d jours de retard</string>
@@ -1306,27 +1322,35 @@
 
 
     <!-- Timeline entities -->
-    <string name="entities_empty">Rien pour le moment</string>
     <string name="entities_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
     <string name="entities_delete_title">Supprimer l\'élément ?</string>
     <string name="entities_delete_named">Supprimer %1$s</string>
     <string name="entities_delete_confirm">Supprimer « %1$s » ? Cette action est irréversible.</string>
     <string name="life_events_title">Événements de vie</string>
     <string name="life_events_new">Nouvel événement</string>
+    <string name="life_events_empty">Aucun événement de vie pour le moment</string>
+    <string name="life_events_empty_body">Notez les déménagements, nouveaux emplois et autres moments à retenir.</string>
     <string name="life_events_edit">Modifier l\'événement</string>
     <string name="life_events_type">Type</string>
     <string name="life_events_description">Description</string>
     <string name="gifts_title">Cadeaux</string>
     <string name="gifts_new">Nouveau cadeau</string>
+    <string name="gifts_empty">Aucun cadeau pour le moment</string>
+    <string name="gifts_empty_body">Gardez la trace des idées de cadeaux et de ce que vous avez offert.</string>
+    <string name="gifts_preferences_empty">Aucune préférence cadeau pour le moment</string>
     <string name="gifts_edit">Modifier le cadeau</string>
     <string name="gifts_description">Description</string>
     <string name="preferences_title">Préférences</string>
     <string name="preferences_new">Nouvelle préférence</string>
+    <string name="preferences_empty">Aucune préférence pour le moment</string>
+    <string name="preferences_empty_body">Notez goûts, aversions et allergies pour vous en souvenir.</string>
     <string name="preferences_edit">Modifier la préférence</string>
     <string name="preferences_category">Catégorie</string>
     <string name="preferences_value">Valeur</string>
     <string name="agenda_title">Ordre du jour</string>
     <string name="agenda_new">Nouvel élément</string>
+    <string name="agenda_empty">Aucun point à l\'ordre du jour pour le moment</string>
+    <string name="agenda_empty_body">Notez de quoi vous voulez parler la prochaine fois.</string>
     <string name="agenda_edit">Modifier l\'élément</string>
     <string name="agenda_content">Contenu</string>
 
@@ -1486,7 +1510,7 @@
 
     <!-- T93 duplicate review (issue #710, web parity) -->
     <string name="duplicates_title">Examiner les doublons</string>
-    <string name="duplicates_empty">Aucun contact en double trouvé.</string>
+    <string name="duplicates_empty">Aucun contact en double trouvé</string>
     <string name="duplicates_count">%1$d paire(s) de doublons potentiels</string>
     <string name="duplicates_vs">contre</string>
     <string name="duplicates_reason_email">Même e-mail</string>
@@ -1504,7 +1528,8 @@
     <!-- N7 contact attachments (issue #710, web parity) -->
     <string name="contact_attachments">Pièces jointes</string>
     <string name="attachments_upload">Ajouter une pièce jointe</string>
-    <string name="attachments_empty">Aucune pièce jointe.</string>
+    <string name="attachments_empty">Aucune pièce jointe pour le moment</string>
+    <string name="attachments_empty_body">Joignez à ce contact des fichiers comme des scans, des contrats ou des photos.</string>
     <string name="attachments_open">Ouvrir la pièce jointe</string>
     <string name="attachments_size">%1$s</string>
     <string name="attachments_delete">Supprimer</string>
@@ -1542,7 +1567,7 @@
 
     <!-- Import -->
     <string name="import_title">Importer des contacts</string>
-    <string name="import_empty">Aucun contact de l\'appareil à importer.</string>
+    <string name="import_empty">Aucun contact de l\'appareil à importer</string>
     <string name="import_unnamed">(sans nom)</string>
     <string name="import_button">Importer %1$d sélectionnés (%2$d doublons possibles)</string>
     <string name="import_button_none">Importer</string>
@@ -1633,7 +1658,7 @@
     <!-- Historique des importations (parité web, issue #651 / #834) -->
     <string name="import_history_entry">Historique des importations</string>
     <string name="import_history_title">Historique des importations</string>
-    <string name="import_history_empty">Aucune importation pour le moment.</string>
+    <string name="import_history_empty">Aucune importation pour le moment</string>
     <string name="import_history_col_created">Créés</string>
     <string name="import_history_col_updated">Mis à jour</string>
     <string name="import_history_col_skipped">Ignorés</string>
@@ -1665,8 +1690,9 @@
     <string name="audit_entity_types_tag">Étiquette</string>
     <string name="audit_entity_types_household">Foyer</string>
     <string name="audit_entity_types_reminder">Rappel</string>
-    <string name="audit_empty">Aucun événement d\'audit ne correspond à vos filtres.</string>
-    <string name="audit_empty_no_filters">Aucun événement d\'audit pour le moment. Les modifications apportées à vos contacts et autres enregistrements apparaîtront ici.</string>
+    <string name="audit_empty">Aucun événement d\'audit ne correspond à vos filtres</string>
+    <string name="audit_empty_no_filters">Aucun événement d\'audit pour le moment</string>
+    <string name="audit_empty_no_filters_body">Les modifications apportées à vos contacts et autres enregistrements apparaîtront ici.</string>
     <string name="audit_undo_button">Annuler</string>
     <string name="audit_undo_confirm_title">Annuler cette modification ?</string>
     <string name="audit_undo_confirm_message">Restaurer %1$s dans son état antérieur du %2$s ?</string>
@@ -1726,8 +1752,8 @@
     <string name="sysevents_details_error">Erreur</string>
     <string name="sysevents_details_view_related">Voir les événements liés</string>
     <string name="sysevents_related_banner">Affichage de tous les événements de la chaîne %1$s.</string>
-    <string name="sysevents_empty">Aucun événement système ne correspond à vos filtres.</string>
-    <string name="sysevents_empty_no_filters">Aucun événement système enregistré pour l’instant.</string>
+    <string name="sysevents_empty">Aucun événement système ne correspond à vos filtres</string>
+    <string name="sysevents_empty_no_filters">Aucun événement système pour le moment</string>
     <!-- Subsystem health (issue #427) -->
     <string name="subsystem_health_title">État des sous-systèmes</string>
     <string name="subsystem_health_refresh">Actualiser</string>
@@ -1790,7 +1816,8 @@
     <string name="network_row_description_with_health">%1$s — %2$s — %3$s</string>
     <string name="occasions_title">Occasions</string>
     <string name="occasions_add_event">Nouvel événement</string>
-    <string name="occasions_empty">Aucun événement pour l\'instant. Créez-en un pour planifier vos invitations.</string>
+    <string name="occasions_empty">Aucun événement pour l\'instant</string>
+    <string name="occasions_empty_body">Créez-en un pour planifier vos invitations.</string>
     <string name="occasions_event_title">Titre</string>
     <string name="occasions_starts_at">Début</string>
     <string name="occasions_ends_at">Fin</string>
@@ -1807,7 +1834,7 @@
     <string name="occasions_delete_confirm">Supprimer « %1$s » ? Cette action est irréversible.</string>
     <string name="occasions_attendees">Invités</string>
     <string name="occasions_attendees_title">Invités — %1$s</string>
-    <string name="occasions_no_attendees">Personne n\'est encore invité.</string>
+    <string name="occasions_no_attendees">Personne n\'est encore invité</string>
     <string name="occasions_add_attendee">Ajouter un invité</string>
     <string name="occasions_remove_attendee">Retirer l\'invité</string>
     <string name="occasions_remove_confirm">Retirer %1$s de cet événement ?</string>
@@ -1819,7 +1846,7 @@
     <string name="occasions_suggest_from_circles">Suggérer des invités depuis les cercles</string>
     <string name="occasions_suggest">Suggérer</string>
     <string name="occasions_no_suggestions">Aucune nouvelle suggestion pour ces cercles.</string>
-    <string name="occasions_no_circles">Aucun cercle pour l\'instant.</string>
+    <string name="occasions_no_circles">Aucun cercle pour l\'instant</string>
     <string name="occasions_search_contacts">Rechercher des contacts</string>
     <string name="occasions_rsvp_hint">Notez ce que chaque invité vous a dit — aucune invitation n\'est envoyée ici.</string>
     <string name="occasions_error_missing_event_id">Cet événement n\'a pas pu être ouvert (identifiant manquant).</string>
@@ -1828,7 +1855,8 @@
     <string name="occasions_validation_end_before_start">L\'heure de fin ne peut pas précéder l\'heure de début.</string>
     <string name="settings_servers_title">Serveurs</string>
     <string name="settings_servers_add">Ajouter un serveur</string>
-    <string name="settings_servers_empty">Aucun serveur configuré pour le moment.</string>
+    <string name="settings_servers_empty">Aucun serveur pour le moment</string>
+    <string name="settings_servers_empty_body">Ajoutez l\'adresse de votre serveur Mycorrhizal pour vous connecter.</string>
     <string name="settings_servers_label">Libellé</string>
     <string name="settings_servers_url">URL du serveur</string>
     <string name="settings_servers_active">Actif</string>

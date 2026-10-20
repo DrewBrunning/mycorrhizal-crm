@@ -103,7 +103,12 @@ fun FieldDefinitionsScreen(
                 when {
                     state.isLoading && state.definitions.isEmpty() -> LoadingSkeleton()
                     state.definitions.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.settings_custom_fields_empty))
+                        EmptyState(
+                            title = stringResource(R.string.settings_custom_fields_empty),
+                            body = stringResource(R.string.settings_custom_fields_empty_body),
+                            actionLabel = stringResource(R.string.settings_custom_fields_new_title),
+                            onAction = onCreate,
+                        )
                     state.definitions.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),

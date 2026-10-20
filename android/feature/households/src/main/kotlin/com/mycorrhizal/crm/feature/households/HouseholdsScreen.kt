@@ -131,7 +131,12 @@ fun HouseholdsScreen(
                 when {
                     state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
                     state.households.isEmpty() && !state.suggestionsLoaded && state.error == null ->
-                        EmptyState(message = stringResource(R.string.households_empty))
+                        EmptyState(
+                            title = stringResource(R.string.households_empty),
+                            body = stringResource(R.string.households_empty_body),
+                            actionLabel = stringResource(R.string.households_new),
+                            onAction = { showCreateDialog = true },
+                        )
                     state.households.isEmpty() && !state.suggestionsLoaded && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),

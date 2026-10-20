@@ -100,7 +100,12 @@ fun TagsScreen(
                 when {
                     state.isLoading && state.tags.isEmpty() -> LoadingSkeleton()
                     state.tags.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.tags_empty))
+                        EmptyState(
+                            title = stringResource(R.string.tags_empty),
+                            body = stringResource(R.string.tags_empty_body),
+                            actionLabel = stringResource(R.string.tags_new),
+                            onAction = { showCreateDialog = true },
+                        )
                     state.tags.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),

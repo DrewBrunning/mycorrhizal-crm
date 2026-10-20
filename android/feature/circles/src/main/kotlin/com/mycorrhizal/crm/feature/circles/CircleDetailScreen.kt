@@ -118,7 +118,11 @@ fun CircleDetailScreen(
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
                     state.members.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.circles_members_empty))
+                        EmptyState(
+                            title = stringResource(R.string.circles_members_empty),
+                            actionLabel = stringResource(R.string.circles_add_member),
+                            onAction = { showAddDialog = true },
+                        )
                     state.members.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,

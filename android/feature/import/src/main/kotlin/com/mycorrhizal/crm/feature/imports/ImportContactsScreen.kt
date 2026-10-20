@@ -221,7 +221,7 @@ fun ImportContactsScreen(
                     }
                 }
                 state.contacts.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.import_empty))
+                    EmptyState(title = stringResource(R.string.import_empty))
                 state.contacts.isEmpty() && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),

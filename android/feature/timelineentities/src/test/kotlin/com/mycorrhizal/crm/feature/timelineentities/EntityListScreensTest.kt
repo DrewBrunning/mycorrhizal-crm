@@ -73,14 +73,17 @@ class EntityListScaffoldTest {
         sectionLabel: (@Composable (String) -> String)? = null,
         onItemClick: (String) -> Unit = {},
         onDelete: (String) -> Unit = {},
+        onAdd: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 EntityListScaffold(
                     title = "Life events",
                     addLabel = "New life event",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(items = items),
-                    onAdd = {},
+                    onAdd = onAdd,
                     onItemClick = onItemClick,
                     onDelete = onDelete,
                     onErrorShown = {},
@@ -90,6 +93,17 @@ class EntityListScaffoldTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `an empty list shows the shared empty state with the create action`() {
+        var added = 0
+        setContent(items = emptyList(), onAdd = { added += 1 })
+        composeTestRule.onNodeWithText("No items yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add the first one.").assertIsDisplayed()
+        // The empty-state button carries the same label as the FAB's description.
+        composeTestRule.onNodeWithText("New life event").performClick()
+        assertEquals(1, added)
     }
 
     @Test
@@ -138,6 +152,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Agenda",
                     addLabel = "New item",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(
                             EntityItem(id = "a1", label = "Open item", sectionKey = "open"),
@@ -175,6 +191,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Preferences",
                     addLabel = "New preference",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(EntityItem(id = "p1", label = "food: Peanuts", sectionKey = "food_drink")),
                     ),
@@ -209,6 +227,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Gifts",
                     addLabel = "New gift",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(
                             EntityItem(id = "g1", label = "First gift"),

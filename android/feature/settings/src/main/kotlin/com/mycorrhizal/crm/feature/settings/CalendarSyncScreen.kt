@@ -148,7 +148,15 @@ internal fun CalendarSyncContent(
                     CircularProgressIndicator()
                 }
             } else if (state.isEmpty) {
-                EmptyState(message = stringResource(R.string.settings_calendar_sync_empty))
+                EmptyState(
+                    title = stringResource(R.string.settings_calendar_sync_empty),
+                    body = stringResource(R.string.settings_calendar_sync_description),
+                    actionLabel = stringResource(R.string.settings_calendar_sync_add),
+                    onAction = {
+                        editingCalendar = null
+                        editorOpen = true
+                    },
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {

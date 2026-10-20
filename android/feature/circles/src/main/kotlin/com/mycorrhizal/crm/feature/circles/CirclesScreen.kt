@@ -99,7 +99,12 @@ fun CirclesScreen(
                 when {
                     state.isLoading && state.circles.isEmpty() -> LoadingSkeleton()
                     state.circles.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.circles_empty))
+                        EmptyState(
+                            title = stringResource(R.string.circles_empty),
+                            body = stringResource(R.string.circles_empty_body),
+                            actionLabel = stringResource(R.string.circles_new),
+                            onAction = { showCreateDialog = true },
+                        )
                     state.circles.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),

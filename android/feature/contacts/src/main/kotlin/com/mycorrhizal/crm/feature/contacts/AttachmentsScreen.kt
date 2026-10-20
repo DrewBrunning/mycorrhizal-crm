@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
@@ -55,6 +56,8 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactAttachment
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import java.io.File
@@ -156,26 +159,6 @@ fun AttachmentsScreenContent(
                     }
                 },
                 title = { Text(stringResource(R.string.contact_attachments), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    IconButton(
-                        onClick = onAddClick,
-                        enabled = !uiState.isUploading,
-                        modifier = Modifier.testTag("add-attachment"),
-                    ) {
-                        if (uiState.isUploading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Icon(
-                                Icons.Outlined.AttachFile,
-                                contentDescription = stringResource(R.string.attachments_upload),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -183,6 +166,24 @@ fun AttachmentsScreenContent(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             )
+        },
+        // #1760: the same FAB add affordance every other list uses (this screen
+        // used to carry a top-bar icon *and* an inline button for the same action).
+        floatingActionButton = {
+            BrandFab(
+                onClick = { if (!uiState.isUploading) onAddClick() },
+                modifier = Modifier.testTag("add-attachment"),
+            ) {
+                if (uiState.isUploading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.attachments_upload))
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -199,20 +200,14 @@ fun AttachmentsScreenContent(
                         )
                     }
                     uiState.attachments.isEmpty() && uiState.error == null -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.attachments_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.testTag("attachments-empty"),
-                            )
-                            TextButton(onClick = onAddClick) {
-                                Text(stringResource(R.string.attachments_upload))
-                            }
-                        }
+                        EmptyState(
+                            title = stringResource(R.string.attachments_empty),
+                            body = stringResource(R.string.attachments_empty_body),
+                            icon = Icons.Outlined.AttachFile,
+                            actionLabel = stringResource(R.string.attachments_upload),
+                            onAction = onAddClick,
+                            modifier = Modifier.align(Alignment.Center).testTag("attachments-empty"),
+                        )
                     }
                     else -> {
                         LazyColumn(
