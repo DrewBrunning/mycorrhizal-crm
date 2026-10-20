@@ -57,10 +57,10 @@
       "branchesTotal": 110
     },
     "src/DashboardPage.tsx": {
-      "lines": 73.79,
-      "linesTotal": 145,
-      "branches": 60.63,
-      "branchesTotal": 94
+      "lines": 74.66,
+      "linesTotal": 150,
+      "branches": 61.45,
+      "branchesTotal": 96
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
@@ -93,10 +93,10 @@
       "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
-      "lines": 83.87,
-      "linesTotal": 93,
-      "branches": 73.07,
-      "branchesTotal": 78
+      "lines": 84.21,
+      "linesTotal": 95,
+      "branches": 73.62,
+      "branchesTotal": 91
     },
     "src/NotesPage.tsx": {
       "lines": 88.75,
@@ -358,9 +358,9 @@
     },
     "src/api/graph.ts": {
       "lines": 100,
-      "linesTotal": 11,
+      "linesTotal": 12,
       "branches": 100,
-      "branchesTotal": 8
+      "branchesTotal": 10
     },
     "src/api/health.ts": {
       "lines": 100,
@@ -993,7 +993,7 @@
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
-      "lines": 84,
+      "lines": 83.33,
       "linesTotal": 150,
       "branches": 85.08,
       "branchesTotal": 114
@@ -1638,7 +1638,7 @@
       "lines": 100,
       "linesTotal": 25,
       "branches": 100,
-      "branchesTotal": 12
+      "branchesTotal": 15
     },
     "src/hooks/useHouseholds.ts": {
       "lines": 100,

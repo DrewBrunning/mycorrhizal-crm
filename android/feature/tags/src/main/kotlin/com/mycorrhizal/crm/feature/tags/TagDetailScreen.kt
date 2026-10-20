@@ -111,7 +111,7 @@ fun TagDetailScreen(
                                 val resolved = state.contactsByUid[tagging.contactVCardUid]
                                 TaggedContactRow(
                                     displayName = memberDisplayName(resolved)
-                                        ?: stringResource(R.string.households_member_unknown),
+                                        ?: stringResource(R.string.contact_unknown),
                                     photoUri = resolved?.photoThumbnail ?: resolved?.photo,
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     onNavigateToContact = onNavigateToContact,

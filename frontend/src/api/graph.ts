@@ -3,8 +3,15 @@
 import type { GraphResponse } from '../types/graph';
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
-export async function getGraph(): Promise<GraphResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/graph`, { headers: getAuthHeaders() });
+export interface GetGraphParams {
+  // true asks for every non-archived contact; the default (issue #1791) is
+  // the depth-2 ego-network of the caller's self contact.
+  full?: boolean;
+}
+
+export async function getGraph(params?: GetGraphParams): Promise<GraphResponse> {
+  const query = params?.full ? '?full=true' : '';
+  const response = await apiFetch(`${API_BASE_URL}/graph${query}`, { headers: getAuthHeaders() });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);

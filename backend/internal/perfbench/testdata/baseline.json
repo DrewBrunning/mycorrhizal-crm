@@ -261,6 +261,38 @@
         }
       }
     },
+    "graph.ego": {
+      "category": "read",
+      "expected_growth": "constant",
+      "profiles": {
+        "smoke": {
+          "queries": 11,
+          "result_size": 10,
+          "row_scale": 350
+        },
+        "typical": {
+          "queries": 11,
+          "result_size": 10,
+          "row_scale": 945
+        }
+      }
+    },
+    "graph.full": {
+      "category": "read",
+      "expected_growth": "constant",
+      "profiles": {
+        "smoke": {
+          "queries": 10,
+          "result_size": 195,
+          "row_scale": 350
+        },
+        "typical": {
+          "queries": 10,
+          "result_size": 1053,
+          "row_scale": 945
+        }
+      }
+    },
     "graph.traverse_deep": {
       "category": "read",
       "expected_growth": "constant",

@@ -50,8 +50,13 @@ const mockUseGraphResult = {
   refetch: vi.fn(),
 };
 
+const useGraphCalls: boolean[] = [];
+
 vi.mock('./hooks/useGraph', () => ({
-  useGraph: () => mockUseGraphResult,
+  useGraph: (full = false) => {
+    useGraphCalls.push(full);
+    return mockUseGraphResult;
+  },
 }));
 
 const mockUseCirclesResult = {
@@ -113,7 +118,10 @@ beforeEach(() => {
   deleteActivity.mockReset().mockResolvedValue(undefined);
   getAllContacts.mockReset().mockResolvedValue([]);
   mockUseGraphResult.error = null;
+  mockUseGraphResult.data = { ...mockUseGraphResult.data, scoped: undefined, depth: undefined };
+  mockUseGraphResult.loading = false;
   mockUseCirclesResult.loading = false;
+  useGraphCalls.length = 0;
 });
 
 afterEach(() => {
@@ -460,4 +468,39 @@ test('a persisted circle that still exists survives once circles finish loading'
     expect(screen.getByTestId('selected-circle').textContent).toBe('Family');
   });
   expect(localStorage.getItem('network-selected-circle')).toBe('Family');
+});
+
+// Issue #1791: GET /graph defaults to the ego-network of the self contact; the
+// whole account is an explicit opt-in.
+test('fetches the ego-network by default and explains the scope', async () => {
+  mockUseGraphResult.data = { ...mockUseGraphResult.data, scoped: true, depth: 2 };
+  await renderPage();
+
+  expect(useGraphCalls.every((full) => full === false)).toBe(true);
+  expect(
+    screen.getByText(/Showing your own contact and everyone within 2 connections of it/),
+  ).toBeInTheDocument();
+});
+
+test('the "Show entire network" switch asks for the full graph and hides the ego notice', async () => {
+  mockUseGraphResult.data = { ...mockUseGraphResult.data, scoped: true, depth: 2 };
+  await renderPage();
+
+  fireEvent.click(screen.getByRole('switch', { name: 'Show entire network' }));
+
+  await waitFor(() => expect(useGraphCalls.at(-1)).toBe(true));
+  expect(screen.queryByText(/Showing your own contact/)).not.toBeInTheDocument();
+});
+
+test('an unscoped graph shows no ego notice', async () => {
+  await renderPage();
+  expect(screen.queryByText(/Showing your own contact/)).not.toBeInTheDocument();
+});
+
+test('a refetch error keeps the page and its controls visible', async () => {
+  mockUseGraphResult.error = 'boom';
+  await renderPage();
+
+  expect(screen.getByText('boom')).toBeInTheDocument();
+  expect(screen.getByRole('switch', { name: 'Show entire network' })).toBeInTheDocument();
 });
