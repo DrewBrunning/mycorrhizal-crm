@@ -5825,9 +5825,12 @@ paths:
       summary: List field definitions
       operationId: listFieldDefinitions
       description: >
-        Cursor-paginated (T17). Field definitions are a hard-delete collection
-        — the sync.mode is full_resync: a client re-pulls the collection
-        rather than using ?since= (definitions have no tombstone).
+        Cursor-paginated (T17), ordered by the user's display order
+        (`position`, then `id`; issue #1210). Field definitions are a
+        hard-delete collection — the sync.mode is full_resync: a client
+        re-pulls the collection rather than using ?since= (definitions have no
+        tombstone). Grouping (issue #1730) does not change this order: a client
+        buckets the rows by `group` and keeps this order within each bucket.
       parameters:
         - name: cursor
           in: query
@@ -5838,8 +5841,8 @@ paths:
           schema: { type: integer, minimum: 1, default: 25 }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order.
-          schema: { type: string, enum: [asc, desc], default: desc }
+          description: Direction for the (position, id) display order; defaults to asc.
+          schema: { type: string, enum: [asc, desc], default: asc }
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
@@ -15340,11 +15343,14 @@ components:
           description: >
             Optional display-only group label (e.g. "Travel profile"); "" means
             ungrouped. A group is just a shared label string: there is no group
-            entity, and renaming means updating each definition. Clients bucket
-            definitions by this string; fields within a group keep their
-            `position` order, and ordering the groups themselves (and placing
-            the ungrouped bucket) is left to the client. Never projected to
-            vCard/sync/exports.
+            entity, and renaming means updating each definition. The server
+            stores it trimmed and otherwise verbatim, so clients bucket
+            definitions by exact string equality ("Travel" and "travel" are two
+            groups). Fields within a group keep the list's `position` order;
+            ordering the groups themselves (and placing the ungrouped bucket)
+            is left to the client. maxLength counts characters, not bytes.
+            Carried by the account bundle; never projected to vCard, sync or
+            the other exports.
           example: ""
     FieldDefinitionInput:
       type: object
