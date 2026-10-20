@@ -61,7 +61,7 @@ class TagDetailScreenTest {
         return repo
     }
 
-    private fun viewModel(): TagDetailViewModel {
+    private fun viewModel(resolve: Map<String, ContactSummary> = mapOf("uid-alice" to alice)): TagDetailViewModel {
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } returns Result.success(
             TagDetail(
@@ -74,13 +74,16 @@ class TagDetailScreenTest {
         )
         return TagDetailViewModel(
             repository,
-            contactRepo(mapOf("uid-alice" to alice)),
+            contactRepo(resolve),
             SavedStateHandle(mapOf("tagId" to "t1")),
         )
     }
 
-    private fun setScreen(onNavigate: (Int) -> Unit = {}) {
-        val vm = viewModel()
+    private fun setScreen(
+        onNavigate: (Int) -> Unit = {},
+        resolve: Map<String, ContactSummary> = mapOf("uid-alice" to alice),
+    ) {
+        val vm = viewModel(resolve)
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = false) {
                 TagDetailScreen(onBack = {}, onNavigateToContact = onNavigate, viewModel = vm)
@@ -118,6 +121,31 @@ class TagDetailScreenTest {
         assertEquals(null, opened)
         composeTestRule.onNodeWithText("Alice Smith").assertHasClickAction().performClick()
         assertEquals(42, opened)
+    }
+
+    @Test
+    fun `resolved rows render with a thumbnail or a full photo`() {
+        var opened: Int? = null
+        setScreen(
+            onNavigate = { opened = it },
+            resolve = mapOf(
+                "uid-alice" to alice.copy(photoThumbnail = "/thumb-a.jpg"),
+                "uid-bob" to ContactSummary(id = 43, uid = "uid-bob", firstname = "Bob", photo = "/photo-b.jpg"),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Bob").performClick()
+        assertEquals(43, opened)
+    }
+
+    @Test
+    fun `a resolved contact without a numeric id is not tappable`() {
+        var opened: Int? = null
+        setScreen(onNavigate = { opened = it }, resolve = mapOf("uid-alice" to alice.copy(id = 0)))
+
+        composeTestRule.onNodeWithText("Alice Smith").performClick()
+        assertEquals(null, opened)
     }
 
     @Test

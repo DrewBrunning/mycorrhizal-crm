@@ -243,4 +243,27 @@ class TagDetailViewModelTest {
 
         assertEquals(bob, vm.uiState.value.contactsByUid["uid-2"])
     }
+
+    @Test
+    fun `blank and duplicate uids are resolved once`() = runTest(mainDispatcherRule.testDispatcher) {
+        val alice = ContactSummary(id = 7, uid = "uid-1", firstname = "Alice")
+        coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
+            TagDetail(
+                tag = Tag(id = "t1", name = "Friend"),
+                contacts = listOf(
+                    ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"),
+                    ContactTag(id = 2, tagId = "t1", contactVCardUid = ""),
+                    ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-1"),
+                ),
+            ),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns
+            Result.success(mapOf("uid-1" to alice))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.resolveByUid(listOf("uid-1")) }
+        assertEquals(alice, vm.uiState.value.contactsByUid["uid-1"])
+    }
 }

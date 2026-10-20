@@ -116,6 +116,35 @@ class CircleDetailScreenTest {
     }
 
     @Test
+    fun `resolved rows render with a thumbnail or a full photo`() {
+        var opened: Int? = null
+        setScreen(
+            members = listOf(
+                CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
+                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-bob"),
+            ),
+            resolve = mapOf(
+                "uid-alice" to alice.copy(photoThumbnail = "/thumb-a.jpg"),
+                "uid-bob" to ContactSummary(id = 43, uid = "uid-bob", firstname = "Bob", photo = "/photo-b.jpg"),
+            ),
+            onNavigate = { opened = it },
+        )
+
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Bob").performClick()
+        assertEquals(43, opened)
+    }
+
+    @Test
+    fun `a resolved contact without a numeric id is not tappable`() {
+        var opened: Int? = null
+        setScreen(resolve = mapOf("uid-alice" to alice.copy(id = 0)), onNavigate = { opened = it })
+
+        composeTestRule.onNodeWithText("Alice Smith").performClick()
+        assertEquals(null, opened)
+    }
+
+    @Test
     fun `the remove button announces the member name`() {
         setScreen(resolve = mapOf("uid-alice" to alice))
 
