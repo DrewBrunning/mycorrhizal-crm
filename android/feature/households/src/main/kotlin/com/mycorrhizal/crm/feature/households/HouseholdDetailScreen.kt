@@ -166,7 +166,7 @@ fun HouseholdDetailScreen(
                                 HouseholdMemberRow(
                                     member = member,
                                     displayName = displayNameFor(resolved)
-                                        ?: stringResource(R.string.households_member_unknown),
+                                        ?: stringResource(R.string.contact_unknown),
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     removing = state.removingUid == member.memberVCardUid,
                                     updatingRole = state.updatingRoleUid == member.memberVCardUid,
