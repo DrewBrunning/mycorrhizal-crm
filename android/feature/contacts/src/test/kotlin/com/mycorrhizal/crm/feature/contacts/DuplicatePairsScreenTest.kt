@@ -6,9 +6,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.domain.repository.DuplicateRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.DuplicatePair
+import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -64,6 +68,23 @@ class DuplicatePairsScreenTest {
     fun `empty scan shows the no-duplicates message`() {
         setContent(DuplicatePairsUiState(pairs = emptyList(), total = 0, isLoading = false))
         composeTestRule.onNodeWithTag("duplicates-empty").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No duplicate contacts found").assertIsDisplayed()
+    }
+
+    // The top-level screen wires the ViewModel into the stateless content.
+    @Test
+    fun `the top-level screen shows the empty scan from its view model`() {
+        val repository = mockk<DuplicateRepository>()
+        coEvery { repository.listPairs(page = 1, limit = 100) } returns Result.success(
+            DuplicatePairsResponse(pairs = emptyList(), total = 0, page = 1, limit = 100),
+        )
+        val viewModel = DuplicatePairsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                DuplicatePairsScreen(onBack = {}, onMerge = { _, _, _ -> }, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("No duplicate contacts found").assertIsDisplayed()
     }
 
