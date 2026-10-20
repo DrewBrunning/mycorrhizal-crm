@@ -50,6 +50,8 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 
 /**
  * M9 item 1: the "Activities" drawer entry — every activity across every contact (matching web's
@@ -232,6 +234,7 @@ private fun InboxActivityRow(
     isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val dateFormat = LocalDateFormat.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -244,7 +247,7 @@ private fun InboxActivityRow(
             val subtitle = listOfNotNull(
                 activity.type?.takeIf { it.isNotBlank() },
                 activity.location?.takeIf { it.isNotBlank() },
-                activity.date?.take(10),
+                activity.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() },
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

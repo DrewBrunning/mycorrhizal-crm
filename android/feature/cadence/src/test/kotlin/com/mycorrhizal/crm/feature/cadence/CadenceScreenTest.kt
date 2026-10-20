@@ -243,11 +243,10 @@ class CadenceScreenTest {
     }
 
     @Test
-    fun `panel renders next-due in UTC regardless of the device zone`() {
-        // 2026-09-10T01:00:00Z is 2026-09-09 18:00 in Los Angeles — a
-        // device-zone renderer would show "Next due: 9 September 2026". The
-        // dates are server-computed calendar values; render them in UTC the
-        // way web and M11's prep view do (a real bug this pins).
+    fun `panel renders a calendar next-due on its own date regardless of the device zone`() {
+        // next_due is a server-computed calendar day (the API sends it date-only;
+        // an older server sent 00:00Z). 2026-09-10T00:00:00Z is 2026-09-09 17:00
+        // in Los Angeles, so a device-zone renderer would show the 9th (#1778).
         val original = java.util.TimeZone.getDefault()
         java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Los_Angeles"))
         try {
@@ -256,12 +255,12 @@ class CadenceScreenTest {
                     health = CadenceHealth(
                         hasQualifyingInteraction = true,
                         lastInteraction = "2026-07-01T10:00:00Z",
-                        nextDue = "2026-09-10T01:00:00Z",
+                        nextDue = "2026-09-10T00:00:00Z",
                         overdueBy = 0,
                     ),
                 ),
             )
-            composeTestRule.onNodeWithText("Next due: 10 September 2026").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Next due: 10.09.2026").assertIsDisplayed()
         } finally {
             java.util.TimeZone.setDefault(original)
         }
@@ -298,7 +297,7 @@ class CadenceScreenTest {
         )
         // The valid caption still renders; the unparseable one is dropped rather
         // than showing "Next due: " with an empty value.
-        composeTestRule.onNodeWithText("Last interaction: 1 July 2026").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Last interaction: 01.07.2026").assertIsDisplayed()
         composeTestRule.onNodeWithText("Next due: ").assertIsNotDisplayed()
     }
 

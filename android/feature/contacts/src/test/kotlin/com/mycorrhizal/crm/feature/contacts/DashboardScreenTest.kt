@@ -173,7 +173,7 @@ class DashboardScreenTest {
         scrollTo("Alice Wonder")
         val age = LocalDate.now().year - 1990
         composeTestRule.onNodeWithText("Alice Wonder").assertIsDisplayed()
-        composeTestRule.onNodeWithText("25 December ($age years old)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("25.12. ($age years old)").assertIsDisplayed()
 
         // Upcoming reminders: message, embedded contact name, recurrence + by-mail chips.
         scrollTo("Call Dana")

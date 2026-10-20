@@ -141,7 +141,7 @@ class PrepViewScreenTest {
         // Cadence health card.
         assertSection("Relationship health")
         assertSection("On track")
-        assertSection("Next due: 9 September 2026")
+        assertSection("Next due: 09.09.2026")
 
         // Agenda.
         assertSection("Things to bring up")
@@ -162,7 +162,7 @@ class PrepViewScreenTest {
         assertSection("Send card", substring = true)
 
         // Upcoming dates: yearless --12-25 renders as "25 December" in eu format.
-        assertSection("Birthday 25 December")
+        assertSection("Birthday 25.12.")
         assertSection("in 5 day(s)")
     }
 

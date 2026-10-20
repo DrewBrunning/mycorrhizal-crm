@@ -104,6 +104,7 @@ import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.enroll.BiometricEnrollmentPromptHost
 import com.mycorrhizal.crm.model.AppVersion
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.auth.RegisterScreen
 import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
@@ -178,6 +179,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.LocalServerCapabilities
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -489,6 +491,7 @@ fun MycorrhizalApp(
                     darkTheme = darkTheme,
                     drawerState = drawerState,
                     serverUrl = session.serverUrl.orEmpty(),
+                    dateFormat = session.dateFormat ?: DateFormat.EU,
                     serverVersion = serverVersion,
                     serverCapabilities = serverCapabilities,
                     deepLinks = deepLinks,
@@ -570,6 +573,7 @@ private fun MainScaffold(
     darkTheme: Boolean,
     drawerState: DrawerState,
     serverUrl: String,
+    dateFormat: String = DateFormat.EU,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
     deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
@@ -667,6 +671,7 @@ private fun MainScaffold(
         LocalDrawerOpen provides drawerState.isOpen,
         LocalDarkTheme provides darkTheme,
         LocalServerUrl provides serverUrl,
+        LocalDateFormat provides dateFormat,
         LocalServerVersion provides serverVersion,
         LocalServerCapabilities provides serverCapabilities,
     ) {

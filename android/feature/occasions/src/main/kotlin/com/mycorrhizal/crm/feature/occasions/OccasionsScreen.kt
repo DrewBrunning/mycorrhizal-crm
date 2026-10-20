@@ -58,9 +58,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Locale
 
 /**
  * The Occasions events list (docs/adrs/0026-occasions-events.md, issue #1228):
@@ -181,7 +185,7 @@ private fun OccasionEventRow(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp),
     ) {
         Text(event.title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(formatEventWhen(event), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(formatEventWhen(event, LocalDateFormat.current), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         event.location?.takeIf { it.isNotBlank() }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -279,7 +283,7 @@ internal fun OccasionEventDialog(
                 when {
                     trimmed.isEmpty() -> error = titleRequiredMsg
                     startsAt.isBlank() -> error = startRequiredMsg
-                    endsAt.isNotBlank() && endsAt < startsAt -> error = endBeforeStartMsg
+                    isEndBeforeStart(startsAt, endsAt) -> error = endBeforeStartMsg
                     else -> onSave(
                         OccasionEventForm(
                             title = trimmed,
@@ -333,7 +337,7 @@ private fun sensitivityLabel(value: String): String = when (value) {
 private fun InstantField(label: String, value: String, onChange: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = instantToDisplay(value),
+        value = instantToDisplay(value, LocalDateFormat.current),
         onValueChange = {},
         readOnly = true,
         label = { Text(label) },
@@ -358,11 +362,12 @@ private fun InstantField(label: String, value: String, onChange: (String) -> Uni
 private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     val fallback = remember { Instant.now() }
     val initialInstant = remember(initial) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
+    val initialLocal = remember(initialInstant) { pickerInitial(initialInstant) }
     var step by remember { mutableStateOf(0) }
-    val dateState = rememberDatePickerState(initialSelectedDateMillis = initialInstant.toEpochMilli())
+    val dateState = rememberDatePickerState(initialSelectedDateMillis = initialLocal.dateMillis)
     val timeState = rememberTimePickerState(
-        initialHour = initialInstant.atZone(ZoneOffset.UTC).hour,
-        initialMinute = initialInstant.atZone(ZoneOffset.UTC).minute,
+        initialHour = initialLocal.hour,
+        initialMinute = initialLocal.minute,
         is24Hour = true,
     )
 
@@ -381,7 +386,7 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
             text = { TimePicker(state = timeState) },
             confirmButton = {
                 TextButton(onClick = {
-                    val millis = dateState.selectedDateMillis ?: initialInstant.toEpochMilli()
+                    val millis = dateState.selectedDateMillis ?: initialLocal.dateMillis
                     onConfirm(toRfc3339(millis, timeState.hour, timeState.minute))
                 }) { Text(stringResource(R.string.action_confirm)) }
             },
@@ -390,19 +395,82 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
     }
 }
 
-/** Renders an RFC 3339 instant as `yyyy-MM-dd HH:mm` (UTC, no device zone). */
-internal fun instantToDisplay(iso: String): String =
-    iso.take(16).replace('T', ' ')
-
-/** The start (and optional end) of an event, for the list row. */
-internal fun formatEventWhen(event: OccasionEvent): String {
-    val start = instantToDisplay(event.startsAt)
-    val end = event.endsAt?.takeIf { it.isNotBlank() }?.let(::instantToDisplay)
-    return if (end == null) start else "$start – $end"
+/**
+ * Renders an RFC 3339 instant in [zone] (the device zone by default) as the
+ * user's preferred date plus a locale-short time, e.g. `26.10.2026 13:06`.
+ * Occasions are timed events, so (unlike calendar days, ADR 0015 rule 2) they
+ * are real instants and shift to local time (#1753). Blank input renders blank
+ * and an unparseable value renders as-is rather than throwing.
+ */
+internal fun instantToDisplay(
+    iso: String,
+    dateFormat: String = DateFormat.EU,
+    zone: ZoneId = ZoneId.systemDefault(),
+    locale: Locale = Locale.getDefault(),
+): String {
+    if (iso.isBlank()) return ""
+    val instant = runCatching { Instant.parse(iso) }.getOrNull() ?: return iso
+    val local = instant.atZone(zone)
+    val date = DateFormat.formatFull(local.year, local.monthValue, local.dayOfMonth, dateFormat, locale)
+    return "$date ${DateFormat.formatTime(iso, zone, locale)}"
 }
 
-/** Builds an RFC 3339 UTC instant from a date picker's UTC millis + a wall time. */
-internal fun toRfc3339(dateMillis: Long, hour: Int, minute: Int): String {
+/**
+ * The start (and optional end) of an event, for the list row. Same ranges as
+ * web (#1789):
+ *  - no end, or end == start (the same instant): just the start;
+ *  - ends the same local day: `<date> <start> – <end time>`;
+ *  - otherwise: the full start and the full end.
+ */
+internal fun formatEventWhen(
+    event: OccasionEvent,
+    dateFormat: String = DateFormat.EU,
+    zone: ZoneId = ZoneId.systemDefault(),
+    locale: Locale = Locale.getDefault(),
+): String {
+    val start = instantToDisplay(event.startsAt, dateFormat, zone, locale)
+    val endIso = event.endsAt?.takeIf { it.isNotBlank() } ?: return start
+    val full = "$start – ${instantToDisplay(endIso, dateFormat, zone, locale)}"
+    val startInstant = runCatching { Instant.parse(event.startsAt) }.getOrNull() ?: return full
+    val endInstant = runCatching { Instant.parse(endIso) }.getOrNull() ?: return full
+    if (endInstant == startInstant) return start
+    val sameDay = startInstant.atZone(zone).toLocalDate() == endInstant.atZone(zone).toLocalDate()
+    return if (sameDay) "$start – ${DateFormat.formatTime(endIso, zone, locale)}" else full
+}
+
+/** True when both are parseable instants and [endsAt] is strictly before [startsAt]. */
+internal fun isEndBeforeStart(startsAt: String, endsAt: String): Boolean {
+    if (endsAt.isBlank()) return false
+    val start = runCatching { Instant.parse(startsAt) }.getOrNull() ?: return false
+    val end = runCatching { Instant.parse(endsAt) }.getOrNull() ?: return false
+    return end.isBefore(start)
+}
+
+/** The picker's initial selection: the local date as the picker's UTC-midnight millis, and the local wall time. */
+internal data class PickerInitial(val dateMillis: Long, val hour: Int, val minute: Int)
+
+internal fun pickerInitial(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): PickerInitial {
+    val local = instant.atZone(zone)
+    return PickerInitial(
+        // Material's DatePicker speaks UTC midnight of the chosen calendar date.
+        dateMillis = local.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        hour = local.hour,
+        minute = local.minute,
+    )
+}
+
+/**
+ * Builds an RFC 3339 UTC instant from a date picker's UTC-midnight millis (the
+ * chosen calendar date) plus a wall time the user picked **in [zone]** (the
+ * device zone by default). The inverse of [pickerInitial] / [instantToDisplay]:
+ * an event created at 18:00 local shows 18:00 on the same device.
+ */
+internal fun toRfc3339(
+    dateMillis: Long,
+    hour: Int,
+    minute: Int,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
     val date = Instant.ofEpochMilli(dateMillis).atZone(ZoneOffset.UTC).toLocalDate()
-    return date.atTime(hour, minute).toInstant(ZoneOffset.UTC).toString()
+    return date.atTime(hour, minute).atZone(zone).toInstant().toString()
 }

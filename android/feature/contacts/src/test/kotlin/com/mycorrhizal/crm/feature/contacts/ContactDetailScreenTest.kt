@@ -474,7 +474,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 15.06.1990").assertIsDisplayed()
     }
 
     @Test
@@ -494,7 +494,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Birthday: June 15, 1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 06/15/1990").assertIsDisplayed()
     }
 
     // --- Issue #1193: deceased badge + date of death (web ContactHeader parity) ---
@@ -529,7 +529,7 @@ class ContactDetailScreenTest {
         }
 
         composeTestRule.onNodeWithTag("deceased-badge").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Died: 1 May 2020").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Died: 01.05.2020").assertIsDisplayed()
     }
 
     @Test
@@ -549,7 +549,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Died: May 1, 2020").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Died: 05/01/2020").assertIsDisplayed()
     }
 
     @Test
@@ -571,8 +571,8 @@ class ContactDetailScreenTest {
         }
 
         composeTestRule.onNodeWithTag("deceased-badge").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Died: 1 May 2020").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 15.06.1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Died: 01.05.2020").assertIsDisplayed()
     }
 
     // --- Issue #832: fields with no prior Android UI ---
@@ -672,9 +672,9 @@ class ContactDetailScreenTest {
                 ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES)
             }
         }
-        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 15.06.1990").assertIsDisplayed()
         composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("wedding: 1 June 2020").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("wedding: 01.06.2020").performScrollTo().assertIsDisplayed()
     }
 
     @Test

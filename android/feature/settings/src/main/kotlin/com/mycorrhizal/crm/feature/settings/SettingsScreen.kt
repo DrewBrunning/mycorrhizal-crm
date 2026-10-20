@@ -28,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -989,6 +990,6 @@ private fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDela
     AutoLockDelay.ONE_HOUR -> stringResource(R.string.settings_local_auth_delay_1h)
 }
 
-private val DATE_FORMAT_OPTIONS = listOf(
-    "eu", "us", "iso", "ca", "eu-hyphen", "us-mmm", "us-mmmm", "eu-mmm", "eu-mmmm",
-)
+// The single token list, shared with the renderer so the picker cannot offer a
+// format DateFormat does not implement (issue #1752).
+private val DATE_FORMAT_OPTIONS = DateFormat.ALL_FORMATS
