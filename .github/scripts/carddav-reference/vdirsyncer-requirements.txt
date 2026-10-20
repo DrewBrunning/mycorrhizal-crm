@@ -377,5 +377,5 @@ urllib3==2.8.0 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
 vdirsyncer==0.20.0 \
     --hash=sha256:8c7cc702a5617973c79070f9c4900f4ea6bf844e7eaf5e5b029cbfb04e3e92bf
-yarl==1.24.5 \
-    --hash=sha256:f08c7513ecef5aad65687bfdf6bc601ae9fccd04a42904501f8f7141abad9eb9
+yarl==1.25.1 \
+    --hash=sha256:c6f117789d22dce188e5754e8bc65b7e6ebf8cb73963b9fa761f672a5883769d
