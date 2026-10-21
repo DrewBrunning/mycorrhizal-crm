@@ -78,6 +78,13 @@ class ContractFixtureTest {
         // being null and the `List<...>` type crashing elsewhere).
         assertTrue(dashboard.birthdays.isEmpty())
         assertTrue(dashboard.favorites.isEmpty())
+        // Issue #1824: the generated fixture carries every `*_total` (#1806);
+        // they must land in the nullable DTO fields, not fall to the null default.
+        assertEquals(0, dashboard.birthdaysTotal)
+        assertEquals(1, dashboard.upcomingRemindersTotal)
+        assertEquals(0, dashboard.overdueTotal)
+        assertEquals(0, dashboard.reachOutSuggestionsTotal)
+        assertEquals(0, dashboard.dataDecayOverdueTotal)
     }
 
     @Test

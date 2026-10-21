@@ -20,6 +20,12 @@
     <string name="dashboard_no_birthdays">Aucun anniversaire à venir</string>
     <string name="dashboard_no_reminders">Aucun rappel à venir</string>
     <string name="dashboard_no_contacts">Aucun contact disponible</string>
+    <!-- Issue #1824: "Showing N of M" caption under a dashboard block the server capped; quantity follows the total (M). -->
+    <plurals name="dashboard_showing_of_total">
+        <item quantity="one">%1$d sur %2$d affichés</item>
+        <item quantity="many">%1$d sur %2$d affichés</item>
+        <item quantity="other">%1$d sur %2$d affichés</item>
+    </plurals>
     <string name="dashboard_years_old">(%1$d ans)</string>
     <string name="dashboard_unknown_contact">Contact inconnu</string>
     <string name="nav_home">Accueil</string>
