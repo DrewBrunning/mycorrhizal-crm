@@ -66,7 +66,23 @@ type RawInputs struct {
 
 	// DaysSinceUpdated: days since Contact.UpdatedAt.
 	DaysSinceUpdated int
+
+	// Ambient/AmbientReason (issue #1733, ADR 0023 amendment): the contact
+	// counts as in regular contact without logged interactions, either because
+	// the user lives with them (AmbientReasonHousehold, derived from the shared
+	// household) or marked them (AmbientReasonFlag). When Ambient is true,
+	// Recency and Frequency are both 100 regardless of the interaction inputs
+	// above; Closeness, ReachOut and LastUpdated are unchanged.
+	Ambient       bool
+	AmbientReason string
 }
+
+// Ambient reasons carried on RawInputs.AmbientReason and Result.AmbientReason.
+// Frontend/Android mirror these tokens (frontend trap #4): keep in sync.
+const (
+	AmbientReasonHousehold = "household"
+	AmbientReasonFlag      = "flag"
+)
 
 // FacetResult is one weighted facet's contribution, always included in
 // Result so the score is explainable (issue #383 requirement 1): never just
@@ -92,6 +108,12 @@ type Result struct {
 	Closeness   FacetResult `json:"closeness"`
 	ReachOut    FacetResult `json:"reach_out"`
 	LastUpdated FacetResult `json:"last_updated"`
+
+	// Ambient is true when Recency and Frequency were overridden to 100 because
+	// the contact is ambient (issue #1733); AmbientReason says why
+	// (AmbientReasonHousehold or AmbientReasonFlag), empty when not ambient.
+	Ambient       bool   `json:"ambient"`
+	AmbientReason string `json:"ambient_reason,omitempty"`
 }
 
 // Compute derives Result from raw, already-gathered facts. Pure: same inputs
@@ -110,7 +132,7 @@ func Compute(raw RawInputs, cfg Config) Result {
 		lastUpdated.Value*cfg.WeightLastUpdated
 	score := int(math.Round(weighted / 100))
 
-	return Result{
+	result := Result{
 		Score:       score,
 		Band:        band(float64(score), cfg),
 		Recency:     recency,
@@ -119,6 +141,11 @@ func Compute(raw RawInputs, cfg Config) Result {
 		ReachOut:    reachOut,
 		LastUpdated: lastUpdated,
 	}
+	if raw.Ambient {
+		result.Ambient = true
+		result.AmbientReason = raw.AmbientReason
+	}
+	return result
 }
 
 // band maps a 0-100 score to its fungus-palette band using the tunable

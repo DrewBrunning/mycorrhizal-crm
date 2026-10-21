@@ -217,13 +217,17 @@ func ListCadencePolicies(c *gin.Context) {
 		nextCursor = EncodeCursor(policies[len(policies)-1].UpdatedAt, policies[len(policies)-1].ID)
 	}
 
+	// One batch health derivation for the page (constant queries), not
+	// policyHealth per policy: the per-policy path is three reads each
+	// (activities, given gifts, ambient -- issues #1733/#1736).
+	healthByID, healthErr := services.ComputeCadenceHealthBatch(db, userID, policies, cadenceNow(c))
+	if healthErr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute cadence health").WithError(healthErr))
+		return
+	}
 	response := make([]cadencePolicyWithHealth, 0, len(policies))
 	for i := range policies {
-		resp, ok := policyHealth(c, db, userID, &policies[i], false)
-		if !ok {
-			return
-		}
-		response = append(response, resp)
+		response = append(response, cadencePolicyWithHealth{CadencePolicy: policies[i], Health: healthByID[policies[i].ID]})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
