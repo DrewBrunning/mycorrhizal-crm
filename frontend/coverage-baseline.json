@@ -729,9 +729,9 @@
       "branchesTotal": 130
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 76.53,
-      "linesTotal": 179,
-      "branches": 74.67,
+      "lines": 76.96,
+      "linesTotal": 178,
+      "branches": 75,
       "branchesTotal": 308
     },
     "src/components/ContactMap.tsx": {
@@ -770,6 +770,12 @@
       "branches": 100,
       "branchesTotal": 4
     },
+    "src/components/CustomFieldGroups.tsx": {
+      "lines": 100,
+      "linesTotal": 9,
+      "branches": 100,
+      "branchesTotal": 8
+    },
     "src/components/CustomFieldValueRow.tsx": {
       "lines": 100,
       "linesTotal": 22,
@@ -779,8 +785,8 @@
     "src/components/CustomFieldsSettings.tsx": {
       "lines": 95.23,
       "linesTotal": 42,
-      "branches": 75,
-      "branchesTotal": 20
+      "branches": 77.27,
+      "branchesTotal": 22
     },
     "src/components/DataDecayDialog.tsx": {
       "lines": 93.75,
@@ -885,10 +891,10 @@
       "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
-      "lines": 93.42,
-      "linesTotal": 76,
-      "branches": 88.46,
-      "branchesTotal": 78
+      "lines": 93.9,
+      "linesTotal": 82,
+      "branches": 89.15,
+      "branchesTotal": 83
     },
     "src/components/FieldSectionPicker.tsx": {
       "lines": 92.85,
@@ -1969,6 +1975,12 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 27
+    },
+    "src/utils/customFieldGroups.ts": {
+      "lines": 100,
+      "linesTotal": 25,
+      "branches": 89.47,
+      "branchesTotal": 19
     },
     "src/utils/errorHandler.ts": {
       "lines": 82.6,
