@@ -234,6 +234,13 @@ func CommitContactMerge(c *gin.Context) {
 			loser.PhotoThumbnail = ""
 		}
 
+		// Issue #1733: the ambient flag is a union -- if either record said "I see
+		// them all the time", the merged person is ambient. Flat-owned like the
+		// photo above, so BeforeSave carries it into crm.ambient.
+		if loser.Ambient {
+			keeper.Ambient = true
+		}
+
 		if err := services.ApplyContactMergeResolution(&keeper, resolution, input.Resolutions); err != nil {
 			return err // defense in depth; already validated above
 		}

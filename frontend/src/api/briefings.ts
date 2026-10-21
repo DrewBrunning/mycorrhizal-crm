@@ -20,6 +20,9 @@ export interface BriefingCadenceHealth {
   last_interaction?: string | null;
   next_due?: string | null;
   overdue_by: number;
+  // Issue #1733: see CadenceHealth.ambient.
+  ambient?: boolean;
+  ambient_reason?: 'household' | 'flag';
 }
 
 export interface BriefingCadence {

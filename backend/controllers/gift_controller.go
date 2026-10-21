@@ -3,10 +3,12 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -57,6 +59,23 @@ func verifyOwnedActivity(c *gin.Context, db *gorm.DB, userID uint, id *uint) boo
 		return false
 	}
 	return true
+}
+
+// defaultGivenGiftDate stamps now onto a gift that is being marked "given"
+// without a date (issue #1736): a given gift counts as a qualifying interaction
+// on its date, so marking a gift given must still count. It applies only on the
+// transition INTO given (previousStatus is the stored status, "" on create): a
+// gift that was already given keeps exactly the date the full-replace body
+// carries -- an explicit date, or none when the user cleared it or it was never
+// recorded. Stamping an already-given undated gift on an unrelated edit (a typo
+// fix in the notes) would invent an interaction "today" that never happened. An
+// explicit date is always kept, and a gift in any other status
+// (idea/purchased/received) is left as sent.
+func defaultGivenGiftDate(gift *models.Gift, previousStatus string, now time.Time) {
+	if gift.Status == models.GiftStatusGiven && previousStatus != models.GiftStatusGiven && gift.Date == nil {
+		d := now
+		gift.Date = &d
+	}
 }
 
 // CreateGift creates a new Gift (gift.go) for the authenticated
@@ -110,6 +129,7 @@ func CreateGift(c *gin.Context) {
 		LifeEventID: input.LifeEventID,
 		ActivityID:  input.ActivityID,
 	}
+	defaultGivenGiftDate(&gift, "", clock.FromContext(c).Now())
 
 	if err := db.Create(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
@@ -273,6 +293,7 @@ func UpdateGift(c *gin.Context) {
 		status = models.GiftStatusIdea
 	}
 
+	previousStatus := gift.Status
 	gift.EntityID = input.EntityID
 	gift.Status = status
 	gift.Occasion = input.Occasion
@@ -284,6 +305,7 @@ func UpdateGift(c *gin.Context) {
 	gift.Currency = input.Currency
 	gift.LifeEventID = input.LifeEventID
 	gift.ActivityID = input.ActivityID
+	defaultGivenGiftDate(&gift, previousStatus, clock.FromContext(c).Now())
 
 	if err := db.Save(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))

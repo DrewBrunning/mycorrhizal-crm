@@ -435,7 +435,7 @@ func ExportData(c *gin.Context) {
 	contactHeaders := []string{
 		"ID", "Firstname", "Lastname", "Nickname", "Gender", "Email", "Phone",
 		"Birthday", "Address", "How We Met", "Food Preference", "Work Information",
-		"Contact Information", "Circles", "Tags", "Periods", "Created At", "Updated At",
+		"Contact Information", "Circles", "Tags", "Periods", "Ambient", "Created At", "Updated At",
 		// Every postal address with its own sensitivity and map point, as
 		// parallel "; "-joined lists. The legacy "Address" column above
 		// stays the first address only.
@@ -470,6 +470,7 @@ func ExportData(c *gin.Context) {
 			strings.Join(circlesByVCardUID[contact.VCardUID], "; "),
 			strings.Join(tagsByVCardUID[contact.VCardUID], "; "),
 			formatExportPeriods(contact.CRM.Periods),
+			strconv.FormatBool(contact.Ambient),
 			contact.CreatedAt.Format(time.RFC3339),
 			contact.UpdatedAt.Format(time.RFC3339),
 		}
