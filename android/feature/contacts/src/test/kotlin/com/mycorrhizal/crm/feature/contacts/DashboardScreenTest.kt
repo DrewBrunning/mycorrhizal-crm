@@ -1,10 +1,12 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -37,6 +39,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -470,5 +473,66 @@ class DashboardScreenTest {
 
         assertEquals(1, backedUp)
         assertEquals(1, dismissed)
+    }
+
+    // Issue #1824: "Showing N of M" under a block the server capped.
+
+    private fun scrollToTag(tag: String) {
+        composeTestRule.onNodeWithTag(listTag).performScrollToNode(hasTestTag(tag))
+    }
+
+    @Test
+    fun `every capped block shows a showing-of-total caption when truncated`() {
+        // populatedState() has one row per block, so a larger total is truncation.
+        setContent(
+            populatedState().copy(
+                totals = DashboardTotals(
+                    birthdays = 40, upcomingReminders = 60, overdue = 26,
+                    reachOutSuggestions = 30, dataDecayOverdue = 27,
+                ),
+            ),
+        )
+
+        scrollToTag("dashboard-truncated-cadence")
+        composeTestRule.onNodeWithTag("dashboard-truncated-cadence").assertIsDisplayed().assert(hasText("Showing 1 of 26"))
+        scrollToTag("dashboard-truncated-data-decay")
+        composeTestRule.onNodeWithTag("dashboard-truncated-data-decay").assertIsDisplayed().assert(hasText("Showing 1 of 27"))
+        scrollToTag("dashboard-truncated-reach-out")
+        composeTestRule.onNodeWithTag("dashboard-truncated-reach-out").assertIsDisplayed().assert(hasText("Showing 1 of 30"))
+        scrollToTag("dashboard-truncated-birthday")
+        composeTestRule.onNodeWithTag("dashboard-truncated-birthday").assertIsDisplayed().assert(hasText("Showing 1 of 40"))
+        scrollToTag("dashboard-truncated-reminder")
+        composeTestRule.onNodeWithTag("dashboard-truncated-reminder").assertIsDisplayed().assert(hasText("Showing 1 of 60"))
+    }
+
+    @Test
+    fun `the caption is plain text with no link because no list screen exists to open`() {
+        setContent(populatedState().copy(totals = DashboardTotals(upcomingReminders = 60)))
+
+        scrollToTag("dashboard-truncated-reminder")
+        composeTestRule.onNodeWithTag("dashboard-truncated-reminder")
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+    }
+
+    @Test
+    fun `no caption when a block is not truncated or its total is absent`() {
+        // total == shown: nothing hidden. Absent total (older server): unknown.
+        setContent(
+            populatedState().copy(
+                totals = DashboardTotals(birthdays = 1, upcomingReminders = null, overdue = 1),
+            ),
+        )
+
+        scrollTo("Call Dana")
+        listOf("birthday", "reminder", "cadence", "data-decay", "reach-out").forEach {
+            composeTestRule.onNodeWithTag("dashboard-truncated-$it").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun `truncation is only reported when the total exceeds the shown rows`() {
+        assertTrue(isDashboardTruncated(shown = 25, total = 60))
+        assertFalse(isDashboardTruncated(shown = 25, total = 25))
+        assertFalse(isDashboardTruncated(shown = 24, total = null))
     }
 }

@@ -203,6 +203,21 @@ describe.each(THEMES)('%s theme contrast', (_name, theme) => {
     }
   });
 
+  test('every status colour is AA-readable as *text* on every surface tier (#1792)', () => {
+    // Status colours are used as text, not just as fills: outlined chips
+    // ("Degraded"), `color="error"` Typography, the "On track" health line.
+    // The fill/label pair above does not cover that, which is how chanterelle
+    // shipped at 1.83:1 on parchment.
+    for (const role of ['success', 'warning', 'error', 'info'] as const) {
+      for (const [label, background] of surfaces(theme)) {
+        expect(
+          contrastRatio(theme.palette[role].main, background),
+          `${role}.main as text on ${label}`,
+        ).toBeGreaterThanOrEqual(AA);
+      }
+    }
+  });
+
   test('the focus indicator is the brand primary and clears the 3:1 non-text floor (#186)', () => {
     // The override hardcodes the outline hex instead of referencing the
     // palette, so assert both that it is still the brand primary and that it

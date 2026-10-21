@@ -294,7 +294,14 @@
     "favoriteContact": "{{name}} als Favorit markieren",
     "unfavoriteContact": "Favoritenmarkierung für {{name}} entfernen",
     "favoriteError": "Favorit konnte nicht aktualisiert werden",
-    "showAll": "Alle anzeigen",
+    "onlyWithContactInfo": "Nur mit Kontaktdaten",
+    "filters": {
+      "button": "Filter",
+      "buttonActive": "Filter ({{count}})",
+      "title": "Filter",
+      "done": "Fertig"
+    },
+    "moreActions": "Weitere Aktionen",
     "hiddenContactable_one": "{{count}} Kontakt ohne Kontaktinformationen ist ausgeblendet",
     "hiddenContactable_other": "{{count}} Kontakte ohne Kontaktinformationen sind ausgeblendet",
     "archived": "Archiviert",
@@ -586,7 +593,8 @@
       "cadence": "Rhythmus & Nachverfolgung",
       "dataDecay": "Datenüberprüfung",
       "metadataExpand": "Karten-Metadaten aufklappen",
-      "metadataCollapse": "Karten-Metadaten zuklappen"
+      "metadataCollapse": "Karten-Metadaten zuklappen",
+      "customFieldsUngrouped": "Benutzerdefinierte Felder"
     },
     "email": "E-Mail",
     "phone": "Telefon",
@@ -2098,6 +2106,9 @@
     "label": "Bezeichnung",
     "labelHint": "Der Anzeigename auf den Kontaktseiten.",
     "labelRequired": "Bezeichnung ist erforderlich.",
+    "group": "Gruppe",
+    "groupHint": "Optional. Fasst zusammengehörige Felder auf Kontaktseiten zusammen. Höchstens {{max}} Zeichen.",
+    "groupTooLong": "Die Gruppe darf höchstens {{max}} Zeichen lang sein.",
     "key": "Schlüssel",
     "keyHint": "Stabiler technischer Name (Kleinbuchstaben, Unterstriche). Nach der Erstellung nicht mehr änderbar.",
     "keyRequired": "Schlüssel ist erforderlich.",
@@ -2234,6 +2245,12 @@
       "saveFailed": "Speichern der Vorliebe fehlgeschlagen"
     }
   },
+  "ambient": {
+    "toggleLabel": "Umgebungskontakt – ich sehe die Person ständig",
+    "toggleHelper": "Zählt als regelmäßiger Kontakt, ohne dass Aktivitäten erfasst werden",
+    "reasonHousehold": "Umgebungskontakt (lebt mit dir zusammen)",
+    "reasonFlag": "Umgebungskontakt (markiert)"
+  },
   "cadence": {
     "title": "Kadenz",
     "add": "Kadenz hinzufügen",
@@ -2304,7 +2321,8 @@
     "kind": {
       "organization": "Neuer Arbeitgeber",
       "title": "Neue Berufsbezeichnung",
-      "address": "Umgezogen"
+      "address": "Umgezogen",
+      "target_behind": "Ziel verfehlt"
     }
   },
   "syncConflicts": {

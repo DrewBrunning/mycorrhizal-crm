@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import {
+  Autocomplete,
   Box,
   Button,
   DialogActions,
@@ -24,6 +25,7 @@ import {
   type FieldType,
 } from '../api/fieldDefinitions';
 import { useRowKeys } from '../hooks/useRowKeys';
+import { groupLength, MAX_GROUP_LENGTH } from '../utils/customFieldGroups';
 import AppDialog from './AppDialog';
 
 interface FieldDefinitionDialogProps {
@@ -31,6 +33,8 @@ interface FieldDefinitionDialogProps {
   onClose: () => void;
   onSave: (input: FieldDefinitionInput) => Promise<void>;
   definition?: FieldDefinition | null; // null/undefined = create mode
+  // Existing group labels offered as suggestions for the Group field.
+  groupSuggestions?: string[];
 }
 
 interface FormState {
@@ -46,6 +50,7 @@ interface FormState {
   projectionMode: 'internal' | 'vcard';
   vcardName: string;
   sensitivity: FieldSensitivity;
+  group: string;
 }
 
 const emptyForm: FormState = {
@@ -61,6 +66,7 @@ const emptyForm: FormState = {
   projectionMode: 'internal',
   vcardName: '',
   sensitivity: 'normal',
+  group: '',
 };
 
 // FieldDefinitionDialog creates and edits a FieldDefinition (T7's replacement
@@ -71,6 +77,7 @@ export default function FieldDefinitionDialog({
   onClose,
   onSave,
   definition,
+  groupSuggestions = [],
 }: FieldDefinitionDialogProps) {
   const { t } = useTranslation();
   const isEditing = !!definition;
@@ -97,6 +104,7 @@ export default function FieldDefinitionDialog({
           projectionMode: projection.startsWith('vcard:') ? 'vcard' : 'internal',
           vcardName: projection.replace(/^vcard:X-/, ''),
           sensitivity: definition.sensitivity,
+          group: definition.group ?? '',
         });
       } else {
         setForm(emptyForm);
@@ -137,6 +145,12 @@ export default function FieldDefinitionDialog({
       return;
     }
 
+    const group = form.group.trim();
+    if (groupLength(group) > MAX_GROUP_LENGTH) {
+      setError(t('customFields.groupTooLong', { max: MAX_GROUP_LENGTH }));
+      return;
+    }
+
     const constraints: Record<string, unknown> = {};
     if (form.multi) constraints.multi = true;
     if (form.type === 'number') {
@@ -163,6 +177,8 @@ export default function FieldDefinitionDialog({
       projection:
         form.projectionMode === 'vcard' ? `vcard:X-${form.vcardName.trim()}` : 'internal-only',
       sensitivity: form.sensitivity,
+      // Always sent: "" clears the group on update (omitting would keep it).
+      group,
     };
 
     setSaving(true);
@@ -331,6 +347,20 @@ export default function FieldDefinitionDialog({
               helperText={t('customFields.vcardNameHint')}
             />
           )}
+
+          <Autocomplete
+            freeSolo
+            options={groupSuggestions}
+            inputValue={form.group}
+            onInputChange={(_, value) => set({ group: value })}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t('customFields.group')}
+                helperText={t('customFields.groupHint', { max: MAX_GROUP_LENGTH })}
+              />
+            )}
+          />
 
           <TextField
             select

@@ -55,6 +55,8 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.ui.R
 
@@ -195,7 +197,7 @@ internal fun PrepViewContent(
             item {
                 PrepCard(stringResource(R.string.prep_life_events_title), icon = Icons.Outlined.DateRange) {
                     briefing.lifeEvents.forEach { event ->
-                        val label = event.type?.replace('_', ' ')?.takeIf { it.isNotBlank() }
+                        val label = event.type?.takeIf { it.isNotBlank() }?.let { lifeEventTypeLabel(it) }
                         val description = event.description?.takeIf { it.isNotBlank() }
                         val line = when {
                             label != null && description != null -> "$label — $description"
@@ -384,7 +386,7 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
 private fun RelationshipRow(rel: BriefingRelationship, onOpenContact: (Int) -> Unit) {
     val name = rel.otherPartyName?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.prep_unknown_contact)
-    val label = rel.displayToken?.replace('_', ' ')?.takeIf { it.isNotBlank() }
+    val label = rel.displayToken?.takeIf { it.isNotBlank() }?.let { relationshipRoleLabel(it) }
     val text = if (label != null) "$name — $label" else name
     val targetId = rel.otherPartyContactId
 

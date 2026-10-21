@@ -78,40 +78,14 @@ val ANNIVERSARY_KIND_OPTIONS = listOf("birth", "death", "wedding")
  */
 val CARD_KIND_OPTIONS = listOf("individual", "group", "org", "location", "application", "device")
 
-/** Localized label for a type-option token; unrecognized tokens render verbatim. */
+/**
+ * Localized label for a type-option token (phone/email type, context, title kind,
+ * personal-info kind, anniversary kind, card kind, grammatical gender). Unrecognized
+ * and custom tokens fall back to [humanizeToken], never the raw token (issue #1755).
+ * The token -> string map lives in TokenLabels.kt.
+ */
 @Composable
-fun typeOptionLabel(token: String): String = when (token) {
-    "home" -> stringResource(R.string.contact_type_home)
-    "work" -> stringResource(R.string.contact_type_work)
-    "cell" -> stringResource(R.string.contact_type_cell)
-    "fax" -> stringResource(R.string.contact_type_fax)
-    "other" -> stringResource(R.string.contact_type_other)
-    "private" -> stringResource(R.string.contact_context_private)
-    "school" -> stringResource(R.string.contact_context_school)
-    "billing" -> stringResource(R.string.contact_context_billing)
-    "delivery" -> stringResource(R.string.contact_context_delivery)
-    "title" -> stringResource(R.string.contact_title_kind_title)
-    "role" -> stringResource(R.string.contact_title_kind_role)
-    "expertise" -> stringResource(R.string.contact_personal_info_kind_expertise)
-    "hobby" -> stringResource(R.string.contact_personal_info_kind_hobby)
-    "interest" -> stringResource(R.string.contact_personal_info_kind_interest)
-    "animate" -> stringResource(R.string.contact_gramgender_animate)
-    "common" -> stringResource(R.string.contact_gramgender_common)
-    "feminine" -> stringResource(R.string.contact_gramgender_feminine)
-    "inanimate" -> stringResource(R.string.contact_gramgender_inanimate)
-    "masculine" -> stringResource(R.string.contact_gramgender_masculine)
-    "neuter" -> stringResource(R.string.contact_gramgender_neuter)
-    "birth" -> stringResource(R.string.contact_anniversary_kind_birth)
-    "death" -> stringResource(R.string.contact_anniversary_kind_death)
-    "wedding" -> stringResource(R.string.contact_anniversary_kind_wedding)
-    "individual" -> stringResource(R.string.contact_card_kind_individual)
-    "group" -> stringResource(R.string.contact_card_kind_group)
-    "org" -> stringResource(R.string.contact_card_kind_org)
-    "location" -> stringResource(R.string.contact_card_kind_location)
-    "application" -> stringResource(R.string.contact_card_kind_application)
-    "device" -> stringResource(R.string.contact_card_kind_device)
-    else -> token
-}
+fun typeOptionLabel(token: String): String = typeOptionLabelRes(token)?.let { stringResource(it) } ?: humanizeToken(token)
 
 /**
  * Edit `contexts[0]` (the RFC 9554 standard "context" — private/work/…) that

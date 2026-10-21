@@ -306,6 +306,34 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideForbiddenNotifier(): com.mycorrhizal.crm.network.ForbiddenNotifier =
+        com.mycorrhizal.crm.network.ForbiddenNotifier()
+
+    /**
+     * Issue #1826: re-reads `/users/me` after an authenticated 403 so a demoted
+     * admin's UI updates without a restart. A `Provider` for the repository
+     * breaks the cycle (its HTTP client depends on the session manager), and
+     * the instance is created, and so started, when the main tree first
+     * injects it (`PermissionChangeViewModel`).
+     */
+    @Provides
+    @Singleton
+    fun provideRoleRefresher(
+        forbiddenNotifier: com.mycorrhizal.crm.network.ForbiddenNotifier,
+        sessionManager: SessionManager,
+        authRepository: javax.inject.Provider<AuthRepository>,
+    ): com.mycorrhizal.crm.data.session.RoleRefresher {
+        val refresher = com.mycorrhizal.crm.data.session.RoleRefresher(
+            forbiddenNotifier,
+            sessionManager,
+            fetchIsAdmin = { authRepository.get().fetchCurrentUser().getOrNull()?.isAdmin },
+        )
+        refresher.start(CoroutineScope(SupervisorJob() + Dispatchers.IO))
+        return refresher
+    }
+
+    @Provides
+    @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,

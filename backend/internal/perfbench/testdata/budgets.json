@@ -92,7 +92,7 @@
     },
     "reachout.detect": {
       "max_wall_ms": 300,
-      "reason": "Interactive: the reach-out suggestions strip. Five bounded queries. 300ms is ~1,000x the 285us median."
+      "reason": "Interactive: the reach-out suggestions strip. Seven bounded queries (two of them the issue #1796 target_behind pass's user-selection plucks, constant in contact count). 300ms is ~1,000x the 285us median."
     }
   },
   "data_movement_operations": {

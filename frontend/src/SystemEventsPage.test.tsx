@@ -246,6 +246,6 @@ test('result chips use success.dark / error.dark text in the light theme', async
         .getByText(label, { selector: '.MuiChip-label' })
         .closest('.MuiChip-root') as HTMLElement,
     ).color;
-  expect(chipColor('Success')).toBe('rgb(11, 118, 67)');
+  expect(chipColor('Success')).toBe('rgb(4, 97, 54)');
   expect(chipColor('Failure')).toBe('rgb(146, 59, 51)');
 });

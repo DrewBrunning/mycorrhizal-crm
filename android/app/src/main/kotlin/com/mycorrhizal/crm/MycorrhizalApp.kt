@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -37,6 +38,8 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -52,6 +55,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -589,6 +593,20 @@ private fun MainScaffold(
     // not stored: it only reacts to session transitions.
     hiltViewModel<DeviceRegistrationViewModel>()
 
+    // Issue #1826: an authenticated 403 re-reads /users/me (RoleRefresher). When that
+    // finds the user is no longer an admin while they sit on an admin-only screen,
+    // send them to the dashboard and say why. The admin entry points elsewhere vanish
+    // on their own (they read SessionState.isAdmin). Created before the NavHost so no
+    // screen's 403 can precede the listener.
+    val permissionChange = hiltViewModel<PermissionChangeViewModel>()
+    val permissionsSnackbar = remember { SnackbarHostState() }
+    val permissionsChangedMessage = stringResource(R.string.permissions_changed)
+    LaunchedEffect(permissionChange) {
+        navController.leaveAdminScreenOnDemotion(permissionChange.demotions) {
+            permissionsSnackbar.showSnackbar(permissionsChangedMessage)
+        }
+    }
+
     // The status bar is owned by MycorrhizalApp (issue #202), not this
     // scaffold, so the unauthenticated tree gets it too. Its documented
     // behaviour is unchanged for this tree:
@@ -650,12 +668,19 @@ private fun MainScaffold(
                 // *detail* pane in two-pane mode — the same graph either way,
                 // only the frame around it changes.
                 content = {
-                    AppNavGraph(
-                        navController = navController,
-                        isTwoPane = isTwoPane,
-                        onMenuClick = onMenuClick,
-                        onLocaleChanged = recreateActivity,
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AppNavGraph(
+                            navController = navController,
+                            isTwoPane = isTwoPane,
+                            onMenuClick = onMenuClick,
+                            onLocaleChanged = recreateActivity,
+                        )
+                        // Issue #1826: explains why an admin-only screen closed.
+                        SnackbarHost(
+                            hostState = permissionsSnackbar,
+                            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                        )
+                    }
                 },
                 // Issue #150: at Expanded, the contacts list is a persistent
                 // left pane outside the NavHost (so it survives selecting

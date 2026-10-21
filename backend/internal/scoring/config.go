@@ -50,6 +50,11 @@ type Config struct {
 	// affinityRelationTypes) — see computeCloseness's lookup.
 	RelationCloseness map[string]RelationCloseness
 
+	// TargetTierIntervalDays maps each target-closeness tier (exactly
+	// models.TargetClosenessTiers(), enforced by validate) to its expected
+	// interval, from tier_definitions (issue #1796).
+	TargetTierIntervalDays map[string]int
+
 	UnknownClosenessWeight       float64
 	UnknownClosenessIntervalDays int
 
@@ -216,6 +221,11 @@ func flatten(doc configDoc) (Config, error) {
 		}
 	}
 
+	cfg.TargetTierIntervalDays = make(map[string]int, len(doc.TierDefinitions))
+	for tier, def := range doc.TierDefinitions {
+		cfg.TargetTierIntervalDays[tier] = def.DefaultIntervalDays
+	}
+
 	return cfg, nil
 }
 
@@ -290,6 +300,18 @@ func validate(cfg Config) error {
 		}
 		if rc.DefaultIntervalDays < 1 {
 			return fmt.Errorf("scoring: closeness tier default_interval_days must be >= 1, got %d", rc.DefaultIntervalDays)
+		}
+	}
+
+	// Drift check (issue #1796): the target-closeness vocabulary has one source,
+	// tier_definitions, and must equal the API oneof / DB CHECK token list.
+	tiers := models.TargetClosenessTiers()
+	if len(cfg.TargetTierIntervalDays) != len(tiers) {
+		return fmt.Errorf("scoring: tier_definitions keys must be exactly %v, got %d keys", tiers, len(cfg.TargetTierIntervalDays))
+	}
+	for _, tier := range tiers {
+		if _, ok := cfg.TargetTierIntervalDays[tier]; !ok {
+			return fmt.Errorf("scoring: tier_definitions is missing target closeness tier %q", tier)
 		}
 	}
 

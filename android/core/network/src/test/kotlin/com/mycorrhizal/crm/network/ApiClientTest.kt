@@ -2055,6 +2055,28 @@ class ApiClientTest {
     }
 
     @Test
+    fun `get dashboard parses the capped-block totals`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"birthdays": [], "upcoming_reminders": [], "overdue": [],
+                 "birthdays_total": 40, "upcoming_reminders_total": 60, "overdue_total": 26,
+                 "reach_out_suggestions_total": 30, "data_decay_overdue_total": 27,
+                 "contact_sync_conflicts_total": 3}
+                """.trimIndent(),
+            ),
+        )
+
+        val dashboard = client.getDashboard().getOrThrow()
+
+        assertEquals(40, dashboard.birthdaysTotal)
+        assertEquals(60, dashboard.upcomingRemindersTotal)
+        assertEquals(26, dashboard.overdueTotal)
+        assertEquals(30, dashboard.reachOutSuggestionsTotal)
+        assertEquals(27, dashboard.dataDecayOverdueTotal)
+    }
+
+    @Test
     fun `get dashboard tolerates every collection key being absent`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -2073,6 +2095,13 @@ class ApiClientTest {
         assertTrue(dashboard.favorites.isEmpty())
         assertTrue(dashboard.reachOutSuggestions.isEmpty())
         assertTrue(dashboard.dataDecayOverdue.isEmpty())
+        // Issue #1824: an older server omits every `*_total`; absent must stay
+        // null (no caption), never default to 0.
+        assertNull(dashboard.birthdaysTotal)
+        assertNull(dashboard.upcomingRemindersTotal)
+        assertNull(dashboard.overdueTotal)
+        assertNull(dashboard.reachOutSuggestionsTotal)
+        assertNull(dashboard.dataDecayOverdueTotal)
     }
 
     @Test

@@ -2,6 +2,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import BusinessIcon from '@mui/icons-material/Business';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import {
   Alert,
   Avatar,
@@ -30,6 +31,7 @@ const kindIcon: Record<ReachOutSuggestionKind, ElementType> = {
   organization: BusinessIcon,
   title: BadgeIcon,
   address: HomeIcon,
+  target_behind: TrackChangesIcon,
 };
 
 // The event-driven counterpart to OverdueCadenceList (issue #177): "here's a

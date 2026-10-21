@@ -116,7 +116,7 @@ class EntityFormScreensFlowTest {
         composeTestRule.onNodeWithTag("life-event-category").performClick()
         composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("married").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Married").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Create").performClick()
 
         coVerify(exactly = 1) { repo.create(any()) }

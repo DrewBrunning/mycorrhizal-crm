@@ -25,6 +25,23 @@ type ContactScoreResponse struct {
 	// omitted when Ambient is false.
 	Ambient       bool   `json:"ambient"`
 	AmbientReason string `json:"ambient_reason,omitempty"`
+
+	// Target is always present (issue #1796): null when the contact has no target
+	// closeness. It reports the target's status against the same Recency and
+	// Frequency facets; it does not feed back into Score or Band.
+	Target *ContactScoreTarget `json:"target"`
+}
+
+// ContactScoreTarget is the target-closeness status of a contact (ADR 0023
+// amendment 2026-10-16). Status is on_track|drifting|behind; IntervalSource is
+// cadence_policy|target_tier.
+type ContactScoreTarget struct {
+	Tier           string  `json:"tier"`
+	Status         string  `json:"status"`
+	Value          float64 `json:"value"`
+	IntervalDays   int     `json:"interval_days"`
+	IntervalSource string  `json:"interval_source"`
+	Reason         string  `json:"reason"`
 }
 
 // ContactScoreFacet is one weighted facet's contribution and plain-language

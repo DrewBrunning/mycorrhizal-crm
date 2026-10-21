@@ -3,14 +3,14 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 92.39,
-      "linesTotal": 92,
-      "branches": 89.7,
+      "lines": 92.47,
+      "linesTotal": 93,
+      "branches": 91.17,
       "branchesTotal": 68
     },
     "src/App.tsx": {
-      "lines": 72.89,
-      "linesTotal": 107,
+      "lines": 73.14,
+      "linesTotal": 108,
       "branches": 54,
       "branchesTotal": 50
     },
@@ -21,16 +21,16 @@
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
-      "lines": 87.67,
-      "linesTotal": 73,
-      "branches": 81.39,
-      "branchesTotal": 43
+      "lines": 88.31,
+      "linesTotal": 77,
+      "branches": 83.33,
+      "branchesTotal": 48
     },
     "src/CircleTagTriagePage.tsx": {
-      "lines": 79.25,
-      "linesTotal": 135,
-      "branches": 72.3,
-      "branchesTotal": 65
+      "lines": 79.56,
+      "linesTotal": 137,
+      "branches": 73.13,
+      "branchesTotal": 67
     },
     "src/CirclesTagsPage.tsx": {
       "lines": 100,
@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.47,
-      "linesTotal": 281,
+      "lines": 86.75,
+      "linesTotal": 287,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -51,15 +51,15 @@
       "branchesTotal": 29
     },
     "src/ContactsPage.tsx": {
-      "lines": 87.42,
-      "linesTotal": 175,
-      "branches": 81.81,
-      "branchesTotal": 110
+      "lines": 89,
+      "linesTotal": 191,
+      "branches": 84.44,
+      "branchesTotal": 135
     },
     "src/DashboardPage.tsx": {
-      "lines": 74.66,
-      "linesTotal": 150,
-      "branches": 61.45,
+      "lines": 75.48,
+      "linesTotal": 155,
+      "branches": 62.5,
       "branchesTotal": 96
     },
     "src/DataSettingsPage.tsx": {
@@ -113,8 +113,8 @@
     "src/PrepViewPage.tsx": {
       "lines": 97.29,
       "linesTotal": 37,
-      "branches": 80.88,
-      "branchesTotal": 68
+      "branches": 81.42,
+      "branchesTotal": 70
     },
     "src/RegisterPage.tsx": {
       "lines": 87.8,
@@ -143,8 +143,8 @@
     "src/SystemStatusPage.tsx": {
       "lines": 98.91,
       "linesTotal": 92,
-      "branches": 85.48,
-      "branchesTotal": 124
+      "branches": 86.06,
+      "branchesTotal": 122
     },
     "src/UsersPage.tsx": {
       "lines": 91.95,
@@ -614,6 +614,18 @@
       "branches": 100,
       "branchesTotal": 16
     },
+    "src/components/AmbientExplanation.tsx": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 3
+    },
+    "src/components/AmbientToggle.tsx": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 100,
+      "branchesTotal": 0
+    },
     "src/components/AnniversariesEditor.tsx": {
       "lines": 100,
       "linesTotal": 25,
@@ -639,7 +651,7 @@
       "branchesTotal": 16
     },
     "src/components/BackgroundJobsPanel.tsx": {
-      "lines": 97.29,
+      "lines": 100,
       "linesTotal": 37,
       "branches": 72.13,
       "branchesTotal": 61
@@ -670,9 +682,9 @@
     },
     "src/components/CadencePanel.tsx": {
       "lines": 100,
-      "linesTotal": 15,
-      "branches": 95.45,
-      "branchesTotal": 22
+      "linesTotal": 16,
+      "branches": 96.15,
+      "branchesTotal": 26
     },
     "src/components/CalendarSyncSettings.tsx": {
       "lines": 87.5,
@@ -725,18 +737,18 @@
     "src/components/ContactHeader.tsx": {
       "lines": 92.78,
       "linesTotal": 97,
-      "branches": 91.72,
-      "branchesTotal": 133
+      "branches": 91.85,
+      "branchesTotal": 135
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 76.53,
-      "linesTotal": 179,
-      "branches": 74.67,
+      "lines": 76.96,
+      "linesTotal": 178,
+      "branches": 75,
       "branchesTotal": 308
     },
     "src/components/ContactMap.tsx": {
       "lines": 100,
-      "linesTotal": 73,
+      "linesTotal": 74,
       "branches": 100,
       "branchesTotal": 22
     },
@@ -747,10 +759,10 @@
       "branchesTotal": 74
     },
     "src/components/ContactTimeline.tsx": {
-      "lines": 92.85,
-      "linesTotal": 28,
-      "branches": 75.58,
-      "branchesTotal": 86
+      "lines": 93.1,
+      "linesTotal": 29,
+      "branches": 92.85,
+      "branchesTotal": 84
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 96.77,
@@ -770,6 +782,12 @@
       "branches": 100,
       "branchesTotal": 4
     },
+    "src/components/CustomFieldGroups.tsx": {
+      "lines": 100,
+      "linesTotal": 9,
+      "branches": 100,
+      "branchesTotal": 8
+    },
     "src/components/CustomFieldValueRow.tsx": {
       "lines": 100,
       "linesTotal": 22,
@@ -779,8 +797,8 @@
     "src/components/CustomFieldsSettings.tsx": {
       "lines": 95.23,
       "linesTotal": 42,
-      "branches": 75,
-      "branchesTotal": 20
+      "branches": 77.27,
+      "branchesTotal": 22
     },
     "src/components/DataDecayDialog.tsx": {
       "lines": 93.75,
@@ -831,7 +849,7 @@
       "branchesTotal": 33
     },
     "src/components/ErrorAggregationPanel.tsx": {
-      "lines": 95.45,
+      "lines": 100,
       "linesTotal": 22,
       "branches": 62.5,
       "branchesTotal": 24
@@ -885,10 +903,10 @@
       "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
-      "lines": 93.42,
-      "linesTotal": 76,
-      "branches": 88.46,
-      "branchesTotal": 78
+      "lines": 93.9,
+      "linesTotal": 82,
+      "branches": 89.15,
+      "branchesTotal": 83
     },
     "src/components/FieldSectionPicker.tsx": {
       "lines": 92.85,
@@ -923,7 +941,7 @@
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 96.61,
       "linesTotal": 59,
-      "branches": 93.22,
+      "branches": 94.91,
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
@@ -969,7 +987,7 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 81.01,
+      "lines": 86.44,
       "linesTotal": 295,
       "branches": 76.5,
       "branchesTotal": 200
@@ -1095,7 +1113,7 @@
       "branchesTotal": 48
     },
     "src/components/NotificationHealthPanel.tsx": {
-      "lines": 92.3,
+      "lines": 100,
       "linesTotal": 13,
       "branches": 95.65,
       "branchesTotal": 23
@@ -1143,15 +1161,15 @@
       "branchesTotal": 20
     },
     "src/components/OverdueCadenceList.tsx": {
-      "lines": 83.33,
-      "linesTotal": 6,
+      "lines": 85.71,
+      "linesTotal": 7,
       "branches": 85.71,
       "branchesTotal": 14
     },
     "src/components/PageHeader.tsx": {
       "lines": 100,
       "linesTotal": 3,
-      "branches": 87.5,
+      "branches": 100,
       "branchesTotal": 8
     },
     "src/components/PaperlessDocumentSearchDialog.tsx": {
@@ -1251,15 +1269,15 @@
       "branchesTotal": 29
     },
     "src/components/ReminderList.tsx": {
-      "lines": 97.36,
-      "linesTotal": 38,
-      "branches": 76.47,
+      "lines": 97.05,
+      "linesTotal": 34,
+      "branches": 94.11,
       "branchesTotal": 17
     },
     "src/components/ReviewDuplicatesDialog.tsx": {
       "lines": 86.11,
       "linesTotal": 36,
-      "branches": 75,
+      "branches": 77.77,
       "branchesTotal": 36
     },
     "src/components/RouteLoadingFallback.tsx": {
@@ -1335,7 +1353,7 @@
       "branchesTotal": 12
     },
     "src/components/SubsystemHealthPanel.tsx": {
-      "lines": 96.15,
+      "lines": 100,
       "linesTotal": 26,
       "branches": 81.25,
       "branchesTotal": 32
@@ -1982,6 +2000,12 @@
       "branches": 100,
       "branchesTotal": 27
     },
+    "src/utils/customFieldGroups.ts": {
+      "lines": 100,
+      "linesTotal": 25,
+      "branches": 89.47,
+      "branchesTotal": 19
+    },
     "src/utils/dashboardGrid.ts": {
       "lines": 100,
       "linesTotal": 6,
@@ -2014,9 +2038,9 @@
     },
     "src/utils/localDate.ts": {
       "lines": 100,
-      "linesTotal": 9,
+      "linesTotal": 14,
       "branches": 100,
-      "branchesTotal": 5
+      "branchesTotal": 8
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,
