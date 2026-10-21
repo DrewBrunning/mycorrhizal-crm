@@ -330,3 +330,21 @@ func TestDetectReachOutSuggestions_TargetPassFailureIsLoggedNotFatal(t *testing.
 	_, err := DetectReachOutSuggestions(e.db, e.cfg)
 	require.NoError(t, err)
 }
+
+// The reminder's "last interaction" date is the wall-clock date in the
+// reminder location (ADR 0023 amendment), while the dedup key (new_value)
+// stays RFC3339 UTC. Kiritimati (UTC+14) moves 2030-05-06 12:00 UTC onto
+// 2030-05-07, so a UTC-formatted date would fail here.
+func TestTargetBehind_ReminderDateUsesReminderLocation(t *testing.T) {
+	e := newTargetEnv(t)
+	e.cfg.ReminderTimezone = "Pacific/Kiritimati"
+	c := e.contact(t, "Alice", "close")
+	last := e.activity(t, c, 40)
+
+	require.Equal(t, 1, e.run(t))
+	row := e.rows(t)[0]
+	assert.Equal(t, last.UTC().Format(time.RFC3339), row.NewValue)
+	var reminder models.Reminder
+	require.NoError(t, e.db.First(&reminder, *row.ReminderID).Error)
+	assert.Equal(t, "Reach out — behind your close target: Alice Target (last interaction 2030-05-07)", reminder.Message)
+}
