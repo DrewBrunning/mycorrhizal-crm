@@ -697,7 +697,7 @@ class PreferencesViewModel @Inject constructor(
                                         !PreferenceCategory.isGiftsTabCategory(it.category)
                                 }
                                 .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 3 }
-                                .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category), labelFamily = EntityLabelFamily.PREFERENCE, labelToken = p.category, labelDetail = p.value) },
+                                .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category), labelFamily = EntityLabelFamily.PREFERENCE, labelToken = p.category, labelDetail = preferenceDetail(p)) },
                         )
                     }
                 },
@@ -965,10 +965,17 @@ private fun lifeEventLabel(e: LifeEvent): String {
 
 private fun giftLabel(g: Gift): String = g.occasion?.let { "$it — ${g.description}" } ?: g.description
 
-// internal (not private): also used by EntityListScreens.kt's GiftPreferencesPanel.
-internal fun preferenceLabel(p: Preference): String {
-    val base = p.key?.let { "${p.category}: $it = ${p.value}" } ?: "${p.category}: ${p.value}"
+/**
+ * The part of a preference after its category: `key = value`, plus notes when present.
+ * Kept separate so the #1755 localised row title can re-attach it to a translated
+ * category without dropping the key or notes (the delete prompt reads this too).
+ */
+internal fun preferenceDetail(p: Preference): String {
+    val base = p.key?.let { "$it = ${p.value}" } ?: p.value
     return p.notes?.takeIf { it.isNotBlank() }?.let { "$base\n$it" } ?: base
 }
+
+// internal (not private): also used by EntityListScreens.kt's GiftPreferencesPanel.
+internal fun preferenceLabel(p: Preference): String = "${p.category}: ${preferenceDetail(p)}"
 
 private fun agendaLabel(a: ConversationAgenda): String = a.content

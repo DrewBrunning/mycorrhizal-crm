@@ -641,7 +641,19 @@ class PreferencesViewModelTest {
         // #1755: the UI localizes from the raw category token, not from the English label.
         assertEquals(EntityLabelFamily.PREFERENCE, vm.uiState.value.items[0].labelFamily)
         assertEquals("food", vm.uiState.value.items[0].labelToken)
-        assertEquals("peanuts", vm.uiState.value.items[0].labelDetail)
+        // The localised row title re-attaches this to the translated category, so it
+        // must carry the key (and notes) the raw English label had.
+        assertEquals("allergy = peanuts", vm.uiState.value.items[0].labelDetail)
+    }
+
+    @Test fun `preference detail keeps the key and notes`() {
+        assertEquals(
+            "allergy = peanuts\nsevere",
+            preferenceDetail(
+                Preference(id = "p1", entityId = UID, category = "food", key = "allergy", value = "peanuts", notes = "severe"),
+            ),
+        )
+        assertEquals("pottery", preferenceDetail(Preference(id = "p2", entityId = UID, category = "hobby", value = "pottery")))
     }
 
     @Test fun `an unrecognized category falls to the other section`() = runTest(mainDispatcherRule.testDispatcher) {
