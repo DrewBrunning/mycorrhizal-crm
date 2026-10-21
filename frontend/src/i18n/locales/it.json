@@ -2304,7 +2304,8 @@
     "kind": {
       "organization": "Nuovo datore di lavoro",
       "title": "Nuovo titolo professionale",
-      "address": "Si è trasferito"
+      "address": "Si è trasferito",
+      "target_behind": "Sotto l'obiettivo"
     }
   },
   "syncConflicts": {

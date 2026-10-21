@@ -23,6 +23,7 @@ unleash:
         - ^contact_score_controller\.go$
         - ^contact_share_controller\.go$
         - ^contact_subscription_controller\.go$
+        - ^contact_target_closeness_controller\.go$
         - ^conversation_agenda_controller\.go$
         - ^dashboard_controller\.go$
         - ^data_decay_controller\.go$

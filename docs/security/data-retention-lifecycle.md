@@ -155,6 +155,15 @@ hard-deletes (no `deleted_at`), but its PII (`old_value`/`new_value`, plus the `
 back-reference) has its own age: `pii-inventory.md` ties it to `AUDIT_RETENTION_DAYS` ("derived from the
 audit trail, ages with it").
 
+Since issue #1796 (ADR 0023 amendment 2026-10-16) the table also holds **`target_behind`** rows. These are
+not audit-derived: the daily `reach_out_detection` job creates one per contact that is behind its target
+closeness, with `old_value` = the tier token, `new_value` = the last qualifying interaction's RFC3339 UTC
+timestamp and `audit_event_id = 0`. They share the table's lifecycle below (same purge, same contact
+cascade). Consequence: the "one nudge per gap" dedup only remembers a dismissed gap for the retention
+window, so a contact still behind on the **same** last interaction after `AUDIT_RETENTION_DAYS` gets one
+fresh nudge (and companion Reminder) once the old row is purged. Rolling migration `000076` back deletes
+the `target_behind` rows (they are re-derived by the job).
+
 - **Where / who**: `reach_out_suggestions` table in `mycorrhizal.db`, `user_id`-scoped. Surfaced only on
   the owner's dashboard; the companion `Reminder` rides the normal delivery pipeline.
 - **Retention**: `AUDIT_RETENTION_DAYS` (default 90) — the same window as the audit events it is derived

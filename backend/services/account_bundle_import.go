@@ -32,6 +32,8 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Record:   &contactmodel.Record{UID: c.UID, Card: card, Envelope: c.CRM, Passthrough: c.Passthrough},
 			Archived: c.Archived,
 			Favorite: c.IsFavorite,
+
+			TargetCloseness: bundleTargetCloseness(c.CRM.TargetCloseness),
 		})
 	}
 
@@ -332,4 +334,20 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// bundleTargetCloseness returns the bundle's target tier only when it is in the
+// vocabulary; anything else is dropped (stored as NULL) rather than tripping the
+// DB CHECK (issue #1796).
+func bundleTargetCloseness(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	for _, tier := range models.TargetClosenessTiers() {
+		if *v == tier {
+			t := tier
+			return &t
+		}
+	}
+	return nil
 }

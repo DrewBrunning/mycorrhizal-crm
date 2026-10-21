@@ -75,6 +75,11 @@ type RawInputs struct {
 	// above; Closeness, ReachOut and LastUpdated are unchanged.
 	Ambient       bool
 	AmbientReason string
+
+	// TargetTier is the contact's target closeness (issue #1796, ADR 0023
+	// amendment): "" = no target. A token with no entry in
+	// Config.TargetTierIntervalDays is treated as no target.
+	TargetTier string
 }
 
 // Ambient reasons carried on RawInputs.AmbientReason and Result.AmbientReason.
@@ -114,6 +119,33 @@ type Result struct {
 	// (AmbientReasonHousehold or AmbientReasonFlag), empty when not ambient.
 	Ambient       bool   `json:"ambient"`
 	AmbientReason string `json:"ambient_reason,omitempty"`
+
+	// Target is nil when the contact has no (recognized) target closeness.
+	Target *TargetResult `json:"target"`
+}
+
+// Target statuses on TargetResult.Status. Mirrored in openapi.yaml and the
+// clients (frontend trap #4).
+const (
+	TargetStatusOnTrack  = "on_track"
+	TargetStatusDrifting = "drifting"
+	TargetStatusBehind   = "behind"
+)
+
+// Interval sources on TargetResult.IntervalSource.
+const (
+	IntervalSourceCadencePolicy = "cadence_policy"
+	IntervalSourceTargetTier    = "target_tier"
+)
+
+// TargetResult is how a contact is doing against its target closeness.
+type TargetResult struct {
+	Tier           string  `json:"tier"`
+	Status         string  `json:"status"`
+	Value          float64 `json:"value"`
+	IntervalDays   int     `json:"interval_days"`
+	IntervalSource string  `json:"interval_source"`
+	Reason         string  `json:"reason"`
 }
 
 // Compute derives Result from raw, already-gathered facts. Pure: same inputs
@@ -145,6 +177,7 @@ func Compute(raw RawInputs, cfg Config) Result {
 		result.Ambient = true
 		result.AmbientReason = raw.AmbientReason
 	}
+	result.Target = computeTarget(raw, cfg, intervalDays, recency, frequency)
 	return result
 }
 
