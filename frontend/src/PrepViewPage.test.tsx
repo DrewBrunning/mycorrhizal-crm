@@ -179,6 +179,33 @@ test('cadence card shows on-track when overdue_by is zero', async () => {
   expect(screen.queryByText(/days overdue/)).toBeNull();
 });
 
+test.each([
+  ['household', 'Ambient contact (lives with you)'],
+  ['flag', 'Ambient contact (marked)'],
+] as const)(
+  'cadence card explains an ambient contact (%s), never overdue',
+  async (reason, text) => {
+    mockBriefingFetch({
+      ...fullBriefing,
+      cadence: {
+        policy: { id: 'p1', entity_id: 'alice-uid', target_interval_days: 30 },
+        health: {
+          has_qualifying_interaction: false,
+          overdue_by: 0,
+          ambient: true,
+          ambient_reason: reason,
+        },
+      },
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+    expect(screen.getByText(text)).toBeInTheDocument();
+    expect(screen.queryByText(/days overdue/)).toBeNull();
+    expect(screen.queryByText('On track')).toBeNull();
+  },
+);
+
 test('cadence card shows no-interactions state without a qualifying interaction ever', async () => {
   mockBriefingFetch({
     ...fullBriefing,

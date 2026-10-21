@@ -28,6 +28,7 @@ import {
   type ContactBriefing,
   getContactBriefing,
 } from './api/briefings';
+import AmbientExplanation from './components/AmbientExplanation';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -164,7 +165,11 @@ export default function PrepViewPage() {
                 {t('prep.cadence.title')}
               </Typography>
             </Stack>
-            {briefing.cadence.health.has_qualifying_interaction ? (
+            {briefing.cadence.health.ambient ? (
+              <Box sx={{ mt: 0.5 }}>
+                <AmbientExplanation reason={briefing.cadence.health.ambient_reason} />
+              </Box>
+            ) : briefing.cadence.health.has_qualifying_interaction ? (
               <Box sx={{ mt: 0.5 }}>
                 {briefing.cadence.health.overdue_by > 0 ? (
                   <Typography

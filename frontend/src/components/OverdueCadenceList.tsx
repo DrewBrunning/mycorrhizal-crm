@@ -26,8 +26,16 @@ interface OverdueCadenceListProps {
 // links to the contact. Contact-name fallback to the policy's entity uid
 // keeps a row usable even if the contact was hard-purged out from under a
 // stale policy.
-export default function OverdueCadenceList({ overdue, loading, error }: OverdueCadenceListProps) {
+export default function OverdueCadenceList({
+  overdue: allOverdue,
+  loading,
+  error,
+}: OverdueCadenceListProps) {
   const { t } = useTranslation();
+  // Issue #1735: an ambient contact is never overdue. The server already
+  // excludes them (overdue_by 0); this keeps a stale or non-conforming row
+  // from rendering an overdue badge.
+  const overdue = allOverdue.filter((item) => !item.health.ambient);
   const { formatDate } = useDateFormat();
 
   if (error) {
