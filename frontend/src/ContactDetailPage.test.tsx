@@ -605,7 +605,7 @@ function loggedErrors(): string[] {
 // Issue #1782: Merge / Subscribe / Export / Archive / Delete live in the
 // header's "More" menu at wide widths (Stay in touch, Prep, Share stay inline).
 function headerMenuItem(name: string): HTMLElement {
-  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
   return screen.getByRole('menuitem', { name });
 }
 

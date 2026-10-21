@@ -82,7 +82,7 @@ for (const width of WIDTHS) {
         await waitForLoading(page);
 
         // Below lg the single icon button; at lg and above the "More" button.
-        const trigger = page.getByRole('button', { name: /^(Actions|More actions)$/ });
+        const trigger = page.getByRole('button', { name: /^(Actions|More)$/ });
         await trigger.focus();
         await expect(trigger).toBeFocused();
         await page.keyboard.press('Enter');
