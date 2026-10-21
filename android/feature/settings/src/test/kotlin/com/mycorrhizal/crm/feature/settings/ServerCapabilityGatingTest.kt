@@ -39,7 +39,15 @@ class ServerCapabilityGatingTest {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerCapabilities provides capabilities) {
                 MycorrhizalTheme {
-                    SettingsContent(state = adminState, onLogout = {})
+                    // Every group's content in one column, so the capability gates of the whole
+                    // Settings tree are asserted against one deployment at once.
+                    androidx.compose.foundation.layout.Column {
+                        SettingsRootContent(state = adminState, onLogout = {})
+                        AccountSettingsContent(state = adminState)
+                        TrackingSettingsContent(state = adminState)
+                        IntegrationsSettingsContent()
+                        AdministrationSettingsContent()
+                    }
                 }
             }
         }
@@ -72,7 +80,8 @@ class ServerCapabilityGatingTest {
         composeTestRule.onNodeWithText("Notification channels").assertDoesNotExist()
         composeTestRule.onNodeWithText("User management").assertDoesNotExist()
         composeTestRule.onNodeWithText("System events").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Set up biometric sign-in").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Integrations").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Administration").assertDoesNotExist()
         // Issue #1367: storage only — no outbound integrations, no calendar sync.
         composeTestRule.onNodeWithText("Calendar sync").assertDoesNotExist()
         composeTestRule.onNodeWithText("Immich").assertDoesNotExist()
@@ -86,7 +95,9 @@ class ServerCapabilityGatingTest {
     fun `settings keeps the core product rows on an embedded deployment`() {
         setSettingsContent(embeddedCapabilities)
 
-        composeTestRule.onNodeWithText("Data suggestions").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Change password").assertExists()
+        composeTestRule.onNodeWithText("Show notifications").assertExists()
+        composeTestRule.onNodeWithText("Account").assertExists()
     }
 
     @Test
@@ -94,11 +105,9 @@ class ServerCapabilityGatingTest {
         setSettingsContent(ServerCapabilitiesInfo.Unknown)
 
         // Fail open: an unreachable /health never strips settings.
-        composeTestRule.onNodeWithText("Two-factor authentication").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Webhooks").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API tokens").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Calendar sync").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Immich").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("GeoPulse").performScrollTo().assertIsDisplayed()
+        listOf(
+            "Two-factor authentication", "Webhooks", "API tokens", "Calendar sync", "Immich", "GeoPulse",
+            "Notification channels", "User management", "System events",
+        ).forEach { composeTestRule.onNodeWithText(it).assertExists() }
     }
 }

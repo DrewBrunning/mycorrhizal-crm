@@ -3,6 +3,7 @@ import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { DiagnosticCheck, DiagnosticStatus } from '../api/diagnostics';
 import { useDiagnostics } from '../hooks/useDiagnostics';
+import PageHeader from './PageHeader';
 
 const STATUS_COLORS: Record<DiagnosticStatus, 'success' | 'warning' | 'error' | 'default'> = {
   ok: 'success',
@@ -46,39 +47,35 @@ export default function DiagnosticsPanel() {
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" component="h2">
-            {t('diagnostics.title')}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.secondary',
-            }}
+      <PageHeader
+        sx={{ mb: 1 }}
+        leading={
+          <Box>
+            <Typography variant="subtitle1" component="h2">
+              {t('diagnostics.title')}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {t('diagnostics.description')}
+            </Typography>
+          </Box>
+        }
+        actions={
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => void run()}
+            disabled={loading}
           >
-            {t('diagnostics.description')}
-          </Typography>
-        </Box>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<PlayArrowIcon />}
-          onClick={() => void run()}
-          disabled={loading}
-          sx={{ flexShrink: 0 }}
-        >
-          {loading ? t('diagnostics.running') : t('diagnostics.run')}
-        </Button>
-      </Box>
+            {loading ? t('diagnostics.running') : t('diagnostics.run')}
+          </Button>
+        }
+      />
 
       {error && (
         <Typography color="error" variant="body2" sx={{ mb: 1 }}>
