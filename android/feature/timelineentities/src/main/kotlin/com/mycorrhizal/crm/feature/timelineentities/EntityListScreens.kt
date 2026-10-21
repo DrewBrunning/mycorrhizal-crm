@@ -1287,6 +1287,7 @@ private fun preferenceCategoryLabelRes(category: String): Int? = when (category)
     "flowers" -> R.string.preferences_category_flowers
     "color" -> R.string.preferences_category_color
     "hobby" -> R.string.preferences_category_hobby
+    "dislike_activity" -> R.string.preferences_category_dislike_activity
     "fragrance" -> R.string.preferences_category_fragrance
     "cause" -> R.string.preferences_category_cause
     "dislike" -> R.string.preferences_category_dislike
@@ -1399,6 +1400,7 @@ private fun preferenceSectionLabelRes(section: String): Int = when (section) {
     PreferenceSection.FOOD_DRINK -> R.string.preferences_section_food_drink
     PreferenceSection.MEDIA -> R.string.preferences_section_media
     PreferenceSection.HOBBY -> R.string.preferences_section_hobby
+    PreferenceSection.DISLIKES -> R.string.preferences_section_dislikes
     PreferenceSection.JEWELRY -> R.string.preferences_section_jewelry
     PreferenceSection.GIFT_PREFERENCES -> R.string.preferences_section_gift_preferences
     PreferenceSection.GIFT_AVOID -> R.string.preferences_section_gift_avoid

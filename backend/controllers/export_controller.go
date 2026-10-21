@@ -672,7 +672,7 @@ func ExportData(c *gin.Context) {
 	// Issue #970: LIFE_EVENTS/GIFTS/CONVERSATION_AGENDA/CADENCE_POLICIES/
 	// PREFERENCES/REMINDER_COMPLETIONS — see writeExportExtraSections'
 	// doc comment (export_csv_extra_sections.go).
-	if !writeExportExtraSections(c, log, &buf, writer, contactByVCardUID, contactByID,
+	if !writeExportExtraSections(c, log, &buf, writer, contactByVCardUID, contactByID, contacts,
 		lifeEvents, gifts, agendaItems, cadencePolicies, preferences, reminderCompletions) {
 		return
 	}

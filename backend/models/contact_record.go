@@ -94,6 +94,14 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		envelope := c.CRM
 		envelope.Ambient = ambientPtr(c.Ambient)
 		envelope.TargetCloseness = c.TargetCloseness
+		// Issue #1738: an outward projection (sel non-nil) excludes
+		// personalInfo entries whose CRM metadata marks them private/secret.
+		// A nil sel is the owner's own read (REST detail) or a full-fidelity
+		// backup (CSV, account bundle), which keeps everything — the same
+		// documented exceptions the sensitivity model already has.
+		if sel != nil && !sel.IncludeSensitive {
+			card.PersonalInfo, envelope.PersonalInfoMeta = filterSensitivePersonalInfo(card.PersonalInfo, envelope.PersonalInfoMeta)
+		}
 		return ApplyFieldSelection(&contactmodel.Record{
 			UID:         c.VCardUID,
 			ETag:        c.ETag,
@@ -107,6 +115,9 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		record.Card.RelatedTo = projectRelationshipEdges(db, record.UID, record.Card.RelatedTo, includeSensitive)
 		record.Card.Keywords = projectTags(db, record.UID, record.Card.Keywords)
 		record.Card.PersonalInfo = projectPreferences(db, record.UID, record.Card.PersonalInfo, includeSensitive)
+		if sel != nil && !sel.IncludeSensitive {
+			record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = filterSensitivePersonalInfo(record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta)
+		}
 		record.Passthrough.VCard = projectCustomFields(db, record.UID, record.Passthrough.VCard, includeSensitive)
 		return ApplyFieldSelection(record, sel)
 	}
@@ -315,6 +326,13 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 		}
 	}
 	for _, pref := range prefs {
+		// A dislike is not a hobby (issue #1738): exporting it as a HOBBY was
+		// a bug, not documented behavior. Post-backfill dislikes live in
+		// preference category dislike_activity, but a row created through the
+		// deprecated hobby path mid-window must not leak either.
+		if pref.Key == PreferenceKeyDislike {
+			continue
+		}
 		value := pref.Value
 		if value == "" || seen[value] {
 			continue

@@ -41,6 +41,7 @@ unleash:
         - ^graph_neighbourhood\.go$
         - ^graph_traversal\.go$
         - ^hibp_service\.go$
+        - ^hobby_preference_backfill\.go$
         - ^household_service\.go$
         - ^idempotency_purge_service\.go$
         - ^immich_client\.go$

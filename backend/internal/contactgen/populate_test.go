@@ -45,10 +45,25 @@ func TestPopulate_CreatesContactsAndRoundTrips(t *testing.T) {
 		want := canonicalize(t, recs[i])
 		gotRec := canonicalize(t, got)
 		adoptMintedAddressIDs(t, &want.Card, &gotRec.Card)
+		adoptMintedPersonalInfoIDs(t, &want.Card, &gotRec.Card)
 		assert.Equal(t, want.Card, gotRec.Card, "contact %d: card did not round-trip", i)
 		assert.Equal(t, want.Envelope, gotRec.Envelope, "contact %d: crm envelope did not round-trip", i)
 		assert.Equal(t, want.Passthrough, gotRec.Passthrough, "contact %d: passthrough did not round-trip", i)
 		assert.Equal(t, reloaded.VCardUID, gotRec.Card.UID, "contact %d: VCardUID and Card.UID drifted", i)
+	}
+}
+
+// adoptMintedPersonalInfoIDs adopts the stable entry ID issue #1738 mints on
+// every write, so the generated record (which may omit one) still compares
+// equal to the stored card.
+func adoptMintedPersonalInfoIDs(t *testing.T, want, got *contactmodel.Card) {
+	t.Helper()
+	require.Equal(t, len(want.PersonalInfo), len(got.PersonalInfo), "personalInfo count must round-trip")
+	for i := range want.PersonalInfo {
+		require.NotEmpty(t, got.PersonalInfo[i].ID, "personalInfo %d: no ID was minted", i)
+		if want.PersonalInfo[i].ID == "" {
+			want.PersonalInfo[i].ID = got.PersonalInfo[i].ID
+		}
 	}
 }
 

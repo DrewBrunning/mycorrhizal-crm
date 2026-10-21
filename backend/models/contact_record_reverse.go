@@ -64,6 +64,7 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	// rationale and the field-by-field scope.
 	r = contactmodel.NormalizeRecord(r)
 
+	previousPersonalInfoMeta := c.CRM.PersonalInfoMeta
 	card := r.Card
 	proj := contactmodel.DeriveProjection(r)
 
@@ -148,6 +149,14 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	// above, so nothing here can accidentally clobber it.
 	c.Card = r.Card
 	c.CRM = r.Envelope
+	if c.CRM.PersonalInfoMeta == nil {
+		// Preserve-when-absent, like Ambient (issue #1733): a client that
+		// predates issue #1738 and rebuilds crm on every save cannot clear
+		// the metadata it never knew about. An explicit empty object means
+		// "clear" (a non-nil empty map decodes differently from an absent
+		// key); deriveDenormalized prunes keys whose entry is gone anyway.
+		c.CRM.PersonalInfoMeta = previousPersonalInfoMeta
+	}
 	c.Passthrough = r.Passthrough
 
 	// Tell BeforeSave not to re-derive (and thus truncate) this Card/CRM/

@@ -27,6 +27,7 @@ export type PreferenceSection =
   | 'foodDrink'
   | 'media'
   | 'hobby'
+  | 'dislikes'
   | 'jewelry'
   | 'giftPreferences'
   | 'giftAvoid';
@@ -49,7 +50,12 @@ export const GIFTS_TAB_SECTIONS: PreferenceSection[] = ['jewelry', 'giftPreferen
 // dialog. Every PreferenceSection must appear in exactly one of these two
 // lists — enforced by locales.test.ts-style coverage isn't set up for this,
 // so keep them in sync by hand when adding a new section.
-export const OVERVIEW_TAB_SECTIONS: PreferenceSection[] = ['foodDrink', 'media', 'hobby'];
+export const OVERVIEW_TAB_SECTIONS: PreferenceSection[] = [
+  'foodDrink',
+  'media',
+  'hobby',
+  'dislikes',
+];
 
 export interface PreferenceCategoryConfig {
   category: string;
@@ -176,6 +182,16 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
     keyMode: 'disposition',
     keySuggestions: DISPOSITION,
     supportsLevel: true,
+  },
+
+  // Dislikes — activities the person dislikes (issue #1738). Deliberately
+  // its own section (not Gifts, not Hobbies), free-solo key, no level, and
+  // never synced to a Card.
+  {
+    category: 'dislike_activity',
+    section: 'dislikes',
+    keyMode: 'freeSolo',
+    keySuggestions: [],
   },
 
   // Gift Preferences — single-facet "tastes", each its own category chip.

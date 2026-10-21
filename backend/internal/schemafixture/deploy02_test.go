@@ -220,6 +220,19 @@ func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
 	require.NoError(t, atrest.Initialize(db, kek))
 	t.Cleanup(atrest.ResetForTest)
 
+	// A pre-existing hobby Preference, the shape issue #1738's startup
+	// backfill moves into Card.PersonalInfo. Seeded before at-rest encryption
+	// is armed so it is part of the same "old install" data the other
+	// backfills rewrite.
+	var hobbyContact models.Contact
+	require.NoError(t, db.Order("id ASC").First(&hobbyContact).Error)
+	hobbyPref := models.Preference{
+		UserID: hobbyContact.UserID, EntityID: hobbyContact.VCardUID,
+		Category: models.PreferenceCategoryHobby, Key: "favorite", Value: "Upgrade Chess",
+		Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	require.NoError(t, db.Create(&hobbyPref).Error)
+
 	require.NoError(t, atrest.Backfill(db),
 		"the at-rest backfill must encrypt pre-existing rows without tripping a table invariant")
 
@@ -238,6 +251,26 @@ func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
 		"the data_backfills ledger must be empty on a fresh upgrade, so the backfill actually runs")
 	require.Positive(t, nfcStats.ContactsScanned,
 		"the upgraded fixture has contacts, so the backfill must scan at least one row")
+
+	// Hobby preference -> Card.PersonalInfo backfill (#1738), same order as
+	// embedded/server.go: after NFC, before the audit-chain recompute.
+	hobbyStats, err := services.MigrateHobbyPreferencesToPersonalInfo(db)
+	require.NoError(t, err,
+		"the hobby preference backfill must move pre-existing preferences without tripping a table invariant")
+	require.False(t, hobbyStats.AlreadyDone,
+		"the data_backfills ledger must be empty on a fresh upgrade, so the hobby backfill actually runs")
+	require.Positive(t, hobbyStats.PersonalInfoEntriesMerged,
+		"the seeded pre-existing hobby preference must be moved")
+
+	var movedContact models.Contact
+	require.NoError(t, db.First(&movedContact, hobbyContact.ID).Error)
+	foundHobby := false
+	for _, entry := range movedContact.Card.PersonalInfo {
+		if entry.Value == "Upgrade Chess" {
+			foundHobby = true
+		}
+	}
+	require.True(t, foundHobby, "the pre-existing hobby must land on the upgraded contact's card")
 
 	require.NoError(t, models.RecomputeAuditChain(db),
 		"the audit hash-chain backfill must succeed after the at-rest and NFC backfills")
@@ -275,6 +308,10 @@ func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
 	require.NoError(t, err)
 	require.True(t, secondNFC.AlreadyDone,
 		"the data_backfills ledger short-circuits the NFC backfill on the second boot")
+	secondHobby, err := services.MigrateHobbyPreferencesToPersonalInfo(db)
+	require.NoError(t, err)
+	require.True(t, secondHobby.AlreadyDone,
+		"the data_backfills ledger short-circuits the hobby preference backfill on the second boot")
 	require.NoError(t, models.RecomputeAuditChain(db))
 
 	gaps, err = models.VerifyAuditChain(db)
