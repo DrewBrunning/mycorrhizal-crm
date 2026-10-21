@@ -232,7 +232,16 @@ revocable per-device credential minted after an interactive login (`backend/data
 `clearSession` (`SessionExpiryWiring`), so an expired-but-valid session resumes seamlessly after the
 device's own biometric gate; a *revoked* grant still ends exactly as a 401 always has. The server
 revokes every grant on password change/reset and 2FA enable/disable/reset, so a stolen password or a
-changed 2FA posture cannot keep a passwordless door open. Phone (have) + biometric (are) is verified
+changed 2FA posture cannot keep a passwordless door open. Since issue #1759 enrolment is part of
+the single app-lock switch: switching the lock on enrols where the server offers device grants, and
+switching it off revokes the grant on the server **first** and clears the lock only once that
+succeeded, so an offline or failed revoke leaves the lock on in front of the still-live grant
+(`feature/settings/.../SettingsViewModel.kt#performAppLockOff`, pinned by `SettingsViewModelTest`
+`a failed revoke leaves the app lock on and says so`). The one-shot post-login "Sign in with
+biometrics?" prompt (`app/.../enroll/BiometricEnrollmentViewModel.kt#BiometricEnrollmentViewModel`)
+still enrols without switching the lock on; a grant held with the lock off stays revocable from
+Settings > Privacy & security (`feature/settings/.../AppearancePrivacySettingsScreens.kt#PrivacySettingsContent`).
+Phone (have) + biometric (are) is verified
 *locally* by the OS; the server sees a single possession factor — the standard refresh-token model,
 which is how the docs describe it rather than claiming server-verified 2FA.
 

@@ -23,6 +23,7 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -70,6 +71,7 @@ class SettingsViewModelTest {
         healthThrows: Throwable? = null,
         enrollment: BiometricEnrollmentStatus = BiometricEnrollmentStatus.UNASKED,
         localAuthSupported: Boolean = true,
+        requireLocalAuth: Boolean = false,
     ): SettingsViewModel {
         if (healthThrows != null) {
             coEvery { serverCompatibility.getServerHealth() } throws healthThrows
@@ -86,7 +88,7 @@ class SettingsViewModelTest {
         coEvery { trackingSettings.setIncludeUnknownNumbers(any()) } returns Unit
         every { authRepository.observeSession() } returns MutableStateFlow(session)
         coEvery { appSettings.themePreference() } returns flowOf(themePreference)
-        every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
+        every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(requireLocalAuth)
         every { localAuthSettings.blockScreenshots() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(enrollment)
@@ -760,6 +762,41 @@ class SettingsViewModelTest {
 
             assertFalse(vm.uiState.value.requireLocalAuth)
             coVerify(exactly = 1) { deviceGrantManager.removeEnrollment() }
+        }
+
+    @Test
+    fun `switching app lock off revokes the grant before it clears the lock`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+            coEvery { deviceGrantManager.removeEnrollment() } returns Result.success(Unit)
+            val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED, requireLocalAuth = true)
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = false, offerBiometricSignIn = true)
+            advanceUntilIdle()
+
+            coVerifyOrder {
+                deviceGrantManager.removeEnrollment()
+                localAuthSettings.setRequireLocalAuth(false)
+            }
+        }
+
+    @Test
+    fun `a failed revoke leaves the app lock on and says so`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Offline / server error: the grant is still live server-side, so the lock in front of it
+            // must not come off.
+            coEvery { deviceGrantManager.removeEnrollment() } returns Result.failure(Exception("offline"))
+            val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED, requireLocalAuth = true)
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = false, offerBiometricSignIn = true)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.requireLocalAuth)
+            coVerify(exactly = 0) { localAuthSettings.setRequireLocalAuth(false) }
+            assertEquals(R.string.biometric_remove_error, vm.uiState.value.biometricErrorRes)
+            assertFalse(vm.uiState.value.isBiometricBusy)
         }
 
     @Test

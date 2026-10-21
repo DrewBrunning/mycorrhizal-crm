@@ -389,6 +389,26 @@ class SettingsScreenTest {
             )
         }
         composeTestRule.onNodeWithText("Biometric sign-in is on for this device").assertIsDisplayed()
+        // With the lock on, the lock switch itself is the way to turn biometric sign-in off.
+        composeTestRule.onNodeWithTag("biometric-signin-remove").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a grant enrolled with the lock off can still be revoked`() {
+        // The post-login prompt enrolls without switching the lock on, so there is no switch to
+        // turn off; the revoke must stay reachable.
+        var removed = 0
+        show {
+            PrivacySettingsContent(
+                state = SettingsUiState(
+                    requireLocalAuth = false,
+                    biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED,
+                ),
+                onRemoveBiometricSignIn = { removed++ },
+            )
+        }
+        composeTestRule.onNodeWithText("Turn off biometric sign-in").performScrollTo().performClick()
+        assertEquals(1, removed)
     }
 
     @Test

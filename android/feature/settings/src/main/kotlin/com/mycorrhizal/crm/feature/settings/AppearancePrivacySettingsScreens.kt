@@ -1,12 +1,16 @@
 package com.mycorrhizal.crm.feature.settings
 
 import android.os.Build
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -115,6 +119,7 @@ fun PrivacySettingsScreen(
             onAppLockChange = { enabled -> viewModel.setAppLock(enabled, gating.deviceGrantSignInSupported) },
             onAutoLockDelayChange = viewModel::setAutoLockDelay,
             onBlockScreenshotsChange = viewModel::setBlockScreenshots,
+            onRemoveBiometricSignIn = viewModel::removeBiometricSignIn,
             modifier = padding,
         )
     }
@@ -126,6 +131,7 @@ fun PrivacySettingsContent(
     onAppLockChange: (Boolean) -> Unit = {},
     onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
     onBlockScreenshotsChange: (Boolean) -> Unit = {},
+    onRemoveBiometricSignIn: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     SettingsColumn(modifier = modifier) {
@@ -160,6 +166,19 @@ fun PrivacySettingsContent(
         }
         if (state.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED) {
             SettingsHelperText(stringResource(R.string.settings_biometric_signin_enabled))
+            // The post-login "Sign in with biometrics?" prompt enrolls without switching the lock on
+            // (and so did the old Settings button), so an install can hold a grant with the lock off.
+            // With the lock on, switching it off revokes the grant; with it off there is no switch to
+            // do that, so the revoke stays reachable here.
+            if (!state.requireLocalAuth) {
+                OutlinedButton(
+                    onClick = onRemoveBiometricSignIn,
+                    enabled = !state.isBiometricBusy,
+                    modifier = Modifier.fillMaxWidth().testTag("biometric-signin-remove"),
+                ) {
+                    Text(stringResource(R.string.settings_biometric_signin_remove))
+                }
+            }
         }
         state.biometricErrorRes?.let { res ->
             SettingsHelperText(

@@ -290,6 +290,16 @@ abstract class E2eBaseTest {
         clickContentDescription("Back")
     }
 
+    /**
+     * The system Back gesture, for a drawer destination (issue #1758: those show the Menu icon,
+     * not a Back arrow, and Back from them returns to the Dashboard). Dispatched through the
+     * activity's OnBackPressedDispatcher rather than Espresso.pressBack for the API 36+ reason above.
+     */
+    protected fun systemBack() {
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+    }
+
     private companion object {
         /** Generous default: a full login + first-load against the docker stack. */
         const val DEFAULT_TIMEOUT_MS = 30_000L

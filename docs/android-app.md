@@ -273,7 +273,9 @@ The navigation drawer (and, at expanded widths, the rail) is built from one dest
   Two-factor authentication, Passkeys, API tokens), **Appearance** (language, date format, theme), **Privacy &
   security** (App lock, Block screenshots), **Contacts & fields**, **Tracking & notifications**, **Integrations**,
   **Administration** (admin accounts only), **About**, and **Log out**. **App lock** is one switch: turning it on
-  also enrols biometric sign-in on servers that support it, and turning it off removes that enrolment.
+  also enrols biometric sign-in on servers that support it, and turning it off revokes that enrolment on the
+  server first (if the revoke fails, for example offline, the lock stays on). A biometric sign-in set up from the
+  post-login prompt while the lock is off has its own **Turn off biometric sign-in** button there.
 
 ## Design system
 

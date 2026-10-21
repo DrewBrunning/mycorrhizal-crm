@@ -413,7 +413,7 @@
     <string name="settings_group_integrations_summary">Synchro du calendrier, webhooks, photos et fichiers</string>
     <string name="settings_group_administration">Administration</string>
     <string name="settings_group_administration_summary">Gestion des utilisateurs, événements système</string>
-    <string name="settings_group_about_summary">Version et détails de la version</string>
+    <string name="settings_group_about_summary">Version et détails du build</string>
     <string name="settings_security">Sécurité</string>
     <string name="settings_screen_privacy">Confidentialité de l\'écran</string>
     <string name="settings_data">Données</string>
@@ -594,6 +594,8 @@
     <string name="biometric_enroll_never">Ne plus demander</string>
     <string name="biometric_enroll_error">Impossible de configurer la connexion biométrique. Veuillez réessayer.</string>
     <string name="settings_biometric_signin_enabled">La connexion biométrique est activée sur cet appareil</string>
+    <string name="settings_biometric_signin_remove">Désactiver la connexion biométrique</string>
+    <string name="biometric_remove_error">Impossible de désactiver la connexion biométrique. Vérifiez votre connexion et réessayez.</string>
 
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>
