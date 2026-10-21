@@ -80,6 +80,14 @@ func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) (int, error) {
 		}
 		created += n
 	}
+
+	// Second pass (issue #1796): state-driven target_behind suggestions, still
+	// under this job lock. A failure here never discards the audit-pass count.
+	n, err := detectTargetBehindSuggestions(ctx, db, cfg, Now().In(cfg.GetReminderLocation()))
+	if err != nil {
+		logger.Error().Err(err).Msg("reach-out: target_behind pass failed")
+	}
+	created += n
 	if created > 0 {
 		logger.Info().Int("created", created).Msg("reach-out: created suggestions")
 	}
@@ -179,6 +187,9 @@ type detectedChange struct {
 	Kind     string
 	OldValue string
 	NewValue string
+	// ReminderMessage overrides the generated "<kind> changed" companion
+	// Reminder text (used by target_behind, which is not a field change).
+	ReminderMessage string
 }
 
 // processContactBaseline diffs one contact's baseline before-snapshot
@@ -367,11 +378,16 @@ func createReachOutSuggestion(ctx context.Context, db *gorm.DB, cfg config.Confi
 	// identifiable name in the reminder message rather than a blank one.
 	contactName := displayContactName(contact)
 
+	message := ch.ReminderMessage
+	if message == "" {
+		message = fmt.Sprintf("Reach out — %s changed: %s (%s → %s)", reachOutKindLabel(ch.Kind), contactName, ch.OldValue, ch.NewValue)
+	}
+
 	var reminderID *uint
 	err := db.Transaction(func(tx *gorm.DB) error {
 		reminder := models.Reminder{
 			UserID:     userID,
-			Message:    fmt.Sprintf("Reach out — %s changed: %s (%s → %s)", reachOutKindLabel(ch.Kind), contactName, ch.OldValue, ch.NewValue),
+			Message:    message,
 			RemindAt:   Now(),
 			Recurrence: "once",
 			ContactID:  &contact.ID,

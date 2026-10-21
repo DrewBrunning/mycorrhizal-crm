@@ -78,6 +78,7 @@ unleash:
         - ^paperless_service\.go$
         - ^password_reset_service\.go$
         - ^purge_service\.go$
+        - ^reach_out_target_service\.go$
         - ^reach_out_trigger_service\.go$
         - ^reminder_service\.go$
         - ^restore_drill_service\.go$

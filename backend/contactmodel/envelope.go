@@ -45,6 +45,12 @@ type CRMEnvelope struct {
 	// Contact.Ambient column is the store; the format adapters ignore it (CRM
 	// data with no standards home).
 	Ambient *bool `json:"ambient,omitempty"`
+	// TargetCloseness is the user's relationship goal for the contact (issue
+	// #1796, ADR 0023 amendment 2026-10-16): immediate|close|casual|distant,
+	// absent = no target. Read-only on POST/PUT /contacts: it is written only by
+	// PUT/DELETE /contacts/:id/target-closeness. The flat Contact.TargetCloseness
+	// column is the store; the format adapters ignore it (no standards home).
+	TargetCloseness *string `json:"target_closeness,omitempty"`
 	// Reminders/Activities/Relationships remain separate GORM tables keyed by contact ID;
 	// they are NOT embedded here.
 }

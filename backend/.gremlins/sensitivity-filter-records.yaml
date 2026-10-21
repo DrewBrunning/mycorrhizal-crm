@@ -85,6 +85,7 @@ unleash:
         - ^sync_health\.go$
         - ^system_event\.go$
         - ^tag\.go$
+        - ^target_closeness\.go$
         - ^timeline\.go$
         - ^user\.go$
         - ^webauthn_credential\.go$

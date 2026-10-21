@@ -512,48 +512,37 @@ test('changing the sort does not clear an in-progress selection', async () => {
 
 // --- T103 contact-info filter -----------------------------------------------
 
-// T103: the filter defaults ON — a fresh /contacts load asks the server for
-// contactable contacts only (hasContactInfo: true), even though the URL has no
-// param (absence of ?has_contact_info= means the default, which is filtered).
-test('defaults to the contactable-only filter on first load', async () => {
+// #1788 (supersedes T103's default-on filter): the list shows every contact by
+// default, matching Android; "Only with contact info" opts into the filter.
+test('shows every contact by default (the contact-info filter is opt-in)', async () => {
   mockTwoPages();
   renderPage();
   await screen.findByLabelText('Select Alice');
 
-  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true }));
-  // The "Show all" switch is present and off (the filter is on).
-  expect(screen.getByLabelText('Show all')).not.toBeChecked();
+  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: false }));
+  expect(getContacts).not.toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true }));
+  // The switch is present and off (no filter).
+  expect(screen.getByLabelText('Only with contact info')).not.toBeChecked();
 });
 
-// T103: the switch is the URL-persisted inverse of the filter. Flipping it on
-// writes has_contact_info=false (show everything) and refetches accordingly.
-test('toggling Show all off the filter and writing the URL param', async () => {
+// The switch is URL-persisted: turning it on writes has_contact_info=true and
+// refetches with the filter.
+test('toggling Only with contact info applies the filter and writes the URL param', async () => {
   mockTwoPages();
   renderPage();
   await screen.findByLabelText('Select Alice');
 
-  fireEvent.click(screen.getByLabelText('Show all'));
+  fireEvent.click(screen.getByLabelText('Only with contact info'));
 
   await waitFor(() =>
-    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: false })),
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true })),
   );
-  expect(screen.getByLabelText('Show all')).toBeChecked();
+  expect(screen.getByLabelText('Only with contact info')).toBeChecked();
 });
 
-// T103 URL round trip: a shared/reloaded link carrying has_contact_info=false
-// must reproduce the "show all" state — the switch is checked and the server
-// is asked for everything.
-test('a has_contact_info=false URL is honoured on load', async () => {
-  vi.mocked(getContacts).mockImplementation((params) => {
-    expect(params?.hasContactInfo).toBe(false);
-    return Promise.resolve({
-      contacts: [contact(1, 'uid-1', 'Alice')],
-      next_cursor: '',
-      limit: 10,
-    });
-  });
-  render(
-    <MemoryRouter initialEntries={['/contacts?has_contact_info=false']}>
+function renderAt(url: string) {
+  return render(
+    <MemoryRouter initialEntries={[url]}>
       <DateFormatProvider>
         <SnackbarProvider>
           <AnnouncerProvider>
@@ -565,12 +554,41 @@ test('a has_contact_info=false URL is honoured on load', async () => {
       </DateFormatProvider>
     </MemoryRouter>,
   );
+}
+
+// URL round trip: a shared/reloaded link carrying has_contact_info=true must
+// reproduce the filtered state -- the switch is checked and the server is asked
+// for contactable contacts only.
+test('a has_contact_info=true URL is honoured on load', async () => {
+  vi.mocked(getContacts).mockImplementation((params) => {
+    expect(params?.hasContactInfo).toBe(true);
+    return Promise.resolve({
+      contacts: [contact(1, 'uid-1', 'Alice')],
+      next_cursor: '',
+      limit: 10,
+    });
+  });
+  renderAt('/contacts?has_contact_info=true');
   await screen.findByLabelText('Select Alice');
-  expect(screen.getByLabelText('Show all')).toBeChecked();
+  expect(screen.getByLabelText('Only with contact info')).toBeChecked();
+});
+
+// Legacy links written while "Show all" was the switch (has_contact_info=false)
+// keep meaning "everyone".
+test('a legacy has_contact_info=false URL still shows everyone', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+  });
+  renderAt('/contacts?has_contact_info=false');
+  await screen.findByLabelText('Select Alice');
+  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: false }));
+  expect(screen.getByLabelText('Only with contact info')).not.toBeChecked();
 });
 
 // T103: the hidden count is disclosed when the filter is on and the response
-// says contacts were hidden — the user who sees 340 must know the other 160
+// says contacts were hidden -- the user who sees 340 must know the other 160
 // were hidden, not lost.
 test('renders the hidden count while the filter is active', async () => {
   vi.mocked(getContacts).mockResolvedValue({
@@ -581,10 +599,14 @@ test('renders the hidden count while the filter is active', async () => {
   });
   renderPage();
   await screen.findByLabelText('Select Alice');
-  expect(screen.getByText('2 contacts without contact info are hidden')).toBeInTheDocument();
+  // Default is unfiltered, so even a (stale) hidden_count is not disclosed.
+  expect(screen.queryByText(/hidden/i)).not.toBeInTheDocument();
 
-  // Toggling Show all reveals them; the line disappears (no filter, no count).
-  fireEvent.click(screen.getByLabelText('Show all'));
+  fireEvent.click(screen.getByLabelText('Only with contact info'));
+  expect(await screen.findByText('2 contacts without contact info are hidden')).toBeInTheDocument();
+
+  // Turning the filter off removes the line again.
+  fireEvent.click(screen.getByLabelText('Only with contact info'));
   await waitFor(() =>
     expect(
       screen.queryByText('2 contacts without contact info are hidden'),
@@ -601,11 +623,15 @@ test('a hidden count of zero renders nothing', async () => {
   });
   renderPage();
   await screen.findByLabelText('Select Alice');
+  fireEvent.click(screen.getByLabelText('Only with contact info'));
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true })),
+  );
   expect(screen.queryByText(/hidden/i)).not.toBeInTheDocument();
 });
 
 // T103 trap: toggling the contact-info filter swaps the visible set, so an
-// in-progress bulk selection must be cleared — a delete/archive applied to
+// in-progress bulk selection must be cleared -- a delete/archive applied to
 // rows the user can no longer see is a real hazard, not a cosmetic one.
 test('toggling the contact-info filter clears an in-progress selection', async () => {
   mockTwoPages();
@@ -615,7 +641,7 @@ test('toggling the contact-info filter clears an in-progress selection', async (
   fireEvent.click(screen.getByLabelText('Select Alice'));
   expect(selectedText('1 selected')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByLabelText('Show all'));
+  fireEvent.click(screen.getByLabelText('Only with contact info'));
 
   await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
 });
@@ -961,4 +987,120 @@ test('toggling the favorites switch refetches with favorites: true', async () =>
     expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ favorites: true })),
   );
   expect(favoritesSwitch).toBeChecked();
+});
+
+// --- #1788 list density + phone layout ---------------------------------------
+
+// jsdom has no matchMedia; MUI's useMediaQuery treats that as "no match", i.e.
+// the desktop layout. `phone` makes every max-width query match, which is
+// exactly `breakpoints.down('sm')`.
+function setPhoneViewport(phone: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: phone && query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+afterEach(() => {
+  // @ts-expect-error -- restore jsdom's "no matchMedia" default
+  delete window.matchMedia;
+});
+
+test('rows carry the primary email · phone line and tag chips (rendered from md up)', async () => {
+  vi.mocked(listTags).mockResolvedValue({
+    tags: [{ id: 't1', name: 'Climbing', created_at: '', updated_at: '' }],
+    contacts: [{ id: 1, tag_id: 't1', contact_vcard_uid: 'uid-1' }],
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [
+      { ...contact(1, 'uid-1', 'Alice'), email: 'alice@example.com', phone: '+1 555-0101' },
+      { ...contact(2, 'uid-2', 'Bob'), email: 'bob@example.com' },
+      contact(3, 'uid-3', 'Carol'),
+    ],
+    next_cursor: '',
+    limit: 10,
+  });
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  expect(screen.getByText('alice@example.com · +1 555-0101')).toBeInTheDocument();
+  // A missing half does not leave a dangling separator.
+  expect(screen.getByText('bob@example.com')).toBeInTheDocument();
+  expect(await screen.findByText('Climbing')).toBeInTheDocument();
+  // A contact with neither renders no secondary line at all.
+  expect(screen.queryByText('·')).not.toBeInTheDocument();
+});
+
+test('phones: filters collapse behind one button, Import/Review move to an overflow menu, Add is a FAB', async () => {
+  setPhoneViewport(true);
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  // None of the inline controls are in the page any more.
+  expect(screen.queryByLabelText('Only with contact info')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Review duplicates' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
+  // Add Contact is still one tap away (the FAB carries the same accessible name).
+  expect(screen.getByRole('button', { name: 'Add Contact' })).toBeInTheDocument();
+
+  // The overflow menu holds Import and Review duplicates.
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  expect(await screen.findByRole('menuitem', { name: 'Import' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Review duplicates' })).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+
+  // The Filters dialog carries the five controls, and they still work.
+  fireEvent.click(screen.getByRole('button', { name: 'Filters' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Filters' });
+  expect(within(dialog).getByLabelText('Show archived')).toBeInTheDocument();
+  expect(within(dialog).getByLabelText('Show favorites')).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByLabelText('Only with contact info'));
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true })),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+  // The button now reports how many lenses are on.
+  expect(await screen.findByRole('button', { name: 'Filters (1)' })).toBeInTheDocument();
+});
+
+test('wider screens keep the inline toolbar (no Filters button, no FAB)', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  expect(screen.queryByRole('button', { name: 'Filters' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Add Contact' })).toHaveLength(1);
+  expect(screen.getByLabelText('Only with contact info')).toBeInTheDocument();
+});
+
+test('phones: the overflow menu items and the FAB open their dialogs', async () => {
+  setPhoneViewport(true);
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Import' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Review duplicates' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
 });

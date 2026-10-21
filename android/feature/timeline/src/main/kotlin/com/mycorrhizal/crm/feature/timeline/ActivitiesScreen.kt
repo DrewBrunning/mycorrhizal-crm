@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import com.mycorrhizal.crm.ui.components.activityTypeLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -264,7 +265,7 @@ fun ActivityListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             val subtitle = listOfNotNull(
-                activity.type?.takeIf { it.isNotBlank() },
+                activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) },
                 activity.location?.takeIf { it.isNotBlank() },
                 activity.date?.take(10),
             ).joinToString(" · ")

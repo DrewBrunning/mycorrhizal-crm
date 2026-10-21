@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.data.attach.AttachRemoteApiFactory
 import com.mycorrhizal.crm.data.attach.DefaultAttachRemoteApiFactory
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.ClientVersionProvider
+import com.mycorrhizal.crm.network.ForbiddenInterceptor
+import com.mycorrhizal.crm.network.ForbiddenNotifier
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -42,6 +44,7 @@ object AppNetworkModule {
         tokenProvider: TokenProvider,
         baseUrlProvider: BaseUrlProvider,
         sessionExpiryNotifier: SessionExpiryNotifier,
+        forbiddenNotifier: ForbiddenNotifier,
         localServerHost: LocalServerHost,
         archivedProfileProvider: ArchivedProfileProvider,
     ): OkHttpClient = NetworkFactory.okHttpClient(
@@ -52,6 +55,8 @@ object AppNetworkModule {
         // before leaving the process.
         archivedProfileProvider = archivedProfileProvider,
         sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider),
+        // Issue #1826: a 403 may mean the role changed; the data layer re-reads /users/me.
+        forbiddenInterceptor = ForbiddenInterceptor(forbiddenNotifier, baseUrlProvider),
         // ADR 0028 Decision 2: route `Local`-profile traffic over the embedded
         // server's Unix socket through the one shared client. Null when a Remote
         // profile is active or the embedded server is not running, which keeps

@@ -69,6 +69,7 @@ import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
@@ -363,8 +364,9 @@ private fun RelationshipEdgeRow(
 }
 
 /** Human label for an edge's effective type token. */
+@Composable
 fun relationshipLabel(@Suppress("UnusedParameter") type: String, edge: RelationshipEdge, viewedUid: String): String {
-    return effectiveType(edge, viewedUid).replace('_', ' ')
+    return relationshipRoleLabel(effectiveType(edge, viewedUid))
 }
 
 /** Linked-contact selection survives rotation and process death (a plain data class is not Parcelable). */
@@ -579,8 +581,8 @@ fun RelationshipEdgeForm(
 
             LabelledDropdown(
                 label = stringResource(R.string.relationships_type),
-                valueText = type.replace('_', ' '),
-                options = RelationshipEdgeTypes.TYPE_TOKENS.map { DropdownOption(it, it.replace('_', ' ')) },
+                valueText = relationshipRoleLabel(type),
+                options = RelationshipEdgeTypes.TYPE_TOKENS.map { DropdownOption(it, relationshipRoleLabel(it)) },
                 onSelect = { type = it },
                 modifier = Modifier.testTag("relationship-type"),
             )

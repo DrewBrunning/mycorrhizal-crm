@@ -92,6 +92,9 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.humanizeToken
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabelText
 import java.math.BigDecimal
 
 // M18 (100-M18-android-entity-field-richness.md): each entity's dialog gains
@@ -251,7 +254,7 @@ internal fun EntityListScaffold(
                                             } else {
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
-                                                        text = item.label,
+                                                        text = item.displayLabel(),
                                                         style = MaterialTheme.typography.bodyLarge,
                                                         maxLines = 2,
                                                         overflow = TextOverflow.Ellipsis,
@@ -286,7 +289,7 @@ internal fun EntityListScaffold(
                                                 // read a bare "Delete" on every row.
                                                 Icon(
                                                     Icons.Outlined.Delete,
-                                                    contentDescription = stringResource(R.string.entities_delete_named, item.label),
+                                                    contentDescription = stringResource(R.string.entities_delete_named, item.displayLabel()),
                                                 )
                                             }
                                         }
@@ -303,7 +306,7 @@ internal fun EntityListScaffold(
     dialog()
 
     pendingDeleteId?.let { id ->
-        val label = uiState.items.firstOrNull { it.id == id }?.label
+        val label = uiState.items.firstOrNull { it.id == id }?.displayLabel()
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
             title = { Text(stringResource(R.string.entities_delete_title)) },
@@ -529,14 +532,14 @@ internal fun LifeEventForm(
         } else {
             val customTypeToken = "\u0000custom"
             val typeOptions = if (category in LifeEventCategory.ALL) {
-                LifeEventTypes.forCategory(category).map { DropdownOption(it, it.replace('_', ' ')) } +
+                LifeEventTypes.forCategory(category).map { DropdownOption(it, lifeEventTypeLabel(it)) } +
                     DropdownOption(customTypeToken, stringResource(R.string.life_events_custom_type))
             } else {
                 emptyList()
             }
             LabelledDropdown(
                 label = stringResource(R.string.life_events_type_label),
-                valueText = type.replace('_', ' ').ifBlank { stringResource(R.string.life_events_select_category_first) },
+                valueText = if (type.isBlank()) stringResource(R.string.life_events_select_category_first) else lifeEventTypeLabel(type),
                 options = typeOptions,
                 onSelect = { token ->
                     if (token == customTypeToken) {
@@ -871,12 +874,13 @@ internal fun GiftForm(
             )
         }
         if (lifeEvents.isNotEmpty()) {
+            val lifeEventCtx = androidx.compose.ui.platform.LocalContext.current
             SelectField(
                 label = stringResource(R.string.gifts_life_event),
                 value = lifeEventId,
                 placeholder = stringResource(R.string.gifts_none),
                 options = lifeEvents.map { it.id },
-                optionLabel = { id -> lifeEvents.firstOrNull { it.id == id }?.type?.replace('_', ' ') ?: id },
+                optionLabel = { id -> lifeEvents.firstOrNull { it.id == id }?.type?.let { lifeEventTypeLabelText(lifeEventCtx, it) } ?: id },
                 onSelect = { lifeEventId = it },
             )
         }
@@ -1189,11 +1193,11 @@ private fun CategoryField(
     val options = categories.map { cfg ->
         val header = if (cfg.section != lastSection) stringResource(preferenceSectionLabelRes(cfg.section)) else null
         lastSection = cfg.section
-        DropdownOption(cfg.category, stringResource(preferenceCategoryLabelRes(cfg.category)), header)
+        DropdownOption(cfg.category, preferenceCategoryText(cfg.category), header)
     }
     LabelledDropdown(
         label = stringResource(R.string.preferences_category),
-        valueText = stringResource(preferenceCategoryLabelRes(category)),
+        valueText = preferenceCategoryText(category),
         options = options,
         onSelect = onCategoryChange,
         modifier = Modifier.testTag("preference-category"),
@@ -1261,7 +1265,7 @@ internal fun KeySuggestions(suggestions: List<String>, onPick: (String) -> Unit)
 }
 
 @androidx.annotation.StringRes
-private fun preferenceCategoryLabelRes(category: String): Int = when (category) {
+private fun preferenceCategoryLabelRes(category: String): Int? = when (category) {
     "food" -> R.string.preferences_category_food
     "drink" -> R.string.preferences_category_drink
     "media" -> R.string.preferences_category_media
@@ -1286,7 +1290,7 @@ private fun preferenceCategoryLabelRes(category: String): Int = when (category) 
     "fragrance" -> R.string.preferences_category_fragrance
     "cause" -> R.string.preferences_category_cause
     "dislike" -> R.string.preferences_category_dislike
-    else -> R.string.preferences_category
+    else -> null
 }
 
 @androidx.annotation.StringRes
@@ -1418,7 +1422,7 @@ internal fun PreferenceRow(preference: Preference) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = stringResource(preferenceCategoryLabelRes(preference.category)),
+                text = preferenceCategoryText(preference.category),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -1887,5 +1891,27 @@ internal fun MarkDiscussedForm(
                 onSelect = { activityId = it?.toIntOrNull() },
             )
         }
+    }
+}
+
+/** Unknown/custom categories fall back to the humanized token (issue #1755), never the raw one. */
+@Composable
+internal fun preferenceCategoryText(category: String): String =
+    preferenceCategoryLabelRes(category)?.let { stringResource(it) } ?: humanizeToken(category)
+
+/** Issue #1755: the localized row title for an entity item (token families resolve here, not in the ViewModel). */
+@Composable
+internal fun EntityItem.displayLabel(): String {
+    val token = labelToken ?: return label
+    return when (labelFamily) {
+        EntityLabelFamily.LIFE_EVENT -> {
+            val type = lifeEventTypeLabel(token)
+            labelDetail?.let { "$type — $it" } ?: type
+        }
+        EntityLabelFamily.PREFERENCE -> {
+            val category = preferenceCategoryText(token)
+            labelDetail?.let { "$category: $it" } ?: category
+        }
+        null -> label
     }
 }

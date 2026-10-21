@@ -79,7 +79,7 @@ import AddressFields from './AddressFields';
 import AnniversariesEditor from './AnniversariesEditor';
 import CardNotesEditor from './CardNotesEditor';
 import CopyButton from './CopyButton';
-import CustomFieldValueRow from './CustomFieldValueRow';
+import CustomFieldGroups from './CustomFieldGroups';
 import EditableArrayField from './EditableArrayField';
 import EditableField from './EditableField';
 import ImportedResourcesSection, { hasImportedResources } from './ImportedResourcesSection';
@@ -1390,14 +1390,11 @@ export default function ContactInformation({
 
           {/* Custom Fields (v2, T6/T7): one row per FieldDefinition, rendered
               per type by CustomFieldValueRow. */}
-          {fieldDefinitions.map((definition) => (
-            <CustomFieldValueRow
-              key={definition.id}
-              definition={definition}
-              value={fieldValuesByDefinition?.get(definition.id)}
-              onSave={onSaveFieldValue || (() => Promise.resolve())}
-            />
-          ))}
+          <CustomFieldGroups
+            definitions={fieldDefinitions}
+            valuesByDefinition={fieldValuesByDefinition}
+            onSave={onSaveFieldValue || (() => Promise.resolve())}
+          />
 
           {/* Card metadata: the read-only imported-resource + relatedTo/members
               sections  — present to prevent silent data loss and to

@@ -130,6 +130,9 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contacts/:id/archive":   exempt(reasonToggle),
 		"POST /api/v1/contacts/:id/unarchive": exempt(reasonToggle),
 		"POST /api/v1/contacts/:id/favorite":  exempt(reasonToggle),
+		// Issue #1796: a toggle-shaped action like favorite (ADR 0023 amendment).
+		"PUT /api/v1/contacts/:id/target-closeness":    exempt(reasonToggle),
+		"DELETE /api/v1/contacts/:id/target-closeness": exempt(reasonToggle),
 		// ADR 0031: an explicit lookup action with no request body to conflict
 		// over; it persists through the contact's own revision CAS, so a
 		// concurrent edit surfaces as a 412 rather than a lost write.

@@ -200,10 +200,10 @@ class PrepViewScreenTest {
         assertSection("Talks about her garden", substring = true)
 
         // Relationships.
-        assertSection("Bob Marley — spouse of")
+        assertSection("Bob Marley — Spouse")
 
         // Life events.
-        assertSection("graduated — MSc", substring = true)
+        assertSection("Graduated — MSc", substring = true)
 
         // Upcoming reminders.
         assertSection("Send card", substring = true)
@@ -257,8 +257,8 @@ class PrepViewScreenTest {
 
         setContent(briefing, onOpenContact = { openedContactId = it })
 
-        scrollTo("Bob Marley — spouse of")
-        composeTestRule.onNodeWithText("Bob Marley — spouse of").performClick()
+        scrollTo("Bob Marley — Spouse")
+        composeTestRule.onNodeWithText("Bob Marley — Spouse").performClick()
 
         assertEquals(8, openedContactId)
     }
@@ -289,8 +289,8 @@ class PrepViewScreenTest {
 
         setContent(briefing, onOpenContact = { clicked = true })
 
-        scrollTo("Ghost — friend of")
-        composeTestRule.onNodeWithText("Ghost — friend of").performClick()
+        scrollTo("Ghost — Friend")
+        composeTestRule.onNodeWithText("Ghost — Friend").performClick()
 
         // The row is plain text; the tap must not fire navigation.
         assertEquals(false, clicked)

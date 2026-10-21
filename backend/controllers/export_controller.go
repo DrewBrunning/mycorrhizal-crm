@@ -440,6 +440,8 @@ func ExportData(c *gin.Context) {
 		// parallel "; "-joined lists. The legacy "Address" column above
 		// stays the first address only.
 		"Addresses", "Address Sensitivities", "Address Coordinates",
+		// Issue #1796: the user's target closeness tier, empty for no target.
+		"Target Closeness",
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
@@ -475,6 +477,11 @@ func ExportData(c *gin.Context) {
 			contact.UpdatedAt.Format(time.RFC3339),
 		}
 		record = append(record, formatExportAddresses(contact.Addresses)...)
+		targetCloseness := ""
+		if contact.TargetCloseness != nil {
+			targetCloseness = *contact.TargetCloseness
+		}
+		record = append(record, targetCloseness)
 		// Custom-field values: one column per definition, empty when the
 		// contact has no value for it.
 		values := valueByContactAndDef[contact.VCardUID]

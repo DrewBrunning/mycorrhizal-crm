@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import type { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefinitions';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
+import { distinctGroups } from '../utils/customFieldGroups';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
 
 // T7's replacement for the v1 CustomFieldsSettings (which edited a plain list
@@ -36,7 +37,7 @@ import FieldDefinitionDialog from './FieldDefinitionDialog';
 // constraints, sensitivity, and standards-projection target, so this is now a
 // typed-definition manager: create/edit/delete a FieldDefinition.
 export default function CustomFieldsSettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showSuccess } = useSnackbar();
   const {
     definitions,
@@ -206,6 +207,9 @@ export default function CustomFieldsSettings() {
                                 color={sensitivityColor(def.sensitivity)}
                                 variant="outlined"
                               />
+                              {def.group && (
+                                <Chip label={def.group} size="small" variant="outlined" />
+                              )}
                               {def.projection !== 'internal-only' && (
                                 <Chip label={def.projection} size="small" variant="outlined" />
                               )}
@@ -249,6 +253,7 @@ export default function CustomFieldsSettings() {
         onClose={() => setDialogOpen(false)}
         onSave={handleSave}
         definition={editingDefinition}
+        groupSuggestions={distinctGroups(definitions, i18n.language)}
       />
 
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>

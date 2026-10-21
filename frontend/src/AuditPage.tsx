@@ -23,6 +23,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useEffect, useMemo, useState } from 'react';
@@ -71,6 +73,11 @@ export default function AuditPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.audit'));
   const { showSuccess, showError } = useSnackbar();
+  const theme = useTheme();
+  // #1788: below `sm` the 5-column table clipped to 2 columns with no scroll
+  // cue, so phones get a card list instead (as Contacts does). Gated with a JS
+  // media query rather than CSS display so only one tree is in the DOM.
+  const cardLayout = useMediaQuery(theme.breakpoints.down('sm'));
 
   const {
     events,
@@ -241,8 +248,54 @@ export default function AuditPage() {
             {hasFilters ? t('audit.empty') : t('audit.emptyNoFilters')}
           </Typography>
         </Paper>
+      ) : cardLayout ? (
+        <Box
+          component="ul"
+          aria-label={t('audit.title')}
+          sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}
+        >
+          {events.map((event) => (
+            <Paper component="li" key={event.id} sx={{ p: 1.5 }}>
+              <Typography variant="body2">{formatDateTime(event.created_at)}</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, my: 0.75 }}>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={t(`audit.entityTypes.${event.entity_type}`)}
+                />
+                <Chip
+                  size="small"
+                  color={OPERATION_COLORS[event.operation]}
+                  label={t(`audit.operations.${event.operation}`)}
+                />
+              </Box>
+              <Box sx={{ overflowWrap: 'anywhere' }}>
+                <EntityIdCell event={event} contact={contactsByUid.get(event.entity_id)} />
+              </Box>
+              {event.operation === 'update' && event.entity_type === 'contact' && (
+                <Button
+                  size="small"
+                  color="inherit"
+                  startIcon={<UndoIcon />}
+                  onClick={() => setPendingUndo(event)}
+                  sx={{ mt: 0.5, ml: -1 }}
+                >
+                  {t('audit.undo.button')}
+                </Button>
+              )}
+            </Paper>
+          ))}
+        </Box>
       ) : (
-        <TableContainer component={Paper}>
+        <TableContainer
+          component={Paper}
+          // #1792: the table scrolls horizontally below ~640px of content
+          // width; a scroll container with no focusable child is unreachable
+          // by keyboard (WCAG 2.1.1), so make the region itself focusable.
+          tabIndex={0}
+          role="region"
+          aria-label={t('audit.title')}
+        >
           <Table size="small" sx={{ minWidth: 640 }}>
             <TableHead>
               <TableRow>

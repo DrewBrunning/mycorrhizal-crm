@@ -176,3 +176,18 @@ test('a stale AppBar search response does not clobber a newer query (#960)', asy
     vi.useRealTimers();
   }
 });
+
+// #1792: the brand logo used to sit after </nav>, outside every landmark, so
+// axe's `region` rule flagged it on every route. It must live inside the
+// navigation landmark.
+test('the sidebar brand logo is inside the main navigation landmark (#1792)', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  setLoggedInUser(false);
+
+  renderApp();
+
+  const logo = screen.getByAltText('Mycorrhizal CRM');
+  const nav = logo.closest('nav');
+  expect(nav).not.toBeNull();
+  expect(nav).toHaveAttribute('aria-label', 'Main navigation');
+});

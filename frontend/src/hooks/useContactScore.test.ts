@@ -105,3 +105,15 @@ test('a failed load is logged by operation and the next refresh clears the error
   expect(result.current.error).toBeNull();
   expect(result.current.score).toEqual(score);
 });
+
+test('refetches when refreshKey changes (issue #1735: crm.ambient toggled)', async () => {
+  vi.mocked(getContactScore).mockResolvedValue(score);
+
+  const { rerender } = renderHook(({ key }) => useContactScore(1, key), {
+    initialProps: { key: false },
+  });
+  await waitFor(() => expect(getContactScore).toHaveBeenCalledTimes(1));
+
+  rerender({ key: true });
+  await waitFor(() => expect(getContactScore).toHaveBeenCalledTimes(2));
+});

@@ -67,3 +67,27 @@ test('falls back to the unknown-contact label when a contact name is missing', (
   renderList({ overdue: [overdueItem({ contact_name: '' })] });
   expect(screen.getByText('Unknown contact')).toBeInTheDocument();
 });
+
+test('never lists an ambient contact as overdue (issue #1735)', () => {
+  const base = overdueItem();
+  renderList({
+    overdue: [
+      overdueItem({
+        contact_name: 'Housemate',
+        health: { ...base.health, ambient: true, ambient_reason: 'household' },
+      }),
+      overdueItem({ contact_name: 'Faraway Friend' }),
+    ],
+  });
+
+  expect(screen.queryByText('Housemate')).not.toBeInTheDocument();
+  expect(screen.getByText('Faraway Friend')).toBeInTheDocument();
+});
+
+test('shows the all-caught-up state when every row is ambient', () => {
+  const base = overdueItem();
+  renderList({
+    overdue: [overdueItem({ health: { ...base.health, ambient: true, ambient_reason: 'flag' } })],
+  });
+  expect(screen.getByText("Nothing overdue. You're all caught up.")).toBeInTheDocument();
+});

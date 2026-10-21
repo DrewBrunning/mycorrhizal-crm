@@ -25,6 +25,7 @@ object NetworkFactory {
         baseUrlProvider: BaseUrlProvider,
         debug: Boolean = false,
         sessionExpiryInterceptor: SessionExpiryInterceptor? = null,
+        forbiddenInterceptor: ForbiddenInterceptor? = null,
         clientVersionProvider: ClientVersionProvider? = null,
         localSocketPathProvider: LocalSocketPathProvider? = null,
         archivedProfileProvider: ArchivedProfileProvider? = null,
@@ -64,6 +65,10 @@ object NetworkFactory {
         // session expiry can omit it.
         if (sessionExpiryInterceptor != null) {
             builder.addInterceptor(sessionExpiryInterceptor)
+        }
+        // Issue #1826: 403 detection (a role may have changed) is optional too.
+        if (forbiddenInterceptor != null) {
+            builder.addInterceptor(forbiddenInterceptor)
         }
 
         if (debug) {
