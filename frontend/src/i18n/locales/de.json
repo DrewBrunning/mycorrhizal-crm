@@ -2233,6 +2233,12 @@
       "saveFailed": "Speichern der Vorliebe fehlgeschlagen"
     }
   },
+  "ambient": {
+    "toggleLabel": "Umgebungskontakt – ich sehe die Person ständig",
+    "toggleHelper": "Zählt als regelmäßiger Kontakt, ohne dass Aktivitäten erfasst werden",
+    "reasonHousehold": "Umgebungskontakt (lebt mit dir zusammen)",
+    "reasonFlag": "Umgebungskontakt (markiert)"
+  },
   "cadence": {
     "title": "Kadenz",
     "add": "Kadenz hinzufügen",

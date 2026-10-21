@@ -2233,6 +2233,12 @@
       "saveFailed": "Échec de l'enregistrement de la préférence"
     }
   },
+  "ambient": {
+    "toggleLabel": "Contact ambiant : je le vois tout le temps",
+    "toggleHelper": "Compte comme un contact régulier sans enregistrer d’activités",
+    "reasonHousehold": "Contact ambiant (vit avec vous)",
+    "reasonFlag": "Contact ambiant (marqué)"
+  },
   "cadence": {
     "title": "Cadence",
     "add": "Ajouter une cadence",

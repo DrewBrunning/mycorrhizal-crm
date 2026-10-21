@@ -1834,3 +1834,67 @@ test('a 412 on a timeline note delete opens the conflict dialog', async () => {
 
   expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
 });
+
+// --- Issue #1735: ambient-contact toggle (crm.ambient) ------------------------
+
+test('the ambient toggle writes crm.ambient=true, keeping the rest of crm', async () => {
+  const calls = mockFetch({
+    record: { ...contactRecord, crm: { kind: 'human', how_we_met: 'Camp' } },
+  });
+  await renderLoaded();
+
+  fireEvent.click(screen.getByRole('switch', { name: /Ambient contact/ }));
+
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'));
+    expect(put?.body).toMatchObject({
+      crm: { kind: 'human', how_we_met: 'Camp', ambient: true },
+    });
+  });
+});
+
+test('the ambient toggle reads crm.ambient and writes an explicit false to clear it', async () => {
+  const calls = mockFetch({ record: { ...contactRecord, crm: { kind: 'human', ambient: true } } });
+  await renderLoaded();
+
+  const toggle = screen.getByRole('switch', { name: /Ambient contact/ });
+  expect(toggle).toBeChecked();
+  fireEvent.click(toggle);
+
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'));
+    expect(put?.body).toMatchObject({ crm: { ambient: false } });
+  });
+});
+
+test('a save that did not touch the toggle sends crm.ambient back exactly as read', async () => {
+  const calls = mockFetch({
+    record: { ...contactRecord, crm: { kind: 'human', ambient: true } },
+  });
+  await renderLoaded();
+
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  const content = fieldContent('How We Met');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'));
+    expect(put?.body).toMatchObject({ crm: { how_we_met: 'Somewhere', ambient: true } });
+  });
+});
+
+test('a save on a contact with no ambient flag does not invent one', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  const content = fieldContent('How We Met');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
+  const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'));
+  const body = put?.body as { crm: object };
+  expect(body.crm).not.toHaveProperty('ambient');
+});

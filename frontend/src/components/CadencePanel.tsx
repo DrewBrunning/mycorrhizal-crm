@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { CadencePolicy } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
 import { calendarDateOnly } from '../utils/localDate';
+import AmbientExplanation from './AmbientExplanation';
 
 interface CadencePanelProps {
   policy: CadencePolicy | null;
@@ -72,7 +73,10 @@ export default function CadencePanel({
   }
 
   const health = policy.health;
-  const isOverdue = !!health && health.overdue_by > 0;
+  // Issue #1735: an ambient contact is never overdue (the server sends
+  // overdue_by 0; guard here too) and shows why instead of day counts.
+  const isAmbient = !!health?.ambient;
+  const isOverdue = !isAmbient && !!health && health.overdue_by > 0;
   const hasInteraction = !!health && health.has_qualifying_interaction;
   const qualifyingTypes = policy.qualifying_types || [];
   const showTypes = qualifyingTypes.length > 0;
@@ -105,7 +109,12 @@ export default function CadencePanel({
             />
           </Box>
 
-          {hasInteraction ? (
+          {isAmbient ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <CheckCircleIcon fontSize="small" color="success" />
+              <AmbientExplanation reason={health?.ambient_reason} />
+            </Box>
+          ) : hasInteraction ? (
             <Box
               sx={{
                 display: 'flex',
@@ -162,7 +171,7 @@ export default function CadencePanel({
             </Box>
           )}
 
-          {hasInteraction && health?.next_due && (
+          {!isAmbient && hasInteraction && health?.next_due && (
             <Typography
               variant="caption"
               sx={{

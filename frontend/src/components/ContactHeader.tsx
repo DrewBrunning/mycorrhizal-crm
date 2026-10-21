@@ -53,6 +53,7 @@ import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useDateFormat } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
 import { healthBandChipColor, healthBandIcon } from '../utils/healthBand';
+import AmbientExplanation from './AmbientExplanation';
 import LanguageField from './LanguageField';
 
 export interface ProfileValues {
@@ -160,7 +161,7 @@ export default function ContactHeader({
   // both the compact and wide layouts below (only one of the two layouts is
   // ever mounted at a time), following the same anchorEl pattern as the
   // export/actions menus above and ActivitiesPage.tsx's info popover.
-  const { score, loading: scoreLoading } = useContactScore(record.id);
+  const { score, loading: scoreLoading } = useContactScore(record.id, record.crm?.ambient);
   const [scoreAnchorEl, setScoreAnchorEl] = useState<HTMLElement | null>(null);
   const scoreOpen = Boolean(scoreAnchorEl);
   const scorePopoverId = scoreOpen ? 'contact-score-popover' : undefined;
@@ -1029,6 +1030,11 @@ export default function ContactHeader({
                 <Typography variant="subtitle2" gutterBottom>
                   {t('contactScore.popoverTitle')}
                 </Typography>
+                {score?.ambient && (
+                  <Box sx={{ mb: 1.5 }}>
+                    <AmbientExplanation reason={score.ambient_reason} variant="caption" />
+                  </Box>
+                )}
                 <Stack spacing={1.5}>
                   {scoreFacets.map(({ key, i18nKey, facet }) => (
                     <Box key={key}>

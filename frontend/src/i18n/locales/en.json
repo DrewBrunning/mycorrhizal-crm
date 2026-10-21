@@ -2233,6 +2233,12 @@
       "saveFailed": "Failed to save preference"
     }
   },
+  "ambient": {
+    "toggleLabel": "Ambient contact — I see them all the time",
+    "toggleHelper": "Counts as in regular contact without logging activities",
+    "reasonHousehold": "Ambient contact (lives with you)",
+    "reasonFlag": "Ambient contact (marked)"
+  },
   "cadence": {
     "title": "Cadence",
     "add": "Add Cadence",

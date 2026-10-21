@@ -2233,6 +2233,12 @@
       "saveFailed": "Salvataggio della preferenza non riuscito"
     }
   },
+  "ambient": {
+    "toggleLabel": "Contatto ambientale: lo vedo di continuo",
+    "toggleHelper": "Conta come contatto regolare senza registrare attività",
+    "reasonHousehold": "Contatto ambientale (vive con te)",
+    "reasonFlag": "Contatto ambientale (segnato)"
+  },
   "cadence": {
     "title": "Cadenza",
     "add": "Aggiungi cadenza",

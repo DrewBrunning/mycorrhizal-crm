@@ -679,3 +679,36 @@ test('compact overflow menu reports the Share and export clicks', () => {
   fireEvent.click(screen.getByText('JSContact'));
   expect(onExportContact).toHaveBeenCalledWith('jscontact');
 });
+
+// Issue #1735: the score breakdown explains an ambient contact.
+test.each([
+  ['household', 'Ambient contact (lives with you)'],
+  ['flag', 'Ambient contact (marked)'],
+] as const)('score popover explains an ambient contact (%s)', async (reason, text) => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), ambient: true, ambient_reason: reason });
+  renderHeader();
+
+  fireEvent.click(screen.getByText('Healthy'));
+
+  expect(await screen.findByText(text)).toBeInTheDocument();
+});
+
+test('score popover has no ambient note for a non-ambient contact', async () => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), ambient: false });
+  renderHeader();
+
+  fireEvent.click(screen.getByText('Healthy'));
+
+  await screen.findByText('Relationship health breakdown');
+  expect(screen.queryByTestId('ambient-explanation')).not.toBeInTheDocument();
+});
+
+test('the score is refetched when crm.ambient changes', () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('moss'));
+  renderHeader({ record: { ...baseRecord(), crm: { kind: 'human', ambient: true } } });
+
+  expect(useContactScore).toHaveBeenCalledWith(expect.anything(), true);
+});
