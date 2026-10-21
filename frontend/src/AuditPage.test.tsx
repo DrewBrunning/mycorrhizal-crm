@@ -8,6 +8,7 @@ import { ApiError } from './api/client';
 import { type Contact, getContactsByUid } from './api/contacts';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import { setTimeFormat } from './timeFormat';
 
 // T60. This codebase's vitest
 // has no auto-cleanup, so it must be done explicitly (CLAUDE.md frontend trap #1).
@@ -98,6 +99,31 @@ test('renders events with the Undo button only on contact update rows', async ()
   expect(screen.getByText('Deleted')).toBeDefined();
   expect(screen.getAllByText('Contact')).toHaveLength(2);
   expect(screen.getByText('Note')).toBeDefined();
+});
+
+// Issue #1830: audit timestamps follow the user's 12/24-hour preference.
+test('audit timestamps render 24-hour or 12-hour per the time-format preference', async () => {
+  auditGetMock.mockResolvedValue({
+    audit_events: [ev({ id: 7, created_at: '2026-08-02T15:30:00Z' })],
+    total: 1,
+  });
+  const stamp = (container: HTMLElement) =>
+    container.querySelector('tbody tr td p')?.textContent ?? '';
+  try {
+    setTimeFormat('24h');
+    const first = renderPage();
+    await screen.findAllByRole('button', { name: 'Undo' });
+    expect(stamp(first.container)).toMatch(/\d{1,2}:\d{2}/);
+    expect(stamp(first.container)).not.toMatch(/AM|PM/i);
+    first.unmount();
+
+    setTimeFormat('12h');
+    const second = renderPage();
+    await screen.findAllByRole('button', { name: 'Undo' });
+    expect(stamp(second.container)).toMatch(/AM|PM/i);
+  } finally {
+    setTimeFormat('auto');
+  }
 });
 
 test('resolves a contact uid to a link to the contact detail page', async () => {

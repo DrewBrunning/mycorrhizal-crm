@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Feed } from '../api/feeds';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 interface FeedListProps {
   feeds: Feed[];
@@ -54,7 +55,7 @@ export default function FeedList({
       : t('feeds.kind.aggregate');
 
   const formatDate = (value: string | null) =>
-    value ? new Date(value).toLocaleString() : t('feeds.never');
+    value ? formatLocalDateTime(new Date(value)) : t('feeds.never');
 
   const confirm = async () => {
     if (!pending) return;

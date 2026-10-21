@@ -11,6 +11,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
+import { initializeTimeFormatFromBackend } from './timeFormat';
 import { isCeremonyCancelled, isWebAuthnSupported } from './webauthnCeremony';
 
 type LoginPageProps = {
@@ -51,9 +52,11 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const finishLogin = async ({
     language,
     date_format,
+    time_format,
   }: {
     language?: string;
     date_format?: string;
+    time_format?: string;
   }) => {
     // Signal that user is now authenticated (token is in httpOnly cookie)
     if (setToken) setToken(isAuthenticated() ? 'authenticated' : null);
@@ -65,6 +68,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
 
     // Sync date format preference from backend
     initializeDateFormatFromBackend(date_format);
+    initializeTimeFormatFromBackend(time_format);
 
     void navigate('/');
   };

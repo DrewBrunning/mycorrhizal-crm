@@ -6,6 +6,7 @@ import { AppThemeProvider } from './AppThemeProvider';
 import { isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import LoginPage from './LoginPage';
+import { getTimeFormat, setTimeFormat } from './timeFormat';
 import { cancelledError, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 vi.mock('./auth', async (importOriginal) => {
@@ -71,7 +72,7 @@ describe('LoginPage two-factor step', () => {
 
   test('completes login with the code when 2FA is required', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockResolvedValue({ language: 'en', date_format: 'eu' });
+    login2FAMock.mockResolvedValue({ language: 'en', date_format: 'eu', time_format: '24h' });
     isAuthenticatedMock.mockReturnValue(true);
     renderLogin();
 
@@ -86,6 +87,9 @@ describe('LoginPage two-factor step', () => {
 
     await waitFor(() => expect(login2FAMock).toHaveBeenCalledWith('123456'));
     expect(isAuthenticatedMock).toHaveBeenCalled();
+    // Issue #1830: the server's time-format preference is applied at sign-in.
+    expect(getTimeFormat()).toBe('24h');
+    setTimeFormat('auto');
   });
 
   test('shows an error and stays on the 2FA step for a rejected code', async () => {
