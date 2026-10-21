@@ -2002,6 +2002,10 @@
     <string name="conflict_load_latest">Neueste Version laden</string>
     <string name="conflict_keep_editing">Weiter bearbeiten</string>
     <string name="conflict_dismiss">Jetzt nicht</string>
+    <string name="contact_ambient_toggle">Alltagskontakt – ich sehe die Person ständig</string>
+    <string name="ambient_explainer">Zählt als regelmäßiger Kontakt, ohne dass Aktivitäten erfasst werden</string>
+    <string name="ambient_reason_household">Lebt mit dir zusammen (Haushalt)</string>
+    <string name="ambient_reason_flag">Als Alltagskontakt markiert</string>
     <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
          backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
     <string name="contact_type_voice">Sprache</string>

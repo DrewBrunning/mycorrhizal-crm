@@ -25,12 +25,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -42,6 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
@@ -110,6 +115,7 @@ fun ContactFormScreen(
                 onNicknameChange = viewModel::onNicknameChange,
                 onKindChange = viewModel::onKindChange,
                 onCardKindChange = viewModel::onCardKindChange,
+                onAmbientChange = viewModel::onAmbientChange,
                 onLanguageChange = viewModel::onLanguageChange,
                 onEmailsChange = viewModel::onEmailsChange,
                 onPhonesChange = viewModel::onPhonesChange,
@@ -173,6 +179,7 @@ fun ContactFormContent(
     onNicknameChange: (String) -> Unit,
     onKindChange: (String) -> Unit = {},
     onCardKindChange: (String) -> Unit = {},
+    onAmbientChange: (Boolean) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
@@ -329,6 +336,22 @@ fun ContactFormContent(
                 }
             }
         }
+
+        // Issue #1734: crm.ambient. Always shown, like kind above (not a ContactFieldKey): it
+        // drives the health score and cadence, not a data field the user can hide.
+        ListItem(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("contact-ambient-toggle")
+                .toggleable(
+                    value = state.ambient == true,
+                    onValueChange = onAmbientChange,
+                    role = Role.Switch,
+                ),
+            headlineContent = { Text(stringResource(R.string.contact_ambient_toggle)) },
+            supportingContent = { Text(stringResource(R.string.ambient_explainer)) },
+            trailingContent = { Switch(checked = state.ambient == true, onCheckedChange = null) },
+        )
 
         // Issue #832: Card.kind (RFC 9553 §2.1.4) — the real `cardKind` toggle key. An
         // edit-only field on web too (no detail-screen counterpart there either).

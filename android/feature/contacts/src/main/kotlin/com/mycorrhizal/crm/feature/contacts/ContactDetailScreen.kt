@@ -141,6 +141,7 @@ import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
@@ -1607,6 +1608,14 @@ fun ContactDetailContent(
             title = { Text(stringResource(R.string.health_score_dialog_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Issue #1734: an ambient contact's recency/frequency come from the flag or
+                    // household, not from logged activity -- say so before the facets.
+                    if (score.ambient) {
+                        AmbientExplanation(
+                            reason = score.ambientReason,
+                            modifier = Modifier.testTag("health-score-ambient"),
+                        )
+                    }
                     ScoreFacetRow(stringResource(R.string.health_score_facet_recency), score.recency)
                     ScoreFacetRow(stringResource(R.string.health_score_facet_frequency), score.frequency)
                     ScoreFacetRow(stringResource(R.string.health_score_facet_closeness), score.closeness)

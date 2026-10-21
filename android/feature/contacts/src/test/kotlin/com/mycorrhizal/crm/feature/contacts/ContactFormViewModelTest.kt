@@ -1888,4 +1888,83 @@ class ContactFormViewModelTest {
         assertEquals("secret", saved?.sensitivity)
         assertEquals("geo:1,2", saved?.coordinates)
     }
+
+    // --- Issue #1734: crm.ambient ---
+
+    /** Loads contact 5 whose `crm.ambient` is [stored], optionally applies [edit], saves, and
+     *  returns the `ContactRecordInput` that was PUT. */
+    private fun kotlinx.coroutines.test.TestScope.saveWithAmbient(
+        stored: Boolean?,
+        edit: (ContactFormViewModel) -> Unit = {},
+    ): ContactRecordInput {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(howWeMet = "Work", ambient = stored),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        val captured = io.mockk.slot<ContactRecordInput>()
+        coEvery { contactRepository.updateContact(5, capture(captured), any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onGivenNameChange("Dana")
+        edit(vm)
+        vm.save()
+        advanceUntilIdle()
+        return captured.captured
+    }
+
+    @Test
+    fun `the form reads crm ambient into state`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), crm = CRMEnvelope(ambient = true))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+
+        assertEquals(true, vm.uiState.value.ambient)
+    }
+
+    @Test
+    fun `an untouched true flag is sent back as true`() = runTest(mainDispatcherRule.testDispatcher) {
+        assertEquals(true, saveWithAmbient(stored = true).crm?.ambient)
+    }
+
+    @Test
+    fun `an untouched absent flag stays absent and is not invented as false`() = runTest(mainDispatcherRule.testDispatcher) {
+        assertNull(saveWithAmbient(stored = null).crm?.ambient)
+    }
+
+    @Test
+    fun `an untouched explicit false is sent back as false`() = runTest(mainDispatcherRule.testDispatcher) {
+        assertEquals(false, saveWithAmbient(stored = false).crm?.ambient)
+    }
+
+    @Test
+    fun `turning the toggle on writes true`() = runTest(mainDispatcherRule.testDispatcher) {
+        assertEquals(true, saveWithAmbient(stored = null) { it.onAmbientChange(true) }.crm?.ambient)
+    }
+
+    @Test
+    fun `turning the toggle off writes an explicit false so the server clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            assertEquals(false, saveWithAmbient(stored = true) { it.onAmbientChange(false) }.crm?.ambient)
+        }
+
+    @Test
+    fun `saving other edits leaves the rest of crm alongside the flag`() = runTest(mainDispatcherRule.testDispatcher) {
+        val input = saveWithAmbient(stored = true)
+        assertEquals("Work", input.crm?.howWeMet)
+    }
+
+    @Test
+    fun `a new contact sends no flag until the toggle is used`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.toInput(null).crm?.ambient)
+
+        vm.onAmbientChange(true)
+        assertEquals(true, vm.uiState.value.toInput(null).crm?.ambient)
+    }
 }

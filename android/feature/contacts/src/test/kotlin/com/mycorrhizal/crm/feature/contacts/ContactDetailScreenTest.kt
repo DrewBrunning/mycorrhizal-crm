@@ -269,6 +269,47 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Updated recently").assertIsDisplayed()
     }
 
+    // --- Issue #1734: ambient explanation in the score breakdown ---
+
+    private fun openScoreDialog(score: ContactScoreResponse) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = score,
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+    }
+
+    @Test
+    fun `an ambient household contact is explained as living with you`() {
+        openScoreDialog(scoreOf("moss").copy(ambient = true, ambientReason = "household"))
+
+        composeTestRule.onNodeWithTag("health-score-ambient").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Lives with you (household)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Counts as in regular contact without logging activities").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an ambient flagged contact is explained as marked as ambient`() {
+        openScoreDialog(scoreOf("moss").copy(ambient = true, ambientReason = "flag"))
+
+        composeTestRule.onNodeWithText("Marked as ambient").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Lives with you (household)").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a non-ambient score shows no ambient explanation`() {
+        openScoreDialog(scoreOf("moss"))
+
+        composeTestRule.onNodeWithTag("health-score-ambient").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Lives with you (household)").assertDoesNotExist()
+    }
+
     @Test
     fun `closing the facet breakdown dialog dismisses it`() {
         composeTestRule.setContent {

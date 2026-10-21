@@ -15,6 +15,9 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -57,6 +60,7 @@ class ContactFormScreenTest {
         onKeywordsChange: (List<String>) -> Unit = {},
         onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
         onCardKindChange: (String) -> Unit = {},
+        onAmbientChange: (Boolean) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -85,6 +89,7 @@ class ContactFormScreenTest {
                         onBirthdayChange = {},
                         onCardNotesChange = onCardNotesChange,
                         onCardKindChange = onCardKindChange,
+                        onAmbientChange = onAmbientChange,
                         onGenderChange = onGenderChange,
                         onPreferredLanguagesChange = onPreferredLanguagesChange,
                         onPronounsChange = onPronounsChange,
@@ -98,6 +103,34 @@ class ContactFormScreenTest {
                 }
             }
         }
+    }
+
+    // --- Issue #1734: ambient toggle ---
+
+    @Test
+    fun `the ambient switch shows its label and supporting text, off when the flag is absent`() {
+        setContent(state = ContactFormState(ambient = null))
+
+        composeTestRule.onNodeWithText("Ambient contact — I see them all the time").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Counts as in regular contact without logging activities")
+            .performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-ambient-toggle").performScrollTo().assertIsOff()
+    }
+
+    @Test
+    fun `the ambient switch is on when the stored flag is true`() {
+        setContent(state = ContactFormState(ambient = true))
+
+        composeTestRule.onNodeWithTag("contact-ambient-toggle").performScrollTo().assertIsOn()
+    }
+
+    @Test
+    fun `tapping the ambient switch reports the new value`() {
+        var reported: Boolean? = null
+        setContent(state = ContactFormState(ambient = true), onAmbientChange = { reported = it })
+
+        composeTestRule.onNodeWithTag("contact-ambient-toggle").performScrollTo().performClick()
+        assertEquals(false, reported)
     }
 
     @Test

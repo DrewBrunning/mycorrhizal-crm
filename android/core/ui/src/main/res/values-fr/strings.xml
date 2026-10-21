@@ -2003,6 +2003,10 @@
     <string name="conflict_load_latest">Charger la dernière version</string>
     <string name="conflict_keep_editing">Continuer à modifier</string>
     <string name="conflict_dismiss">Pas maintenant</string>
+    <string name="contact_ambient_toggle">Contact du quotidien : je le vois en permanence</string>
+    <string name="ambient_explainer">Compte comme un contact régulier sans consigner d\'activités</string>
+    <string name="ambient_reason_household">Vit avec vous (foyer)</string>
+    <string name="ambient_reason_flag">Marqué comme contact du quotidien</string>
     <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
          backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
     <string name="contact_type_voice">Voix</string>

@@ -2018,6 +2018,10 @@
     <string name="conflict_load_latest">Load latest version</string>
     <string name="conflict_keep_editing">Keep editing</string>
     <string name="conflict_dismiss">Not now</string>
+    <string name="contact_ambient_toggle">Ambient contact — I see them all the time</string>
+    <string name="ambient_explainer">Counts as in regular contact without logging activities</string>
+    <string name="ambient_reason_household">Lives with you (household)</string>
+    <string name="ambient_reason_flag">Marked as ambient</string>
     <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
          backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
     <string name="contact_type_voice">Voice</string>
