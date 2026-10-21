@@ -586,7 +586,8 @@
       "cadence": "Cadence & follow-up",
       "dataDecay": "Data verification",
       "metadataExpand": "Expand card metadata",
-      "metadataCollapse": "Collapse card metadata"
+      "metadataCollapse": "Collapse card metadata",
+      "customFieldsUngrouped": "Custom fields"
     },
     "email": "Email",
     "phone": "Phone",
@@ -2098,6 +2099,9 @@
     "label": "Label",
     "labelHint": "The human-readable name shown on contact pages.",
     "labelRequired": "Label is required.",
+    "group": "Group",
+    "groupHint": "Optional. Groups related fields on contact pages. Up to {{max}} characters.",
+    "groupTooLong": "Group must be at most {{max}} characters.",
     "key": "Key",
     "keyHint": "Stable machine name (lowercase, underscores). Cannot be changed after creation.",
     "keyRequired": "Key is required.",
