@@ -245,6 +245,8 @@ func toDashboardOverdueCadences(overdue []services.OverdueCadence) []models.Dash
 				LastInteraction:          o.Health.LastInteraction,
 				NextDue:                  o.Health.NextDue,
 				OverdueBy:                o.Health.OverdueBy,
+				Ambient:                  o.Health.Ambient,
+				AmbientReason:            o.Health.AmbientReason,
 			},
 			ContactID:      o.ContactID,
 			ContactName:    o.ContactName,

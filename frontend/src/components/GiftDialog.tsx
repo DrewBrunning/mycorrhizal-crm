@@ -15,6 +15,7 @@ import { GIFT_STATUSES, type Gift, type GiftStatus } from '../api/gifts';
 import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
+import { calendarDateOnly } from '../utils/localDate';
 import AppDialog from './AppDialog';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
@@ -314,7 +315,7 @@ export default function GiftDialog({
               {activities.map((a) => (
                 <MenuItem key={a.ID} value={a.ID}>
                   {a.title}
-                  {formatDate(a.date) ? ` — ${formatDate(a.date)}` : ''}
+                  {a.date ? ` — ${formatDate(calendarDateOnly(a.date))}` : ''}
                 </MenuItem>
               ))}
             </TextField>

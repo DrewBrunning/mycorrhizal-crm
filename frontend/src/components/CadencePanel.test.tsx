@@ -52,6 +52,7 @@ test('overdue health renders the warning badge', () => {
     basePolicy({
       has_qualifying_interaction: true,
       overdue_by: 3,
+      ambient: false,
       next_due: '2026-01-01T00:00:00Z',
       last_interaction: '2025-12-01T00:00:00Z',
     }),
@@ -66,6 +67,7 @@ test('on-track health renders the success badge and next-due line', () => {
     basePolicy({
       has_qualifying_interaction: true,
       overdue_by: 0,
+      ambient: false,
       next_due: '2026-02-01T00:00:00Z',
       last_interaction: '2026-01-02T00:00:00Z',
     }),
@@ -76,7 +78,7 @@ test('on-track health renders the success badge and next-due line', () => {
 });
 
 test('no qualifying interactions yet renders the neutral hint, not overdue', () => {
-  renderPanel(basePolicy({ has_qualifying_interaction: false, overdue_by: 0 }));
+  renderPanel(basePolicy({ has_qualifying_interaction: false, overdue_by: 0, ambient: false }));
 
   expect(
     screen.getByText('No qualifying interactions yet — cadence starts once you record one.'),
@@ -88,7 +90,7 @@ test('no qualifying interactions yet renders the neutral hint, not overdue', () 
 test('edit and delete actions fire their handlers', () => {
   const onEdit = vi.fn();
   const onDelete = vi.fn();
-  const policy = basePolicy({ has_qualifying_interaction: false, overdue_by: 0 });
+  const policy = basePolicy({ has_qualifying_interaction: false, overdue_by: 0, ambient: false });
   renderPanel(policy, { onEdit, onDelete });
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit' }));

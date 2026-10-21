@@ -28,10 +28,29 @@ import (
 //     future, or undefined). "Due today" is deliberately not overdue,
 //     matching reminders' day boundary.
 type CadenceHealth struct {
-	HasQualifyingInteraction bool       `json:"has_qualifying_interaction"`
-	LastInteraction          *time.Time `json:"last_interaction,omitempty"`
-	NextDue                  *time.Time `json:"next_due,omitempty"`
-	OverdueBy                int        `json:"overdue_by"`
+	HasQualifyingInteraction bool                 `json:"has_qualifying_interaction"`
+	LastInteraction          *time.Time           `json:"last_interaction,omitempty"`
+	NextDue                  *models.CalendarDate `json:"next_due,omitempty"`
+	OverdueBy                int                  `json:"overdue_by"`
+	// Ambient is always on the wire (issue #1733): true when the contact counts
+	// as in regular contact without logged interactions (they live with the
+	// user, or the user flagged them), in which case OverdueBy is forced to 0 --
+	// an ambient contact is never overdue. AmbientReason is "household" or
+	// "flag", omitted when Ambient is false.
+	Ambient       bool   `json:"ambient"`
+	AmbientReason string `json:"ambient_reason,omitempty"`
+}
+
+// withAmbient marks h ambient (issue #1733): never overdue, reason recorded.
+// An empty reason leaves h untouched.
+func (h CadenceHealth) withAmbient(reason string) CadenceHealth {
+	if reason == "" {
+		return h
+	}
+	h.Ambient = true
+	h.AmbientReason = reason
+	h.OverdueBy = 0
+	return h
 }
 
 // calendarDaysBetween counts whole calendar days from a to b (negative when
@@ -77,13 +96,90 @@ func lastQualifyingInteraction(db *gorm.DB, userID uint, policy *models.CadenceP
 	if err := q.Order("activities.date DESC").Find(&activities).Error; err != nil {
 		return nil, err
 	}
+	var best *time.Time
 	for i := range activities {
 		if policy.Qualifies(&activities[i]) {
 			t := activities[i].Date
-			return &t, nil
+			best = &t
+			break
 		}
 	}
-	return nil, nil
+
+	// Issue #1736: a given gift is a qualifying interaction of synthetic type
+	// "gift"; take the later of it and the best activity.
+	if policyAcceptsGifts(policy) {
+		gifts, err := givenGiftDateRows(db, userID, []string{policy.EntityID}, nil)
+		if err != nil {
+			return nil, err
+		}
+		if t := firstQualifyingDate(gifts, policy); t != nil && (best == nil || t.After(*best)) {
+			best = t
+		}
+	}
+	return best, nil
+}
+
+// giftInteractionType is the synthetic interaction type a given gift counts as
+// (issue #1736). Frontend/Android cadence qualifying-type suggestion lists
+// mirror it (frontend trap #4): keep in sync.
+const giftInteractionType = "gift"
+
+// policyAcceptsGifts reports whether a cadence policy counts given gifts: an
+// empty QualifyingTypes list means every default-qualifying type (so yes), a
+// listed policy only when "gift" is listed.
+func policyAcceptsGifts(p *models.CadencePolicy) bool {
+	candidate := &models.Activity{Type: giftInteractionType}
+	return p.Qualifies(candidate)
+}
+
+// givenGiftDateRows returns one row (date, type "gift", vcard_uid) per live
+// gift with status "given" and a non-null date for each of the given contacts
+// (issue #1736): the bulk, ownership-scoped gift counterpart of
+// activityDateRowsQuery, in no particular order. since, when non-nil, keeps
+// only gifts dated on or after it. One query regardless of len(uids).
+//
+// A gift whose activity_id points at a live activity linked to the same contact
+// is skipped: that activity is already counted as an activity (the optional
+// "gift" timeline entry a gift can be linked to, models.Gift.ActivityID), and
+// counting both would double a single handover in Frequency.
+//
+// The join order starts from the contacts, as activityDateRowsQuery does.
+func givenGiftDateRows(db *gorm.DB, userID uint, uids []string, since *time.Time) ([]activityDateRow, error) {
+	q := db.Table("contacts c").
+		Select("g.date AS date, ? AS type, c.vcard_uid AS vcard_uid", giftInteractionType).
+		// INDEXED BY: otherwise the planner probes g through idx_gifts_user_id
+		// (or status), rescanning every gift of the user once per contact --
+		// O(contacts x gifts), the bulk of graph.full's time at the large
+		// profile. The entity index makes it one probe per contact.
+		Joins("CROSS JOIN gifts g INDEXED BY idx_gifts_entity_id ON g.entity_id = c.vcard_uid").
+		Where("c.vcard_uid IN ? AND c.user_id = ? AND g.user_id = ? AND g.deleted_at IS NULL AND g.status = ? AND g.date IS NOT NULL",
+			uids, userID, userID, models.GiftStatusGiven).
+		Where(`(g.activity_id IS NULL OR NOT EXISTS (
+			SELECT 1 FROM activities la
+			JOIN activity_contacts lac ON lac.activity_id = la.id
+			WHERE la.id = g.activity_id AND lac.contact_id = c.id
+			  AND la.user_id = ? AND la.deleted_at IS NULL))`, userID)
+	if since != nil {
+		q = q.Where("g.date >= ?", *since)
+	}
+	var rows []activityDateRow
+	if err := q.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// mergeRowsDateDesc concatenates activity and gift rows and orders them date
+// DESC (stable), the order firstQualifyingDate / groupActivityRowsByUID expect.
+func mergeRowsDateDesc(a, b []activityDateRow) []activityDateRow {
+	if len(b) == 0 {
+		return a
+	}
+	merged := make([]activityDateRow, 0, len(a)+len(b))
+	merged = append(merged, a...)
+	merged = append(merged, b...)
+	slices.SortStableFunc(merged, func(x, y activityDateRow) int { return y.Date.Compare(x.Date) })
+	return merged
 }
 
 // deriveHealth completes the health read-model from an already-resolved last
@@ -101,7 +197,7 @@ func deriveHealth(last *time.Time, intervalDays int, now time.Time) CadenceHealt
 	health := CadenceHealth{
 		HasQualifyingInteraction: true,
 		LastInteraction:          last,
-		NextDue:                  &nextDue,
+		NextDue:                  &models.CalendarDate{Time: nextDue},
 	}
 	if overdue := -calendarDaysBetween(now, nextDue); overdue > 0 {
 		health.OverdueBy = overdue
@@ -123,7 +219,41 @@ func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy
 	if err != nil {
 		return CadenceHealth{}, err
 	}
-	return deriveHealth(last, policy.TargetIntervalDays, now), nil
+	ambient, err := ambientForUIDs(db, userID, []string{policy.EntityID}, now)
+	if err != nil {
+		return CadenceHealth{}, err
+	}
+	return deriveHealth(last, policy.TargetIntervalDays, now).withAmbient(ambient[policy.EntityID]), nil
+}
+
+// ComputeCadenceHealthBatch is ComputeCadenceHealth for a page of policies in a
+// constant number of queries (the batch last-interaction fetch, its gift union
+// and one ambient lookup), keyed by policy ID. It agrees with
+// ComputeCadenceHealth policy for policy; the list endpoint uses it so a page
+// of N policies is not 3N queries (issue #1733/#1736 added the gift and ambient
+// reads to the per-policy path).
+func ComputeCadenceHealthBatch(db *gorm.DB, userID uint, policies []models.CadencePolicy, now time.Time) (map[string]CadenceHealth, error) {
+	out := make(map[string]CadenceHealth, len(policies))
+	if len(policies) == 0 {
+		return out, nil
+	}
+	lastByPolicy, err := fetchLastInteractionDates(db, userID, policies)
+	if err != nil {
+		return nil, err
+	}
+	uids := make([]string, 0, len(policies))
+	for i := range policies {
+		uids = append(uids, policies[i].EntityID)
+	}
+	ambient, err := ambientForUIDs(db, userID, uids, now)
+	if err != nil {
+		return nil, err
+	}
+	for i := range policies {
+		p := &policies[i]
+		out[p.ID] = deriveHealth(lastByPolicy[p.ID], p.TargetIntervalDays, now).withAmbient(ambient[p.EntityID])
+	}
+	return out, nil
 }
 
 // activityDateRow is the light scan target for the batch activity pre-fetch.
@@ -225,6 +355,16 @@ func fetchLastInteractionDates(db *gorm.DB, userID uint, policies []models.Caden
 		return nil, err
 	}
 
+	// Issue #1736: union in given gifts (one extra bulk query) when any policy
+	// could count them -- an empty-list policy, or one listing "gift".
+	if hasEmptyFilter || allTypes[giftInteractionType] {
+		gifts, err := givenGiftDateRows(db, userID, uids, nil)
+		if err != nil {
+			return nil, err
+		}
+		rows = mergeRowsDateDesc(rows, gifts)
+	}
+
 	// Group the (date DESC ordered) rows by contact once, so each policy only
 	// walks its own contact's activities: O(rows + policies), not
 	// O(policies x rows) (issue #1791 -- a policy on every contact of a
@@ -297,6 +437,12 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 	for uid := range uidSet {
 		uids = append(uids, uid)
 	}
+	// Issue #1733: an ambient contact is never overdue. Looked up only for the
+	// contacts that would otherwise be listed, in bulk.
+	ambient, err := ambientForUIDs(db, userID, uids, now)
+	if err != nil {
+		return nil, err
+	}
 	var contacts []models.Contact
 	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
 		return nil, err
@@ -308,6 +454,9 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 
 	var overdue []OverdueCadence
 	for _, cand := range candidates {
+		if _, isAmbient := ambient[cand.policy.EntityID]; isAmbient {
+			continue
+		}
 		c := contactByUID[cand.policy.EntityID]
 		// Issue #1193: a deceased contact generates no overdue-cadence
 		// nudges -- there is no one left to reach out to.
@@ -430,6 +579,14 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 			}
 		}
 
+		// Issue #1733: an ambient contact is never overdue, so no
+		// cadence.overdue webhook either.
+		ambient, err := ambientForUIDs(db, userID, uids, now)
+		if err != nil {
+			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to resolve ambient contacts for webhooks")
+			continue
+		}
+
 		for i := range userPolicies {
 			p := userPolicies[i]
 			if deceasedByUID[p.EntityID] {
@@ -437,6 +594,9 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 			}
 			health := deriveHealth(lastByPolicy[p.ID], p.TargetIntervalDays, now)
 			if health.OverdueBy <= 0 {
+				continue
+			}
+			if _, isAmbient := ambient[p.EntityID]; isAmbient {
 				continue
 			}
 			payload := buildOverduePayload(p, health, contactID[key{p.UserID, p.EntityID}])

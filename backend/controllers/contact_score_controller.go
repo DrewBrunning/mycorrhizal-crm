@@ -66,5 +66,8 @@ func toContactScoreResponse(contactID uint, result scoring.Result) models.Contac
 		Closeness:   facet(result.Closeness),
 		ReachOut:    facet(result.ReachOut),
 		LastUpdated: facet(result.LastUpdated),
+
+		Ambient:       result.Ambient,
+		AmbientReason: result.AmbientReason,
 	}
 }

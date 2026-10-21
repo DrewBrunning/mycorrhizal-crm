@@ -30,7 +30,12 @@ function existingPolicy(): CadencePolicy {
     qualifying_types: ['call', 'visit'],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
-    health: { has_qualifying_interaction: true, overdue_by: 3, next_due: '2026-01-01T00:00:00Z' },
+    health: {
+      has_qualifying_interaction: true,
+      overdue_by: 3,
+      ambient: false,
+      next_due: '2026-01-01T00:00:00Z',
+    },
   };
 }
 

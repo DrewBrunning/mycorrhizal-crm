@@ -37,6 +37,7 @@ import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useRecordConflict } from './hooks/useRecordConflict';
+import { calendarDateOnly } from './utils/localDate';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -138,6 +139,7 @@ const ActivitiesPage: React.FC = () => {
       activityTitle: activity.title || '',
       activityDescription: activity.description || '',
       activityLocation: activity.location || '',
+      // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
       activityContacts: activity.contacts || [],
     });
@@ -343,7 +345,9 @@ const ActivitiesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(activity.date)}</Typography>
+                <Typography variant="body2">
+                  {formatDate(calendarDateOnly(activity.date))}
+                </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
