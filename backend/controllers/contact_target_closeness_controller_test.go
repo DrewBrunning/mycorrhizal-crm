@@ -268,3 +268,27 @@ func TestGetContactScore_TargetFieldPresence(t *testing.T) {
 		assert.Contains(t, target, k)
 	}
 }
+
+// Guard rails the route table normally supplies: no authenticated user, and a
+// PUT mounted without the validation middleware.
+func TestTargetCloseness_HandlerGuardRails(t *testing.T) {
+	db, _, user := targetRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	anon := gin.New()
+	anon.Use(func(c *gin.Context) { c.Set("db", db); c.Next() })
+	anon.DELETE("/contacts/:id/target-closeness", ClearContactTargetCloseness)
+	w := tcJSON(anon, http.MethodDelete, targetPath(contact), nil)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	bare := gin.New()
+	bare.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", user.ID); c.Next() })
+	bare.PUT("/contacts/:id/target-closeness", SetContactTargetCloseness)
+	w = tcJSON(bare, http.MethodPut, targetPath(contact), models.ContactTargetClosenessInput{Tier: "close"})
+	assert.GreaterOrEqual(t, w.Code, 400, "a missing validated body must never succeed")
+
+	var after models.Contact
+	require.NoError(t, db.First(&after, contact.ID).Error)
+	assert.Nil(t, after.TargetCloseness)
+}

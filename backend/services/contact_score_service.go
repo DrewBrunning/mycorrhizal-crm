@@ -87,7 +87,7 @@ type scoreInputs struct {
 // contact.
 func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []models.Contact) (scoreInputs, error) {
 	cfg, err := scoring.LoadConfig()
-	if err != nil {
+	if err != nil { // # pragma: no cover — the embedded tunables file is validated by the scoring package tests, so it cannot fail to load
 		return scoreInputs{}, fmt.Errorf("loading scoring config: %w", err)
 	}
 
