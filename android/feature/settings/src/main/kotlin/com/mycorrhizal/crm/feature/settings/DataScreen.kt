@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +50,7 @@ import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.outlined.Menu
 
 /**
  * The "propose data" screen (T104 + address suggestions): buttons that trigger
@@ -60,7 +60,8 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DataScreen(
-    onBack: () -> Unit,
+    // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
+    onMenuClick: (() -> Unit)? = {},
     onCustomExport: () -> Unit = {},
     onRestoreBundle: () -> Unit = {},
     viewModel: DataViewModel = hiltViewModel(),
@@ -86,11 +87,12 @@ fun DataScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
-                        )
+                    // Issue #1758: a top-level drawer destination opens the drawer (no Back arrow);
+                    // null at Expanded width where the rail replaces it.
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

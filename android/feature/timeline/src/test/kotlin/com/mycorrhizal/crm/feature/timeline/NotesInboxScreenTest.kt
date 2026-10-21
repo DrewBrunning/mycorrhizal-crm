@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -39,6 +40,7 @@ class NotesInboxScreenTest {
         uiState: NotesInboxUiState,
         onNoteClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        onCreateNote: () -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -47,15 +49,49 @@ class NotesInboxScreenTest {
                     uiState = uiState,
                     onNoteClick = onNoteClick,
                     onLoadMore = onLoadMore,
+                    onCreateNote = onCreateNote,
                 )
             }
         }
     }
 
     @Test
-    fun `shows the empty state when there are no unfiled notes`() {
+    fun `the empty state says the unassigned set is empty, never No notes yet`() {
+        // Issue #1757: a user whose notes are all on contacts saw "No notes yet" here.
         setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
-        composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No unassigned notes yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Notes you capture without a contact land here.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No notes yet").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the title names the unassigned set`() {
+        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
+        composeTestRule.onNodeWithText("Unassigned notes").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the empty state offers New note and the FAB does the same`() {
+        var created = 0
+        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()), onCreateNote = { created++ })
+
+        // The empty-state button and the FAB both carry the "New note" label.
+        val buttons = composeTestRule.onAllNodesWithText("New note")
+        buttons[0].performClick()
+        composeTestRule.onNodeWithContentDescription("New note").performClick()
+        assertEquals(2, created)
+    }
+
+    @Test
+    fun `a populated list has the FAB but no empty state`() {
+        var created = 0
+        setContent(
+            NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk"))),
+            onCreateNote = { created++ },
+        )
+        composeTestRule.onNodeWithText("No unassigned notes yet").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("New note").performClick()
+        assertEquals(1, created)
     }
 
     @Test
@@ -78,9 +114,9 @@ class NotesInboxScreenTest {
     }
 
     @Test
-    fun `shows the total unfiled count`() {
+    fun `shows the total count`() {
         setContent(NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk")), total = 7))
-        composeTestRule.onNodeWithText("7 unfiled").assertIsDisplayed()
+        composeTestRule.onNodeWithText("7 total").assertIsDisplayed()
     }
 
     @Test

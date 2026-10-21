@@ -270,7 +270,7 @@ class EntityListScaffoldTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class LifeEventDialogTest {
+class LifeEventFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -280,7 +280,7 @@ class LifeEventDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = initial,
                     relatedContacts = emptyList(),
                     contactSearchQuery = "",
@@ -416,7 +416,7 @@ class LifeEventDialogTest {
         var removed: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = null,
                     relatedContacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice")),
                     contactSearchQuery = "",
@@ -431,7 +431,7 @@ class LifeEventDialogTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Remove Alice").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove Alice").performScrollTo().performClick()
 
         assertEquals("u1", removed)
     }
@@ -440,7 +440,7 @@ class LifeEventDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class GiftDialogTest {
+class GiftFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -450,7 +450,7 @@ class GiftDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                GiftDialog(
+                GiftForm(
                     initial = initial,
                     lifeEvents = emptyList(),
                     activities = emptyList(),
@@ -540,7 +540,7 @@ class GiftDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class PreferenceDialogTest {
+class PreferenceFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -551,7 +551,7 @@ class PreferenceDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = initial,
                     sections = sections,
                     onConfirm = onConfirm,
@@ -631,7 +631,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills category value notes and sensitivity`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",
@@ -701,7 +701,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills an existing hobby level`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",
@@ -887,7 +887,7 @@ class AgendaDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class MarkDiscussedDialogTest {
+class MarkDiscussedFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -897,7 +897,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = emptyList(),
                     confirming = false,
@@ -919,7 +919,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = listOf(
                         com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat"),
