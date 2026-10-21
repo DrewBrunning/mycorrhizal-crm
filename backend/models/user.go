@@ -27,7 +27,7 @@ type User struct {
 	Language   string `gorm:"default:'en'" json:"language" validate:"omitempty,oneof=en de it es fr"`
 	DateFormat string `gorm:"default:'eu'" json:"date_format" validate:"omitempty,oneof=eu us iso ca eu-hyphen us-mmm us-mmmm eu-mmm eu-mmmm"`
 	// TimeFormat is the user's 12/24-hour preference (issue #1830, migration
-	// 000077): auto (platform/locale default) | 12h | 24h. Keep the oneof in
+	// 000076): auto (platform/locale default) | 12h | 24h. Keep the oneof in
 	// sync with UpdateTimeFormatInput (controllers) and the frontend
 	// TIME_FORMATS list (frontend/src/timeFormat.ts).
 	TimeFormat               string     `gorm:"default:'auto'" json:"time_format" validate:"omitempty,oneof=auto 12h 24h"`

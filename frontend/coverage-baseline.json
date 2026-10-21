@@ -57,9 +57,9 @@
       "branchesTotal": 110
     },
     "src/DashboardPage.tsx": {
-      "lines": 74.66,
-      "linesTotal": 150,
-      "branches": 61.45,
+      "lines": 75.48,
+      "linesTotal": 155,
+      "branches": 62.5,
       "branchesTotal": 96
     },
     "src/DataSettingsPage.tsx": {
@@ -81,8 +81,8 @@
       "branchesTotal": 27
     },
     "src/LoginPage.tsx": {
-      "lines": 94.2,
-      "linesTotal": 69,
+      "lines": 94.28,
+      "linesTotal": 70,
       "branches": 78.84,
       "branchesTotal": 52
     },
@@ -123,8 +123,8 @@
       "branchesTotal": 30
     },
     "src/SettingsPage.tsx": {
-      "lines": 81.94,
-      "linesTotal": 216,
+      "lines": 82.66,
+      "linesTotal": 225,
       "branches": 66.05,
       "branchesTotal": 109
     },
@@ -556,9 +556,9 @@
     },
     "src/api/users.ts": {
       "lines": 100,
-      "linesTotal": 28,
+      "linesTotal": 31,
       "branches": 100,
-      "branchesTotal": 16
+      "branchesTotal": 18
     },
     "src/api/webauthn.ts": {
       "lines": 100,
@@ -573,8 +573,8 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 75.34,
-      "linesTotal": 73,
+      "lines": 75.67,
+      "linesTotal": 74,
       "branches": 80.95,
       "branchesTotal": 42
     },
@@ -736,7 +736,7 @@
     },
     "src/components/ContactMap.tsx": {
       "lines": 100,
-      "linesTotal": 73,
+      "linesTotal": 74,
       "branches": 100,
       "branchesTotal": 22
     },
@@ -923,7 +923,7 @@
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 96.61,
       "linesTotal": 59,
-      "branches": 93.22,
+      "branches": 94.91,
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
@@ -1245,9 +1245,9 @@
       "branchesTotal": 29
     },
     "src/components/ReminderList.tsx": {
-      "lines": 97.36,
-      "linesTotal": 38,
-      "branches": 76.47,
+      "lines": 97.05,
+      "linesTotal": 34,
+      "branches": 94.11,
       "branchesTotal": 17
     },
     "src/components/ReviewDuplicatesDialog.tsx": {
@@ -1934,6 +1934,12 @@
       "branches": 100,
       "branchesTotal": 0
     },
+    "src/timeFormat.ts": {
+      "lines": 97.61,
+      "linesTotal": 42,
+      "branches": 92.59,
+      "branchesTotal": 27
+    },
     "src/types/graph.ts": {
       "lines": 0,
       "linesTotal": 0,
@@ -1996,9 +2002,9 @@
     },
     "src/utils/localDate.ts": {
       "lines": 100,
-      "linesTotal": 9,
+      "linesTotal": 14,
       "branches": 100,
-      "branchesTotal": 5
+      "branchesTotal": 8
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrationAddsUserTimeFormat covers 000077 (issue #1830): the new
+// TestMigrationAddsUserTimeFormat covers 000076 (issue #1830): the new
 // users.time_format column lands as 'auto' on every existing user (live and
 // soft-deleted), nothing else on those rows changes, an explicit value
 // survives, NOT NULL holds, and the down migration drops only the column.
@@ -22,7 +22,7 @@ func TestMigrationAddsUserTimeFormat(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	require.NoError(t, m.Migrate(75)) // everything before 000077 (000076 is claimed by another branch)
+	require.NoError(t, m.Migrate(75)) // everything before 000076 (this PR)
 
 	const stamp = "2020-01-02 03:04:05"
 	insert := func(name, dateFormat string, deleted bool) int64 {
@@ -42,7 +42,7 @@ func TestMigrationAddsUserTimeFormat(t *testing.T) {
 	live := insert("live", "iso", false)
 	dead := insert("dead", "us", true)
 
-	require.NoError(t, m.Migrate(77))
+	require.NoError(t, m.Migrate(76))
 
 	read := func(id int64) (name, dateFormat, timeFormat string, deleted sql.NullString) {
 		t.Helper()
