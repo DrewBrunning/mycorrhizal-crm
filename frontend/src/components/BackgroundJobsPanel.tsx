@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { JobRunHealth, JobRunResult, JobRunStatus } from '../api/jobRuns';
 import { useJobRunHealth, useJobRunHistory } from '../hooks/useJobRuns';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 const STATUS_COLORS: Record<JobRunStatus, 'success' | 'error' | 'default'> = {
   healthy: 'success',
@@ -36,7 +37,7 @@ function formatDateTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 function formatDuration(ms: number | null | undefined): string {

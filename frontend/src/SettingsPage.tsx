@@ -1,3 +1,4 @@
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import BlockIcon from '@mui/icons-material/Block';
@@ -61,7 +62,7 @@ import {
 } from './api/apiTokens';
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
-import { updateDateFormat, updateLanguage, updateSelfContact } from './api/users';
+import { updateDateFormat, updateLanguage, updateSelfContact, updateTimeFormat } from './api/users';
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
@@ -81,12 +82,19 @@ import WebhooksSettings from './components/WebhooksSettings';
 import { useSnackbar } from './context/SnackbarContext';
 import { type DateFormat, useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import {
+  formatDateTime as formatLocalDateTime,
+  TIME_FORMATS,
+  type TimeFormat,
+  useTimeFormat,
+} from './timeFormat';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   useDocumentTitle(t('nav.profile'));
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { dateFormat, setDateFormat } = useDateFormat();
+  const { timeFormat, setTimeFormat } = useTimeFormat();
   const { showSuccess, showError } = useSnackbar();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -188,7 +196,7 @@ export default function SettingsPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return t('apiTokens.neverUsed');
-    return new Date(dateStr).toLocaleString();
+    return formatLocalDateTime(new Date(dateStr));
   };
 
   const isExpired = (token: ApiToken) =>
@@ -261,6 +269,20 @@ export default function SettingsPage() {
       // Silently fail - the frontend date format is still updated
       // Backend sync failure doesn't affect UI date format
       console.error('Failed to sync date format to backend:', error);
+    }
+  };
+
+  const handleTimeFormatChange = async (event: SelectChangeEvent<TimeFormat>) => {
+    const newFormat = event.target.value as TimeFormat;
+    // Update frontend immediately for responsive UI
+    setTimeFormat(newFormat);
+
+    // Sync to the backend so the preference follows the user across devices
+    try {
+      await updateTimeFormat(newFormat);
+    } catch (error) {
+      // The local preference still applies; only the cross-device sync failed.
+      console.error('Failed to sync time format to backend:', error);
     }
   };
 
@@ -445,6 +467,46 @@ export default function SettingsPage() {
             }}
           >
             {t('settings.dateFormat.description')}
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <AccessTimeIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+              {t('settings.timeFormat.title')}
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 1.5 }} />
+
+          <FormControl fullWidth size="small">
+            <InputLabel id="time-format-select-label">{t('settings.timeFormat.label')}</InputLabel>
+            <Select
+              labelId="time-format-select-label"
+              value={timeFormat}
+              label={t('settings.timeFormat.label')}
+              onChange={(p0) => void handleTimeFormatChange(p0)}
+            >
+              {/* Keep in sync with the backend `oneof=auto 12h 24h` (see TIME_FORMATS). */}
+              {TIME_FORMATS.map((value) => (
+                <MenuItem key={value} value={value}>
+                  {t(`settings.timeFormat.options.${value}`)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+              display: 'block',
+            }}
+          >
+            {t('settings.timeFormat.description')}
           </Typography>
         </CardContent>
       </Card>
@@ -722,7 +784,7 @@ export default function SettingsPage() {
                             variant="outlined"
                           />
                         </TableCell>
-                        <TableCell>{new Date(token.created_at).toLocaleString()}</TableCell>
+                        <TableCell>{formatLocalDateTime(new Date(token.created_at))}</TableCell>
                         <TableCell>{formatDate(token.last_used_at)}</TableCell>
                         <TableCell>{formatDate(token.expires_at)}</TableCell>
                         <TableCell>

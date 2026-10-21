@@ -41,6 +41,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useAudit } from './hooks/useAudit';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { formatDateTime as formatLocalDateTime } from './timeFormat';
 import { getErrorMessage } from './utils/errorHandler';
 
 const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'error'> = {
@@ -445,5 +446,5 @@ function EntityIdCell({
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }

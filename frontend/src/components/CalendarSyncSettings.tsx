@@ -38,6 +38,7 @@ import {
   syncCalendarSubscription,
   updateCalendarSubscription,
 } from '../api/calendars';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 
 interface CalendarFormState {
@@ -211,7 +212,7 @@ export default function CalendarSyncSettings() {
   const formatLastSync = (cal: CalendarSubscription) => {
     if (!cal.last_synced_at) return t('settings.calendarSync.neverSynced');
     return t('settings.calendarSync.lastSynced', {
-      date: new Date(cal.last_synced_at).toLocaleString(),
+      date: formatLocalDateTime(new Date(cal.last_synced_at)),
     });
   };
 
@@ -255,11 +256,11 @@ export default function CalendarSyncSettings() {
     if (cal.terminal_failure_at) return null;
     if (cal.consecutive_failures > 0) {
       const since = cal.incident_first_failure_at
-        ? new Date(cal.incident_first_failure_at).toLocaleString()
+        ? formatLocalDateTime(new Date(cal.incident_first_failure_at))
         : t('settings.calendarSync.neverSynced');
       const lastGood = cal.last_success_at
         ? t('settings.calendarSync.healthLastSuccess', {
-            date: new Date(cal.last_success_at).toLocaleString(),
+            date: formatLocalDateTime(new Date(cal.last_success_at)),
           })
         : t('settings.calendarSync.healthNeverSucceeded');
       return (

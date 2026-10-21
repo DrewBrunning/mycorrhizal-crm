@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { ErrorBucket } from '../api/errorAggregation';
 import { useErrorAggregation } from '../hooks/useErrorAggregation';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 import { statusTextColor } from '../utils/statusText';
 
 const WINDOW_HOURS = 24;
@@ -22,7 +23,7 @@ const WINDOW_HOURS = 24;
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 // A compact "3 hours ago" hint, using the built-in Intl.RelativeTimeFormat (no

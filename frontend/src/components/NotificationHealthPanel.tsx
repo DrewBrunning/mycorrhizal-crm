@@ -6,6 +6,7 @@ import type {
   NotificationChannelStatus,
 } from '../api/notificationHealth';
 import { useNotificationChannelHealth } from '../hooks/useNotificationChannelHealth';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 const STATUS_COLORS: Record<
   NotificationChannelStatus,
@@ -21,7 +22,7 @@ function formatDateTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 // NotificationHealthPanel — the per-channel notification delivery health

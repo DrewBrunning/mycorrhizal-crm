@@ -3,6 +3,7 @@ import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { SubsystemHealth, SubsystemStatus } from '../api/subsystemHealth';
 import { useSubsystemHealth } from '../hooks/useSubsystemHealth';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 const STATUS_COLORS: Record<SubsystemStatus, 'success' | 'error' | 'default'> = {
   healthy: 'success',
@@ -14,7 +15,7 @@ function formatDateTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 // A compact "3 hours ago" hint next to the absolute incident-start time, using

@@ -39,6 +39,7 @@ import {
 } from '../api/notifications';
 import { useSnackbar } from '../context/SnackbarContext';
 import { browserSupportsPush, subscribeBrowserPush } from '../pushSubscription';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 // isPrivateAddressURL does a lightweight client-side check for the most
 // common private/loopback targets so the Settings card can warn BEFORE the
@@ -525,7 +526,7 @@ export default function NotificationSettings() {
                       >
                         <ListItemText
                           primary={sub.device_label || 'Browser'}
-                          secondary={new Date(sub.created_at).toLocaleString()}
+                          secondary={formatLocalDateTime(new Date(sub.created_at))}
                           slotProps={{
                             primary: { component: 'div', variant: 'body2' },
                             secondary: { component: 'div', variant: 'caption' },
@@ -605,7 +606,7 @@ export default function NotificationSettings() {
                         <PhoneIphoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
                         <ListItemText
                           primary={device.device_label || device.client.toUpperCase()}
-                          secondary={new Date(device.created_at).toLocaleString()}
+                          secondary={formatLocalDateTime(new Date(device.created_at))}
                           slotProps={{
                             primary: { component: 'div', variant: 'body2' },
                             secondary: { component: 'div', variant: 'caption' },

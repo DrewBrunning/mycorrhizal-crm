@@ -42,6 +42,7 @@ import MonicaImportDialog from './components/MonicaImportDialog';
 import MycorrhizalImportDialog from './components/MycorrhizalImportDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { formatDateTime as formatLocalDateTime } from './timeFormat';
 import { handleFetchError } from './utils/errorHandler';
 
 export default function DataSettingsPage() {
@@ -367,7 +368,7 @@ export default function DataSettingsPage() {
                   <TableBody>
                     {importHistory.map((run) => (
                       <TableRow key={run.id}>
-                        <TableCell>{new Date(run.created_at).toLocaleString()}</TableCell>
+                        <TableCell>{formatLocalDateTime(new Date(run.created_at))}</TableCell>
                         <TableCell>
                           {t(`settings.data.import.history.format.${run.format}`)}
                         </TableCell>

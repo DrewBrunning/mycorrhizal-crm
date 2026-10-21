@@ -26,6 +26,7 @@ import { isAdmin } from './auth';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemStatus } from './hooks/useSystemStatus';
+import { formatDateTime as formatLocalDateTime } from './timeFormat';
 import { statusTextColor } from './utils/statusText';
 
 // Overall roll-up (healthy | degraded | unhealthy) — healthy reads success,
@@ -84,7 +85,7 @@ function formatDateTime(iso?: string): string {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 // SystemStatusPage — the admin "System status" surface (issue #649): the

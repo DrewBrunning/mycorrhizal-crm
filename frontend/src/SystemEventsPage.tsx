@@ -42,6 +42,7 @@ import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemEvents } from './hooks/useSystemEvents';
+import { formatDateTime as formatLocalDateTime } from './timeFormat';
 import { statusTextColor } from './utils/statusText';
 
 const SEVERITY_COLORS: Record<SystemEventSeverity, 'default' | 'warning' | 'error'> = {
@@ -59,7 +60,7 @@ const RESULT_COLORS: Record<string, 'success' | 'error' | 'default'> = {
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
+  return formatLocalDateTime(date);
 }
 
 function formatDuration(ms?: number): string {
