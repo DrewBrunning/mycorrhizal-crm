@@ -15,6 +15,7 @@ import {
 import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
 import HouseholdDialog, { type HouseholdFormData } from './components/HouseholdDialog';
 import HouseholdList from './components/HouseholdList';
+import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -221,11 +222,7 @@ export default function HouseholdsPage() {
         {t('household.description')}
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <LoadError message={error} onRetry={() => void refresh()} sx={{ mb: 2 }} />}
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {suggestionsLoaded && !suggestionsLoading && (
@@ -242,22 +239,25 @@ export default function HouseholdsPage() {
         </Alert>
       )}
 
-      <HouseholdList
-        households={households}
-        members={members}
-        contactsByUid={contactsByUid}
-        suggestPendingId={suggestPendingId}
-        onEdit={handleOpenEdit}
-        onDelete={(p0) => void handleConfirmDelete(p0)}
-        onSuggest={(p0) => void handleSuggest(p0)}
-        onAddMember={(householdId, uid, role) => {
-          handleAddMember(householdId, uid, role).catch(() => {});
-        }}
-        onRemoveMember={(householdId, uid) => {
-          handleRemoveMember(householdId, uid).catch(() => {});
-        }}
-        onRoleChange={(p0, p1, p2) => void handleRoleChange(p0, p1, p2)}
-      />
+      {/* A failed load must not fall through to HouseholdList's "no households" copy. */}
+      {(!error || households.length > 0) && (
+        <HouseholdList
+          households={households}
+          members={members}
+          contactsByUid={contactsByUid}
+          suggestPendingId={suggestPendingId}
+          onEdit={handleOpenEdit}
+          onDelete={(p0) => void handleConfirmDelete(p0)}
+          onSuggest={(p0) => void handleSuggest(p0)}
+          onAddMember={(householdId, uid, role) => {
+            handleAddMember(householdId, uid, role).catch(() => {});
+          }}
+          onRemoveMember={(householdId, uid) => {
+            handleRemoveMember(householdId, uid).catch(() => {});
+          }}
+          onRoleChange={(p0, p1, p2) => void handleRoleChange(p0, p1, p2)}
+        />
+      )}
 
       <HouseholdDialog
         open={dialogOpen}

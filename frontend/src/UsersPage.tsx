@@ -44,6 +44,7 @@ import {
 } from './api/admin';
 import { isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
+import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -337,11 +338,7 @@ export default function UsersPage() {
         }
       />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <LoadError message={error} onRetry={() => void fetchUsers()} sx={{ mb: 2 }} />}
 
       {compact ? (
         <>
@@ -427,7 +424,7 @@ export default function UsersPage() {
               </Card>
             ))}
           </Stack>
-          {users.length === 0 && !loading && (
+          {users.length === 0 && !loading && !error && (
             <Typography
               align="center"
               sx={{
@@ -502,7 +499,7 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {users.length === 0 && !loading && (
+              {users.length === 0 && !loading && !error && (
                 <TableRow>
                   <TableCell colSpan={6} align="center">
                     {t('users.noUsers')}

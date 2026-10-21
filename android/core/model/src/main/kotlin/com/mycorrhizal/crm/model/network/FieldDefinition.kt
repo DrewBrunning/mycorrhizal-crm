@@ -42,9 +42,18 @@ data class FieldDefinition(
     val sensitivity: String? = null,
     /** The user's display order (issue #1210); the list endpoint returns rows ordered by it. */
     val position: Int = 0,
+    /**
+     * Display-only group label (issue #1730): always present on the wire, `""` = ungrouped, at
+     * most [FIELD_GROUP_MAX_LENGTH] characters. Defaults to `""` so a server that predates the
+     * field still parses (Moshi applies the default when the key is absent).
+     */
+    val group: String = "",
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "updated_at") val updatedAt: String? = null,
 )
+
+/** Server-side limit on [FieldDefinition.group] / [FieldDefinitionInput.group], in characters. */
+const val FIELD_GROUP_MAX_LENGTH = 100
 
 /**
  * GET /field-definitions. `fieldDefinitions` is nullable on the wire even though the endpoint
@@ -122,6 +131,12 @@ data class FieldDefinitionInput(
     val constraints: FieldConstraints? = null,
     val projection: String? = null,
     val sensitivity: String? = null,
+    /**
+     * Group label. Null OMITS the key, which the server reads as "keep the current group" — only
+     * a caller that does not know the group may leave it null. The edit form always sends the
+     * label it shows, and `""` to clear the group (issue #1730).
+     */
+    val group: String? = null,
 )
 
 /**

@@ -902,7 +902,9 @@
     "keepEditing": "Continuer la modification",
     "conflictTitle": "Modifié ailleurs",
     "conflictMessage": "Cet enregistrement a été modifié ailleurs (autre onglet, appareil ou synchronisation) après son ouverture ; votre modification n'a donc pas été enregistrée. Les modifications ne sont jamais fusionnées automatiquement. Chargez la dernière version pour continuer (votre modification sera abandonnée), ou gardez cette modification ouverte pour copier vos changements d'abord.",
-    "conflictReload": "Charger la dernière version"
+    "conflictReload": "Charger la dernière version",
+    "retry": "Réessayer",
+    "loadFailed": "Impossible de charger ces données"
   },
   "externalLinks": {
     "title": "Liens externes",
@@ -2108,7 +2110,8 @@
     "createEntities": "Créer les entités",
     "addMembers": "Ajouter les membres",
     "noLegacyCircles": "Aucun ancien cercle trouvé. Cette migration ne vous est peut-être pas nécessaire.",
-    "refresh": "Actualiser"
+    "refresh": "Actualiser",
+    "countsPartial": "Impossible de charger le nombre de contacts de {{count}} cercle(s) ; ils affichent 0 jusqu'à une nouvelle tentative."
   },
   "customFields": {
     "addTitle": "Ajouter un champ personnalisé",

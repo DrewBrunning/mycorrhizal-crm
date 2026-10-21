@@ -5,9 +5,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.model.network.FIELD_GROUP_MAX_LENGTH
 import com.mycorrhizal.crm.model.network.FieldConstraints
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldDefinitionInput
+import com.mycorrhizal.crm.model.network.fieldGroupSuggestions
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +45,10 @@ data class FieldDefinitionFormState(
     val projectionMode: String = PROJECTION_INTERNAL,
     val vcardName: String = "",
     val sensitivity: String = FIELD_SENSITIVITY_NORMAL,
+    /** Optional display-only group label (issue #1731); blank = ungrouped. */
+    val group: String = "",
+    /** The user's existing group labels, offered as suggestions (free entry still allowed). */
+    val groupSuggestions: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -53,6 +59,7 @@ data class FieldDefinitionFormState(
     /** Validation order/messages mirror `FieldDefinitionDialog.tsx:122-138` exactly. */
     fun validate(): Int? = when {
         label.isBlank() -> R.string.settings_custom_fields_error_label_required
+        group.trim().length > FIELD_GROUP_MAX_LENGTH -> R.string.settings_custom_fields_error_group_too_long
         !isEdit && key.isBlank() -> R.string.settings_custom_fields_error_key_required
         type == "enum" && enumValues.none { it.isNotBlank() } -> R.string.settings_custom_fields_error_enum_required
         projectionMode == PROJECTION_VCARD && vcardName.isBlank() ->
@@ -87,6 +94,9 @@ data class FieldDefinitionFormState(
             constraints = constraints,
             projection = projection,
             sensitivity = sensitivity,
+            // Always sent (never null) so an edit can't silently keep a group the user cleared:
+            // the server treats an omitted key as "keep", "" as "clear".
+            group = group.trim(),
         )
     }
 
@@ -109,6 +119,7 @@ data class FieldDefinitionFormState(
             projectionMode = if (projection.startsWith("vcard:")) PROJECTION_VCARD else PROJECTION_INTERNAL,
             vcardName = projection.removePrefix(PROJECTION_VCARD_PREFIX),
             sensitivity = definition.sensitivity ?: FIELD_SENSITIVITY_NORMAL,
+            group = definition.group,
         )
     }
 }
@@ -141,6 +152,19 @@ class FieldDefinitionFormViewModel @Inject constructor(
 
     init {
         if (fieldDefinitionId != null) loadExisting(fieldDefinitionId)
+        loadGroupSuggestions()
+    }
+
+    /** Best-effort: a failure just means no suggestions, free entry still works. */
+    private fun loadGroupSuggestions() {
+        viewModelScope.launch {
+            repository.list().foldApiError(
+                onSuccess = { definitions ->
+                    _uiState.update { it.copy(groupSuggestions = fieldGroupSuggestions(definitions)) }
+                },
+                onError = { },
+            )
+        }
     }
 
     private fun loadExisting(id: String) {
@@ -168,6 +192,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
     fun onProjectionModeChange(value: String) = _uiState.update { it.copy(projectionMode = value) }
     fun onVcardNameChange(value: String) = _uiState.update { it.copy(vcardName = value) }
     fun onSensitivityChange(value: String) = _uiState.update { it.copy(sensitivity = value) }
+    fun onGroupChange(value: String) = _uiState.update { it.copy(group = value) }
 
     fun addEnumValue() = _uiState.update { it.copy(enumValues = it.enumValues + "") }
     fun updateEnumValue(index: Int, value: String) = _uiState.update {

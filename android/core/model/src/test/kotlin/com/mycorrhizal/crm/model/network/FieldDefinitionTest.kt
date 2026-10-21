@@ -201,4 +201,26 @@ class FieldDefinitionTest {
         val absent = adapter.fromJson("""{"id":"d1","label":"Coffee order"}""")
         assertEquals(0, absent?.position)
     }
+
+    // --- group (issue #1731) ---
+
+    @Test
+    fun `group parses from JSON and defaults to empty when the server predates it`() {
+        val adapter = MoshiProvider.get().adapter(FieldDefinition::class.java)
+        assertEquals("Travel profile", adapter.fromJson("""{"id":"d1","group":"Travel profile"}""")?.group)
+        assertEquals("", adapter.fromJson("""{"id":"d1","group":""}""")?.group)
+        // Older server: key absent entirely.
+        assertEquals("", adapter.fromJson("""{"id":"d1","label":"Coffee order"}""")?.group)
+    }
+
+    @Test
+    fun `input omits group when null so the server keeps it, and sends an empty string to clear`() {
+        val adapter = MoshiProvider.get().adapter(FieldDefinitionInput::class.java)
+        val omitted = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string"))
+        assertEquals(false, omitted.contains("group"))
+        val cleared = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string", group = ""))
+        assertEquals(true, cleared.contains(""""group":"""""))
+        val set = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string", group = "Travel"))
+        assertEquals(true, set.contains(""""group":"Travel""""))
+    }
 }

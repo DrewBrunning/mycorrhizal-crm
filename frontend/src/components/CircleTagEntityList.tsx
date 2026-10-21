@@ -34,6 +34,9 @@ export interface CircleTagEntityListItem {
 interface CircleTagEntityListProps {
   items: CircleTagEntityListItem[];
   loading: boolean;
+  // The list's load failed (issue #1779): "nothing here yet" would be untrue, so the empty
+  // copy is suppressed; the page renders the shared LoadError above this list.
+  loadFailed?: boolean;
   newPlaceholder: string;
   addLabel: string;
   emptyLabel: string;
@@ -47,6 +50,7 @@ interface CircleTagEntityListProps {
 export default function CircleTagEntityList({
   items,
   loading,
+  loadFailed = false,
   newPlaceholder,
   addLabel,
   emptyLabel,
@@ -116,7 +120,7 @@ export default function CircleTagEntityList({
   return (
     <Box>
       <Paper variant="outlined">
-        {items.length === 0 && !loading ? (
+        {items.length === 0 && loadFailed ? null : items.length === 0 && !loading ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography
               sx={{

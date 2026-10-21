@@ -8,17 +8,21 @@ import {
   removePasskey,
   type SecondFactorProof,
 } from '../api/webauthn';
+import { handleFetchError } from '../utils/errorHandler';
 
 export function useWebAuthn() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(
     async () => {
+      setError(null);
       try {
         setPasskeys(await listPasskeys());
-      } catch {
-        // Non-critical on the settings page; keep whatever we have.
+      } catch (err) {
+        // Surfaced, not swallowed (issue #1779): a failed load must not read as "no passkeys".
+        setError(handleFetchError(err, 'fetching passkeys'));
       } finally {
         setLoading(false);
       }
@@ -56,5 +60,5 @@ export function useWebAuthn() {
     [refresh],
   );
 
-  return { passkeys, loading, register, remove, refresh };
+  return { passkeys, loading, error, register, remove, refresh };
 }

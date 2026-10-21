@@ -36,6 +36,7 @@ import {
 import BackgroundJobsPanel from './components/BackgroundJobsPanel';
 import DiagnosticsPanel from './components/DiagnosticsPanel';
 import ErrorAggregationPanel from './components/ErrorAggregationPanel';
+import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import NotificationHealthPanel from './components/NotificationHealthPanel';
 import SubsystemHealthPanel from './components/SubsystemHealthPanel';
@@ -81,6 +82,7 @@ export default function SystemEventsPage() {
     events,
     loading,
     error,
+    refetch,
     filters,
     hasFilters,
     patchFilters,
@@ -246,15 +248,11 @@ export default function SystemEventsPage() {
         </Paper>
       )}
 
-      {error && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography color="error">{error}</Typography>
-        </Paper>
-      )}
+      {error && <LoadError message={error} onRetry={() => void refetch()} sx={{ mb: 2 }} />}
 
       {loading && events.length === 0 ? (
         <ListSkeleton count={8} />
-      ) : events.length === 0 ? (
+      ) : events.length === 0 && error ? null : events.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography
             variant="body1"

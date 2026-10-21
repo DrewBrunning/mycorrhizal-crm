@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
+import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
@@ -66,14 +67,16 @@ const NotesPage: React.FC = () => {
     nextCursor,
     total: unfiledTotal,
     loading,
+    error,
     refetch,
     loadMore,
   } = useNotes(undefined, notesParams);
 
   // #211: result-count announcement, once per settled fetch.
   useEffect(() => {
-    if (!loading) announce(t('common.resultsCount', { count: notes.length }));
-  }, [loading, notes.length, announce, t]);
+    // A failed load is announced by LoadError's role="alert"; "0 results" would be a lie.
+    if (!loading && !error) announce(t('common.resultsCount', { count: notes.length }));
+  }, [loading, error, notes.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [editValues, setEditValues] = useState<{
@@ -202,12 +205,14 @@ const NotesPage: React.FC = () => {
                 latter is the loaded page, so this under-counted anyone with
                 more than one page of unfiled notes and then grew as they
                 clicked "Load more". */}
-            <Chip
-              label={unfiledTotal}
-              size="small"
-              color={unfiledTotal > 0 ? 'primary' : 'default'}
-              variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
-            />
+            {!error && (
+              <Chip
+                label={unfiledTotal}
+                size="small"
+                color={unfiledTotal > 0 ? 'primary' : 'default'}
+                variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
+              />
+            )}
             <IconButton
               size="small"
               aria-describedby={infoPopoverId}
@@ -290,9 +295,11 @@ const NotesPage: React.FC = () => {
         </Box>
       </Paper>
 
+      {error && <LoadError message={error} onRetry={() => void refetch()} sx={{ mb: 2 }} />}
+
       {isInitialLoading ? (
         <ListSkeleton count={8} />
-      ) : notes.length === 0 ? (
+      ) : notes.length === 0 && error ? null : notes.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography
             variant="body1"

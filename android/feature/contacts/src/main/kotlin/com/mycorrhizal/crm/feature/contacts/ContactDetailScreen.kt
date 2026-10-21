@@ -1392,16 +1392,13 @@ fun ContactDetailContent(
         // unreachable rather than something that needs a special-case skip.
         if (fieldDefinitions.isNotEmpty()) {
             item {
-                SectionCard(stringResource(R.string.contact_custom_fields)) {
-                    fieldDefinitions.forEach { definition ->
-                        CustomFieldValueRow(
-                            definition = definition,
-                            value = fieldValuesByDefinitionId[definition.id],
-                            saving = savingFieldDefinitionId == definition.id,
-                            onSave = { newValue -> onSaveFieldValue(definition.id, newValue) },
-                        )
-                    }
-                }
+                // Issue #1731: one drill-down row per group instead of every definition inline.
+                CustomFieldGroupsCard(
+                    definitions = fieldDefinitions,
+                    values = fieldValuesByDefinitionId,
+                    savingDefinitionId = savingFieldDefinitionId,
+                    onSaveValue = onSaveFieldValue,
+                )
             }
         }
         if (externalIdentities.isNotEmpty() || paperlessConfigured || seafileConfigured || nextcloudConfigured) {
@@ -1665,7 +1662,7 @@ private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
 
 
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+internal fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
@@ -1725,7 +1722,7 @@ private fun InfoRow(text: String) {
  * happen here, mirroring `CustomFieldValueRow.tsx`'s own `handleSave`.
  */
 @Composable
-private fun CustomFieldValueRow(
+internal fun CustomFieldValueRow(
     definition: FieldDefinition,
     value: Any?,
     saving: Boolean,

@@ -23,6 +23,7 @@ import {
   type GiftShoppingItem,
   getGiftShoppingList,
 } from './api/occasionObligations';
+import LoadError from './components/LoadError';
 import OccasionEventAttendeesDialog from './components/OccasionEventAttendeesDialog';
 import OccasionEventDialog from './components/OccasionEventDialog';
 import OccasionEventList from './components/OccasionEventList';
@@ -72,6 +73,7 @@ export default function OccasionsPage() {
     events,
     loading: eventsLoading,
     error: eventsError,
+    refresh: refreshEvents,
     handleSave: handleSaveEvent,
     handleDelete: handleDeleteEvent,
   } = useOccasionEvents();
@@ -161,11 +163,7 @@ export default function OccasionsPage() {
         </ToggleButtonGroup>
       </Box>
 
-      {error && (
-        <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-          {error}
-        </Typography>
-      )}
+      {error && <LoadError message={error} onRetry={() => void refresh()} sx={{ mb: 1 }} />}
 
       {!loading && !error && items.length === 0 ? (
         <Card>
@@ -234,12 +232,11 @@ export default function OccasionsPage() {
       </Box>
 
       {eventsError && (
-        <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-          {eventsError}
-        </Typography>
+        <LoadError message={eventsError} onRetry={() => void refreshEvents()} sx={{ mb: 1 }} />
       )}
 
-      {!eventsLoading && (
+      {/* A failed load must not fall through to the list's "no events yet" copy. */}
+      {!eventsLoading && (!eventsError || events.length > 0) && (
         <OccasionEventList
           events={orderedEvents}
           onEdit={(event) => {
