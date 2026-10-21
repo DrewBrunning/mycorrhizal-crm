@@ -1,5 +1,5 @@
 import { mdiHomePlusOutline, mdiMapMarkerMultipleOutline } from '@mdi/js';
-import { Alert, Box, Button, LinearProgress, Stack, SvgIcon, Typography } from '@mui/material';
+import { Alert, Box, Button, LinearProgress, SvgIcon, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContactsByUid } from './api/contacts';
@@ -15,6 +15,7 @@ import {
 import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
 import HouseholdDialog, { type HouseholdFormData } from './components/HouseholdDialog';
 import HouseholdList from './components/HouseholdList';
+import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useHouseholds } from './hooks/useHouseholds';
@@ -185,45 +186,37 @@ export default function HouseholdsPage() {
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', mt: 2, p: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'stretch', md: 'center' },
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Typography variant="h5" component="h1">
-          {t('household.title')}
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiMapMarkerMultipleOutline} />
-              </SvgIcon>
-            }
-            onClick={() => void handleScanAddressSuggestions()}
-            disabled={suggestionsLoading}
-          >
-            {suggestionsLoading ? t('household.scanning') : t('household.suggestAddresses')}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiHomePlusOutline} />
-              </SvgIcon>
-            }
-            onClick={handleOpenCreate}
-          >
-            {t('household.newHousehold')}
-          </Button>
-        </Stack>
-      </Box>
+      <PageHeader
+        sx={{ mb: 1 }}
+        title={t('household.title')}
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiMapMarkerMultipleOutline} />
+                </SvgIcon>
+              }
+              onClick={() => void handleScanAddressSuggestions()}
+              disabled={suggestionsLoading}
+            >
+              {suggestionsLoading ? t('household.scanning') : t('household.suggestAddresses')}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiHomePlusOutline} />
+                </SvgIcon>
+              }
+              onClick={handleOpenCreate}
+            >
+              {t('household.newHousehold')}
+            </Button>
+          </>
+        }
+      />
       <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
         {t('household.description')}
       </Typography>

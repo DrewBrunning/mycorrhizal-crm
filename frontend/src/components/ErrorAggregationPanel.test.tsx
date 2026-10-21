@@ -109,3 +109,13 @@ test('recurring-bucket error text uses the legible light-mode error shade', asyn
     getComputedStyle(screen.getByText('Recurring').closest('.MuiChip-root') as HTMLElement).color,
   ).toBe('rgb(146, 59, 51)');
 });
+
+test('the header Refresh button refetches the aggregation', async () => {
+  vi.mocked(getErrorAggregation).mockResolvedValue(resp([]));
+
+  render(<ErrorAggregationPanel onViewEvents={vi.fn()} />);
+  await waitFor(() => expect(getErrorAggregation).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(getErrorAggregation).toHaveBeenCalledTimes(2));
+});

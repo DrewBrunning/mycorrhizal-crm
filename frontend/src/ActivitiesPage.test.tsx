@@ -399,7 +399,8 @@ test('west of UTC an activity date shows the same day in the list and the edit f
 
     renderPage();
     // date is 2026-01-05T00:00:00Z: 18:00 on 4 January in Chicago.
-    await waitFor(() => expect(screen.getByText('05.01.2026')).toBeDefined());
+    // Both the sm+ date column and the phone caption (#1783) show the calendar day.
+    await waitFor(() => expect(screen.getAllByText('05.01.2026')).toHaveLength(2));
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
     await waitFor(() => expect(screen.getByDisplayValue('2026-01-05')).toBeDefined());
@@ -591,6 +592,26 @@ test('a non-412 failure on save or delete logs and shows no conflict dialog', as
     expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.anything()),
   );
   expect(screen.queryByText('Changed elsewhere')).toBeNull();
+});
+
+test('an activity without a title renders its description without a title line', async () => {
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [activity({ title: '', description: 'No title here' })],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No title here')).toBeDefined());
+  expect(screen.queryByText('Coffee catch-up')).toBeNull();
 });
 
 test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {

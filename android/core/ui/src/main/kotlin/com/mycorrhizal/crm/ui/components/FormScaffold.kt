@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.ui.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -36,7 +37,7 @@ import com.mycorrhizal.crm.ui.R
  * hands the scroll content a matching bottom inset and the last field is never
  * hidden behind it.
  *
- * Disabled while [isSaving], shows an inline progress indicator and announces
+ * Disabled while [isSaving] (or when [enabled] is false, in which case [disabledHint] explains what to do), shows an inline progress indicator and announces
  * `a11y_state_saving` to accessibility services.
  */
 @Composable
@@ -45,6 +46,8 @@ fun PinnedSaveBar(
     isSaving: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    disabledHint: String? = null,
 ) {
     val savingLabel = stringResource(R.string.a11y_state_saving)
     Surface(
@@ -53,20 +56,41 @@ fun PinnedSaveBar(
         tonalElevation = 3.dp,
         shadowElevation = 3.dp,
     ) {
-        Button(
-            onClick = onClick,
-            enabled = !isSaving,
+        Column(
             modifier = Modifier
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .fillMaxWidth()
-                .semantics { if (isSaving) stateDescription = savingLabel },
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            if (isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+            // Issue #1773 / #1760: a button disabled until some input is present says
+            // what enables it, as a line under the form and as its TalkBack state.
+            val hint = disabledHint?.takeIf { !enabled && !isSaving }
+            hint?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
             }
-            Text(label)
+            Button(
+                onClick = onClick,
+                enabled = enabled && !isSaving,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        if (isSaving) {
+                            stateDescription = savingLabel
+                        } else if (hint != null) {
+                            stateDescription = hint
+                        }
+                    },
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                }
+                Text(label)
+            }
         }
     }
 }
@@ -89,6 +113,8 @@ fun FormScaffold(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
     showSaveBar: Boolean = true,
+    saveEnabled: Boolean = true,
+    saveDisabledHint: String? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
@@ -110,7 +136,15 @@ fun FormScaffold(
             )
         },
         bottomBar = {
-            if (showSaveBar) PinnedSaveBar(label = saveLabel, isSaving = isSaving, onClick = onSave)
+            if (showSaveBar) {
+                PinnedSaveBar(
+                    label = saveLabel,
+                    isSaving = isSaving,
+                    onClick = onSave,
+                    enabled = saveEnabled,
+                    disabledHint = saveDisabledHint,
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         content = content,

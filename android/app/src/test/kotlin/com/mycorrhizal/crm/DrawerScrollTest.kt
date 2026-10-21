@@ -54,10 +54,17 @@ class DrawerScrollTest {
         composeTestRule.waitForIdle()
     }
 
+    // Issue #1758: the footer destination (Settings) is pinned below the scrolling list, so it is
+    // reachable without scrolling; every other entry is scrolled into view first.
+    private fun scrollIntoView(route: String) {
+        val pinned = navDestinationsIn(NavGroup.FOOTER).any { it.route == route }
+        if (!pinned) composeTestRule.onNodeWithTag("drawer-$route").performScrollTo()
+    }
+
     private fun assertEveryEntryReachableAtStandardHeight() {
         val heights = allRoutes.map { route ->
             val node = composeTestRule.onNodeWithTag("drawer-$route")
-            node.performScrollTo()
+            scrollIntoView(route)
             node.assertIsDisplayed()
             node.assertHeightIsAtLeast(48.dp)
             node.getUnclippedBoundsInRoot().let { it.bottom - it.top }
@@ -98,7 +105,7 @@ class DrawerScrollTest {
         // reachable, so this pins it for *every* registered route.
         allRoutes.forEach { route ->
             val node = composeTestRule.onNodeWithTag("drawer-$route")
-            node.performScrollTo()
+            scrollIntoView(route)
             node.assertIsDisplayed()
             node.performClick()
         }
