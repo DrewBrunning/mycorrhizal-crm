@@ -349,16 +349,27 @@ internal fun EntityFormScreen(
     saveDisabledHint: String?,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    errorMessage: String? = null,
+    onErrorShown: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    val snackbarHostState = remember { SnackbarHostState() }
+    // A form that stays open on a failed save (mark discussed, #1723) replaces the list,
+    // so the list's snackbar is not composed: the form shows the error itself.
+    errorMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
+            onErrorShown()
+        }
+    }
     FormScaffold(
         title = title,
         onBack = onBack,
         saveLabel = saveLabel,
         isSaving = false,
         onSave = onSave,
-        snackbarHostState = remember { SnackbarHostState() },
+        snackbarHostState = snackbarHostState,
         saveEnabled = saveEnabled,
         saveDisabledHint = saveDisabledHint,
     ) { padding ->
@@ -1780,6 +1791,8 @@ fun ConversationAgendaScreen(
             confirming = discussingId == discussItem.id,
             onConfirm = { activityId -> viewModel.markDiscussed(discussItem.id, activityId) },
             onDismiss = viewModel::dismissDiscuss,
+            errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error,
+            onErrorShown = viewModel::onErrorShown,
         )
         return
     }
@@ -1845,6 +1858,8 @@ internal fun MarkDiscussedForm(
     confirming: Boolean,
     onConfirm: (Int?) -> Unit,
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    onErrorShown: () -> Unit = {},
 ) {
     // rememberSaveable: the picked activity survives rotation (issue #1723 review).
     var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
@@ -1855,6 +1870,8 @@ internal fun MarkDiscussedForm(
         saveDisabledHint = null,
         onSave = { onConfirm(activityId) },
         onBack = { if (!confirming) onDismiss() },
+        errorMessage = errorMessage,
+        onErrorShown = onErrorShown,
     ) {
         Text(
             text = item.content,

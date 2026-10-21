@@ -144,6 +144,22 @@ class ConversationAgendaMarkDiscussedTest {
         composeTestRule.onNodeWithText("Discuss").assertIsEnabled()
     }
 
+    // #1773 review: the full-screen form replaces the list, whose snackbar used to
+    // report the failure behind the old dialog. The form must say why it stayed open.
+    @Test
+    fun `a failed request shows its error on the open form`() {
+        coEvery { repo.listForContact(uid) } returns Result.success(listOf(open))
+        coEvery { repo.discuss("a1", null) } returns Result.failure(ApiError.Server(500, "boom"))
+        show()
+
+        composeTestRule.onNodeWithContentDescription("Mark discussed").performClick()
+        composeTestRule.onNodeWithText("Discuss").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Mark discussed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Server error (500)").assertIsDisplayed()
+    }
+
     // Review follow-up: the close signal must not depend on the screen
     // collecting at the moment the PATCH lands (rotation mid-request). A
     // success with no UI attached still leaves the dialog closed.
