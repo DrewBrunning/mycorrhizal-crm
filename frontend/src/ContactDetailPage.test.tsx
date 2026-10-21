@@ -605,7 +605,7 @@ function loggedErrors(): string[] {
 // Issue #1782: Merge / Subscribe / Export / Archive / Delete live in the
 // header's "More" menu at wide widths (Stay in touch, Prep, Share stay inline).
 function headerMenuItem(name: string): HTMLElement {
-  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
   return screen.getByRole('menuitem', { name });
 }
 
@@ -1530,7 +1530,7 @@ test('a failed export surfaces an error toast', async () => {
   consoleError.mockImplementation(() => {});
   const calls = mockFetch();
   await renderLoaded();
-  fireEvent.click(headerMenuItem('vCard 4.0'));
+  fireEvent.click(headerMenuItem('Export as vCard 4.0'));
   await waitFor(() => expect(calls.some((c) => c.url.includes('/export/vcf'))).toBe(true));
   expect(
     await screen.findByText('Failed to export contact. Please try again.'),

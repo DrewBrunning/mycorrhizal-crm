@@ -199,7 +199,7 @@ test.describe('Contact header action overflow (v0.4.1)', () => {
       // Opening the menu exposes the actions.
       await page.getByLabel('Actions').click();
       await expect(page.getByText('Stay in Touch')).toBeVisible();
-      await expect(page.getByText('vCard 4.0')).toBeVisible();
+      await expect(page.getByText('Export as vCard 4.0')).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

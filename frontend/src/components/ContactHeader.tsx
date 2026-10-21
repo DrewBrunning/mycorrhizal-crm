@@ -39,7 +39,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { type MouseEvent, useState } from 'react';
+import { type MouseEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Circle } from '../api/circles';
 import type { ContactScoreFacet } from '../api/contactScore';
@@ -145,6 +145,9 @@ export default function ContactHeader({
   // Overflow menu for the header action buttons on narrow viewports (T28).
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
   const actionsMenuOpen = Boolean(actionsMenuAnchor);
+  // The trigger (icon button < lg, "More actions" button >= lg) names the
+  // menu it controls, so assistive tech announces the popup relationship.
+  const actionsMenuId = useId();
   // Collapse the text buttons (stay in touch / merge / export / archive) into
   // a single overflow menu below the `md` breakpoint. The buttons overflow the
   // viewport well above phone widths as the window shrinks (v0.4.1 testing),
@@ -275,7 +278,7 @@ export default function ContactHeader({
                 <path d={mdiDownloadOutline} />
               </SvgIcon>
             </ListItemIcon>
-            <ListItemText>vCard 4.0</ListItemText>
+            <ListItemText>{t('contactDetail.exportAs', { format: 'vCard 4.0' })}</ListItemText>
           </MenuItem>,
           <MenuItem
             key="vcf3"
@@ -289,7 +292,7 @@ export default function ContactHeader({
                 <path d={mdiDownloadOutline} />
               </SvgIcon>
             </ListItemIcon>
-            <ListItemText>vCard 3.0</ListItemText>
+            <ListItemText>{t('contactDetail.exportAs', { format: 'vCard 3.0' })}</ListItemText>
           </MenuItem>,
           <MenuItem
             key="jscontact"
@@ -303,7 +306,7 @@ export default function ContactHeader({
                 <path d={mdiDownloadOutline} />
               </SvgIcon>
             </ListItemIcon>
-            <ListItemText>JSContact</ListItemText>
+            <ListItemText>{t('contactDetail.exportAs', { format: 'JSContact' })}</ListItemText>
           </MenuItem>,
           onArchiveContact && (
             <MenuItem
@@ -766,11 +769,15 @@ export default function ContactHeader({
                       <IconButton
                         size="small"
                         aria-label={t('contactDetail.actions')}
+                        aria-haspopup="menu"
+                        aria-controls={actionsMenuOpen ? actionsMenuId : undefined}
+                        aria-expanded={actionsMenuOpen ? 'true' : undefined}
                         onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
                       >
                         <MoreVertIcon />
                       </IconButton>
                       <Menu
+                        slotProps={{ list: { id: actionsMenuId } }}
                         anchorEl={actionsMenuAnchor}
                         open={actionsMenuOpen}
                         onClose={() => setActionsMenuAnchor(null)}
@@ -958,6 +965,7 @@ export default function ContactHeader({
                             size="small"
                             startIcon={<MoreVertIcon />}
                             aria-haspopup="menu"
+                            aria-controls={actionsMenuOpen ? actionsMenuId : undefined}
                             aria-expanded={actionsMenuOpen ? 'true' : undefined}
                             onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
                             sx={{ whiteSpace: 'nowrap' }}
@@ -965,6 +973,7 @@ export default function ContactHeader({
                             {t('contactDetail.moreActions')}
                           </Button>
                           <Menu
+                            slotProps={{ list: { id: actionsMenuId } }}
                             anchorEl={actionsMenuAnchor}
                             open={actionsMenuOpen}
                             onClose={() => setActionsMenuAnchor(null)}

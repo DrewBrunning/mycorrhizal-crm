@@ -82,14 +82,14 @@ for (const width of WIDTHS) {
         await waitForLoading(page);
 
         // Below lg the single icon button; at lg and above the "More" button.
-        const trigger = page.getByRole('button', { name: /^(Actions|More)$/ });
+        const trigger = page.getByRole('button', { name: /^(Actions|More actions)$/ });
         await trigger.focus();
         await expect(trigger).toBeFocused();
         await page.keyboard.press('Enter');
 
         const menu = page.getByRole('menu');
         await expect(menu).toBeVisible();
-        for (const name of ['Merge', 'Subscribe via feed', 'vCard 4.0', 'Archive']) {
+        for (const name of ['Merge', 'Subscribe via feed', 'Export as vCard 4.0', 'Archive']) {
           await expect(menu.getByRole('menuitem', { name })).toBeVisible();
         }
         const items = menu.getByRole('menuitem');
