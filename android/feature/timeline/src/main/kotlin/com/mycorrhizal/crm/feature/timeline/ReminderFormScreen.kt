@@ -144,6 +144,7 @@ fun ReminderFormContent(
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
+            // Editable ISO input value (YYYY-MM-DD), not a display string: kept as the stored calendar day.
             value = state.remindAt.take(10),
             onValueChange = onRemindAtChange,
             label = { Text(stringResource(R.string.reminder_remind_at)) },
@@ -247,6 +248,7 @@ private fun ReminderDatePickerDialog(
     onDismiss: () -> Unit,
 ) {
     val today = LocalDate.now()
+    // The calendar-day digits of the stored value, read as a UTC day for the picker (ADR 0015 rule 2).
     val initialMillis = initial.take(10).let { part ->
         if (part.length == 10) {
             runCatching { LocalDate.parse(part).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()

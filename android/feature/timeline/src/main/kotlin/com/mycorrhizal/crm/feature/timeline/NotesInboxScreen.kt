@@ -42,6 +42,8 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 
 /**
  * M9 item 1: the "Unassigned notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes
@@ -184,6 +186,7 @@ private fun InboxNoteRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
         headlineContent = {
             Text(
@@ -193,7 +196,7 @@ private fun InboxNoteRow(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        supportingContent = note.date?.take(10)?.let { date ->
+        supportingContent = note.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() }?.let { date ->
             { Text(date, style = MaterialTheme.typography.bodySmall) }
         },
         modifier = modifier

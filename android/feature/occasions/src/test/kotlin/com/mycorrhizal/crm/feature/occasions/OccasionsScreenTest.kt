@@ -13,12 +13,16 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.util.Locale
+import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -29,6 +33,20 @@ class OccasionsScreenTest {
     val composeTestRule = createComposeRule()
 
     private val repository = mockk<OccasionEventRepository>()
+    private val originalZone = TimeZone.getDefault()
+    private val originalLocale = Locale.getDefault()
+
+    @Before
+    fun pinZoneAndLocale() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        Locale.setDefault(Locale.UK)
+    }
+
+    @After
+    fun restoreZoneAndLocale() {
+        TimeZone.setDefault(originalZone)
+        Locale.setDefault(originalLocale)
+    }
 
     private fun event(id: String = "e1", title: String = "Summer BBQ") =
         OccasionEvent(id = id, title = title, startsAt = "2026-07-04T15:00:00Z", location = "The park")
@@ -49,7 +67,7 @@ class OccasionsScreenTest {
         render(listOf(event()))
         composeTestRule.onNodeWithText("Occasions").assertIsDisplayed()
         composeTestRule.onNodeWithText("Summer BBQ").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2026-07-04 15:00").assertIsDisplayed()
+        composeTestRule.onNodeWithText("04.07.2026 15:00").assertIsDisplayed()
         composeTestRule.onNodeWithText("The park").assertIsDisplayed()
     }
 

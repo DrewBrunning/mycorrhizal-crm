@@ -261,9 +261,9 @@ class RemindersScreenTest {
                     Reminder(id = 1, message = "Call Dana", remindAt = "2026-08-10T00:00:00Z"),
                 ),
             ),
-            // Default EU format renders "10 August 2026".
+            // Default EU format renders "10.08.2026".
         )
-        composeTestRule.onNodeWithText("10 August 2026").assertIsDisplayed()
+        composeTestRule.onNodeWithText("10.08.2026").assertIsDisplayed()
     }
 
     // --- Top-level RemindersScreen against a real ViewModel ------------------

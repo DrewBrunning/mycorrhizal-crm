@@ -95,6 +95,8 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1017,7 +1019,7 @@ private fun SearchNoteRow(
             } else {
                 AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(R.string.contacts_search_unfiled)) })
             }
-            note.date?.take(10)?.let { date ->
+            note.date?.let { DateFormat.formatTimestamp(it, LocalDateFormat.current) }?.takeIf { it.isNotBlank() }?.let { date ->
                 Text(text = date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -1040,7 +1042,7 @@ private fun SearchActivityRow(
             .padding(vertical = 6.dp),
     ) {
         Text(text = activity.title.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-        activity.date?.take(10)?.let { date ->
+        activity.date?.let { DateFormat.formatTimestamp(it, LocalDateFormat.current) }?.takeIf { it.isNotBlank() }?.let { date ->
             Text(text = date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

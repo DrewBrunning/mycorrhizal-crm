@@ -49,6 +49,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 
 /**
  * M19: per-contact notes list. Gained a search field + from/to-date filters
@@ -289,6 +291,7 @@ fun NoteListItem(
     isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
         headlineContent = {
             Text(
@@ -298,7 +301,7 @@ fun NoteListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        supportingContent = note.date?.take(10)?.let { date ->
+        supportingContent = note.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() }?.let { date ->
             { Text(date, style = MaterialTheme.typography.bodySmall) }
         },
         trailingContent = {

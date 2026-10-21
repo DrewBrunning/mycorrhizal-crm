@@ -97,6 +97,8 @@ import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.enroll.BiometricEnrollmentPromptHost
 import com.mycorrhizal.crm.model.AppVersion
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.model.util.TimeFormatPreference
 import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.auth.RegisterScreen
 import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
@@ -181,6 +183,8 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.LocalServerCapabilities
+import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -443,6 +447,7 @@ fun MycorrhizalApp(
                     darkTheme = darkTheme,
                     drawerState = drawerState,
                     serverUrl = session.serverUrl.orEmpty(),
+                    dateFormat = session.dateFormat ?: DateFormat.EU,
                     username = session.username,
                     serverVersion = serverVersion,
                     serverCapabilities = serverCapabilities,
@@ -525,6 +530,7 @@ private fun MainScaffold(
     darkTheme: Boolean,
     drawerState: DrawerState,
     serverUrl: String,
+    dateFormat: String = DateFormat.EU,
     username: String? = null,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
@@ -637,6 +643,10 @@ private fun MainScaffold(
         LocalDrawerOpen provides drawerState.isOpen,
         LocalDarkTheme provides darkTheme,
         LocalServerUrl provides serverUrl,
+        LocalDateFormat provides dateFormat,
+        LocalIs24Hour provides TimeFormatPreference.AUTO.is24Hour(
+            android.text.format.DateFormat.is24HourFormat(LocalContext.current),
+        ),
         LocalServerVersion provides serverVersion,
         LocalServerCapabilities provides serverCapabilities,
     ) {
