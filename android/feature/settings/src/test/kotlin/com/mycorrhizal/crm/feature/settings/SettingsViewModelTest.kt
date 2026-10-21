@@ -23,7 +23,6 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -768,17 +767,22 @@ class SettingsViewModelTest {
     fun `switching app lock off revokes the grant before it clears the lock`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
-            coEvery { deviceGrantManager.removeEnrollment() } returns Result.success(Unit)
-            val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED, requireLocalAuth = true)
+            lateinit var vm: SettingsViewModel
+            var lockOnWhileRevoking: Boolean? = null
+            coEvery { deviceGrantManager.removeEnrollment() } answers {
+                lockOnWhileRevoking = vm.uiState.value.requireLocalAuth
+                Result.success(Unit)
+            }
+            vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED, requireLocalAuth = true)
             advanceUntilIdle()
 
             vm.setAppLock(enabled = false, offerBiometricSignIn = true)
             advanceUntilIdle()
 
-            coVerifyOrder {
-                deviceGrantManager.removeEnrollment()
-                localAuthSettings.setRequireLocalAuth(false)
-            }
+            // The lock was still on while the server revoked the grant, and only came off after.
+            assertEquals(true, lockOnWhileRevoking)
+            assertFalse(vm.uiState.value.requireLocalAuth)
+            coVerify { localAuthSettings.setRequireLocalAuth(false) }
         }
 
     @Test
