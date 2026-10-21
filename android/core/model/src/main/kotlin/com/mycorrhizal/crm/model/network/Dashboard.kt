@@ -36,6 +36,14 @@ data class DashboardResponse(
     // Issue #352: contacts whose info is due for re-verification. Same
     // no-omitempty/always-`[]` discipline as every other block.
     @Json(name = "data_decay_overdue") val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
+    // Issue #1824 (server #1791/#1806): each list block above is capped at 25 rows;
+    // the matching `*_total` is its size before the cap. Nullable, not defaulted to
+    // 0: an older server omits them, and absent must mean "show no caption".
+    @Json(name = "birthdays_total") val birthdaysTotal: Int? = null,
+    @Json(name = "upcoming_reminders_total") val upcomingRemindersTotal: Int? = null,
+    @Json(name = "overdue_total") val overdueTotal: Int? = null,
+    @Json(name = "reach_out_suggestions_total") val reachOutSuggestionsTotal: Int? = null,
+    @Json(name = "data_decay_overdue_total") val dataDecayOverdueTotal: Int? = null,
 )
 
 /**
