@@ -4,6 +4,7 @@ import '../i18n/config';
 import { getContacts } from '../api/contacts';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { useTimeZone } from '../testSupport/timeZone';
 import AddActivityDialog from './AddActivityDialog';
 import AddNoteDialog from './AddNoteDialog';
 import ReminderDialog from './ReminderDialog';
@@ -17,10 +18,10 @@ vi.mock('../api/contacts', async (importOriginal) => {
   return { ...actual, getContacts: vi.fn() };
 });
 
-const originalTZ = process.env.TZ;
-
 beforeEach(() => {
-  process.env.TZ = 'America/Chicago';
+  // See src/testSupport/timeZone.ts: runtime TZ mutation is ignored in the
+  // worker threads Stryker runs tests in (issue #1843).
+  useTimeZone('America/Chicago');
   // Only Date is faked: RTL's waitFor and MUI transitions need real timers.
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-03-12T03:30:00Z'));
@@ -32,7 +33,7 @@ afterEach(() => {
   cleanup();
   sessionStorage.clear();
   vi.useRealTimers();
-  process.env.TZ = originalTZ;
+  vi.restoreAllMocks();
 });
 
 test('AddActivityDialog defaults the date to the local date', async () => {
