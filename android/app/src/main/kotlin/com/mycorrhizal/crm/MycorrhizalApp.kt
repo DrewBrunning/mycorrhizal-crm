@@ -644,10 +644,8 @@ private fun MainScaffold(
     val permissionsSnackbar = remember { SnackbarHostState() }
     val permissionsChangedMessage = stringResource(R.string.permissions_changed)
     LaunchedEffect(permissionChange) {
-        permissionChange.demotions.collect {
-            if (navController.leaveAdminOnlyScreen()) {
-                permissionsSnackbar.showSnackbar(permissionsChangedMessage)
-            }
+        navController.leaveAdminScreenOnDemotion(permissionChange.demotions) {
+            permissionsSnackbar.showSnackbar(permissionsChangedMessage)
         }
     }
 

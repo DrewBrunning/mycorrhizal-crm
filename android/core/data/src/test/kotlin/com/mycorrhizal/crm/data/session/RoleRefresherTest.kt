@@ -167,4 +167,20 @@ class RoleRefresherTest {
         coVerify(exactly = 0) { h.manager.setProfile(any()) }
         assertEquals(0, h.demotions.size)
     }
+
+    @Test
+    fun `cancellation during the fetch propagates instead of being swallowed`() = runTest {
+        val notifier = ForbiddenNotifier()
+        val manager = mockk<SessionManager>(relaxed = true) {
+            every { observeSession() } returns flowOf(SessionState(isLoggedIn = true, isAdmin = true))
+        }
+        // Default clock and debounce: also exercises the production defaults.
+        RoleRefresher(notifier, manager, fetchIsAdmin = { throw kotlinx.coroutines.CancellationException("cancelled") })
+            .start(this)
+
+        notifier.onForbidden()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { manager.setProfile(any()) }
+    }
 }

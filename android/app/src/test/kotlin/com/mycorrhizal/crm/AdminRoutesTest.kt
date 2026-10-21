@@ -105,6 +105,19 @@ class AdminRoutesTest {
     }
 
     @Test
+    fun `a demotion on an admin screen leaves it and announces once, elsewhere it is silent`() = kotlinx.coroutines.test.runTest {
+        val nav = host()
+        var announced = 0
+        nav.navigate("admin/users")
+        nav.leaveAdminScreenOnDemotion(kotlinx.coroutines.flow.flowOf(Unit)) { announced++ }
+        assertEquals("home", nav.route())
+        assertEquals(1, announced)
+
+        nav.leaveAdminScreenOnDemotion(kotlinx.coroutines.flow.flowOf(Unit)) { announced++ }
+        assertEquals("not on an admin screen: no announcement", 1, announced)
+    }
+
+    @Test
     fun `the view model exposes the refresher's demotion events`() {
         val flow = MutableSharedFlow<Unit>()
         val refresher = mockk<RoleRefresher> { every { demotions } returns flow }

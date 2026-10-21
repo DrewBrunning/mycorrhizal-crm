@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm
 
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Issue #1826: whether [route] is a screen only an admin can usefully use — the
@@ -26,4 +27,15 @@ internal fun NavHostController.leaveAdminOnlyScreen(): Boolean {
     // If it somehow is not, fall back to the drawer-style root navigation.
     if (!popBackStack("home", inclusive = false)) navigateToRoot("home")
     return true
+}
+
+/**
+ * Collects [demotions] and, for each, runs [leaveAdminOnlyScreen]; [announce]
+ * (the "Your permissions changed" snackbar) runs only when a screen was actually left.
+ */
+internal suspend fun NavHostController.leaveAdminScreenOnDemotion(
+    demotions: Flow<Unit>,
+    announce: suspend () -> Unit,
+) {
+    demotions.collect { if (leaveAdminOnlyScreen()) announce() }
 }
