@@ -46,6 +46,21 @@ test('a failed load keeps the existing list and still stops loading', async () =
   });
   expect(result.current.passkeys).toEqual([key('a')]);
   expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBe('offline');
+});
+
+test('a successful load reports no error, and a retry clears a previous one (issue #1779)', async () => {
+  vi.mocked(listPasskeys).mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useWebAuthn());
+  await waitFor(() => expect(result.current.error).toBe('offline'));
+
+  vi.mocked(listPasskeys).mockResolvedValueOnce([]);
+  await act(async () => {
+    await result.current.refresh();
+  });
+  // Loaded-and-empty is distinguishable from failed: error is null, list is [].
+  expect(result.current.error).toBeNull();
+  expect(result.current.passkeys).toEqual([]);
 });
 
 test('a failed first load leaves an empty list and stops loading', async () => {
@@ -53,6 +68,7 @@ test('a failed first load leaves an empty list and stops loading', async () => {
   const { result } = renderHook(() => useWebAuthn());
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.passkeys).toEqual([]);
+  expect(result.current.error).toBe('offline');
 });
 
 test('register forwards the name and proof, reloads the list, and returns the enrollment', async () => {

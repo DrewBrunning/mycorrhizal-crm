@@ -902,7 +902,9 @@
     "keepEditing": "Weiter bearbeiten",
     "conflictTitle": "Anderswo geändert",
     "conflictMessage": "Dieser Eintrag wurde nach dem Öffnen woanders geändert (anderer Tab, anderes Gerät oder Synchronisierung), daher wurde Ihre Änderung nicht gespeichert. Änderungen werden nie automatisch zusammengeführt. Laden Sie die neueste Version, um fortzufahren (Ihre Änderung wird verworfen), oder lassen Sie die Bearbeitung offen, um Ihre Änderungen vorher zu kopieren.",
-    "conflictReload": "Neueste Version laden"
+    "conflictReload": "Neueste Version laden",
+    "retry": "Erneut versuchen",
+    "loadFailed": "Diese Daten konnten nicht geladen werden"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
@@ -2098,7 +2100,8 @@
     "createEntities": "Entitäten erstellen",
     "addMembers": "Mitglieder hinzufügen",
     "noLegacyCircles": "Keine bisherigen Kreise gefunden. Sie benötigen diese Migration möglicherweise nicht.",
-    "refresh": "Aktualisieren"
+    "refresh": "Aktualisieren",
+    "countsPartial": "Die Kontaktanzahl für {{count}} Kreis(e) konnte nicht geladen werden; bis zum erneuten Versuch wird 0 angezeigt."
   },
   "customFields": {
     "addTitle": "Benutzerdefiniertes Feld hinzufügen",

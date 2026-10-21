@@ -39,6 +39,7 @@ import {
   updateCalendarSubscription,
 } from '../api/calendars';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
+import LoadError from './LoadError';
 
 interface CalendarFormState {
   name: string;
@@ -65,6 +66,8 @@ export default function CalendarSyncSettings() {
   const [calendars, setCalendars] = useState<CalendarSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // The list-load failure is its own state (not `error`, the dismissible mutation banner).
+  const [loadError, setLoadError] = useState('');
   const [success, setSuccess] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,10 +86,11 @@ export default function CalendarSyncSettings() {
   const loadCalendars = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const data = await getCalendarSubscriptions();
       setCalendars(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.calendarSync.loadError'));
+      setLoadError(err instanceof Error ? err.message : t('settings.calendarSync.loadError'));
     } finally {
       setLoading(false);
     }
@@ -334,6 +338,7 @@ export default function CalendarSyncSettings() {
             >
               {t('settings.calendarSync.description')}
             </Typography>
+            {loadError && <LoadError message={loadError} onRetry={() => void loadCalendars()} />}
             {error && (
               <Alert severity="error" sx={{ py: 0 }} onClose={() => setError('')}>
                 {error}
@@ -349,7 +354,7 @@ export default function CalendarSyncSettings() {
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <CircularProgress size={24} />
               </Box>
-            ) : calendars.length === 0 ? (
+            ) : calendars.length === 0 && loadError ? null : calendars.length === 0 ? (
               <Typography
                 variant="body2"
                 sx={{

@@ -32,6 +32,7 @@ import { useSnackbar } from '../context/SnackbarContext';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
+import LoadError from './LoadError';
 import SecondFactorProofDialog from './SecondFactorProofDialog';
 
 // PasskeySettings is the settings-page card for passkeys (issue #594, the
@@ -44,7 +45,7 @@ import SecondFactorProofDialog from './SecondFactorProofDialog';
 export default function PasskeySettings() {
   const { t, i18n } = useTranslation();
   const { showSuccess } = useSnackbar();
-  const { passkeys, loading, register, remove } = useWebAuthn();
+  const { passkeys, loading, error: loadError, register, remove, refresh } = useWebAuthn();
   const supported = isWebAuthnSupported();
 
   const [name, setName] = useState('');
@@ -225,7 +226,9 @@ export default function PasskeySettings() {
               {t('settings.passkeys.description')}
             </Typography>
 
-            {passkeys.length === 0 ? (
+            {loadError && <LoadError message={loadError} onRetry={() => void refresh()} />}
+
+            {passkeys.length === 0 && loadError ? null : passkeys.length === 0 ? (
               <Typography variant="body2">{t('settings.passkeys.empty')}</Typography>
             ) : (
               <List dense disablePadding aria-label={t('settings.passkeys.listLabel')}>

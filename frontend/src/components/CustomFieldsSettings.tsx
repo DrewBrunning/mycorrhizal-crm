@@ -5,7 +5,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -31,6 +30,7 @@ import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { distinctGroups } from '../utils/customFieldGroups';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
+import LoadError from './LoadError';
 
 // T7's replacement for the v1 CustomFieldsSettings (which edited a plain list
 // of names via /users/custom-fields). v2 definitions carry a type,
@@ -124,11 +124,7 @@ export default function CustomFieldsSettings() {
               {t('settings.customFields.description')}
             </Typography>
 
-            {error && (
-              <Alert severity="error" sx={{ py: 0 }}>
-                {error}
-              </Alert>
-            )}
+            {error && <LoadError message={error} onRetry={() => void refresh()} />}
 
             {loading ? (
               <Typography
@@ -219,7 +215,7 @@ export default function CustomFieldsSettings() {
                       </ListItem>
                     ))}
                   </List>
-                ) : (
+                ) : error ? null : (
                   <Typography
                     variant="body2"
                     sx={{

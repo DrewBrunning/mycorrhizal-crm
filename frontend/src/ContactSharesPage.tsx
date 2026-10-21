@@ -1,5 +1,4 @@
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -15,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ContactShare, ContactShareStatus } from './api/contactShares';
 import AcceptContactShareDialog from './components/AcceptContactShareDialog';
+import LoadError from './components/LoadError';
 import { useSnackbar } from './context/SnackbarContext';
 import { useContactShares } from './hooks/useContactShares';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -71,16 +71,12 @@ export default function ContactSharesPage() {
       </Tabs>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <LoadError message={error} onRetry={() => void refresh()} sx={{ mb: 2 }} />}
 
       {tab === 'incoming' &&
         // T93/#192: keep the empty state OUT of the <List> — a <p> directly
         // inside a <ul> is invalid HTML that the axe `list` rule flags.
-        (incoming.length === 0 && !loading ? (
+        (incoming.length === 0 && error ? null : incoming.length === 0 && !loading ? (
           <Typography
             variant="body2"
             sx={{
@@ -130,7 +126,7 @@ export default function ContactSharesPage() {
         ))}
 
       {tab === 'outgoing' &&
-        (outgoing.length === 0 && !loading ? (
+        (outgoing.length === 0 && error ? null : outgoing.length === 0 && !loading ? (
           <Typography
             variant="body2"
             sx={{

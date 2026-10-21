@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { addCircleMember, type Circle, createCircle, listCircles } from './api/circles';
 import { getContactsByLegacyCircle, getLegacyCircles } from './api/contacts';
 import { addContactTag, createTag, listTags, type Tag } from './api/tags';
+import LoadError from './components/LoadError';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
 
@@ -49,6 +50,9 @@ export default function CircleTagTriagePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // How many circles' contact counts failed to load (a partial failure: the list renders, but
+  // those rows would otherwise silently read "0 contacts").
+  const [countFailures, setCountFailures] = useState(0);
   const [items, setItems] = useState<TriagedItem[]>([]);
   const [applying, setApplying] = useState(false);
   const [applyProgress, setApplyProgress] = useState({ current: 0, total: 0 });
@@ -60,6 +64,7 @@ export default function CircleTagTriagePage() {
   const collect = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setCountFailures(0);
     try {
       const allCircles = await getLegacyCircles();
       const distinct = Array.isArray(allCircles) ? allCircles : [];
@@ -71,6 +76,7 @@ export default function CircleTagTriagePage() {
       }
 
       const triaged: TriagedItem[] = [];
+      let failures = 0;
       for (const name of distinct) {
         try {
           const resp = await getContactsByLegacyCircle(name);
@@ -81,6 +87,7 @@ export default function CircleTagTriagePage() {
             contactCount: resp.total ?? resp.contacts?.length ?? 0,
           });
         } catch {
+          failures += 1;
           triaged.push({
             original: name,
             name,
@@ -89,6 +96,7 @@ export default function CircleTagTriagePage() {
           });
         }
       }
+      setCountFailures(failures);
       // Sort by contact count descending so the user sees the biggest groups first.
       triaged.sort((a, b) => b.contactCount - a.contactCount);
       setItems(triaged);
@@ -255,9 +263,18 @@ export default function CircleTagTriagePage() {
         {t('triage.description')}
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+      {error && <LoadError message={error} onRetry={() => void collect()} sx={{ mb: 2 }} />}
+      {countFailures > 0 && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void collect()}>
+              {t('common.retry')}
+            </Button>
+          }
+        >
+          {t('triage.countsPartial', { count: countFailures })}
         </Alert>
       )}
 
@@ -278,6 +295,7 @@ export default function CircleTagTriagePage() {
       {/* Step 0: Classify */}
       {activeStep === 0 &&
         !loading &&
+        !error &&
         (items.length === 0 ? (
           <Paper sx={{ p: 3, textAlign: 'center' }}>
             <Typography

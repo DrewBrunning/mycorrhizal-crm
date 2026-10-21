@@ -902,7 +902,9 @@
     "keepEditing": "Seguir editando",
     "conflictTitle": "Modificado en otro lugar",
     "conflictMessage": "Este registro se modificó en otro lugar (otra pestaña, dispositivo o sincronización) después de abrirlo, por lo que tu edición no se guardó. Los cambios nunca se fusionan automáticamente. Carga la última versión para continuar (se descartará tu edición) o deja esta edición abierta para copiar tus cambios antes.",
-    "conflictReload": "Cargar la última versión"
+    "conflictReload": "Cargar la última versión",
+    "retry": "Reintentar",
+    "loadFailed": "No se pudieron cargar estos datos"
   },
   "externalLinks": {
     "title": "Enlaces externos",
@@ -2098,7 +2100,8 @@
     "createEntities": "Crear entidades",
     "addMembers": "Añadir miembros",
     "noLegacyCircles": "No se encontraron círculos antiguos. Puede que no necesite esta migración.",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "countsPartial": "No se pudo cargar el número de contactos de {{count}} círculo(s); muestran 0 hasta que reintentes."
   },
   "customFields": {
     "addTitle": "Añadir campo personalizado",
