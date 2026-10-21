@@ -158,7 +158,7 @@ function Snapshot({
               </Typography>
               <Chip
                 size="small"
-                color={OVERALL_COLORS[status.overall] ?? 'default'}
+                color={OVERALL_COLORS[status.overall]}
                 label={t(`systemStatus.status.${status.overall}`)}
               />
             </>

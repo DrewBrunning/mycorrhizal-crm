@@ -77,3 +77,10 @@ test('accepts a custom sx without dropping the wrapping layout', () => {
   expect(getComputedStyle(row).flexWrap).toBe('wrap');
   expect(getComputedStyle(row).marginBottom).toBe('16px');
 });
+
+test('accepts an sx array without dropping the wrapping layout', () => {
+  renderHeader(<PageHeader title="T" sx={[{ mb: 3 }]} actions={<Button>A</Button>} />);
+  const row = screen.getByTestId('page-header');
+  expect(getComputedStyle(row).flexWrap).toBe('wrap');
+  expect(getComputedStyle(row).marginBottom).toBe('24px');
+});

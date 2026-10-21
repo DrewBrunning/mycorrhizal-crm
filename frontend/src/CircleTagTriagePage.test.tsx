@@ -340,3 +340,29 @@ test('handleAddMembers reports a failure resolving circles/tags and stops before
     expect(screen.getByText(/Failed to fetch circles\/tags/)).toBeDefined();
   });
 });
+
+test('stacks the stepper vertically on narrow viewports', async () => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+  mockFetchRoutes([{ pattern: '/contacts/circles?legacy=true', handler: { body: [] } }]);
+
+  renderPage();
+
+  await waitFor(() =>
+    expect(
+      screen.getByText('No legacy circles found. You may not need this migration.'),
+    ).toBeDefined(),
+  );
+  expect(document.querySelector('.MuiStepper-vertical')).not.toBeNull();
+});
