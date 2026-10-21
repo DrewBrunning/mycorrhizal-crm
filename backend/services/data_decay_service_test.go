@@ -161,3 +161,32 @@ func TestListOverdueDataDecayPolicies_ScopedToUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, result, "another user's overdue policy must never leak into this user's list")
 }
+
+// TestComputeDataDecayHealth_InstantBaselineUsesReminderZoneDay documents the
+// deliberate boundary of issue #1823's activity-calendar-day rule (ADR 0015
+// amendment 2026-10-21). LastVerifiedAt/CreatedAt are real instants, not an
+// activity's date-only value: verifying at 20:00 in Chicago is the 22nd even
+// though UTC has already rolled over to the 23rd, so next_due is the 22nd +
+// interval, not the 23rd + interval.
+func TestComputeDataDecayHealth_InstantBaselineUsesReminderZoneDay(t *testing.T) {
+	// 2026-10-22 20:00 CDT == 2026-10-23 01:00Z.
+	verified := time.Date(2026, 10, 23, 1, 0, 0, 0, time.UTC)
+	policy := models.DataDecayPolicy{LastVerifiedAt: &verified, IntervalDays: 30}
+
+	chicago, err := time.LoadLocation("America/Chicago")
+	require.NoError(t, err)
+	now := time.Date(2026, 11, 22, 9, 0, 0, 0, chicago) // 2026-11-22 15:00Z
+	health := ComputeDataDecayHealth(&policy, now)
+	assert.Equal(t, "2026-11-21", health.NextDue.Format("2006-01-02"),
+		"baseline is the 22nd in Chicago, not the 23rd UTC")
+	assert.Equal(t, 1, health.OverdueBy)
+
+	// The mirror case east of UTC: 01:00Z is already 14:00 on the 23rd in
+	// Auckland, so the baseline day is the 23rd there.
+	auckland, err := time.LoadLocation("Pacific/Auckland")
+	require.NoError(t, err)
+	health = ComputeDataDecayHealth(&policy, time.Date(2026, 11, 23, 9, 0, 0, 0, auckland))
+	assert.Equal(t, "2026-11-22", health.NextDue.Format("2006-01-02"),
+		"baseline is the 23rd in Auckland + 30 days")
+	assert.Equal(t, 1, health.OverdueBy)
+}

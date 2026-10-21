@@ -45,6 +45,13 @@ func calendarDaysBetweenDecay(a, b time.Time) int {
 // the policy row, so there is no timeline to query. `now` anchors the
 // "today" boundary; callers should pass a timezone-appropriate now (the
 // reminder location) so the day boundary matches the user's clock.
+//
+// The baseline is a real instant (the verify action's click time, or the
+// row's CreatedAt), not an interaction's date-only value, so it keeps the
+// reminder-zone calendar day: clicking verify at 20:00 in Chicago is the
+// 22nd even when UTC has already rolled over to the 23rd. This is the one
+// place issue #1823's activity-calendar-day rule deliberately does not apply
+// (see ADR 0015's 2026-10-21 amendment).
 func ComputeDataDecayHealth(policy *models.DataDecayPolicy, now time.Time) DataDecayHealth {
 	baseline := policy.CreatedAt
 	if policy.LastVerifiedAt != nil {

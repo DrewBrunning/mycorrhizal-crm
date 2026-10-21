@@ -157,7 +157,7 @@ func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []model
 
 		if last, ok := lastInteraction[c.VCardUID]; ok {
 			raw.HasQualifyingInteraction = true
-			raw.DaysSinceLastInteraction = daysBetween(*last, now)
+			raw.DaysSinceLastInteraction = interactionDaysSince(*last, now)
 		}
 
 		raw.QualifyingInteractionsInWindow = frequencyCounts[c.VCardUID]
@@ -188,6 +188,20 @@ func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []model
 // safely, but there is no legitimate case for it here).
 func daysBetween(t, now time.Time) int {
 	d := int(now.Sub(t).Hours() / 24)
+	if d < 0 {
+		return 0
+	}
+	return d
+}
+
+// interactionDaysSince counts whole calendar days from an interaction's
+// date-only value to "today" in now's zone (never negative). An activity's
+// date is a calendar day stored at midnight UTC (ADR 0015 category 2), so this
+// compares UTC date components with now's local date -- elapsed hours would
+// turn a same-day interaction into "1 day ago" once the wall clock has run
+// past 24 hours from midnight UTC west of UTC (issue #1823).
+func interactionDaysSince(last, now time.Time) int {
+	d := calendarDaysBetween(interactionCalendarDay(last), now)
 	if d < 0 {
 		return 0
 	}
