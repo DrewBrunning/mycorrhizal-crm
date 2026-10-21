@@ -181,17 +181,12 @@ fun AuditScreen(
 
                         state.events.isEmpty() ->
                             EmptyState(
-                                message = stringResource(
+                                title = stringResource(
                                     if (hasFilters) R.string.audit_empty
                                     else R.string.audit_empty_no_filters
                                 ),
-                                icon = {
-                                    Icon(
-                                        Icons.Outlined.History,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                body = if (hasFilters) null else stringResource(R.string.audit_empty_no_filters_body),
+                                icon = Icons.Outlined.History,
                             )
 
                         else -> AuditEventList(

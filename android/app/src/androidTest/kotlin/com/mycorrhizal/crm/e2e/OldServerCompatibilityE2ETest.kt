@@ -104,8 +104,8 @@ class OldServerCompatibilityE2ETest {
         // sits below the visible sheet on a phone, so a plain click would land
         // on the scrim and dismiss the drawer instead of navigating.
         onLastText("Settings").performScrollTo().performClick()
-        waitForText("API Tokens")
-        compose.onNodeWithText("API Tokens").performScrollTo().performClick()
+        waitForText("API tokens")
+        compose.onNodeWithText("API tokens").performScrollTo().performClick()
 
         // The screen loaded against the real server (empty token list — a
         // fresh per-container seed user).

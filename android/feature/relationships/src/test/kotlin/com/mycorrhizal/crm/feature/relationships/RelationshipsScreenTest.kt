@@ -180,8 +180,21 @@ class RelationshipsScreenTest {
             str(R.string.relationships_new),
         ).performClick()
 
-        composeTestRule.onNodeWithText(str(R.string.relationships_new))
+        // The empty state's own "New relationship" button shares the dialog's
+        // title text, so assert on the dialog's Cancel button instead.
+        composeTestRule.onNodeWithText(str(R.string.action_cancel))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun `the empty state offers the create action and opens the dialog`() {
+        setScreen()
+
+        composeTestRule.onNodeWithText(str(R.string.relationships_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.relationships_empty_body)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.relationships_new)).performClick()
+
+        composeTestRule.onNodeWithText(str(R.string.action_cancel)).assertIsDisplayed()
     }
 
     @Test

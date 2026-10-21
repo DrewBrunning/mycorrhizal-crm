@@ -34,12 +34,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
@@ -290,12 +293,27 @@ fun LoginScreenContent(
                     }
                 }
 
+                // #1760: a disabled button says what enables it — visible helper
+                // text under it and the same sentence as its TalkBack state.
+                val ssoEnabled = serverUrl.isNotBlank()
+                val ssoHint = stringResource(R.string.login_sso_disabled_hint)
                 TextButton(
                     onClick = { onSignInWithSso(serverUrl) },
-                    enabled = serverUrl.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
+                    enabled = ssoEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { if (!ssoEnabled) stateDescription = ssoHint },
                 ) {
                     Text(stringResource(R.string.login_sso))
+                }
+                if (!ssoEnabled) {
+                    Text(
+                        text = ssoHint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().testTag("sso-disabled-hint"),
+                    )
                 }
 
                 // M26: account creation + password reset live on the same screen

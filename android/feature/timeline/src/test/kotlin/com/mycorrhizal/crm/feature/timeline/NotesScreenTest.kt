@@ -64,6 +64,30 @@ class NotesScreenTest {
         composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
     }
 
+    // Issue #1760: the unfiltered empty state carries the create action; a
+    // filtered "no results" does not (creating would not fix the filter).
+    @Test
+    fun `empty state offers the create-note action`() {
+        var created = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NotesScreenContent(
+                    uiState = NotesUiState(contactId = 5, notes = emptyList()),
+                    onCreateNote = { created += 1 },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Notes capture what you want to remember about someone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New note").performClick()
+        assertEquals(1, created)
+    }
+
+    @Test
+    fun `filtered no-results state offers no create action`() {
+        setContent(NotesUiState(contactId = 5, notes = emptyList(), searchQuery = "zzz"))
+        composeTestRule.onNodeWithText("New note").assertDoesNotExist()
+    }
+
     @Test
     fun `shows a no-results message when filters are active`() {
         setContent(NotesUiState(contactId = 5, notes = emptyList(), searchQuery = "zzz"))

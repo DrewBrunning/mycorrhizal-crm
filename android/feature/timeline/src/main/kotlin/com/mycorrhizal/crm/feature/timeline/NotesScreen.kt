@@ -160,7 +160,12 @@ fun NotesScreenContent(
                         state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
                             EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                         state.notes.isEmpty() && state.error == null ->
-                            EmptyState(message = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty))
+                            EmptyState(
+                                title = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty),
+                                body = if (hasFilters) null else stringResource(R.string.notes_empty_body),
+                                actionLabel = if (hasFilters) null else stringResource(R.string.cd_new_note),
+                                onAction = if (hasFilters) null else onCreateNote,
+                            )
                         else -> {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.notes, key = { it.id }) { note ->

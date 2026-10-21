@@ -151,7 +151,15 @@ fun WebhooksScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.webhooks.isEmpty()) {
-                EmptyState(message = stringResource(R.string.settings_webhooks_empty))
+                EmptyState(
+                    title = stringResource(R.string.settings_webhooks_empty),
+                    body = stringResource(R.string.settings_webhooks_description),
+                    actionLabel = stringResource(R.string.settings_webhooks_add),
+                    onAction = {
+                        editingWebhook = null
+                        editorOpen = true
+                    },
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
