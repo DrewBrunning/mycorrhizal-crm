@@ -586,7 +586,8 @@
       "cadence": "Cadenza e follow-up",
       "dataDecay": "Verifica dei dati",
       "metadataExpand": "Espandi metadati della scheda",
-      "metadataCollapse": "Comprimi metadati della scheda"
+      "metadataCollapse": "Comprimi metadati della scheda",
+      "customFieldsUngrouped": "Campi personalizzati"
     },
     "email": "Email",
     "phone": "Telefono",
@@ -2097,6 +2098,9 @@
     "label": "Etichetta",
     "labelHint": "Il nome visualizzato nelle pagine dei contatti.",
     "labelRequired": "L'etichetta è obbligatoria.",
+    "group": "Gruppo",
+    "groupHint": "Facoltativo. Raggruppa i campi correlati nelle pagine dei contatti. Massimo {{max}} caratteri.",
+    "groupTooLong": "Il gruppo può avere al massimo {{max}} caratteri.",
     "key": "Chiave",
     "keyHint": "Nome tecnico stabile (minuscole, trattini bassi). Non modificabile dopo la creazione.",
     "keyRequired": "La chiave è obbligatoria.",

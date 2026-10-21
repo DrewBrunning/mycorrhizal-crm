@@ -247,3 +247,15 @@ test('the first definition cannot move up and the last cannot move down', async 
   expect(screen.getByLabelText('Move Signal down')).toBeEnabled();
   expect(screen.getByLabelText('Move Telegram up')).toBeEnabled();
 });
+
+test("shows each definition's group and offers existing groups when editing", async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue(
+    response([definition({ group: 'Travel' }), definition({ id: 'def-2', label: 'Loose' })]),
+  );
+  renderSettings();
+  await waitFor(() => expect(screen.getByText('Travel')).toBeInTheDocument());
+  fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+  expect(await screen.findByLabelText('Group')).toHaveValue('Travel');
+  fireEvent.mouseDown(screen.getByLabelText('Group'));
+  expect(await screen.findByRole('option', { name: 'Travel' })).toBeInTheDocument();
+});

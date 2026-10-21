@@ -586,7 +586,8 @@
       "cadence": "Cadencia y seguimiento",
       "dataDecay": "Verificación de datos",
       "metadataExpand": "Expandir metadatos de la tarjeta",
-      "metadataCollapse": "Contraer metadatos de la tarjeta"
+      "metadataCollapse": "Contraer metadatos de la tarjeta",
+      "customFieldsUngrouped": "Campos personalizados"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -2097,6 +2098,9 @@
     "label": "Etiqueta",
     "labelHint": "El nombre visible en las páginas de contacto.",
     "labelRequired": "La etiqueta es obligatoria.",
+    "group": "Grupo",
+    "groupHint": "Opcional. Agrupa campos relacionados en las páginas de contacto. Hasta {{max}} caracteres.",
+    "groupTooLong": "El grupo puede tener como máximo {{max}} caracteres.",
     "key": "Clave",
     "keyHint": "Nombre técnico estable (minúsculas y guiones bajos). No se puede cambiar tras crearlo.",
     "keyRequired": "La clave es obligatoria.",

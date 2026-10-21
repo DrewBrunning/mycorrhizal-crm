@@ -586,7 +586,8 @@
       "cadence": "Rhythmus & Nachverfolgung",
       "dataDecay": "Datenüberprüfung",
       "metadataExpand": "Karten-Metadaten aufklappen",
-      "metadataCollapse": "Karten-Metadaten zuklappen"
+      "metadataCollapse": "Karten-Metadaten zuklappen",
+      "customFieldsUngrouped": "Benutzerdefinierte Felder"
     },
     "email": "E-Mail",
     "phone": "Telefon",
@@ -2097,6 +2098,9 @@
     "label": "Bezeichnung",
     "labelHint": "Der Anzeigename auf den Kontaktseiten.",
     "labelRequired": "Bezeichnung ist erforderlich.",
+    "group": "Gruppe",
+    "groupHint": "Optional. Fasst zusammengehörige Felder auf Kontaktseiten zusammen. Höchstens {{max}} Zeichen.",
+    "groupTooLong": "Die Gruppe darf höchstens {{max}} Zeichen lang sein.",
     "key": "Schlüssel",
     "keyHint": "Stabiler technischer Name (Kleinbuchstaben, Unterstriche). Nach der Erstellung nicht mehr änderbar.",
     "keyRequired": "Schlüssel ist erforderlich.",

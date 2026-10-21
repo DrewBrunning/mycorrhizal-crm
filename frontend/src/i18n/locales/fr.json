@@ -586,7 +586,8 @@
       "cadence": "Cadence et suivi",
       "dataDecay": "Vérification des données",
       "metadataExpand": "Développer les métadonnées de la carte",
-      "metadataCollapse": "Replier les métadonnées de la carte"
+      "metadataCollapse": "Replier les métadonnées de la carte",
+      "customFieldsUngrouped": "Champs personnalisés"
     },
     "email": "E-mail",
     "phone": "Téléphone",
@@ -2097,6 +2098,9 @@
     "label": "Libellé",
     "labelHint": "Le nom affiché sur les pages de contact.",
     "labelRequired": "Le libellé est requis.",
+    "group": "Groupe",
+    "groupHint": "Facultatif. Regroupe les champs liés sur les pages de contact. {{max}} caractères au maximum.",
+    "groupTooLong": "Le groupe ne peut pas dépasser {{max}} caractères.",
     "key": "Clé",
     "keyHint": "Nom technique stable (minuscules, tirets bas). Ne peut plus être modifié après création.",
     "keyRequired": "La clé est requise.",
