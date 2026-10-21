@@ -198,9 +198,9 @@ class ApiTokensScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Create Token").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Token Name").performTextInput("New token")
-        composeTestRule.onNodeWithText("Create Token").performClick()
+        composeTestRule.onNodeWithText("Create token").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Token name").performTextInput("New token")
+        composeTestRule.onNodeWithText("Create token").performClick()
 
         assertEquals("New token", confirmedName)
     }
@@ -219,8 +219,8 @@ class ApiTokensScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Token Name").performTextInput("New token")
-        composeTestRule.onNodeWithText("Create Token").performClick()
+        composeTestRule.onNodeWithText("Token name").performTextInput("New token")
+        composeTestRule.onNodeWithText("Create token").performClick()
 
         assertEquals(90, days)
         assertEquals("full", scope)
@@ -239,9 +239,9 @@ class ApiTokensScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Token Name").performTextInput("New token")
+        composeTestRule.onNodeWithText("Token name").performTextInput("New token")
         composeTestRule.onNodeWithText("CardDAV only").performClick()
-        composeTestRule.onNodeWithText("Create Token").performClick()
+        composeTestRule.onNodeWithText("Create token").performClick()
 
         assertEquals("carddav", scope)
     }
@@ -258,7 +258,7 @@ class ApiTokensScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Token Created").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Token created").assertIsDisplayed()
         composeTestRule.onNodeWithText("mcrh_live_abc123").assertIsDisplayed()
     }
 
@@ -274,7 +274,7 @@ class ApiTokensScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Token Rotated").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Token rotated").assertIsDisplayed()
         composeTestRule.onNodeWithText("mcrh_live_rotated").assertIsDisplayed()
     }
 

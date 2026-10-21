@@ -206,7 +206,7 @@ class ImportContactsScreenTest {
     fun `file imports stay reachable with the permission but no device contacts`() {
         setScreen(readDevice = { emptyList() })
 
-        composeTestRule.onNodeWithText("No device contacts to import.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No device contacts to import").assertIsDisplayed()
         composeTestRule.onNodeWithText("Import from a VCF file").assertIsDisplayed()
     }
 

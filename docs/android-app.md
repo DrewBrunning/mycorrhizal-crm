@@ -257,6 +257,41 @@ in landscape is wide but short, so the rail would not leave room to scroll its o
 two-pane layout therefore apply only when the window is both wide (the Expanded width class) and at least medium in
 height; a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination stays reachable.
 
+## Design system
+
+The conventions every Android screen follows (issue #1760). They apply to all five locales (`en`, `de`, `es`,
+`fr`, `it`); a new screen that breaks one is a bug, and the rules marked "enforced" are pinned by a test. The web
+app is held to the same written rules ([UX audit](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1717);
+its empty states are tracked in issue #1779).
+
+- **Sentence case** for every heading, label, button and menu item: capitalise the first word and proper nouns
+  only ("Overdue relationships", "Change password", "API tokens"), never "Overdue Relationships". German keeps
+  every noun capitalised because the language requires it; the other locales follow the same sentence-case rule
+  as English. Enforced for `en`, `es`, `fr` and `it` by `SentenceCaseStringsTest`
+  (`android/core/ui/src/test/kotlin/com/mycorrhizal/crm/ui/SentenceCaseStringsTest.kt`), which fails on a short
+  string with a Title Case word that is not a listed proper noun. A proper noun the test does not know (a new
+  integration name) is added to its `properNouns` set with the change that introduces it.
+- **Empty states** use the one shared `EmptyState` composable in `core/ui` (`StateComponents.kt`): an optional
+  icon, a **title** of the form `No <things> yet` with no trailing period, at most one sentence of **body**
+  saying what the list is for, and, wherever the screen can create the thing, the **primary create action** as a
+  button (`actionLabel` + `onAction`). A filtered "no results" state and a fatal error show the title alone: a
+  create button would not fix them. Do not hand-roll an empty `Text`.
+- **One add affordance per list.** A screen's primary create action is the **floating action button** (`BrandFab`);
+  its empty state repeats the same action. Do not also put a top-bar `+` or an inline "Add" button beside it. A
+  create action that only makes sense in the empty state (a contact has at most one cadence policy) still uses the
+  FAB. An in-flight upload or save is shown on the FAB itself.
+- **Row actions.** A list row's secondary actions (rename, delete, …) go behind one overflow menu
+  (`RowOverflowMenu`, a `⋮` button) rather than a pair of icon buttons per row. Its TalkBack label names the row
+  ("More actions for Family") so no two rows announce the same thing. A row with exactly one secondary action may
+  show it inline. Swipe-to-act is allowed only with an undo.
+- **Disabled controls say what enables them.** A button that is disabled until some input is present shows a short
+  helper line under it, and the same sentence as its TalkBack state description: "Enter a server URL to use SSO",
+  "Enter your new password and confirm it to continue". A dialog's confirm button that waits for a required text
+  field is the one standard exception: the field itself is already marked required.
+
+Presentation of the entity create/edit forms (dialog or full screen) is decided in issue #1773, which records its
+rule in this section.
+
 ## Passkeys
 
 The app can use a passkey as your second sign-in step and lets you add, list and remove passkeys

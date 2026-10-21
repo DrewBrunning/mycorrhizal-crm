@@ -20,6 +20,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.RowAction
+import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -100,7 +102,12 @@ fun TagsScreen(
                 when {
                     state.isLoading && state.tags.isEmpty() -> LoadingSkeleton()
                     state.tags.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.tags_empty))
+                        EmptyState(
+                            title = stringResource(R.string.tags_empty),
+                            body = stringResource(R.string.tags_empty_body),
+                            actionLabel = stringResource(R.string.tags_new),
+                            onAction = { showCreateDialog = true },
+                        )
                     state.tags.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),
@@ -208,21 +215,15 @@ private fun TagListItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        AccessibleIconButton(onClick = { renaming = true }) {
-            Icon(
-                Icons.Outlined.Edit,
-                // #205: a bare "Rename" repeated on every row makes TalkBack read
-                // "Rename" once per tag with no way to tell which row each acts on.
-                contentDescription = stringResource(R.string.tags_rename_named, tag.name),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
-        AccessibleIconButton(onClick = { deleting = true }) {
-            Icon(
-                Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.tags_delete_named, tag.name),
-            )
-        }
+        // #1760: secondary actions behind one overflow button; its label carries
+        // the tag name so TalkBack doesn't read a bare "More actions" per row (#205).
+        RowOverflowMenu(
+            rowName = tag.name,
+            actions = listOf(
+                RowAction(stringResource(R.string.action_rename), onClick = { renaming = true }),
+                RowAction(stringResource(R.string.action_delete), onClick = { deleting = true }, destructive = true),
+            ),
+        )
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }
 }

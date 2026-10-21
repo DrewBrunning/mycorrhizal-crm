@@ -97,7 +97,11 @@ fun TagDetailScreen(
                 when {
                     state.isLoading && state.contacts.isEmpty() -> LoadingSkeleton()
                     state.contacts.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.tags_contacts_empty))
+                        EmptyState(
+                            title = stringResource(R.string.tags_contacts_empty),
+                            actionLabel = stringResource(R.string.tags_add_contact),
+                            onAction = { showAddDialog = true },
+                        )
                     state.contacts.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,
