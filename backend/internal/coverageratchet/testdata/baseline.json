@@ -400,7 +400,7 @@
     "photostore/photostore.go": 90.55,
     "routes/routes.go": 98.47,
     "services/account_bundle.go": 100,
-    ""services/account_bundle_import.go"": 96.51,
+    "services/account_bundle_import.go": 96.51,
     "services/address_suggestion_service.go": 78.36,
     "services/alerting_conditions.go": 88.44,
     "services/alerting_service.go": 82.67,
