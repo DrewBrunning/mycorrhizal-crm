@@ -146,6 +146,7 @@ import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.typeOptionLabel
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
@@ -1214,7 +1215,7 @@ fun ContactDetailContent(
                 SectionCard(stringResource(R.string.contact_anniversaries)) {
                     otherAnniversaries.forEach { anniversary ->
                         val date = anniversary.date?.partial?.display(dateFormat ?: DateFormat.EU).orEmpty()
-                        InfoRow("${anniversary.kind.orEmpty()}: $date")
+                        InfoRow("${typeOptionLabel(anniversary.kind.orEmpty())}: $date")
                     }
                 }
             }
@@ -1233,7 +1234,7 @@ fun ContactDetailContent(
             item {
                 SectionCard(stringResource(R.string.contact_personal_info)) {
                     card?.personalInfo?.forEach { info ->
-                        InfoRow("${info.kind.orEmpty()}: ${info.value.orEmpty()}")
+                        InfoRow("${typeOptionLabel(info.kind.orEmpty())}: ${info.value.orEmpty()}")
                     }
                 }
             }
@@ -1929,6 +1930,31 @@ private fun CustomFieldScalarEditor(
     }
 }
 
+/**
+ * Issue #1756: a two-line value + type block (M3 two-line list item). The value sits on
+ * line 1 (single line, ellipsised; the Text semantics still carry the full value) and the translated type
+ * label below it, so a long address can never run into the label and the block survives
+ * font scale 2.0. The value and the type are separate nodes.
+ */
+@Composable
+internal fun ValueWithType(value: String, typeToken: String?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = value,
+            style = AppTypography.mono,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!typeToken.isNullOrBlank()) {
+            Text(
+                text = typeOptionLabel(typeToken),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun EmailRow(email: Email) {
     val context = LocalContext.current
@@ -1937,15 +1963,14 @@ private fun EmailRow(email: Email) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = address,
-            style = AppTypography.mono,
-            modifier = Modifier.weight(1f),
-        )
         // M7: the type is `contexts[0]` (web parity — the form's type dropdown writes
         // there), with `label` as a fallback for legacy flat-Type data (backend's
         // buildEmails maps ContactEmail.Type -> Email.Label).
-        (email.contexts?.firstOrNull() ?: email.label)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        ValueWithType(
+            value = address,
+            typeToken = email.contexts?.firstOrNull() ?: email.label,
+            modifier = Modifier.weight(1f),
+        )
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
                 Icon(
@@ -1973,17 +1998,13 @@ private fun PhoneRow(phone: Phone) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = number,
-            style = AppTypography.mono,
-            modifier = Modifier.weight(1f),
-        )
         // M7: the type is `features[0] ?: contexts[0]` (web parity), matching what
         // the form's type dropdown reads. `label` is X-ABLabel, not the type.
-        val typeToken = phone.features?.firstOrNull() ?: phone.contexts?.firstOrNull()
-        if (!typeToken.isNullOrBlank()) {
-            Text(typeToken, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        ValueWithType(
+            value = number,
+            typeToken = phone.features?.firstOrNull() ?: phone.contexts?.firstOrNull(),
+            modifier = Modifier.weight(1f),
+        )
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
                 Icon(

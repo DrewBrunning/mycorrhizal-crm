@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import com.mycorrhizal.crm.ui.components.activityTypeLabel
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
+import com.mycorrhizal.crm.ui.components.giftStatusLabelRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -90,7 +93,7 @@ fun TimelineItemRow(
     when (item) {
         is TimelineItem.ActivityItem -> TimelineActivityRow(
             item.activity.title.orEmpty(),
-            item.activity.type.orEmpty(),
+            item.activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) }.orEmpty(),
             onClick = { onEditActivity(item.activity.id) },
         )
         is TimelineItem.NoteItem -> TimelineNoteRow(
@@ -117,10 +120,11 @@ fun TimelineItemRow(
 /** Issue #1401: a life event row (explorer only); not editable from the timeline, like web. */
 @Composable
 private fun TimelineLifeEventRow(lifeEvent: LifeEvent) {
+    val typeLabel = lifeEvent.type?.takeIf { it.isNotBlank() }?.let { lifeEventTypeLabel(it) }.orEmpty()
     TimelineRowBase(
         icon = { Icon(Icons.Outlined.Event, contentDescription = null) },
-        title = lifeEvent.description?.takeIf { it.isNotBlank() } ?: lifeEvent.type.orEmpty(),
-        subtitle = lifeEvent.type.orEmpty(),
+        title = lifeEvent.description?.takeIf { it.isNotBlank() } ?: typeLabel,
+        subtitle = typeLabel,
         onClick = {},
     )
 }
@@ -128,12 +132,7 @@ private fun TimelineLifeEventRow(lifeEvent: LifeEvent) {
 /** Issue #1401: a gift row (explorer only); not editable from the timeline, like web. */
 @Composable
 private fun TimelineGiftRow(gift: Gift) {
-    val status = when (gift.status) {
-        GiftStatuses.PURCHASED -> stringResource(R.string.gifts_status_purchased)
-        GiftStatuses.GIVEN -> stringResource(R.string.gifts_status_given)
-        GiftStatuses.RECEIVED -> stringResource(R.string.gifts_status_received)
-        else -> stringResource(R.string.gifts_status_idea)
-    }
+    val status = giftStatusLabelRes(gift.status)?.let { stringResource(it) } ?: stringResource(R.string.gifts_status_idea)
     TimelineRowBase(
         icon = { Icon(Icons.Outlined.CardGiftcard, contentDescription = null) },
         title = gift.description,

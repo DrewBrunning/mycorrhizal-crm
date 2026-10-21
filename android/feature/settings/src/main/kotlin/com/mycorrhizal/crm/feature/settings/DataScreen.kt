@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -330,7 +331,7 @@ private fun AddressSuggestionRow(
 private fun reasonLabel(suggestion: ContactAddressSuggestion): String = when (suggestion.sourceKind) {
     "household" -> stringResource(R.string.data_address_reason_household, suggestion.sourceName)
     else -> {
-        val relation = relationTokenLabel(suggestion.relationType).ifEmpty { "related to" }
+        val relation = relationshipRoleLabel(suggestion.relationType?.takeIf { it.isNotBlank() } ?: "related_to")
         stringResource(R.string.data_address_reason_relationship, suggestion.sourceName, relation)
     }
 }

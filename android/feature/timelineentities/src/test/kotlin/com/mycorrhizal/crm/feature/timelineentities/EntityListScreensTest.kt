@@ -308,7 +308,7 @@ class LifeEventFormTest {
         composeTestRule.onNodeWithTag("life-event-category").performClick()
         composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("married").performClick()
+        composeTestRule.onNodeWithText("Married").performClick()
 
         composeTestRule.onNodeWithText("Description").performTextReplacement("We got married")
         composeTestRule.onNodeWithText("Create").performClick()
@@ -326,7 +326,7 @@ class LifeEventFormTest {
         composeTestRule.onNodeWithTag("life-event-category").performClick()
         composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("anniversary").performClick()
+        composeTestRule.onNodeWithText("Anniversary").performClick()
 
         // Month+day present enables the reminder checkbox; then confirm.
         composeTestRule.onNodeWithText("Month").performScrollTo().performTextReplacement("6")
@@ -351,7 +351,7 @@ class LifeEventFormTest {
         composeTestRule.onNodeWithTag("life-event-category").performClick()
         composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("anniversary").performClick()
+        composeTestRule.onNodeWithText("Anniversary").performClick()
 
         composeTestRule.onNodeWithText("Year").performScrollTo().performTextReplacement("2019")
         composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
@@ -378,7 +378,7 @@ class LifeEventFormTest {
         )
 
         composeTestRule.onNodeWithText("Edit life event").assertIsDisplayed()
-        composeTestRule.onNodeWithText("job change").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Started a new job").assertIsDisplayed()
         composeTestRule.onNodeWithText("2024").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("3").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Started at Acme").performScrollTo().assertIsDisplayed()
@@ -1149,5 +1149,25 @@ class EntityListScreensTopLevelTest {
         composeTestRule.onNodeWithText("Not now").performClick()
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
         assertNull(vm.uiState.value.conflict)
+    }
+
+    // --- Issue #1755: item labels resolve from tokens in the UI layer ---
+
+    @Test
+    fun `entity item labels are localized from their token and humanize unknown ones`() {
+        val shown = mutableListOf<String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                shown += EntityItem("1", "job_change — Acme", labelFamily = EntityLabelFamily.LIFE_EVENT, labelToken = "job_change", labelDetail = "Acme").displayLabel()
+                shown += EntityItem("2", "x", labelFamily = EntityLabelFamily.LIFE_EVENT, labelToken = "brand_new_event").displayLabel()
+                shown += EntityItem("3", "hobby: favorite = pottery", labelFamily = EntityLabelFamily.PREFERENCE, labelToken = "hobby", labelDetail = "pottery").displayLabel()
+                shown += EntityItem("4", "plain").displayLabel()
+            }
+        }
+        composeTestRule.waitForIdle()
+        assertEquals(
+            listOf("Started a new job — Acme", "Brand new event", "Activity/hobby: pottery", "plain"),
+            shown,
+        )
     }
 }
