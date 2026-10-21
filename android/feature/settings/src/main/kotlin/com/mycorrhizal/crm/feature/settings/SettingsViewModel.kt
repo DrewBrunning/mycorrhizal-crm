@@ -339,6 +339,37 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { localAuthSettings.setRequireLocalAuth(enabled) }
     }
 
+    /**
+     * Issue #1759: the single App lock control. Switching it on also enrolls this device for
+     * biometric sign-in when [offerBiometricSignIn] (the server supports device grants) and the
+     * device is not enrolled yet, so there is no separate "Set up biometric sign-in" button.
+     * Switching it off removes an existing enrollment: biometric sign-in is a part of the lock,
+     * and a grant left behind with the lock off would be a passwordless credential with nothing in
+     * front of it. So the grant is revoked FIRST and the lock only turns off once the server has
+     * revoked it ([performAppLockOff]); a failed revoke (offline, server error) leaves the lock on
+     * and says why, rather than leaving a live grant behind an open app.
+     */
+    fun setAppLock(enabled: Boolean, offerBiometricSignIn: Boolean) {
+        if (enabled && !_uiState.value.localAuthSupported) return
+        val enrolled = _uiState.value.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED
+        when {
+            enabled -> {
+                setRequireLocalAuth(true)
+                if (offerBiometricSignIn && !enrolled) enrollBiometricSignIn()
+            }
+            enrolled -> viewModelScope.launch { performAppLockOff() }
+            else -> setRequireLocalAuth(false)
+        }
+    }
+
+    /**
+     * Turn the app lock off for an enrolled install: revoke the grant, then clear the lock. Factored
+     * out of [setAppLock] so the ordering is testable without a launched coroutine.
+     */
+    internal suspend fun performAppLockOff() {
+        if (performBiometricRemove()) setRequireLocalAuth(false)
+    }
+
     /** Issue #1741: opt in/out of FLAG_SECURE; MainActivity observes the stored value live. */
     fun setBlockScreenshots(enabled: Boolean) {
         _uiState.update { it.copy(blockScreenshots = enabled) }
@@ -391,15 +422,19 @@ class SettingsViewModel @Inject constructor(
      * deterministic state transitions are testable without a launched
      * coroutine.
      */
-    internal suspend fun performBiometricRemove() {
-        if (_uiState.value.isBiometricBusy) return
+    internal suspend fun performBiometricRemove(): Boolean {
+        if (_uiState.value.isBiometricBusy) return false
         _uiState.update { it.copy(isBiometricBusy = true, biometricErrorRes = null) }
-        deviceGrantManager.removeEnrollment().fold(
-            onSuccess = { _uiState.update { it.copy(isBiometricBusy = false) } },
+        return deviceGrantManager.removeEnrollment().fold(
+            onSuccess = {
+                _uiState.update { it.copy(isBiometricBusy = false) }
+                true
+            },
             onFailure = {
                 _uiState.update {
-                    it.copy(isBiometricBusy = false, biometricErrorRes = R.string.biometric_enroll_error)
+                    it.copy(isBiometricBusy = false, biometricErrorRes = R.string.biometric_remove_error)
                 }
+                false
             },
         )
     }

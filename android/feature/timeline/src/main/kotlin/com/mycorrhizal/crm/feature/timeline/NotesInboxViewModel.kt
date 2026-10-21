@@ -14,9 +14,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * M9: the "Notes" drawer entry — the N4 unfiled-notes inbox (`GET /notes`, `contact_id IS NULL`
- * only), matching web's `NotesPage.tsx`. Distinct from [NotesViewModel], which is the per-contact
- * notes list — this is a contact-agnostic queue, not "all notes across all contacts".
+ * M9: the unassigned-notes drawer entry — the N4 unfiled-notes inbox (`GET /notes`,
+ * `contact_id IS NULL` only), matching web's `NotesPage.tsx`. Distinct from [NotesViewModel], which
+ * is the per-contact notes list — this is a contact-agnostic queue, not "all notes across all
+ * contacts". Issue #1757: because it is only the unassigned subset, the destination, its title and
+ * its empty state all say "unassigned" (a user whose notes are all on contacts must not read
+ * "No notes yet").
  */
 data class NotesInboxUiState(
     val notes: List<Note> = emptyList(),
@@ -35,6 +38,9 @@ class NotesInboxViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NotesInboxUiState())
     val uiState: StateFlow<NotesInboxUiState> = _uiState.asStateFlow()
 
+    // Declared before `init`: the first load can complete (and set it) before later initializers run.
+    private var hasLoaded = false
+
     init {
         load()
     }
@@ -44,15 +50,27 @@ class NotesInboxViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             noteRepository.listUnfiled().foldApiError(
                 onSuccess = { page ->
+                    hasLoaded = true
                     _uiState.update {
                         it.copy(isLoading = false, notes = page.notes, total = page.total, nextCursor = page.nextCursor)
                     }
                 },
                 onError = { error ->
+                    hasLoaded = true
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
         }
+    }
+
+    /**
+     * Issue #1757: the screen resumed. After returning from the new-note form the retained list is
+     * stale, so reload once a first load has finished (the first resume overlaps the init load and
+     * is skipped).
+     */
+    fun onResumed() {
+        val state = _uiState.value
+        if (hasLoaded && !state.isLoading) load()
     }
 
     fun loadMore() {
