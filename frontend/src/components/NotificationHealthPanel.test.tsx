@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import {
@@ -104,4 +104,14 @@ test('surfaces a load error', async () => {
   render(<NotificationHealthPanel />);
 
   await waitFor(() => expect(screen.getByText('the backend is down')).toBeInTheDocument());
+});
+
+test('the header Refresh button refetches channel health', async () => {
+  vi.mocked(getNotificationChannelHealth).mockResolvedValue({ channels: [row()] });
+
+  render(<NotificationHealthPanel />);
+  await waitFor(() => expect(getNotificationChannelHealth).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(getNotificationChannelHealth).toHaveBeenCalledTimes(2));
 });

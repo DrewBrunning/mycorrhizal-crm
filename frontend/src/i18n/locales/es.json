@@ -608,7 +608,6 @@
     "timeline": "Línea de Tiempo",
     "noActivity": "Aún no hay notas ni actividades",
     "note": "Nota",
-    "noDescription": "Sin descripción",
     "addNote": "Agregar Nota",
     "addActivity": "Agregar Actividad",
     "exportVCard": "Exportar vCard",
@@ -657,6 +656,8 @@
     "newTag": "Nueva etiqueta...",
     "add": "Agregar",
     "actions": "Acciones",
+    "moreActions": "Más",
+    "exportAs": "Exportar como {{format}}",
     "jumpNav": "Ir a la sección",
     "markAsMe": "Este soy yo",
     "unmarkAsMe": "Este no soy yo"

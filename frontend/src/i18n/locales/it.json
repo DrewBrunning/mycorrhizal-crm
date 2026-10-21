@@ -608,7 +608,6 @@
     "timeline": "Cronologia",
     "noActivity": "Ancora nessuna nota o attività",
     "note": "Nota",
-    "noDescription": "Nessuna descrizione",
     "addNote": "Aggiungi Nota",
     "addActivity": "Aggiungi Attività",
     "exportVCard": "Esporta vCard",
@@ -657,6 +656,8 @@
     "newTag": "Nuovo tag...",
     "add": "Aggiungi",
     "actions": "Azioni",
+    "moreActions": "Altro",
+    "exportAs": "Esporta come {{format}}",
     "jumpNav": "Vai alla sezione",
     "markAsMe": "Questo sono io",
     "unmarkAsMe": "Questo non sono io"

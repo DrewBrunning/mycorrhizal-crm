@@ -89,3 +89,13 @@ test('surfaces a load error', async () => {
 
   await waitFor(() => expect(screen.getByText('the backend is down')).toBeInTheDocument());
 });
+
+test('the header Refresh button refetches subsystem health', async () => {
+  vi.mocked(getSubsystemHealth).mockResolvedValue({ subsystems: [row()] });
+
+  render(<SubsystemHealthPanel onSelectComponent={vi.fn()} />);
+  await waitFor(() => expect(getSubsystemHealth).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(getSubsystemHealth).toHaveBeenCalledTimes(2));
+});

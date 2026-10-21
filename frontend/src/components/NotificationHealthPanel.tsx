@@ -7,6 +7,7 @@ import type {
 } from '../api/notificationHealth';
 import { useNotificationChannelHealth } from '../hooks/useNotificationChannelHealth';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import PageHeader from './PageHeader';
 
 const STATUS_COLORS: Record<
   NotificationChannelStatus,
@@ -36,38 +37,34 @@ export default function NotificationHealthPanel() {
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" component="h2">
-            {t('notificationHealth.title')}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.secondary',
-            }}
+      <PageHeader
+        sx={{ mb: 1 }}
+        leading={
+          <Box>
+            <Typography variant="subtitle1" component="h2">
+              {t('notificationHealth.title')}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {t('notificationHealth.description')}
+            </Typography>
+          </Box>
+        }
+        actions={
+          <Button
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refresh()}
+            disabled={loading}
           >
-            {t('notificationHealth.description')}
-          </Typography>
-        </Box>
-        <Button
-          size="small"
-          startIcon={<RefreshIcon />}
-          onClick={() => void refresh()}
-          disabled={loading}
-          sx={{ flexShrink: 0 }}
-        >
-          {t('notificationHealth.refresh')}
-        </Button>
-      </Box>
+            {t('notificationHealth.refresh')}
+          </Button>
+        }
+      />
 
       {error && (
         <Typography color="error" variant="body2" sx={{ mb: 1 }}>

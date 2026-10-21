@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { SubsystemHealth, SubsystemStatus } from '../api/subsystemHealth';
 import { useSubsystemHealth } from '../hooks/useSubsystemHealth';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import PageHeader from './PageHeader';
 
 const STATUS_COLORS: Record<SubsystemStatus, 'success' | 'error' | 'default'> = {
   healthy: 'success',
@@ -48,38 +49,34 @@ export default function SubsystemHealthPanel({
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" component="h2">
-            {t('subsystemHealth.title')}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.secondary',
-            }}
+      <PageHeader
+        sx={{ mb: 1 }}
+        leading={
+          <Box>
+            <Typography variant="subtitle1" component="h2">
+              {t('subsystemHealth.title')}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {t('subsystemHealth.description')}
+            </Typography>
+          </Box>
+        }
+        actions={
+          <Button
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refresh()}
+            disabled={loading}
           >
-            {t('subsystemHealth.description')}
-          </Typography>
-        </Box>
-        <Button
-          size="small"
-          startIcon={<RefreshIcon />}
-          onClick={() => void refresh()}
-          disabled={loading}
-          sx={{ flexShrink: 0 }}
-        >
-          {t('subsystemHealth.refresh')}
-        </Button>
-      </Box>
+            {t('subsystemHealth.refresh')}
+          </Button>
+        }
+      />
 
       {error && (
         <Typography color="error" variant="body2" sx={{ mb: 1 }}>
