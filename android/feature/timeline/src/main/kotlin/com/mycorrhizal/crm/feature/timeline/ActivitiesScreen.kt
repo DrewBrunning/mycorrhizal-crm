@@ -164,7 +164,12 @@ fun ActivitiesScreenContent(
                         state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
                             EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                         state.activities.isEmpty() && state.error == null ->
-                            EmptyState(message = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty))
+                            EmptyState(
+                                title = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty),
+                                body = if (hasFilters) null else stringResource(R.string.activities_empty_body),
+                                actionLabel = if (hasFilters) null else stringResource(R.string.cd_new_activity),
+                                onAction = if (hasFilters) null else onCreateActivity,
+                            )
                         else -> {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.activities, key = { it.id }) { activity ->

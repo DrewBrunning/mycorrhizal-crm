@@ -113,6 +113,8 @@ private const val LIFE_EVENT_UNCATEGORIZED = "uncategorized"
 internal fun EntityListScaffold(
     title: String,
     addLabel: String,
+    emptyTitle: String,
+    emptyBody: String?,
     uiState: EntityListUiState,
     onAdd: () -> Unit,
     onItemClick: (String) -> Unit,
@@ -191,7 +193,12 @@ internal fun EntityListScaffold(
                             LoadingSkeleton()
                         }
                         uiState.items.isEmpty() && errorMessage == null -> item {
-                            EmptyState(message = stringResource(R.string.entities_empty))
+                            EmptyState(
+                                title = emptyTitle,
+                                body = emptyBody,
+                                actionLabel = addLabel,
+                                onAction = onAdd,
+                            )
                         }
                         uiState.items.isEmpty() && errorMessage != null -> item {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
@@ -647,6 +654,8 @@ fun LifeEventsScreen(
     EntityListScaffold(
         title = stringResource(R.string.life_events_title),
         addLabel = stringResource(R.string.life_events_new),
+        emptyTitle = stringResource(R.string.life_events_empty),
+        emptyBody = stringResource(R.string.life_events_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
         onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
@@ -961,6 +970,8 @@ fun GiftsScreen(
     EntityListScaffold(
         title = stringResource(R.string.gifts_title),
         addLabel = stringResource(R.string.gifts_new),
+        emptyTitle = stringResource(R.string.gifts_empty),
+        emptyBody = stringResource(R.string.gifts_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
         onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
@@ -1319,6 +1330,8 @@ fun PreferencesScreen(
     EntityListScaffold(
         title = stringResource(R.string.preferences_title),
         addLabel = stringResource(R.string.preferences_new),
+        emptyTitle = stringResource(R.string.preferences_empty),
+        emptyBody = stringResource(R.string.preferences_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
         onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
@@ -1656,7 +1669,7 @@ private fun GiftPreferencesPanel(
         }
         if (items.isEmpty()) {
             Text(
-                text = stringResource(R.string.entities_empty),
+                text = stringResource(R.string.gifts_preferences_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 4.dp),
@@ -1757,6 +1770,8 @@ fun ConversationAgendaScreen(
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
         addLabel = stringResource(R.string.agenda_new),
+        emptyTitle = stringResource(R.string.agenda_empty),
+        emptyBody = stringResource(R.string.agenda_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
         onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },

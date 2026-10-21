@@ -202,7 +202,10 @@ fun NetworkScreenContent(
                         when {
                             uiState.isLoading && uiState.allChains.isEmpty() -> LoadingSkeleton()
                             uiState.groupedChains.isEmpty() && uiState.error == null ->
-                                EmptyState(message = stringResource(R.string.network_empty))
+                                EmptyState(
+                                    title = stringResource(R.string.network_empty),
+                                    body = stringResource(R.string.network_empty_body),
+                                )
                             uiState.groupedChains.isEmpty() && uiState.error != null -> {
                                 Text(
                                     text = uiState.error.orEmpty(),

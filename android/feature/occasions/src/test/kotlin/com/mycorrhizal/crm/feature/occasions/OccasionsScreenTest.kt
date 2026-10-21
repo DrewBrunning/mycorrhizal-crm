@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.OccasionEvent
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -56,8 +57,30 @@ class OccasionsScreenTest {
     fun `shows the empty state when there are no events`() {
         render(emptyList())
         composeTestRule
-            .onNodeWithText("No events yet. Create one to start planning who to invite.")
+            .onNodeWithText("No events yet")
             .assertIsDisplayed()
+    }
+
+    // Issue #1760: the empty state carries the same create action as the FAB.
+    @Test
+    fun `the empty state action opens the create dialog and explains events`() {
+        render(emptyList())
+        composeTestRule.onNodeWithText("Create one to start planning who to invite.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New event").performClick()
+        composeTestRule.onNodeWithText("Create an event").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load is reported in the snackbar`() {
+        coEvery { repository.list() } returns Result.failure(ApiError.Client(500, "boom"))
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(onBack = {}, onOpenAttendees = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
     @Test

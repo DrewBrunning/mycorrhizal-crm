@@ -37,7 +37,7 @@ class NextcloudSettingsScreenTest {
 
         composeTestRule.onNodeWithText("Server URL").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Username").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("App Password").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("App password").performScrollTo().assertIsDisplayed()
     }
 
     @Test
