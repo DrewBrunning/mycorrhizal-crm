@@ -51,7 +51,7 @@ class DataScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 DataScreen(
-                    onBack = {},
+                    onMenuClick = {},
                     onCustomExport = onCustomExport,
                     onRestoreBundle = onRestoreBundle,
                     viewModel = viewModel,

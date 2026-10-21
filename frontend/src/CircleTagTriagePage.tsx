@@ -19,6 +19,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +42,10 @@ interface TriagedItem {
 export default function CircleTagTriagePage() {
   const { t } = useTranslation();
   useDocumentTitle(t('triage.title'));
+  const theme = useTheme();
+  // Issue #1785: a horizontal stepper's labels never shrink, so below `sm` it
+  // stacks vertically instead of pushing the page wider than the viewport.
+  const compactStepper = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,7 +261,11 @@ export default function CircleTagTriagePage() {
         </Alert>
       )}
 
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+      <Stepper
+        activeStep={activeStep}
+        orientation={compactStepper ? 'vertical' : 'horizontal'}
+        sx={{ mb: 3 }}
+      >
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>

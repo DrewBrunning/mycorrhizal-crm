@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.History
@@ -68,6 +67,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import androidx.compose.material.icons.outlined.Menu
 
 /**
  * M16: the read-only audit log (mirroring web's AuditPage over T18/T60's
@@ -80,7 +80,8 @@ import java.time.format.FormatStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditScreen(
-    onBack: () -> Unit,
+    // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
+    onMenuClick: (() -> Unit)? = {},
     onOpenContact: (contactId: Int) -> Unit,
     viewModel: AuditViewModel = hiltViewModel(),
 ) {
@@ -120,8 +121,12 @@ fun AuditScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    // Issue #1758: a top-level drawer destination opens the drawer (no Back arrow);
+                    // null at Expanded width where the rail replaces it.
+                    onMenuClick?.let { onMenu ->
+                        AccessibleIconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

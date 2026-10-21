@@ -26,6 +26,7 @@ import type { Note } from '../api/notes';
 import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
 import { calendarDateOnly } from '../utils/localDate';
+import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
 interface ContactTimelineProps {
   timelineItems: Array<{
@@ -84,7 +85,7 @@ export default function ContactTimeline({
   }
 
   return (
-    <Timeline position="right">
+    <Timeline position="right" sx={timelinePhoneSx}>
       {timelineItems.map((item, index) => {
         const itemDate = new Date(item.date);
         const isValidDate = !Number.isNaN(itemDate.getTime());
@@ -108,6 +109,9 @@ export default function ContactTimeline({
                 {index < timelineItems.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
               <TimelineContent>
+                <Typography variant="caption" sx={timelineMobileDateSx}>
+                  {partialDateDisplay(event.date)}
+                </Typography>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
                   <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {t(`lifeEvent.types.${event.type}`, event.type)}
@@ -144,6 +148,9 @@ export default function ContactTimeline({
                 {index < timelineItems.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
               <TimelineContent>
+                <Typography variant="caption" sx={timelineMobileDateSx}>
+                  {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                </Typography>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
                   <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {t(`timeline.gift.${gift.status}`, gift.status)}
@@ -196,6 +203,9 @@ export default function ContactTimeline({
                 {index < timelineItems.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
               <TimelineContent>
+                <Typography variant="caption" sx={timelineMobileDateSx}>
+                  {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                </Typography>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
                   <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {event.type === 'photo-appearance'
@@ -214,6 +224,20 @@ export default function ContactTimeline({
           );
         }
 
+        // #1783: an activity with no description renders nothing, not a
+        // "No description" placeholder on every such card.
+        const bodyText =
+          item.type === 'note'
+            ? (item.data as Note).content
+            : item.type === 'activity'
+              ? (item.data as Activity).description
+              : (item.data as ReminderCompletion).message;
+        // One label for both the sm+ date column and the phone caption, so a
+        // change to how the date is rendered cannot reach only one of them.
+        const dateLabel = isValidDate
+          ? formatDate(calendarDateOnly(item.date))
+          : item.date || 'N/A';
+
         return (
           <TimelineItem
             key={`${item.type}-${(item.data as Note | Activity | ReminderCompletion).ID}`}
@@ -224,9 +248,7 @@ export default function ContactTimeline({
                 flex: 0.3,
               }}
             >
-              <Typography variant="caption">
-                {isValidDate ? formatDate(calendarDateOnly(item.date)) : item.date || 'N/A'}
-              </Typography>
+              <Typography variant="caption">{dateLabel}</Typography>
             </TimelineOppositeContent>
             <TimelineSeparator>
               <TimelineDot
@@ -251,6 +273,9 @@ export default function ContactTimeline({
               {index < timelineItems.length - 1 && <TimelineConnector />}
             </TimelineSeparator>
             <TimelineContent>
+              <Typography variant="caption" sx={timelineMobileDateSx}>
+                {dateLabel}
+              </Typography>
               <Paper
                 elevation={1}
                 sx={{
@@ -266,7 +291,7 @@ export default function ContactTimeline({
                 <Typography
                   variant="subtitle1"
                   component="p"
-                  sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
+                  sx={{ fontWeight: 500, overflowWrap: 'anywhere', pr: 4 }}
                 >
                   {item.type === 'note'
                     ? t('contactDetail.note')
@@ -274,13 +299,11 @@ export default function ContactTimeline({
                       ? (item.data as Activity).title
                       : t('timeline.reminderCompleted')}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
-                  {item.type === 'note'
-                    ? (item.data as Note).content
-                    : item.type === 'activity'
-                      ? (item.data as Activity).description || t('contactDetail.noDescription')
-                      : (item.data as ReminderCompletion).message}
-                </Typography>
+                {bodyText && (
+                  <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
+                    {bodyText}
+                  </Typography>
+                )}
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"
@@ -352,7 +375,7 @@ export default function ContactTimeline({
                       position: 'absolute',
                       top: 8,
                       right: 8,
-                      opacity: 0,
+                      opacity: { xs: 1, sm: 0 },
                       transition: 'opacity 0.2s',
                     }}
                   >
@@ -370,7 +393,7 @@ export default function ContactTimeline({
                       position: 'absolute',
                       top: 8,
                       right: 8,
-                      opacity: 0,
+                      opacity: { xs: 1, sm: 0 },
                       transition: 'opacity 0.2s',
                     }}
                   >
