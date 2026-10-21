@@ -1,8 +1,6 @@
 import { mdiNoteMultipleOutline } from '@mdi/js';
 import BadgeIcon from '@mui/icons-material/Badge';
-import BusinessIcon from '@mui/icons-material/Business';
 import CakeIcon from '@mui/icons-material/Cake';
-import CelebrationIcon from '@mui/icons-material/Celebration';
 import ChatIcon from '@mui/icons-material/Chat';
 import EmailIcon from '@mui/icons-material/Email';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -14,7 +12,6 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import PhoneIcon from '@mui/icons-material/Phone';
 import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
 import StarIcon from '@mui/icons-material/Star';
-import WorkIcon from '@mui/icons-material/Work';
 import {
   Box,
   Button,
@@ -32,14 +29,11 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addressesToCardAndPeriods,
-  type CardAnniversary,
   type CardLanguagePref,
   type Card as CardModel,
   type CardNote,
   type CardOnlineService,
-  type CardPersonalInfo,
   type CardSpeakToAs,
-  type CardTemporalRange,
   type ContactAddress,
   type ContactValue,
   type CRMEnvelope,
@@ -47,14 +41,7 @@ import {
   cardEmailsToValues,
   cardLinksToValues,
   cardPhonesToValues,
-  formatAnniversaryDate,
   getAnniversaryField,
-  getOrganizationFields,
-  getTitleField,
-  newCardEntryID,
-  organizationEntry,
-  titleEntry,
-  upsertEntryPeriod,
   valuesToCardEmails,
   valuesToCardLinks,
   valuesToCardPhones,
@@ -76,7 +63,6 @@ import {
   resolveOnlineServiceLink,
 } from '../utils/linkResolution';
 import AddressFields from './AddressFields';
-import AnniversariesEditor from './AnniversariesEditor';
 import CardNotesEditor from './CardNotesEditor';
 import CopyButton from './CopyButton';
 import CustomFieldGroups from './CustomFieldGroups';
@@ -86,8 +72,6 @@ import ImportedResourcesSection, { hasImportedResources } from './ImportedResour
 import KeywordsEditor from './KeywordsEditor';
 import MultiValueField from './MultiValueField';
 import OnlineServiceEditor from './OnlineServiceEditor';
-import PeriodField from './PeriodField';
-import PersonalInfoEditor from './PersonalInfoEditor';
 import PreferredLanguagesEditor from './PreferredLanguagesEditor';
 import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembersSection';
 import SpeakToAsEditor from './SpeakToAsEditor';
@@ -195,58 +179,6 @@ export default function ContactInformation({
   }, [registryFieldsEnabled, refreshLinkFieldTypes]);
 
   const birthday = getAnniversaryField(card.anniversaries, 'birth') || '';
-  const anniversary = getAnniversaryField(card.anniversaries, 'wedding') || '';
-  const { organization = '', department = '' } = getOrganizationFields(card.organizations);
-  const jobTitle = getTitleField(card.titles, 'title') || '';
-  const role = getTitleField(card.titles, 'role') || '';
-
-  // ADR 0025 (#1233): the period attached to the single organization / job
-  // title entry this section edits. Read via the entry's neutral element ID; a
-  // legacy entry without one simply has no period yet.
-  const organizationPeriodEntry = organizationEntry(card.organizations);
-  const organizationPeriod = organizationPeriodEntry?.id
-    ? crm.periods?.find(
-        (p) => p.kind === 'organization' && p.entry_id === organizationPeriodEntry.id,
-      )?.range
-    : undefined;
-  const jobTitleEntry = titleEntry(card.titles, 'title');
-  const jobTitlePeriod = jobTitleEntry?.id
-    ? crm.periods?.find((p) => p.kind === 'title' && p.entry_id === jobTitleEntry.id)?.range
-    : undefined;
-
-  // Persist the period to the first organization / job-title entry, minting the
-  // entry's element ID if it lacks one (an entry must carry an ID to carry a
-  // period — ADR 0025). Every other period and entry is preserved.
-  const saveOrganizationPeriod = async (range: CardTemporalRange | undefined) => {
-    const entry = organizationEntry(card.organizations);
-    if (!entry) return;
-    const entryID = entry.id ?? newCardEntryID();
-    const patch: Partial<CardModel> = entry.id
-      ? {}
-      : {
-          organizations: (card.organizations ?? []).map((o, i) =>
-            i === 0 ? { ...o, id: entryID } : o,
-          ),
-        };
-    await onUpdateCard(patch, {
-      periods: upsertEntryPeriod(crm.periods, 'organization', entryID, range),
-    });
-  };
-  const saveJobTitlePeriod = async (range: CardTemporalRange | undefined) => {
-    const entry = titleEntry(card.titles, 'title');
-    if (!entry) return;
-    const entryID = entry.id ?? newCardEntryID();
-    const patch: Partial<CardModel> = entry.id
-      ? {}
-      : {
-          titles: (card.titles ?? []).map((title) =>
-            title === entry ? { ...title, id: entryID } : title,
-          ),
-        };
-    await onUpdateCard(patch, {
-      periods: upsertEntryPeriod(crm.periods, 'title', entryID, range),
-    });
-  };
 
   const birthdayAgeSuffix = useMemo(() => {
     if (!birthday) return undefined;
@@ -262,7 +194,6 @@ export default function ContactInformation({
   const showAbout = hasVisibleFields('about', { card, crm, enabled, gender });
   const showContact = hasVisibleFields('contact', { card, crm, enabled, gender });
   const showAddressThem = hasVisibleFields('genderAndPronouns', { card, crm, enabled, gender });
-  const showProfessional = hasVisibleFields('professional', { card, crm, enabled, gender });
   const showNotes = hasVisibleFields('notes', { card, crm, enabled, gender });
   // Card metadata isn't a toggleable field — it renders the read-only imported
   // resource / related-entity sections, which themselves render nothing when
@@ -656,42 +587,6 @@ export default function ContactInformation({
     );
   };
 
-  const renderPersonalInfo = (rows: CardPersonalInfo[] | undefined) => {
-    if (!rows || rows.length === 0)
-      return (
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.disabled',
-          }}
-        >
-          —
-        </Typography>
-      );
-    return (
-      <Stack spacing={0.25}>
-        {rows.map((p, i) => (
-          <Box
-            // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
-            key={i}
-            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-          >
-            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Typography variant="body2">
-                {p.value}
-                {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
-                {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
-              </Typography>
-            </Box>
-            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {p.value && <CopyButton value={p.value} label={t('contacts.personalInfoLabel')} />}
-            </Box>
-          </Box>
-        ))}
-      </Stack>
-    );
-  };
-
   const renderKeywords = (rows: string[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
@@ -823,52 +718,6 @@ export default function ContactInformation({
     );
   };
 
-  const renderAnniversaries = (rows: CardAnniversary[] | undefined) => {
-    if (!rows || rows.length === 0)
-      return (
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.disabled',
-          }}
-        >
-          —
-        </Typography>
-      );
-    return (
-      <Stack spacing={0.25}>
-        {rows.map((a, i) => {
-          // Raw ISO (YYYY-MM-DD or --MM-DD) is what the copy button shares;
-          // the displayed text honors the user's selected date format.
-          const iso = formatAnniversaryDate(a.date);
-          const date = iso ? formatBirthday(iso) : undefined;
-          return (
-            <Box
-              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
-              key={i}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 1,
-              }}
-            >
-              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                <Typography variant="body2">
-                  {date ? date : '—'}
-                  {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
-                </Typography>
-              </Box>
-              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                {iso && <CopyButton value={iso} label={t('contacts.anniversaries')} />}
-              </Box>
-            </Box>
-          );
-        })}
-      </Stack>
-    );
-  };
-
   return (
     <Card sx={{ minWidth: 0 }}>
       <CardContent sx={{ py: 2 }}>
@@ -909,65 +758,6 @@ export default function ContactInformation({
               onEditCancel={onEditCancel}
               onEditSave={onEditSave}
               onEditValueChange={onEditValueChange}
-            />
-          )}
-
-          {isOn('anniversary') && (
-            <EditableField
-              icon={<CelebrationIcon sx={iconSx} />}
-              label={t('contacts.anniversary')}
-              field="anniversary"
-              value={anniversary}
-              formattedDisplayValue={anniversary ? formatBirthday(anniversary) : undefined}
-              placeholder={getBirthdayPlaceholder()}
-              isEditing={editingField === 'anniversary'}
-              editValue={editValue}
-              validationError={validationError}
-              onEditStart={onEditStart}
-              onEditCancel={onEditCancel}
-              onEditSave={onEditSave}
-              onEditValueChange={onEditValueChange}
-            />
-          )}
-
-          {isOn('anniversaries') && (
-            <EditableArrayField<CardAnniversary[]>
-              icon={<CelebrationIcon sx={iconSx} />}
-              label={t('contacts.anniversaries')}
-              value={card.anniversaries || []}
-              cloneValue={(v) =>
-                v.map((x) => ({
-                  ...x,
-                  date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined },
-                }))
-              }
-              renderDisplay={renderAnniversaries}
-              renderEditor={(draft, setDraft) => (
-                <AnniversariesEditor
-                  label={t('contacts.anniversaries')}
-                  value={draft}
-                  onChange={setDraft}
-                />
-              )}
-              onSave={(draft) => onUpdateCard({ anniversaries: draft.length ? draft : undefined })}
-            />
-          )}
-
-          {isOn('personalInfo') && (
-            <EditableArrayField<CardPersonalInfo[]>
-              icon={<WorkIcon sx={iconSx} />}
-              label={t('contacts.personalInfoLabel')}
-              value={card.personalInfo || []}
-              cloneValue={(v) => v.map((x) => ({ ...x }))}
-              renderDisplay={renderPersonalInfo}
-              renderEditor={(draft, setDraft) => (
-                <PersonalInfoEditor
-                  label={t('contacts.personalInfoLabel')}
-                  value={draft}
-                  onChange={setDraft}
-                />
-              )}
-              onSave={(draft) => onUpdateCard({ personalInfo: draft.length ? draft : undefined })}
             />
           )}
 
@@ -1215,103 +1005,6 @@ export default function ContactInformation({
                   })
                 }
                 onEditingChange={setSpeakToAsEditing}
-              />
-            </FullSpanField>
-          )}
-
-          {showProfessional && <SectionHeading label={t('contactDetail.section.professional')} />}
-
-          {isOn('organizations') && (
-            <>
-              <EditableField
-                icon={<BusinessIcon sx={iconSx} />}
-                label={t('contacts.organization')}
-                field="organization"
-                value={organization}
-                isEditing={editingField === 'organization'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-              {organizationPeriodEntry && (
-                <PeriodField
-                  label={t('contactDetail.period.label')}
-                  range={organizationPeriod}
-                  onSave={saveOrganizationPeriod}
-                />
-              )}
-              <EditableField
-                icon={<BusinessIcon sx={iconSx} />}
-                label={t('contacts.department')}
-                field="department"
-                value={department}
-                isEditing={editingField === 'department'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-            </>
-          )}
-
-          {isOn('titles') && (
-            <>
-              <EditableField
-                icon={<BadgeIcon sx={iconSx} />}
-                label={t('contacts.jobTitle')}
-                field="job_title"
-                value={jobTitle}
-                isEditing={editingField === 'job_title'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-              {jobTitleEntry && (
-                <PeriodField
-                  label={t('contactDetail.period.label')}
-                  range={jobTitlePeriod}
-                  onSave={saveJobTitlePeriod}
-                />
-              )}
-              <EditableField
-                icon={<BadgeIcon sx={iconSx} />}
-                label={t('contacts.role')}
-                field="role"
-                value={role}
-                isEditing={editingField === 'role'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-            </>
-          )}
-
-          {isOn('work_information') && (
-            <FullSpanField>
-              <EditableField
-                icon={<WorkIcon sx={{ ...iconSx, mt: 0.5 }} />}
-                label={t('contactDetail.workInfo')}
-                field="work_information"
-                value={crm.work_information || ''}
-                multiline
-                isEditing={editingField === 'work_information'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
               />
             </FullSpanField>
           )}

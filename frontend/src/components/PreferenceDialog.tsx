@@ -71,8 +71,14 @@ export default function PreferenceDialog({
   const { t } = useTranslation();
   const isEditing = !!preference;
 
-  const availableCategories = PREFERENCE_CATEGORY_CONFIG.filter((c) =>
-    sections.includes(c.section),
+  // Issue #1738/#1729: hobbies are created in the contact's Skills & interests
+  // section (Card.PersonalInfo), not here. The deprecated hobby Preference
+  // category is still shown when editing a row that already is one (it can
+  // only exist from the deprecated API path), but it is never offered as a
+  // new choice.
+  const hobbyEditable = preference?.category === 'hobby';
+  const availableCategories = PREFERENCE_CATEGORY_CONFIG.filter(
+    (c) => sections.includes(c.section) && (hobbyEditable || c.category !== 'hobby'),
   );
   const defaultCategory = availableCategories[0]?.category ?? 'food';
 

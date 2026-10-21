@@ -22,11 +22,17 @@ import { useNavigate, useParams } from 'react-router';
 import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
 import { ApiError } from './api/client';
 import {
+  type CardAnniversary,
+  type CardOrganization,
+  type CardPersonalInfo,
+  type CardTitle,
   type ContactRecordResponse,
   getContactDisplayName,
   getContactProfilePicture,
   nameComponentValue,
+  newCardEntryID,
   uploadProfilePicture,
+  upsertEntryPeriod,
 } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
 import type { DataDecayPolicy, DataDecayPolicyInput } from './api/dataDecayPolicies';
@@ -51,6 +57,11 @@ import { getSeafileDir, getSeafileLibraries } from './api/seafile';
 import AddActivityDialog from './components/AddActivityDialog';
 import AddNoteDialog from './components/AddNoteDialog';
 import AmbientToggle from './components/AmbientToggle';
+import AnniversaryDialog, {
+  type AnniversaryFormData,
+  anniversaryFromForm,
+} from './components/AnniversaryDialog';
+import AnniversaryList from './components/AnniversaryList';
 import AttachmentsSection from './components/AttachmentsSection';
 import CadenceDialog from './components/CadenceDialog';
 import CadencePanel from './components/CadencePanel';
@@ -81,6 +92,9 @@ import OccasionObligationDialog, {
   toOccasionObligationInput,
 } from './components/OccasionObligationDialog';
 import OccasionObligationList from './components/OccasionObligationList';
+import OrganizationDialog, { type OrganizationFormData } from './components/OrganizationDialog';
+import PersonalInfoDialog, { type PersonalInfoFormData } from './components/PersonalInfoDialog';
+import PersonalInfoList from './components/PersonalInfoList';
 import PreferenceDialog, {
   type PreferenceFormData,
   toPreferenceInput,
@@ -94,6 +108,9 @@ import ReminderDialog from './components/ReminderDialog';
 import ReminderList from './components/ReminderList';
 import ShareContactDialog from './components/ShareContactDialog';
 import TimelineExplorerDialog from './components/TimelineExplorerDialog';
+import TitleDialog, { type TitleFormData } from './components/TitleDialog';
+import WorkInformationDialog from './components/WorkInformationDialog';
+import WorkList from './components/WorkList';
 import { useSnackbar } from './context/SnackbarContext';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useContactDetailData, useContactDetailLoader } from './hooks/useContactDetailData';
@@ -746,6 +763,15 @@ export default function ContactDetailPage() {
     );
   };
 
+  // Issue #1729: skills/interests, work and non-birth anniversaries live in
+  // their own contact-page sections with add/edit dialogs instead of inside
+  // the General Information edit form.
+  const personalInfoDialog = useEditDialog<CardPersonalInfo>();
+  const organizationDialog = useEditDialog<CardOrganization>();
+  const titleDialog = useEditDialog<CardTitle>();
+  const anniversaryDialog = useEditDialog<CardAnniversary>();
+  const [workInformationDialogOpen, setWorkInformationDialogOpen] = useState(false);
+
   const lifeEventDialog = useEditDialog<LifeEvent>();
   const editingLifeEvent = lifeEventDialog.editing;
 
@@ -900,6 +926,165 @@ export default function ContactDetailPage() {
     onConflict: handleConflict,
   });
 
+  const rangeFromYears = (start?: number, end?: number) =>
+    start == null && end == null
+      ? undefined
+      : {
+          ...(start != null ? { start: { year: start } } : {}),
+          ...(end != null ? { end: { year: end } } : {}),
+        };
+
+  const periodForEntry = (kind: 'organization' | 'title', entryId?: string) =>
+    entryId
+      ? record?.crm?.periods?.find((p) => p.kind === kind && p.entry_id === entryId)?.range
+      : undefined;
+
+  // Skills & interests: Card.PersonalInfo is the canonical entry list; the
+  // per-entry sensitivity/favorite/notes live in crm.personalInfoMeta keyed by
+  // the entry's stable ID (issue #1738). Removing an entry also removes its
+  // metadata so no dangling key survives the save.
+  const handleSavePersonalInfo = async (data: PersonalInfoFormData) => {
+    if (!record) return;
+    const editing = personalInfoDialog.editing;
+    const id = editing?.id ?? newCardEntryID();
+    const entry: CardPersonalInfo = {
+      ...(editing ?? {}),
+      id,
+      kind: data.kind,
+      value: data.value,
+      level: data.level,
+      label: data.label,
+    };
+    const entries = record.card.personalInfo ?? [];
+    const index = editing ? entries.indexOf(editing) : -1;
+    const next =
+      index >= 0 ? entries.map((e, i) => (i === index ? entry : e)) : [...entries, entry];
+
+    const metaById = { ...(record.crm.personalInfoMeta ?? {}) };
+    const meta = { ...(metaById[id] ?? {}) };
+    if (data.notes) meta.notes = data.notes;
+    else delete meta.notes;
+    if (data.favorite) meta.favorite = true;
+    else delete meta.favorite;
+    if (data.sensitivity === 'normal') delete meta.sensitivity;
+    else meta.sensitivity = data.sensitivity;
+    if (Object.keys(meta).length > 0) metaById[id] = meta;
+    else delete metaById[id];
+
+    await fieldEditing.handleUpdateCard(
+      { personalInfo: next.length ? next : undefined },
+      { personalInfoMeta: Object.keys(metaById).length ? metaById : undefined },
+    );
+  };
+
+  const handleDeletePersonalInfo = async (entry: CardPersonalInfo) => {
+    if (!record) return;
+    const next = (record.card.personalInfo ?? []).filter((e) => e !== entry);
+    const metaById = { ...(record.crm.personalInfoMeta ?? {}) };
+    if (entry.id) delete metaById[entry.id];
+    await fieldEditing.handleUpdateCard(
+      { personalInfo: next.length ? next : undefined },
+      { personalInfoMeta: Object.keys(metaById).length ? metaById : undefined },
+    );
+  };
+
+  const replaceWorkEntry = <T extends { id?: string }>(
+    list: T[],
+    editing: T | null,
+    entry: T,
+  ): T[] => {
+    const index = editing ? list.indexOf(editing) : -1;
+    return index >= 0 ? list.map((item, i) => (i === index ? entry : item)) : [...list, entry];
+  };
+
+  const handleSaveOrganization = async (data: OrganizationFormData) => {
+    if (!record) return;
+    const editing = organizationDialog.editing;
+    const id = editing?.id ?? newCardEntryID();
+    const entry: CardOrganization = {
+      ...(editing ?? {}),
+      id,
+      name: data.name,
+      units: data.department
+        ? [{ ...(editing?.units?.[0] ?? {}), name: data.department }]
+        : undefined,
+    };
+    const organizations = replaceWorkEntry(record.card.organizations ?? [], editing, entry);
+    const periods = upsertEntryPeriod(
+      record.crm.periods,
+      'organization',
+      id,
+      rangeFromYears(data.startYear, data.endYear),
+    );
+    await fieldEditing.handleUpdateCard({ organizations }, { periods });
+  };
+
+  const handleDeleteOrganization = async (organization: CardOrganization) => {
+    if (!record) return;
+    const organizations = (record.card.organizations ?? []).filter((o) => o !== organization);
+    const periods = organization.id
+      ? upsertEntryPeriod(record.crm.periods, 'organization', organization.id, undefined)
+      : record.crm.periods;
+    await fieldEditing.handleUpdateCard(
+      { organizations: organizations.length ? organizations : undefined },
+      { periods },
+    );
+  };
+
+  const handleSaveTitle = async (data: TitleFormData) => {
+    if (!record) return;
+    const editing = titleDialog.editing;
+    const id = editing?.id ?? newCardEntryID();
+    const entry: CardTitle = {
+      ...(editing ?? {}),
+      id,
+      kind: data.kind,
+      name: data.name,
+    };
+    const titles = replaceWorkEntry(record.card.titles ?? [], editing, entry);
+    const periods = upsertEntryPeriod(
+      record.crm.periods,
+      'title',
+      id,
+      rangeFromYears(data.startYear, data.endYear),
+    );
+    await fieldEditing.handleUpdateCard({ titles }, { periods });
+  };
+
+  const handleDeleteTitle = async (title: CardTitle) => {
+    if (!record) return;
+    const titles = (record.card.titles ?? []).filter((t) => t !== title);
+    const periods = title.id
+      ? upsertEntryPeriod(record.crm.periods, 'title', title.id, undefined)
+      : record.crm.periods;
+    await fieldEditing.handleUpdateCard(
+      { titles: titles.length ? titles : undefined },
+      { periods },
+    );
+  };
+
+  const handleSaveWorkInformation = async (value: string) => {
+    await fieldEditing.handleUpdateCard({}, { work_information: value });
+  };
+
+  const handleSaveAnniversary = async (data: AnniversaryFormData) => {
+    if (!record) return;
+    const editing = anniversaryDialog.editing;
+    const entry = anniversaryFromForm(editing, data);
+    if (!editing?.id) entry.id = newCardEntryID();
+    const entries = record.card.anniversaries ?? [];
+    const index = editing ? entries.indexOf(editing) : -1;
+    const next =
+      index >= 0 ? entries.map((e, i) => (i === index ? entry : e)) : [...entries, entry];
+    await fieldEditing.handleUpdateCard({ anniversaries: next });
+  };
+
+  const handleDeleteAnniversary = async (anniversary: CardAnniversary) => {
+    if (!record) return;
+    const next = (record.card.anniversaries ?? []).filter((a) => a !== anniversary);
+    await fieldEditing.handleUpdateCard({ anniversaries: next.length ? next : undefined });
+  };
+
   const handleStayInTouch = () => {
     if (!record) return;
     setReminderInitialValues({
@@ -976,6 +1161,16 @@ export default function ContactDetailPage() {
       </Box>
     );
   }
+
+  // Each new section follows the enabled-contact-fields settings; its
+  // ContactJumpNav entry is conditional too, so the nav never links to a
+  // SectionGroup that isn't rendered.
+  const showSkills = enabledFields.has('personalInfo');
+  const showOrganizations = enabledFields.has('organizations');
+  const showTitles = enabledFields.has('titles');
+  const showWorkInformation = enabledFields.has('work_information');
+  const showWork = showOrganizations || showTitles || showWorkInformation;
+  const showAnniversaries = enabledFields.has('anniversaries') || enabledFields.has('anniversary');
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
@@ -1082,6 +1277,11 @@ export default function ContactDetailPage() {
         ariaLabel={t('contactDetail.jumpNav')}
         sections={[
           { id: 'overview', label: t('contactDetail.section.overview') },
+          ...(showSkills ? [{ id: 'skills', label: t('contactDetail.section.skills') }] : []),
+          ...(showWork ? [{ id: 'work', label: t('contactDetail.section.work') }] : []),
+          ...(showAnniversaries
+            ? [{ id: 'anniversaries', label: t('contactDetail.section.anniversaries') }]
+            : []),
           { id: 'people', label: t('contactDetail.section.people') },
           { id: 'timeline', label: t('contactDetail.timeline') },
           { id: 'cadence', label: t('contactDetail.section.cadence') },
@@ -1140,6 +1340,85 @@ export default function ContactDetailPage() {
           />
         </PanelCard>
       </SectionGroup>
+
+      {/* Skills & interests (issue #1729, #1738): Card.PersonalInfo grouped by
+          kind. Hobbies are created here and only here now. */}
+      {showSkills && (
+        <SectionGroup id="skills">
+          <PanelCard
+            title={t('contactDetail.section.skills')}
+            actions={
+              <Button
+                startIcon={<AddIcon />}
+                onClick={personalInfoDialog.openCreate}
+                variant="contained"
+                color="primary"
+                size="small"
+              >
+                {t('contactDetail.skills.add')}
+              </Button>
+            }
+          >
+            <PersonalInfoList
+              entries={record.card.personalInfo ?? []}
+              metaById={record.crm.personalInfoMeta}
+              onEdit={personalInfoDialog.openEdit}
+              onDelete={(...args) => void handleDeletePersonalInfo(...args)}
+            />
+          </PanelCard>
+        </SectionGroup>
+      )}
+
+      {/* Work (issue #1729): organizations, titles/roles and work_information. */}
+      {showWork && (
+        <SectionGroup id="work">
+          <PanelCard title={t('contactDetail.section.work')}>
+            <WorkList
+              organizations={record.card.organizations ?? []}
+              titles={record.card.titles ?? []}
+              periods={record.crm.periods}
+              workInformation={record.crm.work_information}
+              showOrganizations={showOrganizations}
+              showTitles={showTitles}
+              showWorkInformation={showWorkInformation}
+              onAddOrganization={organizationDialog.openCreate}
+              onEditOrganization={organizationDialog.openEdit}
+              onDeleteOrganization={(...args) => void handleDeleteOrganization(...args)}
+              onAddTitle={titleDialog.openCreate}
+              onEditTitle={titleDialog.openEdit}
+              onDeleteTitle={(...args) => void handleDeleteTitle(...args)}
+              onEditWorkInformation={() => setWorkInformationDialogOpen(true)}
+            />
+          </PanelCard>
+        </SectionGroup>
+      )}
+
+      {/* Anniversaries (issue #1729): non-birth entries only -- birthday stays
+          in the identity edit form. */}
+      {showAnniversaries && (
+        <SectionGroup id="anniversaries">
+          <PanelCard
+            title={t('contactDetail.section.anniversaries')}
+            actions={
+              <Button
+                startIcon={<AddIcon />}
+                onClick={anniversaryDialog.openCreate}
+                variant="contained"
+                color="primary"
+                size="small"
+              >
+                {t('contactDetail.anniversaries.add')}
+              </Button>
+            }
+          >
+            <AnniversaryList
+              anniversaries={record.card.anniversaries ?? []}
+              onEdit={anniversaryDialog.openEdit}
+              onDelete={(...args) => void handleDeleteAnniversary(...args)}
+            />
+          </PanelCard>
+        </SectionGroup>
+      )}
 
       {/* People — relationships + connections/graph */}
       <SectionGroup id="people" twoColumn>
@@ -1631,6 +1910,48 @@ export default function ContactDetailPage() {
         initialStatus={giftDialogInitialStatus}
         lifeEvents={lifeEvents}
         activities={activities}
+      />
+
+      <PersonalInfoDialog
+        open={personalInfoDialog.open}
+        onClose={personalInfoDialog.close}
+        onSave={handleSavePersonalInfo}
+        entry={personalInfoDialog.editing}
+        meta={
+          personalInfoDialog.editing?.id
+            ? record.crm.personalInfoMeta?.[personalInfoDialog.editing.id]
+            : undefined
+        }
+      />
+
+      <OrganizationDialog
+        open={organizationDialog.open}
+        onClose={organizationDialog.close}
+        onSave={handleSaveOrganization}
+        organization={organizationDialog.editing}
+        period={periodForEntry('organization', organizationDialog.editing?.id)}
+      />
+
+      <TitleDialog
+        open={titleDialog.open}
+        onClose={titleDialog.close}
+        onSave={handleSaveTitle}
+        title={titleDialog.editing}
+        period={periodForEntry('title', titleDialog.editing?.id)}
+      />
+
+      <WorkInformationDialog
+        open={workInformationDialogOpen}
+        onClose={() => setWorkInformationDialogOpen(false)}
+        onSave={handleSaveWorkInformation}
+        value={record.crm.work_information}
+      />
+
+      <AnniversaryDialog
+        open={anniversaryDialog.open}
+        onClose={anniversaryDialog.close}
+        onSave={handleSaveAnniversary}
+        anniversary={anniversaryDialog.editing}
       />
     </Box>
   );

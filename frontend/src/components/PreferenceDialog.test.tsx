@@ -106,15 +106,31 @@ test('edit mode pre-fills the existing preference', () => {
   expect(screen.getByLabelText('Notes (optional)')).toHaveValue('No exceptions');
 });
 
-// Issue #246: the proficiency picker is gated to hobby/skill categories.
-test('the proficiency picker appears only for the hobby category', async () => {
+// Issue #1738/#1729: hobbies are created in Skills & interests now, so the
+// add dialog no longer offers the deprecated hobby category. Existing hobby
+// rows (only possible from the old API path) still render and edit.
+function hobbyPreference() {
+  return {
+    id: 'p1',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    entity_id: 'alice-uid',
+    category: 'hobby',
+    value: 'Piano',
+    level: 'medium' as const,
+    sensitivity: 'normal' as const,
+  };
+}
+
+test('the add dialog does not offer the deprecated hobby category', async () => {
   renderDialog();
+  fireEvent.mouseDown(screen.getByLabelText('Category *'));
+  await screen.findByRole('option', { name: 'Food' });
+  expect(screen.queryByRole('option', { name: 'Activity/hobby' })).not.toBeInTheDocument();
+});
 
-  // Default category is food — no level field.
-  expect(screen.queryByRole('combobox', { name: 'Proficiency' })).not.toBeInTheDocument();
-
-  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Category' }));
-  fireEvent.click(await screen.findByRole('option', { name: 'Activity/hobby' }));
+test('the proficiency picker appears only for an existing hobby row', async () => {
+  renderDialog({ preference: hobbyPreference() });
   expect(await screen.findByRole('combobox', { name: 'Proficiency' })).toBeInTheDocument();
 
   // Switching to a non-hobby category hides it again.
@@ -125,13 +141,9 @@ test('the proficiency picker appears only for the hobby category', async () => {
   );
 });
 
-test('saves the selected proficiency level for a hobby', async () => {
+test('saves the selected proficiency level for an existing hobby', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
-  renderDialog({ onSave });
-
-  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Category' }));
-  fireEvent.click(await screen.findByRole('option', { name: 'Activity/hobby' }));
-  fireEvent.change(screen.getByLabelText('Value *'), { target: { value: 'Piano' } });
+  renderDialog({ preference: hobbyPreference(), onSave });
 
   fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Proficiency' }));
   fireEvent.click(await screen.findByRole('option', { name: 'Advanced' }));
@@ -148,15 +160,9 @@ test('saves the selected proficiency level for a hobby', async () => {
   });
 });
 
-test('switching away from hobby drops a selected level', async () => {
+test('switching away from an existing hobby drops its level', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
-  renderDialog({ onSave });
-
-  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Category' }));
-  fireEvent.click(await screen.findByRole('option', { name: 'Activity/hobby' }));
-  fireEvent.change(screen.getByLabelText('Value *'), { target: { value: 'Piano' } });
-  fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Proficiency' }));
-  fireEvent.click(await screen.findByRole('option', { name: 'Advanced' }));
+  renderDialog({ preference: hobbyPreference(), onSave });
 
   // Now a category with no level concept.
   fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Category' }));
@@ -167,6 +173,29 @@ test('switching away from hobby drops a selected level', async () => {
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ category: 'food', level: undefined }),
   );
+});
+
+test('adds a free-solo Dislikes entry with no proficiency level', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+
+  fireEvent.mouseDown(screen.getByLabelText('Category *'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Activity dislike' }));
+  expect(screen.queryByRole('combobox', { name: 'Proficiency' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Value *'), {
+    target: { value: 'Standing in queues' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave).toHaveBeenCalledWith({
+    category: 'dislike_activity',
+    key: undefined,
+    value: 'Standing in queues',
+    level: undefined,
+    notes: undefined,
+    sensitivity: 'normal',
+  });
 });
 
 test('edit mode pre-fills an existing hobby level', async () => {

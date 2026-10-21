@@ -594,7 +594,10 @@
       "dataDecay": "Verifica dei dati",
       "metadataExpand": "Espandi metadati della scheda",
       "metadataCollapse": "Comprimi metadati della scheda",
-      "customFieldsUngrouped": "Campi personalizzati"
+      "customFieldsUngrouped": "Campi personalizzati",
+      "skills": "Competenze e interessi",
+      "work": "Lavoro",
+      "anniversaries": "Anniversari"
     },
     "email": "Email",
     "phone": "Telefono",
@@ -668,7 +671,57 @@
     "exportAs": "Esporta come {{format}}",
     "jumpNav": "Vai alla sezione",
     "markAsMe": "Questo sono io",
-    "unmarkAsMe": "Questo non sono io"
+    "unmarkAsMe": "Questo non sono io",
+    "skills": {
+      "add": "Aggiungi competenza o interesse",
+      "createTitle": "Aggiungi competenza o interesse",
+      "editTitle": "Modifica competenza o interesse",
+      "empty": "Ancora nessuna competenza o interesse.",
+      "favorite": "Preferito",
+      "other": "Altro",
+      "validation": {
+        "valueRequired": "Inserisci una competenza, un hobby o un interesse.",
+        "saveFailed": "Impossibile salvare la voce."
+      }
+    },
+    "work": {
+      "organizations": "Organizzazioni",
+      "titles": "Qualifiche e ruoli",
+      "addOrganization": "Aggiungi organizzazione",
+      "createOrganization": "Aggiungi organizzazione",
+      "editOrganization": "Modifica organizzazione",
+      "addTitle": "Aggiungi qualifica o ruolo",
+      "createTitleDialog": "Aggiungi qualifica o ruolo",
+      "editTitleDialog": "Modifica qualifica o ruolo",
+      "kind": "Tipo",
+      "titleName": "Qualifica",
+      "addWorkInformation": "Aggiungi informazioni di lavoro",
+      "editWorkInformation": "Modifica informazioni di lavoro",
+      "noOrganizations": "Ancora nessuna organizzazione.",
+      "noTitles": "Ancora nessuna qualifica o ruolo.",
+      "noWorkInformation": "Ancora nessuna informazione di lavoro.",
+      "kindOptions": {
+        "title": "Qualifica professionale",
+        "role": "Ruolo"
+      },
+      "validation": {
+        "nameRequired": "Inserisci un nome.",
+        "invalidPeriod": "Inserisci un anno di inizio e fine validi.",
+        "saveFailed": "Impossibile salvare la voce."
+      }
+    },
+    "anniversaries": {
+      "add": "Aggiungi anniversario",
+      "createTitle": "Aggiungi anniversario",
+      "editTitle": "Modifica anniversario",
+      "empty": "Ancora nessun anniversario.",
+      "dateHint": "Usa AAAA-MM-GG per una data completa o --MM-GG se l'anno è sconosciuto.",
+      "validation": {
+        "dateRequired": "Inserisci una data.",
+        "invalidDate": "Inserisci una data come AAAA-MM-GG o --MM-GG.",
+        "saveFailed": "Impossibile salvare l'anniversario."
+      }
+    }
   },
   "noteDialog": {
     "title": "Aggiungi Nota",

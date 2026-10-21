@@ -594,7 +594,10 @@
       "dataDecay": "Verificación de datos",
       "metadataExpand": "Expandir metadatos de la tarjeta",
       "metadataCollapse": "Contraer metadatos de la tarjeta",
-      "customFieldsUngrouped": "Campos personalizados"
+      "customFieldsUngrouped": "Campos personalizados",
+      "skills": "Habilidades e intereses",
+      "work": "Trabajo",
+      "anniversaries": "Aniversarios"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -668,7 +671,57 @@
     "exportAs": "Exportar como {{format}}",
     "jumpNav": "Ir a la sección",
     "markAsMe": "Este soy yo",
-    "unmarkAsMe": "Este no soy yo"
+    "unmarkAsMe": "Este no soy yo",
+    "skills": {
+      "add": "Añadir habilidad o interés",
+      "createTitle": "Añadir habilidad o interés",
+      "editTitle": "Editar habilidad o interés",
+      "empty": "Aún no hay habilidades ni intereses.",
+      "favorite": "Favorito",
+      "other": "Otros",
+      "validation": {
+        "valueRequired": "Introduce una habilidad, afición o interés.",
+        "saveFailed": "No se pudo guardar la entrada."
+      }
+    },
+    "work": {
+      "organizations": "Organizaciones",
+      "titles": "Cargos y roles",
+      "addOrganization": "Añadir organización",
+      "createOrganization": "Añadir organización",
+      "editOrganization": "Editar organización",
+      "addTitle": "Añadir cargo o rol",
+      "createTitleDialog": "Añadir cargo o rol",
+      "editTitleDialog": "Editar cargo o rol",
+      "kind": "Tipo",
+      "titleName": "Cargo",
+      "addWorkInformation": "Añadir información laboral",
+      "editWorkInformation": "Editar información laboral",
+      "noOrganizations": "Aún no hay organizaciones.",
+      "noTitles": "Aún no hay cargos ni roles.",
+      "noWorkInformation": "Aún no hay información laboral.",
+      "kindOptions": {
+        "title": "Puesto de trabajo",
+        "role": "Rol"
+      },
+      "validation": {
+        "nameRequired": "Introduce un nombre.",
+        "invalidPeriod": "Introduce un año de inicio y fin válidos.",
+        "saveFailed": "No se pudo guardar la entrada."
+      }
+    },
+    "anniversaries": {
+      "add": "Añadir aniversario",
+      "createTitle": "Añadir aniversario",
+      "editTitle": "Editar aniversario",
+      "empty": "Aún no hay aniversarios.",
+      "dateHint": "Usa AAAA-MM-DD para una fecha completa o --MM-DD si el año es desconocido.",
+      "validation": {
+        "dateRequired": "Introduce una fecha.",
+        "invalidDate": "Introduce una fecha como AAAA-MM-DD o --MM-DD.",
+        "saveFailed": "No se pudo guardar el aniversario."
+      }
+    }
   },
   "noteDialog": {
     "title": "Agregar Nota",

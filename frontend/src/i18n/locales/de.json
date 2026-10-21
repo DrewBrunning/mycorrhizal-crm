@@ -594,7 +594,10 @@
       "dataDecay": "Datenüberprüfung",
       "metadataExpand": "Karten-Metadaten aufklappen",
       "metadataCollapse": "Karten-Metadaten zuklappen",
-      "customFieldsUngrouped": "Benutzerdefinierte Felder"
+      "customFieldsUngrouped": "Benutzerdefinierte Felder",
+      "skills": "Fähigkeiten & Interessen",
+      "work": "Arbeit",
+      "anniversaries": "Jahrestage"
     },
     "email": "E-Mail",
     "phone": "Telefon",
@@ -668,7 +671,57 @@
     "exportAs": "Als {{format}} exportieren",
     "jumpNav": "Zum Abschnitt springen",
     "markAsMe": "Das bin ich",
-    "unmarkAsMe": "Das bin nicht ich"
+    "unmarkAsMe": "Das bin nicht ich",
+    "skills": {
+      "add": "Fähigkeit oder Interesse hinzufügen",
+      "createTitle": "Fähigkeit oder Interesse hinzufügen",
+      "editTitle": "Fähigkeit oder Interesse bearbeiten",
+      "empty": "Noch keine Fähigkeiten oder Interessen.",
+      "favorite": "Favorit",
+      "other": "Sonstiges",
+      "validation": {
+        "valueRequired": "Gib eine Fähigkeit, ein Hobby oder Interesse ein.",
+        "saveFailed": "Eintrag konnte nicht gespeichert werden."
+      }
+    },
+    "work": {
+      "organizations": "Organisationen",
+      "titles": "Titel & Rollen",
+      "addOrganization": "Organisation hinzufügen",
+      "createOrganization": "Organisation hinzufügen",
+      "editOrganization": "Organisation bearbeiten",
+      "addTitle": "Titel oder Rolle hinzufügen",
+      "createTitleDialog": "Titel oder Rolle hinzufügen",
+      "editTitleDialog": "Titel oder Rolle bearbeiten",
+      "kind": "Typ",
+      "titleName": "Titel",
+      "addWorkInformation": "Arbeitsinformationen hinzufügen",
+      "editWorkInformation": "Arbeitsinformationen bearbeiten",
+      "noOrganizations": "Noch keine Organisationen.",
+      "noTitles": "Noch keine Titel oder Rollen.",
+      "noWorkInformation": "Noch keine Arbeitsinformationen.",
+      "kindOptions": {
+        "title": "Berufsbezeichnung",
+        "role": "Rolle"
+      },
+      "validation": {
+        "nameRequired": "Gib einen Namen ein.",
+        "invalidPeriod": "Gib ein gültiges Start- und Endjahr ein.",
+        "saveFailed": "Eintrag konnte nicht gespeichert werden."
+      }
+    },
+    "anniversaries": {
+      "add": "Jahrestag hinzufügen",
+      "createTitle": "Jahrestag hinzufügen",
+      "editTitle": "Jahrestag bearbeiten",
+      "empty": "Noch keine Jahrestage.",
+      "dateHint": "Verwende JJJJ-MM-TT für ein vollständiges Datum oder --MM-TT, wenn das Jahr unbekannt ist.",
+      "validation": {
+        "dateRequired": "Gib ein Datum ein.",
+        "invalidDate": "Gib ein Datum als JJJJ-MM-TT oder --MM-TT ein.",
+        "saveFailed": "Jahrestag konnte nicht gespeichert werden."
+      }
+    }
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",

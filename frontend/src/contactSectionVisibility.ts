@@ -14,22 +14,10 @@
 import { type Card, type CRMEnvelope, getAnniversaryField } from './api/contacts';
 import type { ContactFieldKey } from './contactFields';
 
-export type ContactSectionKey =
-  | 'about'
-  | 'contact'
-  | 'genderAndPronouns'
-  | 'professional'
-  | 'notes';
+export type ContactSectionKey = 'about' | 'contact' | 'genderAndPronouns' | 'notes';
 
 export const CONTACT_SECTION_FIELDS: Record<ContactSectionKey, ContactFieldKey[]> = {
-  about: [
-    'birthday',
-    'anniversary',
-    'anniversaries',
-    'personalInfo',
-    'keywords',
-    'preferredLanguages',
-  ],
+  about: ['birthday', 'keywords', 'preferredLanguages'],
   contact: [
     'phones',
     'addresses',
@@ -40,7 +28,6 @@ export const CONTACT_SECTION_FIELDS: Record<ContactSectionKey, ContactFieldKey[]
     'links',
   ],
   genderAndPronouns: ['gender', 'speakToAs'],
-  professional: ['organizations', 'titles', 'work_information'],
   notes: ['cardNotes', 'how_we_met', 'contact_information'],
 };
 
@@ -55,12 +42,6 @@ function fieldHasValue(
       return !!gender;
     case 'birthday':
       return !!getAnniversaryField(card.anniversaries, 'birth');
-    case 'anniversary':
-      return !!getAnniversaryField(card.anniversaries, 'wedding');
-    case 'anniversaries':
-      return !!card.anniversaries?.length;
-    case 'personalInfo':
-      return !!card.personalInfo?.length;
     case 'keywords':
       return !!card.keywords?.length;
     case 'preferredLanguages':
@@ -79,12 +60,6 @@ function fieldHasValue(
       return !!card.imppAddresses?.length;
     case 'links':
       return !!card.links?.length;
-    case 'organizations':
-      return !!card.organizations?.length;
-    case 'titles':
-      return !!card.titles?.length;
-    case 'work_information':
-      return !!crm.work_information;
     case 'cardNotes':
       return !!card.notes?.length;
     case 'how_we_met':
