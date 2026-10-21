@@ -243,7 +243,7 @@
     "com/mycorrhizal/crm/feature/contacts/ContactDetailViewModel.kt": 91.03,
     "com/mycorrhizal/crm/feature/contacts/ContactFormScreen.kt": 79.13,
     "com/mycorrhizal/crm/feature/contacts/ContactFormViewModel.kt": 87.18,
-    "com/mycorrhizal/crm/feature/contacts/ContactListScreen.kt": 86.92,
+    "com/mycorrhizal/crm/feature/contacts/ContactListScreen.kt": 85.33,
     "com/mycorrhizal/crm/feature/contacts/ContactListViewModel.kt": 92.01,
     "com/mycorrhizal/crm/feature/contacts/ContactMemberName.kt": 100,
     "com/mycorrhizal/crm/feature/contacts/DashboardScreen.kt": 83.37,
@@ -542,6 +542,5 @@
     "com/mycorrhizal/crm/ui/components/WriteConflictDialog.kt": 89.71,
     "com/mycorrhizal/crm/ui/theme/Theme.kt": 98.92,
     "com/mycorrhizal/crm/ui/util/LocaleContextWrapper.kt": 0
-  },
-  "com/mycorrhizal/crm/feature/contacts/ContactListScreen.kt": 85.33
+  }
 }
