@@ -22,6 +22,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -100,6 +101,7 @@ fun FieldDefinitionFormScreen(
             onProjectionModeChange = viewModel::onProjectionModeChange,
             onVcardNameChange = viewModel::onVcardNameChange,
             onSensitivityChange = viewModel::onSensitivityChange,
+            onGroupChange = viewModel::onGroupChange,
             modifier = Modifier.padding(padding),
         )
     }
@@ -132,6 +134,7 @@ fun FieldDefinitionFormContent(
     onVcardNameChange: (String) -> Unit,
     onSensitivityChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onGroupChange: (String) -> Unit = {},
 ) {
     if (state.isLoading) {
         LoadingSkeleton(modifier = modifier.fillMaxSize())
@@ -141,6 +144,7 @@ fun FieldDefinitionFormContent(
     var typeExpanded by remember { mutableStateOf(false) }
     var projectionExpanded by remember { mutableStateOf(false) }
     var sensitivityExpanded by remember { mutableStateOf(false) }
+    var groupExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -164,6 +168,14 @@ fun FieldDefinitionFormContent(
             supportingText = { Text(stringResource(R.string.settings_custom_fields_key_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+        )
+
+        GroupField(
+            value = state.group,
+            suggestions = state.groupSuggestions,
+            expanded = groupExpanded,
+            onExpandedChange = { groupExpanded = it },
+            onValueChange = onGroupChange,
         )
 
         ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
@@ -312,6 +324,53 @@ fun FieldDefinitionFormContent(
                         onClick = { onSensitivityChange(option); sensitivityExpanded = false },
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Issue #1731: the optional "Group" field — free text with the user's existing labels as
+ * suggestions (an editable exposed dropdown). Only suggestions that match what's typed are
+ * listed, and the menu stays closed when there is nothing to suggest.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GroupField(
+    value: String,
+    suggestions: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueChange: (String) -> Unit,
+) {
+    val matches = suggestions.filter { it != value && it.contains(value.trim(), ignoreCase = true) }
+    ExposedDropdownMenuBox(
+        expanded = expanded && matches.isNotEmpty(),
+        onExpandedChange = onExpandedChange,
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                onExpandedChange(true)
+            },
+            label = { Text(stringResource(R.string.settings_custom_fields_group)) },
+            supportingText = { Text(stringResource(R.string.settings_custom_fields_group_hint)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded && matches.isNotEmpty(),
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
+            matches.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onValueChange(option)
+                        onExpandedChange(false)
+                    },
+                )
             }
         }
     }

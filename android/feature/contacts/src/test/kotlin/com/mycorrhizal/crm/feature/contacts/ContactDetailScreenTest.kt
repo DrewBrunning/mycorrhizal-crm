@@ -91,6 +91,18 @@ class ContactDetailScreenTest {
     private fun scrollTo(text: String) =
         composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText(text))
 
+    /** Issue #1731: custom fields live behind a drill-down per group, not inline. Opens the row
+     *  whose group label is [label] ("" = the ungrouped "Custom fields" row). */
+    private fun openGroup(label: String = "") {
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("custom-field-group-$label"))
+        composeTestRule.onNodeWithTag("custom-field-group-$label").performClick()
+    }
+
+    /** Scrolls the open drill-down's own list (not the detail list) to [text]. */
+    private fun inGroup(text: String) =
+        composeTestRule.onNodeWithTag(CUSTOM_FIELD_GROUP_LIST_TAG).performScrollToNode(hasText(text))
+
     // --- Issue #212: header star toggle (web #173) ---------------------------
 
     @Test
@@ -824,10 +836,11 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order").assertIsDisplayed()
-        scrollTo("Latte").assertIsDisplayed()
-        scrollTo("Favorite number").assertIsDisplayed()
-        scrollTo("7").assertIsDisplayed()
+        openGroup()
+        inGroup("Coffee order").assertIsDisplayed()
+        inGroup("Latte").assertIsDisplayed()
+        inGroup("Favorite number").assertIsDisplayed()
+        inGroup("7").assertIsDisplayed()
     }
 
     @Test
@@ -843,8 +856,9 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order").assertIsDisplayed()
-        scrollTo("—").assertIsDisplayed()
+        openGroup()
+        inGroup("Coffee order").assertIsDisplayed()
+        inGroup("—").assertIsDisplayed()
     }
 
     @Test
@@ -888,10 +902,123 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("VIP").assertIsDisplayed()
-        scrollTo("true").assertIsDisplayed()
-        scrollTo("Milk options").assertIsDisplayed()
-        scrollTo("oat; almond").assertIsDisplayed()
+        openGroup()
+        inGroup("VIP").assertIsDisplayed()
+        inGroup("true").assertIsDisplayed()
+        inGroup("Milk options").assertIsDisplayed()
+        inGroup("oat; almond").assertIsDisplayed()
+    }
+
+    // --- Issue #1731: custom fields as per-group drill-downs ---
+
+    private val groupedDefinitions = listOf(
+        FieldDefinition(id = "d1", label = "Passport country", type = "string", group = "Travel profile"),
+        FieldDefinition(id = "d2", label = "Seat preference", type = "string", group = "Travel profile"),
+        FieldDefinition(id = "d3", label = "Shoe size", type = "number"),
+        FieldDefinition(id = "d4", label = "Allergy", type = "string", group = "Health"),
+    )
+
+    @Test
+    fun `custom fields render as one drill-down row per group with filled counts and no inline fields`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = groupedDefinitions,
+                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0),
+                )
+            }
+        }
+
+        scrollTo("Travel profile").assertIsDisplayed()
+        scrollTo("1 of 2 filled").assertIsDisplayed()
+        // Ungrouped row, titled "Custom fields" like the card that holds it.
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("custom-field-group-"))
+        composeTestRule.onNodeWithTag("custom-field-group-").assertIsDisplayed()
+        // A group with no filled value still appears so it can be filled.
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("custom-field-group-Health"))
+        composeTestRule.onNodeWithTag("custom-field-group-Health").assertIsDisplayed()
+        scrollTo("0 of 1 filled").assertIsDisplayed()
+        // Nothing renders inline any more.
+        composeTestRule.onNodeWithText("Passport country").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Canada").assertDoesNotExist()
+    }
+
+    @Test
+    fun `opening a group shows only that group's fields, including empty ones, in order`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = groupedDefinitions,
+                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0),
+                )
+            }
+        }
+
+        openGroup("Travel profile")
+
+        inGroup("Passport country").assertIsDisplayed()
+        inGroup("Canada").assertIsDisplayed()
+        inGroup("Seat preference").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shoe size").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Allergy").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a value edited inside a group drill-down saves against that definition and the back arrow closes it`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedId: String? = null
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = groupedDefinitions,
+                    fieldValuesByDefinitionId = mapOf("d1" to "Canada"),
+                    onSaveFieldValue = { id, value -> savedId = id; savedValue = value },
+                )
+            }
+        }
+
+        openGroup("Travel profile")
+        inGroup("Seat preference")
+        composeTestRule.onNodeWithContentDescription("Edit Seat preference").performClick()
+        composeTestRule.onNodeWithText("Value").performTextInput("Aisle")
+        inGroup("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals("d2", savedId)
+        assertEquals("Aisle", savedValue)
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithText("Seat preference").assertDoesNotExist()
+    }
+
+    @Test
+    fun `groups that differ only by case are separate drill-down rows`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "a", label = "A", type = "string", group = "Travel"),
+                        FieldDefinition(id = "b", label = "B", type = "string", group = "travel"),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("a" to "x", "b" to "y"),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("custom-field-group-Travel"))
+        composeTestRule.onNodeWithTag("custom-field-group-Travel").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("custom-field-group-travel").assertIsDisplayed()
     }
 
     // --- Issue #830: per-contact custom-field value editing ---
@@ -909,12 +1036,13 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order")
+        openGroup()
+        inGroup("Coffee order")
         composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
 
-        scrollTo("Value").assertIsDisplayed()
-        scrollTo("Save").assertIsDisplayed()
-        scrollTo("Cancel").assertIsDisplayed()
+        inGroup("Value").assertIsDisplayed()
+        inGroup("Save").assertIsDisplayed()
+        inGroup("Cancel").assertIsDisplayed()
     }
 
     @Test
@@ -933,11 +1061,12 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order")
+        openGroup()
+        inGroup("Coffee order")
         composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
-        scrollTo("Latte")
+        inGroup("Latte")
         composeTestRule.onNodeWithText("Latte").performTextReplacement("Macchiato")
-        scrollTo("Save")
+        inGroup("Save")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("d1", savedDefinitionId)
@@ -959,11 +1088,12 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order")
+        openGroup()
+        inGroup("Coffee order")
         composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
-        scrollTo("Latte")
+        inGroup("Latte")
         composeTestRule.onNodeWithText("Latte").performTextReplacement("")
-        scrollTo("Save")
+        inGroup("Save")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals(null, savedValue)
@@ -984,14 +1114,15 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order")
+        openGroup()
+        inGroup("Coffee order")
         composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
-        scrollTo("Latte")
+        inGroup("Latte")
         composeTestRule.onNodeWithText("Latte").performTextInput("XYZ")
-        scrollTo("Cancel")
+        inGroup("Cancel")
         composeTestRule.onNodeWithText("Cancel").performClick()
 
-        scrollTo("Latte").assertIsDisplayed()
+        inGroup("Latte").assertIsDisplayed()
         assertFalse(saveCalled)
     }
 
@@ -1009,7 +1140,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order")
+        openGroup()
+        inGroup("Coffee order")
         composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
 
         composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
@@ -1028,7 +1160,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("VIP")
+        openGroup()
+        inGroup("VIP")
         composeTestRule.onNodeWithContentDescription("Edit VIP").performClick()
 
         composeTestRule.onNode(isToggleable()).assertIsDisplayed()
@@ -1056,14 +1189,15 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Milk")
+        openGroup()
+        inGroup("Milk")
         composeTestRule.onNodeWithContentDescription("Edit Milk").performClick()
-        scrollTo("Oat")
+        inGroup("Oat")
         composeTestRule.onNodeWithText("Oat").performClick()
         // The dropdown's options render in a Popup, outside the "contact-detail-list" scrollable
         // container, so they're found directly rather than via scrollTo.
         composeTestRule.onNodeWithText("Almond").performClick()
-        scrollTo("Save")
+        inGroup("Save")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("Almond", savedValue)
@@ -1091,14 +1225,15 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Milk options")
+        openGroup()
+        inGroup("Milk options")
         composeTestRule.onNodeWithContentDescription("Edit Milk options").performClick()
-        scrollTo("Add")
+        inGroup("Add")
         composeTestRule.onNodeWithText("Add").performClick()
         // Every row's field shares the label "Value" — after Add there are two: the existing
         // "oat" row and the new empty one, in visual order, so index 1 is the new row.
         composeTestRule.onAllNodesWithText("Value")[1].performTextInput("almond")
-        scrollTo("Save")
+        inGroup("Save")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals(listOf("oat", "almond"), savedValue)
@@ -1126,11 +1261,12 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Milk options")
+        openGroup()
+        inGroup("Milk options")
         composeTestRule.onNodeWithContentDescription("Edit Milk options").performClick()
-        scrollTo("oat")
+        inGroup("oat")
         composeTestRule.onAllNodesWithContentDescription("Delete").onFirst().performClick()
-        scrollTo("Save")
+        inGroup("Save")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals(listOf("almond"), savedValue)
@@ -1148,9 +1284,10 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Field")
+        openGroup()
+        inGroup("Field")
         composeTestRule.onNodeWithContentDescription("Edit Field").performClick()
-        scrollTo("Value")
+        inGroup("Value")
         composeTestRule.onNodeWithText("Value").assertIsDisplayed()
     }
 

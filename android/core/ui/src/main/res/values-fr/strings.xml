@@ -1975,4 +1975,9 @@
     <string name="conflict_load_latest">Charger la dernière version</string>
     <string name="conflict_keep_editing">Continuer à modifier</string>
     <string name="conflict_dismiss">Pas maintenant</string>
+    <string name="contact_custom_field_group_filled">%1$d sur %2$d renseignés</string>
+    <string name="contact_custom_field_group_open">Ouvrir %1$s</string>
+    <string name="settings_custom_fields_group">Groupe</string>
+    <string name="settings_custom_fields_group_hint">Facultatif. Les champs du même groupe sont affichés ensemble sur un contact.</string>
+    <string name="settings_custom_fields_error_group_too_long">Le groupe doit comporter 100 caractères au maximum</string>
 </resources>
