@@ -542,5 +542,6 @@
     "com/mycorrhizal/crm/ui/components/WriteConflictDialog.kt": 89.71,
     "com/mycorrhizal/crm/ui/theme/Theme.kt": 98.92,
     "com/mycorrhizal/crm/ui/util/LocaleContextWrapper.kt": 0
-  }
+  },
+  "com/mycorrhizal/crm/feature/contacts/ContactListScreen.kt": 85.33
 }
