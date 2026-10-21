@@ -1456,6 +1456,7 @@
     <string name="preferences_category_flowers">Flowers</string>
     <string name="preferences_category_color">Color</string>
     <string name="preferences_category_hobby">Activity/hobby</string>
+    <string name="preferences_category_dislike_activity">Activity dislike</string>
     <string name="preferences_category_fragrance">Fragrance</string>
     <string name="preferences_category_cause">Charitable cause</string>
     <string name="preferences_category_dislike">Avoid gifting</string>
@@ -1481,6 +1482,7 @@
     <string name="preferences_section_food_drink">Food &amp; drink</string>
     <string name="preferences_section_media">Media</string>
     <string name="preferences_section_hobby">Activities &amp; hobbies</string>
+    <string name="preferences_section_dislikes">Dislikes</string>
     <string name="preferences_section_jewelry">Jewelry &amp; style</string>
     <string name="preferences_section_gift_preferences">Gift preferences</string>
     <string name="preferences_section_gift_avoid">Gift avoid</string>

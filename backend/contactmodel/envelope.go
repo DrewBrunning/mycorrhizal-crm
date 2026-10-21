@@ -1,5 +1,7 @@
 package contactmodel
 
+import "time"
+
 // CRMEnvelope holds Mycorrhizal-specific data that is NOT part of any contact-exchange
 // standard. Format adapters MUST ignore it entirely.
 type CRMEnvelope struct {
@@ -51,6 +53,38 @@ type CRMEnvelope struct {
 	// PUT/DELETE /contacts/:id/target-closeness. The flat Contact.TargetCloseness
 	// column is the store; the format adapters ignore it (no standards home).
 	TargetCloseness *string `json:"target_closeness,omitempty"`
+	// PersonalInfoMeta is CRM-side metadata for Card.PersonalInfo entries,
+	// keyed by the entry's stable ID (issue #1738). Hobbies are canonical on
+	// Card.PersonalInfo because that is what CardDAV round-trips; their
+	// sensitivity, favorite flag, notes and provenance have no RFC home, so
+	// they live here instead of being projected into a Card. An absent entry
+	// means normal sensitivity with no metadata. On a write, an ABSENT map
+	// preserves the stored one (a client that predates this field rebuilds crm
+	// on every save); an explicit empty object clears it. Format adapters
+	// ignore the envelope entirely, so this never leaves the instance through
+	// a vCard/JSContact export or sync.
+	PersonalInfoMeta map[string]PersonalInfoMeta `json:"personalInfoMeta,omitempty"`
 	// Reminders/Activities/Relationships remain separate GORM tables keyed by contact ID;
 	// they are NOT embedded here.
+}
+
+// PersonalInfoMeta is the CRM-only metadata attached to one Card.PersonalInfo
+// entry (issue #1738). Every field is optional; the zero value means normal
+// sensitivity and no metadata.
+type PersonalInfoMeta struct {
+	Sensitivity   string     `json:"sensitivity,omitempty"`
+	Favorite      bool       `json:"favorite,omitempty"`
+	Notes         string     `json:"notes,omitempty"`
+	Source        string     `json:"source,omitempty"`
+	Confidence    *float64   `json:"confidence,omitempty"`
+	LastConfirmed *time.Time `json:"last_confirmed,omitempty"`
+}
+
+// NormalizedSensitivity returns the explicit sensitivity token, treating an
+// empty value as "normal".
+func (m PersonalInfoMeta) NormalizedSensitivity() string {
+	if m.Sensitivity == "" {
+		return "normal"
+	}
+	return m.Sensitivity
 }

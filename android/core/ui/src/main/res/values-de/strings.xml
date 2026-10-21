@@ -1441,6 +1441,7 @@
     <string name="preferences_category_flowers">Blumen</string>
     <string name="preferences_category_color">Farbe</string>
     <string name="preferences_category_hobby">Aktivität/Hobby</string>
+    <string name="preferences_category_dislike_activity">Abgelehnte Aktivität</string>
     <string name="preferences_category_fragrance">Duft</string>
     <string name="preferences_category_cause">Wohltätiger Zweck</string>
     <string name="preferences_category_dislike">Nicht verschenken</string>
@@ -1466,6 +1467,7 @@
     <string name="preferences_section_food_drink">Essen &amp; Trinken</string>
     <string name="preferences_section_media">Medien</string>
     <string name="preferences_section_hobby">Aktivitäten &amp; Hobbys</string>
+    <string name="preferences_section_dislikes">Abneigungen</string>
     <string name="preferences_section_jewelry">Schmuck &amp; Stil</string>
     <string name="preferences_section_gift_preferences">Geschenkvorlieben</string>
     <string name="preferences_section_gift_avoid">Nicht verschenken</string>

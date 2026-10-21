@@ -99,6 +99,7 @@ func TestRoundTripReproducesEveryDeclaredField(t *testing.T) {
 			want := canonicalize(t, entryRecord(t, ds, m, entry))
 			gotRec := canonicalize(t, got)
 			adoptMintedAddressIDs(t, &want.Card, &gotRec.Card)
+			adoptMintedPersonalInfoIDs(t, &want.Card, &gotRec.Card)
 			assert.Equal(t, want.Card, gotRec.Card, "%s: card did not round-trip", entry.Name)
 			assert.Equal(t, want.Envelope, gotRec.Envelope, "%s: crm envelope did not round-trip", entry.Name)
 			assert.Equal(t, want.Passthrough, gotRec.Passthrough, "%s: passthrough did not round-trip", entry.Name)
@@ -130,7 +131,13 @@ func TestTrapFieldsSurviveRoundTrip(t *testing.T) {
 		require.NotNil(t, rec.Card.SpeakToAs, "ada: SpeakToAs dropped")
 		assert.Equal(t, []contactmodel.Pronouns{{Pronouns: "she/her", Contexts: []string{"work"}}}, rec.Card.SpeakToAs.Pronouns)
 		assert.Equal(t, []contactmodel.GrammaticalGender{{Value: "feminine", Language: "en"}}, rec.Card.SpeakToAs.GrammaticalGenders)
-		assert.Contains(t, rec.Card.PersonalInfo, contactmodel.PersonalInfo{Kind: "hobby", Value: "analytical machinery", Level: "high"})
+		foundHobby := false
+		for _, entry := range rec.Card.PersonalInfo {
+			if entry.Kind == "hobby" && entry.Value == "analytical machinery" && entry.Level == "high" {
+				foundHobby = true
+			}
+		}
+		assert.True(t, foundHobby, "ada: PersonalInfo dropped")
 		assert.Len(t, rec.Card.SocialProfiles, 1, "ada: SocialProfiles dropped")
 		assert.Len(t, rec.Card.OtherOnlineServices, 1, "ada: OtherOnlineServices dropped")
 		assert.Len(t, rec.Card.Members, 1, "ada: Members dropped")
@@ -451,6 +458,20 @@ func TestManifestRejectsBrokenReference(t *testing.T) {
 // the matching want addresses that declared no ID of their own, after
 // asserting a non-empty ID was minted. Everything else about each address must
 // still match field for field.
+// adoptMintedPersonalInfoIDs mirrors adoptMintedAddressIDs for issue #1738:
+// every personalInfo entry now gets a stable ID on write, so the manifest's
+// ID-less fixture entries adopt the minted ID before the equality check.
+func adoptMintedPersonalInfoIDs(t *testing.T, want, got *contactmodel.Card) {
+	t.Helper()
+	require.Equal(t, len(want.PersonalInfo), len(got.PersonalInfo), "personalInfo count must round-trip")
+	for i := range want.PersonalInfo {
+		require.NotEmpty(t, got.PersonalInfo[i].ID, "personalInfo %d: no ID was minted", i)
+		if want.PersonalInfo[i].ID == "" {
+			want.PersonalInfo[i].ID = got.PersonalInfo[i].ID
+		}
+	}
+}
+
 func adoptMintedAddressIDs(t *testing.T, want, got *contactmodel.Card) {
 	t.Helper()
 	require.Equal(t, len(want.Addresses), len(got.Addresses), "address count must round-trip")

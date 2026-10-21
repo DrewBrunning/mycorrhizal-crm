@@ -410,6 +410,14 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// silently delete it. Normal addresses are left entirely to the client.
 	record.Card.Addresses = models.PreserveSensitiveAddresses(contact.Card.Addresses, record.Card.Addresses)
 
+	// The same full-overwrite rule applies to personalInfo (issue #1738): an
+	// above-normal hobby is withheld by RecordForContactForSync, so this PUT
+	// cannot have seen it. Re-attach those entries (with their CRM metadata)
+	// before the apply; normal entries stay entirely client-controlled.
+	record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = models.MergePersonalInfoFromRemote(
+		contact.Card.PersonalInfo, contact.CRM.PersonalInfoMeta, record.Card.PersonalInfo,
+	)
+
 	// ApplyRecordToContact populates the flat legacy fields (for every other
 	// reader that isn't adapter-aware yet) and the neutral Card/CRM/
 	// Passthrough columns, and — given a real photoDir — persists an

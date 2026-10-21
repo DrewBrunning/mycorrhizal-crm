@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
+  categorySupportsLevel,
   createPreference,
   GIFTS_TAB_SECTIONS,
   getPreferences,
@@ -33,6 +34,16 @@ describe('tab section taxonomy', () => {
 
   test('an unrecognized category is not treated as a Gifts-tab category', () => {
     expect(isGiftsTabCategory('some_future_category')).toBe(false);
+  });
+
+  test('dislike_activity is its own free-solo Dislikes section with no level', () => {
+    const config = PREFERENCE_CATEGORY_CONFIG.find((c) => c.category === 'dislike_activity');
+    expect(config).toBeDefined();
+    expect(config?.section).toBe('dislikes');
+    expect(config?.keyMode).toBe('freeSolo');
+    expect(config?.supportsLevel).toBeFalsy();
+    expect(OVERVIEW_TAB_SECTIONS).toContain('dislikes');
+    expect(categorySupportsLevel('dislike_activity')).toBe(false);
   });
 });
 

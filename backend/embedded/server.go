@@ -219,6 +219,11 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		return fail(fmt.Errorf("backfilling Unicode NFC normalization: %w", err))
 	}
 
+	// Hobby preference -> Card.PersonalInfo one-shot move (issue #1738).
+	if _, err := services.MigrateHobbyPreferencesToPersonalInfo(db); err != nil {
+		return fail(fmt.Errorf("backfilling hobby preferences into contact personalInfo: %w", err))
+	}
+
 	// T18 audit hash chain (issue #381).
 	if err := models.RecomputeAuditChain(db); err != nil {
 		return fail(fmt.Errorf("backfilling the audit hash chain: %w", err))

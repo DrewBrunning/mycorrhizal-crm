@@ -11,6 +11,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// The hobby Preference category is deprecated (issue #1738): hobbies are
+// canonical on Card.PersonalInfo, metadata on crm.personalInfoMeta, and the
+// category is removed in 2.0.0. The route-based deprecation registry cannot
+// key on a body value, so create/update/read responses that return a hobby
+// preference announce it here — same RFC 8594 headers, same policy target.
+// The Sunset date is the register row's earliest permitted removal
+// (docs/deprecations.md, id preference-category-hobby).
+const (
+	hobbyPreferenceDeprecationSunset = "Tue, 19 Jan 2027 00:00:00 GMT"
+)
+
+// signalHobbyPreferenceDeprecation writes the deprecation headers when any of
+// the returned preferences still uses the deprecated hobby category.
+func signalHobbyPreferenceDeprecation(c *gin.Context, prefs ...models.Preference) {
+	for _, pref := range prefs {
+		if pref.Category == models.PreferenceCategoryHobby {
+			middleware.WriteDeprecationHeaders(c, "true", hobbyPreferenceDeprecationSunset, "")
+			return
+		}
+	}
+}
+
 // validatePreferenceLevel enforces the level's category gate (issue #246): a
 // proficiency level is only meaningful for hobby/skill-shaped categories, so a
 // level on a food/media/... preference is rejected rather than silently stored
@@ -72,6 +94,7 @@ func CreatePreference(c *gin.Context) {
 		return
 	}
 
+	signalHobbyPreferenceDeprecation(c, pref)
 	c.JSON(http.StatusCreated, gin.H{"message": "Preference created successfully", "preference": pref})
 }
 
@@ -94,6 +117,7 @@ func GetPreference(c *gin.Context) {
 		return
 	}
 
+	signalHobbyPreferenceDeprecation(c, pref)
 	c.JSON(http.StatusOK, pref)
 }
 
@@ -143,6 +167,7 @@ func ListPreferences(c *gin.Context) {
 		}
 		// Feed mode deliberately omits `total` (it would be the page count,
 		// not the collection size — a feed is incremental).
+		signalHobbyPreferenceDeprecation(c, prefs...)
 		c.JSON(http.StatusOK, gin.H{
 			"preferences": prefs,
 			"next_cursor": nextCursor,
@@ -184,6 +209,7 @@ func ListPreferences(c *gin.Context) {
 		nextCursor = EncodeCursor(prefs[len(prefs)-1].UpdatedAt, prefs[len(prefs)-1].ID)
 	}
 
+	signalHobbyPreferenceDeprecation(c, prefs...)
 	c.JSON(http.StatusOK, gin.H{
 		"preferences": prefs,
 		"next_cursor": nextCursor,
@@ -249,6 +275,7 @@ func UpdatePreference(c *gin.Context) {
 		return
 	}
 
+	signalHobbyPreferenceDeprecation(c, pref)
 	c.JSON(http.StatusOK, pref)
 }
 

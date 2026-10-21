@@ -535,6 +535,14 @@ func reconcileContactSyncWithBaselines(db *gorm.DB, sub *models.ContactSubscript
 				// on the CardDAV-server write path). The remote stays
 				// authoritative for content and deletion.
 				record.Card.Addresses = models.CarryForwardAddressSensitivity(contact.Card.Addresses, record.Card.Addresses)
+				// PersonalInfo entries above normal sensitivity were never
+				// sent to the remote (RecordForContactForSync withholds
+				// them), so their absence from this full-overwrite card is
+				// not a delete. Re-attach them and carry forward the
+				// metadata of entries the remote still has (issue #1738).
+				record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = models.MergePersonalInfoFromRemote(
+					contact.Card.PersonalInfo, contact.CRM.PersonalInfoMeta, record.Card.PersonalInfo,
+				)
 				models.ApplyRecordToContact(&contact, record, photoDir)
 				// Issue #512: same fix-up as the create branch above -- clean
 				// before the remote snapshot is taken, so both the conflict

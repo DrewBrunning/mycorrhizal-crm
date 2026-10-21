@@ -197,6 +197,14 @@ func normalizeEnvelope(e CRMEnvelope) CRMEnvelope {
 	e.WorkInformation = norm.NFC.String(e.WorkInformation)
 	e.ContactInformation = norm.NFC.String(e.ContactInformation)
 	e.Gender = norm.NFC.String(e.Gender)
+	if len(e.PersonalInfoMeta) > 0 {
+		meta := make(map[string]PersonalInfoMeta, len(e.PersonalInfoMeta))
+		for id, m := range e.PersonalInfoMeta {
+			m.Notes = norm.NFC.String(m.Notes)
+			meta[id] = m
+		}
+		e.PersonalInfoMeta = meta
+	}
 	return e
 }
 

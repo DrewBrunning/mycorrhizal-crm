@@ -93,6 +93,7 @@ object PreferenceSection {
     const val FOOD_DRINK = "food_drink"
     const val MEDIA = "media"
     const val HOBBY = "hobby"
+    const val DISLIKES = "dislikes"
     const val JEWELRY = "jewelry"
     const val GIFT_PREFERENCES = "gift_preferences"
     const val GIFT_AVOID = "gift_avoid"
@@ -107,8 +108,8 @@ object PreferenceSection {
 
     /** Sections shown on PreferencesScreen. Every real (non-OTHER) section
      * must appear in exactly one of GIFTS_TAB/OVERVIEW_TAB. */
-    val OVERVIEW_TAB: Set<String> = setOf(FOOD_DRINK, MEDIA, HOBBY)
-    val OVERVIEW_TAB_ORDERED: List<String> = listOf(FOOD_DRINK, MEDIA, HOBBY)
+    val OVERVIEW_TAB: Set<String> = setOf(FOOD_DRINK, MEDIA, HOBBY, DISLIKES)
+    val OVERVIEW_TAB_ORDERED: List<String> = listOf(FOOD_DRINK, MEDIA, HOBBY, DISLIKES)
 }
 
 enum class PreferenceKeyMode { DISPOSITION, FREE_SOLO }
@@ -174,6 +175,11 @@ object PreferenceCategory {
         // Preferences. The only category carrying a proficiency level
         // (issue #246).
         PreferenceCategoryConfig("hobby", PreferenceSection.HOBBY, PreferenceKeyMode.DISPOSITION, DISPOSITION, supportsLevel = true),
+
+        // Dislikes (issue #1738) — activities the person dislikes. Its own
+        // section (not Gifts, not Hobbies), free-solo key, no level, never
+        // projected to a Card / synced.
+        PreferenceCategoryConfig("dislike_activity", PreferenceSection.DISLIKES, PreferenceKeyMode.FREE_SOLO, emptyList()),
 
         // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
         PreferenceCategoryConfig("jewelry_metal", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
