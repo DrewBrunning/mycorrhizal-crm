@@ -3,6 +3,11 @@
 // see relationshipEdges.ts for the sibling api-module pattern this follows.
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
+// Issue #1733: why a contact counts as in regular contact without logged
+// activity. MUST stay in sync with backend/internal/scoring's
+// AmbientReason* constants.
+export type AmbientReason = 'household' | 'flag';
+
 // Mirrors backend/models/contact_score.go's ContactScoreFacet.
 export interface ContactScoreFacet {
   value: number;
@@ -24,6 +29,13 @@ export interface ContactScoreResponse {
   closeness: ContactScoreFacet;
   reach_out: ContactScoreFacet;
   last_updated: ContactScoreFacet;
+  // Issue #1733: true when Recency and Frequency were forced to 100 because the
+  // contact lives with the user (reason 'household') or is flagged ('flag').
+  // The server always sends ambient; it is optional here only because the
+  // spec's ContactScoreResponse declares no required fields (treat absent as
+  // false). ambient_reason is absent when ambient is false.
+  ambient?: boolean;
+  ambient_reason?: AmbientReason;
 }
 
 // GET /contacts/:id/score -- the explainable relationship health score for a

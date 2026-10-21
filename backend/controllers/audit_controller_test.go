@@ -193,3 +193,28 @@ func TestListAuditEvents_ScopedToUser(t *testing.T) {
 func auditItoa(id uint) string {
 	return strconv.FormatUint(uint64(id), 10)
 }
+
+// Undoing an edit that toggled the ambient flag (issue #1733) reverts it: the
+// flag rides the contact save, so Undo must restore it like any other field.
+func TestUndoAuditEvent_RestoresAmbientFlag(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+	contact.Ambient = true
+	require.NoError(t, db.Save(&contact).Error)
+
+	var event models.AuditEvent
+	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
+		models.AuditEntityContact, contact.VCardUID, models.AuditOpUpdate).Order("id desc").First(&event).Error)
+
+	req, _ := http.NewRequest("POST", "/audit/"+auditItoa(event.ID)+"/undo", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var reloaded models.Contact
+	require.NoError(t, db.Where("vcard_uid = ?", contact.VCardUID).First(&reloaded).Error)
+	assert.False(t, reloaded.Ambient, "undo must revert the ambient flag the edit set")
+	assert.Nil(t, reloaded.CRM.Ambient, "the persisted envelope must follow the restored flat flag")
+}

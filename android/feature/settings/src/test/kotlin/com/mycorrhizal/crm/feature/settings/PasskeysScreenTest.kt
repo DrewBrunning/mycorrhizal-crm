@@ -84,7 +84,7 @@ class PasskeysScreenTest {
     fun `an empty list says so and offers add`() {
         var added = 0
         setContent(ready(passkeys = emptyList()), onStartAdd = { added++ })
-        composeTestRule.onNodeWithText("No passkeys yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No passkeys yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add a passkey").performScrollTo().performClick()
         assertEquals(1, added)
     }
@@ -241,7 +241,7 @@ class PasskeysScreenTest {
     @Test
     fun `loading shows a spinner and no list`() {
         setContent(PasskeysUiState(loading = true))
-        composeTestRule.onNodeWithText("No passkeys yet.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No passkeys yet").assertDoesNotExist()
         assertTrue(true)
     }
 }

@@ -96,7 +96,7 @@ class VcfImportScreenTest {
             ),
             onRowActionChange = { row, action -> changedRow = row; changedAction = action },
         )
-        composeTestRule.onNodeWithText("Discard New").performClick()
+        composeTestRule.onNodeWithText("Discard new").performClick()
         assertEquals(0, changedRow)
         assertEquals("skip", changedAction)
     }
@@ -124,7 +124,7 @@ class VcfImportScreenTest {
                                 updated = listOf(
                                     com.mycorrhizal.crm.model.network.ImportScalarChange(
                                         field = "job_title",
-                                        label = "Job Title",
+                                        label = "Job title",
                                         old = "Engineer",
                                         new = "Staff Engineer",
                                     ),
@@ -141,7 +141,7 @@ class VcfImportScreenTest {
         )
         composeTestRule.onNodeWithText("Matches: Bob Smith (same email)").assertIsDisplayed()
         composeTestRule.onNodeWithText("+ new phone: +15559998888").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Job Title: Engineer \u2192 Staff Engineer").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job title: Engineer \u2192 Staff Engineer").assertIsDisplayed()
     }
 
     @Test

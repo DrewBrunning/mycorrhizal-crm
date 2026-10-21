@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Reminder, ReminderFormData } from '../api/reminders';
 import { getErrorMessage } from '../utils/errorHandler';
+import { localISODate, todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 
 interface InitialReminderValues {
@@ -66,7 +67,7 @@ export default function ReminderDialog({
         d.setFullYear(d.getFullYear() + 1);
         break;
     }
-    return d.toISOString().split('T')[0];
+    return localISODate(d);
   };
 
   useEffect(() => {
@@ -187,7 +188,7 @@ export default function ReminderDialog({
             fullWidth
             slotProps={{
               inputLabel: { shrink: true },
-              htmlInput: { min: new Date().toISOString().split('T')[0] },
+              htmlInput: { min: todayLocalISODate() },
             }}
           />
 

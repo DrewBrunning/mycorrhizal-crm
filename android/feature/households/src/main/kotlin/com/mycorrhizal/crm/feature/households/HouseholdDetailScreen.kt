@@ -151,7 +151,11 @@ fun HouseholdDetailScreen(
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
                     state.members.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.households_members_empty))
+                        EmptyState(
+                            title = stringResource(R.string.households_members_empty),
+                            actionLabel = stringResource(R.string.households_add_member),
+                            onAction = { showAddDialog = true },
+                        )
                     state.members.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,
@@ -166,7 +170,7 @@ fun HouseholdDetailScreen(
                                 HouseholdMemberRow(
                                     member = member,
                                     displayName = displayNameFor(resolved)
-                                        ?: stringResource(R.string.households_member_unknown),
+                                        ?: stringResource(R.string.contact_unknown),
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     removing = state.removingUid == member.memberVCardUid,
                                     updatingRole = state.updatingRoleUid == member.memberVCardUid,

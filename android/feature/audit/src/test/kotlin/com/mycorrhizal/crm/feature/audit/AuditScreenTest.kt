@@ -191,7 +191,7 @@ class AuditScreenTest {
         val viewModel = AuditViewModel(auditRepository, contactRepository)
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
-                AuditScreen(onBack = {}, onOpenContact = {}, viewModel = viewModel)
+                AuditScreen(onMenuClick = {}, onOpenContact = {}, viewModel = viewModel)
             }
         }
         composeTestRule.waitForIdle()

@@ -9587,6 +9587,20 @@
       "name": "BriefingCadenceHealth",
       "properties": [
         {
+          "name": "ambient",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ambient_reason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "household",
+            "flag"
+          ]
+        },
+        {
           "name": "has_qualifying_interaction",
           "type": "boolean",
           "required": false
@@ -9730,6 +9744,11 @@
       "name": "CRMEnvelope",
       "properties": [
         {
+          "name": "ambient",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "circles",
           "type": "array\u003cstring\u003e",
           "required": false
@@ -9769,6 +9788,20 @@
     {
       "name": "CadenceHealth",
       "properties": [
+        {
+          "name": "ambient",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "ambient_reason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "household",
+            "flag"
+          ]
+        },
         {
           "name": "has_qualifying_interaction",
           "type": "boolean",
@@ -11564,6 +11597,20 @@
     {
       "name": "ContactScoreResponse",
       "properties": [
+        {
+          "name": "ambient",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ambient_reason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "household",
+            "flag"
+          ]
+        },
         {
           "name": "band",
           "type": "string",
@@ -13553,6 +13600,11 @@
           "required": true
         },
         {
+          "name": "group",
+          "type": "string",
+          "required": true
+        },
+        {
           "name": "id",
           "type": "string",
           "required": true
@@ -13625,6 +13677,11 @@
         {
           "name": "constraints",
           "type": "ref:FieldConstraints",
+          "required": false
+        },
+        {
+          "name": "group",
+          "type": "string",
           "required": false
         },
         {

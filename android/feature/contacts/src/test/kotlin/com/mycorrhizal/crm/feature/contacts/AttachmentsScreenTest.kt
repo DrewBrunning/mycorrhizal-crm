@@ -1,6 +1,10 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -69,6 +73,18 @@ class AttachmentsScreenTest {
         composeTestRule.onNodeWithText("Add attachment").assertIsDisplayed()
     }
 
+    // Issue #1760: one add affordance (the FAB, like every other list) plus the
+    // empty-state action -- no more top-bar icon *and* inline button.
+    @Test
+    fun `empty state action and the fab both open the picker`() {
+        setContent(AttachmentUiState(attachments = emptyList(), total = 0, isLoading = false))
+        composeTestRule.onNodeWithText("Attach files such as scans, contracts or photos to this contact.")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add attachment").performClick()
+        composeTestRule.onNodeWithTag("add-attachment").performClick()
+        assertEquals(2, added)
+    }
+
     @Test
     fun `populated list shows rows and tapping one downloads it`() {
         setContent(AttachmentUiState(attachments = listOf(scan), total = 1, isLoading = false))
@@ -118,7 +134,13 @@ class AttachmentsScreenTest {
             ),
         )
         composeTestRule.waitForIdle()
-        // add-attachment node still exists (disabled) — assert no double handling.
+        // The FAB keeps its label while the spinner shows, reads as busy and
+        // disabled to TalkBack, and a tap does not start a second upload.
+        composeTestRule.onNodeWithTag("add-attachment")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Add attachment")))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
+            .assertIsNotEnabled()
+            .performClick()
         assertTrue(added == 0)
         assertNull(opened)
     }

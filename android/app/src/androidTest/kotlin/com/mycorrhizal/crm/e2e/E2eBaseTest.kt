@@ -258,7 +258,18 @@ abstract class E2eBaseTest {
         waitForText(label)
         // The drawer renders on top, so its item is the last match when the
         // label also appears in the screen behind it.
-        onLastText(label).performScrollTo().performClick()
+        val item = onLastText(label)
+        // Issue #1758: Settings is pinned below the scrolling list, so it has no scroll container
+        // to scroll in (performScrollTo throws there); it is on screen already.
+        runCatching { item.performScrollTo() }
+        item.performClick()
+        compose.waitForIdle()
+    }
+
+    /** Opens one of the Settings root's groups (issue #1759), e.g. "Account", from the Settings screen. */
+    protected fun openSettingsGroup(label: String) {
+        waitForText(label)
+        compose.onNodeWithText(label).performScrollTo().performClick()
         compose.waitForIdle()
     }
 
@@ -277,6 +288,16 @@ abstract class E2eBaseTest {
      */
     protected fun clickBack() {
         clickContentDescription("Back")
+    }
+
+    /**
+     * The system Back gesture, for a drawer destination (issue #1758: those show the Menu icon,
+     * not a Back arrow, and Back from them returns to the Dashboard). Dispatched through the
+     * activity's OnBackPressedDispatcher rather than Espresso.pressBack for the API 36+ reason above.
+     */
+    protected fun systemBack() {
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
     }
 
     private companion object {

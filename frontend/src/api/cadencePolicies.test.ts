@@ -24,6 +24,7 @@ const policy: CadencePolicy = {
     last_interaction: '2026-01-10T00:00:00Z',
     next_due: '2026-02-09T00:00:00Z',
     overdue_by: 0,
+    ambient: false,
   },
 };
 

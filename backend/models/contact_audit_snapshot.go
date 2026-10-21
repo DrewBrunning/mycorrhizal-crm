@@ -30,6 +30,15 @@ type ContactAuditSnapshot struct {
 	Card        contactmodel.Card        `json:"card"`
 	CRM         contactmodel.CRMEnvelope `json:"crm"`
 	Passthrough contactmodel.Passthrough `json:"passthrough"`
+
+	// AmbientState shadows the embedded Contact.Ambient under the same
+	// "ambient" key (encoding/json prefers the shallower field), so the
+	// snapshot records the flat ambient flag (issue #1733) as a pointer: an
+	// event written since the flag existed always carries true or false, while
+	// an older event has no key at all and decodes to nil. Undo restores the
+	// flag only when it is non-nil, so undoing a pre-#1733 edit never clears a
+	// flag the user set later (the snapshot never saw it).
+	AmbientState *bool `json:"ambient"`
 }
 
 // auditSnapshot returns the value auditBeforeSave/auditAfterDelete marshal as
@@ -40,11 +49,13 @@ type ContactAuditSnapshot struct {
 func (c *Contact) auditSnapshot() any {
 	card := c.Card
 	card.Media = stripPhotoMedia(card.Media)
+	ambient := c.Ambient
 	return ContactAuditSnapshot{
-		Contact:     *c,
-		Card:        card,
-		CRM:         c.CRM,
-		Passthrough: c.Passthrough,
+		Contact:      *c,
+		Card:         card,
+		CRM:          c.CRM,
+		Passthrough:  c.Passthrough,
+		AmbientState: &ambient,
 	}
 }
 
@@ -105,6 +116,9 @@ func (dst *Contact) RestoreFullStateFrom(src *ContactAuditSnapshot) {
 		return
 	}
 	dst.RestoreFlatStateFrom(&src.Contact)
+	if src.AmbientState != nil {
+		dst.Ambient = *src.AmbientState
+	}
 	dst.Card = src.Card
 	dst.CRM = src.CRM
 	dst.Passthrough = src.Passthrough

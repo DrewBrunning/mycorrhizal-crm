@@ -31,18 +31,23 @@ import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import PageHeader from './components/PageHeader';
+import { timelineMobileDateSx, timelinePhoneSx } from './components/timelineLayout';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useRecordConflict } from './hooks/useRecordConflict';
+import { calendarDateOnly } from './utils/localDate';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   useDocumentTitle(t('nav.activities'));
   const { announce } = useAnnouncer();
   const { formatDate, getDatePlaceholder } = useDateFormat();
+  // #1783: one formatter for both the sm+ date column and the phone caption.
+  const activityDateLabel = (activity: Activity) => formatDate(calendarDateOnly(activity.date));
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
@@ -138,6 +143,7 @@ const ActivitiesPage: React.FC = () => {
       activityTitle: activity.title || '',
       activityDescription: activity.description || '',
       activityLocation: activity.location || '',
+      // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
       activityContacts: activity.contacts || [],
     });
@@ -209,59 +215,51 @@ const ActivitiesPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       {conflictDialog}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Typography variant="h5" component="h1">
-            {t('activities.title')}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-describedby={infoPopoverId}
-            aria-label={t('common.info')}
-            onClick={handleInfoClick}
-          >
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiMapMarkerOutline} />
-              </SvgIcon>
-            }
-            onClick={() => setLocationDialogOpen(true)}
-          >
-            {t('activities.logFromLocation')}
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={
-              <SvgIcon>
-                <path d={mdiCalendarPlus} />
-              </SvgIcon>
-            }
-            onClick={handleAddActivity}
-          >
-            {t('activities.addActivity')}
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        sx={{ mb: 2 }}
+        leading={
+          <>
+            <Typography variant="h5" component="h1">
+              {t('activities.title')}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-describedby={infoPopoverId}
+              aria-label={t('common.info')}
+              onClick={handleInfoClick}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiMapMarkerOutline} />
+                </SvgIcon>
+              }
+              onClick={() => setLocationDialogOpen(true)}
+            >
+              {t('activities.logFromLocation')}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={
+                <SvgIcon>
+                  <path d={mdiCalendarPlus} />
+                </SvgIcon>
+              }
+              onClick={handleAddActivity}
+            >
+              {t('activities.addActivity')}
+            </Button>
+          </>
+        }
+      />
 
       <Popover
         id={infoPopoverId}
@@ -334,7 +332,7 @@ const ActivitiesPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <Timeline position="right">
+        <Timeline position="right" sx={timelinePhoneSx}>
           {activities.map((activity, index) => (
             <TimelineItem key={activity.ID}>
               <TimelineOppositeContent
@@ -343,7 +341,7 @@ const ActivitiesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(activity.date)}</Typography>
+                <Typography variant="body2">{activityDateLabel(activity)}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
@@ -351,11 +349,14 @@ const ActivitiesPage: React.FC = () => {
                 </TimelineDot>
                 {index < activities.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
-              <TimelineContent sx={{ flex: 0.8 }}>
+              <TimelineContent sx={{ flex: { sm: 0.8 } }}>
+                <Typography variant="caption" sx={timelineMobileDateSx}>
+                  {activityDateLabel(activity)}
+                </Typography>
                 <Paper
                   elevation={2}
                   sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     // #196: :focus-within reveals the actions once a button
                     // inside is keyboard-focused, not just on mouse hover.
                     '&:hover .edit-actions, &:focus-within .edit-actions': {
@@ -371,7 +372,7 @@ const ActivitiesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Box sx={{ flex: 1, pr: 2 }}>
+                      <Box sx={{ flex: 1, minWidth: 0, pr: { xs: 1, sm: 2 } }}>
                         {activity.title && (
                           // T98: subtitle1 matches the activity title size on
                           // the contact timeline. The color override is gone
@@ -383,7 +384,7 @@ const ActivitiesPage: React.FC = () => {
                             component="p"
                             sx={{
                               fontWeight: 600,
-                              wordBreak: 'break-word',
+                              overflowWrap: 'anywhere',
                             }}
                           >
                             {activity.title}
@@ -391,7 +392,11 @@ const ActivitiesPage: React.FC = () => {
                         )}
                         <Typography
                           variant="body2"
-                          sx={{ whiteSpace: 'pre-wrap', mt: activity.title ? 0.5 : 0 }}
+                          sx={{
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'anywhere',
+                            mt: activity.title ? 0.5 : 0,
+                          }}
                         >
                           {activity.description}
                         </Typography>
@@ -410,7 +415,12 @@ const ActivitiesPage: React.FC = () => {
                       </Box>
                       <Box
                         className="edit-actions"
-                        sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
+                        sx={{
+                          opacity: { xs: 1, sm: 0 },
+                          transition: 'opacity 0.2s',
+                          display: 'flex',
+                          gap: 1,
+                        }}
                       >
                         <IconButton
                           size="small"

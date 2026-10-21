@@ -22,8 +22,8 @@ import (
 // future, or undefined) — "due today" is deliberately not overdue, matching
 // CadenceHealth and reminders' day-boundary convention.
 type DataDecayHealth struct {
-	NextDue   time.Time `json:"next_due"`
-	OverdueBy int       `json:"overdue_by"`
+	NextDue   models.CalendarDate `json:"next_due"`
+	OverdueBy int                 `json:"overdue_by"`
 }
 
 // calendarDaysBetweenDecay counts whole calendar days from a to b (negative
@@ -54,7 +54,7 @@ func ComputeDataDecayHealth(policy *models.DataDecayPolicy, now time.Time) DataD
 	baselineLocal := baseline.In(loc)
 	baselineMidnight := time.Date(baselineLocal.Year(), baselineLocal.Month(), baselineLocal.Day(), 0, 0, 0, 0, loc)
 	nextDue := baselineMidnight.AddDate(0, 0, policy.IntervalDays)
-	health := DataDecayHealth{NextDue: nextDue}
+	health := DataDecayHealth{NextDue: models.NewCalendarDate(nextDue)}
 	if overdue := -calendarDaysBetweenDecay(now, nextDue); overdue > 0 {
 		health.OverdueBy = overdue
 	}

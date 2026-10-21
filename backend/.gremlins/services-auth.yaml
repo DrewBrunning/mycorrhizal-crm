@@ -8,6 +8,7 @@ unleash:
         - ^address_suggestion_service\.go$
         - ^alerting_conditions\.go$
         - ^alerting_service\.go$
+        - ^ambient_contacts\.go$
         - ^audit_purge_service\.go$
         - ^birthday_service\.go$
         - ^cadence_service\.go$
