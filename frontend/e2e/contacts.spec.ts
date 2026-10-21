@@ -111,10 +111,11 @@ test.describe('Contacts', { tag: '@prod-defaults' }, () => {
       // Deletion is confirmed via a native confirm() dialog.
       page.once('dialog', (dialog) => dialog.accept());
 
-      // T53: Delete is reachable on wide viewports as an inline button and on
-      // narrow viewports via the actions ("…") menu. The test runs at default
-      // desktop width (1280×720) where the inline Delete button is visible.
-      await page.getByRole('button', { name: 'Delete' }).click();
+      // #1782: Delete is the last item in the header's More menu (behind a
+      // divider) at every width. The test runs at default desktop width
+      // (1280×720), where that trigger is the "More" button.
+      await page.getByRole('button', { name: 'More' }).click();
+      await page.getByRole('menuitem', { name: 'Delete Contact' }).click();
 
       // Redirects back to the list, and the contact is gone. The delete commit
       // and a follow-up GET can race through SQLite's pooled connections (a WAL
