@@ -1,5 +1,6 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Accordion, AccordionDetails, AccordionSummary, Box, Typography } from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FieldDefinition } from '../api/fieldDefinitions';
 import { groupDefinitions, hasAnyGroup, isGroupFilled } from '../utils/customFieldGroups';
@@ -23,6 +24,11 @@ export default function CustomFieldGroups({
   onSave,
 }: CustomFieldGroupsProps) {
   const { t, i18n } = useTranslation();
+  // Expansion is controlled rather than `defaultExpanded`: definitions and
+  // values load independently, so a group can mount empty and receive its
+  // value a render later. `defaultExpanded` is read once at mount, which left
+  // such groups permanently collapsed. An explicit user toggle wins.
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const renderRows = (defs: FieldDefinition[]) =>
     defs.map((definition) => (
@@ -41,10 +47,14 @@ export default function CustomFieldGroups({
       {groupDefinitions(definitions, i18n.language).map((g) => {
         const title = g.group || t('contactDetail.section.customFieldsUngrouped');
         const id = `custom-field-group-${g.group === '' ? 'ungrouped' : encodeURIComponent(g.group)}`;
+        const groupKey = g.group === '' ? '\u0000ungrouped' : g.group;
         return (
           <Accordion
-            key={g.group === '' ? '\u0000ungrouped' : g.group}
-            defaultExpanded={isGroupFilled(g, valuesByDefinition)}
+            key={groupKey}
+            expanded={expandedGroups[groupKey] ?? isGroupFilled(g, valuesByDefinition)}
+            onChange={(_, isExpanded) =>
+              setExpandedGroups((prev) => ({ ...prev, [groupKey]: isExpanded }))
+            }
             disableGutters
             variant="outlined"
           >

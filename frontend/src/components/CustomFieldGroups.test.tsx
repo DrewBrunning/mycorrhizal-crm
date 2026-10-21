@@ -24,12 +24,12 @@ function def(id: string, label: string, group: string): FieldDefinition {
   };
 }
 
-function renderGroups(
+function tree(
   definitions: FieldDefinition[],
-  values: Record<string, unknown> = {},
-  onSave = vi.fn().mockResolvedValue(undefined),
+  values: Record<string, unknown>,
+  onSave: (definitionId: string, value: unknown) => Promise<void>,
 ) {
-  render(
+  return (
     <SnackbarProvider>
       <DateFormatProvider>
         <CustomFieldGroups
@@ -38,8 +38,16 @@ function renderGroups(
           onSave={onSave}
         />
       </DateFormatProvider>
-    </SnackbarProvider>,
+    </SnackbarProvider>
   );
+}
+
+function renderGroups(
+  definitions: FieldDefinition[],
+  values: Record<string, unknown> = {},
+  onSave = vi.fn().mockResolvedValue(undefined),
+) {
+  render(tree(definitions, values, onSave));
   return onSave;
 }
 
@@ -65,6 +73,15 @@ test('a group without filled values is collapsed; a filled one is open', () => {
   expect(screen.getByRole('button', { name: 'Work' })).toHaveAttribute('aria-expanded', 'false');
   fireEvent.click(screen.getByRole('button', { name: 'Work' }));
   expect(screen.getByRole('button', { name: 'Work' })).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('a group whose values arrive after mount expands', () => {
+  const definitions = [def('t', 'Hotel', 'Travel')];
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  const { rerender } = render(tree(definitions, {}, onSave));
+  expect(screen.getByRole('button', { name: 'Travel' })).toHaveAttribute('aria-expanded', 'false');
+  rerender(tree(definitions, { t: 'Hilton' }, onSave));
+  expect(screen.getByRole('button', { name: 'Travel' })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('case-different labels are separate groups', () => {
