@@ -119,7 +119,15 @@ data class BriefingCadenceHealth(
     @Json(name = "last_interaction") val lastInteraction: String? = null,
     @Json(name = "next_due") val nextDue: String? = null,
     @Json(name = "overdue_by") val overdueBy: Int = 0,
-)
+    /** Issue #1733: an ambient contact is never overdue. Same as [CadenceHealth.ambient]. */
+    val ambient: Boolean = false,
+    /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
+    @Json(name = "ambient_reason") val ambientReason: String? = null,
+) {
+    /** Never true for an ambient contact. Same as [CadenceHealth.isOverdue]. */
+    val isOverdue: Boolean
+        get() = !ambient && overdueBy > 0
+}
 
 /**
  * One confirmed edge resolved for display: the raw edge plus the other

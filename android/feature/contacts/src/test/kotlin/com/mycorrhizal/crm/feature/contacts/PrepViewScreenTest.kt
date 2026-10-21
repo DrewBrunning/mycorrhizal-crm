@@ -35,6 +35,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -87,6 +88,52 @@ class PrepViewScreenTest {
         composeTestRule.onNodeWithText(text, substring = substring)
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    // --- Issue #1734: ambient contacts are never overdue ---
+
+    private fun briefingWith(health: BriefingCadenceHealth) = ContactBriefing(
+        contactId = 7,
+        uid = "u7",
+        name = "Alice Wonder",
+        cadence = BriefingCadence(health = health),
+    )
+
+    @Test
+    fun `an ambient household contact shows the explanation instead of a cadence readout`() {
+        setContent(
+            briefingWith(
+                BriefingCadenceHealth(
+                    hasQualifyingInteraction = true,
+                    lastInteraction = "2026-08-10T14:00:00Z",
+                    nextDue = "2026-09-09T14:00:00Z",
+                    ambient = true,
+                    ambientReason = "household",
+                ),
+            ),
+        )
+
+        assertSection("Lives with you (household)")
+        composeTestRule.onNodeWithText("On track").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Next due", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an ambient contact with a stale overdue_by shows no overdue text`() {
+        val health = BriefingCadenceHealth(hasQualifyingInteraction = true, overdueBy = 4, ambient = true, ambientReason = "flag")
+        assertFalse(health.isOverdue)
+        setContent(briefingWith(health))
+
+        assertSection("Marked as ambient")
+        composeTestRule.onNodeWithText("overdue", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a non-ambient overdue contact still shows the overdue text`() {
+        setContent(briefingWith(BriefingCadenceHealth(hasQualifyingInteraction = true, overdueBy = 4)))
+
+        assertSection("overdue", substring = true)
+        composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
     }
 
     @Test

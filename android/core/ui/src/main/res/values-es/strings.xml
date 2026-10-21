@@ -1975,4 +1975,8 @@
     <string name="conflict_load_latest">Cargar la última versión</string>
     <string name="conflict_keep_editing">Seguir editando</string>
     <string name="conflict_dismiss">Ahora no</string>
+    <string name="contact_ambient_toggle">Contacto cotidiano: lo veo constantemente</string>
+    <string name="ambient_explainer">Cuenta como contacto habitual sin registrar actividades</string>
+    <string name="ambient_reason_household">Vive contigo (hogar)</string>
+    <string name="ambient_reason_flag">Marcado como contacto cotidiano</string>
 </resources>

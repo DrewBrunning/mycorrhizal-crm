@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
+import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
@@ -278,8 +279,14 @@ private fun PrepHeader(briefing: ContactBriefing) {
 
 @Composable
 private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCadenceHealth, dateFormat: String) {
-    if (health.hasQualifyingInteraction) {
-        if (health.overdueBy > 0) {
+    if (health.ambient) {
+        // Issue #1734: ambient contacts are never overdue; explain why instead of a date readout.
+        AmbientExplanation(
+            reason = health.ambientReason,
+            modifier = Modifier.padding(vertical = 2.dp).testTag("prep-cadence-ambient"),
+        )
+    } else if (health.hasQualifyingInteraction) {
+        if (health.isOverdue) {
             Text(
                 text = stringResource(R.string.prep_cadence_overdue, health.overdueBy),
                 style = MaterialTheme.typography.bodyLarge,

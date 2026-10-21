@@ -142,6 +142,15 @@ data class CRMEnvelope(
      * reason this field exists).
      */
     @Json(name = "periods") val periods: List<EntryPeriod>? = null,
+    /**
+     * Issue #1733/#1734: the explicit "I see them all the time" flag. The server emits it only
+     * when true (absent reads as false) and treats an ABSENT key on a write as "keep the stored
+     * value"; `true`/`false` set it. Kept nullable so the form can send back exactly what it
+     * read: [ContactFormViewModel.toInput] rebuilds `crm` on every save, so an unmodelled field
+     * would be silently dropped (the same data-loss class [periods] warns about). An explicit
+     * `false` is only sent after the user turned the toggle off.
+     */
+    val ambient: Boolean? = null,
 )
 
 /**
