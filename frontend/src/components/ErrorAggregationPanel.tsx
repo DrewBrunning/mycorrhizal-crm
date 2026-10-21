@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import type { ErrorBucket } from '../api/errorAggregation';
 import { useErrorAggregation } from '../hooks/useErrorAggregation';
 import { statusTextColor } from '../utils/statusText';
+import PageHeader from './PageHeader';
 
 const WINDOW_HOURS = 24;
 
@@ -54,38 +55,34 @@ export default function ErrorAggregationPanel({
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" component="h2">
-            {t('errorAggregation.title')}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.secondary',
-            }}
+      <PageHeader
+        sx={{ mb: 1 }}
+        leading={
+          <Box>
+            <Typography variant="subtitle1" component="h2">
+              {t('errorAggregation.title')}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {t('errorAggregation.description', { hours: WINDOW_HOURS })}
+            </Typography>
+          </Box>
+        }
+        actions={
+          <Button
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refresh()}
+            disabled={loading}
           >
-            {t('errorAggregation.description', { hours: WINDOW_HOURS })}
-          </Typography>
-        </Box>
-        <Button
-          size="small"
-          startIcon={<RefreshIcon />}
-          onClick={() => void refresh()}
-          disabled={loading}
-          sx={{ flexShrink: 0 }}
-        >
-          {t('errorAggregation.refresh')}
-        </Button>
-      </Box>
+            {t('errorAggregation.refresh')}
+          </Button>
+        }
+      />
 
       {error && (
         <Typography color="error" variant="body2" sx={{ mb: 1 }}>

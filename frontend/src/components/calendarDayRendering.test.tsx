@@ -5,6 +5,7 @@ import '../i18n/config';
 import type { CadencePolicy } from '../api/cadencePolicies';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { useTimeZone } from '../testSupport/timeZone';
 import CadencePanel from './CadencePanel';
 import ContactTimeline from './ContactTimeline';
 import ReminderList from './ReminderList';
@@ -13,13 +14,12 @@ import ReminderList from './ReminderList';
 // reminder's remind_at, an activity/note date picked in a date input, cadence
 // last_interaction) renders on that calendar day west of UTC, not the day
 // before. 2026-03-11T00:00:00Z is 19:00 on 10 March in Chicago (CDT).
-// Changing process.env.TZ at runtime moves Date's local getters in this
-// Node/V8 build; the real-instant assertions below prove the zone took effect.
-
-const originalTZ = process.env.TZ;
+// useTimeZone simulates the zone on Date's local getters (runtime TZ mutation
+// is ignored in worker threads -- see src/testSupport/timeZone.ts and issue
+// #1843); the real-instant assertions below prove the zone took effect.
 
 beforeEach(() => {
-  process.env.TZ = 'America/Chicago';
+  useTimeZone('America/Chicago');
   vi.useFakeTimers({ toFake: ['Date'] });
   // 10:00 local on 11 March.
   vi.setSystemTime(new Date('2026-03-11T15:00:00Z'));
@@ -28,7 +28,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  process.env.TZ = originalTZ;
+  vi.restoreAllMocks();
 });
 
 function reminder(overrides: Partial<Reminder> = {}): Reminder {
@@ -104,8 +104,9 @@ test('timeline note/activity dates render their calendar day; a real instant sta
       </DateFormatProvider>
     </MemoryRouter>,
   );
-  expect(screen.getByText('11.03.2026')).toBeInTheDocument();
-  expect(screen.getByText('08.03.2026')).toBeInTheDocument();
+  // Twice each: the sm+ date column and the phone caption (#1783) must agree.
+  expect(screen.getAllByText('11.03.2026')).toHaveLength(2);
+  expect(screen.getAllByText('08.03.2026')).toHaveLength(2);
 });
 
 test('cadence panel shows last interaction and next due on their API days', () => {

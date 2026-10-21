@@ -199,26 +199,38 @@ test.describe('Contact header action overflow (v0.4.1)', () => {
       // Opening the menu exposes the actions.
       await page.getByLabel('Actions').click();
       await expect(page.getByText('Stay in Touch')).toBeVisible();
-      await expect(page.getByText('vCard 4.0')).toBeVisible();
+      await expect(page.getByText('Export as vCard 4.0')).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
   });
 });
 
-test.describe('Contact header action overflow at desktop (v0.4.1)', () => {
-  // Default Playwright viewport (1280x720) is above md — the buttons render
-  // inline and the overflow menu button is absent.
-  test('renders the standalone action buttons at md and above', async ({ page }) => {
+test.describe('Contact header actions at desktop', () => {
+  // Default Playwright viewport (1280x720) is above lg — the primary actions
+  // render inline and everything else lives behind the "More" menu (#1782).
+  test('keeps primary actions inline and the rest behind More', async ({ page }) => {
     const contact = await createTestContact(page.request);
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      await expect(page.getByText('Export vCard')).toBeVisible();
       await expect(page.getByText('Stay in Touch')).toBeVisible();
+      await expect(page.getByText('Prep view')).toBeVisible();
+      await expect(page.getByText('Share Contact')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'More' })).toBeVisible();
+      // Export now lives in the More menu, not as a standalone button, and the
+      // narrow-layout icon trigger is not mounted at this width.
+      await expect(page.getByText('Export vCard')).not.toBeVisible();
       await expect(page.getByLabel('Actions')).not.toBeAttached();
+
+      await page.getByRole('button', { name: 'More' }).click();
+      const menu = page.getByRole('menu');
+      await expect(menu).toBeVisible();
+      await expect(menu.getByRole('menuitem', { name: 'vCard 4.0' })).toBeVisible();
+      await expect(menu.getByRole('menuitem', { name: 'Merge' })).toBeVisible();
+      await expect(menu.getByRole('menuitem').last()).toHaveText('Delete Contact');
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

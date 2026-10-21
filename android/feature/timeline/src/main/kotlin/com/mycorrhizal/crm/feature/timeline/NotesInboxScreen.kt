@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,35 +33,40 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
- * M9 item 1: the "Notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes queue
- * (matching web's `NotesPage.tsx`), reachable from the drawer instead of the old
- * `PlaceholderScreen` stub. Read + tap-to-edit only: creating a *new* unfiled note has no wired
- * client endpoint yet (only `listNotes` was added for this ticket), so there's no FAB here — an
- * unfiled note is still created the same way it always was, by leaving the contact field blank
- * when editing an existing note. [onNoteClick] reuses the existing per-contact edit route with
- * contact id `0` (never a real id) — [NoteFormViewModel] only reads that id for a brand-new note,
- * so editing an already-unfiled note works unmodified.
+ * M9 item 1: the "Unassigned notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes
+ * queue (matching web's `NotesPage.tsx`). Issue #1757: it lists only the notes with no contact, so
+ * the drawer label, the title and the empty state all say "unassigned" rather than "Notes".
+ * [onNoteClick] and [onCreateNote] reuse the per-contact note form routes with contact id `0`
+ * (never a real id): [NoteFormViewModel] treats it as "no contact", so a new note saved from here
+ * is created unassigned and an existing unassigned note edits unmodified.
  */
 @Composable
 fun NotesInboxScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit,
+    onCreateNote: () -> Unit = {},
     viewModel: NotesInboxViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Issue #1757: reload after returning from the new-note form.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResumed() }
     NotesInboxScreenContent(
         uiState = state,
         onMenuClick = onMenuClick,
         onNoteClick = onNoteClick,
+        onCreateNote = onCreateNote,
         onLoadMore = viewModel::loadMore,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
@@ -78,6 +84,7 @@ fun NotesInboxScreenContent(
     // Issue #150: see NotesInboxScreen — null hides the hamburger.
     onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit = {},
+    onCreateNote: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
@@ -97,7 +104,7 @@ fun NotesInboxScreenContent(
                 },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.nav_notes), style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.nav_notes_unassigned), style = MaterialTheme.typography.titleLarge)
                         if (state.total > 0) {
                             Text(
                                 text = stringResource(R.string.notes_inbox_total, state.total),
@@ -115,6 +122,11 @@ fun NotesInboxScreenContent(
                 ),
             )
         },
+        floatingActionButton = {
+            BrandFab(onClick = onCreateNote) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_note))
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -127,7 +139,13 @@ fun NotesInboxScreenContent(
                     state.isLoading && state.notes.isEmpty() ->
                         LoadingSkeleton(modifier = Modifier.testTag("notes-inbox-loading"))
                     state.notes.isEmpty() && state.error == null ->
-                        EmptyState(title = stringResource(R.string.notes_empty))
+                        // Issue #1757: says which set is empty and where its notes come from.
+                        EmptyState(
+                            title = stringResource(R.string.notes_unassigned_empty),
+                            body = stringResource(R.string.notes_unassigned_empty_body),
+                            actionLabel = stringResource(R.string.cd_new_note),
+                            onAction = onCreateNote,
+                        )
                     state.notes.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
                     else -> {

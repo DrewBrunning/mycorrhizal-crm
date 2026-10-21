@@ -123,6 +123,7 @@ class TrackingPermissionsE2eTest : E2eBaseTest() {
     fun grantedCallTrackingThroughSettings_persistsAndKicksTheImmediateCatchUp() {
         TrackingPermissions.CALL_TRACKING.forEach { grant(it) }
         navigateViaDrawer("Settings")
+        openSettingsGroup("Tracking & notifications")
 
         toggleCallTrackingOnce()
         assertCallTracking(true)
@@ -139,6 +140,7 @@ class TrackingPermissionsE2eTest : E2eBaseTest() {
     fun grantedSmsTrackingThroughSettings_persistsAndKicksTheImmediateBackfill() {
         TrackingPermissions.SMS_TRACKING.forEach { grant(it) }
         navigateViaDrawer("Settings")
+        openSettingsGroup("Tracking & notifications")
 
         waitForText("Log messages as activities")
         compose.onNodeWithText("Log messages as activities")

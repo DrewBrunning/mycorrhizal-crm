@@ -71,6 +71,7 @@ class ServerProfileSwitchE2eTest : E2eBaseTest() {
 
     private fun openServers() {
         navigateViaDrawer("Settings")
+        openSettingsGroup("Account")
         waitForText("Servers")
         compose.onNodeWithText("Servers").performClick()
         compose.waitForIdle()
@@ -90,6 +91,12 @@ class ServerProfileSwitchE2eTest : E2eBaseTest() {
         waitForText(label)
         compose.onNodeWithText(label).performClick()
         compose.waitForIdle()
+        // A switch pops Servers back to where it was opened from. Issue #1759: that is now
+        // Settings > Account (Back arrow, no Menu), so step back once more to the Settings root,
+        // which has the Menu icon the next navigateViaDrawer needs.
+        waitForText("Session")
+        clickBack()
+        waitForText("Account")
     }
 
     private fun removeProfile(label: String) {
