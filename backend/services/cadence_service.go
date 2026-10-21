@@ -182,18 +182,33 @@ func mergeRowsDateDesc(a, b []activityDateRow) []activityDateRow {
 	return merged
 }
 
+// interactionCalendarDay is the calendar day an interaction date denotes.
+//
+// Activity.Date and Note.Date are calendar days (ADR 0015's category 2), even
+// though the wire still transports them as RFC 3339 instants: every client
+// writes the picked day at 00:00:00Z. The meaningful calendar date is
+// therefore the stored value's UTC date, never its date after conversion to
+// the reminder zone -- issue #1823, where an activity dated 2026-10-22 became
+// 2026-10-21 19:00 in America/Chicago and pulled next_due a day early.
+func interactionCalendarDay(t time.Time) time.Time {
+	u := t.UTC()
+	return time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 // deriveHealth completes the health read-model from an already-resolved last
 // qualifying interaction date. Shared between ComputeCadenceHealth (single-
 // policy, live query) and the batch path (fetchLastInteractionDates +
 // per-policy deriveHealth).
+//
+// The activity date supplies the calendar day as stored (interactionCalendarDay,
+// UTC); `now` supplies which day is "today" in the reminder zone. The two are
+// compared as calendar days, so the derivation is zone-independent for a
+// date-only interaction (issue #1823).
 func deriveHealth(last *time.Time, intervalDays int, now time.Time) CadenceHealth {
 	if last == nil {
 		return CadenceHealth{HasQualifyingInteraction: false}
 	}
-	loc := now.Location()
-	lastLocal := last.In(loc)
-	lastMidnight := time.Date(lastLocal.Year(), lastLocal.Month(), lastLocal.Day(), 0, 0, 0, 0, loc)
-	nextDue := lastMidnight.AddDate(0, 0, intervalDays)
+	nextDue := interactionCalendarDay(*last).AddDate(0, 0, intervalDays)
 	health := CadenceHealth{
 		HasQualifyingInteraction: true,
 		LastInteraction:          last,

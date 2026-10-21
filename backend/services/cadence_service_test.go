@@ -322,31 +322,107 @@ func TestListOverdueCadences_SortsMostOverdueFirst(t *testing.T) {
 	assert.Equal(t, "Fresh", overdue[2].ContactName)
 }
 
-// TestComputeCadenceHealth_TimezoneNormalisation verifies that deriveHealth
-// (and therefore ComputeCadenceHealth) normalises the activity date to
-// midnight in the user's timezone before computing next_due. Without this, an
-// activity stored in UTC whose wall-clock date differs from the local date
-// (e.g. 20:00 UTC on Dec 31 = 09:00 Jan 01 in NZ) would carry the wrong
-// next_due, and overdue_by would be off by one.
-func TestComputeCadenceHealth_TimezoneNormalisation(t *testing.T) {
-	db, user, contact := setupCadenceServiceTestDB(t)
+// TestComputeCadenceHealth_ActivityCalendarDayIsUTC pins issue #1823's decided
+// semantics (ADR 0015, amendment 2026-10-21): an activity's date is a calendar
+// day stored at midnight UTC, so next_due is that UTC date + interval in every
+// reminder zone. Before the fix deriveHealth converted the stored value into
+// REMINDER_TIMEZONE first, which pulled a 2026-10-22 activity back to the 21st
+// west of UTC.
+func TestComputeCadenceHealth_ActivityCalendarDayIsUTC(t *testing.T) {
+	stored := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		zone string
+		// nowUTC is 09:00 on the due day in the case's zone.
+		nowUTC   time.Time
+		interval int
+	}{
+		// 09:00 CDT on 2026-10-29 == 14:00Z. The old conversion made the
+		// activity 2026-10-21 19:00 local, due 2026-10-28.
+		{"west of UTC", "America/Chicago", time.Date(2026, 10, 29, 14, 0, 0, 0, time.UTC), 7},
+		// 09:00 NZDT on 2026-10-29 == 2026-10-28 20:00Z.
+		{"east of UTC", "Pacific/Auckland", time.Date(2026, 10, 28, 20, 0, 0, 0, time.UTC), 7},
+	}
 
-	// Activity stored as 2025-12-31 20:00 UTC, which in NZ (+13) is
-	// 2026-01-01 09:00 — a different wall-clock date. next_due must be
-	// computed from Jan 01 NZ, not Dec 31 UTC.
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			useFakeClock(t, tc.nowUTC)
+			db, user, contact := setupCadenceServiceTestDB(t)
+			seedActivity(t, db, user, contact, models.InteractionTypeCall, stored)
+
+			loc, err := time.LoadLocation(tc.zone)
+			require.NoError(t, err)
+			now := Now().In(loc)
+			policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: tc.interval}
+
+			health, err := ComputeCadenceHealth(db, user.ID, &policy, now)
+			require.NoError(t, err)
+			require.NotNil(t, health.NextDue)
+			require.NotNil(t, health.LastInteraction)
+			assert.Equal(t, "2026-10-29", health.NextDue.Format("2006-01-02"),
+				"activity day 2026-10-22 + 7 days, independent of %s", tc.zone)
+			assert.Equal(t, stored, *health.LastInteraction, "the stored instant is echoed unchanged")
+			assert.Zero(t, health.OverdueBy, "due today is not overdue")
+
+			// One reminder-zone day later is exactly one day overdue.
+			useFakeClock(t, tc.nowUTC.Add(24*time.Hour))
+			later := Now().In(loc)
+			health, err = ComputeCadenceHealth(db, user.ID, &policy, later)
+			require.NoError(t, err)
+			assert.Equal(t, 1, health.OverdueBy)
+		})
+	}
+}
+
+// TestComputeCadenceHealth_ActivityDateIgnoresReminderZoneConversion keeps the
+// old timezone test's cross-zone instant (20:00Z on 31 Dec is 09:00 on 1 Jan in
+// Auckland) but pins the opposite answer: the interaction is dated 31 Dec
+// because that is its UTC date. Converting to the reminder zone would move it
+// to 1 Jan and shift next_due a day, which issue #1823 rejects for an
+// activity/note calendar day.
+func TestComputeCadenceHealth_ActivityDateIgnoresReminderZoneConversion(t *testing.T) {
 	nz, err := time.LoadLocation("Pacific/Auckland")
 	require.NoError(t, err)
+	useFakeClock(t, time.Date(2026, 2, 1, 12, 0, 0, 0, nz))
+	db, user, contact := setupCadenceServiceTestDB(t)
 
 	seedActivity(t, db, user, contact, models.InteractionTypeCall,
 		time.Date(2025, 12, 31, 20, 0, 0, 0, time.UTC))
 
 	policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}
-	now := time.Date(2026, 2, 1, 12, 0, 0, 0, nz) // Feb 01 NZ, 30 days past Jan 01
-
-	health, err := ComputeCadenceHealth(db, user.ID, &policy, now)
+	health, err := ComputeCadenceHealth(db, user.ID, &policy, Now().In(nz))
 	require.NoError(t, err)
 	require.NotNil(t, health.NextDue)
-	assert.Equal(t, "2026-01-31", health.NextDue.Format("2006-01-02"),
-		"next_due anchored to NZ Jan 01 (not UTC Dec 31) + 30 = NZ Jan 31")
-	assert.Equal(t, 1, health.OverdueBy, "Feb 01 is 1 day past Jan 31 due in NZ")
+	assert.Equal(t, "2026-01-30", health.NextDue.Format("2006-01-02"),
+		"next_due anchored to the UTC date 2025-12-31 + 30 days")
+	assert.Equal(t, 2, health.OverdueBy, "2026-02-01 is 2 whole days past 2026-01-30")
+}
+
+// TestListOverdueCadences_NextDueIgnoresReminderZoneConversion covers the batch
+// read the dashboard and overdue list use: the same date-only activity must not
+// look overdue one day early in a zone west of UTC (issue #1823).
+func TestListOverdueCadences_NextDueIgnoresReminderZoneConversion(t *testing.T) {
+	chicago, err := time.LoadLocation("America/Chicago")
+	require.NoError(t, err)
+	// 2026-10-28 09:00 CDT: the activity (Oct 22, 7-day interval) is due Oct 29,
+	// so it must not appear. With the old local conversion it was due Oct 28.
+	useFakeClock(t, time.Date(2026, 10, 28, 14, 0, 0, 0, time.UTC))
+	db, user, contact := setupCadenceServiceTestDB(t)
+	seedActivity(t, db, user, contact, models.InteractionTypeCall,
+		time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 7,
+	}).Error)
+
+	overdue, err := ListOverdueCadences(db, user.ID, Now().In(chicago))
+	require.NoError(t, err)
+	assert.Empty(t, overdue, "due tomorrow is not overdue")
+
+	useFakeClock(t, time.Date(2026, 10, 30, 14, 0, 0, 0, time.UTC)) // Oct 30 09:00 CDT
+	overdue, err = ListOverdueCadences(db, user.ID, Now().In(chicago))
+	require.NoError(t, err)
+	require.Len(t, overdue, 1)
+	require.NotNil(t, overdue[0].Health.NextDue)
+	assert.Equal(t, "2026-10-29", overdue[0].Health.NextDue.Format("2006-01-02"))
+	assert.Equal(t, 1, overdue[0].Health.OverdueBy)
 }
