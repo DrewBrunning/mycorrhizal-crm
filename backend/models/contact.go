@@ -423,6 +423,7 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 // field wholesale rather than mutating a shared backing array.
 func (c *Contact) deriveDenormalized() {
 	c.ensureAddressIDs(c.cardSetDirectly)
+	c.ensurePersonalInfoIDs()
 	if len(c.Emails) > 0 {
 		c.Email = c.Emails[0].Value
 	}

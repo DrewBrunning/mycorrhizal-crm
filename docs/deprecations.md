@@ -46,9 +46,11 @@ per the policy.
 
 | id | surface | summary | deprecated-in | deprecated-on | replacement | earliest-removal | not-before | status | tracking |
 |---|---|---|---|---|---|---|---|---|---|
+| preference-category-hobby | api | `Preference.category: "hobby"` on the preferences API (create/update/read keep working, with RFC 8594 headers) | v1.5.0 | 2026-10-21 | `Card.personalInfo` with `kind: hobby` on the contact record; CRM metadata in `crm.personalInfoMeta` | v2.0 | 2027-01-19 | deprecated | #1738, #1739 |
 
 <!-- deprecations:end -->
 
-_No deprecations are currently in effect. The 2026-09-08 retroactive audit
+The 2026-09-08 retroactive audit
 ([policy §Retroactive audit](deprecation-policy.md#retroactive-audit)) found
-nothing on a covered surface deprecated in fact but not in writing._
+no other deprecation on a covered surface that was deprecated in fact but not
+in writing.

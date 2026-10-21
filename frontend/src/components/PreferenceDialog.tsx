@@ -42,6 +42,7 @@ const SECTION_ORDER: PreferenceSection[] = [
   'foodDrink',
   'media',
   'hobby',
+  'dislikes',
   'jewelry',
   'giftPreferences',
   'giftAvoid',

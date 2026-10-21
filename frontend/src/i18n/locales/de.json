@@ -2196,6 +2196,7 @@
       "flowers": "Blumen",
       "color": "Farbe",
       "hobby": "Aktivität/Hobby",
+      "dislike_activity": "Abgelehnte Aktivität",
       "fragrance": "Duft",
       "cause": "Wohltätiger Zweck",
       "dislike": "Nicht verschenken"
@@ -2227,6 +2228,7 @@
       "foodDrink": "Essens- & Getränkevorlieben",
       "media": "Medienvorlieben",
       "hobby": "Aktivitäten & Hobbys",
+      "dislikes": "Abneigungen",
       "jewelry": "Schmuck & Stil",
       "giftPreferences": "Geschenkvorlieben",
       "giftAvoid": "Nicht verschenken",

@@ -29,8 +29,23 @@ const (
 	PreferenceCategoryClothingSize = "clothing_size"
 
 	// PreferenceCategoryHobby covers activities/interests (hiking, chess, ...).
-	// Key is a disposition (favorite/like/dislike).
+	// Key is a disposition (favorite/like/dislike). Deprecated in issue #1738:
+	// hobbies are canonical on Card.PersonalInfo (what CardDAV syncs), and
+	// this category is removed in 2.0.0. It keeps working for the whole
+	// deprecation window.
 	PreferenceCategoryHobby = "hobby"
+
+	// PreferenceCategoryDislikeActivity is the home for activities the
+	// person dislikes (issue #1738). It is deliberately its own section,
+	// separate from gifts and hobbies, uses key as free-solo text, carries no
+	// level, and is never projected to a Card (it is unsynced by design).
+	PreferenceCategoryDislikeActivity = "dislike_activity"
+
+	// PreferenceKeyDislike is the disposition that means "they dislike this".
+	// For a hobby it is never exported as a HOBBY (issue #1738): after the
+	// startup backfill such rows are recategorized to dislike_activity, and
+	// projectPreferences skips any that remain.
+	PreferenceKeyDislike = "dislike"
 
 	PreferenceCategoryGift = "gift"
 

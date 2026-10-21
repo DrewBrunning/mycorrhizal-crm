@@ -9870,6 +9870,11 @@
           "required": false
         },
         {
+          "name": "personalInfoMeta",
+          "type": "object",
+          "required": false
+        },
+        {
           "name": "target_closeness",
           "type": "string",
           "required": false,
@@ -17983,6 +17988,46 @@
           "name": "value",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "PersonalInfoMeta",
+      "properties": [
+        {
+          "name": "confidence",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "favorite",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "last_confirmed",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
         }
       ]
     },

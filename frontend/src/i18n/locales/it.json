@@ -2196,6 +2196,7 @@
       "flowers": "Fiori",
       "color": "Colore",
       "hobby": "Attività/hobby",
+      "dislike_activity": "Attività che non piace",
       "fragrance": "Fragranza",
       "cause": "Causa benefica",
       "dislike": "Da evitare come regalo"
@@ -2227,6 +2228,7 @@
       "foodDrink": "Preferenze di cibo e bevande",
       "media": "Preferenze media",
       "hobby": "Attività e hobby",
+      "dislikes": "Cose che non piacciono",
       "jewelry": "Gioielli e stile",
       "giftPreferences": "Preferenze regalo",
       "giftAvoid": "Da evitare come regalo",

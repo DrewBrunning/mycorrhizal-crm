@@ -79,6 +79,15 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   provenance links follow the survivor; `audit_events` keep naming the merged-away contact. Pinned by
   `controllers/contact_merge_repoint_coverage_test.go`, whose schema-driven guard fails when a new
   contact-keyed table has no declared merge disposition.
+- **Hobbies (issue #1738)**: hobbies are canonical on `Contact.Card.PersonalInfo` (what CardDAV
+  round-trips); their CRM-only sensitivity/favorite/notes/provenance lives in
+  `Contact.CRM.PersonalInfoMeta`. Existing `Preference` rows with `category = "hobby"` are moved by a
+  one-shot Go startup backfill (`services.MigrateHobbyPreferencesToPersonalInfo`, gated by a
+  `data_backfills` ledger row) into the Card or, for a dislike, recategorized in place to
+  `dislike_activity`. Moved preference rows are soft-deleted and therefore follow the normal undo/purge
+  window above; the Card is part of the same contact row and follows that row's lifecycle. A
+  private/secret hobby is part of the same `contacts` row, so it survives exactly as long as the contact
+  (and its backups) and is withheld only from outward copies (§11).
 - **Backups**: yes, full row (including still-in-window soft-deleted rows) — see [§10](#10-backups).
 - **Verification**: `backend/services/purge_service_test.go` (`TestPurgeSoftDeletedRows_*`, including
   idempotency, "never touches live rows", and the non-positive-retention guard of issue #971);
@@ -662,7 +671,10 @@ design is ADR-0010 / CON-04, issue #479).
     system, so they default-deny.
   - **The flat CSV (`GET /export`, `ExportData`)** — carries **every** sensitivity and **every** status,
     including `private`/`secret` rows and unconfirmed `status: suggested` relationship edges, each
-    labelled by its own `Sensitivity`/`Status` column. It takes no `sections`/`include_sensitive`
+    labelled by its own `Sensitivity`/`Status` column. Since the hobby backfill (issue #1738) moved
+    hobbies out of `Preference` into `Card.PersonalInfo`, its `PERSONAL_INFO` section carries every such
+    entry with its `CRMEnvelope.PersonalInfoMeta` (sensitivity, favorite, notes, provenance) in their own
+    columns; withholding them would lose the only full-fidelity copy of that data. It takes no `sections`/`include_sensitive`
     params at all (stated in `openapi.yaml`'s `/export` description). Rationale: this is the user's own
     full personal-data backup landing on their own device — not a share to another party — and it is the
     only full-fidelity export the app offers, so filtering it would be silent data loss in the one file a

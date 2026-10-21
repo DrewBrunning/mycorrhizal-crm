@@ -103,17 +103,26 @@ func (d deprecatedEndpoint) matches(c *gin.Context) bool {
 
 // apply writes the RFC 8594 headers for a matched deprecation.
 func (d deprecatedEndpoint) apply(c *gin.Context) {
-	deprecation := d.Deprecation
+	WriteDeprecationHeaders(c, d.Deprecation, d.Sunset, d.Successor)
+}
+
+// WriteDeprecationHeaders writes the RFC 8594 Deprecation/Sunset/Link headers
+// for a deprecated element that the route-based registry cannot match — a
+// body-value deprecation such as a deprecated Preference.category (issue
+// #1738). The registry in DeprecationHeaders remains the source for
+// route/method/parameter deprecations; this helper is the shared header
+// writer so both halves emit exactly the same shape.
+func WriteDeprecationHeaders(c *gin.Context, deprecation, sunset, successor string) {
 	if deprecation == "" {
 		deprecation = "true"
 	}
 	c.Header("Deprecation", deprecation)
-	if d.Sunset != "" {
-		c.Header("Sunset", d.Sunset)
+	if sunset != "" {
+		c.Header("Sunset", sunset)
 	}
 	links := []string{"<" + deprecationPolicyURL + ">; rel=\"deprecation\""}
-	if d.Successor != "" {
-		links = append(links, "<"+d.Successor+">; rel=\"successor-version\"")
+	if successor != "" {
+		links = append(links, "<"+successor+">; rel=\"successor-version\"")
 	}
 	c.Header("Link", strings.Join(links, ", "))
 }

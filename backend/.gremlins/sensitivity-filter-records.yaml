@@ -28,6 +28,7 @@ unleash:
         - ^contact_derived\.go$
         - ^contact_detail\.go$
         - ^contact_merge\.go$
+        - ^contact_personal_info\.go$
         - ^contact_record_reverse\.go$
         - ^contact_score\.go$
         - ^contact_share\.go$

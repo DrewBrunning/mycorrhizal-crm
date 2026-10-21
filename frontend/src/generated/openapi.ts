@@ -288,6 +288,7 @@ export type CRMEnvelope = {
   how_we_met?: string;
   kind?: string;
   periods?: EntryPeriod[];
+  personalInfoMeta?: Record<string, PersonalInfoMeta>;
   target_closeness?: 'immediate' | 'close' | 'casual' | 'distant';
   work_information?: string;
 };
@@ -2121,6 +2122,15 @@ export type PersonalInfo = {
   level?: 'high' | 'medium' | 'low' | 'beginner' | 'average' | 'expert';
   listAs?: number | null;
   value: string;
+};
+
+export type PersonalInfoMeta = {
+  confidence?: number | null;
+  favorite?: boolean;
+  last_confirmed?: string | null;
+  notes?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+  source?: string;
 };
 
 export type Phone = {

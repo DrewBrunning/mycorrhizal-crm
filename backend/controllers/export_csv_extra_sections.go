@@ -114,6 +114,7 @@ func writeExportExtraSections(
 	writer *csv.Writer,
 	contactByVCardUID map[string]exportContactRef,
 	contactByID map[uint]exportContactRef,
+	contacts []models.Contact,
 	lifeEvents []models.LifeEvent,
 	gifts []models.Gift,
 	agendaItems []models.ConversationAgenda,
@@ -134,6 +135,9 @@ func writeExportExtraSections(
 		return false
 	}
 	if !writeExportPreferences(c, log, buf, writer, contactByVCardUID, preferences) {
+		return false
+	}
+	if !writeExportPersonalInfo(c, log, buf, writer, contacts) {
 		return false
 	}
 	if !writeExportReminderCompletions(c, log, buf, writer, contactByID, reminderCompletions) {
@@ -363,6 +367,70 @@ func writeExportPreferences(c *gin.Context, log *zerolog.Logger, buf *bytes.Buff
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
 			abortExportError(c, log, "export:csv", "serialization", "Failed to write preference record", err)
 			return false
+		}
+	}
+	writer.Flush()
+	return true
+}
+
+// writeExportPersonalInfo writes the full-fidelity PERSONAL_INFO section:
+// every Card.PersonalInfo entry (hobby/expertise/interest) with its CRM-side
+// metadata (sensitivity, favorite, notes, provenance). Issue #1738 made the
+// Card the canonical home for hobbies, so without this section the CSV backup
+// would lose them the moment the startup backfill moved them out of the
+// PREFERENCES section. Like every other CSV section this one deliberately
+// carries above-normal sensitivity — it is the owner's own backup, not an
+// outward projection (the neutral-Card exporters and CardDAV withhold those
+// entries instead).
+func writeExportPersonalInfo(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer, writer *csv.Writer, contacts []models.Contact) bool {
+	buf.WriteString("\n=== PERSONAL_INFO ===\n")
+
+	headers := []string{
+		"ID", "Contact ID", "Contact Name", "Kind", "Value", "Level", "Favorite",
+		"Notes", "Source", "Confidence", "Last Confirmed", "Sensitivity", "List As", "Label",
+	}
+	if err := writer.Write(headers); err != nil {
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write personal info headers", err)
+		return false
+	}
+
+	for _, contact := range contacts {
+		name := fmt.Sprintf("%s %s", contact.Firstname, contact.Lastname)
+		for _, entry := range contact.Card.PersonalInfo {
+			meta := contact.CRM.PersonalInfoMeta[entry.ID]
+			confidence := ""
+			if meta.Confidence != nil {
+				confidence = strconv.FormatFloat(*meta.Confidence, 'f', -1, 64)
+			}
+			lastConfirmed := ""
+			if meta.LastConfirmed != nil {
+				lastConfirmed = meta.LastConfirmed.Format(time.RFC3339)
+			}
+			listAs := ""
+			if entry.ListAs != nil {
+				listAs = strconv.Itoa(*entry.ListAs)
+			}
+			sensitivity := meta.NormalizedSensitivity()
+			record := []string{
+				entry.ID,
+				fmt.Sprintf("%d", contact.ID),
+				name,
+				entry.Kind,
+				entry.Value,
+				entry.Level,
+				fmt.Sprintf("%t", meta.Favorite),
+				meta.Notes,
+				meta.Source,
+				confidence,
+				lastConfirmed,
+				sensitivity,
+				listAs,
+				entry.Label,
+			}
+			if err := writer.Write(csvSafeRecord(record)); err != nil {
+				abortExportError(c, log, "export:csv", "serialization", "Failed to write personal info record", err)
+				return false
+			}
 		}
 	}
 	writer.Flush()

@@ -15182,13 +15182,26 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         entity_id: { type: string, format: uuid }
-        category: { type: string, maxLength: 100 }
+        category:
+          type: string
+          maxLength: 100
+          description: >
+            Deprecated value "hobby" (issue #1738): hobby preferences still
+            work for the 1.x deprecation window and responses that carry one
+            announce it with RFC 8594 headers. Hobbies are canonical in the
+            contact record's card.personalInfo with kind "hobby"; metadata is
+            in crm.personalInfoMeta. "dislike_activity" is the new home for
+            activities the person dislikes (free-solo key, no level, never
+            synced).
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
         level:
           type: string
           enum: [high, medium, low]
-          description: "Optional proficiency for hobby/skill categories (issue #246); absent when none is recorded."
+          description: >
+            Optional proficiency for hobby/skill categories (issue #246);
+            absent when none is recorded. Only "hobby" carries a level;
+            "dislike_activity" does not.
         notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number }
@@ -15203,13 +15216,24 @@ components:
       required: [entity_id, category, value]
       properties:
         entity_id: { type: string, format: uuid }
-        category: { type: string, maxLength: 100 }
+        category:
+          type: string
+          maxLength: 100
+          description: >
+            Deprecated value "hobby" (issue #1738): creating or updating one
+            still works for the whole 1.x window and returns RFC 8594
+            deprecation headers; it is removed in 2.0.0. Use the contact
+            record's card.personalInfo with kind "hobby" instead. Use
+            "dislike_activity" for activities the person dislikes.
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
         level:
           type: string
           enum: [high, medium, low]
-          description: "Optional proficiency for hobby/skill categories (issue #246); omit or empty for none."
+          description: >
+            Optional proficiency for hobby/skill categories (issue #246);
+            omit or empty for none. Only "hobby" carries a level;
+            "dislike_activity" does not.
         notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number, nullable: true }
@@ -16740,6 +16764,19 @@ components:
             kind on the submitted card, or the request is rejected 400. No RFC
             home exists, so file exports drop these by design (reported as
             crm.periods); the CSV export carries them.
+        personalInfoMeta:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/PersonalInfoMeta"
+          description: >
+            Issue #1738: CRM-side metadata for Card.personalInfo entries,
+            keyed by entry id (sensitivity, favorite, notes, provenance). Hobbies
+            are canonical on card.personalInfo; this carries the data that has
+            no RFC home. Never projected into a Card. Above-normal entries are
+            withheld from CardDAV, contact shares and vCard/JSContact exports;
+            owner reads, the CSV export and the account bundle keep everything.
+            On a write, an ABSENT object preserves the stored metadata (older
+            clients rebuild crm without it); an explicit empty object clears it.
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
@@ -16982,12 +17019,37 @@ components:
       type: object
       required: [kind, value]
       properties:
-        id: { type: string }
+        id:
+          type: string
+          description: >
+            Stable entry ID, minted server-side on write when missing. Keys the
+            CRM-side metadata in crm.personalInfoMeta (issue #1738).
         kind: { type: string, enum: [expertise, hobby, interest] }
         value: { type: string }
         level: { type: string, enum: [high, medium, low, beginner, average, expert] }
         listAs: { type: integer, nullable: true }
         label: { type: string }
+    PersonalInfoMeta:
+      type: object
+      description: >
+        CRM-side metadata for one Card.personalInfo entry, keyed by that
+        entry's stable id (issue #1738). All fields optional; an absent entry
+        means normal sensitivity and no metadata. Never projected into a Card,
+        so it is absent from vCard/JSContact exports, CardDAV and contact
+        shares; the CSV export and account bundle retain it with the entry.
+      properties:
+        sensitivity:
+          type: string
+          enum: [normal, private, secret]
+          description: >
+            Above-normal entries are withheld from CardDAV, contact shares and
+            the neutral-Card exports, like every other sensitivity-bearing
+            surface.
+        favorite: { type: boolean }
+        notes: { type: string }
+        source: { type: string }
+        confidence: { type: number, nullable: true }
+        last_confirmed: { type: string, format: date-time, nullable: true }
     Author:
       type: object
       properties:

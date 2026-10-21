@@ -114,6 +114,12 @@ func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record 
 			// the same "loaded is authoritative for what flat cannot express"
 			// rule the rest of the merge follows.
 			Periods: loaded.Envelope.PruneOrphanPeriods(mergedCard),
+			// PersonalInfoMeta (issue #1738) has no flat-field home either.
+			// PersonalInfo entries themselves are preserved from loaded
+			// unconditionally (see mergeCardWithFlat), so their metadata must
+			// survive a plain save too; deriveDenormalized prunes keys whose
+			// entry no longer exists.
+			PersonalInfoMeta: loaded.Envelope.PersonalInfoMeta,
 		},
 	}
 	if reflect.DeepEqual(fresh.Passthrough, contactmodel.Passthrough{}) {
