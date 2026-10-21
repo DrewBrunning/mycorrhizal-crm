@@ -2303,7 +2303,8 @@
     "kind": {
       "organization": "New employer",
       "title": "New job title",
-      "address": "Moved"
+      "address": "Moved",
+      "target_behind": "Behind target"
     }
   },
   "syncConflicts": {

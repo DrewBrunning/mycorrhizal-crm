@@ -61,16 +61,16 @@ func SetContactTargetCloseness(c *gin.Context) {
 	}
 	days := cfg.TargetTierIntervalDays[input.Tier]
 
-	if err := db.Model(contact).Update("target_closeness", input.Tier).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to set target closeness").WithError(err))
-		return
-	}
-
 	var policies int64
 	if err := db.Model(&models.CadencePolicy{}).
 		Where("user_id = ? AND entity_id = ?", userID, contact.VCardUID).
 		Count(&policies).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to check cadence policy").WithError(err))
+		return
+	}
+
+	if err := db.Model(contact).Update("target_closeness", input.Tier).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to set target closeness").WithError(err))
 		return
 	}
 
@@ -95,12 +95,16 @@ func ClearContactTargetCloseness(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(contact).Update("target_closeness", nil).Error; err != nil {
+	// One transaction: a failed dismissal must not leave the target cleared
+	// behind a 500 (the fault-injection sweep pins this).
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(contact).Update("target_closeness", nil).Error; err != nil {
+			return err
+		}
+		return services.DismissPendingTargetBehindSuggestions(tx, userID, contact.VCardUID)
+	})
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to clear target closeness").WithError(err))
-		return
-	}
-	if err := services.DismissPendingTargetBehindSuggestions(db, userID, contact.VCardUID); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to dismiss target suggestions").WithError(err))
 		return
 	}
 

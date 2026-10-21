@@ -43,6 +43,19 @@ var mergeScalarFields = []scalarFieldSpec{
 	{"how_we_met", "How We Met", func(c *models.Contact) string { return c.HowWeMet }, func(c *models.Contact, v string) { c.HowWeMet = v }},
 	{"work_information", "Work Information", func(c *models.Contact) string { return c.WorkInformation }, func(c *models.Contact, v string) { c.WorkInformation = v }},
 	{"contact_information", "Contact Information", func(c *models.Contact) string { return c.ContactInformation }, func(c *models.Contact, v string) { c.ContactInformation = v }},
+	// Issue #1796: nil <-> "" so an unset target never reads as a value.
+	{"target_closeness", "Target Closeness", func(c *models.Contact) string {
+		if c.TargetCloseness == nil {
+			return ""
+		}
+		return *c.TargetCloseness
+	}, func(c *models.Contact, v string) {
+		if v == "" {
+			c.TargetCloseness = nil
+			return
+		}
+		c.TargetCloseness = &v
+	}},
 }
 
 // ComputeContactMergeResolution is pure (no DB I/O). Shared by the preview
