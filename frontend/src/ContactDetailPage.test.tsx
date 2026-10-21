@@ -1884,6 +1884,32 @@ test('a save that did not touch the toggle sends crm.ambient back exactly as rea
   });
 });
 
+test('a failed ambient save leaves the toggle off and does not refetch the cadence', async () => {
+  const calls = mockFetch({ fail: { update: true } });
+  await renderLoaded();
+  const cadenceGets = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.includes('/cadence-policies')).length;
+  const before = cadenceGets();
+
+  fireEvent.click(screen.getByRole('switch', { name: /Ambient contact/ }));
+
+  await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
+  expect(screen.getByRole('switch', { name: /Ambient contact/ })).not.toBeChecked();
+  expect(cadenceGets()).toBe(before);
+});
+
+test('a successful ambient save refetches the cadence health', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const cadenceGets = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.includes('/cadence-policies')).length;
+  const before = cadenceGets();
+
+  fireEvent.click(screen.getByRole('switch', { name: /Ambient contact/ }));
+
+  await waitFor(() => expect(cadenceGets()).toBeGreaterThan(before));
+});
+
 test('a save on a contact with no ambient flag does not invent one', async () => {
   const calls = mockFetch();
   await renderLoaded();
