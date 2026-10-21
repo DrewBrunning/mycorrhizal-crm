@@ -86,6 +86,17 @@ test('a gift without an occasion does not render the occasion line', () => {
   expect(screen.queryByText('birthday')).not.toBeInTheDocument();
 });
 
+test('a gift with an unparseable or missing date falls back in both date renders', () => {
+  renderTimeline([
+    { type: 'gift', data: { ...givenGift, id: 'gift-bad' }, date: 'not-a-date' },
+    { type: 'gift', data: { ...givenGift, id: 'gift-empty' }, date: '' },
+  ]);
+
+  // The sm+ date column and the phone caption both render the same label.
+  expect(screen.getAllByText('not-a-date')).toHaveLength(2);
+  expect(screen.getAllByText('N/A')).toHaveLength(2);
+});
+
 // #1783: an activity with no description renders no body text -- not a
 // "No description" placeholder on every such card -- and each card carries a
 // date caption of its own (the phone layout hides the opposite-content date
@@ -205,6 +216,25 @@ test('an activity shows its location and linked contacts; edit and delete action
   expect(onDeleteCompletion).toHaveBeenCalledWith(5);
 });
 
+test('an activity with a missing date falls back to N/A in both date renders', () => {
+  renderTimeline([
+    {
+      type: 'activity',
+      date: '',
+      data: {
+        ID: 11,
+        title: 'Undated',
+        description: 'No date',
+        date: '',
+        CreatedAt: '2026-08-03T12:00:00Z',
+        UpdatedAt: '2026-08-03T12:00:00Z',
+      } as never,
+    },
+  ]);
+
+  expect(screen.getAllByText('N/A')).toHaveLength(2);
+});
+
 test('an external activity shows its source and the date caption', () => {
   renderTimeline([
     {
@@ -220,6 +250,23 @@ test('an external activity shows its source and the date caption', () => {
   ]);
 
   expect(screen.getAllByText(/2026/).length).toBeGreaterThanOrEqual(2);
+});
+
+test('an external activity with an unparseable or missing date falls back in both date renders', () => {
+  const external = (id: string, date: string) => ({
+    type: 'external_activity' as const,
+    date,
+    data: {
+      id,
+      type: 'photo-appearance',
+      source_system: 'immich',
+      payload: { person_name: 'Ada' },
+    } as never,
+  });
+  renderTimeline([external('ext-bad', 'not-a-date'), external('ext-empty', '')]);
+
+  expect(screen.getAllByText('not-a-date')).toHaveLength(2);
+  expect(screen.getAllByText('N/A')).toHaveLength(2);
 });
 
 test('a life event shows its date caption alongside the date column', () => {

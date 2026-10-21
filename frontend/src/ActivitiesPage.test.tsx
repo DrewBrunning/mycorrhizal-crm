@@ -594,6 +594,26 @@ test('a non-412 failure on save or delete logs and shows no conflict dialog', as
   expect(screen.queryByText('Changed elsewhere')).toBeNull();
 });
 
+test('an activity without a title renders its description without a title line', async () => {
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [activity({ title: '', description: 'No title here' })],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No title here')).toBeDefined());
+  expect(screen.queryByText('Coffee catch-up')).toBeNull();
+});
+
 test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {
   const calls = mockFetchRoutes([
     {
