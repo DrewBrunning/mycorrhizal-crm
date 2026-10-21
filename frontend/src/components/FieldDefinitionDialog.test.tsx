@@ -72,6 +72,7 @@ test('an enum definition saves its allowed values with multi', async () => {
     constraints: { values: ['she/her', 'he/him'] },
     projection: 'internal-only',
     sensitivity: 'normal',
+    group: '',
   });
 });
 
@@ -221,4 +222,54 @@ test('a rejected save with a non-Error value falls back to the generic message',
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   expect(await screen.findByText('Failed to save custom field.')).toBeInTheDocument();
+});
+
+test('the group is trimmed and sent on create', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Hotel' } });
+  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'hotel' } });
+  fireEvent.change(screen.getByLabelText('Group'), { target: { value: '  Travel  ' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0].group).toBe('Travel');
+});
+
+test('edit mode pre-fills the group and clearing it sends an empty string', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave, definition: existingDef({ group: 'Travel' }) });
+  expect(screen.getByLabelText('Group')).toHaveValue('Travel');
+  fireEvent.change(screen.getByLabelText('Group'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0].group).toBe('');
+});
+
+test('existing group labels are offered as suggestions', async () => {
+  renderDialog({ groupSuggestions: ['Travel', 'Work'] });
+  fireEvent.mouseDown(screen.getByLabelText('Group'));
+  expect(await screen.findByRole('option', { name: 'Work' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('option', { name: 'Travel' }));
+  expect(screen.getByLabelText('Group')).toHaveValue('Travel');
+});
+
+test('a group over 100 characters is rejected before save; exactly 100 is allowed', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Hotel' } });
+  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'hotel' } });
+  fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'x'.repeat(101) } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('Group must be at most 100 characters.')).toBeInTheDocument();
+  expect(onSave).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'x'.repeat(100) } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+});
+
+test('a server 400 on the group is surfaced', async () => {
+  const onSave = vi.fn().mockRejectedValue(new Error('group must be at most 100 characters'));
+  renderDialog({ onSave, definition: existingDef({ group: 'Travel' }) });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('group must be at most 100 characters')).toBeInTheDocument();
 });

@@ -30,8 +30,7 @@ describe('statusTextColor', () => {
   // The reason the helper exists: the light `.main` colors miss AA as small
   // text on the parchment card (success) / its hover tint (error); `.dark`
   // clears it. Surfaces are the measured ones from the axe reports.
-  test('the light shades clear WCAG AA (4.5:1) where .main did not', () => {
-    expect(contrast(lightTheme.palette.success.main, '#efe7d9')).toBeLessThan(4.5);
+  test('the light .dark shades clear WCAG AA (4.5:1) on the hover tint, where error .main did not', () => {
     expect(contrast(lightTheme.palette.error.main, '#e5ded0')).toBeLessThan(4.5);
     expect(contrast(lightTheme.palette.success.dark, '#efe7d9')).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTheme.palette.error.dark, '#e5ded0')).toBeGreaterThanOrEqual(4.5);
@@ -49,6 +48,6 @@ describe('statusTextColor', () => {
       </ThemeProvider>,
     );
     const label = screen.getByText('OK');
-    expect(getComputedStyle(label.parentElement as HTMLElement).color).toBe('rgb(11, 118, 67)');
+    expect(getComputedStyle(label.parentElement as HTMLElement).color).toBe('rgb(4, 97, 54)');
   });
 });

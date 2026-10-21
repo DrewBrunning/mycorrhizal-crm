@@ -141,7 +141,7 @@ class RelationshipEdgeFormTest {
         composeTestRule.onNodeWithContentDescription("Edit Alice").performClick()
         composeTestRule.onNodeWithText("Edit relationship").assertIsDisplayed()
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("relationship-type").assert(hasContentDescription("Type, friend of"))
+        composeTestRule.onNodeWithTag("relationship-type").assert(hasContentDescription("Type, Friend"))
         composeTestRule.onNodeWithText("Save").performClick()
 
         coVerify(exactly = 1) { edgeRepository.update("e1", any()) }
@@ -154,7 +154,7 @@ class RelationshipEdgeFormTest {
         composeTestRule.onNodeWithContentDescription("New relationship").performClick()
 
         composeTestRule.onNodeWithTag("relationship-type")
-            .assert(hasContentDescription("Type, friend of")).assert(isDropdown)
+            .assert(hasContentDescription("Type, Friend")).assert(isDropdown)
         composeTestRule.onNodeWithTag("relationship-sensitivity")
             .assert(hasContentDescription("Sensitivity, Normal")).assert(isDropdown)
 

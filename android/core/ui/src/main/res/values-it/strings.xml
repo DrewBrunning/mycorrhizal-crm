@@ -20,6 +20,12 @@
     <string name="dashboard_no_birthdays">Nessun compleanno in arrivo</string>
     <string name="dashboard_no_reminders">Nessun promemoria imminente</string>
     <string name="dashboard_no_contacts">Nessun contatto disponibile</string>
+    <!-- Issue #1824: "Showing N of M" caption under a dashboard block the server capped; quantity follows the total (M). -->
+    <plurals name="dashboard_showing_of_total">
+        <item quantity="one">Mostrati %1$d di %2$d</item>
+        <item quantity="many">Mostrati %1$d di %2$d</item>
+        <item quantity="other">Mostrati %1$d di %2$d</item>
+    </plurals>
     <string name="dashboard_years_old">(%1$d anni)</string>
     <string name="dashboard_unknown_contact">Contatto sconosciuto</string>
     <string name="nav_home">Home</string>
@@ -1687,6 +1693,8 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
+    <!-- Issue #1826: snackbar when a re-fetch finds the user lost admin while on an admin-only screen. -->
+    <string name="permissions_changed">I tuoi permessi sono cambiati</string>
     <string name="audit_title">Registro di controllo</string>
     <string name="audit_description">Tutte le creazioni, modifiche ed eliminazioni dei tuoi contatti e registrazioni, dalla più recente alla più vecchia.</string>
     <string name="audit_filters_entity_type">Tipo di entità</string>
@@ -2004,6 +2012,76 @@
     <string name="settings_custom_fields_group">Gruppo</string>
     <string name="settings_custom_fields_group_hint">Facoltativo. I campi dello stesso gruppo vengono mostrati insieme in un contatto.</string>
     <string name="settings_custom_fields_error_group_too_long">Il gruppo deve avere al massimo 100 caratteri</string>
+    <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
+         backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
+    <string name="contact_type_voice">Voce</string>
+    <string name="contact_type_video">Video</string>
+    <string name="contact_type_pager">Cercapersone</string>
+    <string name="contact_type_text">Testo</string>
+    <string name="contact_type_textphone">Telefono testuale</string>
+    <string name="contact_type_main_number">Numero principale</string>
+    <string name="activity_type_photo">Foto</string>
+    <string name="relationship_role_parent_of">Genitore</string>
+    <string name="relationship_role_child_of">Figlio/a</string>
+    <string name="relationship_role_spouse_of">Coniuge</string>
+    <string name="relationship_role_sibling_of">Fratello/Sorella</string>
+    <string name="relationship_role_friend_of">Amico/a</string>
+    <string name="relationship_role_roommate_of">Coinquilino/a</string>
+    <string name="relationship_role_coworker_of">Collega</string>
+    <string name="relationship_role_partner_of">Partner</string>
+    <string name="relationship_role_co_parent_of">Co-genitore</string>
+    <string name="relationship_role_mentor_of">Mentore</string>
+    <string name="relationship_role_mentee_of">Allievo/a</string>
+    <string name="relationship_role_owned_by">Animale domestico</string>
+    <string name="relationship_role_owns">Proprietario/a</string>
+    <string name="relationship_role_gets_along_with">Va d\'accordo con</string>
+    <string name="relationship_role_conflicts_with">In conflitto con</string>
+    <string name="relationship_role_related_to">Collegato/a a</string>
+    <string name="life_event_type_married">Sposato</string>
+    <string name="life_event_type_graduated">Laureato</string>
+    <string name="life_event_type_job_change">Ha iniziato un nuovo lavoro</string>
+    <string name="life_event_type_had_child">Ha avuto un figlio</string>
+    <string name="life_event_type_adopted_pet">Ha preso un animale</string>
+    <string name="life_event_type_retired">In pensione</string>
+    <string name="life_event_type_moved">Trasferito</string>
+    <string name="life_event_type_moved_out">Ha lasciato la casa</string>
+    <string name="life_event_type_bought_a_home">Ha comprato casa</string>
+    <string name="life_event_type_made_a_home_improvement">Ha fatto una ristrutturazione</string>
+    <string name="life_event_type_went_on_holidays">È andato in vacanza</string>
+    <string name="life_event_type_got_a_new_vehicle">Ha preso un nuovo veicolo</string>
+    <string name="life_event_type_got_a_roommate">Ha preso un coinquilino</string>
+    <string name="life_event_type_overcame_an_illness">Ha superato una malattia</string>
+    <string name="life_event_type_quit_a_habit">Ha smesso un\'abitudine</string>
+    <string name="life_event_type_started_new_eating_habits">Ha iniziato nuove abitudini alimentari</string>
+    <string name="life_event_type_lost_weight">Ha perso peso</string>
+    <string name="life_event_type_started_wearing_glasses_or_contacts">Ha iniziato a portare occhiali o lenti a contatto</string>
+    <string name="life_event_type_broke_a_bone">Si è rotto un osso</string>
+    <string name="life_event_type_removed_braces">Ha tolto l\'apparecchio ai denti</string>
+    <string name="life_event_type_had_surgery">Ha subito un intervento chirurgico</string>
+    <string name="life_event_type_went_to_the_dentist">È andato dal dentista</string>
+    <string name="life_event_type_started_school">Ha iniziato la scuola</string>
+    <string name="life_event_type_studied_abroad">Ha studiato all\'estero</string>
+    <string name="life_event_type_started_volunteering">Ha iniziato il volontariato</string>
+    <string name="life_event_type_published_a_paper">Ha pubblicato un articolo</string>
+    <string name="life_event_type_started_military_service">Ha iniziato il servizio militare</string>
+    <string name="life_event_type_started_a_sport">Ha iniziato uno sport</string>
+    <string name="life_event_type_started_a_hobby">Ha iniziato un hobby</string>
+    <string name="life_event_type_learned_a_new_instrument">Ha imparato un nuovo strumento</string>
+    <string name="life_event_type_learned_a_new_language">Ha imparato una nuova lingua</string>
+    <string name="life_event_type_got_a_tattoo_or_piercing">Si è fatto un tatuaggio o un piercing</string>
+    <string name="life_event_type_got_a_license">Ha preso la patente</string>
+    <string name="life_event_type_traveled">Ha viaggiato</string>
+    <string name="life_event_type_got_an_achievement_or_award">Ha ottenuto un riconoscimento o un premio</string>
+    <string name="life_event_type_changed_beliefs">Ha cambiato le proprie convinzioni</string>
+    <string name="life_event_type_spoke_for_the_first_time">Ha parlato per la prima volta</string>
+    <string name="life_event_type_kissed_for_the_first_time">Si è baciato per la prima volta</string>
+    <string name="life_event_type_started_a_relationship">Ha iniziato una relazione</string>
+    <string name="life_event_type_got_engaged">Si è fidanzato ufficialmente</string>
+    <string name="life_event_type_anniversary">Anniversario</string>
+    <string name="life_event_type_expects_a_baby">Aspetta un bambino</string>
+    <string name="life_event_type_added_a_family_member">Si è allargata la famiglia</string>
+    <string name="life_event_type_ended_a_relationship">Ha terminato una relazione</string>
+    <string name="life_event_type_lost_a_loved_one">Ha perso una persona cara</string>
     <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
     <string name="life_events_category_label">Categoria</string>
     <string name="life_events_type_label">Tipo di evento</string>

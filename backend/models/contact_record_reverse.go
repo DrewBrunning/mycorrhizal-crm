@@ -115,6 +115,11 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 		c.Ambient = *env.Ambient
 	}
 
+	// TargetCloseness (issue #1796, ADR 0023 amendment): deliberately NOT applied.
+	// The contact PUT/POST never writes target_closeness, whatever the body says
+	// (including when absent); it has its own endpoints, like favorite. A client
+	// that rebuilds crm on every save would otherwise wipe or forge targets.
+
 	// "uid" row, inverse direction: Card.UID -> VCardUID. Only overwrite when
 	// the incoming Card actually carries a UID (e.g. a client PUT that omits
 	// it, or a brand-new POST, should not blank out/clobber an existing

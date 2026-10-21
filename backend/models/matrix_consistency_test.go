@@ -28,6 +28,7 @@ func TestEnvelopeLossConceptsAlignWithMatrix(t *testing.T) {
 			WorkInformation:    "x",
 			ContactInformation: "x",
 			Ambient:            ambientPtr(true),
+			TargetCloseness:    strPtrT("close"),
 			Periods: []contactmodel.EntryPeriod{{
 				Kind:    contactmodel.PeriodKindAddress,
 				EntryID: "a1",
@@ -56,3 +57,5 @@ func TestEnvelopeLossConceptsAlignWithMatrix(t *testing.T) {
 			diagConcepts, matrixConcepts)
 	}
 }
+
+func strPtrT(s string) *string { return &s }

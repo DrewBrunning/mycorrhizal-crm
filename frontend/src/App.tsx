@@ -315,7 +315,15 @@ function AppContent({
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
-      <nav aria-label={t('nav.mainLabel')}>
+      {/* #1792: the brand logo lives inside the navigation landmark (it used
+          to sit after </nav>, so axe's `region` rule flagged it as content
+          outside every landmark). The nav fills the drawer so the logo still
+          pins to the bottom. */}
+      <Box
+        component="nav"
+        aria-label={t('nav.mainLabel')}
+        sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}
+      >
         <List>
           {mainNavItems.map((item) => {
             const isSelected =
@@ -362,9 +370,9 @@ function AppContent({
             );
           })}
         </List>
-      </nav>
-      <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
-        <BrandLogo height="auto" width="100%" />
+        <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
+          <BrandLogo height="auto" width="100%" />
+        </Box>
       </Box>
     </Box>
   );
@@ -636,6 +644,13 @@ function AppContent({
           display: { xs: 'none', md: 'block' },
           width: drawerWidth,
           flexShrink: 0,
+          // #1788: the paper below is `position: fixed` (viewport tall), so on a
+          // page taller than the viewport -- or in a full-page capture -- the
+          // sidebar surface used to stop after one screen and leave a visible
+          // background step. This in-flow column stretches the full height of
+          // the app, so paint the same surface (and the divider edge) on it too.
+          backgroundColor: 'background.paper',
+          boxShadow: (theme) => `inset -1px 0 0 ${theme.palette.divider}`,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',

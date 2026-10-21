@@ -1,6 +1,8 @@
 import ClearIcon from '@mui/icons-material/Clear';
 import DifferenceIcon from '@mui/icons-material/Difference';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
@@ -13,17 +15,27 @@ import {
   Card,
   Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Fab,
   FormControl,
   FormControlLabel,
   IconButton,
   InputAdornment,
   InputLabel,
+  ListItemIcon,
+  ListItemText,
+  Menu,
   MenuItem,
   Select,
   Stack,
   Switch,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,7 +69,7 @@ export default function ContactsPage() {
   const searchQuery = searchParams.get('search') || '';
   const [selectedCircle, setSelectedCircle] = useState('');
   const { circles, circleNamesByUid, refresh: refreshCircles } = useCircles();
-  const { tags, refresh: refreshTags } = useTags();
+  const { tags, tagNamesByUid, refresh: refreshTags } = useTags();
   const { result: searchResult, runSearch } = useSearch();
 
   // The search field is a draft: as-you-type input, debounced into the URL
@@ -69,6 +81,14 @@ export default function ContactsPage() {
   // navigated here" (seed the field) — the exact bug SearchPage's comment
   // documented; ported rather than rediscovered.
   const [searchInput, setSearchInput] = useState(searchQuery);
+  // #1788: below `sm` the toolbar's nine controls pushed the first contact
+  // ~500px down the screen. Phones get a compact layout instead: filters in a
+  // dialog behind one button, Import/Review duplicates in an overflow menu, and
+  // Add Contact as a FAB.
+  const theme = useTheme();
+  const phone = useMediaQuery(theme.breakpoints.down('sm'));
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const ownWriteRef = useRef(searchQuery);
 
   useEffect(() => {
@@ -119,21 +139,20 @@ export default function ContactsPage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const pageSize = 10;
 
-  // T103: the contact-info filter defaults ON — the list is the app's front
-  // door and real data has made it an address book, so pets/relationship
-  // stubs without any email/phone/URL are hidden by default. The "Show all"
-  // switch turns it off. The URL's ?has_contact_info= param owns the choice
-  // (absent means the default, i.e. filtered), so it survives a reload and a
-  // shared link reproduces what the sender saw — the T77 pattern.
-  const hasContactInfoParam = searchParams.get('has_contact_info');
-  const showAll = hasContactInfoParam === 'false';
-  const hasContactInfo = !showAll;
+  // #1788 (supersedes T103's default-on filter): the list shows every contact
+  // by default, matching Android; "Only with contact info" opts into the T103
+  // filter. The URL's ?has_contact_info= param still owns the choice (only
+  // `true` turns the filter on; absent and `false` both show everyone, so old
+  // `has_contact_info=false` links keep working), so it survives a reload and a
+  // shared link reproduces what the sender saw -- the T77 pattern.
+  const hasContactInfo = searchParams.get('has_contact_info') === 'true';
 
-  const toggleShowAll = (checked: boolean) => {
+  const toggleHasContactInfo = (checked: boolean) => {
     setSearchParams(
       (prev) => {
         const nextParams = new URLSearchParams(prev);
-        nextParams.set('has_contact_info', checked ? 'false' : 'true');
+        if (checked) nextParams.set('has_contact_info', 'true');
+        else nextParams.delete('has_contact_info');
         return nextParams;
       },
       { replace: true },
@@ -163,7 +182,7 @@ export default function ContactsPage() {
   // explicitly).
   useEffect(() => {
     setSelectedUids(new Set());
-  }, [searchQuery, selectedCircle, showArchived, showFavorites, showAll]);
+  }, [searchQuery, selectedCircle, showArchived, showFavorites, hasContactInfo]);
 
   // T77 sort control: the URL's ?sort= and ?order= params own the list order
   // (same persistence mechanism as T86's ?search=). The web client opts into
@@ -394,8 +413,90 @@ export default function ContactsPage() {
     await Promise.all([refetch(), refreshCircles(), refreshTags()]);
   };
 
+  // The five list-lens controls. Rendered inline in the toolbar from `sm` up
+  // and inside the Filters dialog on phones (#1788), so the markup (and its
+  // accessible names) is the same in both places.
+  const filterControls = (
+    <>
+      <FormControl sx={{ minWidth: 180 }} size="small" fullWidth={phone}>
+        <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
+        <Select
+          labelId="circle-select-label"
+          value={selectedCircle}
+          label={t('contacts.filterByCircle')}
+          onChange={(e) => setSelectedCircle(e.target.value)}
+        >
+          <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
+          {circles.map((c) => (
+            <MenuItem key={c.id} value={c.name}>
+              {c.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl sx={{ minWidth: 220 }} size="small" fullWidth={phone}>
+        <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
+        <Select
+          labelId="sort-select-label"
+          value={`${sort}:${order}`}
+          label={t('contacts.sortBy')}
+          onChange={(e) => setSortSelection(e.target.value)}
+        >
+          <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
+          <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
+          <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
+          <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
+        </Select>
+      </FormControl>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            size="small"
+          />
+        }
+        label={t('contacts.showArchived')}
+        sx={{ whiteSpace: 'nowrap' }}
+      />
+      {/* Issue #173: favorites-only filter — mirror of the archived switch. */}
+      <FormControlLabel
+        control={
+          <Switch
+            checked={showFavorites}
+            onChange={(e) => setShowFavorites(e.target.checked)}
+            size="small"
+          />
+        }
+        label={t('contacts.showFavorites')}
+        sx={{ whiteSpace: 'nowrap' }}
+      />
+      {/* #1788: the contact-info filter is opt-in now (Android parity) -- the
+          default list shows every contact. */}
+      <FormControlLabel
+        control={
+          <Switch
+            checked={hasContactInfo}
+            onChange={(e) => toggleHasContactInfo(e.target.checked)}
+            size="small"
+          />
+        }
+        label={t('contacts.onlyWithContactInfo')}
+        sx={{ whiteSpace: 'nowrap' }}
+      />
+    </>
+  );
+
+  // Non-default lenses currently applied, for the phone Filters button badge.
+  const activeFilterCount =
+    (selectedCircle ? 1 : 0) +
+    (showArchived ? 1 : 0) +
+    (showFavorites ? 1 : 0) +
+    (hasContactInfo ? 1 : 0) +
+    (sort !== 'name' || order !== 'asc' ? 1 : 0);
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2, pb: { xs: 10, sm: 2 } }}>
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('contacts.title')}
       </Typography>
@@ -445,117 +546,103 @@ export default function ContactsPage() {
             },
           }}
         />
-        {/* T110: a plain flex container with CSS `gap`, not Stack's
+        {phone ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFiltersOpen(true)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {activeFilterCount > 0
+                ? t('contacts.filters.buttonActive', { count: activeFilterCount })
+                : t('contacts.filters.button')}
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <IconButton
+              aria-label={t('contacts.moreActions')}
+              aria-haspopup="menu"
+              aria-expanded={Boolean(moreAnchor)}
+              onClick={(e) => setMoreAnchor(e.currentTarget)}
+            >
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              anchorEl={moreAnchor}
+              open={Boolean(moreAnchor)}
+              onClose={() => setMoreAnchor(null)}
+            >
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null);
+                  setImportDialogOpen(true);
+                }}
+              >
+                <ListItemIcon>
+                  <FileUploadIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>{t('contacts.import.button', 'Import')}</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null);
+                  setReviewDuplicatesOpen(true);
+                }}
+              >
+                <ListItemIcon>
+                  <DifferenceIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>{t('contacts.reviewDuplicates')}</ListItemText>
+              </MenuItem>
+            </Menu>
+          </Box>
+        ) : (
+          /* T110: a plain flex container with CSS `gap`, not Stack's
             margin-based spacing -- margin spacing leaves no cross-axis gap
             between *wrapped* flex lines, so the toolbar's buttons
-            touched/overlapped when the row wrapped at mid widths. */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'stretch', sm: 'center' },
-            flexWrap: 'wrap',
-            gap: 1.5,
-            mb: 1.5,
-          }}
-        >
-          <FormControl sx={{ minWidth: 180 }} size="small">
-            <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
-            <Select
-              labelId="circle-select-label"
-              value={selectedCircle}
-              label={t('contacts.filterByCircle')}
-              onChange={(e) => setSelectedCircle(e.target.value)}
+            touched/overlapped when the row wrapped at mid widths. */
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 1.5,
+              mb: 1.5,
+            }}
+          >
+            {filterControls}
+            <Button
+              variant="outlined"
+              startIcon={<FileUploadIcon />}
+              onClick={() => setImportDialogOpen(true)}
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
-              {circles.map((c) => (
-                <MenuItem key={c.id} value={c.name}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: 220 }} size="small">
-            <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
-            <Select
-              labelId="sort-select-label"
-              value={`${sort}:${order}`}
-              label={t('contacts.sortBy')}
-              onChange={(e) => setSortSelection(e.target.value)}
+              {t('contacts.import.button', 'Import')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DifferenceIcon />}
+              onClick={() => setReviewDuplicatesOpen(true)}
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
-              <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
-              <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
-              <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                size="small"
-              />
-            }
-            label={t('contacts.showArchived')}
-            sx={{ whiteSpace: 'nowrap' }}
-          />
-          {/* Issue #173: favorites-only filter — mirror of the archived
-              switch. */}
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showFavorites}
-                onChange={(e) => setShowFavorites(e.target.checked)}
-                size="small"
-              />
-            }
-            label={t('contacts.showFavorites')}
-            sx={{ whiteSpace: 'nowrap' }}
-          />
-          {/* T103: the contact-info filter defaults ON; "Show all" turns it off.
-              Label matches the ticket — the unchecked default is the filter. */}
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showAll}
-                onChange={(e) => toggleShowAll(e.target.checked)}
-                size="small"
-              />
-            }
-            label={t('contacts.showAll')}
-            sx={{ whiteSpace: 'nowrap' }}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<FileUploadIcon />}
-            onClick={() => setImportDialogOpen(true)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {t('contacts.import.button', 'Import')}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<DifferenceIcon />}
-            onClick={() => setReviewDuplicatesOpen(true)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {t('contacts.reviewDuplicates')}
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PersonAddIcon />}
-            onClick={() => setAddDialogOpen(true)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {t('contacts.add.button')}
-          </Button>
-        </Box>
-        {/* T103: disclose the default-on filter so it never reads as silently
+              {t('contacts.reviewDuplicates')}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PersonAddIcon />}
+              onClick={() => setAddDialogOpen(true)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {t('contacts.add.button')}
+            </Button>
+          </Box>
+        )}
+        {/* T103: disclose the filter so it never reads as silently
             lost data — a user who imported 500 contacts and sees 340 must be
             able to tell that the 160 were hidden, not deleted. */}
-        {!showAll && hiddenCount !== undefined && hiddenCount > 0 && (
+        {hasContactInfo && hiddenCount !== undefined && hiddenCount > 0 && (
           <Typography
             variant="body2"
             sx={{
@@ -705,6 +792,17 @@ export default function ContactsPage() {
                       />
                     )}
                   </Box>
+                  {/* #1788: from `md` up there is room for the primary email and
+                      phone under the name (Android shows email · phone). */}
+                  {(contact.email || contact.phone) && (
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{ display: { xs: 'none', md: 'block' }, color: 'text.secondary' }}
+                    >
+                      {[contact.email, contact.phone].filter(Boolean).join(' · ')}
+                    </Typography>
+                  )}
                   <Stack
                     direction="row"
                     spacing={0.5}
@@ -727,6 +825,20 @@ export default function ContactsPage() {
                           setSelectedCircle(name);
                         }}
                         sx={{ height: 20, fontSize: '0.75rem' }}
+                      />
+                    ))}
+                    {/* Tags (md+ only, like the email/phone line): plain labels,
+                        visually distinct from the clickable circle chips. */}
+                    {(tagNamesByUid.get(contact.uid || '') || []).map((name: string) => (
+                      <Chip
+                        key={`${contact.ID}-tag-${name}`}
+                        label={name}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: '0.75rem',
+                          display: { xs: 'none', md: 'inline-flex' },
+                        }}
                       />
                     ))}
                   </Stack>
@@ -760,6 +872,35 @@ export default function ContactsPage() {
           result={crossResultMatches ? searchResult : null}
           onOpenContact={(id) => void navigate(`/contacts/${id}`)}
         />
+      )}
+      {phone && (
+        <>
+          <Fab
+            color="primary"
+            aria-label={t('contacts.add.button')}
+            onClick={() => setAddDialogOpen(true)}
+            sx={{ position: 'fixed', right: 16, bottom: 16, zIndex: 10 }}
+          >
+            <PersonAddIcon />
+          </Fab>
+          <Dialog
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            fullWidth
+            maxWidth="xs"
+            aria-labelledby="contacts-filters-title"
+          >
+            <DialogTitle id="contacts-filters-title">{t('contacts.filters.title')}</DialogTitle>
+            <DialogContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+                {filterControls}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setFiltersOpen(false)}>{t('contacts.filters.done')}</Button>
+            </DialogActions>
+          </Dialog>
+        </>
       )}
       <AddContactDialog
         open={addDialogOpen}

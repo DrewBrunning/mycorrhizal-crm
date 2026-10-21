@@ -349,6 +349,14 @@ func faultScenarios() []faultScenario {
 			require.NoError(t, e.db.Model(&models.Contact{}).Where("id = ?", res.contact).Update("is_favorite", true).Error)
 			return faultReq{method: http.MethodPost, path: "/api/v1/contacts/" + res.contact + "/unfavorite"}
 		}},
+		{"PUT /contacts/:id/target-closeness", func(t *testing.T, e *faultEnv) faultReq {
+			res := seedResources(t, e.db, e.owner.ID)
+			return faultReq{method: http.MethodPut, path: "/api/v1/contacts/" + res.contact + "/target-closeness", body: models.ContactTargetClosenessInput{Tier: "close"}}
+		}},
+		{"DELETE /contacts/:id/target-closeness", func(t *testing.T, e *faultEnv) faultReq {
+			res := seedResources(t, e.db, e.owner.ID)
+			return faultReq{method: http.MethodDelete, path: "/api/v1/contacts/" + res.contact + "/target-closeness"}
+		}},
 		{"PATCH /users/language", func(t *testing.T, e *faultEnv) faultReq {
 			return faultReq{method: http.MethodPatch, path: "/api/v1/users/language", body: map[string]string{"language": "de"}}
 		}},
@@ -406,7 +414,7 @@ func buildFaultAllowlist() map[string]string {
 		"row pragma_database_list#1", "query field_definitions#1", "create import_runs#1")
 	add(faultReasonAudit, "PUT /contacts/:id", "query contacts#2")
 	add(faultReasonAudit, "POST /contacts/merge", "query contacts#3")
-	for _, sc := range []string{"POST /contacts/:id/archive", "POST /contacts/:id/unarchive", "POST /contacts/:id/favorite", "POST /contacts/:id/unfavorite"} {
+	for _, sc := range []string{"POST /contacts/:id/archive", "POST /contacts/:id/unarchive", "POST /contacts/:id/favorite", "POST /contacts/:id/unfavorite", "PUT /contacts/:id/target-closeness", "DELETE /contacts/:id/target-closeness"} {
 		add(faultReasonAudit, sc, "query contacts#2")
 	}
 	add("the password change and every revocation already committed atomically; minting the caller's replacement session is best-effort and the handler documents that the client re-authenticates", "POST /users/change-password", "create sessions#1")
