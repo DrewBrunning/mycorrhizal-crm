@@ -608,7 +608,6 @@
     "timeline": "Timeline",
     "noActivity": "No notes or activities yet",
     "note": "Note",
-    "noDescription": "No description",
     "addNote": "Add Note",
     "addActivity": "Add Activity",
     "exportVCard": "Export vCard",
@@ -657,6 +656,8 @@
     "newTag": "New tag...",
     "add": "Add",
     "actions": "Actions",
+    "moreActions": "More",
+    "exportAs": "Export as {{format}}",
     "jumpNav": "Jump to section",
     "markAsMe": "This is me",
     "unmarkAsMe": "This isn't me"

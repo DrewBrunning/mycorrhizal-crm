@@ -176,7 +176,9 @@ test.describe('Contact merge', () => {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      await page.getByRole('button', { name: /^merge$/i }).click();
+      // Merge lives in the header's More menu (#1782).
+      await page.getByRole('button', { name: 'More' }).click();
+      await page.getByRole('menuitem', { name: /^merge$/i }).click();
       await expect(page.getByText('Merge Contacts')).toBeVisible({ timeout: 10000 });
       // MUI renders the label twice (InputLabel + fieldset legend).
       await expect(page.getByText('Merge into').first()).toBeVisible();

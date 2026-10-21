@@ -1,5 +1,6 @@
 import { mdiCalendarPlus, mdiNotePlusOutline } from '@mdi/js';
 import AddIcon from '@mui/icons-material/Add';
+import ListIcon from '@mui/icons-material/List';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
   Alert,
@@ -304,7 +305,9 @@ function ContactJumpNav({
           href={`#${s.id}`}
           size="small"
           color="inherit"
-          sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+          // Issue #1782: flexShrink 0 -- the default shrink squeezed the
+          // nowrap labels into each other instead of scrolling the strip.
+          sx={{ whiteSpace: 'nowrap', textTransform: 'none', flexShrink: 0 }}
         >
           {s.label}
         </Button>
@@ -312,6 +315,15 @@ function ContactJumpNav({
     </Box>
   );
 }
+
+// #1783: below `sm` the Timeline header's three buttons collapse to icon-only
+// (their text label is hidden, the aria-label keeps the accessible name) so
+// they stay on one row instead of wrapping to two lines at 390px.
+const timelineActionButtonSx = {
+  minWidth: { xs: 44, sm: 64 },
+  minHeight: { xs: 44, sm: 'auto' },
+  '& .MuiButton-startIcon': { ml: { xs: 0, sm: '-4px' }, mr: { xs: 0, sm: '8px' } },
+};
 
 export default function ContactDetailPage() {
   const { t } = useTranslation();
@@ -1173,8 +1185,17 @@ export default function ContactDetailPage() {
                 variant="outlined"
                 color="primary"
                 size="small"
+                // Icon only below sm (the label is hidden there); at sm+ it is a text button.
+                startIcon={<ListIcon />}
+                aria-label={t('timeline.viewAll')}
+                sx={{
+                  ...timelineActionButtonSx,
+                  '& .MuiButton-startIcon': { display: { xs: 'inherit', sm: 'none' }, m: 0 },
+                }}
               >
-                {t('timeline.viewAll')}
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {t('timeline.viewAll')}
+                </Box>
               </Button>
               <Button
                 startIcon={
@@ -1186,8 +1207,12 @@ export default function ContactDetailPage() {
                 variant="contained"
                 color="primary"
                 size="small"
+                aria-label={t('contactDetail.addNote')}
+                sx={timelineActionButtonSx}
               >
-                {t('contactDetail.addNote')}
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {t('contactDetail.addNote')}
+                </Box>
               </Button>
               <Button
                 startIcon={
@@ -1199,8 +1224,12 @@ export default function ContactDetailPage() {
                 variant="contained"
                 color="primary"
                 size="small"
+                aria-label={t('contactDetail.addActivity')}
+                sx={timelineActionButtonSx}
               >
-                {t('contactDetail.addActivity')}
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {t('contactDetail.addActivity')}
+                </Box>
               </Button>
             </Box>
           }

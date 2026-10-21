@@ -20,6 +20,8 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import io.mockk.every
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,84 +48,83 @@ class ServerVersionGatingTest {
         session = SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true),
     )
 
-    private fun setSettingsContent(serverVersion: AppVersion?, state: SettingsUiState = adminState()) {
+    private fun setAdministration(serverVersion: AppVersion?) {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {
-                MycorrhizalTheme {
-                    SettingsContent(state = state, onLogout = {})
-                }
+                MycorrhizalTheme { AdministrationSettingsContent() }
             }
         }
     }
 
-    // --- Settings: the system-events row needs the v0.6.2 admin endpoints ---
-
-    @Test
-    fun `settings shows the system events row on a v0_6_2 server`() {
-        setSettingsContent(serverVersion = version(0, 6, 2))
-        composeTestRule.onNodeWithText("System events").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test
-    fun `settings hides the system events row on a v0_6_1 server`() {
-        setSettingsContent(serverVersion = version(0, 6, 1))
-        composeTestRule.onNodeWithText("System events").assertDoesNotExist()
-    }
-
-    @Test
-    fun `settings shows the system events row when the server version is unknown`() {
-        // Fail open: an unresolved /health never hides a feature.
-        setSettingsContent(serverVersion = null)
-        composeTestRule.onNodeWithText("System events").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test
-    fun `system events row is absent for non-admins regardless of server`() {
+    private fun setRoot(serverVersion: AppVersion?, state: SettingsUiState) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                SettingsContent(
-                    state = SettingsUiState(session = SessionState(isAdmin = false)),
-                    onLogout = {},
-                )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme { SettingsRootContent(state = state, onLogout = {}) }
             }
         }
+    }
 
+    /** What the Privacy screen would pass to `setAppLock(…, offerBiometricSignIn)`. */
+    private fun biometricOfferedOn(serverVersion: AppVersion?): Boolean {
+        var offered = false
+        composeTestRule.setContent {
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                offered = rememberSettingsGating().deviceGrantSignInSupported
+            }
+        }
+        composeTestRule.waitForIdle()
+        return offered
+    }
+
+    // --- Administration: the system-events row needs the v0.6.2 admin endpoints ---
+
+    @Test
+    fun `administration shows the system events row on a v0_6_2 server`() {
+        setAdministration(serverVersion = version(0, 6, 2))
+        composeTestRule.onNodeWithText("System events").assertIsDisplayed()
+    }
+
+    @Test
+    fun `administration hides the system events row on a v0_6_1 server`() {
+        setAdministration(serverVersion = version(0, 6, 1))
+        composeTestRule.onNodeWithText("User management").assertIsDisplayed()
         composeTestRule.onNodeWithText("System events").assertDoesNotExist()
     }
 
-    // --- Settings: biometric sign-in setup needs the v0.6.10 device grants ---
-
     @Test
-    fun `settings shows biometric sign-in setup on a v0_6_10 server`() {
-        setSettingsContent(serverVersion = version(0, 6, 10))
-        composeTestRule.onNodeWithText("Set up biometric sign-in").performScrollTo().assertIsDisplayed()
+    fun `administration shows the system events row when the server version is unknown`() {
+        // Fail open: an unresolved /health never hides a feature.
+        setAdministration(serverVersion = null)
+        composeTestRule.onNodeWithText("System events").assertIsDisplayed()
     }
 
     @Test
-    fun `settings hides biometric sign-in setup when the server predates device grants`() {
-        setSettingsContent(serverVersion = version(0, 6, 9))
-        composeTestRule.onNodeWithText("Set up biometric sign-in").assertDoesNotExist()
+    fun `the administration group is absent for non-admins regardless of server`() {
+        setRoot(version(0, 6, 2), SettingsUiState(session = SessionState(isAdmin = false)))
+        composeTestRule.onNodeWithText("Administration").assertDoesNotExist()
     }
 
     @Test
-    fun `settings shows biometric sign-in setup when the server version is unknown`() {
-        setSettingsContent(serverVersion = null)
-        composeTestRule.onNodeWithText("Set up biometric sign-in").performScrollTo().assertIsDisplayed()
+    fun `the administration group is offered to admins`() {
+        setRoot(version(0, 6, 2), adminState())
+        composeTestRule.onNodeWithText("Administration").performScrollTo().assertIsDisplayed()
+    }
+
+    // --- App lock: inline biometric sign-in needs the v0.6.10 device grants ---
+
+    @Test
+    fun `biometric sign-in is offered on a v0_6_10 server`() {
+        assertTrue(biometricOfferedOn(version(0, 6, 10)))
     }
 
     @Test
-    fun `an enrolled device can still turn biometric sign-in off on an old server`() {
-        setSettingsContent(
-            serverVersion = version(0, 6, 9),
-            state = SettingsUiState(
-                session = SessionState(isAdmin = false),
-                biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED,
-            ),
-        )
+    fun `biometric sign-in is not offered when the server predates device grants`() {
+        assertFalse(biometricOfferedOn(version(0, 6, 9)))
+    }
 
-        // Removal stays available even on an old server — an enrolled install
-        // must never be stranded unable to revoke.
-        composeTestRule.onNodeWithText("Turn off biometric sign-in").performScrollTo().assertIsDisplayed()
+    @Test
+    fun `biometric sign-in is offered when the server version is unknown`() {
+        assertTrue(biometricOfferedOn(null))
     }
 
     // --- Data screen: audit-log export needs the v0.6.1 endpoint ------------
@@ -138,7 +139,7 @@ class ServerVersionGatingTest {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {
                 MycorrhizalTheme {
-                    DataScreen(onBack = {}, viewModel = viewModel)
+                    DataScreen(onMenuClick = {}, viewModel = viewModel)
                 }
             }
         }
