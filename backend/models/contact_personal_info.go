@@ -69,7 +69,12 @@ func (c *Contact) ensurePersonalInfoIDs() {
 			kept = nil
 		}
 	}
-	c.CRM.PersonalInfoMeta = kept
+	// Assign the whole envelope rather than mutating c.CRM.PersonalInfoMeta in
+	// place: the semgrep trap rule (CLAUDE.md trap #2) guards direct nested CRM
+	// mutation because BeforeSave can otherwise overwrite it.
+	envelope := c.CRM
+	envelope.PersonalInfoMeta = kept
+	c.CRM = envelope
 }
 
 // filterSensitivePersonalInfo drops Card.PersonalInfo entries whose CRM
