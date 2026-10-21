@@ -222,6 +222,17 @@ class ActivityFormViewModelTest {
     }
 
     @Test
+    fun `save without a date is blocked`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        vm.onTitleChange("Lunch")
+        vm.save()
+        advanceUntilIdle()
+
+        assertEquals(R.string.activity_error_date_required, vm.uiState.value.errorRes)
+        coVerify(exactly = 0) { activityRepository.create(any()) }
+    }
+
+    @Test
     fun `save in create mode calls create with the contact id`() = runTest(mainDispatcherRule.testDispatcher) {
         val created = Activity(id = 7, title = "Lunch", type = "meal")
         coEvery { activityRepository.create(any()) } returns Result.success(created)
@@ -250,7 +261,7 @@ class ActivityFormViewModelTest {
     @Test
     fun `save in edit mode hydrates and calls update`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { activityRepository.get(7) } returns Result.success(
-            Activity(id = 7, title = "Lunch", type = "meal"),
+            Activity(id = 7, title = "Lunch", type = "meal", date = "2026-08-10T14:00:00Z"),
         )
         coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
 
@@ -282,6 +293,7 @@ class ActivityFormViewModelTest {
                 id = 7,
                 title = "Lunch",
                 type = "meal",
+                date = "2026-08-10T14:00:00Z",
                 contacts = listOf(
                     com.mycorrhizal.crm.model.network.ContactFlat(id = 5),
                     com.mycorrhizal.crm.model.network.ContactFlat(id = 9),
@@ -321,6 +333,7 @@ class ActivityFormViewModelTest {
             Activity(
                 id = 7,
                 title = "Lunch",
+                date = "2026-08-10T14:00:00Z",
                 contacts = listOf(ContactFlat(id = 5, firstname = "Dana"), ContactFlat(id = 9, firstname = "Bob")),
             ),
         )
@@ -359,6 +372,7 @@ class ActivityFormViewModelTest {
         assertEquals(listOf(5, 9), vm.uiState.value.participants.map { it.id })
 
         vm.onTitleChange("Lunch")
+        vm.onDateChange("2026-08-10T14:00:00Z")
         vm.save()
         advanceUntilIdle()
 
@@ -385,6 +399,7 @@ class ActivityFormViewModelTest {
         assertEquals(listOf(5), vm.uiState.value.participants.map { it.id })
 
         vm.onTitleChange("Lunch")
+        vm.onDateChange("2026-08-10T14:00:00Z")
         vm.save()
         advanceUntilIdle()
 
@@ -418,19 +433,22 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `invalid date format blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
+        // #1726: the picker writes a bare day; Activity.Date is a Go time.Time,
+        // so the form normalises it to the exact UTC-midnight instant.
+        coEvery { activityRepository.create(any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+
         val vm = createViewModel()
         vm.onTitleChange("Lunch")
         vm.onDateChange("2026-08-10")
         vm.save()
         advanceUntilIdle()
 
-        assertEquals(R.string.activity_error_date, vm.uiState.value.errorRes)
-        coVerify(exactly = 0) { activityRepository.create(any()) }
+        coVerify { activityRepository.create(match { it.date == "2026-08-10T00:00:00Z" }) }
     }
 
     @Test
-    fun `iso date time passes validation`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-time value round-trips with its time`() = runTest(mainDispatcherRule.testDispatcher) {
         val created = Activity(id = 7, title = "Lunch")
         coEvery { activityRepository.create(any()) } returns Result.success(created)
 
@@ -440,6 +458,7 @@ class ActivityFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
+        coVerify { activityRepository.create(match { it.date == "2026-08-10T14:00:00Z" }) }
         assertEquals(ActivityFormEvent.Saved, vm.events.value)
     }
 
@@ -451,6 +470,7 @@ class ActivityFormViewModelTest {
 
         val vm = createViewModel()
         vm.onTitleChange("Lunch")
+        vm.onDateChange("2026-08-10T14:00:00Z")
         vm.save()
         advanceUntilIdle()
 

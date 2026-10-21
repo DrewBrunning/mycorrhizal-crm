@@ -151,7 +151,7 @@ class ActivityIfMatchTest {
 
     @Test
     fun `edit save sends the loaded revision and a 412 raises conflict`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", revision = 3))
+        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3))
         coEvery { activityRepository.update(7, any(), 3) } returns STALE
         val vm = form()
         advanceUntilIdle()
@@ -165,7 +165,7 @@ class ActivityIfMatchTest {
         assertNull(vm.events.value)
         assertEquals("Dinner", vm.uiState.value.title)
 
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Server", revision = 5))
+        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Server", date = "2026-08-10T14:00:00Z", revision = 5))
         vm.onConflictLoadLatest()
         advanceUntilIdle()
         assertFalse(vm.uiState.value.conflict)

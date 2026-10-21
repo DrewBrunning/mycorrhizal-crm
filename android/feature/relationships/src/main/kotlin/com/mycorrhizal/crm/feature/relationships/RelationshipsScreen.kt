@@ -63,7 +63,9 @@ import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -595,12 +597,12 @@ fun RelationshipEdgeForm(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
+                DateField(
                     value = birthday,
                     onValueChange = { birthday = it },
-                    label = { Text(stringResource(R.string.relationships_birthday)) },
-                    placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
-                    singleLine = true,
+                    label = stringResource(R.string.relationships_birthday),
+                    mode = DateFieldMode.PARTIAL,
+                    allowClear = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
