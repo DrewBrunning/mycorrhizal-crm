@@ -255,3 +255,57 @@ test('a 400 from undo surfaces the server error message', async () => {
 
   expect(await screen.findByText('undo is not supported for note')).toBeDefined();
 });
+
+// --- #1792 / #1788: keyboard-reachable scroll region, phone card list ---------
+
+function setPhoneViewport(phone: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: phone && query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+afterEach(() => {
+  // @ts-expect-error -- restore jsdom's "no matchMedia" default
+  delete window.matchMedia;
+});
+
+test('the table scroll container is a focusable, labelled region (#1792)', async () => {
+  auditGetMock.mockResolvedValue({ audit_events: [ev({})], total: 1 });
+  renderPage();
+
+  // A horizontally scrolling container with nothing focusable inside cannot be
+  // scrolled from the keyboard (WCAG 2.1.1), so the region itself takes focus.
+  const region = await screen.findByRole('region', { name: 'Audit log' });
+  expect(region).toHaveAttribute('tabindex', '0');
+  expect(within(region).getByRole('table')).toBeInTheDocument();
+});
+
+test('below sm the audit log is a card list, not a 5-column table (#1788)', async () => {
+  setPhoneViewport(true);
+  auditGetMock.mockResolvedValue({
+    audit_events: [ev({ id: 1 }), ev({ id: 2, operation: 'delete', entity_type: 'note' })],
+    total: 2,
+  });
+  renderPage();
+
+  const list = await screen.findByRole('list', { name: 'Audit log' });
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  const items = within(list).getAllByRole('listitem');
+  expect(items).toHaveLength(2);
+  // Each card carries what the columns did: entity type, operation, entity,
+  // and (on a contact update) the Undo action.
+  expect(within(items[0]).getByText('Contact')).toBeInTheDocument();
+  expect(within(items[0]).getByText('Updated')).toBeInTheDocument();
+  expect(await within(items[0]).findByText('Alice Johnson')).toBeInTheDocument();
+  fireEvent.click(within(items[0]).getByRole('button', { name: /undo/i }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  // A delete event has no Undo.
+  expect(within(items[1]).queryByRole('button', { name: /undo/i })).not.toBeInTheDocument();
+});

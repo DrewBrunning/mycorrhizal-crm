@@ -50,6 +50,7 @@ import { deleteCompletion } from './api/reminders';
 import { getSeafileDir, getSeafileLibraries } from './api/seafile';
 import AddActivityDialog from './components/AddActivityDialog';
 import AddNoteDialog from './components/AddNoteDialog';
+import AmbientToggle from './components/AmbientToggle';
 import AttachmentsSection from './components/AttachmentsSection';
 import CadenceDialog from './components/CadenceDialog';
 import CadencePanel from './components/CadencePanel';
@@ -486,12 +487,25 @@ export default function ContactDetailPage() {
     loading: cadenceLoading,
     handleSave: handleSaveCadence,
     handleDelete: handleDeleteCadence,
+    refresh: refreshCadence,
   } = useCadencePolicy(record?.uid, { showError });
   const cadenceDialog = useEditDialog<CadencePolicy>();
 
   const handleSaveCadenceSubmit = async (input: CadencePolicyInput) => {
     if (!record?.uid) return;
     await handleSaveCadence(input);
+  };
+
+  // Issue #1735: toggling crm.ambient is a full-record save that carries the
+  // rest of crm unchanged (handleUpdateCard spreads record.crm). The cadence
+  // health is server-derived, so refetch it afterwards.
+  const handleAmbientChange = async (next: boolean) => {
+    try {
+      await fieldEditing.handleUpdateCard({}, { ambient: next });
+    } catch {
+      return; // handleUpdateCard already reported the failure
+    }
+    await refreshCadence();
   };
 
   const handleCadenceDelete = async (_id: string) => {
@@ -1284,6 +1298,10 @@ export default function ContactDetailPage() {
           viewports. */}
       <SectionGroup id="cadence" twoColumn mb={16}>
         <PanelCard title={t('cadence.title')}>
+          <AmbientToggle
+            checked={!!record.crm?.ambient}
+            onChange={(next) => void handleAmbientChange(next)}
+          />
           <CadencePanel
             policy={cadencePolicy}
             loading={cadenceLoading}

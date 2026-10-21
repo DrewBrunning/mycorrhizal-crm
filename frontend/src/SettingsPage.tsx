@@ -384,7 +384,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
+    <Box sx={{ maxWidth: 960, mx: 'auto', mt: 2, p: 2 }}>
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('settings.title')}
       </Typography>

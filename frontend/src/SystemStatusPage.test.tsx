@@ -355,7 +355,7 @@ test('the outlined OK and unhealthy chips use the legible light-mode shades', as
   await screen.findByText('Health checks');
   const chipColor = (el: HTMLElement) =>
     getComputedStyle(el.closest('.MuiChip-root') as HTMLElement).color;
-  expect(chipColor(screen.getAllByText('OK')[0])).toBe('rgb(11, 118, 67)'); // success.dark
+  expect(chipColor(screen.getAllByText('OK')[0])).toBe('rgb(4, 97, 54)'); // success.dark
   expect(chipColor(screen.getByText('Unhealthy', { selector: '.MuiChip-label' }))).toBe(
     'rgb(146, 59, 51)', // error.dark
   );

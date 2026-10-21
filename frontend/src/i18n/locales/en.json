@@ -294,7 +294,14 @@
     "favoriteContact": "Mark {{name}} as favorite",
     "unfavoriteContact": "Unmark {{name}} as favorite",
     "favoriteError": "Failed to update favorite",
-    "showAll": "Show all",
+    "onlyWithContactInfo": "Only with contact info",
+    "filters": {
+      "button": "Filters",
+      "buttonActive": "Filters ({{count}})",
+      "title": "Filters",
+      "done": "Done"
+    },
+    "moreActions": "More actions",
     "hiddenContactable_one": "{{count}} contact without contact info is hidden",
     "hiddenContactable_other": "{{count}} contacts without contact info are hidden",
     "archived": "Archived",
@@ -586,7 +593,8 @@
       "cadence": "Cadence & follow-up",
       "dataDecay": "Data verification",
       "metadataExpand": "Expand card metadata",
-      "metadataCollapse": "Collapse card metadata"
+      "metadataCollapse": "Collapse card metadata",
+      "customFieldsUngrouped": "Custom fields"
     },
     "email": "Email",
     "phone": "Phone",
@@ -2108,6 +2116,9 @@
     "label": "Label",
     "labelHint": "The human-readable name shown on contact pages.",
     "labelRequired": "Label is required.",
+    "group": "Group",
+    "groupHint": "Optional. Groups related fields on contact pages. Up to {{max}} characters.",
+    "groupTooLong": "Group must be at most {{max}} characters.",
     "key": "Key",
     "keyHint": "Stable machine name (lowercase, underscores). Cannot be changed after creation.",
     "keyRequired": "Key is required.",
@@ -2243,6 +2254,12 @@
       "valueRequired": "Value is required",
       "saveFailed": "Failed to save preference"
     }
+  },
+  "ambient": {
+    "toggleLabel": "Ambient contact — I see them all the time",
+    "toggleHelper": "Counts as in regular contact without logging activities",
+    "reasonHousehold": "Ambient contact (lives with you)",
+    "reasonFlag": "Ambient contact (marked)"
   },
   "cadence": {
     "title": "Cadence",

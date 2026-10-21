@@ -294,7 +294,14 @@
     "favoriteContact": "Segna {{name}} come preferito",
     "unfavoriteContact": "Rimuovi {{name}} dai preferiti",
     "favoriteError": "Impossibile aggiornare il preferito",
-    "showAll": "Mostra tutti",
+    "onlyWithContactInfo": "Solo con dati di contatto",
+    "filters": {
+      "button": "Filtri",
+      "buttonActive": "Filtri ({{count}})",
+      "title": "Filtri",
+      "done": "Fatto"
+    },
+    "moreActions": "Altre azioni",
     "hiddenContactable_one": "{{count}} contatto senza informazioni di contatto è nascosto",
     "hiddenContactable_other": "{{count}} contatti senza informazioni di contatto sono nascosti",
     "archived": "Archiviato",
@@ -586,7 +593,8 @@
       "cadence": "Cadenza e follow-up",
       "dataDecay": "Verifica dei dati",
       "metadataExpand": "Espandi metadati della scheda",
-      "metadataCollapse": "Comprimi metadati della scheda"
+      "metadataCollapse": "Comprimi metadati della scheda",
+      "customFieldsUngrouped": "Campi personalizzati"
     },
     "email": "Email",
     "phone": "Telefono",
@@ -2108,6 +2116,9 @@
     "label": "Etichetta",
     "labelHint": "Il nome visualizzato nelle pagine dei contatti.",
     "labelRequired": "L'etichetta è obbligatoria.",
+    "group": "Gruppo",
+    "groupHint": "Facoltativo. Raggruppa i campi correlati nelle pagine dei contatti. Massimo {{max}} caratteri.",
+    "groupTooLong": "Il gruppo può avere al massimo {{max}} caratteri.",
     "key": "Chiave",
     "keyHint": "Nome tecnico stabile (minuscole, trattini bassi). Non modificabile dopo la creazione.",
     "keyRequired": "La chiave è obbligatoria.",
@@ -2243,6 +2254,12 @@
       "valueRequired": "Il valore è obbligatorio",
       "saveFailed": "Salvataggio della preferenza non riuscito"
     }
+  },
+  "ambient": {
+    "toggleLabel": "Contatto ambientale: lo vedo di continuo",
+    "toggleHelper": "Conta come contatto regolare senza registrare attività",
+    "reasonHousehold": "Contatto ambientale (vive con te)",
+    "reasonFlag": "Contatto ambientale (segnato)"
   },
   "cadence": {
     "title": "Cadenza",

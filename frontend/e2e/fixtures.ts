@@ -197,6 +197,29 @@ export async function assertNoAaaContrastViolations(page: Page, context: string)
   expect(detail, JSON.stringify(detail, null, 2)).toEqual([]);
 }
 
+/**
+ * Runs specific axe rules (by id, regardless of tag or impact) and fails on any
+ * violation. For rules the app-wide gate deliberately does not cover because
+ * they are `moderate`/best-practice (`region`, issue #1792) or because the
+ * scenario needs a specific viewport (`scrollable-region-focusable`).
+ */
+export async function assertNoAxeRuleViolations(
+  page: Page,
+  rules: string[],
+  context?: string,
+): Promise<void> {
+  await waitForAnimationsToSettle(page);
+  const builder = new AxeBuilder({ page }).withRules(rules);
+  if (context) {
+    builder.include(context);
+  }
+  const results = await builder.analyze();
+  const detail = results.violations.flatMap((v) =>
+    v.nodes.map((n) => ({ id: v.id, target: n.target, summary: n.failureSummary })),
+  );
+  expect(detail, JSON.stringify(detail, null, 2)).toEqual([]);
+}
+
 type StorageStateOption = BrowserContextOptions['storageState'];
 
 /**
