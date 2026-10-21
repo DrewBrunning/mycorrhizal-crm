@@ -327,6 +327,7 @@ fun ReminderListItem(
  */
 fun Reminder.isOverdue(now: java.time.LocalDate = java.time.LocalDate.now()): Boolean {
     val raw = remindAt?.takeIf { it.isNotBlank() } ?: return false
+    // Calendar digits, deliberately not zone-shifted (web isBeforeLocalToday parity).
     val due = runCatching { java.time.LocalDate.parse(raw.take(10)) }.getOrNull() ?: return false
     return due.isBefore(now)
 }

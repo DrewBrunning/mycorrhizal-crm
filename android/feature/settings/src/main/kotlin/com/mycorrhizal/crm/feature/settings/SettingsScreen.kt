@@ -37,6 +37,7 @@ import com.mycorrhizal.crm.domain.compat.ServerCapabilities
 import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
@@ -295,6 +296,6 @@ internal fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDel
     AutoLockDelay.ONE_HOUR -> stringResource(R.string.settings_local_auth_delay_1h)
 }
 
-internal val DATE_FORMAT_OPTIONS = listOf(
-    "eu", "us", "iso", "ca", "eu-hyphen", "us-mmm", "us-mmmm", "eu-mmm", "eu-mmmm",
-)
+// The single token list, shared with the renderer so the picker cannot offer a
+// format DateFormat does not implement (issue #1752).
+internal val DATE_FORMAT_OPTIONS = DateFormat.ALL_FORMATS

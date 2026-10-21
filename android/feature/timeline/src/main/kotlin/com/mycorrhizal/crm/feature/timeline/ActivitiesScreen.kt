@@ -51,6 +51,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 
 /**
  * M19: per-contact activities list. Gained a search field + from/to-date
@@ -250,6 +252,7 @@ fun ActivityListItem(
     isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val dateFormat = LocalDateFormat.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -267,7 +270,7 @@ fun ActivityListItem(
             val subtitle = listOfNotNull(
                 activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) },
                 activity.location?.takeIf { it.isNotBlank() },
-                activity.date?.take(10),
+                activity.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() },
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(

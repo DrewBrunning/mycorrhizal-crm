@@ -507,7 +507,7 @@ private fun PrepCard(
  * Formats an ISO-8601 timestamp as a date in the user's date format, or ""
  * when unparseable/absent.
  *
- * **UTC, not the device zone** — see [DateFormat.formatTimestamp], the single
+ * Calendar days keep their own date, real instants go local: see [DateFormat.formatTimestamp], the single
  * shared implementation (M11 + M12 must render the same value the same way;
  * this used to be a private copy that could drift).
  */
