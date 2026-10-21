@@ -1995,7 +1995,11 @@
     <string name="conflict_load_latest">Cargar la última versión</string>
     <string name="conflict_keep_editing">Seguir editando</string>
     <string name="conflict_dismiss">Ahora no</string>
-    <string name="contact_custom_field_group_filled">%1$d de %2$d completados</string>
+    <plurals name="contact_custom_field_group_filled">
+        <item quantity="one">%1$d de %2$d completado</item>
+        <item quantity="many">%1$d de %2$d completados</item>
+        <item quantity="other">%1$d de %2$d completados</item>
+    </plurals>
     <string name="contact_custom_field_group_open">Abrir %1$s</string>
     <string name="settings_custom_fields_group">Grupo</string>
     <string name="settings_custom_fields_group_hint">Opcional. Los campos del mismo grupo se muestran juntos en un contacto.</string>

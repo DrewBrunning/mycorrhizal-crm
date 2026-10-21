@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -82,8 +83,9 @@ internal fun groupTitle(group: FieldGroup): String =
 @Composable
 private fun CustomFieldGroupRow(group: FieldGroup, onClick: () -> Unit) {
     val title = groupTitle(group)
-    val supporting = stringResource(
-        R.string.contact_custom_field_group_filled,
+    val supporting = pluralStringResource(
+        R.plurals.contact_custom_field_group_filled,
+        group.definitions.size,
         group.filledCount,
         group.definitions.size,
     )
