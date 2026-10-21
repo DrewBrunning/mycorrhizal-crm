@@ -55,7 +55,7 @@ Each profile's sign-in credential is stored separately, so switching between
 servers — a home instance and a work instance, or re-pointing after a domain
 move — does not sign you out of the other.
 
-Manage them under **Settings → Servers**:
+Manage them under **Settings → Account → Servers**:
 
 - **Add server** — a label and a URL, then sign in for that server. A new
   profile has no saved session, so the app lands on the sign-in screen for it.
@@ -94,7 +94,7 @@ Constraints:
   seccomp filter, and `GOOS=android` links internally only for arm64.)
 - **The local store is the only copy.** It is not backed by any server and is
   *not* included in Android's cloud backup (`allowBackup=false`). Removing the
-  app, or **Settings → Servers → (local) → Delete local data**, permanently
+  app, or **Settings → Account → Servers → (local) → Delete local data**, permanently
   deletes it — hence the typed confirmation.
 - **Backup and attach are user-initiated.** "Export account bundle to file"
   writes a full-fidelity JSON backup through the system file picker; a local
@@ -103,7 +103,7 @@ Constraints:
 
 ### Moving a local profile to a server
 
-**Settings → Servers**, on the active local profile, offers **Move this data to
+**Settings → Account → Servers**, on the active local profile, offers **Move this data to
 a server** (ADR 0028 Decision 3, one-time — never a live sync). The wizard:
 
 1. asks you to add or pick a *Remote* server and sign in to it (2FA supported) —
@@ -146,7 +146,7 @@ records which contact is Me (`self_contact_uid`), and a bundle without it
 imports every contact as new.
 
 The entry point ("Use on this device only", on the sign-in screen and in
-**Settings → Servers**, below the profile list so it stays reachable however many
+**Settings → Account → Servers**, below the profile list so it stays reachable however many
 profiles exist) is offered in every distribution variant. A local profile
 holds the only copy of its data, so the app pairs it with the user-initiated
 account-bundle backup described above.
@@ -188,7 +188,7 @@ tag opens `/circles?tab=tags`, a circle opens `/circles`).
 
 ## Log activities from location history (GeoPulse)
 
-With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → GeoPulse**: server URL and a
+With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → Integrations → GeoPulse**: server URL and a
 write-only API token, **Test connection**, **Disconnect**; the token must be re-entered on first connect and
 whenever the server's origin changes), the **Activities** screen's top bar has **Log from location history**.
 Pick a date and **Look up**: each recorded stay shows its place, local start time, duration, city/country, the
@@ -257,6 +257,24 @@ in landscape is wide but short, so the rail would not leave room to scroll its o
 two-pane layout therefore apply only when the window is both wide (the Expanded width class) and at least medium in
 height; a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination stays reachable.
 
+## Navigation and Settings
+
+The navigation drawer (and, at expanded widths, the rail) is built from one destination registry,
+`android/app/src/main/kotlin/com/mycorrhizal/crm/NavDestinations.kt` (issues #1758, #1759, #1757):
+
+- **People**: Dashboard, Contacts, Circles, Tags, Households, Network, Map. **Interactions**: Activities,
+  Unassigned notes, Occasions, Contact shares. **Data & admin**: Data, Import contacts, Audit log. **Settings** is
+  pinned below the scrolling list.
+- The current destination is the `selected` item (announced by TalkBack); the header shows the signed-in user and
+  the server host and opens **Servers**. Every destination opens with the Menu icon, and back from one returns to the
+  Dashboard. A drawer label is always the destination's screen title (pinned in every locale by `NavDestinationsTest`).
+- **Unassigned notes** lists only notes that have no contact, so it is named for that set; **New note** creates one.
+- **Settings** is a short index of groups, each a sub-screen: **Account** (session, Servers, Change password,
+  Two-factor authentication, Passkeys, API tokens), **Appearance** (language, date format, theme), **Privacy &
+  security** (App lock, Block screenshots), **Contacts & fields**, **Tracking & notifications**, **Integrations**,
+  **Administration** (admin accounts only), **About**, and **Log out**. **App lock** is one switch: turning it on
+  also enrols biometric sign-in on servers that support it, and turning it off removes that enrolment.
+
 ## Design system
 
 The conventions every Android screen follows (issue #1760). They apply to all five locales (`en`, `de`, `es`,
@@ -295,7 +313,7 @@ rule in this section.
 ## Passkeys
 
 The app can use a passkey as your second sign-in step and lets you add, list and remove passkeys
-(**Settings → Passkeys**), through the platform's Credential Manager. Your passkey's private key
+(**Settings → Account → Passkeys**), through the platform's Credential Manager. Your passkey's private key
 stays in the Android credential provider (for example Google Password Manager), never in the app.
 The design and its limits are recorded in [ADR 0034](adrs/0034-android-passkeys.md).
 

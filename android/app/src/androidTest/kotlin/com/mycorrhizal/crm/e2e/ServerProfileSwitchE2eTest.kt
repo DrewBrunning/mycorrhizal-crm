@@ -71,6 +71,7 @@ class ServerProfileSwitchE2eTest : E2eBaseTest() {
 
     private fun openServers() {
         navigateViaDrawer("Settings")
+        openSettingsGroup("Account")
         waitForText("Servers")
         compose.onNodeWithText("Servers").performClick()
         compose.waitForIdle()

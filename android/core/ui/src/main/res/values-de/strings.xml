@@ -593,9 +593,7 @@
     <string name="biometric_enroll_not_now">Später</string>
     <string name="biometric_enroll_never">Nie wieder fragen</string>
     <string name="biometric_enroll_error">Biometrische Anmeldung konnte nicht eingerichtet werden. Bitte versuche es erneut.</string>
-    <string name="settings_biometric_signin_setup">Biometrische Anmeldung einrichten</string>
     <string name="settings_biometric_signin_enabled">Biometrische Anmeldung ist für dieses Gerät aktiv</string>
-    <string name="settings_biometric_signin_remove">Biometrische Anmeldung deaktivieren</string>
 
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>

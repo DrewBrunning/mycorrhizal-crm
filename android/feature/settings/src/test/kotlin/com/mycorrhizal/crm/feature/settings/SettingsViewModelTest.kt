@@ -68,6 +68,8 @@ class SettingsViewModelTest {
         callSmsAvailable: Boolean = true,
         health: Result<ServerHealth> = Result.success(ServerHealth(version = "1.3.0")),
         healthThrows: Throwable? = null,
+        enrollment: BiometricEnrollmentStatus = BiometricEnrollmentStatus.UNASKED,
+        localAuthSupported: Boolean = true,
     ): SettingsViewModel {
         if (healthThrows != null) {
             coEvery { serverCompatibility.getServerHealth() } throws healthThrows
@@ -87,8 +89,8 @@ class SettingsViewModelTest {
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
         every { localAuthSettings.blockScreenshots() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
-        every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
-        every { localAuthCapabilities.canEnableLocalAuth() } returns true
+        every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(enrollment)
+        every { localAuthCapabilities.canEnableLocalAuth() } returns localAuthSupported
         every { callSmsTrackingCapability.isAvailable() } returns callSmsAvailable
         every { permissionChecker.isGranted(any()) } returns false
         every {
@@ -700,4 +702,90 @@ class SettingsViewModelTest {
         assertFalse(vm.uiState.value.isBiometricBusy)
     }
 
+    // --- Issue #1759: App lock is one control; biometric sign-in follows it ---
+
+    @Test
+    fun `switching app lock on enrolls biometric sign-in when the server offers it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+            coEvery { deviceGrantManager.enroll(any()) } returns Result.success(Unit)
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = true, offerBiometricSignIn = true)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.requireLocalAuth)
+            coVerify { localAuthSettings.setRequireLocalAuth(true) }
+            coVerify(exactly = 1) { deviceGrantManager.enroll(any()) }
+        }
+
+    @Test
+    fun `switching app lock on does not enroll when the server predates device grants`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = true, offerBiometricSignIn = false)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.requireLocalAuth)
+            coVerify(exactly = 0) { deviceGrantManager.enroll(any()) }
+        }
+
+    @Test
+    fun `switching app lock on does not enroll twice`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+        val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED)
+        advanceUntilIdle()
+
+        vm.setAppLock(enabled = true, offerBiometricSignIn = true)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { deviceGrantManager.enroll(any()) }
+    }
+
+    @Test
+    fun `switching app lock off removes an existing biometric enrolment`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+            coEvery { deviceGrantManager.removeEnrollment() } returns Result.success(Unit)
+            val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED)
+            advanceUntilIdle()
+
+            // Even on an old server (offer = false) an enrolled install can always revoke.
+            vm.setAppLock(enabled = false, offerBiometricSignIn = false)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.requireLocalAuth)
+            coVerify(exactly = 1) { deviceGrantManager.removeEnrollment() }
+        }
+
+    @Test
+    fun `switching app lock off without an enrolment only clears the lock`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = false, offerBiometricSignIn = true)
+            advanceUntilIdle()
+
+            coVerify { localAuthSettings.setRequireLocalAuth(false) }
+            coVerify(exactly = 0) { deviceGrantManager.removeEnrollment() }
+        }
+
+    @Test
+    fun `app lock cannot be switched on where the device cannot satisfy it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(localAuthSupported = false)
+            advanceUntilIdle()
+
+            vm.setAppLock(enabled = true, offerBiometricSignIn = true)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.requireLocalAuth)
+            coVerify(exactly = 0) { deviceGrantManager.enroll(any()) }
+        }
 }
