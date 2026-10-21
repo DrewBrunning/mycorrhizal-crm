@@ -1,127 +1,130 @@
 package com.mycorrhizal.crm.feature.settings
 
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.model.util.DateFormat
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
 import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
-import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
-import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
-import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 
-/** The OS permissions a [TrackingPermissionRequest] needs (issue #721). */
-private fun permissionsFor(request: TrackingPermissionRequest): Array<String> = when (request) {
-    TrackingPermissionRequest.CALL_TRACKING -> TrackingPermissions.CALL_TRACKING
-    TrackingPermissionRequest.SMS_TRACKING -> TrackingPermissions.SMS_TRACKING
+/**
+ * Issue #1759: the routes of the Settings root and its grouped sub-screens. The app's NavHost
+ * registers each of them; the root opens them through its `onNavigate` callback, so the root and
+ * its tests never name a screen class. Screens that already existed (`webhooks`, `two-factor`, ...)
+ * keep their own routes and are opened from inside the group that owns them.
+ */
+object SettingsRoutes {
+    const val ROOT = "settings"
+    const val ACCOUNT = "settings/account"
+    const val CHANGE_PASSWORD = "settings/account/password"
+    const val APPEARANCE = "settings/appearance"
+    const val PRIVACY = "settings/privacy"
+    const val CONTACTS_FIELDS = "settings/contacts-fields"
+    const val TRACKING = "settings/tracking"
+    const val INTEGRATIONS = "settings/integrations"
+    const val ADMINISTRATION = "settings/administration"
+    const val ABOUT = "settings/about"
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * What the connected deployment offers, resolved once per screen from the two composition locals.
+ * Every Settings screen gates its rows with the same rules, so the rules live here.
+ */
+internal data class SettingsGating(
+    val multiUserAdminSupported: Boolean,
+    val systemEventsSupported: Boolean,
+    val deviceGrantSignInSupported: Boolean,
+    val twoFactorSupported: Boolean,
+    val webhooksSupported: Boolean,
+    val apiTokensSupported: Boolean,
+    val calendarSyncSupported: Boolean,
+    val notificationChannelsSupported: Boolean,
+    val integrationsSupported: Boolean,
+) {
+    /** The Integrations group has at least one row on this deployment. */
+    val anyIntegration: Boolean get() = webhooksSupported || calendarSyncSupported || integrationsSupported
+}
+
+@Composable
+internal fun rememberSettingsGating(): SettingsGating {
+    // Issue #692: capabilities the connected server is too old to provide are hidden. Null server
+    // version (unknown / fail open) leaves everything visible.
+    val serverVersion = LocalServerVersion.current
+    // Issue #1263 / ADR 0028 Decision 2: entries whose capability the active deployment does not
+    // declare are hidden. Unknown (fail open) shows everything, so an unreachable /health never
+    // strips the UI.
+    val capabilities = LocalServerCapabilities.current
+    // Admin user management and operator system events are surfaces of a multi-user server
+    // deployment; a deployment that cannot register users (the embedded single-user store) omits
+    // `registration`, so both are hidden there. There is no dedicated admin token in the health
+    // contract.
+    val multiUserAdminSupported = capabilities.supports(ServerCapability.REGISTRATION)
+    return SettingsGating(
+        multiUserAdminSupported = multiUserAdminSupported,
+        systemEventsSupported =
+            multiUserAdminSupported && ServerCapabilities.isSupported(serverVersion, ServerFeature.SYSTEM_EVENTS),
+        deviceGrantSignInSupported =
+            capabilities.supports(ServerCapability.DEVICE_GRANTS) &&
+                ServerCapabilities.isSupported(serverVersion, ServerFeature.DEVICE_GRANT_SIGNIN),
+        twoFactorSupported = capabilities.supports(ServerCapability.TWO_FACTOR),
+        webhooksSupported = capabilities.supports(ServerCapability.WEBHOOKS),
+        apiTokensSupported = capabilities.supports(ServerCapability.API_TOKENS),
+        calendarSyncSupported = capabilities.supports(ServerCapability.CALENDAR),
+        notificationChannelsSupported = capabilities.supports(ServerCapability.PUSH),
+        // Issue #1367 / ADR 0028 Decision 2 amendment: the embedded (on-device) server is storage
+        // only, so the outbound file/photo integrations are absent there. They have no capability
+        // token of their own (a token would make an older remote server that predates it look like
+        // it lacked the feature), so the deployment shape is the gate. Backend counterpart:
+        // routes.go's `!cfg.IsEmbedded()` guards.
+        integrationsSupported = !capabilities.isEmbedded,
+    )
+}
+
+/**
+ * The Settings root (issue #1759): a short index of grouped chevron rows, each opening a
+ * sub-screen. It carries no form fields; everything editable lives one level down.
+ */
 @Composable
 fun SettingsScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onLoggedOut: () -> Unit,
-    onCustomLinks: () -> Unit = {},
-    onWebhooks: () -> Unit = {},
-    // Issue #413's Android follow-up (#573): API token management.
-    onApiTokens: () -> Unit = {},
-    // Issue #390's Android follow-up (#628): calendar/contact sync management.
-    onCalendarSync: () -> Unit = {},
-    // Issue #814 Phase 2: TOTP two-factor enrollment/management.
-    onTwoFactor: () -> Unit = {},
-    // Issue #1293: passkey enrollment/management (shown only when the passkey gate is open).
-    onPasskeys: () -> Unit = {},
-    onNotificationChannels: () -> Unit = {},
-    // Issue #236: the Immich connection-config settings screen.
-    onImmichSettings: () -> Unit = {},
-    // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
-    onPaperlessSettings: () -> Unit = {},
-    onSeafileSettings: () -> Unit = {},
-    onNextcloudSettings: () -> Unit = {},
-    // Issue #160: the GeoPulse location-history connection settings screen.
-    onGeoPulseSettings: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {},
-    // T104 + data suggestions: the Data review surface and its trigger.
-    onData: () -> Unit = {},
-    // Issue #830: the custom field-definition management screen.
-    onManageCustomFields: () -> Unit = {},
-    // Issue #832: the enabled-contact-fields toggle screen.
-    onContactFieldSettings: () -> Unit = {},
-    // Issue #348: admin user management.
-    onManageUsers: () -> Unit = {},
-    // Issue #424: the operational-event timeline.
-    onSystemEvents: () -> Unit = {},
-    onLocaleChanged: () -> Unit = {},
-    // ADR 0028 Decision 1: the server-profile management screen.
-    onServers: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -133,639 +136,117 @@ fun SettingsScreen(
                 viewModel.onEventShown()
                 onLoggedOut()
             }
-            // The activity recreates to re-resolve values-XX resources.
-            SettingsEvent.LocaleChanged -> {
-                viewModel.onEventShown()
-                onLocaleChanged()
-            }
-            // A password change invalidated every JWT; the session is cleared
-            // and the login screen takes over (see onLoggedOut).
-            SettingsEvent.PasswordChanged -> {
-                viewModel.onEventShown()
-                onLoggedOut()
-            }
-            null -> Unit
+            else -> Unit
         }
     }
 
-    // --- Issue #721: runtime-permission flow for the tracking toggles --------
-    // The ViewModel decides *when* a permission is needed (state.pendingPermissionRequest);
-    // this screen is the thin adapter that turns that into a system dialog and
-    // reports the outcome (plus whether a denial is permanent — only an Activity
-    // can answer shouldShowRequestPermissionRationale) back to the ViewModel.
-    val context = LocalContext.current
-
-    // Which request the in-flight system dialog is answering, so the callback
-    // knows what to report. remember (not a VM field): it is UI-only state that
-    // exists to bridge the launcher callback to the request that spawned it.
-    var launchedRequest by remember { mutableStateOf<TrackingPermissionRequest?>(null) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grantResults ->
-        val request = launchedRequest
-        launchedRequest = null
-        if (request == null) return@rememberLauncherForActivityResult
-        // "Permanently denied" = denied and the OS will not show the dialog
-        // again (the user checked "don't ask again"); a first denial still
-        // allows a rationale + retry.
-        val activity = context as? Activity
-        val permanentlyDenied = permissionsFor(request).any { permission ->
-            grantResults[permission] != true &&
-                (activity?.shouldShowRequestPermissionRationale(permission) != true)
-        }
-        viewModel.onPermissionRequestResult(request, permanentlyDenied)
-    }
-
-    LaunchedEffect(state.pendingPermissionRequest) {
-        val request = state.pendingPermissionRequest ?: return@LaunchedEffect
-        if (launchedRequest == request) return@LaunchedEffect
-        launchedRequest = request
-        permissionLauncher.launch(permissionsFor(request))
-    }
-
-    // Reconcile the toggles against the real OS grant state every time the
-    // screen resumes: a permission revoked (or granted) in system settings
-    // must be reflected the moment the user returns.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshPermissionState()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    onMenuClick?.let { onMenu ->
-                        AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
-                        }
-                    }
-                },
-                title = {
-                    Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-    ) { padding ->
-        SettingsContent(
+    SettingsScaffold(title = stringResource(R.string.settings_title), onMenuClick = onMenuClick) { padding ->
+        SettingsRootContent(
             state = state,
-            onCustomLinks = onCustomLinks,
-            onWebhooks = onWebhooks,
-            onApiTokens = onApiTokens,
-            onCalendarSync = onCalendarSync,
-            onTwoFactor = onTwoFactor,
-            onPasskeys = onPasskeys,
-            onNotificationChannels = onNotificationChannels,
-            onImmichSettings = onImmichSettings,
-            onPaperlessSettings = onPaperlessSettings,
-            onSeafileSettings = onSeafileSettings,
-            onNextcloudSettings = onNextcloudSettings,
-            onGeoPulseSettings = onGeoPulseSettings,
-            onCircleTagTriage = onCircleTagTriage,
-            onData = onData,
-            onManageCustomFields = onManageCustomFields,
-            onContactFieldSettings = onContactFieldSettings,
-            onManageUsers = onManageUsers,
-            onSystemEvents = onSystemEvents,
-            onServers = onServers,
-            onLanguageChange = viewModel::updateLanguage,
-            onDateFormatChange = viewModel::updateDateFormat,
-            onThemeChange = viewModel::setThemePreference,
-            onChangePassword = viewModel::changePassword,
-            onCallTrackingChange = viewModel::setCallTrackingEnabled,
-            onSmsTrackingChange = viewModel::setSmsTrackingEnabled,
-            onNotificationsChange = viewModel::setNotificationsEnabled,
-            onIncludeUnknownChange = viewModel::setIncludeUnknownNumbers,
-            onRequireLocalAuthChange = viewModel::setRequireLocalAuth,
-            onAutoLockDelayChange = viewModel::setAutoLockDelay,
-            onBlockScreenshotsChange = viewModel::setBlockScreenshots,
-            onEnrollBiometricSignIn = viewModel::enrollBiometricSignIn,
-            onRemoveBiometricSignIn = viewModel::removeBiometricSignIn,
-            onPermissionDialogDismiss = viewModel::onPermissionDialogDismiss,
-            onPermissionDialogRetry = viewModel::onPermissionDialogRetry,
-            onPermissionDialogOpenSettings = {
-                viewModel.onPermissionDialogDismiss()
-                openAppSettings(context)
-            },
+            onNavigate = onNavigate,
             onLogout = viewModel::logout,
-            modifier = Modifier.padding(padding),
+            modifier = padding,
         )
     }
 }
 
-/** Deep link to this app's page in the system settings (permanent-denial path). */
-private fun openAppSettings(context: android.content.Context) {
-    val activity = context as? Activity ?: return
-    activity.startActivity(
-        Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.fromParts("package", activity.packageName, null),
-        ),
-    )
-}
-
 @Composable
-fun SettingsContent(
+fun SettingsRootContent(
     state: SettingsUiState,
-    onCustomLinks: () -> Unit = {},
-    onWebhooks: () -> Unit = {},
-    onApiTokens: () -> Unit = {},
-    onCalendarSync: () -> Unit = {},
-    onTwoFactor: () -> Unit = {},
-    // Issue #1293: passkey enrollment/management (shown only when the passkey gate is open).
-    onPasskeys: () -> Unit = {},
-    onNotificationChannels: () -> Unit = {},
-    onImmichSettings: () -> Unit = {},
-    onPaperlessSettings: () -> Unit = {},
-    onSeafileSettings: () -> Unit = {},
-    onNextcloudSettings: () -> Unit = {},
-    // Issue #160: the GeoPulse location-history connection settings screen.
-    onGeoPulseSettings: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {},
-    onData: () -> Unit = {},
-    onManageCustomFields: () -> Unit = {},
-    onContactFieldSettings: () -> Unit = {},
-    onManageUsers: () -> Unit = {},
-    onSystemEvents: () -> Unit = {},
-    onServers: () -> Unit = {},
-    onLanguageChange: (String) -> Unit = {},
-    onDateFormatChange: (String) -> Unit = {},
-    onThemeChange: (String) -> Unit = {},
-    onChangePassword: (String, String, String) -> Unit = { _, _, _ -> },
-    onCallTrackingChange: (Boolean) -> Unit = {},
-    onSmsTrackingChange: (Boolean) -> Unit = {},
-    onNotificationsChange: (Boolean) -> Unit = {},
-    // Issue #1029: the unknown-number capture escape hatch.
-    onIncludeUnknownChange: (Boolean) -> Unit = {},
-    // Issue #722: the opt-in local app lock.
-    onRequireLocalAuthChange: (Boolean) -> Unit = {},
-    onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
-    // Issue #1741: opt-in FLAG_SECURE.
-    onBlockScreenshotsChange: (Boolean) -> Unit = {},
-    // Issue #722: fully biometric login.
-    onEnrollBiometricSignIn: () -> Unit = {},
-    onRemoveBiometricSignIn: () -> Unit = {},
-    // Issue #721: tracking-permission denial dialogs (rationale / open settings).
-    onPermissionDialogDismiss: () -> Unit = {},
-    onPermissionDialogRetry: () -> Unit = {},
-    onPermissionDialogOpenSettings: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
-    var currentPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    val gating = rememberSettingsGating()
 
-    // Issue #692: capabilities the connected server is too old to provide are
-    // hidden. Null server version (unknown / fail open) leaves everything
-    // visible.
-    val serverVersion = LocalServerVersion.current
-    // Issue #1263 / ADR 0028 Decision 2: entries whose capability the active
-    // deployment does not declare are hidden. Unknown (fail open) shows
-    // everything, so an unreachable /health never strips the UI.
-    val capabilities = LocalServerCapabilities.current
-    // Admin user management and operator system events are surfaces of a
-    // multi-user server deployment; a deployment that cannot register users
-    // (the embedded single-user store) omits `registration`, so both are hidden
-    // there. There is no dedicated admin token in the health contract.
-    val multiUserAdminSupported = capabilities.supports(ServerCapability.REGISTRATION)
-    val systemEventsSupported =
-        multiUserAdminSupported && ServerCapabilities.isSupported(serverVersion, ServerFeature.SYSTEM_EVENTS)
-    val deviceGrantSignInSupported =
-        capabilities.supports(ServerCapability.DEVICE_GRANTS) &&
-            ServerCapabilities.isSupported(serverVersion, ServerFeature.DEVICE_GRANT_SIGNIN)
-    val twoFactorSupported = capabilities.supports(ServerCapability.TWO_FACTOR)
-    val webhooksSupported = capabilities.supports(ServerCapability.WEBHOOKS)
-    val apiTokensSupported = capabilities.supports(ServerCapability.API_TOKENS)
-    val calendarSyncSupported = capabilities.supports(ServerCapability.CALENDAR)
-    val notificationChannelsSupported = capabilities.supports(ServerCapability.PUSH)
-    // Issue #1367 / ADR 0028 Decision 2 amendment: the embedded (on-device)
-    // server is storage only, so the outbound file/photo integrations are
-    // absent there. They have no capability token of their own (a token would
-    // make an older remote server that predates it look like it lacked the
-    // feature), so the deployment shape is the gate. Backend counterpart:
-    // routes.go's `!cfg.IsEmbedded()` guards.
-    val integrationsSupported = !capabilities.isEmbedded
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // #208: section titles carried no heading semantics, so TalkBack's
-        // heading navigation found nothing on this (scrollable) screen.
-        Text(
-            stringResource(R.string.settings_session),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
+    SettingsColumn(modifier = modifier) {
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_group_account),
+            supporting = stringResource(R.string.settings_group_account_summary),
+            icon = Icons.Outlined.Person,
+            onClick = { onNavigate(SettingsRoutes.ACCOUNT) },
+            modifier = Modifier.testTag("settings-group-account"),
         )
-        val dash = stringResource(R.string.settings_value_placeholder)
-        InfoRow(stringResource(R.string.settings_server), state.session.serverUrl ?: dash)
-        InfoRow(stringResource(R.string.settings_username), state.session.username ?: dash)
-        InfoRow(
-            stringResource(R.string.settings_admin),
-            if (state.session.isAdmin) stringResource(R.string.settings_yes) else stringResource(R.string.settings_no),
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_appearance),
+            supporting = stringResource(R.string.settings_group_appearance_summary),
+            icon = Icons.Outlined.Palette,
+            onClick = { onNavigate(SettingsRoutes.APPEARANCE) },
+            modifier = Modifier.testTag("settings-group-appearance"),
         )
-        // ADR 0028 Decision 1: manage/toggle server profiles.
-        NavigationRow(stringResource(R.string.settings_servers_title), onClick = onServers)
-
-        HorizontalDivider()
-
-        // M25: appearance — language / date format / theme, editable.
-        Text(
-            stringResource(R.string.settings_appearance),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_group_privacy),
+            supporting = stringResource(R.string.settings_group_privacy_summary),
+            icon = Icons.Outlined.Lock,
+            onClick = { onNavigate(SettingsRoutes.PRIVACY) },
+            modifier = Modifier.testTag("settings-group-privacy"),
         )
-        SettingDropdown(
-            label = stringResource(R.string.settings_language),
-            value = state.session.language.orEmpty(),
-            options = listOf("en", "de", "it", "es", "fr"),
-            optionLabel = { lang -> languageName(lang) },
-            onSelect = onLanguageChange,
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_group_contacts_fields),
+            supporting = stringResource(R.string.settings_group_contacts_fields_summary),
+            icon = Icons.Outlined.Contacts,
+            onClick = { onNavigate(SettingsRoutes.CONTACTS_FIELDS) },
+            modifier = Modifier.testTag("settings-group-contacts-fields"),
         )
-        SettingDropdown(
-            label = stringResource(R.string.settings_date_format),
-            value = state.session.dateFormat.orEmpty(),
-            options = DATE_FORMAT_OPTIONS,
-            optionLabel = { fmt -> dateFormatName(fmt) },
-            onSelect = onDateFormatChange,
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_tracking),
+            supporting = stringResource(R.string.settings_group_tracking_summary),
+            icon = Icons.Outlined.Notifications,
+            onClick = { onNavigate(SettingsRoutes.TRACKING) },
+            modifier = Modifier.testTag("settings-group-tracking"),
         )
-        SettingDropdown(
-            label = stringResource(R.string.settings_theme),
-            value = state.themePreference,
-            options = listOf(
-                AppSettingsRepository.THEME_SYSTEM,
-                AppSettingsRepository.THEME_LIGHT,
-                AppSettingsRepository.THEME_DARK,
-            ),
-            optionLabel = { pref ->
-                when (pref) {
-                    AppSettingsRepository.THEME_LIGHT -> stringResource(R.string.settings_theme_light)
-                    AppSettingsRepository.THEME_DARK -> stringResource(R.string.settings_theme_dark)
-                    else -> stringResource(R.string.settings_theme_system)
-                }
-            },
-            onSelect = onThemeChange,
-        )
-
-        HorizontalDivider()
-
-        // M25: password change.
-        Text(
-            stringResource(R.string.settings_password_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        state.passwordErrorRes?.let { res ->
-            Text(
-                text = stringResource(res),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+        if (gating.anyIntegration) {
+            SettingsNavigationRow(
+                title = stringResource(R.string.settings_group_integrations),
+                supporting = stringResource(R.string.settings_group_integrations_summary),
+                icon = Icons.Outlined.Extension,
+                onClick = { onNavigate(SettingsRoutes.INTEGRATIONS) },
+                modifier = Modifier.testTag("settings-group-integrations"),
             )
         }
-        state.passwordError?.let { error ->
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+        // Issue #348: admin-only, reachable only when the session is an admin (the backend also
+        // 403s every admin route for non-admins, so this gate is a navigation affordance, not a
+        // guard).
+        if (state.session.isAdmin && gating.multiUserAdminSupported) {
+            SettingsNavigationRow(
+                title = stringResource(R.string.settings_group_administration),
+                supporting = stringResource(R.string.settings_group_administration_summary),
+                icon = Icons.Outlined.AdminPanelSettings,
+                onClick = { onNavigate(SettingsRoutes.ADMINISTRATION) },
+                modifier = Modifier.testTag("settings-group-administration"),
             )
         }
-        OutlinedTextField(
-            value = currentPassword,
-            onValueChange = { currentPassword = it },
-            label = { Text(stringResource(R.string.settings_password_current)) },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = newPassword,
-            onValueChange = { newPassword = it },
-            label = { Text(stringResource(R.string.settings_password_new)) },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = { Text(stringResource(R.string.settings_password_confirm)) },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        val changingPasswordLabel = stringResource(R.string.a11y_state_saving)
-        // #1760: a disabled button says what enables it, both as visible helper
-        // text and as the button's TalkBack state description.
-        val canChangePassword = newPassword.isNotBlank() && confirmPassword.isNotBlank()
-        val passwordHint = stringResource(R.string.settings_password_change_hint)
-        OutlinedButton(
-            onClick = {
-                onChangePassword(currentPassword, newPassword, confirmPassword)
-                currentPassword = ""
-                newPassword = ""
-                confirmPassword = ""
-            },
-            enabled = !state.isChangingPassword && canChangePassword,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    if (state.isChangingPassword) {
-                        stateDescription = changingPasswordLabel
-                    } else if (!canChangePassword) {
-                        stateDescription = passwordHint
-                    }
-                },
-        ) {
-            if (state.isChangingPassword) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(stringResource(R.string.settings_password_change_button))
-        }
-        if (!canChangePassword && !state.isChangingPassword) {
-            Text(
-                text = passwordHint,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("password-disabled-hint"),
+        if (state.buildInfo != null) {
+            SettingsNavigationRow(
+                title = stringResource(R.string.settings_about),
+                supporting = stringResource(R.string.settings_group_about_summary),
+                icon = Icons.Outlined.Info,
+                onClick = { onNavigate(SettingsRoutes.ABOUT) },
+                modifier = Modifier.testTag("settings-group-about"),
             )
         }
 
-        HorizontalDivider()
-
-        // N8 (issue #814): TOTP two-factor enrollment/management (web parity).
-        // Issue #1263: absent on a deployment that does not offer 2FA.
-        if (twoFactorSupported) {
-            NavigationRow(stringResource(R.string.settings_two_factor_title), onClick = onTwoFactor)
-        }
-
-        // Issue #1293 / ADR 0034: passkeys, offered only through an open gate (Remote
-        // profile + server capability + Credential Manager on this device). An
-        // OIDC-provisioned account still sees the entry and gets the server-worded
-        // refusal on the screen, exactly like the TOTP screen.
-        if (state.passkeysAvailable) {
-            HorizontalDivider()
-            NavigationRow(stringResource(R.string.settings_passkeys_title), onClick = onPasskeys)
-        }
-
-        HorizontalDivider()
-
-        // Issue #722: the opt-in local app lock — a biometric / device-PIN
-        // check before a persisted session resumes. Default off: existing
-        // installs behave exactly as before until the user opts in. Devices
-        // without a Class 3 biometric or a secure lock screen get the disabled
-        // toggle plus the reason, never a toggle that cannot be satisfied.
-        Text(
-            stringResource(R.string.settings_local_auth),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        if (!state.localAuthSupported) {
-            Text(
-                text = stringResource(R.string.settings_local_auth_unavailable),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        ToggleRow(
-            label = stringResource(R.string.settings_local_auth_enable),
-            checked = state.requireLocalAuth,
-            enabled = state.localAuthSupported,
-            onCheckedChange = onRequireLocalAuthChange,
-        )
-        if (state.requireLocalAuth) {
-            Text(
-                text = stringResource(R.string.settings_local_auth_enable_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            SettingDropdown(
-                label = stringResource(R.string.settings_local_auth_delay),
-                value = state.autoLockDelay.name,
-                options = AutoLockDelay.entries.map { it.name },
-                optionLabel = { lockDelayOptionLabel(it) },
-                onSelect = { name -> onAutoLockDelayChange(AutoLockDelay.valueOf(name)) },
-            )
-        }
-
-        // Issue #722: fully biometric login — enroll this device so an expired
-        // session resumes with a biometric unlock instead of a password. Only
-        // meaningful on a device that can actually pass the local gate.
-        if (state.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED) {
-            Text(
-                text = stringResource(R.string.settings_biometric_signin_enabled),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(
-                onClick = onRemoveBiometricSignIn,
-                enabled = !state.isBiometricBusy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (state.isBiometricBusy) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                }
-                Text(stringResource(R.string.settings_biometric_signin_remove))
-            }
-        } else if (state.localAuthSupported && deviceGrantSignInSupported) {
-            // Issue #692: enrolling needs the server's device-grant endpoints
-            // (v0.6.10+), so the offer is hidden on older servers rather than
-            // failing with a 404 mid-flow.
-            OutlinedButton(
-                onClick = onEnrollBiometricSignIn,
-                enabled = !state.isBiometricBusy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (state.isBiometricBusy) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                }
-                Text(stringResource(R.string.settings_biometric_signin_setup))
-            }
-        }
-        state.biometricErrorRes?.let { res ->
-            Text(
-                text = stringResource(res),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-            )
-        }
-
-        // Issue #1741: opt-in screenshot / screen-recording block (FLAG_SECURE).
-        // Default off. The recent-apps preview is blanked on API 33+ regardless;
-        // below that this switch is the only thing hiding it.
-        ToggleRow(
-            label = stringResource(R.string.settings_block_screenshots),
-            checked = state.blockScreenshots,
-            onCheckedChange = onBlockScreenshotsChange,
-        )
-        Text(
-            text = stringResource(R.string.settings_block_screenshots_hint) +
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    " " + stringResource(R.string.settings_block_screenshots_hint_legacy)
-                } else {
-                    ""
-                },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        HorizontalDivider()
-
-        // T104 + data suggestions: the Data screen reviews graph-inferred
-        // relationship suggestions and runs the address-suggestion scan.
-        Text(
-            stringResource(R.string.settings_data),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
-        // Issue #830: create/edit/delete custom field definitions.
-        NavigationRow(stringResource(R.string.settings_custom_fields_title), onClick = onManageCustomFields)
-        // Issue #832: per-field show/edit toggles for the contact detail/form screens.
-        NavigationRow(stringResource(R.string.settings_contact_fields_title), onClick = onContactFieldSettings)
-
-        // Issue #348: admin-only user management, reachable only when the
-        // session is an admin (the backend also 403s every admin route for
-        // non-admins, so this gate is a navigation affordance, not a guard).
-        if (state.session.isAdmin && multiUserAdminSupported) {
-            NavigationRow(stringResource(R.string.users_title), onClick = onManageUsers)
-            // Issue #692: the system-events surface needs the v0.6.2 admin
-            // endpoints; an older server has none of them.
-            if (systemEventsSupported) {
-                NavigationRow(stringResource(R.string.sysevents_title), onClick = onSystemEvents)
-            }
-        }
-
-        HorizontalDivider()
-
-        Text(
-            stringResource(R.string.settings_tracking),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        // Issue #1200: the call/SMS capture toggles (and the unknown-numbers
-        // option, which only makes sense with capture on) exist only in builds
-        // that declare and hold the capture permissions. The play flavor omits
-        // them — showing a switch that can never work would be worse than
-        // explaining the absence.
-        if (state.callSmsTrackingAvailable) {
-            ToggleRow(
-                label = stringResource(R.string.settings_call_tracking),
-                checked = state.callTrackingEnabled,
-                onCheckedChange = onCallTrackingChange,
-            )
-            ToggleRow(
-                label = stringResource(R.string.settings_sms_tracking),
-                checked = state.smsTrackingEnabled,
-                onCheckedChange = onSmsTrackingChange,
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.settings_call_sms_unavailable),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        ToggleRow(
-            label = stringResource(R.string.settings_notifications),
-            checked = state.notificationsEnabled,
-            onCheckedChange = onNotificationsChange,
-        )
-        if (state.callSmsTrackingAvailable) {
-            // Issue #1029: by default only interactions whose number maps to a
-            // contact are logged; this opts back into logging unknown numbers too.
-            ToggleRow(
-                label = stringResource(R.string.settings_include_unknown_numbers),
-                checked = state.includeUnknownNumbers,
-                onCheckedChange = onIncludeUnknownChange,
-            )
-            if (state.filteredUnknownCount > 0) {
-                Text(
-                    text = stringResource(R.string.settings_filtered_unknown_count, state.filteredUnknownCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        // M25: channels surfaces. Issue #1263: each is hidden when the
-        // deployment does not declare its capability (an embedded local server
-        // omits webhooks, API tokens, DAV serving and push).
-        if (webhooksSupported) {
-            NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
-        }
-        // Issue #413's Android follow-up (#573): API token management.
-        if (apiTokensSupported) {
-            NavigationRow(stringResource(R.string.settings_api_tokens_title), onClick = onApiTokens)
-        }
-        // Issue #390's Android follow-up (#628): calendar/contact sync management.
-        if (calendarSyncSupported) {
-            NavigationRow(stringResource(R.string.settings_calendar_sync_title), onClick = onCalendarSync)
-        }
-        if (notificationChannelsSupported) {
-            NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
-        }
-        if (integrationsSupported) {
-            // Issue #236: the Immich connection-config settings screen.
-            NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
-            // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
-            NavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
-            NavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
-            NavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
-            // Issue #160: GeoPulse location history (an outbound integration, so hidden on embedded profiles).
-            NavigationRow(stringResource(R.string.settings_geopulse_title), onClick = onGeoPulseSettings)
-        }
-
-        // M26: one-time legacy circle/tag cleanup.
-        NavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)
-
-        Button(
-            onClick = onCustomLinks,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.custom_links_title))
-        }
-
-        state.buildInfo?.let { AboutSection(it, state) }
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         val loggingOutLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = { confirmLogout = true },
-            enabled = !state.isLoggingOut,
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_log_out),
+            icon = Icons.AutoMirrored.Outlined.Logout,
+            destructive = true,
+            showChevron = false,
+            onClick = { if (!state.isLoggingOut) confirmLogout = true },
             modifier = Modifier
-                .fillMaxWidth()
+                .testTag("settings-log-out")
                 .semantics { if (state.isLoggingOut) stateDescription = loggingOutLabel },
-        ) {
-            if (state.isLoggingOut) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(stringResource(R.string.settings_log_out))
+        )
+        if (state.isLoggingOut) {
+            CircularProgressIndicator(modifier = Modifier.padding(start = 40.dp))
         }
     }
 
     if (confirmLogout) {
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmLogout = false },
             title = { Text(stringResource(R.string.settings_log_out_title)) },
             text = { Text(stringResource(R.string.settings_log_out_body)) },
@@ -775,210 +256,16 @@ fun SettingsContent(
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { confirmLogout = false }) {
+                TextButton(onClick = { confirmLogout = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
             },
         )
     }
-
-    // Issue #721: a tracking toggle was switched on but its permissions were
-    // denied. A Rationale dialog explains why and offers a retry; an AppSettings
-    // dialog (permanent denial) offers the system settings deep link. The
-    // toggle stays off either way until the permissions are actually granted.
-    state.permissionDialog?.let { dialog ->
-        val request = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> dialog.request
-            is TrackingPermissionDialog.AppSettings -> dialog.request
-        }
-        val title = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> stringResource(R.string.settings_permission_rationale_title)
-            is TrackingPermissionDialog.AppSettings -> stringResource(R.string.settings_permission_settings_title)
-        }
-        val body = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> when (request) {
-                TrackingPermissionRequest.CALL_TRACKING ->
-                    stringResource(R.string.settings_call_permission_rationale)
-                TrackingPermissionRequest.SMS_TRACKING ->
-                    stringResource(R.string.settings_sms_permission_rationale)
-            }
-            is TrackingPermissionDialog.AppSettings -> when (request) {
-                TrackingPermissionRequest.CALL_TRACKING ->
-                    stringResource(R.string.settings_call_permission_settings)
-                TrackingPermissionRequest.SMS_TRACKING ->
-                    stringResource(R.string.settings_sms_permission_settings)
-            }
-        }
-        val confirmLabel = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> stringResource(R.string.settings_permission_try_again)
-            is TrackingPermissionDialog.AppSettings -> stringResource(R.string.settings_permission_open_settings)
-        }
-        val confirmAction = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> onPermissionDialogRetry
-            is TrackingPermissionDialog.AppSettings -> onPermissionDialogOpenSettings
-        }
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = onPermissionDialogDismiss,
-            title = { Text(title) },
-            text = { Text(body) },
-            confirmButton = {
-                TextButton(onClick = confirmAction) { Text(confirmLabel) }
-            },
-            dismissButton = {
-                TextButton(onClick = onPermissionDialogDismiss) {
-                    Text(stringResource(R.string.settings_permission_not_now))
-                }
-            },
-        )
-    }
-}
-
-/**
- * Issue #1420: which build is running — version name, version code (the only
- * thing that tells release candidates apart), build type/flavor (a debug or
- * `.localtest` build is visibly not the release), optional commit/build date,
- * and the active server's version. The server lookup is informational: a
- * failure (or the wait) shows a dash and the rest of Settings is unaffected.
- */
-@Composable
-private fun AboutSection(info: com.mycorrhizal.crm.domain.about.AppBuildInfo, state: SettingsUiState) {
-    val context = LocalContext.current
-    val dash = stringResource(R.string.settings_value_placeholder)
-    Text(
-        stringResource(R.string.settings_about),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
-    )
-    InfoRow(stringResource(R.string.settings_about_version), info.versionName)
-    InfoRow(stringResource(R.string.settings_about_version_code), info.versionCode.toString())
-    InfoRow(stringResource(R.string.settings_about_build_type), AboutDetails.buildLabel(info))
-    info.commit?.let { InfoRow(stringResource(R.string.settings_about_commit), it) }
-    info.buildDate?.let { InfoRow(stringResource(R.string.settings_about_built), it) }
-    val serverVersion = state.serverHealth?.version?.takeIf { it.isNotBlank() }
-    InfoRow(
-        stringResource(R.string.settings_about_server_version),
-        serverVersion?.let { AboutDetails.versionWithCommit(it, state.serverHealth?.commit) } ?: dash,
-    )
-    state.serverHealth?.buildDate?.takeIf { it.isNotBlank() }?.let {
-        InfoRow(stringResource(R.string.settings_about_server_built), it)
-    }
-    val label = stringResource(R.string.settings_about_copy)
-    OutlinedButton(
-        onClick = {
-            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                as android.content.ClipboardManager
-            clipboard.setPrimaryClip(
-                android.content.ClipData.newPlainText(label, AboutDetails.format(info, state.serverHealth)),
-            )
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(label)
-    }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    label: String,
-    checked: Boolean,
-    enabled: Boolean = true,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        // #214: a bare Switch has no text/contentDescription of its own — the
-        // adjacent label Text was a separate, unassociated node, so TalkBack
-        // announced the switch with no name at all. Modifier.toggleable on the
-        // row merges the label into the switch's accessible name (the standard
-        // Material3 labeled-switch pattern).
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, enabled = enabled, onValueChange = onCheckedChange, role = Role.Switch)
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
-    }
-}
-
-@Composable
-private fun SettingDropdown(
-    label: String,
-    value: String,
-    options: List<String>,
-    optionLabel: @Composable (String) -> String,
-    onSelect: (String) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Box {
-            OutlinedButton(
-                onClick = { expanded = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = if (value.isEmpty()) stringResource(R.string.settings_value_placeholder) else optionLabel(value),
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                    contentDescription = null,
-                )
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(optionLabel(option)) },
-                        onClick = {
-                            expanded = false
-                            onSelect(option)
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavigationRow(label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Icon(
-            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun languageName(tag: String): String = when (tag) {
+internal fun languageName(tag: String): String = when (tag) {
     "de" -> "Deutsch"
     "it" -> "Italiano"
     "es" -> "Español"
@@ -987,7 +274,7 @@ private fun languageName(tag: String): String = when (tag) {
 }
 
 @Composable
-private fun dateFormatName(format: String): String = when (format) {
+internal fun dateFormatName(format: String): String = when (format) {
     "us" -> stringResource(R.string.settings_date_format_us)
     "iso" -> stringResource(R.string.settings_date_format_iso)
     "ca" -> stringResource(R.string.settings_date_format_ca)
@@ -1001,7 +288,7 @@ private fun dateFormatName(format: String): String = when (format) {
 
 /** Issue #722: display label for an [AutoLockDelay] name (never a key string leaks to the UI). */
 @Composable
-private fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDelay.valueOf(delayName)) {
+internal fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDelay.valueOf(delayName)) {
     AutoLockDelay.IMMEDIATELY -> stringResource(R.string.settings_local_auth_delay_immediately)
     AutoLockDelay.ONE_MINUTE -> stringResource(R.string.settings_local_auth_delay_1m)
     AutoLockDelay.FIVE_MINUTES -> stringResource(R.string.settings_local_auth_delay_5m)
@@ -1011,4 +298,4 @@ private fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDela
 
 // The single token list, shared with the renderer so the picker cannot offer a
 // format DateFormat does not implement (issue #1752).
-private val DATE_FORMAT_OPTIONS = DateFormat.ALL_FORMATS
+internal val DATE_FORMAT_OPTIONS = DateFormat.ALL_FORMATS

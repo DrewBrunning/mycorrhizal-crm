@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -66,6 +65,7 @@ import com.mycorrhizal.crm.ui.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import androidx.compose.material.icons.outlined.Menu
 import java.util.Locale
 
 /**
@@ -75,7 +75,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OccasionsScreen(
-    onBack: () -> Unit,
+    // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
+    onMenuClick: (() -> Unit)? = {},
     onOpenAttendees: (String) -> Unit,
     viewModel: OccasionsViewModel = hiltViewModel(),
 ) {
@@ -96,8 +97,12 @@ fun OccasionsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    // Issue #1758: a top-level drawer destination opens the drawer (no Back arrow);
+                    // null at Expanded width where the rail replaces it.
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = { Text(stringResource(R.string.occasions_title), style = MaterialTheme.typography.titleLarge) },

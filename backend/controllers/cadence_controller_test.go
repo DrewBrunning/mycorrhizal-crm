@@ -3,6 +3,8 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
@@ -449,4 +451,47 @@ func TestListCadencePoliciesSinceFeed(t *testing.T) {
 	require.Len(t, feedAfterDelete.CadencePolicies, 1)
 	assert.Equal(t, policy.ID, feedAfterDelete.CadencePolicies[0].ID)
 	assert.True(t, feedAfterDelete.CadencePolicies[0].Deleted, "soft-deleted policy must surface as a tombstone")
+}
+
+// The list endpoint derives health for the whole page in one batch (issues
+// #1733/#1736), so an ambient contact's policy reads ambient and never
+// overdue here exactly as on the single-policy read; a DB failure in that
+// derivation is a 500 for this pure read.
+func TestListCadencePolicies_BatchHealthCarriesAmbient(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/cadence-policies", ListCadencePolicies)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	flagged := models.Contact{UserID: user.ID, Firstname: "Flagged", Ambient: true}
+	plain := models.Contact{UserID: user.ID, Firstname: "Plain"}
+	require.NoError(t, db.Create(&flagged).Error)
+	require.NoError(t, db.Create(&plain).Error)
+	old := time.Now().AddDate(0, 0, -40)
+	for _, c := range []models.Contact{flagged, plain} {
+		require.NoError(t, db.Create(&models.Activity{UserID: user.ID, Title: "call", Date: old, Type: models.InteractionTypeCall, Contacts: []models.Contact{c}}).Error)
+		require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: c.VCardUID, TargetIntervalDays: 30}).Error)
+	}
+
+	w := doCadenceJSON(t, router, "GET", "/cadence-policies", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp struct {
+		CadencePolicies []cadencePolicyWithHealth `json:"cadence_policies"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.CadencePolicies, 2)
+	byUID := map[string]services.CadenceHealth{}
+	for _, p := range resp.CadencePolicies {
+		byUID[p.EntityID] = p.Health
+	}
+	assert.True(t, byUID[flagged.VCardUID].Ambient)
+	assert.Equal(t, "flag", byUID[flagged.VCardUID].AmbientReason)
+	assert.Zero(t, byUID[flagged.VCardUID].OverdueBy)
+	assert.False(t, byUID[plain.VCardUID].Ambient)
+	assert.Greater(t, byUID[plain.VCardUID].OverdueBy, 0)
+
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Request error (the hidden household_members table)")
+	dbtest.HideTable(t, db, "household_members")
+	w = doCadenceJSON(t, router, "GET", "/cadence-policies", nil)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 }

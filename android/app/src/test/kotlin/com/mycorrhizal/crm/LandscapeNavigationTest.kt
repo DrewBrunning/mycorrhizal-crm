@@ -78,7 +78,8 @@ class LandscapeNavigationTest {
         composeTestRule.onNodeWithTag("navigation-rail").assertDoesNotExist()
         allRoutes.forEach { route ->
             val node = composeTestRule.onNodeWithTag("drawer-$route")
-            node.performScrollTo()
+            // Issue #1758: the footer destination (Settings) is pinned below the scrolling list.
+            if (navDestinationsIn(NavGroup.FOOTER).none { it.route == route }) node.performScrollTo()
             node.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         }
     }

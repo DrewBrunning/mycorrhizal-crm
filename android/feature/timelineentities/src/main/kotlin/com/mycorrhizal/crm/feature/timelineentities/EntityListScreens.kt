@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,17 +26,22 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
+import com.mycorrhizal.crm.ui.components.DropdownOption
+import com.mycorrhizal.crm.ui.components.LabelledDropdown
+import com.mycorrhizal.crm.ui.components.FormScaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -139,6 +146,9 @@ internal fun EntityListScaffold(
     // as an overlapping sibling of it (that overlap was a real bug — review-pass fix).
     header: (@Composable () -> Unit)? = null,
     onRefresh: () -> Unit = {},
+    // Issue #1773 review: a screen whose full-screen form replaces the list (gifts, life
+    // events) hoists this so the scroll position survives the round trip to the form.
+    listState: LazyListState = rememberLazyListState(),
     dialog: @Composable () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -184,7 +194,7 @@ internal fun EntityListScaffold(
                 // it. Every state (loading/empty/error/populated) is an item too,
                 // so the header stays reachable regardless of list contents.
                 val uriHandler = LocalUriHandler.current
-                LazyColumn(modifier = Modifier.fillMaxSize().testTag("entity-list")) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("entity-list")) {
                     if (header != null) {
                         item(key = "scaffold-header") { header() }
                     }
@@ -324,6 +334,57 @@ internal fun EntityListScaffold(
     }
 }
 
+/**
+ * Issue #1773: the shared chrome of the entity create/edit forms that are full screen
+ * (gift, life event) -- the same [FormScaffold] note/activity/reminder use: a back
+ * arrow, a title, and a pinned Save/Create button that says what enables it while
+ * disabled. System back and the top-bar arrow both leave the form, discarding what was
+ * typed -- exactly what Cancel / tapping outside did in the dialogs these replaced.
+ */
+@Composable
+internal fun EntityFormScreen(
+    title: String,
+    saveLabel: String,
+    saveEnabled: Boolean,
+    saveDisabledHint: String?,
+    onSave: () -> Unit,
+    onBack: () -> Unit,
+    errorMessage: String? = null,
+    onErrorShown: () -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val snackbarHostState = remember { SnackbarHostState() }
+    // A form that stays open on a failed save (mark discussed, #1723) replaces the list,
+    // so the list's snackbar is not composed: the form shows the error itself.
+    errorMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
+            onErrorShown()
+        }
+    }
+    FormScaffold(
+        title = title,
+        onBack = onBack,
+        saveLabel = saveLabel,
+        isSaving = false,
+        onSave = onSave,
+        snackbarHostState = snackbarHostState,
+        saveEnabled = saveEnabled,
+        saveDisabledHint = saveDisabledHint,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
 /** A [SectionRow.Header] between [SectionRow.Item]s whenever the section key changes. */
 private fun sectionRows(items: List<EntityItem>, sectioned: Boolean): List<SectionRow> {
     if (!sectioned) return items.map { SectionRow.Item(it) }
@@ -354,14 +415,16 @@ private sealed interface SectionRow {
 // ---------------------------------------------------------------------------
 
 /**
+ * Issue #1773: a full-screen form (it has a contact search and a dozen controls, so
+ * it is past the dialog threshold in docs/android-app.md "Design system").
  * `initial == null` is add mode; a non-null [LifeEvent] pre-fills every field
- * this form models and switches the dialog to edit mode (title/button label,
+ * this form models and switches the form to edit mode (title/button label,
  * and [onConfirm] is expected to route to update() instead of create() —
  * that branch lives in the caller, which is the one that knows whether it has
  * an `editingItem`).
  */
 @Composable
-internal fun LifeEventDialog(
+internal fun LifeEventForm(
     initial: LifeEvent?,
     relatedContacts: List<ContactSummary>,
     contactSearchQuery: String,
@@ -380,244 +443,214 @@ internal fun LifeEventDialog(
     // pick a real category). The sentinel falls back on `initial != null`,
     // NOT `initial?.category != null`: pre-T36 rows carry category NULL, which
     // Go serializes as an absent JSON key (review-pass fix).
-    var category by remember(initial) {
+    var category by rememberSaveable(initial?.id) {
         mutableStateOf(
             initial?.category
                 ?.takeIf { it in LifeEventCategory.ALL }
                 ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else ""),
         )
     }
-    var type by remember(initial) { mutableStateOf(initial?.type ?: "") }
-    var customType by remember(initial) {
+    var type by rememberSaveable(initial?.id) { mutableStateOf(initial?.type ?: "") }
+    var customType by rememberSaveable(initial?.id) {
         mutableStateOf(
             initial?.type != null &&
                 category in LifeEventCategory.ALL &&
                 initial.type !in LifeEventTypes.forCategory(category),
         )
     }
-    var description by remember(initial) { mutableStateOf(initial?.description ?: "") }
-    var year by remember(initial) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
-    var month by remember(initial) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
-    var day by remember(initial) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
-    var remind by remember(initial) { mutableStateOf(initial?.remind == true) }
+    var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
+    var year by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
+    var month by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
+    var day by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
+    var remind by rememberSaveable(initial?.id) { mutableStateOf(initial?.remind == true) }
 
     val canRemind = month.toIntOrNull() != null && day.toIntOrNull() != null
     val typeEnabled = category.isNotEmpty()
     val canSave = type.isNotBlank()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.life_events_edit else R.string.life_events_new)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-            ) {
-                // Category select.
-                var categoryMenu by remember { mutableStateOf(false) }
-                Box {
-                    OutlinedButton(onClick = { categoryMenu = true }, modifier = Modifier.fillMaxWidth().testTag("life-event-category")) {
-                        Text(
-                            text = categoryLabel(category),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+    val onSave: () -> Unit = {
+        val date = PartialDate(
+            year = year.toIntOrNull(),
+            month = month.toIntOrNull(),
+            day = day.toIntOrNull(),
+        ).takeIf { it.year != null || it.month != null || it.day != null }
+        onConfirm(
+            LifeEventFormData(
+                type = type,
+                category = category.takeIf { it in LifeEventCategory.ALL },
+                description = description,
+                date = date,
+                relatedEntityIds = relatedContacts.mapNotNull { it.uid },
+                remind = (date?.hasMonthDay == true) && remind,
+            ),
+        )
+    }
+
+    EntityFormScreen(
+        title = stringResource(if (isEditing) R.string.life_events_edit else R.string.life_events_new),
+        saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
+        saveEnabled = canSave,
+        saveDisabledHint = stringResource(R.string.life_events_save_hint),
+        onSave = onSave,
+        onBack = onDismiss,
+    ) {
+        // Category select. Issue #1773: a labelled dropdown, not a bare value button.
+        val categoryOptions = buildList {
+            LifeEventCategory.ALL.forEach { token ->
+                add(DropdownOption(token, stringResource(categoryLabelRes(token))))
+            }
+            if (category == LIFE_EVENT_UNCATEGORIZED) {
+                add(DropdownOption(LIFE_EVENT_UNCATEGORIZED, stringResource(R.string.life_events_category_uncategorized)))
+            }
+        }
+        LabelledDropdown(
+            label = stringResource(R.string.life_events_category_label),
+            valueText = categoryLabel(category),
+            options = categoryOptions,
+            onSelect = { token ->
+                category = token
+                // Picking a real category may orphan a custom type; fall back to the select.
+                customType = token in LifeEventCategory.ALL &&
+                    type.isNotBlank() && type !in LifeEventTypes.forCategory(token)
+            },
+            modifier = Modifier.testTag("life-event-category"),
+        )
+
+        // Type: disabled until a category is chosen; free text for
+        // uncategorized; a category-scoped select with a custom escape
+        // hatch for real categories.
+        if (category == LIFE_EVENT_UNCATEGORIZED || customType) {
+            OutlinedTextField(
+                value = type, onValueChange = { type = it },
+                label = { Text(stringResource(R.string.life_events_custom_type_label)) }, singleLine = true,
+                enabled = typeEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            val customTypeToken = "\u0000custom"
+            val typeOptions = if (category in LifeEventCategory.ALL) {
+                LifeEventTypes.forCategory(category).map { DropdownOption(it, it.replace('_', ' ')) } +
+                    DropdownOption(customTypeToken, stringResource(R.string.life_events_custom_type))
+            } else {
+                emptyList()
+            }
+            LabelledDropdown(
+                label = stringResource(R.string.life_events_type_label),
+                valueText = type.replace('_', ' ').ifBlank { stringResource(R.string.life_events_select_category_first) },
+                options = typeOptions,
+                onSelect = { token ->
+                    if (token == customTypeToken) {
+                        customType = true
+                    } else {
+                        type = token
+                        customType = false
                     }
-                    DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
-                        LifeEventCategory.ALL.forEach { token ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(categoryLabelRes(token))) },
-                                onClick = {
-                                    categoryMenu = false
-                                    category = token
-                                    // Picking a real category may orphan a
-                                    // custom type; fall back to the select.
-                                    customType = type.isNotBlank() && type !in LifeEventTypes.forCategory(token)
-                                },
-                            )
-                        }
-                        if (category == LIFE_EVENT_UNCATEGORIZED) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.life_events_category_uncategorized)) },
-                                onClick = {
-                                    categoryMenu = false
-                                    category = LIFE_EVENT_UNCATEGORIZED
-                                },
-                            )
-                        }
-                    }
-                }
+                },
+                enabled = typeEnabled,
+                modifier = Modifier.testTag("life-event-type"),
+            )
+        }
 
-                // Type: disabled until a category is chosen; free text for
-                // uncategorized; a category-scoped select with a custom escape
-                // hatch for real categories.
-                if (category == LIFE_EVENT_UNCATEGORIZED || customType) {
-                    OutlinedTextField(
-                        value = type, onValueChange = { type = it },
-                        label = { Text(stringResource(R.string.life_events_custom_type_label)) }, singleLine = true,
-                        enabled = typeEnabled,
-                    )
-                } else {
-                    var typeMenu by remember { mutableStateOf(false) }
-                    Box {
-                        OutlinedButton(
-                            onClick = { typeMenu = true },
-                            enabled = typeEnabled,
-                            modifier = Modifier.fillMaxWidth().testTag("life-event-type"),
-                        ) {
-                            Text(
-                                text = type.replace('_', ' ').ifBlank { stringResource(R.string.life_events_select_category_first) },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        DropdownMenu(expanded = typeMenu && category in LifeEventCategory.ALL, onDismissRequest = { typeMenu = false }) {
-                            LifeEventTypes.forCategory(category).forEach { token ->
-                                DropdownMenuItem(
-                                    text = { Text(token.replace('_', ' ')) },
-                                    onClick = {
-                                        typeMenu = false
-                                        type = token
-                                        customType = false
-                                    },
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.life_events_custom_type)) },
-                                onClick = {
-                                    typeMenu = false
-                                    customType = true
-                                },
-                            )
-                        }
-                    }
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = year, onValueChange = { year = it.filter { c -> c.isDigit() }.take(4) },
+                label = { Text(stringResource(R.string.life_events_year)) }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = month, onValueChange = { month = it.filter { c -> c.isDigit() }.take(2) },
+                label = { Text(stringResource(R.string.life_events_month)) }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = day, onValueChange = { day = it.filter { c -> c.isDigit() }.take(2) },
+                label = { Text(stringResource(R.string.life_events_day)) }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+        }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = year, onValueChange = { year = it.filter { c -> c.isDigit() }.take(4) },
-                        label = { Text(stringResource(R.string.life_events_year)) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = month, onValueChange = { month = it.filter { c -> c.isDigit() }.take(2) },
-                        label = { Text(stringResource(R.string.life_events_month)) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = day, onValueChange = { day = it.filter { c -> c.isDigit() }.take(2) },
-                        label = { Text(stringResource(R.string.life_events_day)) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        OutlinedTextField(
+            value = description, onValueChange = { description = it },
+            label = { Text(stringResource(R.string.life_events_description)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-                OutlinedTextField(
-                    value = description, onValueChange = { description = it },
-                    label = { Text(stringResource(R.string.life_events_description)) }, singleLine = true,
-                )
-
-                // Related contacts: selected chips + a search to add more.
+        // Related contacts: selected chips + a search to add more.
+        Text(
+            text = stringResource(R.string.life_events_related),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        relatedContacts.forEach { contact ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.life_events_related),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = contact.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
                 )
-                relatedContacts.forEach { contact ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = contact.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { contact.uid?.let(onRemoveRelated) }) {
-                            Icon(
-                                Icons.Outlined.Delete,
-                                contentDescription = stringResource(R.string.life_events_remove_related, contact.displayName),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = contactSearchQuery, onValueChange = onSearchContacts,
-                    label = { Text(stringResource(R.string.life_events_search_related)) }, singleLine = true,
-                )
-                if (contactSearchLoading) {
-                    Text(
-                        text = "…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    contactSearchResults.forEach { contact ->
-                        TextButton(
-                            onClick = { onAddRelated(contact) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(contact.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-
-                // #199: a bare Checkbox has no text of its own — the adjacent
-                // "Remind" Text was a separate, unassociated node, so TalkBack
-                // announced the checkbox with no name. Modifier.toggleable on
-                // the row merges the label into the checkbox's accessible name;
-                // enabled/testTag move from the (now decorative) Checkbox to the
-                // row, since the row is the interactive element now.
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .toggleable(
-                            value = remind,
-                            onValueChange = { remind = it },
-                            enabled = canRemind,
-                            role = Role.Checkbox,
-                        )
-                        .testTag("life-event-remind"),
-                ) {
-                    Checkbox(
-                        checked = remind,
-                        onCheckedChange = null,
-                        enabled = canRemind,
-                    )
-                    Text(
-                        text = stringResource(R.string.life_events_remind),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (canRemind) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                IconButton(onClick = { contact.uid?.let(onRemoveRelated) }) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = stringResource(R.string.life_events_remove_related, contact.displayName),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val date = PartialDate(
-                        year = year.toIntOrNull(),
-                        month = month.toIntOrNull(),
-                        day = day.toIntOrNull(),
-                    ).takeIf { it.year != null || it.month != null || it.day != null }
-                    onConfirm(
-                        LifeEventFormData(
-                            type = type,
-                            category = category.takeIf { it in LifeEventCategory.ALL },
-                            description = description,
-                            date = date,
-                            relatedEntityIds = relatedContacts.mapNotNull { it.uid },
-                            remind = (date?.hasMonthDay == true) && remind,
-                        ),
-                    )
-                },
-                enabled = canSave,
-            ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
+        }
+        OutlinedTextField(
+            value = contactSearchQuery, onValueChange = onSearchContacts,
+            label = { Text(stringResource(R.string.life_events_search_related)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (contactSearchLoading) {
+            Text(
+                text = "…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            contactSearchResults.forEach { contact ->
+                TextButton(
+                    onClick = { onAddRelated(contact) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(contact.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+
+        // #199: a bare Checkbox has no text of its own — the adjacent
+        // "Remind" Text was a separate, unassociated node, so TalkBack
+        // announced the checkbox with no name. Modifier.toggleable on
+        // the row merges the label into the checkbox's accessible name;
+        // enabled/testTag move from the (now decorative) Checkbox to the
+        // row, since the row is the interactive element now.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .toggleable(
+                    value = remind,
+                    onValueChange = { remind = it },
+                    enabled = canRemind,
+                    role = Role.Checkbox,
+                )
+                .testTag("life-event-remind"),
+        ) {
+            Checkbox(
+                checked = remind,
+                onCheckedChange = null,
+                enabled = canRemind,
+            )
+            Text(
+                text = stringResource(R.string.life_events_remind),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (canRemind) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
@@ -648,47 +681,53 @@ fun LifeEventsScreen(
     val relatedQuery by viewModel.relatedSearchQuery.collectAsStateWithLifecycle()
     val relatedResults by viewModel.relatedSearchResults.collectAsStateWithLifecycle()
     val relatedLoading by viewModel.relatedSearchLoading.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<LifeEvent?>(null) }
+    // Issue #1773 review: the full-screen form survives rotation and process death
+    // (saved open flag + the edited item's id, not the item), and the list keeps its
+    // scroll position while the form is up.
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val listState = rememberLazyListState()
 
-    EntityListScaffold(
-        title = stringResource(R.string.life_events_title),
-        addLabel = stringResource(R.string.life_events_new),
-        emptyTitle = stringResource(R.string.life_events_empty),
-        emptyBody = stringResource(R.string.life_events_empty_body),
-        uiState = state,
-        onAdd = { showAdd = true },
-        onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
-        onDelete = viewModel::delete,
-        onErrorShown = viewModel::onErrorShown,
-        onBack = onBack,
-        onRefresh = viewModel::load,
-    ) {
-        if (showAdd || editingItem != null) {
-            LaunchedEffect(editingItem) { viewModel.onDialogOpened(editingItem) }
-            LifeEventDialog(
-                initial = editingItem,
-                relatedContacts = relatedContacts,
-                contactSearchQuery = relatedQuery,
-                contactSearchResults = relatedResults,
-                contactSearchLoading = relatedLoading,
-                onSearchContacts = viewModel::searchRelated,
-                onAddRelated = viewModel::addRelated,
-                onRemoveRelated = viewModel::removeRelated,
-                onConfirm = { form ->
-                    editingItem?.let { viewModel.update(it, form) }
-                        ?: viewModel.create(form)
-                    viewModel.clearRelatedSearch()
-                    showAdd = false
-                    editingItem = null
-                },
-                onDismiss = {
-                    viewModel.clearRelatedSearch()
-                    showAdd = false
-                    editingItem = null
-                },
-            )
-        }
+    if (showAdd || editingItem != null) {
+        LaunchedEffect(editingItem?.id) { viewModel.onDialogOpened(editingItem) }
+        LifeEventForm(
+            initial = editingItem,
+            relatedContacts = relatedContacts,
+            contactSearchQuery = relatedQuery,
+            contactSearchResults = relatedResults,
+            contactSearchLoading = relatedLoading,
+            onSearchContacts = viewModel::searchRelated,
+            onAddRelated = viewModel::addRelated,
+            onRemoveRelated = viewModel::removeRelated,
+            onConfirm = { form ->
+                editingItem?.let { viewModel.update(it, form) }
+                    ?: viewModel.create(form)
+                viewModel.onFormClosed()
+                showAdd = false
+                editingId = null
+            },
+            onDismiss = {
+                viewModel.onFormClosed()
+                showAdd = false
+                editingId = null
+            },
+        )
+    } else {
+        EntityListScaffold(
+            title = stringResource(R.string.life_events_title),
+            addLabel = stringResource(R.string.life_events_new),
+            emptyTitle = stringResource(R.string.life_events_empty),
+            emptyBody = stringResource(R.string.life_events_empty_body),
+            uiState = state,
+            onAdd = { showAdd = true },
+            onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
+            onDelete = viewModel::delete,
+            onErrorShown = viewModel::onErrorShown,
+            onBack = onBack,
+            onRefresh = viewModel::load,
+            listState = listState,
+        ) {}
     }
 
     // The edit dialog has already closed by the time the 412 lands, so there is no form to
@@ -711,8 +750,12 @@ fun LifeEventsScreen(
 // Gifts
 // ---------------------------------------------------------------------------
 
+/**
+ * Issue #1773: a full-screen form (ten fields plus pickers; it used to scroll inside a
+ * near-full-height dialog).
+ */
 @Composable
-internal fun GiftDialog(
+internal fun GiftForm(
     initial: Gift?,
     lifeEvents: List<LifeEvent>,
     activities: List<Activity>,
@@ -720,16 +763,16 @@ internal fun GiftDialog(
     onDismiss: () -> Unit,
 ) {
     val isEditing = initial != null
-    var status by remember(initial) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
-    var description by remember(initial) { mutableStateOf(initial?.description ?: "") }
-    var url by remember(initial) { mutableStateOf(initial?.url ?: "") }
-    var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
-    var occasion by remember(initial) { mutableStateOf(initial?.occasion ?: "") }
-    var date by remember(initial) { mutableStateOf(giftDateFromIso(initial?.date)) }
-    var amount by remember(initial) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
-    var currency by remember(initial) { mutableStateOf(initial?.currency ?: "") }
-    var lifeEventId by remember(initial) { mutableStateOf(initial?.lifeEventId) }
-    var activityId by remember(initial) { mutableStateOf(initial?.activityId) }
+    var status by rememberSaveable(initial?.id) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
+    var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
+    var url by rememberSaveable(initial?.id) { mutableStateOf(initial?.url ?: "") }
+    var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+    var occasion by rememberSaveable(initial?.id) { mutableStateOf(initial?.occasion ?: "") }
+    var date by rememberSaveable(initial?.id) { mutableStateOf(giftDateFromIso(initial?.date)) }
+    var amount by rememberSaveable(initial?.id) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
+    var currency by rememberSaveable(initial?.id) { mutableStateOf(initial?.currency ?: "") }
+    var lifeEventId by rememberSaveable(initial?.id) { mutableStateOf(initial?.lifeEventId) }
+    var activityId by rememberSaveable(initial?.id) { mutableStateOf(initial?.activityId) }
 
     val parsedAmount = amount.toBigDecimalOrNull()
     val hasAmount = parsedAmount != null && parsedAmount >= BigDecimal.ZERO
@@ -742,134 +785,123 @@ internal fun GiftDialog(
     val dateValid = date.isBlank() || giftDateToIso(date) != null
     val canSave = description.isNotBlank() && pairValid && currencyLengthValid && urlValid && dateValid
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.gifts_edit else R.string.gifts_new)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-            ) {
-                StatusField(status = status, onStatusChange = { status = it })
-                OutlinedTextField(
-                    value = description, onValueChange = { description = it },
-                    label = { Text(stringResource(R.string.gifts_description)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    value = url, onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.gifts_url)) }, singleLine = true,
-                    isError = !urlValid,
-                    supportingText = if (urlValid) null else { { Text(stringResource(R.string.gifts_url_invalid)) } },
-                )
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text(stringResource(R.string.gifts_notes)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    value = occasion, onValueChange = { occasion = it },
-                    label = { Text(stringResource(R.string.gifts_occasion)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    value = date, onValueChange = { date = it },
-                    label = { Text(stringResource(R.string.gifts_date)) }, singleLine = true,
-                    placeholder = { Text("2026-08-10") },
-                    isError = !dateValid,
-                    supportingText = if (dateValid) null else { { Text(stringResource(R.string.gifts_date_invalid)) } },
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = amount, onValueChange = { amount = it },
-                        label = { Text(stringResource(R.string.gifts_amount)) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = amount.isNotBlank() && !hasAmount,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = currency, onValueChange = { currency = it.filter { c -> c.isLetter() }.uppercase().take(3) },
-                        label = { Text(stringResource(R.string.gifts_currency)) }, singleLine = true,
-                        placeholder = { Text("EUR") },
-                        isError = currency.isNotBlank() && currency.length != 3,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (!pairValid) {
-                    Text(
-                        text = stringResource(R.string.gifts_value_currency_required),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                if (lifeEvents.isNotEmpty()) {
-                    SelectField(
-                        label = stringResource(R.string.gifts_life_event),
-                        value = lifeEventId,
-                        placeholder = stringResource(R.string.gifts_none),
-                        options = lifeEvents.map { it.id },
-                        optionLabel = { id -> lifeEvents.firstOrNull { it.id == id }?.type?.replace('_', ' ') ?: id },
-                        onSelect = { lifeEventId = it },
-                    )
-                }
-                if (activities.isNotEmpty()) {
-                    SelectField(
-                        label = stringResource(R.string.gifts_activity),
-                        value = activityId?.toString(),
-                        placeholder = stringResource(R.string.gifts_none),
-                        options = activities.map { it.id.toString() },
-                        optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
-                        onSelect = { activityId = it?.toIntOrNull() },
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        GiftFormData(
-                            status = status,
-                            description = description,
-                            url = normalizedUrl,
-                            notes = notes,
-                            occasion = occasion,
-                            date = date,
-                            // Only a non-negative amount is a real amount; a
-                            // negative/zero-blank entry sends null (review-pass
-                            // fix — web rejects negatives client-side).
-                            valueCents = if (hasAmount) parsedAmount!!.movePointRight(2).toLong() else null,
-                            currency = currency,
-                            lifeEventId = lifeEventId,
-                            activityId = activityId,
-                        ),
-                    )
-                },
-                enabled = canSave,
-            ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+    val onSave: () -> Unit = {
+            onConfirm(
+                GiftFormData(
+                    status = status,
+                    description = description,
+                    url = normalizedUrl,
+                    notes = notes,
+                    occasion = occasion,
+                    date = date,
+                    // Only a non-negative amount is a real amount; a
+                    // negative/zero-blank entry sends null (review-pass
+                    // fix — web rejects negatives client-side).
+                    valueCents = if (hasAmount) parsedAmount!!.movePointRight(2).toLong() else null,
+                    currency = currency,
+                    lifeEventId = lifeEventId,
+                    activityId = activityId,
+                ),
+            )
+    }
+    val saveHint = stringResource(
+        if (description.isBlank()) R.string.gifts_save_hint_description else R.string.form_save_hint_fix_fields,
     )
+
+    EntityFormScreen(
+        title = stringResource(if (isEditing) R.string.gifts_edit else R.string.gifts_new),
+        saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
+        saveEnabled = canSave,
+        saveDisabledHint = saveHint,
+        onSave = onSave,
+        onBack = onDismiss,
+    ) {
+        StatusField(status = status, onStatusChange = { status = it })
+        OutlinedTextField(
+            value = description, onValueChange = { description = it },
+            label = { Text(stringResource(R.string.gifts_description)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = url, onValueChange = { url = it },
+            label = { Text(stringResource(R.string.gifts_url)) }, singleLine = true,
+            isError = !urlValid,
+            supportingText = if (urlValid) null else { { Text(stringResource(R.string.gifts_url_invalid)) } },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = notes, onValueChange = { notes = it },
+            label = { Text(stringResource(R.string.gifts_notes)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = occasion, onValueChange = { occasion = it },
+            label = { Text(stringResource(R.string.gifts_occasion)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = date, onValueChange = { date = it },
+            label = { Text(stringResource(R.string.gifts_date)) }, singleLine = true,
+            placeholder = { Text("2026-08-10") },
+            isError = !dateValid,
+            supportingText = if (dateValid) null else { { Text(stringResource(R.string.gifts_date_invalid)) } },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = amount, onValueChange = { amount = it },
+                label = { Text(stringResource(R.string.gifts_amount)) }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                isError = amount.isNotBlank() && !hasAmount,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = currency, onValueChange = { currency = it.filter { c -> c.isLetter() }.uppercase().take(3) },
+                label = { Text(stringResource(R.string.gifts_currency)) }, singleLine = true,
+                placeholder = { Text("EUR") },
+                isError = currency.isNotBlank() && currency.length != 3,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (!pairValid) {
+            Text(
+                text = stringResource(R.string.gifts_value_currency_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        if (lifeEvents.isNotEmpty()) {
+            SelectField(
+                label = stringResource(R.string.gifts_life_event),
+                value = lifeEventId,
+                placeholder = stringResource(R.string.gifts_none),
+                options = lifeEvents.map { it.id },
+                optionLabel = { id -> lifeEvents.firstOrNull { it.id == id }?.type?.replace('_', ' ') ?: id },
+                onSelect = { lifeEventId = it },
+            )
+        }
+        if (activities.isNotEmpty()) {
+            SelectField(
+                label = stringResource(R.string.gifts_activity),
+                value = activityId?.toString(),
+                placeholder = stringResource(R.string.gifts_none),
+                options = activities.map { it.id.toString() },
+                optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
+                onSelect = { activityId = it?.toIntOrNull() },
+            )
+        }
+    }
 }
 
 @Composable
 private fun StatusField(status: String, onStatusChange: (String) -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("gift-status")) {
-            Text(statusLabel(status))
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            GiftStatuses.ALL.forEach { token ->
-                DropdownMenuItem(
-                    text = { Text(statusLabel(token)) },
-                    onClick = {
-                        menu = false
-                        onStatusChange(token)
-                    },
-                )
-            }
-        }
-    }
+    LabelledDropdown(
+        label = stringResource(R.string.gifts_status_label),
+        valueText = statusLabel(status),
+        options = GiftStatuses.ALL.map { DropdownOption(it, statusLabel(it)) },
+        onSelect = onStatusChange,
+        modifier = Modifier.testTag("gift-status"),
+    )
 }
 
 @Composable
@@ -881,7 +913,10 @@ private fun statusLabel(status: String): String = when (status) {
     else -> status
 }
 
-/** A labeled OutlinedButton + DropdownMenu select with a "none" choice. */
+/**
+ * A labelled dropdown with a leading "none" choice (issue #1773: it used to be a
+ * caption plus a bare value button with no arrow).
+ */
 @Composable
 private fun SelectField(
     label: String,
@@ -891,41 +926,13 @@ private fun SelectField(
     optionLabel: (String) -> String,
     onSelect: (String?) -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Box {
-            OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = value?.let(optionLabel) ?: placeholder,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(
-                    text = { Text(placeholder) },
-                    onClick = {
-                        menu = false
-                        onSelect(null)
-                    },
-                )
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(optionLabel(option), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        onClick = {
-                            menu = false
-                            onSelect(option)
-                        },
-                    )
-                }
-            }
-        }
-    }
+    LabelledDropdown(
+        label = label,
+        valueText = value?.let(optionLabel) ?: placeholder,
+        options = listOf(DropdownOption<String?>(null, placeholder)) +
+            options.map { DropdownOption<String?>(it, optionLabel(it)) },
+        onSelect = onSelect,
+    )
 }
 
 /** `value_cents` -> a plain amount string ("2500" -> "25.00", "250000" -> "2500"). */
@@ -959,108 +966,117 @@ fun GiftsScreen(
     val activities by viewModel.activities.collectAsStateWithLifecycle()
     val clothingSizes by viewModel.clothingSizes.collectAsStateWithLifecycle()
     val giftPreferences by viewModel.giftPreferences.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<Gift?>(null) }
+    // Issue #1773 review: as LifeEventsScreen, the full-screen form survives rotation
+    // and process death, and the list keeps its scroll position under it.
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val listState = rememberLazyListState()
     var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
-    var newClothingKey by remember { mutableStateOf("") }
-    var newClothingValue by remember { mutableStateOf("") }
-    var showAddGiftPreference by remember { mutableStateOf(false) }
-    var editingGiftPreference by remember { mutableStateOf<Preference?>(null) }
+    var newClothingKey by rememberSaveable { mutableStateOf("") }
+    var newClothingValue by rememberSaveable { mutableStateOf("") }
+    // Hoisted (and saved) so the panel stays open when Back returns from a preference form.
+    var shoppingNotesExpanded by rememberSaveable { mutableStateOf(false) }
+    var showAddGiftPreference by rememberSaveable { mutableStateOf(false) }
+    var editingGiftPreferenceId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingGiftPreference = editingGiftPreferenceId?.let { id -> giftPreferences.firstOrNull { it.id == id } }
 
-    EntityListScaffold(
-        title = stringResource(R.string.gifts_title),
-        addLabel = stringResource(R.string.gifts_new),
-        emptyTitle = stringResource(R.string.gifts_empty),
-        emptyBody = stringResource(R.string.gifts_empty_body),
-        uiState = state,
-        onAdd = { showAdd = true },
-        onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
-        onDelete = viewModel::delete,
-        onErrorShown = viewModel::onErrorShown,
-        onBack = onBack,
-        onRefresh = viewModel::load,
-        extraAction = { item ->
-            val gift = viewModel.findById(item.id)
-            if (gift != null && gift.status != GiftStatuses.GIVEN && gift.status != GiftStatuses.RECEIVED) {
-                IconButton(onClick = { viewModel.markGiven(item.id) }) {
-                    Icon(
-                        Icons.Outlined.CheckCircle,
-                        contentDescription = stringResource(R.string.gifts_mark_given),
-                        tint = MaterialTheme.colorScheme.primary,
+    if (showAdd || editingItem != null) {
+        GiftForm(
+            initial = editingItem,
+            lifeEvents = lifeEvents,
+            activities = activities,
+            onConfirm = { form ->
+                editingItem?.let { viewModel.update(it, form) }
+                    ?: viewModel.create(form)
+                showAdd = false
+                editingId = null
+            },
+            onDismiss = { showAdd = false; editingId = null },
+        )
+    } else if (showAddGiftPreference || editingGiftPreference != null) {
+        PreferenceForm(
+            initial = editingGiftPreference,
+            sections = PreferenceSection.GIFTS_TAB,
+            onConfirm = { form ->
+                editingGiftPreference?.let { viewModel.updateGiftPreference(it, form) }
+                    ?: viewModel.createGiftPreference(form)
+                showAddGiftPreference = false
+                editingGiftPreferenceId = null
+            },
+            onDismiss = { showAddGiftPreference = false; editingGiftPreferenceId = null },
+        )
+    } else {
+        EntityListScaffold(
+            title = stringResource(R.string.gifts_title),
+            addLabel = stringResource(R.string.gifts_new),
+            emptyTitle = stringResource(R.string.gifts_empty),
+            emptyBody = stringResource(R.string.gifts_empty_body),
+            uiState = state,
+            onAdd = { showAdd = true },
+            onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
+            onDelete = viewModel::delete,
+            onErrorShown = viewModel::onErrorShown,
+            onBack = onBack,
+            onRefresh = viewModel::load,
+            listState = listState,
+            extraAction = { item ->
+                val gift = viewModel.findById(item.id)
+                if (gift != null && gift.status != GiftStatuses.GIVEN && gift.status != GiftStatuses.RECEIVED) {
+                    IconButton(onClick = { viewModel.markGiven(item.id) }) {
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            contentDescription = stringResource(R.string.gifts_mark_given),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            },
+            // Clothing sizes + gift preferences panels (web's ClothingSizesPanel
+            // and its Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid
+            // panel): "check this right before buying" — surfaced here, not in
+            // Preferences. Rendered through the scaffold's in-layout `header`
+            // slot (not `dialog`) so it lays out above the gift list instead of
+            // overlapping it. Wrapped in GiftShoppingNotesSection's collapsible
+            // card (Android testing feedback: a contact with several clothing
+            // sizes + jewelry/flowers/etc. rows was pushing the actual gift-idea
+            // list off-screen) — collapsed by default, tap to expand. Deliberately
+            // kept as two separate panels rather than merged into one
+            // PreferenceCategory-driven list: clothing sizes' fast inline
+            // edit-in-place add flow (several sizes entered in one sitting) would
+            // regress to a per-item modal if it went through the shared
+            // PreferenceForm the way jewelry/flowers do.
+            header = {
+                if (!state.isLoading) {
+                    GiftShoppingNotesSection(
+                        expanded = shoppingNotesExpanded,
+                        onExpandedChange = { shoppingNotesExpanded = it },
+                        clothingSizes = clothingSizes,
+                        giftPreferences = giftPreferences,
+                        newClothingKey = newClothingKey,
+                        newClothingValue = newClothingValue,
+                        editingClothingItem = editingClothingItem,
+                        onNewClothingKeyChange = { newClothingKey = it },
+                        onNewClothingValueChange = { newClothingValue = it },
+                        onAddClothingSize = { key, value ->
+                            viewModel.createClothingSize(key, value)
+                            newClothingKey = ""
+                            newClothingValue = ""
+                        },
+                        onStartEditClothingSize = { item -> editingClothingItem = item },
+                        onEditConfirmClothingSize = { item, key, value ->
+                            viewModel.updateClothingSize(item, key, value)
+                            editingClothingItem = null
+                        },
+                        onEditCancelClothingSize = { editingClothingItem = null },
+                        onDeleteClothingSize = viewModel::deleteClothingSize,
+                        onAddGiftPreference = { showAddGiftPreference = true },
+                        onEditGiftPreference = { item -> editingGiftPreferenceId = item.id },
+                        onDeleteGiftPreference = viewModel::deleteGiftPreference,
                     )
                 }
-            }
-        },
-        // Clothing sizes + gift preferences panels (web's ClothingSizesPanel
-        // and its Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid
-        // panel): "check this right before buying" — surfaced here, not in
-        // Preferences. Rendered through the scaffold's in-layout `header`
-        // slot (not `dialog`) so it lays out above the gift list instead of
-        // overlapping it. Wrapped in GiftShoppingNotesSection's collapsible
-        // card (Android testing feedback: a contact with several clothing
-        // sizes + jewelry/flowers/etc. rows was pushing the actual gift-idea
-        // list off-screen) — collapsed by default, tap to expand. Deliberately
-        // kept as two separate panels rather than merged into one
-        // PreferenceCategory-driven list: clothing sizes' fast inline
-        // edit-in-place add flow (several sizes entered in one sitting) would
-        // regress to a per-item modal if it went through the shared
-        // PreferenceDialog the way jewelry/flowers do.
-        header = {
-            if (!state.isLoading) {
-                GiftShoppingNotesSection(
-                    clothingSizes = clothingSizes,
-                    giftPreferences = giftPreferences,
-                    newClothingKey = newClothingKey,
-                    newClothingValue = newClothingValue,
-                    editingClothingItem = editingClothingItem,
-                    onNewClothingKeyChange = { newClothingKey = it },
-                    onNewClothingValueChange = { newClothingValue = it },
-                    onAddClothingSize = { key, value ->
-                        viewModel.createClothingSize(key, value)
-                        newClothingKey = ""
-                        newClothingValue = ""
-                    },
-                    onStartEditClothingSize = { item -> editingClothingItem = item },
-                    onEditConfirmClothingSize = { item, key, value ->
-                        viewModel.updateClothingSize(item, key, value)
-                        editingClothingItem = null
-                    },
-                    onEditCancelClothingSize = { editingClothingItem = null },
-                    onDeleteClothingSize = viewModel::deleteClothingSize,
-                    onAddGiftPreference = { showAddGiftPreference = true },
-                    onEditGiftPreference = { item -> editingGiftPreference = item },
-                    onDeleteGiftPreference = viewModel::deleteGiftPreference,
-                )
-            }
-        },
-    ) {
-        if (showAdd || editingItem != null) {
-            GiftDialog(
-                initial = editingItem,
-                lifeEvents = lifeEvents,
-                activities = activities,
-                onConfirm = { form ->
-                    editingItem?.let { viewModel.update(it, form) }
-                        ?: viewModel.create(form)
-                    showAdd = false
-                    editingItem = null
-                },
-                onDismiss = { showAdd = false; editingItem = null },
-            )
-        }
-        if (showAddGiftPreference || editingGiftPreference != null) {
-            PreferenceDialog(
-                initial = editingGiftPreference,
-                sections = PreferenceSection.GIFTS_TAB,
-                onConfirm = { form ->
-                    editingGiftPreference?.let { viewModel.updateGiftPreference(it, form) }
-                        ?: viewModel.createGiftPreference(form)
-                    showAddGiftPreference = false
-                    editingGiftPreference = null
-                },
-                onDismiss = { showAddGiftPreference = false; editingGiftPreference = null },
-            )
-        }
+            },
+        ) {}
     }
 }
 
@@ -1068,11 +1084,18 @@ fun GiftsScreen(
 // Preferences
 // ---------------------------------------------------------------------------
 
+/**
+ * Issue #1773 (maintainer decision 2026-10-20): the preference create/edit form is full
+ * screen -- it carries up to three fixed-list pickers (category, level, sensitivity) and
+ * the "any picker means a full-screen form" rule has no dialog exception. Shared by the
+ * Preferences screen and the Gifts screen's gift-preference panel. Its state is
+ * `rememberSaveable`, so an open form and what was typed survive rotation and process death.
+ */
 @Composable
-internal fun PreferenceDialog(
+internal fun PreferenceForm(
     initial: Preference?,
     // Restricts the category dropdown (and the default selected category) to
-    // these sections — e.g. the Gifts tab's dialog only offers
+    // these sections — e.g. the Gifts tab's form only offers
     // jewelry/giftPreferences/giftAvoid, so a shopping-focused "Add
     // Preference" can't accidentally create a food preference that then
     // hides in the Overview tab's list instead (web's PreferenceDialog
@@ -1084,79 +1107,72 @@ internal fun PreferenceDialog(
     val availableCategories = remember(sections) { PreferenceCategory.CONFIG.filter { it.section in sections } }
     val defaultCategory = availableCategories.firstOrNull()?.category ?: PreferenceCategory.FOOD
     val isEditing = initial != null
-    var category by remember(initial) { mutableStateOf(initial?.category ?: defaultCategory) }
-    var key by remember(initial) { mutableStateOf(initial?.key ?: "") }
-    var value by remember(initial) { mutableStateOf(initial?.value ?: "") }
-    var level by remember(initial) { mutableStateOf(initial?.level) }
-    var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
-    var sensitivity by remember(initial) { mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL) }
+    var category by rememberSaveable(initial?.id) { mutableStateOf(initial?.category ?: defaultCategory) }
+    var key by rememberSaveable(initial?.id) { mutableStateOf(initial?.key ?: "") }
+    var value by rememberSaveable(initial?.id) { mutableStateOf(initial?.value ?: "") }
+    var level by rememberSaveable(initial?.id) { mutableStateOf(initial?.level) }
+    var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+    var sensitivity by rememberSaveable(initial?.id) {
+        mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL)
+    }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
-                CategoryField(
+    EntityFormScreen(
+        title = stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new),
+        saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
+        saveEnabled = category.isNotBlank() && value.isNotBlank(),
+        saveDisabledHint = stringResource(R.string.preferences_save_hint),
+        onSave = {
+            onConfirm(
+                PreferenceFormData(
                     category = category,
-                    categories = availableCategories,
-                    onCategoryChange = {
-                        category = it
-                        // A level only means something for hobby/skill
-                        // categories (issue #246) — clear it when switching
-                        // away rather than stranding it.
-                        if (!PreferenceCategory.supportsLevelFor(it)) level = null
-                    },
-                )
-                OutlinedTextField(
-                    value = key, onValueChange = { key = it },
-                    label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
-                )
-                if (key.isBlank()) {
-                    PreferenceCategory.keySuggestionsFor(category).forEach { suggestion ->
-                        TextButton(onClick = { key = suggestion }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(preferenceKeyLabelRes(suggestion)))
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = value, onValueChange = { value = it },
-                    label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
-                )
-                if (PreferenceCategory.supportsLevelFor(category)) {
-                    LevelField(level = level, onLevelChange = { level = it })
-                }
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text(stringResource(R.string.preferences_notes)) },
-                )
-                SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
-            }
+                    key = key,
+                    value = value,
+                    // Only for hobby/skill categories; null otherwise.
+                    level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
+                    notes = notes,
+                    sensitivity = sensitivity,
+                ),
+            )
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        PreferenceFormData(
-                            category = category,
-                            key = key,
-                            value = value,
-                            // Only for hobby/skill categories; null otherwise.
-                            level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
-                            notes = notes,
-                            sensitivity = sensitivity,
-                        ),
-                    )
-                },
-                enabled = category.isNotBlank() && value.isNotBlank(),
-            ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
+        onBack = onDismiss,
+    ) {
+        CategoryField(
+            category = category,
+            categories = availableCategories,
+            onCategoryChange = {
+                category = it
+                // A level only means something for hobby/skill
+                // categories (issue #246) — clear it when switching
+                // away rather than stranding it.
+                if (!PreferenceCategory.supportsLevelFor(it)) level = null
+            },
+        )
+        OutlinedTextField(
+            value = key, onValueChange = { key = it },
+            label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (key.isBlank()) {
+            KeySuggestions(
+                suggestions = PreferenceCategory.keySuggestionsFor(category),
+                onPick = { key = it },
+            )
+        }
+        OutlinedTextField(
+            value = value, onValueChange = { value = it },
+            label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (PreferenceCategory.supportsLevelFor(category)) {
+            LevelField(level = level, onLevelChange = { level = it })
+        }
+        OutlinedTextField(
+            value = notes, onValueChange = { notes = it },
+            label = { Text(stringResource(R.string.preferences_notes)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
+    }
 }
 
 @Composable
@@ -1165,84 +1181,79 @@ private fun CategoryField(
     categories: List<PreferenceCategoryConfig>,
     onCategoryChange: (String) -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("preference-category")) {
-            Text(stringResource(preferenceCategoryLabelRes(category)))
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            // Grouped by section (Food & Drink, Media, Jewelry & Style, ...),
-            // mirroring web's ListSubheader-grouped select. `categories` is
-            // already contiguous by section — PreferenceCategory.CONFIG is
-            // declared in section order and filtering preserves that.
-            var lastSection: String? = null
-            categories.forEach { cfg ->
-                if (cfg.section != lastSection) {
-                    lastSection = cfg.section
-                    Text(
-                        text = stringResource(preferenceSectionLabelRes(cfg.section)),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(preferenceCategoryLabelRes(cfg.category))) },
-                    onClick = {
-                        menu = false
-                        onCategoryChange(cfg.category)
-                    },
-                )
-            }
-        }
+    // Grouped by section (Food & Drink, Media, Jewelry & Style, ...), mirroring
+    // web's ListSubheader-grouped select. `categories` is already contiguous by
+    // section — PreferenceCategory.CONFIG is declared in section order and
+    // filtering preserves that.
+    var lastSection: String? = null
+    val options = categories.map { cfg ->
+        val header = if (cfg.section != lastSection) stringResource(preferenceSectionLabelRes(cfg.section)) else null
+        lastSection = cfg.section
+        DropdownOption(cfg.category, stringResource(preferenceCategoryLabelRes(cfg.category)), header)
     }
+    LabelledDropdown(
+        label = stringResource(R.string.preferences_category),
+        valueText = stringResource(preferenceCategoryLabelRes(category)),
+        options = options,
+        onSelect = onCategoryChange,
+        modifier = Modifier.testTag("preference-category"),
+    )
 }
 
 /** Proficiency-level picker (issue #246), shown only for hobby/skill
  * categories. A leading "no level" entry clears a recorded level. */
 @Composable
 private fun LevelField(level: String?, onLevelChange: (String?) -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("preference-level")) {
-            Text(stringResource(preferenceLevelLabelRes(level)))
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.preferences_level_none)) },
-                onClick = {
-                    menu = false
-                    onLevelChange(null)
-                },
-            )
-            PreferenceLevels.ALL.forEach { token ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(preferenceLevelLabelRes(token))) },
-                    onClick = {
-                        menu = false
-                        onLevelChange(token)
-                    },
-                )
-            }
-        }
-    }
+    LabelledDropdown(
+        label = stringResource(R.string.preferences_level),
+        valueText = stringResource(preferenceLevelLabelRes(level)),
+        options = listOf(DropdownOption<String?>(null, stringResource(R.string.preferences_level_none))) +
+            PreferenceLevels.ALL.map { DropdownOption<String?>(it, stringResource(preferenceLevelLabelRes(it))) },
+        onSelect = onLevelChange,
+        modifier = Modifier.testTag("preference-level"),
+    )
 }
 
 @Composable
 private fun SensitivityField(sensitivity: String, onSensitivityChange: (String) -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("preference-sensitivity")) {
-            Text(stringResource(preferenceSensitivityLabelRes(sensitivity)))
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            PreferenceSensitivities.ALL.forEach { token ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(preferenceSensitivityLabelRes(token))) },
-                    onClick = {
-                        menu = false
-                        onSensitivityChange(token)
-                    },
+    LabelledDropdown(
+        label = stringResource(R.string.relationships_sensitivity),
+        valueText = stringResource(preferenceSensitivityLabelRes(sensitivity)),
+        options = PreferenceSensitivities.ALL.map {
+            DropdownOption(it, stringResource(preferenceSensitivityLabelRes(it)))
+        },
+        onSelect = onSensitivityChange,
+        modifier = Modifier.testTag("preference-sensitivity"),
+    )
+}
+
+/**
+ * Issue #1773: the quick-fill kinds for an empty "Kind" field, as a labelled row of
+ * suggestion chips ("Suggestions: Favorite, Dislike, Allergy") -- they used to be
+ * full-width text buttons that read as static centred text. Tapping one fills the field.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun KeySuggestions(suggestions: List<String>, onPick: (String) -> Unit) {
+    if (suggestions.isEmpty()) return
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.testTag("preference-key-suggestions"),
+    ) {
+        Text(
+            text = stringResource(R.string.preferences_key_suggestions),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            suggestions.forEach { suggestion ->
+                val label = stringResource(preferenceKeyLabelRes(suggestion))
+                SuggestionChip(
+                    onClick = { onPick(suggestion) },
+                    label = { Text(label) },
                 )
             }
         }
@@ -1324,8 +1335,26 @@ fun PreferencesScreen(
     viewModel: PreferencesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<Preference?>(null) }
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingItem = editingId?.let { viewModel.findById(it) }
+    // Hoisted above the form/list switch so Back returns to where the list was scrolled.
+    val listState = rememberLazyListState()
+
+    if (showAdd || editingItem != null) {
+        PreferenceForm(
+            initial = editingItem,
+            sections = PreferenceSection.OVERVIEW_TAB,
+            onConfirm = { form ->
+                editingItem?.let { viewModel.update(it, form) }
+                    ?: viewModel.create(form)
+                showAdd = false
+                editingId = null
+            },
+            onDismiss = { showAdd = false; editingId = null },
+        )
+        return
+    }
 
     EntityListScaffold(
         title = stringResource(R.string.preferences_title),
@@ -1334,11 +1363,12 @@ fun PreferencesScreen(
         emptyBody = stringResource(R.string.preferences_empty_body),
         uiState = state,
         onAdd = { showAdd = true },
-        onItemClick = { id -> viewModel.findById(id)?.let { editingItem = it } },
+        onItemClick = { id -> if (viewModel.findById(id) != null) editingId = id },
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
         onRefresh = viewModel::load,
+        listState = listState,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
         // #386: rich preference rows (category + key + value + notes +
         // sensitivity) instead of the scaffold's flat label, matching web's
@@ -1350,33 +1380,14 @@ fun PreferencesScreen(
         // #386: explicit edit affordance next to the scaffold's delete, so the
         // edit path isn't only the row tap.
         extraAction = { item ->
-            IconButton(onClick = { viewModel.findById(item.id)?.let { editingItem = it } }) {
+            IconButton(onClick = { editingId = item.id }) {
                 Icon(
                     Icons.Outlined.Edit,
                     contentDescription = stringResource(R.string.action_edit),
                 )
             }
         },
-    ) {
-        // Clothing sizes and the gift-shopping-relevant categories (jewelry/
-        // flowers/color/fragrance/cause/gift-avoid) live in the Gifts screen
-        // now (web's Gifts tab, "check this right before buying") — see
-        // GiftsScreen. This dialog is scoped to Overview's own sections so it
-        // can't create a category that would then only show up there instead.
-        if (showAdd || editingItem != null) {
-            PreferenceDialog(
-                initial = editingItem,
-                sections = PreferenceSection.OVERVIEW_TAB,
-                onConfirm = { form ->
-                    editingItem?.let { viewModel.update(it, form) }
-                        ?: viewModel.create(form)
-                    showAdd = false
-                    editingItem = null
-                },
-                onDismiss = { showAdd = false; editingItem = null },
-            )
-        }
-    }
+    ) {}
 }
 
 @androidx.annotation.StringRes
@@ -1473,6 +1484,8 @@ private fun SensitivityBadge(sensitivity: String) {
  */
 @Composable
 private fun GiftShoppingNotesSection(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     clothingSizes: List<Preference>,
     giftPreferences: List<Preference>,
     newClothingKey: String,
@@ -1489,14 +1502,13 @@ private fun GiftShoppingNotesSection(
     onEditGiftPreference: (Preference) -> Unit,
     onDeleteGiftPreference: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val total = clothingSizes.size + giftPreferences.size
 
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .clickable { onExpandedChange(!expanded) }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1643,7 +1655,7 @@ private fun ClothingSizesPanel(
 /**
  * Web's Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel —
  * shopping-relevant preferences grouped by section, each row tappable to
- * edit. Adding/editing goes through the shared PreferenceDialog, scoped to
+ * edit. Adding/editing goes through the shared PreferenceForm, scoped to
  * PreferenceSection.GIFTS_TAB so it can't create a food/media/hobby
  * preference that would then only show up in PreferencesScreen instead.
  */
@@ -1766,6 +1778,24 @@ fun ConversationAgendaScreen(
     // its SavedStateHandle), so it survives rotation and process death, and the
     // ViewModel closes it only on a successful PATCH or a dismiss.
     val pendingDiscussId by viewModel.pendingDiscussId.collectAsStateWithLifecycle()
+    // Hoisted above the form/list switch so Back returns to where the list was scrolled.
+    val listState = rememberLazyListState()
+
+    // Issue #1773: marking discussed carries a picker (the activity to link), so by the
+    // "any picker means a full-screen form" rule it is a full-screen form, not a dialog.
+    val discussItem = pendingDiscussId?.let { viewModel.findById(it) }
+    if (discussItem != null) {
+        MarkDiscussedForm(
+            item = discussItem,
+            activities = activities,
+            confirming = discussingId == discussItem.id,
+            onConfirm = { activityId -> viewModel.markDiscussed(discussItem.id, activityId) },
+            onDismiss = viewModel::dismissDiscuss,
+            errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error,
+            onErrorShown = viewModel::onErrorShown,
+        )
+        return
+    }
 
     EntityListScaffold(
         title = stringResource(R.string.agenda_title),
@@ -1779,6 +1809,7 @@ fun ConversationAgendaScreen(
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
         onRefresh = viewModel::load,
+        listState = listState,
         sectionLabel = { section ->
             if (section == "discussed") {
                 stringResource(R.string.agenda_section_discussed)
@@ -1811,64 +1842,50 @@ fun ConversationAgendaScreen(
                 onDismiss = { showAdd = false; editingItem = null },
             )
         }
-        pendingDiscussId?.let { id ->
-            val item = viewModel.findById(id)
-            if (item != null) {
-                MarkDiscussedDialog(
-                    item = item,
-                    activities = activities,
-                    confirming = discussingId == id,
-                    onConfirm = { activityId -> viewModel.markDiscussed(id, activityId) },
-                    onDismiss = viewModel::dismissDiscuss,
-                )
-            }
-        }
     }
 }
 
-/** Web's MarkDiscussedDialog — marks an item discussed, optionally linked to an activity. */
+/**
+ * Web's MarkDiscussedDialog -- marks an item discussed, optionally linked to an activity.
+ * Issue #1773: a full-screen form (it has an activity picker). The open form is ViewModel
+ * state ([ConversationAgendaViewModel.pendingDiscussId]); the picked activity is
+ * `rememberSaveable`.
+ */
 @Composable
-internal fun MarkDiscussedDialog(
+internal fun MarkDiscussedForm(
     item: ConversationAgenda,
     activities: List<Activity>,
     confirming: Boolean,
     onConfirm: (Int?) -> Unit,
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    onErrorShown: () -> Unit = {},
 ) {
     // rememberSaveable: the picked activity survives rotation (issue #1723 review).
     var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.agenda_mark_discussed)) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
-                Text(
-                    text = item.content,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                if (activities.isNotEmpty()) {
-                    SelectField(
-                        label = stringResource(R.string.agenda_discussed_link_activity),
-                        value = activityId?.toString(),
-                        placeholder = stringResource(R.string.gifts_none),
-                        options = activities.map { it.id.toString() },
-                        optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
-                        onSelect = { activityId = it?.toIntOrNull() },
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(activityId) },
-                enabled = !confirming,
-            ) { Text(stringResource(R.string.agenda_discussed_button)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !confirming) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
+    EntityFormScreen(
+        title = stringResource(R.string.agenda_mark_discussed),
+        saveLabel = stringResource(R.string.agenda_discussed_button),
+        saveEnabled = !confirming,
+        saveDisabledHint = null,
+        onSave = { onConfirm(activityId) },
+        onBack = { if (!confirming) onDismiss() },
+        errorMessage = errorMessage,
+        onErrorShown = onErrorShown,
+    ) {
+        Text(
+            text = item.content,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (activities.isNotEmpty()) {
+            SelectField(
+                label = stringResource(R.string.agenda_discussed_link_activity),
+                value = activityId?.toString(),
+                placeholder = stringResource(R.string.gifts_none),
+                options = activities.map { it.id.toString() },
+                optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
+                onSelect = { activityId = it?.toIntOrNull() },
+            )
+        }
+    }
 }

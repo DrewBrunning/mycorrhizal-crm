@@ -214,3 +214,47 @@ func writeTestJPEG(t *testing.T, path string) {
 	defer f.Close()
 	require.NoError(t, jpeg.Encode(f, img, &jpeg.Options{Quality: 85}))
 }
+
+// A snapshot written before the ambient flag existed (issue #1733) has no
+// "ambient" key: restoring it must leave a flag the user set later alone,
+// while a snapshot that carries the key (true or false) is authoritative.
+func TestRestoreFullStateFrom_AmbientOnlyWhenSnapshotCarriesIt(t *testing.T) {
+	base := `{"firstname":"Ada","card":{"name":{"full":"Ada"}}`
+
+	for _, tc := range []struct {
+		name    string
+		raw     string
+		current bool
+		want    bool
+	}{
+		{"pre-1733 snapshot keeps a later flag", base + `}`, true, true},
+		{"snapshot false clears", base + `,"ambient":false}`, true, false},
+		{"snapshot true sets", base + `,"ambient":true}`, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var snap ContactAuditSnapshot
+			if err := json.Unmarshal([]byte(tc.raw), &snap); err != nil {
+				t.Fatal(err)
+			}
+			dst := Contact{Firstname: "Changed", Ambient: tc.current}
+			dst.RestoreFullStateFrom(&snap)
+			if dst.Ambient != tc.want {
+				t.Fatalf("Ambient = %v, want %v", dst.Ambient, tc.want)
+			}
+		})
+	}
+
+	// And the marshaled snapshot always carries the key, false included.
+	c := Contact{Firstname: "Ada"}
+	raw, err := json.Marshal(c.auditSnapshot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &keys); err != nil {
+		t.Fatal(err)
+	}
+	if string(keys["ambient"]) != "false" {
+		t.Fatalf(`snapshot "ambient" = %s, want false`, keys["ambient"])
+	}
+}

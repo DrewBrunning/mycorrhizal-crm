@@ -602,10 +602,11 @@ function loggedErrors(): string[] {
   return consoleError.mock.calls.map((args: unknown[]) => args.map(String).join(' '));
 }
 
-// The header's own actions come first in the DOM; lists further down the
-// page reuse the same "Delete"/"Edit" labels.
-function headerButton(name: string): HTMLElement {
-  return screen.getAllByRole('button', { name })[0];
+// Issue #1782: Merge / Subscribe / Export / Archive / Delete live in the
+// header's "More" menu at wide widths (Stay in touch, Prep, Share stay inline).
+function headerMenuItem(name: string): HTMLElement {
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  return screen.getByRole('menuitem', { name });
 }
 
 function renderPage() {
@@ -1059,7 +1060,7 @@ test('deleting a contact asks for confirmation, then navigates away on success',
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Delete'));
+  fireEvent.click(headerMenuItem('Delete Contact'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
     'Are you sure you want to delete Alice Wonder? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.',
@@ -1074,7 +1075,7 @@ test('declining the delete confirmation makes no request and stays on the page',
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Delete'));
+  fireEvent.click(headerMenuItem('Delete Contact'));
 
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
   expect(screen.getByText('Alice Wonder')).toBeInTheDocument();
@@ -1088,7 +1089,7 @@ test('a failed delete alerts an error and stays on the page', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Delete'));
+  fireEvent.click(headerMenuItem('Delete Contact'));
 
   await waitFor(() =>
     expect(alertSpy).toHaveBeenCalledWith('Failed to delete contact. Please try again.'),
@@ -1104,7 +1105,7 @@ test('archiving a contact asks for confirmation, then flips to the archived badg
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Archive'));
+  fireEvent.click(headerMenuItem('Archive'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
     "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored.",
@@ -1119,7 +1120,7 @@ test('declining the archive confirmation leaves the contact unarchived', async (
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Archive'));
+  fireEvent.click(headerMenuItem('Archive'));
 
   expect(calls.some((c) => c.url.endsWith('/archive'))).toBe(false);
   expect(screen.queryByText('Archived')).not.toBeInTheDocument();
@@ -1132,7 +1133,7 @@ test('a failed archive shows an error and leaves the contact unarchived', async 
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Archive'));
+  fireEvent.click(headerMenuItem('Archive'));
 
   await waitFor(() => expect(screen.getByText('archive failed')).toBeInTheDocument());
   expect(screen.queryByText('Archived')).not.toBeInTheDocument();
@@ -1518,7 +1519,10 @@ test.each([
 ])('the %s dialog opens from the page and closes', async (name, close) => {
   mockFetch();
   await renderLoaded();
-  const dialog = await openDialog(() => fireEvent.click(screen.getByRole('button', { name })));
+  const inline = name === 'Share Contact' || name === 'View all';
+  const dialog = await openDialog(() =>
+    fireEvent.click(inline ? screen.getByRole('button', { name }) : headerMenuItem(name)),
+  );
   await dismiss(dialog, close);
 });
 
@@ -1526,8 +1530,7 @@ test('a failed export surfaces an error toast', async () => {
   consoleError.mockImplementation(() => {});
   const calls = mockFetch();
   await renderLoaded();
-  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
-  fireEvent.click(await screen.findByText('vCard 4.0'));
+  fireEvent.click(headerMenuItem('Export as vCard 4.0'));
   await waitFor(() => expect(calls.some((c) => c.url.includes('/export/vcf'))).toBe(true));
   expect(
     await screen.findByText('Failed to export contact. Please try again.'),
@@ -1768,7 +1771,7 @@ test('deleting a contact sends the loaded revision as If-Match', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Delete'));
+  fireEvent.click(headerMenuItem('Delete Contact'));
 
   await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
   expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"7"');
@@ -1781,7 +1784,7 @@ test('a 412 on contact delete opens the conflict dialog instead of the generic a
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(headerButton('Delete'));
+  fireEvent.click(headerMenuItem('Delete Contact'));
 
   expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
   expect(alertSpy).not.toHaveBeenCalled();
@@ -1833,4 +1836,16 @@ test('a 412 on a timeline note delete opens the conflict dialog', async () => {
   fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
   expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+});
+
+test('wide jump-nav tabs never shrink, so labels scroll instead of overlapping (#1782)', async () => {
+  mockFetch();
+  await renderLoaded();
+  const nav = screen.getByRole('navigation', { name: 'Jump to section' });
+  const links = within(nav).getAllByRole('link');
+  expect(links.length).toBeGreaterThan(3);
+  for (const link of links) {
+    expect(getComputedStyle(link).flexShrink).toBe('0');
+  }
+  expect(getComputedStyle(nav).overflowX).toBe('auto');
 });

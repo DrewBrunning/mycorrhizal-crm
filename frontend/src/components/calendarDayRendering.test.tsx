@@ -104,8 +104,9 @@ test('timeline note/activity dates render their calendar day; a real instant sta
       </DateFormatProvider>
     </MemoryRouter>,
   );
-  expect(screen.getByText('11.03.2026')).toBeInTheDocument();
-  expect(screen.getByText('08.03.2026')).toBeInTheDocument();
+  // Twice each: the sm+ date column and the phone caption (#1783) must agree.
+  expect(screen.getAllByText('11.03.2026')).toHaveLength(2);
+  expect(screen.getAllByText('08.03.2026')).toHaveLength(2);
 });
 
 test('cadence panel shows last interaction and next due on their API days', () => {
@@ -119,6 +120,7 @@ test('cadence panel shows last interaction and next due on their API days', () =
     health: {
       has_qualifying_interaction: true,
       overdue_by: 0,
+      ambient: false,
       next_due: '2026-04-10',
       last_interaction: '2026-03-11T00:00:00Z',
     },

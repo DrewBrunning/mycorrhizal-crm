@@ -56,7 +56,7 @@ class OccasionsScreenTest {
         val viewModel = OccasionsViewModel(repository)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                OccasionsScreen(onBack = {}, onOpenAttendees = {}, viewModel = viewModel)
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
             }
         }
         composeTestRule.waitForIdle()
@@ -94,7 +94,7 @@ class OccasionsScreenTest {
         val viewModel = OccasionsViewModel(repository)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                OccasionsScreen(onBack = {}, onOpenAttendees = {}, viewModel = viewModel)
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
             }
         }
         composeTestRule.waitForIdle()
