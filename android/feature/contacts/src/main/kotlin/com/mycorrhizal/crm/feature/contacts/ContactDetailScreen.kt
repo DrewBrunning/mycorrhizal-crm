@@ -34,19 +34,36 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.CallMerge
+import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +77,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -91,6 +109,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -490,6 +509,9 @@ fun ContactDetailScreen(
                         // touch, share/prep stubs, delete). Wrapped in a Box so the
                         // DropdownMenu anchors to the ⋮ button rather than the whole bar.
                         var menuExpanded by remember { mutableStateOf(false) }
+                        // Issue #1763: the two export variants live in a submenu off the
+                        // "Export" item, so the sharing group stays compact.
+                        var exportExpanded by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
                                 Icon(
@@ -500,29 +522,97 @@ fun ContactDetailScreen(
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
+                                onDismissRequest = {
+                                    menuExpanded = false
+                                    exportExpanded = false
+                                },
                             ) {
-                                if (contact.archived) {
+                                // Issue #1763: grouped navigation, sharing and state actions,
+                                // each with a leading icon; Delete is isolated after a divider.
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_prep_view)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Lightbulb, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onViewPrep(contact.id)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_network)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Hub, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onExploreConnections(contact.id)
+                                    },
+                                )
+                                // Issue #1763: merge is an action, not a data section — it was
+                                // previously listed among the drill-downs below.
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_merge)) },
+                                    leadingIcon = { Icon(Icons.Outlined.CallMerge, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onMerge(contact.id)
+                                    },
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_share)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onShareContact(contact.uid.orEmpty())
+                                    },
+                                )
+                                Box {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.contact_unarchive)) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            showUnarchiveConfirm = true
+                                        text = { Text(stringResource(R.string.contact_export_menu)) },
+                                        leadingIcon = { Icon(Icons.Outlined.FileDownload, contentDescription = null) },
+                                        trailingIcon = {
+                                            Icon(
+                                                Icons.AutoMirrored.Outlined.ArrowForward,
+                                                contentDescription = null,
+                                            )
                                         },
+                                        onClick = { exportExpanded = true },
                                     )
-                                } else {
+                                    DropdownMenu(
+                                        expanded = exportExpanded,
+                                        onDismissRequest = { exportExpanded = false },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.contact_export_vcf4)) },
+                                            onClick = {
+                                                exportExpanded = false
+                                                menuExpanded = false
+                                                viewModel.exportVcf()
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.contact_export_vcf3)) },
+                                            onClick = {
+                                                exportExpanded = false
+                                                menuExpanded = false
+                                                viewModel.exportVcf(version = 3)
+                                            },
+                                        )
+                                    }
+                                }
+                                HorizontalDivider()
+                                if (!contact.archived) {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.contact_archive)) },
+                                        text = { Text(stringResource(R.string.contact_stay_in_touch)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
                                         onClick = {
                                             menuExpanded = false
-                                            showArchiveConfirm = true
+                                            onStayInTouch(contact)
                                         },
                                     )
                                 }
                                 if (!contact.archived) {
                                     // T90 / issue #831: web parity for Mark as Me / Unmark
                                     // as Me — hidden for an archived contact, matching the
-                                    // stay-in-touch item just below it.
+                                    // stay-in-touch item just above it.
                                     DropdownMenuItem(
                                         text = {
                                             Text(
@@ -531,6 +621,7 @@ fun ContactDetailScreen(
                                                 ),
                                             )
                                         },
+                                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                                         onClick = {
                                             menuExpanded = false
                                             viewModel.toggleMe()
@@ -538,51 +629,43 @@ fun ContactDetailScreen(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_export_vcf4)) },
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (contact.archived) R.string.contact_unarchive else R.string.contact_archive,
+                                            ),
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (contact.archived) {
+                                                Icons.Outlined.Unarchive
+                                            } else {
+                                                Icons.Outlined.Archive
+                                            },
+                                            contentDescription = null,
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
-                                        viewModel.exportVcf()
+                                        if (contact.archived) showUnarchiveConfirm = true else showArchiveConfirm = true
                                     },
                                 )
+                                HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_export_vcf3)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        viewModel.exportVcf(version = 3)
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.contact_delete),
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
                                     },
-                                )
-                                if (!contact.archived) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.contact_stay_in_touch)) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onStayInTouch(contact)
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_share)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onShareContact(contact.uid.orEmpty())
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
                                     },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_prep_view)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onViewPrep(contact.id)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_network)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onExploreConnections(contact.id)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.contact_delete), color = MaterialTheme.colorScheme.error) },
                                     onClick = {
                                         menuExpanded = false
                                         showDeleteConfirm = true
@@ -670,6 +753,13 @@ fun ContactDetailScreen(
                     paperlessConfigured = state.paperlessConfigured,
                     seafileConfigured = state.seafileConfigured,
                     nextcloudConfigured = state.nextcloudConfigured,
+                    lifeEventCount = state.lifeEventCount,
+                    giftCount = state.giftCount,
+                    preferenceCount = state.preferenceCount,
+                    agendaCount = state.agendaCount,
+                    relationshipCount = state.relationshipCount,
+                    attachmentCount = state.attachmentCount,
+                    cadenceCount = state.cadenceCount,
                     onAddPaperlessLink = {
                         paperlessPickerOpen = true
                         viewModel.loadPaperlessDocuments()
@@ -1062,8 +1152,22 @@ fun ContactDetailContent(
     // omits the badge — never errors the screen (ContactScoreRepository's own
     // doc comment: server-computed, nothing to mirror or retry locally here).
     score: ContactScoreResponse? = null,
+    // Issue #1763: drill-down trailing counts (null until loaded / on fetch failure).
+    lifeEventCount: Int? = null,
+    giftCount: Int? = null,
+    preferenceCount: Int? = null,
+    agendaCount: Int? = null,
+    relationshipCount: Int? = null,
+    attachmentCount: Int? = null,
+    cadenceCount: Int? = null,
 ) {
     val card = contact.card
+    // Issue #1763: counts for the three drill-downs whose rows are already
+    // preloaded on the contact record. The other seven arrive via the
+    // ViewModel's independent, best-effort count loads (null = not loaded).
+    val activityCount = contact.activities.orEmpty().count { !it.deleted }
+    val noteCount = contact.notes.orEmpty().count { !it.deleted }
+    val reminderCount = contact.reminders.orEmpty().size
     // Issue #383: local dialog visibility only — the data itself lives in
     // ContactDetailUiState.score, loaded once by the ViewModel and passed in
     // as [score]. Kept local (rather than hoisted to ContactDetailScreen like
@@ -1480,117 +1584,91 @@ fun ContactDetailContent(
                 )
             }
         }
+        // Issue #1763: drill-down rows are grouped by what they are for, each
+        // with a leading icon and a trailing count so content is discoverable
+        // without opening every screen. Merge is an action and lives in the
+        // overflow menu instead of here.
+        item { DrillDownGroupHeader(stringResource(R.string.contact_section_history)) }
         item {
-            // Entry points to the per-type list screens (full management view).
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_activities), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewActivities(contact.id) },
+            DrillDownRow(
+                label = stringResource(R.string.contact_activities),
+                icon = Icons.Outlined.History,
+                count = activityCount,
+                onClick = { onViewActivities(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_notes), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewNotes(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_notes),
+                icon = Icons.Outlined.EditNote,
+                count = noteCount,
+                onClick = { onViewNotes(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_reminders), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewReminders(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_life_events),
+                icon = Icons.Outlined.Celebration,
+                count = lifeEventCount,
+                onClick = { onViewLifeEvents(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_attachments), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewAttachments(contact.id) },
+        }
+        item { DrillDownGroupHeader(stringResource(R.string.contact_section_planning)) }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_reminders),
+                icon = Icons.Outlined.Notifications,
+                count = reminderCount,
+                onClick = { onViewReminders(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_relationships), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewRelationships(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_cadence),
+                icon = Icons.Outlined.Schedule,
+                count = cadenceCount,
+                onClick = { onViewCadence(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_cadence), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewCadence(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_agenda),
+                icon = Icons.Outlined.Forum,
+                count = agendaCount,
+                onClick = { onViewAgenda(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_merge), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onMerge(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_gifts),
+                icon = Icons.Outlined.CardGiftcard,
+                count = giftCount,
+                onClick = { onViewGifts(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_life_events), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewLifeEvents(contact.id) },
+        }
+        item { DrillDownGroupHeader(stringResource(R.string.contact_section_about)) }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_preferences),
+                icon = Icons.Outlined.Tune,
+                count = preferenceCount,
+                onClick = { onViewPreferences(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_gifts), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewGifts(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_relationships),
+                icon = Icons.Outlined.People,
+                count = relationshipCount,
+                onClick = { onViewRelationships(contact.id) },
             )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_preferences), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewPreferences(contact.id) },
-            )
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(stringResource(R.string.contact_agenda), style = MaterialTheme.typography.bodyLarge) },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onViewAgenda(contact.id) },
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_attachments),
+                icon = Icons.Outlined.AttachFile,
+                count = attachmentCount,
+                onClick = { onViewAttachments(contact.id) },
             )
         }
         item { Box(modifier = Modifier.size(32.dp)) }
@@ -1660,6 +1738,59 @@ private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
     }
 }
 
+
+/** Issue #1763: a section heading above a group of contact drill-down rows. */
+@Composable
+private fun DrillDownGroupHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { heading() },
+    )
+}
+
+/**
+ * Issue #1763: one drill-down row — a leading icon, the section label with its
+ * trailing count ("Notes · 2"), and a forward arrow. A null [count] means the
+ * independent count fetch hasn't succeeded, so only the label renders.
+ */
+@Composable
+private fun DrillDownRow(
+    label: String,
+    icon: ImageVector,
+    count: Int?,
+    onClick: () -> Unit,
+) {
+    androidx.compose.material3.ListItem(
+        headlineContent = {
+            Text(
+                text = if (count != null) {
+                    stringResource(R.string.contact_drilldown_count, label, count)
+                } else {
+                    label
+                },
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                contentDescription = null,
+            )
+        },
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    )
+}
 
 @Composable
 internal fun SectionCard(title: String, content: @Composable () -> Unit) {

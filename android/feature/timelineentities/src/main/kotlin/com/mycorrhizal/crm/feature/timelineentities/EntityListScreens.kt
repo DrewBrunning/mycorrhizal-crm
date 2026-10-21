@@ -730,6 +730,16 @@ fun LifeEventsScreen(
             onBack = onBack,
             onRefresh = viewModel::load,
             listState = listState,
+            // Issue #1763: an explicit pencil, matching preferences/relationships.
+            // The row tap already opens the same edit form.
+            extraAction = { item ->
+                IconButton(onClick = { if (viewModel.findById(item.id) != null) editingId = item.id }) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.life_events_edit),
+                    )
+                }
+            },
         ) {}
     }
 

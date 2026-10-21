@@ -32,4 +32,28 @@ class GraphChainPathTest {
     fun `no steps gives an empty path`() {
         assertEquals("", GraphChain().readablePath)
     }
+
+    // Issue #1763: network rows must not repeat the target name in their subtitle.
+    @Test
+    fun `target-facing path omits the repeated target name on a direct connection`() {
+        val direct = GraphChain(
+            targetName = "Bea Fontaine",
+            steps = listOf(GraphChainStep(contactName = "Bea Fontaine", relation = "related_to")),
+        )
+
+        assertEquals("related to", direct.readablePathToTarget(emptyList()))
+    }
+
+    @Test
+    fun `target-facing path keeps intermediate names and ends with the relationship label`() {
+        assertEquals(
+            "Sister (Geschwister) → Ehepartner",
+            chain.readablePathToTarget(listOf("Geschwister", "Ehepartner")),
+        )
+    }
+
+    @Test
+    fun `target-facing path has no path when there are no steps`() {
+        assertEquals("", GraphChain(targetName = "Bea").readablePathToTarget(emptyList()))
+    }
 }

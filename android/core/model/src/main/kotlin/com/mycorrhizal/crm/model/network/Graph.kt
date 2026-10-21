@@ -81,6 +81,24 @@ data class GraphChain(
         stepsOrEmpty.mapIndexed { i, step ->
             "${step.contactName.ifBlank { "Unknown" }} (${relationLabels.getOrElse(i) { step.relation.replace('_', ' ') }})"
         }.joinToString(" → ")
+
+    /**
+     * Issue #1763: the path as a row subtitle, without repeating the target's
+     * own name. The server's final step always names the target, so a direct
+     * connection used to read "Bea Fontaine — Bea Fontaine (related to)".
+     * Intermediate hops keep their names; the final hop contributes only its
+     * relationship label ("related to", or "spouse of" at the end of a longer
+     * path), because the row title already names the target.
+     */
+    fun readablePathToTarget(relationLabels: List<String>): String =
+        stepsOrEmpty.mapIndexed { i, step ->
+            val relation = relationLabels.getOrElse(i) { step.relation.replace('_', ' ') }
+            if (i == stepsOrEmpty.lastIndex) {
+                relation
+            } else {
+                "${step.contactName.ifBlank { "Unknown" }} ($relation)"
+            }
+        }.joinToString(" → ")
 }
 
 /** One hop: the intermediate contact and the relation from it to the next. */

@@ -117,9 +117,10 @@ class ActivitiesScreenTest {
     }
 
     @Test
-    fun `a participant chip navigates to that contact, not the activity edit`() {
+    fun `per-contact activity rows hide the contact chip that would repeat the page`() {
+        // Issue #1763: this list is already scoped to one contact, so a chip
+        // naming that same contact under every row is noise.
         var editedId: Int? = null
-        var contactedId: Int? = null
         setContent(
             ActivitiesUiState(
                 contactId = 5,
@@ -128,11 +129,22 @@ class ActivitiesScreenTest {
                 ),
             ),
             onEditActivity = { editedId = it },
-            onContactClick = { contactedId = it },
         )
-        composeTestRule.onNodeWithText("Dana").performClick()
-        assertEquals(5, contactedId)
-        assertNull(editedId)
+        composeTestRule.onNodeWithText("Dana").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Coffee with Dana").performClick()
+        assertEquals(1, editedId)
+    }
+
+    @Test
+    fun `the row pencil opens the same edit form as tapping the row`() {
+        var editedId: Int? = null
+        setContent(
+            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
+            onEditActivity = { editedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Edit activity").performClick()
+
+        assertEquals(7, editedId)
     }
 
     @Test

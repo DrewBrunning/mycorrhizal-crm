@@ -23,6 +23,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
@@ -42,10 +43,12 @@ import com.mycorrhizal.crm.model.network.GrammaticalGender
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Pronouns
+import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.SpeakToAs
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -357,11 +360,13 @@ class ContactDetailScreenTest {
         // The name is owned by the collapsing app bar (ContactDetailScreen).
         // The body renders the overview info first (web order), then the
         // timeline, then the management entry rows — scroll the list to them.
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Reminders"))
-        composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
+        val list = composeTestRule.onNodeWithTag("contact-detail-list")
+        list.performScrollToNode(hasText("Activities · 0"))
+        composeTestRule.onNodeWithText("Activities · 0").assertIsDisplayed()
+        list.performScrollToNode(hasText("Notes · 0"))
+        composeTestRule.onNodeWithText("Notes · 0").assertIsDisplayed()
+        list.performScrollToNode(hasText("Reminders · 0"))
+        composeTestRule.onNodeWithText("Reminders · 0").assertIsDisplayed()
     }
 
     @Test
@@ -1824,8 +1829,8 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("+1-555-0100").assertIsDisplayed()
         composeTestRule.onNodeWithText("dana@example.com", substring = true).assertIsDisplayed()
         // And the management rows below the timeline are one short scroll away, not 100 rows away.
-        composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText("Reminders"))
-        composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText("Reminders · 0"))
+        composeTestRule.onNodeWithText("Reminders · 0").assertIsDisplayed()
         assertTrue(composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size <= 5)
     }
 
@@ -1877,5 +1882,116 @@ class ContactDetailScreenTest {
         }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+    }
+
+    // --- Issue #1763: grouped drill-downs with icons and counts ---
+
+    @Test
+    fun `drill-down rows are grouped and carry their trailing counts`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White")),
+            activities = listOf(Activity(id = 1, title = "Coffee"), Activity(id = 2, title = "Walk")),
+            notes = listOf(Note(id = 3, content = "Met at the park")),
+            reminders = listOf(Reminder(id = 4, message = "Call")),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    lifeEventCount = 3,
+                    giftCount = 2,
+                    preferenceCount = 4,
+                    agendaCount = 0,
+                    relationshipCount = 5,
+                    attachmentCount = 1,
+                    cadenceCount = 1,
+                )
+            }
+        }
+
+        scrollTo("History")
+        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+        scrollTo("Activities · 2")
+        composeTestRule.onNodeWithText("Activities · 2").assertIsDisplayed()
+        scrollTo("Notes · 1")
+        composeTestRule.onNodeWithText("Notes · 1").assertIsDisplayed()
+        scrollTo("Life events · 3")
+        composeTestRule.onNodeWithText("Life events · 3").assertIsDisplayed()
+
+        scrollTo("Planning")
+        composeTestRule.onNodeWithText("Planning").assertIsDisplayed()
+        scrollTo("Reminders · 1")
+        composeTestRule.onNodeWithText("Reminders · 1").assertIsDisplayed()
+        scrollTo("Cadence · 1")
+        composeTestRule.onNodeWithText("Cadence · 1").assertIsDisplayed()
+        scrollTo("Conversation agenda · 0")
+        composeTestRule.onNodeWithText("Conversation agenda · 0").assertIsDisplayed()
+        scrollTo("Gifts · 2")
+        composeTestRule.onNodeWithText("Gifts · 2").assertIsDisplayed()
+
+        scrollTo("About")
+        composeTestRule.onNodeWithText("About").assertIsDisplayed()
+        scrollTo("Preferences · 4")
+        composeTestRule.onNodeWithText("Preferences · 4").assertIsDisplayed()
+        scrollTo("Relationships · 5")
+        composeTestRule.onNodeWithText("Relationships · 5").assertIsDisplayed()
+        scrollTo("Attachments · 1")
+        composeTestRule.onNodeWithText("Attachments · 1").assertIsDisplayed()
+
+        // Issue #1763: merge is an action, not a data section.
+        composeTestRule.onNodeWithText("Merge contacts").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an unknown count renders the label without a number`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailContent(contact = contact) }
+        }
+
+        scrollTo("Life events")
+        composeTestRule.onNodeWithText("Life events").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Life events · 0").assertDoesNotExist()
+    }
+
+    @Test
+    fun `merge is reachable from the overflow menu`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        var mergedId: Int? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onMerge = { mergedId = it }, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("Merge contacts").performClick()
+
+        assertEquals(5, mergedId)
+    }
+
+    @Test
+    fun `export is a submenu offering both vCard versions`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailScreen(onBack = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("Export").performClick()
+        composeTestRule.onNodeWithText("Export vCard 4.0").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Export vCard 3.0").performClick()
+
+        verify { viewModel.exportVcf(version = 3) }
     }
 }

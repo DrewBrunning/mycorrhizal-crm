@@ -1004,6 +1004,28 @@ class EntityListScreensTopLevelTest {
         composeTestRule.onNodeWithText("Moved to Madison", substring = true).assertIsDisplayed()
     }
 
+    // Issue #1763: life-event rows get an explicit pencil, matching preferences
+    // and relationships, instead of only delete + a row tap.
+    @Test
+    fun `life event row pencil opens the edit form`() {
+        val repo = mockk<LifeEventRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.success(
+            listOf(LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison")),
+        )
+        val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Edit life event").performClick()
+
+        composeTestRule.onNodeWithText("Edit life event").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Moved to Madison").assertIsDisplayed()
+    }
+
     // GiftsScreen wires `onRefresh = viewModel::load` (line 952) and is the
     // entity whose rows carry a URL, so this exercises the scaffold's
     // item.url Text + open-link IconButton branch (lines 240-251).

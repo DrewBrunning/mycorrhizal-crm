@@ -1,31 +1,45 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
+import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
+import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.AttachmentListResponse
+import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValue
 import com.mycorrhizal.crm.model.network.FieldValueInput
+import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.ImmichPerson
+import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.PaperlessDocument
+import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.SeafileItem
 import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
@@ -68,6 +82,13 @@ class ContactDetailViewModelTest {
     private val seafileRepository = mockk<SeafileRepository>()
     private val nextcloudRepository = mockk<NextcloudRepository>()
     private val contactScoreRepository = mockk<ContactScoreRepository>()
+    private val lifeEventRepository = mockk<LifeEventRepository>()
+    private val giftRepository = mockk<GiftRepository>()
+    private val preferenceRepository = mockk<PreferenceRepository>()
+    private val conversationAgendaRepository = mockk<ConversationAgendaRepository>()
+    private val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
+    private val attachmentRepository = mockk<AttachmentRepository>()
+    private val cadencePolicyRepository = mockk<CadencePolicyRepository>()
 
     private fun viewModel(
         id: Int,
@@ -90,6 +111,7 @@ class ContactDetailViewModelTest {
         stubCompletions()
         stubExternalLinks()
         stubScore()
+        stubCounts()
         return ContactDetailViewModel(
             contactRepository,
             reminderRepository,
@@ -104,6 +126,13 @@ class ContactDetailViewModelTest {
             seafileRepository,
             nextcloudRepository,
             contactScoreRepository,
+            lifeEventRepository,
+            giftRepository,
+            preferenceRepository,
+            conversationAgendaRepository,
+            relationshipEdgeRepository,
+            attachmentRepository,
+            cadencePolicyRepository,
             SavedStateHandle(mapOf("contactId" to id)),
         )
     }
@@ -147,6 +176,17 @@ class ContactDetailViewModelTest {
             Result.success(ContactScoreResponse(score = 72, band = "moss"))
     }
 
+    /** Issue #1763: default stubs for the drill-down count loads (run on every load()). */
+    private fun stubCounts() {
+        coEvery { lifeEventRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { giftRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { preferenceRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { conversationAgendaRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { relationshipEdgeRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { attachmentRepository.list(any()) } returns Result.success(AttachmentListResponse())
+        coEvery { cadencePolicyRepository.listForContact(any()) } returns Result.success(emptyList())
+    }
+
     @Test
     fun `loads the contact on init`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
@@ -157,6 +197,50 @@ class ContactDetailViewModelTest {
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
+        assertEquals("Dana White", state.contact?.card?.name?.full)
+        assertNull(state.error)
+    }
+
+    @Test
+    fun `loads the drill-down counts independently`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        coEvery { lifeEventRepository.listForContact("u5") } returns Result.success(listOf(LifeEvent(), LifeEvent()))
+        coEvery { giftRepository.listForContact("u5") } returns Result.success(listOf(Gift()))
+        coEvery { preferenceRepository.listForContact("u5") } returns Result.success(listOf(Preference(), Preference(), Preference()))
+        coEvery { conversationAgendaRepository.listForContact("u5") } returns
+            Result.success(listOf(ConversationAgenda(), ConversationAgenda()))
+        coEvery { relationshipEdgeRepository.listForContact("u5") } returns
+            Result.success(listOf(RelationshipEdge(), RelationshipEdge(), RelationshipEdge(), RelationshipEdge()))
+        coEvery { cadencePolicyRepository.listForContact("u5") } returns Result.success(listOf(CadencePolicy()))
+        coEvery { attachmentRepository.list(5) } returns Result.success(AttachmentListResponse(total = 6))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(2, state.lifeEventCount)
+        assertEquals(1, state.giftCount)
+        assertEquals(3, state.preferenceCount)
+        assertEquals(2, state.agendaCount)
+        assertEquals(4, state.relationshipCount)
+        assertEquals(1, state.cadenceCount)
+        assertEquals(6, state.attachmentCount)
+    }
+
+    @Test
+    fun `a failed count load leaves that count unknown without failing the screen`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        coEvery { lifeEventRepository.listForContact("u5") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { attachmentRepository.list(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertNull(state.lifeEventCount)
+        assertNull(state.attachmentCount)
         assertEquals("Dana White", state.contact?.card?.name?.full)
         assertNull(state.error)
     }
@@ -182,6 +266,7 @@ class ContactDetailViewModelTest {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
         stubExternalLinks()
         stubScore()
+        stubCounts()
 
         val vm = ContactDetailViewModel(
             contactRepository,
@@ -197,6 +282,13 @@ class ContactDetailViewModelTest {
             seafileRepository,
             nextcloudRepository,
             contactScoreRepository,
+            lifeEventRepository,
+            giftRepository,
+            preferenceRepository,
+            conversationAgendaRepository,
+            relationshipEdgeRepository,
+            attachmentRepository,
+            cadencePolicyRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -305,8 +397,9 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
         stubScore()
+        stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -327,8 +420,9 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
         stubScore()
+        stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -351,8 +445,9 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
         stubScore()
+        stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -381,8 +476,9 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
         stubScore()
+        stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
