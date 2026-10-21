@@ -65,8 +65,8 @@ export default function BulkActionsBar({
   return (
     <Box
       sx={{
-        mb: 2,
-        p: 1.5,
+        mb: { xs: 1, sm: 2 },
+        p: { xs: 0.5, sm: 1.5 },
         bgcolor: 'action.selected',
         borderRadius: 1,
         display: 'flex',

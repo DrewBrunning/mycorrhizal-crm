@@ -27,12 +27,12 @@
   --color-soil: #595148;
   --color-russula: #A34A40;
   --color-russula-hover: #923B33;
-  --color-chanterelle: #D3A563;
-  --color-chanterelle-hover: #C39553;
-  --color-laccaria: #7B6B98;
-  --color-laccaria-hover: #6C5D89;
-  --color-moss: #0D844C;
-  --color-moss-hover: #0B7643;
+  --color-chanterelle: #8A5A00;
+  --color-chanterelle-hover: #784D00;
+  --color-laccaria: #6A5A87;
+  --color-laccaria-hover: #5B4D75;
+  --color-moss: #0A6E3F;
+  --color-moss-hover: #046136;
 }
 
 /* Dark mode: AppThemeProvider sets data-color-mode on <html> to mirror the
@@ -61,14 +61,14 @@
   --color-mycelium-disabled: #727871;
   --color-bark: #EAE4DA;
   --color-soil: #B5ADA2;
-  --color-russula: #D5776B;
-  --color-russula-hover: #C4675D;
+  --color-russula: #DE8579;
+  --color-russula-hover: #C9786D;
   --color-chanterelle: #DDAE6C;
   --color-chanterelle-hover: #CD9F5D;
-  --color-laccaria: #9F8FBE;
-  --color-laccaria-hover: #8F80AE;
-  --color-moss: #349D62;
-  --color-moss-hover: #318F5A;
+  --color-laccaria: #A898C7;
+  --color-laccaria-hover: #9889B5;
+  --color-moss: #3FAE72;
+  --color-moss-hover: #3AA069;
 }
 
 /* Recommended label color for text/icons sitting on top of a brand.primary fill --
@@ -116,7 +116,7 @@
 /* Recommended label color for text/icons on top of each status-color fill. */
 :root {
   --color-on-russula: #FFFFFF;
-  --color-on-chanterelle: #30271F;
+  --color-on-chanterelle: #FFFFFF;
   --color-on-laccaria: #FFFFFF;
   --color-on-moss: #FFFFFF;
 }

@@ -3090,6 +3090,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  # Issue #1796: per-contact target closeness (ADR 0023 amendment 2026-10-16).
+  # Toggle-shaped like favorite: exempt from If-Match, idempotent by method.
+  /contacts/{id}/target-closeness:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      summary: Set a contact's target closeness
+      operationId: setContactTargetCloseness
+      description: >
+        Sets the user's relationship goal for the contact (immediate, close,
+        casual or distant). With no cadence policy, the tier's
+        default_interval_days becomes the interval Recency and Frequency are
+        measured against, and GET /contacts/{id}/score reports the target's
+        status. The response carries a cadence_policy_offer (the exact body for
+        POST /cadence-policies) only when the contact has no live cadence
+        policy; dismissing the offer is a no-op on the server. Uses a
+        hook-firing update, so the contact's revision bumps; re-read it as after
+        a favorite toggle. POST/PUT /contacts never write this field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactTargetClosenessInput"
+      responses:
+        "200":
+          description: The target was set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactTargetClosenessResponse"
+              example:
+                contact_id: 12
+                target_closeness: close
+                default_interval_days: 30
+                cadence_policy_offer:
+                  entity_id: "3f8b2c1e-6a4d-4e0b-9c52-7d1f0a8b3e64"
+                  target_interval_days: 30
+        "400":
+          description: Invalid tier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found (or not the caller's).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Clear a contact's target closeness
+      operationId: clearContactTargetCloseness
+      description: >
+        Clears the target (idempotent: clearing an unset target is also 200) and
+        dismisses every pending target_behind reach-out suggestion for the
+        contact in the same request.
+      responses:
+        "200":
+          description: The target is cleared; the last three fields are null.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactTargetClosenessResponse"
+              example:
+                contact_id: 12
+                target_closeness: null
+                default_interval_days: null
+                cadence_policy_offer: null
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found (or not the caller's).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}/unfavorite:
     parameters:
       - name: id
@@ -13184,6 +13274,7 @@ components:
         /contacts/{id}/score, issue #383, ADR-0023). score is 0-100; band is
         one of moss/chanterelle/russula. Every facet's weight is included so
         the five always sum to 100.
+      required: [target]
       properties:
         contact_id: { type: integer }
         score: { type: integer }
@@ -13212,6 +13303,55 @@ components:
             Why the contact is ambient: household (a current member of a
             household the self-contact is also a current member of) or flag
             (crm.ambient). Absent when ambient is false.
+        target:
+          nullable: true
+          description: >
+            Issue #1796: status against the contact's target closeness; null
+            (always present) when the contact has no target.
+          allOf:
+            - $ref: "#/components/schemas/ContactScoreTarget"
+    ContactTargetClosenessInput:
+      type: object
+      required: [tier]
+      properties:
+        tier:
+          type: string
+          enum: [immediate, close, casual, distant]
+          description: Mirrors models.TargetClosenessTiers() and the contacts.target_closeness CHECK; keep in sync.
+    ContactTargetClosenessResponse:
+      type: object
+      description: >
+        Result of PUT/DELETE /contacts/{id}/target-closeness (issue #1796).
+        All four fields are always present; the last three are null after a
+        DELETE. cadence_policy_offer is non-null only when a tier was set and
+        the contact has no live cadence policy; its shape is exactly the
+        POST /cadence-policies body.
+      required: [contact_id, target_closeness, default_interval_days, cadence_policy_offer]
+      properties:
+        contact_id: { type: integer }
+        target_closeness:
+          type: string
+          nullable: true
+          enum: [immediate, close, casual, distant, null]
+        default_interval_days: { type: integer, nullable: true }
+        cadence_policy_offer:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CadencePolicyInput"
+    ContactScoreTarget:
+      type: object
+      description: >
+        How the contact is doing against its target closeness (issue #1796, ADR
+        0023 amendment). status colors map on_track to moss, drifting to
+        chanterelle, behind to russula. Does not feed back into score or band.
+      required: [tier, status, value, interval_days, interval_source, reason]
+      properties:
+        tier: { type: string, enum: [immediate, close, casual, distant] }
+        status: { type: string, enum: [on_track, drifting, behind] }
+        value: { type: number }
+        interval_days: { type: integer }
+        interval_source: { type: string, enum: [cadence_policy, target_tier] }
+        reason: { type: string }
     ContactScoreFacet:
       type: object
       description: One weighted facet's 0-100 sub-score, weight, and plain-language reason.
@@ -15361,10 +15501,10 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         contact_vcard_uid: { type: string, format: uuid }
-        kind: { type: string, enum: [organization, title, address] }
+        kind: { type: string, enum: [organization, title, address, target_behind] }
         old_value: { type: string }
         new_value: { type: string }
-        audit_event_id: { type: integer }
+        audit_event_id: { type: integer, description: "0 for target_behind rows (state-driven, not audit-derived)." }
         reminder_id:
           type: integer
           description: The companion one-off Reminder's ID, if it was created successfully.
@@ -16530,6 +16670,16 @@ components:
             and rebuilds crm on every save cannot clear it); true/false sets it. Internal CRM data: never
             exported to vCard/JSContact (reported as crm.ambient when set); the
             CSV export and account bundle carry it.
+        target_closeness:
+          type: string
+          enum: [immediate, close, casual, distant]
+          description: >
+            Issue #1796 (ADR 0023 amendment): the user's relationship goal for
+            the contact; absent means no target. Read-only on POST/PUT
+            /contacts (any value sent is ignored); set it with PUT/DELETE
+            /contacts/{id}/target-closeness. Never exported to vCard/JSContact
+            (reported as crm.target_closeness when set); the CSV export and
+            account bundle carry it.
         periods:
           type: array
           items:

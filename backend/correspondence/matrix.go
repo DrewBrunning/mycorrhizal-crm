@@ -153,6 +153,10 @@ var noHomeFields = []NoHomeField{
 		Note: "the explicit \"I see them all the time\" flag (issue #1733, ADR-0023 amendment); CRM-only, never serialized to a contact file",
 	},
 	{
+		Key: "crm.target_closeness", Field: "TargetCloseness", Home: "CRMEnvelope.TargetCloseness (flat column contacts.target_closeness)", LossReport: true,
+		Note: "user-set relationship goal (ADR-0023 amendment, #1737); CRM-only, never serialized",
+	},
+	{
 		Key: "crm.archived", Field: "Archived", Home: "none (Contact.Archived flat column)", LossReport: false,
 		Note: "CRM-local flag; deliberately never exported (ADR-0002 audit rule 4)",
 	},

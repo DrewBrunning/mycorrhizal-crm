@@ -99,3 +99,41 @@ test('edit and delete actions fire their handlers', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(onDelete).toHaveBeenCalledWith(policy.id);
 });
+
+// Issue #1735 (backend #1733): an ambient contact never reads as overdue and
+// explains why instead of showing day counts.
+test.each([
+  ['household', 'Ambient contact (lives with you)'],
+  ['flag', 'Ambient contact (marked)'],
+] as const)('ambient health (%s) shows its reason, never overdue', (reason, text) => {
+  renderPanel(
+    basePolicy({
+      has_qualifying_interaction: false,
+      overdue_by: 0,
+      ambient: true,
+      ambient_reason: reason,
+    }),
+  );
+
+  expect(screen.getByText(text)).toBeInTheDocument();
+  expect(screen.queryByText(/days overdue/)).not.toBeInTheDocument();
+  expect(screen.queryByText('On track')).not.toBeInTheDocument();
+  expect(screen.queryByText(/No qualifying interactions yet/)).not.toBeInTheDocument();
+});
+
+test('ambient wins even if a stale overdue_by slips through', () => {
+  renderPanel(
+    basePolicy({
+      has_qualifying_interaction: true,
+      overdue_by: 9,
+      ambient: true,
+      ambient_reason: 'flag',
+      next_due: '2026-01-01T00:00:00Z',
+      last_interaction: '2025-12-01T00:00:00Z',
+    }),
+  );
+
+  expect(screen.queryByText(/days overdue/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Next due/)).not.toBeInTheDocument();
+  expect(screen.getByText('Ambient contact (marked)')).toBeInTheDocument();
+});

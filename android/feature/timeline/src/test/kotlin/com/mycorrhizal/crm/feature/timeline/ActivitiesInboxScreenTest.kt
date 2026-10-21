@@ -101,7 +101,7 @@ class ActivitiesInboxScreenTest {
                 ),
             ),
         )
-        composeTestRule.onNodeWithText("visit · Berlin · 2026-08-14").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Visit · Berlin · 2026-08-14").assertIsDisplayed()
     }
 
     @Test

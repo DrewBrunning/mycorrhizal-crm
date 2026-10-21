@@ -69,5 +69,18 @@ func toContactScoreResponse(contactID uint, result scoring.Result) models.Contac
 
 		Ambient:       result.Ambient,
 		AmbientReason: result.AmbientReason,
+		Target:        toContactScoreTarget(result.Target),
+	}
+}
+
+// toContactScoreTarget maps the engine's target result onto the wire DTO; nil
+// (no target) stays nil so the response carries "target": null.
+func toContactScoreTarget(t *scoring.TargetResult) *models.ContactScoreTarget {
+	if t == nil {
+		return nil
+	}
+	return &models.ContactScoreTarget{
+		Tier: t.Tier, Status: t.Status, Value: t.Value, IntervalDays: t.IntervalDays,
+		IntervalSource: t.IntervalSource, Reason: t.Reason,
 	}
 }

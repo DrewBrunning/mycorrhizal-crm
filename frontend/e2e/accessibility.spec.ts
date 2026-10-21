@@ -1,7 +1,9 @@
 import type { Page } from '@playwright/test';
 import { request as apiRequest } from '@playwright/test';
+import type { SystemStatusResponse } from '../src/api/systemStatus';
 import {
   assertNoAaaContrastViolations,
+  assertNoAxeRuleViolations,
   assertNoBlockingA11yViolations,
   createTestContact,
   deleteTestContact,
@@ -300,6 +302,194 @@ test.describe('WCAG 2.3.3 reduced motion (AAA)', {
       expect(reduced.transitionMs).toBeLessThan(1);
       expect(reduced.animationMs).toBeLessThan(1);
       expect(reduced.scrollBehavior).toBe('auto');
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Status text, scroll regions and landmarks (issues #1792, #1788)
+// ---------------------------------------------------------------------------
+// The route scans above never rendered a degraded/failing status, a
+// relationship-health "On track"/overdue line or a horizontally scrolling table,
+// which is how 1.83:1 "Degraded" text and an unreachable scroll region shipped.
+// These specs render those states on purpose (real backend data where it can be
+// made, route-patched where a state cannot be produced on demand), in both
+// themes, and scan them with the same blocking gate.
+
+test.describe('status text and landmarks (#1792)', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'scans each seeded state explicitly' },
+}, () => {
+  for (const theme of THEMES) {
+    test(`system status with degraded/unhealthy/healthy chips (${theme})`, async ({ page }) => {
+      // The real snapshot is "healthy", so stub one that renders every chip
+      // colour: success (OK), warning (Degraded), error (Unhealthy), default
+      // (Not configured).
+      const snapshot: SystemStatusResponse = {
+        overall: 'degraded',
+        health: {
+          status: 'degraded',
+          database: { status: 'ok' },
+          migrations: { status: 'ok' },
+          integrity_check: { status: 'unhealthy', reason: 'check failed' },
+          restore_drill: { status: 'degraded', reason: 'drill is overdue' },
+          background_jobs: { status: 'ok', jobs: [] },
+          integrations: {
+            immich: { status: 'ok' },
+            webdav: { status: 'degraded', reason: 'slow' },
+            oidc: { status: 'not_configured' },
+          },
+        },
+        version: { version: '1.5.0', commit: 'abc1234', build_date: '2026-10-01T00:00:00Z' },
+        uptime: { started_at: '2026-10-01T00:00:00Z', uptime_seconds: 3600 },
+        migration: { applied: 70, latest: 70, pending: 0, dirty: false },
+        config: {
+          validation: [],
+          features: {
+            carddav: true,
+            caldav: false,
+            oidc: false,
+            email: false,
+            metrics: false,
+            db_integrity_check: true,
+            db_restore_drill: true,
+          },
+        },
+        database: { sqlite_version: '3.46.0', journal_mode: 'wal', wal_bytes: 0 },
+        storage: {
+          database_bytes: 1024,
+          filesystem: { free_bytes: 1_000_000, total_bytes: 2_000_000 },
+          directories: [],
+          threshold: 'ok',
+        },
+        update: { enabled: false },
+      };
+      await page.route('**/api/v1/admin/system-status', (route) =>
+        route.fulfill({ json: snapshot }),
+      );
+      // Not gotoWithTheme: waitForLoading's height-stability poll never settles
+      // on this page under the Playwright harness (page.evaluate stalls), and the
+      // existing systemEvents.spec.ts likewise skips it for /system-status.
+      await page.addInitScript((t) => localStorage.setItem('themePreference', t), theme);
+      await page.goto('/system-status');
+      await expect(page.getByText('Overall status')).toBeVisible();
+      await expect(page.getByText('Degraded').first()).toBeVisible();
+      await assertNoBlockingViolations(page);
+    });
+
+    test(`system events with warn/error/failure chips (${theme})`, async ({ page }) => {
+      const base = {
+        created_at: '2026-10-01T10:00:00Z',
+        occurred_at: '2026-10-01T10:00:00Z',
+        component: 'scheduler',
+        correlation_id: 'corr-1',
+      };
+      await page.route('**/api/v1/admin/system-events?*', (route) =>
+        route.fulfill({
+          json: {
+            total: 3,
+            system_events: [
+              { ...base, id: 3, event_type: 'job_completed', severity: 'info', result: 'success' },
+              { ...base, id: 2, event_type: 'job_failed', severity: 'warn', result: 'skipped' },
+              {
+                ...base,
+                id: 1,
+                event_type: 'job_failed',
+                severity: 'error',
+                result: 'failure',
+                error: 'boom',
+              },
+            ],
+          },
+        }),
+      );
+      await gotoWithTheme(page, '/system-events', theme);
+      await expect(page.getByRole('table')).toBeVisible();
+      await assertNoBlockingViolations(page);
+    });
+
+    test(`relationship health "On track" and overdue text (${theme})`, async ({
+      page,
+      request,
+    }) => {
+      const onTrack = await createTestContact(request, { firstname: 'A11yOnTrack' });
+      const overdue = await createTestContact(request, { firstname: 'A11yOverdue' });
+      try {
+        const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+        for (const [contact, date] of [
+          [onTrack, daysAgo(1)],
+          [overdue, daysAgo(90)],
+        ] as const) {
+          const activity = await request.post(`${API_BASE_URL}/activities`, {
+            data: { title: 'Coffee', type: 'visit', date, contact_ids: [contact.ID] },
+          });
+          expect(activity.ok(), `activity: ${await activity.text()}`).toBeTruthy();
+          const cadence = await request.post(`${API_BASE_URL}/cadence-policies`, {
+            data: { entity_id: contact.uid, target_interval_days: 30 },
+          });
+          expect(cadence.ok(), `cadence: ${await cadence.text()}`).toBeTruthy();
+        }
+
+        for (const route of [`/contacts/${onTrack.ID}`, `/contacts/${onTrack.ID}/prep`]) {
+          await gotoWithTheme(page, route, theme);
+          await expect(page.getByText('On track').first()).toBeVisible({ timeout: 15000 });
+          await assertNoBlockingViolations(page);
+        }
+        for (const route of [`/contacts/${overdue.ID}`, `/contacts/${overdue.ID}/prep`]) {
+          await gotoWithTheme(page, route, theme);
+          await expect(page.getByText(/days overdue/).first()).toBeVisible({ timeout: 15000 });
+          await assertNoBlockingViolations(page);
+        }
+      } finally {
+        await deleteTestContact(request, onTrack.ID);
+        await deleteTestContact(request, overdue.ID);
+      }
+    });
+
+    // axe's `region` rule is `moderate`/best-practice, so the app-wide gate
+    // (critical/serious) never saw the sidebar logo sitting outside every
+    // landmark. Default viewport is 1280px, where the permanent drawer renders.
+    test(`every piece of content is inside a landmark (${theme})`, async ({ page }) => {
+      for (const route of ['/', '/contacts', '/audit', '/settings']) {
+        await gotoWithTheme(page, route, theme);
+        await assertNoAxeRuleViolations(page, ['region']);
+      }
+    });
+  }
+});
+
+test.describe('audit log at narrow widths (#1788, #1792)', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'scans explicitly at each viewport' },
+}, () => {
+  test('the scrolling table region is focusable and labelled', async ({ page }) => {
+    // 920px wide: the permanent drawer takes 256px, leaving less than the
+    // table's 640px minimum, so the container genuinely scrolls horizontally.
+    await page.setViewportSize({ width: 920, height: 900 });
+    await gotoWithTheme(page, '/audit', 'light');
+    const region = page.getByRole('region', { name: 'Audit log' });
+    await expect(region).toBeVisible();
+    await expect.poll(() => region.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    await region.focus();
+    await expect(region).toBeFocused();
+    await assertNoAxeRuleViolations(page, ['scrollable-region-focusable']);
+  });
+
+  for (const width of [320, 390]) {
+    test(`phones (${width}px) get a readable card list with no sideways scroll`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await gotoWithTheme(page, '/audit', 'light');
+      const list = page.getByRole('list', { name: 'Audit log' });
+      await expect(list).toBeVisible();
+      await expect(page.getByRole('table')).toHaveCount(0);
+      // Every card shows its entity and operation chips -- not 2 of 5 columns.
+      await expect(list.getByRole('listitem').first().locator('.MuiChip-root')).toHaveCount(2);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+      ).toBe(true);
+      await assertNoBlockingViolations(page);
     });
   }
 });

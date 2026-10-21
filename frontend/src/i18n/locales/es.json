@@ -294,7 +294,14 @@
     "favoriteContact": "Marcar a {{name}} como favorito",
     "unfavoriteContact": "Quitar a {{name}} de favoritos",
     "favoriteError": "No se pudo actualizar el favorito",
-    "showAll": "Mostrar todos",
+    "onlyWithContactInfo": "Solo con datos de contacto",
+    "filters": {
+      "button": "Filtros",
+      "buttonActive": "Filtros ({{count}})",
+      "title": "Filtros",
+      "done": "Hecho"
+    },
+    "moreActions": "Más acciones",
     "hiddenContactable_one": "{{count}} contacto sin información de contacto está oculto",
     "hiddenContactable_other": "{{count}} contactos sin información de contacto están ocultos",
     "archived": "Archivado",
@@ -586,7 +593,8 @@
       "cadence": "Cadencia y seguimiento",
       "dataDecay": "Verificación de datos",
       "metadataExpand": "Expandir metadatos de la tarjeta",
-      "metadataCollapse": "Contraer metadatos de la tarjeta"
+      "metadataCollapse": "Contraer metadatos de la tarjeta",
+      "customFieldsUngrouped": "Campos personalizados"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -2101,6 +2109,9 @@
     "label": "Etiqueta",
     "labelHint": "El nombre visible en las páginas de contacto.",
     "labelRequired": "La etiqueta es obligatoria.",
+    "group": "Grupo",
+    "groupHint": "Opcional. Agrupa campos relacionados en las páginas de contacto. Hasta {{max}} caracteres.",
+    "groupTooLong": "El grupo puede tener como máximo {{max}} caracteres.",
     "key": "Clave",
     "keyHint": "Nombre técnico estable (minúsculas y guiones bajos). No se puede cambiar tras crearlo.",
     "keyRequired": "La clave es obligatoria.",
@@ -2237,6 +2248,12 @@
       "saveFailed": "No se pudo guardar la preferencia"
     }
   },
+  "ambient": {
+    "toggleLabel": "Contacto ambiental: lo veo a todas horas",
+    "toggleHelper": "Cuenta como contacto habitual sin registrar actividades",
+    "reasonHousehold": "Contacto ambiental (vive contigo)",
+    "reasonFlag": "Contacto ambiental (marcado)"
+  },
   "cadence": {
     "title": "Cadencia",
     "add": "Añadir cadencia",
@@ -2307,7 +2324,8 @@
     "kind": {
       "organization": "Nuevo empleador",
       "title": "Nuevo puesto",
-      "address": "Se mudó"
+      "address": "Se mudó",
+      "target_behind": "Por debajo del objetivo"
     }
   },
   "syncConflicts": {

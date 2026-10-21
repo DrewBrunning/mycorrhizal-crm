@@ -294,7 +294,14 @@
     "favoriteContact": "Marquer {{name}} comme favori",
     "unfavoriteContact": "Retirer {{name}} des favoris",
     "favoriteError": "Impossible de mettre à jour le favori",
-    "showAll": "Tout afficher",
+    "onlyWithContactInfo": "Uniquement avec coordonnées",
+    "filters": {
+      "button": "Filtres",
+      "buttonActive": "Filtres ({{count}})",
+      "title": "Filtres",
+      "done": "Terminé"
+    },
+    "moreActions": "Autres actions",
     "hiddenContactable_one": "{{count}} contact sans coordonnées est masqué",
     "hiddenContactable_other": "{{count}} contacts sans coordonnées sont masqués",
     "archived": "Archivé",
@@ -586,7 +593,8 @@
       "cadence": "Cadence et suivi",
       "dataDecay": "Vérification des données",
       "metadataExpand": "Développer les métadonnées de la carte",
-      "metadataCollapse": "Replier les métadonnées de la carte"
+      "metadataCollapse": "Replier les métadonnées de la carte",
+      "customFieldsUngrouped": "Champs personnalisés"
     },
     "email": "E-mail",
     "phone": "Téléphone",
@@ -2101,6 +2109,9 @@
     "label": "Libellé",
     "labelHint": "Le nom affiché sur les pages de contact.",
     "labelRequired": "Le libellé est requis.",
+    "group": "Groupe",
+    "groupHint": "Facultatif. Regroupe les champs liés sur les pages de contact. {{max}} caractères au maximum.",
+    "groupTooLong": "Le groupe ne peut pas dépasser {{max}} caractères.",
     "key": "Clé",
     "keyHint": "Nom technique stable (minuscules, tirets bas). Ne peut plus être modifié après création.",
     "keyRequired": "La clé est requise.",
@@ -2237,6 +2248,12 @@
       "saveFailed": "Échec de l'enregistrement de la préférence"
     }
   },
+  "ambient": {
+    "toggleLabel": "Contact ambiant : je le vois tout le temps",
+    "toggleHelper": "Compte comme un contact régulier sans enregistrer d’activités",
+    "reasonHousehold": "Contact ambiant (vit avec vous)",
+    "reasonFlag": "Contact ambiant (marqué)"
+  },
   "cadence": {
     "title": "Cadence",
     "add": "Ajouter une cadence",
@@ -2307,7 +2324,8 @@
     "kind": {
       "organization": "Nouvel employeur",
       "title": "Nouveau poste",
-      "address": "A déménagé"
+      "address": "A déménagé",
+      "target_behind": "En retard sur l'objectif"
     }
   },
   "syncConflicts": {

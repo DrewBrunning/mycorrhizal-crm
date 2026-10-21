@@ -109,6 +109,10 @@ type MappedContact struct {
 	Favorite    bool
 	PhotoURL    string
 	PhotoSource string // "photo" | "gravatar" | "" (deferred to the assistant)
+	// TargetCloseness (issue #1796): ApplyRecordToContact never writes the
+	// target, so a source that carries one (the account bundle) sets it here,
+	// already validated against models.TargetClosenessTiers(). nil = none.
+	TargetCloseness *string
 }
 
 // MappedRelationship is one directed relationship edge. Source/Target are the
@@ -497,6 +501,7 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 		}
 		contact.Archived = mc.Archived
 		contact.IsFavorite = mc.Favorite
+		contact.TargetCloseness = mc.TargetCloseness
 
 		if issues := validateMappedContact(contact); len(issues) > 0 {
 			report.appendIssue(ImportIssue{
@@ -735,6 +740,12 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 			Category: ImportIssueCategoryLossy,
 			Message:  "merge note could not be recorded",
 		})
+	}
+
+	// Issue #1796: ApplyRecordToContact never writes the target, so a merge fills
+	// it only when the existing contact has none.
+	if existing.TargetCloseness == nil {
+		existing.TargetCloseness = mc.TargetCloseness
 	}
 
 	MergeImportedContact(&existing, incoming)

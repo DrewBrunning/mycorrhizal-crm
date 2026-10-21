@@ -157,10 +157,10 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (child of)")
+            .onNodeWithContentDescription("Carol — Carol (Child)")
             .assert(hasClickAction())
         composeTestRule
-            .onNodeWithContentDescription("Ghost — Ghost (spouse of)")
+            .onNodeWithContentDescription("Ghost — Ghost (Spouse)")
             .assert(SemanticsMatcher("has no click action") { node -> !node.config.contains(SemanticsActions.OnClick) })
     }
 
@@ -186,7 +186,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (child of) — Healthy")
+            .onNodeWithContentDescription("Carol — Carol (Child) — Healthy")
             .assertIsDisplayed()
     }
 
@@ -200,7 +200,7 @@ class NetworkScreenTest {
             ),
         )
 
-        composeTestRule.onNodeWithContentDescription("Carol — Carol (child of)").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Carol — Carol (Child)").assertIsDisplayed()
     }
 
     // --- Issue #1193: a deceased target overrides the health-band indicator ---
@@ -225,7 +225,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (child of) — Deceased")
+            .onNodeWithContentDescription("Carol — Carol (Child) — Deceased")
             .assertIsDisplayed()
     }
 
@@ -247,7 +247,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (child of) — Deceased")
+            .onNodeWithContentDescription("Carol — Carol (Child) — Deceased")
             .assertIsDisplayed()
     }
 
@@ -263,7 +263,7 @@ class NetworkScreenTest {
             onOpenContact = { openedId = it },
         )
 
-        composeTestRule.onNodeWithContentDescription("Carol — Carol (child of)").performClick()
+        composeTestRule.onNodeWithContentDescription("Carol — Carol (Child)").performClick()
 
         assertEquals(10, openedId)
     }

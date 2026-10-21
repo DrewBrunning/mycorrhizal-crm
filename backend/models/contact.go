@@ -197,6 +197,15 @@ type Contact struct {
 	// vCard/JSContact.
 	Ambient bool `gorm:"column:ambient" json:"ambient"`
 
+	// TargetCloseness is the user's relationship goal for this contact (issue
+	// #1796, ADR 0023 amendment 2026-10-16): immediate|close|casual|distant,
+	// nil = no target. It sets the expected interval for Recency/Frequency when
+	// there is no cadence policy. Flat, authoritative store of
+	// CRMEnvelope.TargetCloseness; written ONLY by the target-closeness
+	// endpoints, never by the contact PUT/POST. Deliberately no `default:` tag
+	// (backend trap 1) and a pointer so NULL round-trips.
+	TargetCloseness *string `gorm:"column:target_closeness" json:"target_closeness,omitempty"`
+
 	// Neutral RFC 9553/9554/9555 representation (P1 — see
 	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). This is a second,
 	// parallel representation of the same data already held in the legacy
@@ -469,6 +478,9 @@ func (c *Contact) deriveDenormalized() {
 	// local Record and assign the whole envelope — a direct c.CRM.<field>
 	// mutation is the trap #2 shape the semgrep gate rejects.
 	record.Envelope.Ambient = ambientPtr(c.Ambient)
+	// Same for TargetCloseness (issue #1796): the contact PUT never writes it, so
+	// the flat column is the only truth and an incoming envelope value is dropped.
+	record.Envelope.TargetCloseness = c.TargetCloseness
 	c.CRM = record.Envelope
 
 	proj := contactmodel.DeriveProjection(record)

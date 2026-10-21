@@ -22,6 +22,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Issue #1824: the uncapped size of each server-capped dashboard block (see
+ * `DashboardResponse`). `null` = the server did not say (older server), which
+ * means no "Showing N of M" caption.
+ */
+data class DashboardTotals(
+    val birthdays: Int? = null,
+    val upcomingReminders: Int? = null,
+    val overdue: Int? = null,
+    val reachOutSuggestions: Int? = null,
+    val dataDecayOverdue: Int? = null,
+)
+
+/** Keeps a pre-cap total in step with an optimistic row removal/restore; stays null when absent. */
+private fun Int?.adjusted(delta: Int): Int? = this?.let { (it + delta).coerceAtLeast(0) }
+
 data class DashboardUiState(
     val birthdays: List<Birthday> = emptyList(),
     val upcomingReminders: List<DashboardReminder> = emptyList(),
@@ -35,6 +51,8 @@ data class DashboardUiState(
     val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
     // Issue #352: contacts whose info is due for re-verification.
     val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
+    /** Issue #1824: pre-cap block sizes for the "Showing N of M" captions. */
+    val totals: DashboardTotals = DashboardTotals(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
     val error: String? = null,
@@ -127,6 +145,13 @@ class DashboardViewModel @Inject constructor(
                             favorites = dashboard.favorites,
                             reachOutSuggestions = dashboard.reachOutSuggestions,
                             dataDecayOverdue = dashboard.dataDecayOverdue,
+                            totals = DashboardTotals(
+                                birthdays = dashboard.birthdaysTotal,
+                                upcomingReminders = dashboard.upcomingRemindersTotal,
+                                overdue = dashboard.overdueTotal,
+                                reachOutSuggestions = dashboard.reachOutSuggestionsTotal,
+                                dataDecayOverdue = dashboard.dataDecayOverdueTotal,
+                            ),
                         )
                     }
                 },
@@ -151,6 +176,7 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     completingId = id,
                     upcomingReminders = state.upcomingReminders.filterNot { it.id == id },
+                    totals = if (removed == null) state.totals else state.totals.copy(upcomingReminders = state.totals.upcomingReminders.adjusted(-1)),
                 )
             }
             apiClient.completeReminder(id, skip).foldApiError(
@@ -162,7 +188,12 @@ class DashboardViewModel @Inject constructor(
                         } else {
                             val restored = state.upcomingReminders.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
-                            state.copy(completingId = null, actionError = error.displayMessage, upcomingReminders = restored)
+                            state.copy(
+                                completingId = null,
+                                actionError = error.displayMessage,
+                                upcomingReminders = restored,
+                                totals = state.totals.copy(upcomingReminders = state.totals.upcomingReminders.adjusted(1)),
+                            )
                         }
                     }
                 },
@@ -184,6 +215,7 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     dismissingSuggestionId = id,
                     reachOutSuggestions = state.reachOutSuggestions.filterNot { it.id == id },
+                    totals = if (removed == null) state.totals else state.totals.copy(reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(-1)),
                 )
             }
             apiClient.dismissReachOutSuggestion(id).foldApiError(
@@ -195,7 +227,12 @@ class DashboardViewModel @Inject constructor(
                         } else {
                             val restored = state.reachOutSuggestions.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
-                            state.copy(dismissingSuggestionId = null, actionError = error.displayMessage, reachOutSuggestions = restored)
+                            state.copy(
+                                dismissingSuggestionId = null,
+                                actionError = error.displayMessage,
+                                reachOutSuggestions = restored,
+                                totals = state.totals.copy(reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(1)),
+                            )
                         }
                     }
                 },
@@ -220,6 +257,7 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     verifyingDataDecayId = id,
                     dataDecayOverdue = state.dataDecayOverdue.filterNot { it.policy?.id == id },
+                    totals = if (removed == null) state.totals else state.totals.copy(dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(-1)),
                 )
             }
             apiClient.verifyDataDecayPolicy(id).foldApiError(
@@ -231,7 +269,12 @@ class DashboardViewModel @Inject constructor(
                         } else {
                             val restored = state.dataDecayOverdue.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
-                            state.copy(verifyingDataDecayId = null, actionError = error.displayMessage, dataDecayOverdue = restored)
+                            state.copy(
+                                verifyingDataDecayId = null,
+                                actionError = error.displayMessage,
+                                dataDecayOverdue = restored,
+                                totals = state.totals.copy(dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(1)),
+                            )
                         }
                     }
                 },

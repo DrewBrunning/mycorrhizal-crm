@@ -5,7 +5,7 @@ import { handleFetchError } from '../utils/errorHandler';
 // Fetches the relationship health score for a single contact (issue #383,
 // ADR-0023), auto-refreshing whenever contactId changes -- same
 // self-fetching shape as useCadencePolicy.ts.
-export function useContactScore(contactId: number | undefined) {
+export function useContactScore(contactId: number | undefined, refreshKey?: unknown) {
   const [score, setScore] = useState<ContactScoreResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,8 @@ export function useContactScore(contactId: number | undefined) {
 
   useEffect(() => {
     void refreshScore();
-  }, [refreshScore]);
+    // refreshKey: a caller-supplied value (e.g. crm.ambient) whose change must refetch.
+  }, [refreshScore, refreshKey]);
 
   return { score, loading, error, refreshScore };
 }

@@ -62,7 +62,7 @@ func GetGraph(c *gin.Context) {
 	// (Card is `serializer:encryptedjson`, so SQL cannot filter on it), and
 	// this is the only place a deceased contact's graph node gets colored.
 	// "updated_at" feeds the health score (computed for exactly these rows).
-	contactQuery := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles", "card", "updated_at").
+	contactQuery := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles", "card", "updated_at", "target_closeness").
 		Where("user_id = ? AND archived = ?", userID, false)
 	if !scope.full {
 		contactQuery = contactQuery.Where("vcard_uid IN (?)", services.GraphNeighbourhood(db, userID, scope.fromUID, scope.depth))
