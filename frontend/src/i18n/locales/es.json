@@ -144,7 +144,8 @@
     "yearsOld": "({{age}} años)",
     "birthdaysInfo": "Muestra los cumpleaños de al menos las próximas dos semanas.",
     "remindersInfo": "Muestra todos los recordatorios pendientes hasta hoy incluido. Los recordatorios permanecerán visibles hasta que se marquen como completados.",
-    "stayInTouchInfo": "Muestra cinco contactos aleatorios para ayudarte a mantenerte conectado. La lista se actualiza en cada recarga de página."
+    "stayInTouchInfo": "Muestra cinco contactos aleatorios para ayudarte a mantenerte conectado. La lista se actualiza en cada recarga de página.",
+    "showingOf": "Mostrando {{shown}} de {{total}}"
   },
   "login": {
     "title": "Iniciar sesión",
@@ -1754,7 +1755,9 @@
     "panUp": "Desplazar hacia arriba",
     "panDown": "Desplazar hacia abajo",
     "panLeft": "Desplazar hacia la izquierda",
-    "panRight": "Desplazar hacia la derecha"
+    "panRight": "Desplazar hacia la derecha",
+    "egoNotice": "Se muestra tu propio contacto y todas las personas a {{depth}} conexiones de distancia. Activa «Mostrar toda la red» para cargar todos los contactos.",
+    "showEntireNetwork": "Mostrar toda la red"
   },
   "map": {
     "title": "Mapa de contactos",

@@ -217,6 +217,11 @@ type FieldDefinitionInput struct {
 	Constraints FieldConstraints `json:"constraints,omitempty"`
 	Projection  string           `json:"projection,omitempty" validate:"omitempty,fielddefprojection"`
 	Sensitivity string           `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+	// Group is the optional display-only group label (issue #1730). Trimmed by
+	// the controller; "" (or whitespace-only) means ungrouped. A pointer so
+	// update can tell "omitted -> keep the current group" (an older client that
+	// does not know the field must not wipe groups on edit) from "" -> clear.
+	Group *string `json:"group,omitempty" validate:"omitempty,max=100"`
 }
 
 // FieldValueInput is one element of ContactFieldValuesInput — a
@@ -467,6 +472,13 @@ type GraphEdge struct {
 type GraphResponse struct {
 	Nodes []GraphNode `json:"nodes"`
 	Edges []GraphEdge `json:"edges"`
+	// Scoped (issue #1791) is true when the graph is an ego-network -- the
+	// contacts within Depth hops of FromVCardUID -- rather than the caller's
+	// whole account (GET /graph?full=true, or an account with no self
+	// contact to centre on).
+	Scoped       bool   `json:"scoped"`
+	FromVCardUID string `json:"from_vcard_uid,omitempty"`
+	Depth        int    `json:"depth,omitempty"`
 }
 
 // GraphChainStep is one hop in a traversal chain (T10). Relation is

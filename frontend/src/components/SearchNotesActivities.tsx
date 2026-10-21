@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SearchResult } from '../api/search';
 import { useDateFormat } from '../DateFormatProvider';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface SearchNotesActivitiesProps {
   query: string;
@@ -135,7 +136,7 @@ export default function SearchNotesActivities({
                               color: 'text.secondary',
                             }}
                           >
-                            {formatDate(n.date)}
+                            {formatDate(calendarDateOnly(n.date))}
                           </Typography>
                         </Box>
                       </Box>
@@ -165,7 +166,7 @@ export default function SearchNotesActivities({
                             color: 'text.secondary',
                           }}
                         >
-                          {formatDate(a.date)}
+                          {formatDate(calendarDateOnly(a.date))}
                         </Typography>
                       </Box>
                     ))}

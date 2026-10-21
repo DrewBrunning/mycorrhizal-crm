@@ -237,17 +237,11 @@ fun SystemEventsScreen(
 
                         state.events.isEmpty() ->
                             EmptyState(
-                                message = stringResource(
+                                title = stringResource(
                                     if (hasFilters) R.string.sysevents_empty
                                     else R.string.sysevents_empty_no_filters
                                 ),
-                                icon = {
-                                    Icon(
-                                        Icons.Outlined.MonitorHeart,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                icon = Icons.Outlined.MonitorHeart,
                             )
 
                         else -> SystemEventList(

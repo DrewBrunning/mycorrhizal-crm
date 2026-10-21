@@ -236,6 +236,17 @@ func TestBenchmarksAtScale(t *testing.T) {
 		assert.Emptyf(t, breaches, "typical performance-budget breaches (PERF-04): %v", breaches)
 	})
 
+	// Issue #1791: the large-profile ceilings (large_max_wall_ms) -- GET
+	// /dashboard and GET /graph were fine at the anchor and unusable at
+	// `large`. The same median the report prints, evaluated against the
+	// budget file rather than eyeballed.
+	t.Run("LargeProfileWithinBudgets", func(t *testing.T) {
+		bg, err := EmbeddedBudgets()
+		require.NoError(t, err)
+		breaches := bg.CheckCore(suite.ResultsByProfile[LargeProfile], baseline)
+		assert.Emptyf(t, breaches, "large-profile performance-budget breaches (issue #1791): %v", breaches)
+	})
+
 	t.Run("WallClockTrend", func(t *testing.T) {
 		assertWallClockTrendAdvisory(t, suite, DataMovementSuite{})
 	})

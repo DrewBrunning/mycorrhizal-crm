@@ -97,6 +97,15 @@ class DateFormatTest {
     }
 
     @Test
+    fun `formatTimestamp reads a date-only calendar value as-is (issue 1778)`() {
+        // next_due is now emitted as a bare YYYY-MM-DD; it must not be dropped
+        // (Instant.parse rejects it) nor shifted by the device zone.
+        assertEquals("21 September 2026", DateFormat.formatTimestamp("2026-09-21", "eu"))
+        assertEquals("2026-09-21", DateFormat.formatTimestamp("2026-09-21", "iso"))
+        assertEquals("", DateFormat.formatTimestamp("2026-13-45", "eu"))
+    }
+
+    @Test
     fun `formatTimestamp is empty for blank or unparseable input`() {
         assertEquals("", DateFormat.formatTimestamp(null, "eu"))
         assertEquals("", DateFormat.formatTimestamp("", "eu"))

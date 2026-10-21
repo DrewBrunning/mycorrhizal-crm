@@ -27,6 +27,7 @@ function existingDef(overrides: Partial<FieldDefinition> = {}): FieldDefinition 
     projection: 'internal-only',
     sensitivity: 'normal',
     position: 0,
+    group: '',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,

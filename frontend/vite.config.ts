@@ -43,6 +43,14 @@ export default defineConfig({
       // precache, which would break offline/Web Push.
       injectManifest: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Issue #1777: workbox's default `**/*.{js,wasm,css,html}` misses the
+        // MapLibre module worker (assets/maplibre-gl-worker-<hash>.mjs). The
+        // map-vendor chunk that points at it IS precached, so a tab controlled
+        // by an old worker would load the old map-vendor from the precache and
+        // then fetch an old worker hash the new deploy no longer serves (404).
+        // Precache it with the rest of the build so the map's code is one
+        // version, and the worker is there offline.
+        globPatterns: ['**/*.{js,mjs,wasm,css,html}'],
         // Issue #476 (WEB-02): the /_recovery.* escape-hatch page must NEVER
         // enter the precache. A broken worker would otherwise serve a cached
         // (possibly stale) copy of the one page whose whole purpose is to

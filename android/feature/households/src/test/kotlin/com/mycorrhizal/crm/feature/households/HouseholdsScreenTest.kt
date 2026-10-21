@@ -173,7 +173,7 @@ class HouseholdsScreenTest {
             resolve = mapOf("u1" to ContactSummary(id = 7, uid = "u1", firstname = "Alice")),
         )
 
-        composeTestRule.onNodeWithText("Alice · ${str(R.string.households_member_unknown)}")
+        composeTestRule.onNodeWithText("Alice · ${str(R.string.contact_unknown)}")
             .assertIsDisplayed()
     }
 

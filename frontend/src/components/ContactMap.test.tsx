@@ -22,10 +22,16 @@ const h = vi.hoisted(() => ({
   popups: [] as { lngLat?: [number, number]; content?: HTMLElement; added: boolean }[],
   boundsExtend: vi.fn(),
   throwOnConstruct: false,
+  setWorkerUrl: vi.fn(),
+}));
+
+vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?url', () => ({
+  default: '/assets/maplibre-gl-worker-test.mjs',
 }));
 
 vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}));
 vi.mock('maplibre-gl', () => ({
+  setWorkerUrl: h.setWorkerUrl,
   Map: class {
     constructor(opts: unknown) {
       if (h.throwOnConstruct) throw new Error('no webgl');
@@ -247,4 +253,13 @@ test('a style change after a construction failure does not retry without a conta
   rerender(<ContactMap styleUrl="b" points={[]} onOpenContact={vi.fn()} />);
   expect(h.mapCtor).not.toHaveBeenCalled();
   expect(screen.getByRole('alert')).toBeInTheDocument();
+});
+
+// Issue #1777: the worker must be pointed at the Vite-emitted asset, otherwise
+// maplibre-gl resolves a sibling file the build never ships.
+test('registers the bundled worker URL with maplibre-gl', async () => {
+  vi.resetModules();
+  h.setWorkerUrl.mockClear();
+  await import('./ContactMap');
+  expect(h.setWorkerUrl).toHaveBeenCalledWith('/assets/maplibre-gl-worker-test.mjs');
 });

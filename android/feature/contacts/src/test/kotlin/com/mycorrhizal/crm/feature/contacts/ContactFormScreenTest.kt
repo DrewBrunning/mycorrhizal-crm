@@ -126,7 +126,7 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Street").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Instant Messaging").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Instant messaging").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Personal information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
@@ -386,7 +386,7 @@ class ContactFormScreenTest {
         )
         composeTestRule.onNodeWithText("Online services").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Instant Messaging").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Instant messaging").assertDoesNotExist()
     }
 
     // Issue #1665 / ADR 0008: a 412 on save keeps the form and offers keep-editing / load-latest.
