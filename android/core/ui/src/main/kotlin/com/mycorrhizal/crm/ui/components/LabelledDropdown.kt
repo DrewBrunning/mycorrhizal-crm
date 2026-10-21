@@ -29,16 +29,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * One choice of a [LabelledDropdown]. [sectionHeader], when set, draws a small
- * heading above this entry (the preference-category menu groups by section).
- */
-data class DropdownOption<T>(
-    val value: T,
-    val label: String,
-    val sectionHeader: String? = null,
-)
-
-/**
  * Issue #1773: the one select control for forms. A read-only outlined field with a
  * visible [label] and a trailing arrow, opening an `ExposedDropdownMenu` — the
  * relationship dialog's shape. It replaces the bare full-width `OutlinedButton` +
