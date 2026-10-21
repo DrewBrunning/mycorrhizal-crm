@@ -277,7 +277,11 @@ type ImportSourcePlan struct {
 	// SelfContact, when its ExternalID is non-empty, names the plan contact
 	// that is the source account's "Me" (issue #1375). The engine lands it onto
 	// the destination user's own self contact instead of creating a second one.
-	SelfContact   SourceRef
+	SelfContact SourceRef
+	// TimeFormat, when non-empty, is the source account's time-format
+	// preference (issue #1830; account bundle only). The engine applies it
+	// only while the destination user is still on "auto".
+	TimeFormat    string
 	Relationships []MappedRelationship
 	Notes         []MappedNote
 	Activities    []MappedActivity
@@ -651,6 +655,16 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			return err
 		}
 		tick()
+	}
+
+	// Account-level preference (issue #1830): carry the bundle's time format
+	// onto the destination user, but never overwrite a choice the destination
+	// already made -- only an account still on "auto" adopts it.
+	if plan.TimeFormat != "" && plan.TimeFormat != "auto" {
+		if err := tx.Model(&models.User{}).Where("id = ? AND time_format = ?", userID, "auto").
+			Update("time_format", plan.TimeFormat).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+			return err
+		}
 	}
 
 	return nil

@@ -21,6 +21,7 @@ export type AccountBundle = {
   omitted: AccountBundleOmissions;
   plan: AccountBundlePlan;
   self_contact_uid?: string;
+  time_format?: 'auto' | '12h' | '24h';
   version: 1;
 };
 
@@ -130,6 +131,7 @@ export type AdminUserResponse = {
   id?: number;
   is_admin?: boolean;
   language?: string;
+  time_format?: 'auto' | '12h' | '24h';
   updated_at?: string;
   username?: string;
 };
@@ -1647,6 +1649,7 @@ export type LoginResponse = {
   date_format?: string;
   language?: string;
   methods?: ('totp' | 'webauthn')[];
+  time_format?: 'auto' | '12h' | '24h';
   two_factor_required?: boolean;
 };
 
@@ -1913,6 +1916,7 @@ export type OIDCNativeExchangeInput = {
 export type OIDCNativeExchangeResponse = {
   date_format?: 'us' | 'eu' | 'iso';
   language?: string;
+  time_format?: 'auto' | '12h' | '24h';
   token: string;
 };
 
@@ -2587,6 +2591,10 @@ export type UpdateDateFormatInput = {
 
 export type UpdateLanguageInput = {
   language: 'en' | 'de' | 'it' | 'es' | 'fr';
+};
+
+export type UpdateTimeFormatInput = {
+  time_format: 'auto' | '12h' | '24h';
 };
 
 export type UserRegistrationInput = {

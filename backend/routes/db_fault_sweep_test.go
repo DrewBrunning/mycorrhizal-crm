@@ -355,6 +355,9 @@ func faultScenarios() []faultScenario {
 		{"PATCH /users/date-format", func(t *testing.T, e *faultEnv) faultReq {
 			return faultReq{method: http.MethodPatch, path: "/api/v1/users/date-format", body: map[string]string{"date_format": "us"}}
 		}},
+		{"PATCH /users/time-format", func(t *testing.T, e *faultEnv) faultReq {
+			return faultReq{method: http.MethodPatch, path: "/api/v1/users/time-format", body: map[string]string{"time_format": "24h"}}
+		}},
 		{"POST /users/change-password", func(t *testing.T, e *faultEnv) faultReq {
 			return faultReq{method: http.MethodPost, path: "/api/v1/users/change-password",
 				body: map[string]string{"current_password": faultOwnerPassword, "new_password": "N3w-Str0ng-Passw0rd!x"}}

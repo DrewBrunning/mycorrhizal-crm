@@ -266,6 +266,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	context.JSON(http.StatusOK, gin.H{
 		"language":    foundUser.Language,
 		"date_format": foundUser.DateFormat,
+		"time_format": foundUser.TimeFormat,
 	})
 }
 
@@ -745,6 +746,45 @@ func UpdateDateFormat(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{"message": "Date format updated successfully", "date_format": user.DateFormat})
+}
+
+// UpdateTimeFormatInput represents the request body for updating the user's
+// time-format preference (issue #1830). Keep the allowed values in sync with
+// models.User.TimeFormat's oneof and the frontend TIME_FORMATS list.
+type UpdateTimeFormatInput struct {
+	TimeFormat string `json:"time_format"`
+}
+
+// UpdateTimeFormat updates the authenticated user's 12/24-hour preference.
+// An explicit "auto" is stored as "auto": it is a real non-empty value, and
+// the column is written with a targeted Update so GORM's zero-value default
+// handling can never swallow it.
+func UpdateTimeFormat(context *gin.Context) {
+	log := logger.FromContext(context)
+
+	var input UpdateTimeFormatInput
+	if err := context.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Invalid time format value"))
+		return
+	}
+	if !models.IsValidTimeFormat(input.TimeFormat) {
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Unsupported time format. Supported: auto, 12h, 24h"))
+		return
+	}
+
+	userID, ok := currentUserID(context)
+	if !ok {
+		return
+	}
+
+	db := context.MustGet("db").(*gorm.DB)
+	if err := db.Model(&models.User{}).Where("id = ?", userID).Update("time_format", input.TimeFormat).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to update user time format")
+		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "Time format updated successfully", "time_format": input.TimeFormat})
 }
 
 // UpdateEnabledContactFields updates which extended contact fields are visible in the UI

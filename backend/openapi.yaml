@@ -514,6 +514,7 @@ paths:
                 properties:
                   language: { type: string }
                   date_format: { type: string }
+                  time_format: { type: string, enum: [auto, 12h, 24h] }
         "400":
           description: Missing code or invalid code.
           content:
@@ -576,6 +577,7 @@ paths:
                 properties:
                   language: { type: string }
                   date_format: { type: string }
+                  time_format: { type: string, enum: [auto, 12h, 24h] }
         "400":
           description: Validation failed.
           content:
@@ -873,6 +875,7 @@ paths:
                 properties:
                   language: { type: string }
                   date_format: { type: string }
+                  time_format: { type: string, enum: [auto, 12h, 24h] }
         "400":
           description: No 2fa_pending cookie.
           content:
@@ -1235,8 +1238,38 @@ paths:
                 properties:
                   message: { type: string }
                   date_format: { type: string }
+                  time_format: { type: string, enum: [auto, 12h, 24h] }
         "400":
           description: Unsupported date format or malformed JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/time-format:
+    patch:
+      summary: Update the authenticated user's time format (12/24-hour) preference
+      operationId: updateTimeFormat
+      description: >
+        auto defers to the platform (Android: the device 12/24-hour setting;
+        web: the locale default); 12h and 24h override it (issue #1830).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTimeFormatInput"
+      responses:
+        "200":
+          description: Time format updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  time_format: { type: string, enum: [auto, 12h, 24h] }
+        "400":
+          description: Unsupported time format or malformed JSON.
           content:
             application/json:
               schema:
@@ -12574,6 +12607,7 @@ components:
       properties:
         language: { type: string }
         date_format: { type: string }
+        time_format: { type: string, enum: [auto, 12h, 24h] }
         two_factor_required:
           type: boolean
           description: "Present and true when the account has 2FA enabled: a session is NOT issued; POST /login/2fa with a TOTP/recovery code (or the /webauthn/login/* ceremony) completes the login."
@@ -12709,6 +12743,11 @@ components:
       required: [date_format]
       properties:
         date_format: { type: string, enum: [eu, us, iso, ca, eu-hyphen, us-mmm, us-mmmm, eu-mmm, eu-mmmm] }
+    UpdateTimeFormatInput:
+      type: object
+      required: [time_format]
+      properties:
+        time_format: { type: string, enum: [auto, 12h, 24h] }
     EnabledContactFieldsInput:
       type: object
       properties:
@@ -12772,6 +12811,7 @@ components:
         email: { type: string }
         language: { type: string }
         date_format: { type: string }
+        time_format: { type: string, enum: [auto, 12h, 24h] }
         is_admin: { type: boolean }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -15677,6 +15717,7 @@ components:
         token: { type: string, description: "A freshly-issued session JWT (the same value a password login would set as the auth_token cookie)." }
         language: { type: string }
         date_format: { type: string, enum: [us, eu, iso] }
+        time_format: { type: string, enum: [auto, 12h, 24h] }
     WebhookInput:
       type: object
       required: [name, url, events]
@@ -16411,6 +16452,15 @@ components:
             Importing lands that contact onto the destination's own self
             contact instead of creating a second one; an importer must
             tolerate its absence.
+        time_format:
+          type: string
+          enum: [auto, 12h, 24h]
+          description: >
+            The account's time-format preference (issue #1830). Additive and
+            optional: absent on a bundle written before the field existed (an
+            importer treats that as auto). Importing applies it only when the
+            destination account is still on auto, so it never overwrites a
+            choice made on the destination.
         plan: { $ref: "#/components/schemas/AccountBundlePlan" }
         attachments:
           type: array

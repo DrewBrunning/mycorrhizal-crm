@@ -42,10 +42,16 @@ type AccountBundle struct {
 	// that contact ONTO the destination's own self contact rather than creating
 	// a second "Me". Top level rather than inside plan because plan holds only
 	// entity collections.
-	SelfContactUID string                    `json:"self_contact_uid,omitempty"`
-	Plan           AccountBundlePlan         `json:"plan"`
-	Attachments    []AccountBundleAttachment `json:"attachments"`
-	Omitted        AccountBundleOmissions    `json:"omitted"`
+	SelfContactUID string `json:"self_contact_uid,omitempty"`
+	// TimeFormat is the account's 12/24-hour preference (users.time_format,
+	// issue #1830). Additive and optional: absent on a bundle written before
+	// the field existed (the importer then leaves the destination alone, i.e.
+	// auto for a fresh account). Import applies it only while the destination
+	// is still on auto, so it never overwrites a choice made on the destination.
+	TimeFormat  string                    `json:"time_format,omitempty"`
+	Plan        AccountBundlePlan         `json:"plan"`
+	Attachments []AccountBundleAttachment `json:"attachments"`
+	Omitted     AccountBundleOmissions    `json:"omitted"`
 }
 
 // AccountBundleOmissions records what the bundle deliberately did not carry,

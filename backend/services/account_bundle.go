@@ -61,6 +61,7 @@ func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.Acco
 	bundle.Plan.Contacts = contacts
 	stats.Contacts = len(contacts)
 	bundle.SelfContactUID = bundleSelfContactUID(db, userID, uidByContactID)
+	bundle.TimeFormat = bundleTimeFormat(db, userID)
 
 	var uuidByActivityID, uuidByReminderID map[uint]string
 	bundle.Plan.Relationships, err = loadBundleRelationships(db, userID)
@@ -657,6 +658,17 @@ func nonNilAttendees(in []models.AccountBundleAttendee) []models.AccountBundleAt
 		return []models.AccountBundleAttendee{}
 	}
 	return in
+}
+
+// bundleTimeFormat returns the user's time_format preference (issue #1830), or
+// "" when it cannot be read or is not a known value, so the field is simply
+// omitted from the bundle.
+func bundleTimeFormat(db *gorm.DB, userID uint) string {
+	var user models.User
+	if err := db.Select("id", "time_format").First(&user, userID).Error; err != nil || !models.IsValidTimeFormat(user.TimeFormat) {
+		return ""
+	}
+	return user.TimeFormat
 }
 
 // bundleSelfContactUID returns the user's "Me" vcard_uid (issue #1375) when it

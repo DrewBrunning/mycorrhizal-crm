@@ -542,6 +542,7 @@ type AdminUserResponse struct {
 	Email      string    `json:"email"`
 	Language   string    `json:"language"`
 	DateFormat string    `json:"date_format"`
+	TimeFormat string    `json:"time_format"`
 	IsAdmin    bool      `json:"is_admin"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -782,6 +783,7 @@ type OIDCNativeExchangeResponse struct {
 	Token      string `json:"token"`
 	Language   string `json:"language"`
 	DateFormat string `json:"date_format"`
+	TimeFormat string `json:"time_format"`
 }
 
 // OccasionObligationInput is the DTO for creating/updating an

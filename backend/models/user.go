@@ -6,13 +6,31 @@ import (
 	"gorm.io/gorm"
 )
 
+// TimeFormats are the accepted users.time_format values (issue #1830).
+var TimeFormats = []string{"auto", "12h", "24h"}
+
+// IsValidTimeFormat reports whether v is an accepted time_format value.
+func IsValidTimeFormat(v string) bool {
+	for _, f := range TimeFormats {
+		if v == f {
+			return true
+		}
+	}
+	return false
+}
+
 type User struct {
 	gorm.Model
-	Username                 string     `gorm:"unique" validate:"required,min=1,max=50,no_at_sign"`
-	Password                 string     `validate:"required,min=8,strong_password"`
-	Email                    string     `gorm:"unique" validate:"required,email"`
-	Language                 string     `gorm:"default:'en'" json:"language" validate:"omitempty,oneof=en de it es fr"`
-	DateFormat               string     `gorm:"default:'eu'" json:"date_format" validate:"omitempty,oneof=eu us iso ca eu-hyphen us-mmm us-mmmm eu-mmm eu-mmmm"`
+	Username   string `gorm:"unique" validate:"required,min=1,max=50,no_at_sign"`
+	Password   string `validate:"required,min=8,strong_password"`
+	Email      string `gorm:"unique" validate:"required,email"`
+	Language   string `gorm:"default:'en'" json:"language" validate:"omitempty,oneof=en de it es fr"`
+	DateFormat string `gorm:"default:'eu'" json:"date_format" validate:"omitempty,oneof=eu us iso ca eu-hyphen us-mmm us-mmmm eu-mmm eu-mmmm"`
+	// TimeFormat is the user's 12/24-hour preference (issue #1830, migration
+	// 000077): auto (platform/locale default) | 12h | 24h. Keep the oneof in
+	// sync with UpdateTimeFormatInput (controllers) and the frontend
+	// TIME_FORMATS list (frontend/src/timeFormat.ts).
+	TimeFormat               string     `gorm:"default:'auto'" json:"time_format" validate:"omitempty,oneof=auto 12h 24h"`
 	IsAdmin                  bool       `gorm:"default:false" json:"is_admin"`
 	PasswordResetTokenHash   *string    `gorm:"column:password_reset_token_hash"`
 	PasswordResetExpiresAt   *time.Time `gorm:"column:password_reset_expires_at"`

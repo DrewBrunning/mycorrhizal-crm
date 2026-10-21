@@ -45,6 +45,12 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 		}
 	}
 
+	// An unknown value (a newer bundle, a hand-edited file) is dropped rather
+	// than written: the importer only ever persists a value it validates.
+	if models.IsValidTimeFormat(bundle.TimeFormat) {
+		plan.TimeFormat = bundle.TimeFormat
+	}
+
 	for _, r := range bundle.Plan.Relationships {
 		plan.Relationships = append(plan.Relationships, MappedRelationship{
 			Ref:         bundleRef("relationship", r.ID),
