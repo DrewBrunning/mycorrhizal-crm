@@ -3,20 +3,21 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { useTimeZone } from '../testSupport/timeZone';
 import ReminderList from './ReminderList';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
 
-// remind_at is a timestamp, formatted in the *local* zone (#962) -- pin TZ so
-// the date-chip assertions below don't depend on the test runner's ambient
-// timezone.
-const originalTZ = process.env.TZ;
+// remind_at is a timestamp, formatted in the *local* zone (#962) -- pin the
+// simulated zone so the date-chip assertions below don't depend on the test
+// runner's ambient timezone. Runtime TZ mutation is ignored in worker threads
+// (issue #1843), hence the Date-getter simulation.
 beforeAll(() => {
-  process.env.TZ = 'UTC';
+  useTimeZone('UTC');
 });
 afterAll(() => {
-  process.env.TZ = originalTZ;
+  vi.restoreAllMocks();
 });
 
 function reminder(overrides: Partial<Reminder> = {}): Reminder {

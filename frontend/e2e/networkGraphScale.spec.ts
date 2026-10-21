@@ -28,12 +28,14 @@ const GRAPH_ROUTE = '**/api/v1/graph';
 
 // The `large` profile ships a ~2.6 MB /graph payload the page must fetch,
 // JSON-parse, set into state and reconcile before it can even decide to
-// degrade -- comfortably past the 5 s default assertion timeout on a shared
-// CI runner (observed: the notice mounts ~1 s after the default expiry). This
-// is a nightly @perf-heavy benchmark with a 360 s test budget, so wait
-// generously for the render decision; `wall` below still records how long it
-// actually took.
-const DECISION_TIMEOUT = 30_000;
+// degrade. The degraded path also mounts NetworkListView's full 15 000-row
+// fallback, which blocks the main thread while React builds it -- on a loaded
+// runner that can keep the notice out of the visible DOM for longer than 30 s
+// (nightly failure #1844: it appeared just after the 30 s expiry). This is a
+// nightly @perf-heavy benchmark with a 360 s test budget, so wait generously
+// for the render decision; `wall` below still records how long it actually
+// took.
+const DECISION_TIMEOUT = 120_000;
 
 /** Worst rAF gap (ms) over `windowMs` -- a proxy for main-thread blocking. */
 async function measureJank(
