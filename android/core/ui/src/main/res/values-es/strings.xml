@@ -1408,7 +1408,7 @@
     <string name="gifts_shopping_notes_header">Tallas de ropa y preferencias de regalo (%1$d)</string>
     <string name="gifts_clothing_type">Tipo</string>
     <string name="gifts_preferences_heading">Preferencias de regalo</string>
-    <string name="preferences_key">Clave</string>
+    <string name="preferences_key">Tipo</string>
     <string name="preferences_notes">Notas</string>
     <string name="preferences_level">Nivel</string>
     <string name="preferences_level_none">Sin nivel</string>
@@ -1995,4 +1995,16 @@
     <string name="conflict_load_latest">Cargar la última versión</string>
     <string name="conflict_keep_editing">Seguir editando</string>
     <string name="conflict_dismiss">Ahora no</string>
+    <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
+    <string name="life_events_category_label">Categoría</string>
+    <string name="life_events_type_label">Tipo de evento</string>
+    <string name="life_events_save_hint">Elige un tipo de evento para continuar</string>
+    <string name="gifts_status_label">Estado</string>
+    <string name="gifts_save_hint_description">Escribe una descripción para continuar</string>
+    <string name="preferences_save_hint">Escribe un valor para continuar</string>
+    <string name="relationships_save_hint_name">Escribe un nombre para continuar</string>
+    <string name="relationships_save_hint_contact">Elige un contacto para continuar</string>
+    <string name="form_save_hint_fix_fields">Corrige los campos resaltados para continuar</string>
+    <string name="preferences_key_suggestions">Sugerencias</string>
+    <string name="note_change_contact">Cambiar</string>
 </resources>

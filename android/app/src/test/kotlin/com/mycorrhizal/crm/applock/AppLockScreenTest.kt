@@ -8,8 +8,18 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.data.session.AppLockController
+import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -145,48 +155,58 @@ class AppLockScreenTest {
 
     private fun hostViewModel(
         canAuthenticate: Boolean = true,
-        controller: com.mycorrhizal.crm.data.session.AppLockController =
-            io.mockk.mockk(relaxed = true),
+        controller: AppLockController = mockk(relaxed = true),
     ): AppLockViewModel {
-        val authRepository = io.mockk.mockk<com.mycorrhizal.crm.domain.repository.AuthRepository>(relaxed = true)
-        val capabilities = io.mockk.mockk<com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities> {
-            io.mockk.every { canEnableLocalAuth() } returns canAuthenticate
+        val authRepository = mockk<AuthRepository>(relaxed = true)
+        val capabilities = mockk<LocalAuthCapabilities> {
+            every { canEnableLocalAuth() } returns canAuthenticate
         }
-        val sessionManager = io.mockk.mockk<com.mycorrhizal.crm.data.session.SessionManager> {
-            io.mockk.every { observeSession() } returns kotlinx.coroutines.flow.MutableStateFlow(
-                com.mycorrhizal.crm.domain.repository.SessionState(isLoggedIn = true, username = "alice"),
+        val sessionManager = mockk<SessionManager> {
+            every { observeSession() } returns MutableStateFlow(
+                SessionState(isLoggedIn = true, username = "alice"),
             )
         }
         return AppLockViewModel(controller, authRepository, capabilities, sessionManager)
     }
 
+    // The host auto-prompts once on first display and hands a success to the
+    // controller; a cancel keeps the lock screen and Unlock retries. Added
+    // because Compose codegen growth in this untested host pushed the file past
+    // the coverage ratchet with no source change.
     @Test
     fun `the host prompts once on first display and reports a success to the controller`() {
-        val controller = io.mockk.mockk<com.mycorrhizal.crm.data.session.AppLockController>(relaxed = true)
+        val controller = mockk<AppLockController>(relaxed = true)
         val prompter = FakePrompter(AppLockAuthOutcome.Success)
         composeTestRule.setContent {
-            MycorrhizalTheme { AppLockScreen(viewModel = hostViewModel(controller = controller), prompter = prompter) }
+            MycorrhizalTheme {
+                AppLockScreen(viewModel = hostViewModel(controller = controller), prompter = prompter)
+            }
         }
         composeTestRule.waitForIdle()
 
-        assertTrue(prompter.requests == 1)
-        assertTrue(prompter.lastTitle == "Your data is locked")
-        io.mockk.verify { controller.onUserAuthenticated() }
+        assertEquals(1, prompter.requests)
+        assertEquals("Your data is locked", prompter.lastTitle)
+        verify(exactly = 1) { controller.onUserAuthenticated() }
     }
 
     @Test
     fun `a cancelled prompt keeps the lock screen and the unlock button retries`() {
+        val controller = mockk<AppLockController>(relaxed = true)
         val prompter = FakePrompter(AppLockAuthOutcome.Cancelled)
         composeTestRule.setContent {
-            MycorrhizalTheme { AppLockScreen(viewModel = hostViewModel(), prompter = prompter) }
+            MycorrhizalTheme {
+                AppLockScreen(viewModel = hostViewModel(controller = controller), prompter = prompter)
+            }
         }
         composeTestRule.waitForIdle()
-        assertTrue(prompter.requests == 1)
+        assertEquals(1, prompter.requests)
+        verify(exactly = 0) { controller.onUserAuthenticated() }
 
         composeTestRule.onNodeWithText("Unlock").performClick()
         composeTestRule.waitForIdle()
 
-        assertTrue(prompter.requests == 2)
+        assertEquals(2, prompter.requests)
+        verify(exactly = 0) { controller.onUserAuthenticated() }
         composeTestRule.onNodeWithText("Your data is locked").assertIsDisplayed()
     }
 
@@ -200,6 +220,6 @@ class AppLockScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        assertTrue(prompter.requests == 0)
+        assertEquals(0, prompter.requests)
     }
 }

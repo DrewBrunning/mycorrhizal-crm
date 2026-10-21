@@ -1408,7 +1408,7 @@
     <string name="gifts_shopping_notes_header">Kleidergrößen &amp; Geschenkpräferenzen (%1$d)</string>
     <string name="gifts_clothing_type">Art</string>
     <string name="gifts_preferences_heading">Geschenkvorlieben</string>
-    <string name="preferences_key">Schlüssel</string>
+    <string name="preferences_key">Art</string>
     <string name="preferences_notes">Notizen</string>
     <string name="preferences_level">Können</string>
     <string name="preferences_level_none">Keine Angabe</string>
@@ -1995,4 +1995,16 @@
     <string name="conflict_load_latest">Neueste Version laden</string>
     <string name="conflict_keep_editing">Weiter bearbeiten</string>
     <string name="conflict_dismiss">Jetzt nicht</string>
+    <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
+    <string name="life_events_category_label">Kategorie</string>
+    <string name="life_events_type_label">Ereignistyp</string>
+    <string name="life_events_save_hint">Wähle einen Ereignistyp, um fortzufahren</string>
+    <string name="gifts_status_label">Status</string>
+    <string name="gifts_save_hint_description">Gib eine Beschreibung ein, um fortzufahren</string>
+    <string name="preferences_save_hint">Gib einen Wert ein, um fortzufahren</string>
+    <string name="relationships_save_hint_name">Gib einen Namen ein, um fortzufahren</string>
+    <string name="relationships_save_hint_contact">Wähle einen Kontakt, um fortzufahren</string>
+    <string name="form_save_hint_fix_fields">Korrigiere die markierten Felder, um fortzufahren</string>
+    <string name="preferences_key_suggestions">Vorschläge</string>
+    <string name="note_change_contact">Ändern</string>
 </resources>
