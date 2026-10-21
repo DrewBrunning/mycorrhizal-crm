@@ -331,10 +331,10 @@ internal fun DashboardContent(
  * no overdue filter on the contacts list for any capped block to point at.
  */
 private fun LazyListScope.dashboardTruncationCaption(section: String, shown: Int, total: Int?) {
-    if (!isDashboardTruncated(shown, total)) return
+    if (total == null || !isDashboardTruncated(shown, total)) return
     item(key = dashboardKey("truncated", section)) {
         Text(
-            text = pluralStringResource(R.plurals.dashboard_showing_of_total, total!!, shown, total),
+            text = pluralStringResource(R.plurals.dashboard_showing_of_total, total, shown, total),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("dashboard-truncated-$section"),
