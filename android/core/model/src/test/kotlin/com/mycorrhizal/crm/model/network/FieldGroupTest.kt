@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
-class FieldGroupsTest {
+class FieldGroupTest {
 
     private fun def(id: String, group: String = "") = FieldDefinition(id = id, label = id, type = "string", group = group)
 
