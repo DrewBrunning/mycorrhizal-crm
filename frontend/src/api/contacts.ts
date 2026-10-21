@@ -370,6 +370,11 @@ export interface CRMEnvelope {
   // envelope (crm.gender) so it round-trips through the Record; the legacy
   // top-level `gender` sibling on the wire DTO remains for backward compat.
   gender?: string;
+  // Issue #1733: the explicit "I see them all the time" flag. Responses carry
+  // it only when true (absent reads as false). On a write, ABSENT keeps the
+  // stored value (older clients that rebuild crm cannot clear it); true/false
+  // sets it.
+  ambient?: boolean;
 }
 
 export interface ContactRecordInput {

@@ -107,6 +107,14 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 		c.Gender = env.Gender
 	}
 
+	// Ambient (issue #1733): preserve-when-absent. A nil envelope value means
+	// the writer did not mention the flag (an older client that rebuilds crm
+	// without it), so the stored flat value is kept; only an explicit true/false
+	// changes it. Contrast Gender/Circles above, which a full overwrite sets.
+	if env.Ambient != nil {
+		c.Ambient = *env.Ambient
+	}
+
 	// "uid" row, inverse direction: Card.UID -> VCardUID. Only overwrite when
 	// the incoming Card actually carries a UID (e.g. a client PUT that omits
 	// it, or a brand-new POST, should not blank out/clobber an existing

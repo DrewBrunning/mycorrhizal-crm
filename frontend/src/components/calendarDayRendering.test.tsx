@@ -119,6 +119,7 @@ test('cadence panel shows last interaction and next due on their API days', () =
     health: {
       has_qualifying_interaction: true,
       overdue_by: 0,
+      ambient: false,
       next_due: '2026-04-10',
       last_interaction: '2026-03-11T00:00:00Z',
     },
