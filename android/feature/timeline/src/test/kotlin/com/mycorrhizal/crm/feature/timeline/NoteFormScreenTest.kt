@@ -132,4 +132,22 @@ class NoteFormScreenTest {
         composeTestRule.onNodeWithText("Create note").performClick()
         assertEquals(true, saved)
     }
+
+    // Issue #1773: with a contact already assigned, no empty search box sits under
+    // it; Change reveals the search, and picking a result hides it again.
+    @Test
+    fun `an assigned contact hides the search until Change is tapped`() {
+        setContent(NoteFormState(contactId = 5, targetContactId = 9, targetContactName = "Dana Lee"))
+        composeTestRule.onNodeWithText("Dana Lee").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Search contacts").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Change").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Search contacts").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unassigned note shows the search straight away`() {
+        setContent(NoteFormState(contactId = 5))
+        composeTestRule.onNodeWithText("Change").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Search contacts").performScrollTo().assertIsDisplayed()
+    }
 }

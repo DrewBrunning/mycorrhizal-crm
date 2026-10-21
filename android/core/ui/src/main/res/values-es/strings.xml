@@ -24,12 +24,15 @@
     <string name="dashboard_unknown_contact">Contacto desconocido</string>
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
-    <string name="nav_tags">Etiquetas</string>
-    <string name="nav_circles">Círculos</string>
+    <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
+    <string name="nav_group_people">Personas</string>
+    <string name="nav_group_interactions">Interacciones</string>
+    <string name="nav_group_data_admin">Datos y administración</string>
+    <string name="nav_notes_unassigned">Notas sin asignar</string>
+    <string name="nav_header_description">Sesión iniciada como %1$s en %2$s</string>
+    <string name="nav_header_action">Abrir servidores</string>
     <string name="nav_network">Red</string>
     <string name="nav_map">Mapa</string>
-    <string name="nav_shares">Compartidos</string>
-    <string name="nav_households">Hogares</string>
     <string name="cd_menu">Menú</string>
     <string name="row_more_actions_named">Más acciones para %1$s</string>
     <string name="cd_back">Atrás</string>
@@ -397,8 +400,23 @@
 
     <!-- Ajustes -->
     <string name="settings_title">Ajustes</string>
+    <!-- Issue #1759: the Settings root groups, their one-line summaries, and the new section headings. -->
+    <string name="settings_group_account">Cuenta</string>
+    <string name="settings_group_account_summary">Servidor, contraseña, dos factores, tokens API</string>
+    <string name="settings_group_appearance_summary">Idioma, formato de fecha, tema</string>
+    <string name="settings_group_privacy">Privacidad y seguridad</string>
+    <string name="settings_group_privacy_summary">Bloqueo de la app, capturas de pantalla</string>
+    <string name="settings_group_contacts_fields">Contactos y campos</string>
+    <string name="settings_group_contacts_fields_summary">Campos personalizados, acciones de enlace, depuración</string>
+    <string name="settings_group_tracking_summary">Registro de llamadas y mensajes, notificaciones</string>
+    <string name="settings_group_integrations">Integraciones</string>
+    <string name="settings_group_integrations_summary">Sincronización de calendario, webhooks, fotos y archivos</string>
+    <string name="settings_group_administration">Administración</string>
+    <string name="settings_group_administration_summary">Gestión de usuarios, eventos del sistema</string>
+    <string name="settings_group_about_summary">Versión y detalles de la compilación</string>
+    <string name="settings_security">Seguridad</string>
+    <string name="settings_screen_privacy">Privacidad de pantalla</string>
     <string name="settings_data">Datos</string>
-    <string name="settings_data_review">Sugerencias de datos</string>
     <string name="settings_suggest_relationships">Sugerir relaciones</string>
     <!-- N8: two-factor auth (issue #158 / #814) -->
     <string name="settings_two_factor_title">Autenticación de dos factores</string>
@@ -575,9 +593,9 @@
     <string name="biometric_enroll_not_now">Ahora no</string>
     <string name="biometric_enroll_never">No volver a preguntar</string>
     <string name="biometric_enroll_error">No se pudo configurar el inicio de sesión biométrico. Inténtalo de nuevo.</string>
-    <string name="settings_biometric_signin_setup">Configurar el inicio de sesión biométrico</string>
     <string name="settings_biometric_signin_enabled">El inicio de sesión biométrico está activado en este dispositivo</string>
     <string name="settings_biometric_signin_remove">Desactivar el inicio de sesión biométrico</string>
+    <string name="biometric_remove_error">No se pudo desactivar el inicio de sesión biométrico. Comprueba tu conexión e inténtalo de nuevo.</string>
 
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>
@@ -878,12 +896,15 @@
     <string name="notes_title">Notas</string>
     <string name="notes_empty">Aún no hay notas</string>
     <string name="notes_empty_body">Las notas guardan lo que quieres recordar sobre alguien.</string>
+    <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
+    <string name="notes_unassigned_empty">Aún no hay notas sin asignar</string>
+    <string name="notes_unassigned_empty_body">Las notas que guardas sin un contacto aparecen aquí.</string>
+    <string name="notes_inbox_total">%1$d en total</string>
     <string name="notes_search">Buscar notas</string>
     <string name="notes_no_results">Ninguna nota coincide con tus filtros</string>
     <string name="notes_delete_title">¿Eliminar nota?</string>
     <string name="notes_delete_named">Eliminar %1$s</string>
     <string name="notes_delete_confirm">¿Eliminar esta nota? \"%1$s\"</string>
-    <string name="notes_inbox_total">%1$d sin asignar</string>
     <string name="action_load_more">Cargar más</string>
     <string name="note_new">Nueva nota</string>
     <string name="note_edit">Editar nota</string>
@@ -1387,7 +1408,7 @@
     <string name="gifts_shopping_notes_header">Tallas de ropa y preferencias de regalo (%1$d)</string>
     <string name="gifts_clothing_type">Tipo</string>
     <string name="gifts_preferences_heading">Preferencias de regalo</string>
-    <string name="preferences_key">Clave</string>
+    <string name="preferences_key">Tipo</string>
     <string name="preferences_notes">Notas</string>
     <string name="preferences_level">Nivel</string>
     <string name="preferences_level_none">Sin nivel</string>
@@ -1666,7 +1687,6 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
-    <string name="nav_audit">Registro de auditoría</string>
     <string name="audit_title">Registro de auditoría</string>
     <string name="audit_description">Todas las creaciones, modificaciones y eliminaciones de tus contactos y registros, de más reciente a más antiguo.</string>
     <string name="audit_filters_entity_type">Tipo de entidad</string>
@@ -1980,4 +2000,16 @@
     <string name="settings_custom_fields_group">Grupo</string>
     <string name="settings_custom_fields_group_hint">Opcional. Los campos del mismo grupo se muestran juntos en un contacto.</string>
     <string name="settings_custom_fields_error_group_too_long">El grupo debe tener 100 caracteres o menos</string>
+    <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
+    <string name="life_events_category_label">Categoría</string>
+    <string name="life_events_type_label">Tipo de evento</string>
+    <string name="life_events_save_hint">Elige un tipo de evento para continuar</string>
+    <string name="gifts_status_label">Estado</string>
+    <string name="gifts_save_hint_description">Escribe una descripción para continuar</string>
+    <string name="preferences_save_hint">Escribe un valor para continuar</string>
+    <string name="relationships_save_hint_name">Escribe un nombre para continuar</string>
+    <string name="relationships_save_hint_contact">Elige un contacto para continuar</string>
+    <string name="form_save_hint_fix_fields">Corrige los campos resaltados para continuar</string>
+    <string name="preferences_key_suggestions">Sugerencias</string>
+    <string name="note_change_contact">Cambiar</string>
 </resources>

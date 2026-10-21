@@ -116,3 +116,13 @@ test('expanding a row loads and shows its run history', async () => {
   expect(await screen.findByText('Resend rejected the request')).toBeInTheDocument();
   expect(screen.getByText('Skipped')).toBeInTheDocument();
 });
+
+test('the header Refresh button refetches job health', async () => {
+  vi.mocked(getJobRunHealth).mockResolvedValue({ jobs: [health()] });
+
+  render(<BackgroundJobsPanel />);
+  await waitFor(() => expect(getJobRunHealth).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(getJobRunHealth).toHaveBeenCalledTimes(2));
+});

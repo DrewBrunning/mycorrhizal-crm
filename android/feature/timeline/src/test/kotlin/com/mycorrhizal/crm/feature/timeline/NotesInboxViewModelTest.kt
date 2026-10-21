@@ -46,6 +46,46 @@ class NotesInboxViewModelTest {
         assertNull(state.error)
     }
 
+    // Issue #1757: returning from the new-note form must show the note just created.
+    @Test
+    fun `onResumed reloads once a load has finished but not while the first one is running`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listUnfiled() } returns Result.success(
+                UnfiledNotesPage(notes = listOf(Note(id = 1, content = "One")), nextCursor = null, total = 1),
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { noteRepository.listUnfiled() }
+
+            coEvery { noteRepository.listUnfiled() } returns Result.success(
+                UnfiledNotesPage(
+                    notes = listOf(Note(id = 2, content = "Two"), Note(id = 1, content = "One")),
+                    nextCursor = null,
+                    total = 2,
+                ),
+            )
+            vm.onResumed()
+            advanceUntilIdle()
+
+            assertEquals(listOf(2, 1), vm.uiState.value.notes.map { it.id })
+            coVerify(exactly = 2) { noteRepository.listUnfiled() }
+        }
+
+    @Test
+    fun `onResumed during the initial load does not start a second request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listUnfiled() } returns Result.success(
+                UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0),
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            vm.onResumed()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { noteRepository.listUnfiled() }
+        }
+
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.listUnfiled() } returns Result.failure(ApiError.Client(500, "server error"))
