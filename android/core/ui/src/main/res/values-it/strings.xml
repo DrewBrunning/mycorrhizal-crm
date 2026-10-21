@@ -2012,6 +2012,10 @@
     <string name="settings_custom_fields_group">Gruppo</string>
     <string name="settings_custom_fields_group_hint">Facoltativo. I campi dello stesso gruppo vengono mostrati insieme in un contatto.</string>
     <string name="settings_custom_fields_error_group_too_long">Il gruppo deve avere al massimo 100 caratteri</string>
+    <string name="contact_ambient_toggle">Contatto quotidiano: lo vedo sempre</string>
+    <string name="ambient_explainer">Conta come contatto regolare senza registrare attività</string>
+    <string name="ambient_reason_household">Vive con te (nucleo familiare)</string>
+    <string name="ambient_reason_flag">Contrassegnato come contatto quotidiano</string>
     <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
          backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
     <string name="contact_type_voice">Voce</string>

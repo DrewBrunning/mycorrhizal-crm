@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -62,6 +63,7 @@ import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.registry.CadenceQualifyingType
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -211,6 +213,7 @@ fun CadencePanelContent(
 ) {
     val health = policy.health
     val hasInteraction = health?.hasQualifyingInteraction == true
+    val isAmbient = health?.ambient == true
     val isOverdue = health != null && health.isOverdue
     val nextDue = health?.nextDue?.let { DateFormat.formatTimestamp(it, dateFormat) }
     val lastInteraction = health?.lastInteraction?.let { DateFormat.formatTimestamp(it, dateFormat) }
@@ -233,6 +236,15 @@ fun CadencePanelContent(
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
+                    // Issue #1734: an ambient contact is in regular contact without logged
+                    // activity -- show why instead of overdue / on-track / days-since figures.
+                    isAmbient -> {
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        AmbientExplanation(
+                            reason = health?.ambientReason,
+                            modifier = Modifier.testTag("cadence-ambient"),
+                        )
+                    }
                     isOverdue -> {
                         // #200: amber text on parchment was 1.83:1 — illegible.
                         // The warning semantics ride the icon (tinted with the
@@ -263,14 +275,14 @@ fun CadencePanelContent(
                 }
             }
 
-            if (hasInteraction && !nextDue.isNullOrBlank()) {
+            if (!isAmbient && hasInteraction && !nextDue.isNullOrBlank()) {
                 Text(
                     text = stringResource(R.string.cadence_next_due, nextDue),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (hasInteraction && !lastInteraction.isNullOrBlank()) {
+            if (!isAmbient && hasInteraction && !lastInteraction.isNullOrBlank()) {
                 Text(
                     text = stringResource(R.string.cadence_last_interaction, lastInteraction),
                     style = MaterialTheme.typography.bodySmall,
