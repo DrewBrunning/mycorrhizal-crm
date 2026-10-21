@@ -93,6 +93,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		// a crm JSON column that predates the flag still reads correctly.
 		envelope := c.CRM
 		envelope.Ambient = ambientPtr(c.Ambient)
+		envelope.TargetCloseness = c.TargetCloseness
 		return ApplyFieldSelection(&contactmodel.Record{
 			UID:         c.VCardUID,
 			ETag:        c.ETag,
@@ -444,6 +445,7 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 		ContactInformation: c.ContactInformation,
 		Gender:             c.Gender,
 		Ambient:            ambientPtr(c.Ambient),
+		TargetCloseness:    c.TargetCloseness,
 	}
 
 	// Gender (c.Gender) maps into Record.Envelope.Gender (issue #515),
@@ -552,6 +554,14 @@ func EnvelopeExportLossDiagnostics(rec *contactmodel.Record) []contactmodel.Diag
 		diags = append(diags, contactmodel.Diagnostic{
 			Severity: "warn",
 			Concept:  "crm.ambient",
+			Message:  "CRM-only field has no home in this export format and is dropped from the file",
+		})
+	}
+	// TargetCloseness (issue #1796) likewise: set only when the user has a target.
+	if env.TargetCloseness != nil && *env.TargetCloseness != "" {
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "warn",
+			Concept:  "crm.target_closeness",
 			Message:  "CRM-only field has no home in this export format and is dropped from the file",
 		})
 	}
