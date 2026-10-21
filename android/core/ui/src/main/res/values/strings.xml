@@ -26,10 +26,13 @@
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_map">Map</string>
-    <string name="nav_shares">Shares</string>
-    <string name="nav_households">Households</string>
-    <string name="nav_circles">Circles</string>
-    <string name="nav_tags">Tags</string>
+    <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
+    <string name="nav_group_people">People</string>
+    <string name="nav_group_interactions">Interactions</string>
+    <string name="nav_group_data_admin">Data &amp; admin</string>
+    <string name="nav_notes_unassigned">Unassigned notes</string>
+    <string name="nav_header_description">Signed in as %1$s on %2$s</string>
+    <string name="nav_header_action">Open servers</string>
     <string name="cd_menu">Menu</string>
     <string name="row_more_actions_named">More actions for %1$s</string>
     <string name="cd_back">Back</string>
@@ -404,8 +407,23 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <!-- Issue #1759: the Settings root groups, their one-line summaries, and the new section headings. -->
+    <string name="settings_group_account">Account</string>
+    <string name="settings_group_account_summary">Server, password, two-factor, API tokens</string>
+    <string name="settings_group_appearance_summary">Language, date format, theme</string>
+    <string name="settings_group_privacy">Privacy &amp; security</string>
+    <string name="settings_group_privacy_summary">App lock, screenshots</string>
+    <string name="settings_group_contacts_fields">Contacts &amp; fields</string>
+    <string name="settings_group_contacts_fields_summary">Custom fields, link actions, triage</string>
+    <string name="settings_group_tracking_summary">Call and message logging, notifications</string>
+    <string name="settings_group_integrations">Integrations</string>
+    <string name="settings_group_integrations_summary">Calendar sync, webhooks, photos and files</string>
+    <string name="settings_group_administration">Administration</string>
+    <string name="settings_group_administration_summary">User management, system events</string>
+    <string name="settings_group_about_summary">Version and build details</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_screen_privacy">Screen privacy</string>
     <string name="settings_data">Data</string>
-    <string name="settings_data_review">Data suggestions</string>
     <string name="settings_suggest_relationships">Suggest relationships</string>
     <!-- N8: two-factor auth (issue #158 / #814) -->
     <string name="settings_two_factor_title">Two-factor authentication</string>
@@ -898,12 +916,15 @@
     <string name="notes_title">Notes</string>
     <string name="notes_empty">No notes yet</string>
     <string name="notes_empty_body">Notes capture what you want to remember about someone.</string>
+    <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
+    <string name="notes_unassigned_empty">No unassigned notes yet</string>
+    <string name="notes_unassigned_empty_body">Notes you capture without a contact land here.</string>
+    <string name="notes_inbox_total">%1$d total</string>
     <string name="notes_search">Search notes</string>
     <string name="notes_no_results">No notes match your filters</string>
     <string name="notes_delete_title">Delete note?</string>
     <string name="notes_delete_confirm">Delete this note? \"%1$s\"</string>
     <string name="notes_delete_named">Delete %1$s</string>
-    <string name="notes_inbox_total">%1$d unfiled</string>
     <string name="action_load_more">Load more</string>
     <string name="note_new">New note</string>
     <string name="note_edit">Edit note</string>
@@ -1682,7 +1703,6 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
-    <string name="nav_audit">Audit log</string>
     <string name="audit_title">Audit log</string>
     <string name="audit_description">Every create, update and delete across your contacts and records, newest first.</string>
     <string name="audit_filters_entity_type">Entity type</string>

@@ -339,6 +339,23 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { localAuthSettings.setRequireLocalAuth(enabled) }
     }
 
+    /**
+     * Issue #1759: the single App lock control. Switching it on also enrolls this device for
+     * biometric sign-in when [offerBiometricSignIn] (the server supports device grants) and the
+     * device is not enrolled yet, so there is no separate "Set up biometric sign-in" button.
+     * Switching it off removes an existing enrollment: biometric sign-in is a part of the lock,
+     * and a grant left behind with the lock off would be an orphan the UI could no longer reach.
+     */
+    fun setAppLock(enabled: Boolean, offerBiometricSignIn: Boolean) {
+        if (enabled && !_uiState.value.localAuthSupported) return
+        setRequireLocalAuth(enabled)
+        val enrolled = _uiState.value.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED
+        when {
+            enabled && offerBiometricSignIn && !enrolled -> enrollBiometricSignIn()
+            !enabled && enrolled -> removeBiometricSignIn()
+        }
+    }
+
     /** Issue #1741: opt in/out of FLAG_SECURE; MainActivity observes the stored value live. */
     fun setBlockScreenshots(enabled: Boolean) {
         _uiState.update { it.copy(blockScreenshots = enabled) }

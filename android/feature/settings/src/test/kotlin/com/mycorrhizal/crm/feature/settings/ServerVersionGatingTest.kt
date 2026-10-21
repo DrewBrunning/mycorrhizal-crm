@@ -138,7 +138,7 @@ class ServerVersionGatingTest {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {
                 MycorrhizalTheme {
-                    DataScreen(onBack = {}, viewModel = viewModel)
+                    DataScreen(onMenuClick = {}, viewModel = viewModel)
                 }
             }
         }

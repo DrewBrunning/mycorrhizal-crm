@@ -24,12 +24,15 @@
     <string name="dashboard_unknown_contact">Contact inconnu</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
-    <string name="nav_tags">Étiquettes</string>
-    <string name="nav_circles">Cercles</string>
+    <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
+    <string name="nav_group_people">Personnes</string>
+    <string name="nav_group_interactions">Interactions</string>
+    <string name="nav_group_data_admin">Données et administration</string>
+    <string name="nav_notes_unassigned">Notes non classées</string>
+    <string name="nav_header_description">Connecté en tant que %1$s sur %2$s</string>
+    <string name="nav_header_action">Ouvrir les serveurs</string>
     <string name="nav_network">Réseau</string>
     <string name="nav_map">Carte</string>
-    <string name="nav_shares">Partages</string>
-    <string name="nav_households">Foyers</string>
     <string name="cd_menu">Menu</string>
     <string name="row_more_actions_named">Plus d\'actions pour %1$s</string>
     <string name="cd_back">Retour</string>
@@ -397,8 +400,23 @@
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
+    <!-- Issue #1759: the Settings root groups, their one-line summaries, and the new section headings. -->
+    <string name="settings_group_account">Compte</string>
+    <string name="settings_group_account_summary">Serveur, mot de passe, deux facteurs, jetons API</string>
+    <string name="settings_group_appearance_summary">Langue, format de date, thème</string>
+    <string name="settings_group_privacy">Confidentialité et sécurité</string>
+    <string name="settings_group_privacy_summary">Verrouillage de l\'app, captures d\'écran</string>
+    <string name="settings_group_contacts_fields">Contacts et champs</string>
+    <string name="settings_group_contacts_fields_summary">Champs personnalisés, actions de lien, tri</string>
+    <string name="settings_group_tracking_summary">Journal des appels et messages, notifications</string>
+    <string name="settings_group_integrations">Intégrations</string>
+    <string name="settings_group_integrations_summary">Synchro du calendrier, webhooks, photos et fichiers</string>
+    <string name="settings_group_administration">Administration</string>
+    <string name="settings_group_administration_summary">Gestion des utilisateurs, événements système</string>
+    <string name="settings_group_about_summary">Version et détails de la version</string>
+    <string name="settings_security">Sécurité</string>
+    <string name="settings_screen_privacy">Confidentialité de l\'écran</string>
     <string name="settings_data">Données</string>
-    <string name="settings_data_review">Suggestions de données</string>
     <string name="settings_suggest_relationships">Suggérer des relations</string>
     <!-- N8: two-factor auth (issue #158 / #814) -->
     <string name="settings_two_factor_title">Authentification à deux facteurs</string>
@@ -878,12 +896,15 @@
     <string name="notes_title">Notes</string>
     <string name="notes_empty">Aucune note pour le moment</string>
     <string name="notes_empty_body">Les notes conservent ce que vous voulez retenir sur quelqu\'un.</string>
+    <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
+    <string name="notes_unassigned_empty">Aucune note non classée pour le moment</string>
+    <string name="notes_unassigned_empty_body">Les notes que vous saisissez sans contact arrivent ici.</string>
+    <string name="notes_inbox_total">%1$d au total</string>
     <string name="notes_search">Rechercher des notes</string>
     <string name="notes_no_results">Aucune note ne correspond à vos filtres</string>
     <string name="notes_delete_title">Supprimer la note ?</string>
     <string name="notes_delete_named">Supprimer %1$s</string>
     <string name="notes_delete_confirm">Supprimer cette note ? \"%1$s\"</string>
-    <string name="notes_inbox_total">%1$d non classées</string>
     <string name="action_load_more">Charger plus</string>
     <string name="note_new">Nouvelle note</string>
     <string name="note_edit">Modifier la note</string>
@@ -1666,7 +1687,6 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
-    <string name="nav_audit">Journal d\'audit</string>
     <string name="audit_title">Journal d\'audit</string>
     <string name="audit_description">Toutes les créations, modifications et suppressions de vos contacts et enregistrements, des plus récentes aux plus anciennes.</string>
     <string name="audit_filters_entity_type">Type d\'entité</string>

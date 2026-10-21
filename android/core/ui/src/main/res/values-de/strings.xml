@@ -24,12 +24,15 @@
     <string name="dashboard_unknown_contact">Unbekannter Kontakt</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_tags">Tags</string>
-    <string name="nav_circles">Kreise</string>
+    <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
+    <string name="nav_group_people">Personen</string>
+    <string name="nav_group_interactions">Interaktionen</string>
+    <string name="nav_group_data_admin">Daten &amp; Verwaltung</string>
+    <string name="nav_notes_unassigned">Nicht zugeordnete Notizen</string>
+    <string name="nav_header_description">Angemeldet als %1$s auf %2$s</string>
+    <string name="nav_header_action">Server öffnen</string>
     <string name="nav_network">Netzwerk</string>
     <string name="nav_map">Karte</string>
-    <string name="nav_shares">Freigaben</string>
-    <string name="nav_households">Haushalte</string>
     <string name="cd_menu">Menü</string>
     <string name="row_more_actions_named">Weitere Aktionen für %1$s</string>
     <string name="cd_back">Zurück</string>
@@ -397,8 +400,23 @@
 
     <!-- Einstellungen -->
     <string name="settings_title">Einstellungen</string>
+    <!-- Issue #1759: the Settings root groups, their one-line summaries, and the new section headings. -->
+    <string name="settings_group_account">Konto</string>
+    <string name="settings_group_account_summary">Server, Passwort, Zwei-Faktor, API-Tokens</string>
+    <string name="settings_group_appearance_summary">Sprache, Datumsformat, Design</string>
+    <string name="settings_group_privacy">Datenschutz &amp; Sicherheit</string>
+    <string name="settings_group_privacy_summary">App-Sperre, Screenshots</string>
+    <string name="settings_group_contacts_fields">Kontakte &amp; Felder</string>
+    <string name="settings_group_contacts_fields_summary">Eigene Felder, Link-Aktionen, Bereinigung</string>
+    <string name="settings_group_tracking_summary">Anruf- und Nachrichtenprotokoll, Benachrichtigungen</string>
+    <string name="settings_group_integrations">Integrationen</string>
+    <string name="settings_group_integrations_summary">Kalendersync, Webhooks, Fotos und Dateien</string>
+    <string name="settings_group_administration">Administration</string>
+    <string name="settings_group_administration_summary">Benutzerverwaltung, Systemereignisse</string>
+    <string name="settings_group_about_summary">Version und Build-Details</string>
+    <string name="settings_security">Sicherheit</string>
+    <string name="settings_screen_privacy">Bildschirm-Datenschutz</string>
     <string name="settings_data">Daten</string>
-    <string name="settings_data_review">Datenvorschläge</string>
     <string name="settings_suggest_relationships">Beziehungen vorschlagen</string>
     <!-- N8: two-factor auth (issue #158 / #814) -->
     <string name="settings_two_factor_title">Zwei-Faktor-Authentifizierung</string>
@@ -878,12 +896,15 @@
     <string name="notes_title">Notizen</string>
     <string name="notes_empty">Noch keine Notizen</string>
     <string name="notes_empty_body">Notizen halten fest, was du dir über jemanden merken möchtest.</string>
+    <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
+    <string name="notes_unassigned_empty">Noch keine nicht zugeordneten Notizen</string>
+    <string name="notes_unassigned_empty_body">Notizen, die du ohne Kontakt erfasst, landen hier.</string>
+    <string name="notes_inbox_total">%1$d insgesamt</string>
     <string name="notes_search">Notizen durchsuchen</string>
     <string name="notes_no_results">Keine Notizen entsprechen deinen Filtern</string>
     <string name="notes_delete_title">Notiz löschen?</string>
     <string name="notes_delete_named">%1$s löschen</string>
     <string name="notes_delete_confirm">Diese Notiz löschen? \"%1$s\"</string>
-    <string name="notes_inbox_total">%1$d nicht zugeordnet</string>
     <string name="action_load_more">Mehr laden</string>
     <string name="note_new">Neue Notiz</string>
     <string name="note_edit">Notiz bearbeiten</string>
@@ -1666,7 +1687,6 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
-    <string name="nav_audit">Audit-Protokoll</string>
     <string name="audit_title">Audit-Protokoll</string>
     <string name="audit_description">Alle Erstellungen, Änderungen und Löschungen Ihrer Kontakte und Einträge, neueste zuerst.</string>
     <string name="audit_filters_entity_type">Entitätstyp</string>
