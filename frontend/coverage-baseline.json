@@ -1148,6 +1148,12 @@
       "branches": 85.71,
       "branchesTotal": 14
     },
+    "src/components/PageHeader.tsx": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 87.5,
+      "branchesTotal": 8
+    },
     "src/components/PaperlessDocumentSearchDialog.tsx": {
       "lines": 83.87,
       "linesTotal": 31,
