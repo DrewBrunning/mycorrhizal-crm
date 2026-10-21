@@ -93,7 +93,7 @@ func TestContactMerge_TargetClosenessResolution(t *testing.T) {
 		{"loser nil keeps keeper's", strPtr("casual"), nil, "casual", false},
 		{"both equal", strPtr("close"), strPtr("close"), "close", false},
 		{"both nil", nil, nil, "", false},
-		{"differing values conflict", strPtr("close"), strPtr("distant"), "", true},
+		{"differing values: keeper wins, no conflict (ADR 0023 amendment)", strPtr("close"), strPtr("distant"), "close", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -105,19 +105,13 @@ func TestContactMerge_TargetClosenessResolution(t *testing.T) {
 			for _, c := range res.Conflicts {
 				if c.Field == "target_closeness" {
 					conflicted = true
-					assert.Equal(t, "close", c.KeeperValue)
-					assert.Equal(t, "distant", c.LoserValue)
 				}
 			}
-			assert.Equal(t, tc.conflict, conflicted)
-			if tc.conflict {
-				// The caller's resolution decides.
-				require.NoError(t, ApplyContactMergeResolution(keeper, res, map[string]string{"target_closeness": "distant"}))
-				require.NotNil(t, keeper.TargetCloseness)
-				assert.Equal(t, "distant", *keeper.TargetCloseness)
-				return
-			}
-			require.NoError(t, ApplyContactMergeResolution(keeper, res, nil))
+			assert.Equal(t, tc.conflict, conflicted, "target_closeness never raises a merge conflict")
+			// A stray client resolution for the field is ignored: it is never a
+			// conflict, so it can never push an out-of-vocabulary token at the
+			// column's CHECK constraint.
+			require.NoError(t, ApplyContactMergeResolution(keeper, res, map[string]string{"target_closeness": "bestie"}))
 			if tc.want == "" {
 				assert.Nil(t, keeper.TargetCloseness, "an empty resolution stores NULL, never an empty string")
 			} else {
