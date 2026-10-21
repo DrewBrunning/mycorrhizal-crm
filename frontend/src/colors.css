@@ -116,7 +116,7 @@
 /* Recommended label color for text/icons on top of each status-color fill. */
 :root {
   --color-on-russula: #FFFFFF;
-  --color-on-chanterelle: #30271F;
+  --color-on-chanterelle: #FFFFFF;
   --color-on-laccaria: #FFFFFF;
   --color-on-moss: #FFFFFF;
 }
