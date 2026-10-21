@@ -28,7 +28,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -141,6 +143,10 @@ fun NoteFormContent(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Issue #1773: with a contact already assigned, the search stays hidden until
+        // "Change" is tapped -- an empty "Search contacts" box under the assigned
+        // contact read as a second, unfilled field.
+        var changing by remember(state.targetContactName != null) { mutableStateOf(false) }
         if (state.targetContactName != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -148,18 +154,25 @@ fun NoteFormContent(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
+                if (!changing) {
+                    TextButton(onClick = { changing = true }) {
+                        Text(stringResource(R.string.note_change_contact))
+                    }
+                }
                 TextButton(onClick = onClearContact) {
                     Text(stringResource(R.string.note_clear_contact))
                 }
             }
         }
-        ContactSearchField(
-            query = state.contactSearchQuery,
-            results = state.contactSearchResults,
-            loading = state.contactSearchLoading,
-            onQueryChange = onContactSearchChange,
-            onPick = onPickContact,
-            labelRes = R.string.note_search_contact,
-        )
+        if (state.targetContactName == null || changing) {
+            ContactSearchField(
+                query = state.contactSearchQuery,
+                results = state.contactSearchResults,
+                loading = state.contactSearchLoading,
+                onQueryChange = onContactSearchChange,
+                onPick = { changing = false; onPickContact(it) },
+                labelRes = R.string.note_search_contact,
+            )
+        }
     }
 }

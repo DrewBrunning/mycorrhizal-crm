@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.42,
-      "linesTotal": 280,
+      "lines": 86.47,
+      "linesTotal": 281,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -747,10 +747,10 @@
       "branchesTotal": 74
     },
     "src/components/ContactTimeline.tsx": {
-      "lines": 81.48,
-      "linesTotal": 27,
-      "branches": 67.56,
-      "branchesTotal": 74
+      "lines": 92.85,
+      "linesTotal": 28,
+      "branches": 75.58,
+      "branchesTotal": 86
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 96.77,
@@ -1399,6 +1399,12 @@
       "linesTotal": 27,
       "branches": 100,
       "branchesTotal": 26
+    },
+    "src/components/timelineLayout.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/contactFields.ts": {
       "lines": 100,
