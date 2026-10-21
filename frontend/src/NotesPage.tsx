@@ -34,6 +34,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
+import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -119,6 +120,7 @@ const NotesPage: React.FC = () => {
     setEditingNote(note);
     setEditValues({
       noteContent: note.content || '',
+      // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
       noteContactId: note.contact_id ?? undefined,
     });
@@ -318,7 +320,7 @@ const NotesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(note.date)}</Typography>
+                <Typography variant="body2">{formatDate(calendarDateOnly(note.date))}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">

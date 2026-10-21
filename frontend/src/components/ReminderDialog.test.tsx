@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Reminder } from '../api/reminders';
+import { localISODate, todayLocalISODate } from '../utils/localDate';
 import ReminderDialog from './ReminderDialog';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -43,7 +44,7 @@ test('shows the add form with sensible defaults when no reminder is provided', (
   expect(screen.getByText('Add Reminder')).toBeInTheDocument();
   expect(screen.getByLabelText('Message *')).toHaveValue('');
   expect(screen.getByText('Once')).toBeInTheDocument();
-  expect(screen.getByLabelText('Date *')).toHaveValue(new Date().toISOString().split('T')[0]);
+  expect(screen.getByLabelText('Date *')).toHaveValue(todayLocalISODate());
   expect(screen.getByRole('checkbox', { name: 'Send email notification' })).toBeChecked();
   expect(
     screen.queryByRole('checkbox', { name: 'Reschedule from completion date' }),
@@ -122,7 +123,7 @@ test('changing the recurrence re-schedules the date for a new reminder', async (
 
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  expect(screen.getByLabelText('Date *')).toHaveValue(d.toISOString().split('T')[0]);
+  expect(screen.getByLabelText('Date *')).toHaveValue(localISODate(d));
   expect(
     screen.getByRole('checkbox', { name: 'Reschedule from completion date' }),
   ).toBeInTheDocument();

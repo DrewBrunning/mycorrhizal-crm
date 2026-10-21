@@ -97,6 +97,14 @@ type FieldDefinition struct {
 	// takes). It is per-user display state: CreateFieldDefinition appends at
 	// end-of-list and ReorderFieldDefinitions renumbers 0..N-1.
 	Position int `gorm:"not null;default:0" json:"position"`
+
+	// Group is an optional, display-only label clients bucket definitions by
+	// (issue #1730), e.g. "Travel profile". Empty string means ungrouped. It is
+	// just a shared string -- no group entity, no rename cascade -- and is never
+	// projected to vCard/sync/exports. The column is group_label (GROUP is an
+	// SQL keyword); the JSON name stays `group` and is deliberately not
+	// omitempty so clients always see it.
+	Group string `gorm:"column:group_label;not null" json:"group" validate:"max=100"`
 }
 
 // BeforeCreate generates a UUID for new FieldDefinitions, mirroring

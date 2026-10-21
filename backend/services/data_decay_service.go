@@ -22,8 +22,8 @@ import (
 // future, or undefined) — "due today" is deliberately not overdue, matching
 // CadenceHealth and reminders' day-boundary convention.
 type DataDecayHealth struct {
-	NextDue   time.Time `json:"next_due"`
-	OverdueBy int       `json:"overdue_by"`
+	NextDue   models.CalendarDate `json:"next_due"`
+	OverdueBy int                 `json:"overdue_by"`
 }
 
 // calendarDaysBetweenDecay counts whole calendar days from a to b (negative
@@ -54,7 +54,7 @@ func ComputeDataDecayHealth(policy *models.DataDecayPolicy, now time.Time) DataD
 	baselineLocal := baseline.In(loc)
 	baselineMidnight := time.Date(baselineLocal.Year(), baselineLocal.Month(), baselineLocal.Day(), 0, 0, 0, 0, loc)
 	nextDue := baselineMidnight.AddDate(0, 0, policy.IntervalDays)
-	health := DataDecayHealth{NextDue: nextDue}
+	health := DataDecayHealth{NextDue: models.NewCalendarDate(nextDue)}
 	if overdue := -calendarDaysBetweenDecay(now, nextDue); overdue > 0 {
 		health.OverdueBy = overdue
 	}
@@ -84,16 +84,33 @@ func ListOverdueDataDecayPolicies(db *gorm.DB, userID uint, now time.Time) ([]Ov
 		return nil, nil
 	}
 
+	// Compute health first and load contacts only for the overdue policies
+	// (issue #1791): contact rows carry the encrypted Card, and a policy on
+	// every contact made loading them all the dominant cost.
+	type overduePolicy struct {
+		index  int
+		health DataDecayHealth
+	}
+	var candidates []overduePolicy
 	uidSet := make(map[string]bool)
-	for _, p := range policies {
-		uidSet[p.EntityID] = true
+	for i := range policies {
+		health := ComputeDataDecayHealth(&policies[i], now)
+		if health.OverdueBy <= 0 {
+			continue
+		}
+		candidates = append(candidates, overduePolicy{i, health})
+		uidSet[policies[i].EntityID] = true
+	}
+	if len(candidates) == 0 {
+		return nil, nil
 	}
 	uids := make([]string, 0, len(uidSet))
 	for uid := range uidSet {
 		uids = append(uids, uid)
 	}
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
+	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail").
+		Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 	contactByUID := make(map[string]models.Contact, len(contacts))
@@ -102,15 +119,11 @@ func ListOverdueDataDecayPolicies(db *gorm.DB, userID uint, now time.Time) ([]Ov
 	}
 
 	var overdue []OverdueDataDecayPolicy
-	for i := range policies {
-		health := ComputeDataDecayHealth(&policies[i], now)
-		if health.OverdueBy <= 0 {
-			continue
-		}
-		c := contactByUID[policies[i].EntityID]
+	for _, cand := range candidates {
+		c := contactByUID[policies[cand.index].EntityID]
 		overdue = append(overdue, OverdueDataDecayPolicy{
-			Policy:         policies[i],
-			Health:         health,
+			Policy:         policies[cand.index],
+			Health:         cand.health,
 			ContactID:      c.ID,
 			ContactName:    strings.TrimSpace(c.Firstname + " " + c.Lastname),
 			PhotoThumbnail: c.PhotoThumbnail,

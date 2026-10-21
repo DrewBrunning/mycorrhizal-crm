@@ -33,10 +33,18 @@ export interface GraphEdge {
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  // Carried from GraphResponse: true when the data is an ego-network.
+  scoped?: boolean;
+  depth?: number;
 }
 
 // Response from the API
 export interface GraphResponse {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  // Issue #1791: true when this is an ego-network (contacts within `depth`
+  // hops of `from_vcard_uid`) rather than the whole account.
+  scoped?: boolean;
+  from_vcard_uid?: string;
+  depth?: number;
 }

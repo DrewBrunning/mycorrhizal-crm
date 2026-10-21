@@ -69,6 +69,42 @@ class LoginScreenTest {
         composeTestRule.onNodeWithText("Sign in").performScrollTo().assertIsDisplayed()
     }
 
+    // Issue #1760: a disabled control must say what enables it.
+    @Test
+    fun `sso is disabled and explains why until a server url is entered`() {
+        setContent()
+        composeTestRule.onNodeWithText("Sign in with SSO").performScrollTo().assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Enter a server URL to use SSO").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign in with SSO")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Enter a server URL to use SSO"))
+    }
+
+    @Test
+    fun `entering a server url enables sso and drops the hint`() {
+        setContent()
+        composeTestRule.onNodeWithText("Server URL").performTextInput("https://crm.example.com")
+        composeTestRule.onNodeWithText("Sign in with SSO").performScrollTo().assertIsEnabled()
+        composeTestRule.onNodeWithText("Enter a server URL to use SSO").assertDoesNotExist()
+    }
+
+    @Test
+    fun `sso hands the typed server url to the callback`() {
+        var ssoUrl: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LoginScreenContent(
+                    uiState = LoginUiState(serverUrl = "https://crm.example.com"),
+                    onServerUrlChange = {},
+                    onModeChange = {},
+                    onSubmit = { _, _, _, _ -> },
+                    onSignInWithSso = { ssoUrl = it },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Sign in with SSO").performScrollTo().performClick()
+        assertEquals("https://crm.example.com", ssoUrl)
+    }
+
     @Test
     fun `typing server url forwards the change`() {
         var value: String? = null

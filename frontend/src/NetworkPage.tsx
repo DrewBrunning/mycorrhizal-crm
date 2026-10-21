@@ -7,6 +7,7 @@ import {
   FormControl,
   FormControlLabel,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Select,
   type SelectChangeEvent,
@@ -39,7 +40,11 @@ export default function NetworkPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { data, loading, error } = useGraph();
+  // Issue #1791: the default graph is the ego-network of the self contact;
+  // the whole account is an explicit opt-in (it is slow to load and, above
+  // the render ceiling, shows the list-view fallback instead of the canvas).
+  const [fullNetwork, setFullNetwork] = useState(false);
+  const { data, loading, error } = useGraph(fullNetwork);
   const { circles: circleEntities, circleNamesByUid, loading: circlesLoading } = useCircles();
 
   const [filters, setFilters] = useState(() => loadNetworkFilters());
@@ -146,6 +151,7 @@ export default function NetworkPage() {
         activityTitle: activity.title || '',
         activityDescription: activity.description || '',
         activityLocation: activity.location || '',
+        // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
         activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
         activityContacts: activity.contacts || [],
       });
@@ -197,7 +203,7 @@ export default function NetworkPage() {
     setSelectedCircle(event.target.value);
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <Box
         sx={{
@@ -212,7 +218,7 @@ export default function NetworkPage() {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <Box
         sx={{
@@ -257,6 +263,17 @@ export default function NetworkPage() {
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('network.title')}
       </Typography>
+      {loading && <LinearProgress sx={{ mb: 1 }} />}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {data.scoped && !fullNetwork && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {t('network.egoNotice', { depth: data.depth ?? 2 })}
+        </Alert>
+      )}
       {/* Controls */}
       <Card
         sx={{
@@ -301,6 +318,17 @@ export default function NetworkPage() {
             ))}
           </Select>
         </FormControl>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={fullNetwork}
+              onChange={(e) => setFullNetwork(e.target.checked)}
+              color="primary"
+            />
+          }
+          label={t('network.showEntireNetwork')}
+        />
 
         <FormControlLabel
           control={

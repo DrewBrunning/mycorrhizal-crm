@@ -85,7 +85,7 @@ class OccasionAttendeesScreenTest {
     @Test
     fun `shows the empty state when nobody is invited`() {
         render(attendees = emptyList())
-        composeTestRule.onNodeWithText("No one invited yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No one invited yet").assertIsDisplayed()
     }
 
     @Test

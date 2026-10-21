@@ -80,7 +80,7 @@ fun ImportHistoryScreen(
             state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding).testTag("import-history-loading"))
             state.runs.isEmpty() ->
                 EmptyState(
-                    message = stringResource(R.string.import_history_empty),
+                    title = stringResource(R.string.import_history_empty),
                     modifier = Modifier.padding(padding),
                 )
             else -> LazyColumn(

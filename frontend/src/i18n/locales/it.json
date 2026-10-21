@@ -144,7 +144,8 @@
     "yearsOld": "({{age}} anni)",
     "birthdaysInfo": "Mostra i compleanni per almeno le prossime due settimane.",
     "remindersInfo": "Mostra tutti i promemoria in scadenza fino a oggi incluso. I promemoria rimarranno visibili finché non vengono segnati come completati.",
-    "stayInTouchInfo": "Mostra cinque contatti casuali per aiutarti a restare connesso. L'elenco viene aggiornato ad ogni ricarica della pagina."
+    "stayInTouchInfo": "Mostra cinque contatti casuali per aiutarti a restare connesso. L'elenco viene aggiornato ad ogni ricarica della pagina.",
+    "showingOf": "Mostrati {{shown}} di {{total}}"
   },
   "login": {
     "title": "Accedi",
@@ -1748,7 +1749,9 @@
     "panUp": "Sposta in alto",
     "panDown": "Sposta in basso",
     "panLeft": "Sposta a sinistra",
-    "panRight": "Sposta a destra"
+    "panRight": "Sposta a destra",
+    "egoNotice": "Viene mostrato il tuo contatto e tutte le persone entro {{depth}} connessioni. Attiva «Mostra l’intera rete» per caricare tutti i contatti.",
+    "showEntireNetwork": "Mostra l’intera rete"
   },
   "map": {
     "title": "Mappa dei contatti",

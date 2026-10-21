@@ -600,6 +600,14 @@ const rows: Row[] = [
     result: { nodes: [] },
   },
   {
+    name: 'graph.getGraph full',
+    call: () => graph.getGraph({ full: true }),
+    method: 'get',
+    route: '/graph?full=true',
+    ok: { nodes: [] },
+    result: { nodes: [] },
+  },
+  {
     name: 'graph.getConnections from only',
     call: () => graph.getConnections({ from: 'u' }),
     method: 'get',
