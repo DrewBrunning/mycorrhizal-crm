@@ -2314,7 +2314,8 @@
     "kind": {
       "organization": "Neuer Arbeitgeber",
       "title": "Neue Berufsbezeichnung",
-      "address": "Umgezogen"
+      "address": "Umgezogen",
+      "target_behind": "Ziel verfehlt"
     }
   },
   "syncConflicts": {

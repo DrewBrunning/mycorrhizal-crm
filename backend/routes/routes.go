@@ -283,6 +283,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// nested Card/CRM payload.
 			protected.POST("/contacts/:id/favorite", controllers.FavoriteContact)
 			protected.POST("/contacts/:id/unfavorite", controllers.UnfavoriteContact)
+			// Issue #1796: per-contact target closeness (ADR 0023 amendment).
+			protected.PUT("/contacts/:id/target-closeness", middleware.ValidateJSONMiddleware(&models.ContactTargetClosenessInput{}), controllers.SetContactTargetCloseness)
+			protected.DELETE("/contacts/:id/target-closeness", controllers.ClearContactTargetCloseness)
 
 			// Contact import routes (CSV). The upload route carries its own
 			// BodySizeLimitMiddleware(services.MaxCSVSize) — DefaultBodySizeLimitMiddleware

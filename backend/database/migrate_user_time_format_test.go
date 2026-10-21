@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrationAddsUserTimeFormat covers 000076 (issue #1830): the new
+// TestMigrationAddsUserTimeFormat covers 000077 (issue #1830): the new
 // users.time_format column lands as 'auto' on every existing user (live and
 // soft-deleted), nothing else on those rows changes, an explicit value
 // survives, NOT NULL holds, and the down migration drops only the column.
@@ -22,7 +22,7 @@ func TestMigrationAddsUserTimeFormat(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	require.NoError(t, m.Migrate(75)) // everything before 000076 (this PR)
+	require.NoError(t, m.Migrate(76)) // everything before 000077 (this PR; 000076 is target closeness)
 
 	const stamp = "2020-01-02 03:04:05"
 	insert := func(name, dateFormat string, deleted bool) int64 {
@@ -42,7 +42,7 @@ func TestMigrationAddsUserTimeFormat(t *testing.T) {
 	live := insert("live", "iso", false)
 	dead := insert("dead", "us", true)
 
-	require.NoError(t, m.Migrate(76))
+	require.NoError(t, m.Migrate(77))
 
 	read := func(id int64) (name, dateFormat, timeFormat string, deleted sql.NullString) {
 		t.Helper()
@@ -68,7 +68,7 @@ func TestMigrationAddsUserTimeFormat(t *testing.T) {
 	require.Error(t, err, "time_format is NOT NULL")
 
 	// Down drops the column, keeps the users.
-	require.NoError(t, m.Migrate(75))
+	require.NoError(t, m.Migrate(76)) // rolls back only 000077, keeping 000076 target closeness
 	var cols int
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM pragma_table_info('users') WHERE name = 'time_format'").Scan(&cols))
 	assert.Zero(t, cols)

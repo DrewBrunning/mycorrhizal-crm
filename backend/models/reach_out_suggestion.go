@@ -15,6 +15,9 @@ const (
 	ReachOutKindOrganization = "organization"
 	ReachOutKindTitle        = "title"
 	ReachOutKindAddress      = "address"
+	// ReachOutKindTargetBehind (issue #1796) is state-driven, not audit-derived:
+	// the daily job emits it for a contact behind its target closeness.
+	ReachOutKindTargetBehind = "target_behind"
 )
 
 // Status values stored on ReachOutSuggestion.Status.
@@ -53,8 +56,8 @@ type ReachOutSuggestion struct {
 	// FieldValue use.
 	ContactVCardUID string `gorm:"column:contact_vcard_uid;not null;index" json:"contact_vcard_uid" validate:"required,uuid4"`
 
-	// Kind ∈ organization|title|address (the ReachOutKind* constants above).
-	Kind string `gorm:"not null" json:"kind" validate:"required,oneof=organization title address"`
+	// Kind ∈ organization|title|address|target_behind (the ReachOutKind* constants above).
+	Kind string `gorm:"not null" json:"kind" validate:"required,oneof=organization title address target_behind"`
 
 	// OldValue/NewValue are the human-readable before/after values that made
 	// this a meaningful change (e.g. old job title -> new job title).
@@ -63,7 +66,9 @@ type ReachOutSuggestion struct {
 
 	// AuditEventID is the AuditEvent whose before/after diff produced this
 	// suggestion — provenance for debugging, not a dedup key (the
-	// ReachOutCursor watermark is what prevents reprocessing).
+	// ReachOutCursor watermark is what prevents reprocessing). It is 0 for
+	// target_behind rows, which are state-driven rather than audit-derived
+	// (the column stays NOT NULL).
 	AuditEventID uint `gorm:"column:audit_event_id;not null" json:"audit_event_id"`
 
 	// ReminderID is the companion one-off Reminder's ID (see the type doc

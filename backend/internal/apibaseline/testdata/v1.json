@@ -3387,6 +3387,61 @@
       ]
     },
     {
+      "method": "PUT",
+      "path": "/contacts/{id}/target-closeness",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactTargetClosenessInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactTargetClosenessResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/contacts/{id}/target-closeness",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactTargetClosenessResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/contacts/{id}/timeline",
       "parameters": [
@@ -9815,6 +9870,17 @@
           "required": false
         },
         {
+          "name": "target_closeness",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "immediate",
+            "close",
+            "casual",
+            "distant"
+          ]
+        },
+        {
           "name": "work_information",
           "type": "string",
           "required": false
@@ -11691,6 +11757,61 @@
           "name": "score",
           "type": "integer",
           "required": false
+        },
+        {
+          "name": "target",
+          "type": "composed[object]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactScoreTarget",
+      "properties": [
+        {
+          "name": "interval_days",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "interval_source",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "cadence_policy",
+            "target_tier"
+          ]
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "on_track",
+            "drifting",
+            "behind"
+          ]
+        },
+        {
+          "name": "tier",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "immediate",
+            "close",
+            "casual",
+            "distant"
+          ]
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "required": true
         }
       ]
     },
@@ -12235,6 +12356,54 @@
           "name": "contact_vcard_uid",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactTargetClosenessInput",
+      "properties": [
+        {
+          "name": "tier",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "immediate",
+            "close",
+            "casual",
+            "distant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ContactTargetClosenessResponse",
+      "properties": [
+        {
+          "name": "cadence_policy_offer",
+          "type": "composed[object]",
+          "required": true
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "default_interval_days",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "target_closeness",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "immediate",
+            "close",
+            "casual",
+            "distant",
+            null
+          ]
         }
       ]
     },
@@ -18139,7 +18308,8 @@
           "enum": [
             "organization",
             "title",
-            "address"
+            "address",
+            "target_behind"
           ]
         },
         {

@@ -1,6 +1,9 @@
 package scoring
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // resolveClosenessAndInterval computes the Closeness facet AND the target
 // interval (days) that Recency/Frequency normalize against. The interval
@@ -12,6 +15,9 @@ func resolveClosenessAndInterval(raw RawInputs, cfg Config) (intervalDays int, f
 	fallbackInterval, facet := computeCloseness(raw, cfg)
 
 	intervalDays = fallbackInterval
+	if tierDays, ok := cfg.TargetTierIntervalDays[raw.TargetTier]; ok && raw.TargetTier != "" {
+		intervalDays = tierDays
+	}
 	if raw.HasCadencePolicy {
 		intervalDays = raw.CadenceIntervalDays
 	}
@@ -164,4 +170,50 @@ func ambientFacet(raw RawInputs, weight float64) FacetResult {
 		reason = "Ambient contact (lives with you)"
 	}
 	return FacetResult{Value: 100, Weight: weight, Reason: reason}
+}
+
+// computeTarget reports how the contact is doing against its target closeness
+// (issue #1796): the weighted blend of the Recency and Frequency facets (already
+// computed against the resolved interval), classified with the band thresholds.
+// nil when there is no recognized target.
+func computeTarget(raw RawInputs, cfg Config, intervalDays int, recency, frequency FacetResult) *TargetResult {
+	if raw.TargetTier == "" {
+		return nil
+	}
+	if _, ok := cfg.TargetTierIntervalDays[raw.TargetTier]; !ok {
+		return nil
+	}
+	value := (recency.Value*cfg.WeightRecency + frequency.Value*cfg.WeightFrequency) / (cfg.WeightRecency + cfg.WeightFrequency)
+	res := &TargetResult{
+		Tier:         raw.TargetTier,
+		Status:       targetStatus(value, cfg),
+		Value:        value,
+		IntervalDays: intervalDays,
+	}
+	if raw.HasCadencePolicy {
+		res.IntervalSource = IntervalSourceCadencePolicy
+		res.Reason = fmt.Sprintf("Recency and frequency score %.0f against a %d-day interval from your cadence policy", value, intervalDays)
+	} else {
+		res.IntervalSource = IntervalSourceTargetTier
+		res.Reason = fmt.Sprintf("Recency and frequency score %.0f against a %d-day interval from the %s target", value, intervalDays, raw.TargetTier)
+	}
+	if raw.Ambient {
+		res.Status = TargetStatusOnTrack
+		res.Reason = "Ambient contact — always on track"
+	}
+	return res
+}
+
+// targetStatus applies the band thresholds to the rounded value, the same way
+// band() is applied to the rounded total score.
+func targetStatus(value float64, cfg Config) string {
+	rounded := math.Round(value)
+	switch {
+	case rounded >= cfg.MossMin:
+		return TargetStatusOnTrack
+	case rounded >= cfg.ChanterelleMin:
+		return TargetStatusDrifting
+	default:
+		return TargetStatusBehind
+	}
 }

@@ -7,7 +7,8 @@ import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './cl
 // backend/models/reach_out_suggestion.go's ReachOutKind* constants (this
 // repo has no dynamic type-list endpoint; every enum is a hardcoded frontend
 // mirror).
-export type ReachOutSuggestionKind = 'organization' | 'title' | 'address';
+// Must stay in sync with backend models.ReachOutKind* and openapi.yaml (trap #4).
+export type ReachOutSuggestionKind = 'organization' | 'title' | 'address' | 'target_behind';
 
 export interface ReachOutSuggestion {
   id: string;

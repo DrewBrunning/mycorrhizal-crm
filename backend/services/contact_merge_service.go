@@ -26,6 +26,12 @@ type scalarFieldSpec struct {
 	Set   func(c *models.Contact, v string)
 }
 
+// keeperWinsScalars are mergeScalarFields keys whose both-set disagreement
+// resolves to the keeper's value instead of raising a user-resolved conflict.
+// Only for fields whose design record says so (target_closeness: ADR 0023
+// amendment 2026-10-16, "the keeper wins when both are set").
+var keeperWinsScalars = map[string]bool{"target_closeness": true}
+
 var mergeScalarFields = []scalarFieldSpec{
 	{"firstname", "First Name", func(c *models.Contact) string { return c.Firstname }, func(c *models.Contact, v string) { c.Firstname = v }},
 	{"lastname", "Last Name", func(c *models.Contact) string { return c.Lastname }, func(c *models.Contact, v string) { c.Lastname = v }},
@@ -43,6 +49,23 @@ var mergeScalarFields = []scalarFieldSpec{
 	{"how_we_met", "How We Met", func(c *models.Contact) string { return c.HowWeMet }, func(c *models.Contact, v string) { c.HowWeMet = v }},
 	{"work_information", "Work Information", func(c *models.Contact) string { return c.WorkInformation }, func(c *models.Contact, v string) { c.WorkInformation = v }},
 	{"contact_information", "Contact Information", func(c *models.Contact) string { return c.ContactInformation }, func(c *models.Contact, v string) { c.ContactInformation = v }},
+	// Issue #1796: nil <-> "" so an unset target never reads as a value. The
+	// ADR 0023 amendment fixes the policy: the keeper wins when both are set,
+	// otherwise the non-empty side wins -- never a conflict. That also keeps an
+	// arbitrary client-supplied resolution string (unvalidated against the
+	// tier vocabulary) from ever reaching the column's CHECK constraint.
+	{"target_closeness", "Target Closeness", func(c *models.Contact) string {
+		if c.TargetCloseness == nil {
+			return ""
+		}
+		return *c.TargetCloseness
+	}, func(c *models.Contact, v string) {
+		if v == "" {
+			c.TargetCloseness = nil
+			return
+		}
+		c.TargetCloseness = &v
+	}},
 }
 
 // ComputeContactMergeResolution is pure (no DB I/O). Shared by the preview
@@ -57,7 +80,7 @@ func ComputeContactMergeResolution(keeper, loser *models.Contact) *models.Contac
 			res.ResolvedScalars[f.Key] = kv
 		case kv == "":
 			res.ResolvedScalars[f.Key] = lv
-		case lv == "":
+		case lv == "", keeperWinsScalars[f.Key]:
 			res.ResolvedScalars[f.Key] = kv
 		default:
 			res.Conflicts = append(res.Conflicts, models.ContactMergeFieldConflict{

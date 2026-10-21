@@ -20,7 +20,7 @@ import (
 // triggered the read.
 func ComputeAllContactScores(db *gorm.DB, userID uint, now time.Time) (map[uint]scoring.Result, error) {
 	var contacts []models.Contact
-	if err := db.Select("id", "vcard_uid", "updated_at").
+	if err := db.Select("id", "vcard_uid", "updated_at", "target_closeness").
 		Where("user_id = ? AND archived = ?", userID, false).
 		Find(&contacts).Error; err != nil {
 		return nil, fmt.Errorf("loading contacts: %w", err)
@@ -62,9 +62,33 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 		return results, nil
 	}
 
-	cfg, err := scoring.LoadConfig()
+	in, err := gatherScoreInputs(db, userID, now, contacts)
 	if err != nil {
-		return nil, fmt.Errorf("loading scoring config: %w", err)
+		return nil, err
+	}
+	for _, c := range contacts {
+		results[c.ID] = scoring.Compute(in.raw[c.ID], in.cfg)
+	}
+	return results, nil
+}
+
+// scoreInputs is everything scoring.Compute needs for a batch of contacts,
+// gathered in a fixed number of bulk queries. The reach-out job's target pass
+// (detectTargetBehindSuggestions) reuses it alongside the score service.
+type scoreInputs struct {
+	cfg             scoring.Config
+	raw             map[uint]scoring.RawInputs
+	lastInteraction map[string]*time.Time
+	hasPolicy       map[string]bool
+}
+
+// gatherScoreInputs loads every raw facet for the given contacts (each needs
+// ID, VCardUID, UpdatedAt and TargetCloseness) in bulk. Never one query per
+// contact.
+func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []models.Contact) (scoreInputs, error) {
+	cfg, err := scoring.LoadConfig()
+	if err != nil { // # pragma: no cover — the embedded tunables file is validated by the scoring package tests, so it cannot fail to load
+		return scoreInputs{}, fmt.Errorf("loading scoring config: %w", err)
 	}
 
 	uids := make([]string, len(contacts))
@@ -74,23 +98,23 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 
 	realPolicies, err := cadencePoliciesByEntityID(db, userID, uids)
 	if err != nil {
-		return nil, fmt.Errorf("loading cadence policies: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading cadence policies: %w", err)
 	}
 
 	lastInteraction, err := lastQualifyingInteractionByEntityID(db, userID, uids, realPolicies)
 	if err != nil {
-		return nil, fmt.Errorf("loading last qualifying interactions: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading last qualifying interactions: %w", err)
 	}
 
 	since := now.AddDate(0, 0, -cfg.FrequencyWindowDays)
 	frequencyCounts, err := qualifyingInteractionCountsByEntityID(db, userID, uids, realPolicies, since)
 	if err != nil {
-		return nil, fmt.Errorf("loading interaction frequency: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading interaction frequency: %w", err)
 	}
 
 	selfContactUID, err := selfContactVCardUID(db, userID)
 	if err != nil {
-		return nil, fmt.Errorf("loading self-contact: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading self-contact: %w", err)
 	}
 
 	var directTypes map[string][]string
@@ -98,24 +122,29 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 	if selfContactUID != "" {
 		directTypes, err = directRelationTypesByEntityID(db, userID, selfContactUID, uids)
 		if err != nil {
-			return nil, fmt.Errorf("loading direct relationship edges: %w", err)
+			return scoreInputs{}, fmt.Errorf("loading direct relationship edges: %w", err)
 		}
 		reachableHops, err = structuralHopsByEntityID(db, userID, selfContactUID, cfg)
 		if err != nil {
-			return nil, fmt.Errorf("loading graph reachability: %w", err)
+			return scoreInputs{}, fmt.Errorf("loading graph reachability: %w", err)
 		}
 	}
 
 	ambient, err := ambientByEntityID(db, userID, uids, now)
 	if err != nil {
-		return nil, fmt.Errorf("loading ambient contacts: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading ambient contacts: %w", err)
 	}
 
 	pendingReachOut, err := pendingReachOutEntityIDs(db, userID, uids)
 	if err != nil {
-		return nil, fmt.Errorf("loading pending reach-out suggestions: %w", err)
+		return scoreInputs{}, fmt.Errorf("loading pending reach-out suggestions: %w", err)
 	}
 
+	rawByID := make(map[uint]scoring.RawInputs, len(contacts))
+	hasPolicy := make(map[string]bool, len(realPolicies))
+	for uid := range realPolicies {
+		hasPolicy[uid] = true
+	}
 	for _, c := range contacts {
 		raw := scoring.RawInputs{
 			DaysSinceUpdated: daysBetween(c.UpdatedAt, now),
@@ -143,10 +172,14 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 			raw.AmbientReason = reason
 		}
 
-		results[c.ID] = scoring.Compute(raw, cfg)
+		if c.TargetCloseness != nil {
+			raw.TargetTier = *c.TargetCloseness
+		}
+
+		rawByID[c.ID] = raw
 	}
 
-	return results, nil
+	return scoreInputs{cfg: cfg, raw: rawByID, lastInteraction: lastInteraction, hasPolicy: hasPolicy}, nil
 }
 
 // daysBetween returns whole days from t to now (never negative — a future
@@ -373,11 +406,13 @@ func statementContextErr(db *gorm.DB) error {
 }
 
 // pendingReachOutEntityIDs returns the set of contacts with at least one
-// un-dismissed ReachOutSuggestion — the ReachOut facet's raw input.
+// un-dismissed org/title/address ReachOutSuggestion — the ReachOut facet's raw
+// input. target_behind rows are excluded (issue #1796, ADR 0023 "No feedback
+// loop"): being behind target must not itself lower the score.
 func pendingReachOutEntityIDs(db *gorm.DB, userID uint, uids []string) (map[string]bool, error) {
 	var matched []string
 	if err := db.Model(&models.ReachOutSuggestion{}).
-		Where("user_id = ? AND contact_vcard_uid IN ? AND status = ?", userID, uids, models.ReachOutStatusPending).
+		Where("user_id = ? AND contact_vcard_uid IN ? AND status = ? AND kind != ?", userID, uids, models.ReachOutStatusPending, models.ReachOutKindTargetBehind).
 		Distinct().Pluck("contact_vcard_uid", &matched).Error; err != nil {
 		return nil, err
 	}

@@ -288,6 +288,7 @@ export type CRMEnvelope = {
   how_we_met?: string;
   kind?: string;
   periods?: EntryPeriod[];
+  target_closeness?: 'immediate' | 'close' | 'casual' | 'distant';
   work_information?: string;
 };
 
@@ -675,6 +676,16 @@ export type ContactScoreResponse = {
   reach_out?: ContactScoreFacet;
   recency?: ContactScoreFacet;
   score?: number;
+  target: ContactScoreTarget | null;
+};
+
+export type ContactScoreTarget = {
+  interval_days: number;
+  interval_source: 'cadence_policy' | 'target_tier';
+  reason: string;
+  status: 'on_track' | 'drifting' | 'behind';
+  tier: 'immediate' | 'close' | 'casual' | 'distant';
+  value: number;
 };
 
 export type ContactShare = {
@@ -786,6 +797,17 @@ export type ContactTag = {
 
 export type ContactTagInput = {
   contact_vcard_uid: string;
+};
+
+export type ContactTargetClosenessInput = {
+  tier: 'immediate' | 'close' | 'casual' | 'distant';
+};
+
+export type ContactTargetClosenessResponse = {
+  cadence_policy_offer: CadencePolicyInput | null;
+  contact_id: number;
+  default_interval_days: number | null;
+  target_closeness: 'immediate' | 'close' | 'casual' | 'distant' | null;
 };
 
 export type ContactURL = {
@@ -2170,7 +2192,7 @@ export type ReachOutSuggestion = {
   contact_vcard_uid: string;
   created_at: string;
   id: string;
-  kind: 'organization' | 'title' | 'address';
+  kind: 'organization' | 'title' | 'address' | 'target_behind';
   new_value: string;
   old_value: string;
   photo_thumbnail?: string;
