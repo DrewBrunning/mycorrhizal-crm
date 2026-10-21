@@ -20,10 +20,17 @@ data class CadenceHealth(
     @Json(name = "last_interaction") val lastInteraction: String? = null,
     @Json(name = "next_due") val nextDue: String? = null,
     @Json(name = "overdue_by") val overdueBy: Int = 0,
+    /** Issue #1733: an ambient contact is never overdue (the server sends `overdue_by` 0). */
+    val ambient: Boolean = false,
+    /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
+    @Json(name = "ambient_reason") val ambientReason: String? = null,
 ) {
-    /** Mirrors web's `isOverdue = health.overdue_by > 0` — due today is NOT overdue. */
+    /**
+     * Mirrors web's `isOverdue = health.overdue_by > 0` — due today is NOT overdue. Never true
+     * for an ambient contact, even if a stale payload carried a non-zero `overdue_by`.
+     */
     val isOverdue: Boolean
-        get() = overdueBy > 0
+        get() = !ambient && overdueBy > 0
 }
 
 /**

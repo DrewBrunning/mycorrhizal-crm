@@ -26,7 +26,20 @@ data class ContactScoreResponse(
     val closeness: ContactScoreFacet = ContactScoreFacet(),
     @Json(name = "reach_out") val reachOut: ContactScoreFacet = ContactScoreFacet(),
     @Json(name = "last_updated") val lastUpdated: ContactScoreFacet = ContactScoreFacet(),
+    /**
+     * Issue #1733: true when the contact counts as in regular contact without logged activity.
+     * Always present on current servers; defaults to false for one that predates it.
+     */
+    val ambient: Boolean = false,
+    /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
+    @Json(name = "ambient_reason") val ambientReason: String? = null,
 )
+
+/** `ambient_reason`: a current member of a household the user's self-contact is also in. */
+const val AMBIENT_REASON_HOUSEHOLD = "household"
+
+/** `ambient_reason`: the user set `crm.ambient` on the contact. */
+const val AMBIENT_REASON_FLAG = "flag"
 
 /**
  * One weighted facet's contribution and plain-language explanation — the

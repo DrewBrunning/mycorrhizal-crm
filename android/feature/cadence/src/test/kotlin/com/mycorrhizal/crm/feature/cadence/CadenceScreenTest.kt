@@ -211,6 +211,45 @@ class CadenceScreenTest {
         composeTestRule.onNodeWithText("3 days overdue").assertIsDisplayed()
     }
 
+    // --- Issue #1734: ambient contacts are never overdue ---
+
+    @Test
+    fun `an ambient household contact shows the explanation, not an overdue or on-track readout`() {
+        setPanelContent(
+            policy(
+                health = CadenceHealth(
+                    hasQualifyingInteraction = true,
+                    lastInteraction = "2026-07-01T10:00:00Z",
+                    nextDue = "2026-07-31T00:00:00Z",
+                    overdueBy = 0,
+                    ambient = true,
+                    ambientReason = "household",
+                ),
+            ),
+        )
+        composeTestRule.onNodeWithText("Lives with you (household)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("On track").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Next due", substring = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText("Last interaction", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an ambient flagged contact shows the marked-as-ambient wording`() {
+        setPanelContent(policy(health = CadenceHealth(ambient = true, ambientReason = "flag")))
+        composeTestRule.onNodeWithText("Marked as ambient").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No qualifying interactions yet — cadence starts once you record one.")
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `an ambient contact shows no overdue state even if a payload carries a stale overdue_by`() {
+        val health = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 9, ambient = true, ambientReason = "flag")
+        assertFalse(health.isOverdue)
+        setPanelContent(policy(health = health))
+        composeTestRule.onNodeWithText("9 days overdue").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Marked as ambient").assertIsDisplayed()
+    }
+
     @Test
     fun `panel shows on track when not overdue but has interactions`() {
         setPanelContent(
