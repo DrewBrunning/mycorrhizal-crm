@@ -142,7 +142,10 @@ fun MapScreenContent(
                         )
                     }
                     if (uiState.points.isEmpty()) {
-                        EmptyState(message = stringResource(R.string.map_empty))
+                        EmptyState(
+                            title = stringResource(R.string.map_empty),
+                            body = stringResource(R.string.map_empty_body),
+                        )
                     } else if (uiState.showList) {
                         PointList(points = uiState.points, onOpenContact = onOpenContact)
                     } else {

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
+import { todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
@@ -61,7 +62,7 @@ export default function AddActivityDialog({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayLocalISODate());
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -115,7 +116,7 @@ export default function AddActivityDialog({
     setTitle('');
     setDescription('');
     setLocation('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(todayLocalISODate());
     setSelectedContacts([]);
     setSearchInput('');
     setContacts([]);

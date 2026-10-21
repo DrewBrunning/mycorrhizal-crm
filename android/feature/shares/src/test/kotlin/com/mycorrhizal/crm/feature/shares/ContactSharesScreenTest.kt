@@ -138,8 +138,8 @@ class ContactSharesScreenTest {
 
         screen()
 
-        composeTestRule.onNodeWithText("No incoming shares.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("You haven't shared any contacts yet.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No incoming shares yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No outgoing shares yet").assertDoesNotExist()
     }
 
     @Test
@@ -151,8 +151,8 @@ class ContactSharesScreenTest {
 
         composeTestRule.onNodeWithText("Outgoing").performClick()
 
-        composeTestRule.onNodeWithText("You haven't shared any contacts yet.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("No incoming shares.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No outgoing shares yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No incoming shares yet").assertDoesNotExist()
     }
 
     @Test

@@ -126,7 +126,15 @@ fun RelationshipsScreen(
                 when {
                     state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
                     state.edges.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.relationships_empty))
+                        EmptyState(
+                            title = stringResource(R.string.relationships_empty),
+                            body = stringResource(R.string.relationships_empty_body),
+                            actionLabel = stringResource(R.string.relationships_new),
+                            onAction = {
+                                viewModel.clearContactSearch()
+                                showCreateDialog = true
+                            },
+                        )
                     state.edges.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,

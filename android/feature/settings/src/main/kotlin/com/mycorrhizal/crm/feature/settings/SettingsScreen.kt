@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -474,6 +475,10 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
         )
         val changingPasswordLabel = stringResource(R.string.a11y_state_saving)
+        // #1760: a disabled button says what enables it, both as visible helper
+        // text and as the button's TalkBack state description.
+        val canChangePassword = newPassword.isNotBlank() && confirmPassword.isNotBlank()
+        val passwordHint = stringResource(R.string.settings_password_change_hint)
         OutlinedButton(
             onClick = {
                 onChangePassword(currentPassword, newPassword, confirmPassword)
@@ -481,15 +486,29 @@ fun SettingsContent(
                 newPassword = ""
                 confirmPassword = ""
             },
-            enabled = !state.isChangingPassword && newPassword.isNotBlank() && confirmPassword.isNotBlank(),
+            enabled = !state.isChangingPassword && canChangePassword,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { if (state.isChangingPassword) stateDescription = changingPasswordLabel },
+                .semantics {
+                    if (state.isChangingPassword) {
+                        stateDescription = changingPasswordLabel
+                    } else if (!canChangePassword) {
+                        stateDescription = passwordHint
+                    }
+                },
         ) {
             if (state.isChangingPassword) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
             }
             Text(stringResource(R.string.settings_password_change_button))
+        }
+        if (!canChangePassword && !state.isChangingPassword) {
+            Text(
+                text = passwordHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("password-disabled-hint"),
+            )
         }
 
         HorizontalDivider()

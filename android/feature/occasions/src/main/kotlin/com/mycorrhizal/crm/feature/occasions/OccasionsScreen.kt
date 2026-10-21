@@ -25,11 +25,12 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -109,7 +110,7 @@ fun OccasionsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { editing = null; showDialog = true }) {
+            BrandFab(onClick = { editing = null; showDialog = true }) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.occasions_add_event))
             }
         },
@@ -119,7 +120,12 @@ fun OccasionsScreen(
             when {
                 state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
                 state.isLoading && state.events.isEmpty() -> CenteredMessage(stringResource(R.string.a11y_state_loading))
-                state.events.isEmpty() -> CenteredMessage(stringResource(R.string.occasions_empty))
+                state.events.isEmpty() -> EmptyState(
+                    title = stringResource(R.string.occasions_empty),
+                    body = stringResource(R.string.occasions_empty_body),
+                    actionLabel = stringResource(R.string.occasions_add_event),
+                    onAction = { editing = null; showDialog = true },
+                )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

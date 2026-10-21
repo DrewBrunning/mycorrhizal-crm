@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
@@ -83,6 +84,27 @@ class CirclesScreenTest {
         setScreen(darkTheme = false)
 
         composeTestRule.assertNoDuplicateContentDescriptions()
+    }
+
+    // Issue #1760: rename/delete live behind one per-row overflow button.
+    @Test
+    fun `row actions open from the overflow menu`() {
+        setScreen(darkTheme = false)
+
+        composeTestRule.onNodeWithContentDescription("More actions for Friends").performClick()
+        composeTestRule.onNodeWithText(str(R.string.action_rename)).performClick()
+        composeTestRule.onNodeWithText(str(R.string.circles_rename)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list offers the create action and explains circles`() {
+        setScreen(Result.success(emptyList()))
+
+        composeTestRule.onNodeWithText(str(R.string.circles_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.circles_empty_body)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.circles_new)).performClick()
+        // The create dialog opened (its title reuses the "New circle" label).
+        composeTestRule.onNodeWithText(str(R.string.action_cancel)).assertIsDisplayed()
     }
 
     @Test

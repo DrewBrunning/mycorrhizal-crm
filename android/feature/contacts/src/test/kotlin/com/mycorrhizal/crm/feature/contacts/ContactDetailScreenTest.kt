@@ -1403,7 +1403,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("External Links").assertDoesNotExist()
+        composeTestRule.onNodeWithText("External links").assertDoesNotExist()
     }
 
     // --- Issue #236: "Add link" entry points ---
@@ -1417,8 +1417,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("External Links")
-        composeTestRule.onNodeWithText("External Links").assertIsDisplayed()
+        scrollTo("External links")
+        composeTestRule.onNodeWithText("External links").assertIsDisplayed()
         scrollTo("Add Paperless link").assertIsDisplayed()
     }
 

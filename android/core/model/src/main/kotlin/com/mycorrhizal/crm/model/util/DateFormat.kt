@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
 import java.time.Instant
+import java.time.LocalDate
 import java.time.Month
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -127,7 +128,8 @@ object DateFormat {
         if (!DATE_ONLY.matches(head)) return null
         val rest = value.drop(10)
         if (rest.isNotEmpty() && rest !in UTC_MIDNIGHT_SUFFIXES) return null
-        return Triple(head.substring(0, 4).toInt(), head.substring(5, 7).toInt(), head.substring(8, 10).toInt())
+        val date = runCatching { LocalDate.parse(head) }.getOrNull() ?: return null
+        return Triple(date.year, date.monthValue, date.dayOfMonth)
     }
 
     /**

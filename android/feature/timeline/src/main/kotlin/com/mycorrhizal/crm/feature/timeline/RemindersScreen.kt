@@ -147,7 +147,12 @@ fun RemindersScreenContent(
                     state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
                         EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                     state.reminders.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.reminders_empty))
+                        EmptyState(
+                            title = stringResource(R.string.reminders_empty),
+                            body = stringResource(R.string.reminders_empty_body),
+                            actionLabel = stringResource(R.string.cd_new_reminder),
+                            onAction = onCreateReminder,
+                        )
                     else -> {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(state.reminders, key = { it.id }) { reminder ->

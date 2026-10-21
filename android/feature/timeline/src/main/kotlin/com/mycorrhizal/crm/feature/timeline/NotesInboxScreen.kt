@@ -129,7 +129,7 @@ fun NotesInboxScreenContent(
                     state.isLoading && state.notes.isEmpty() ->
                         LoadingSkeleton(modifier = Modifier.testTag("notes-inbox-loading"))
                     state.notes.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.notes_empty))
+                        EmptyState(title = stringResource(R.string.notes_empty))
                     state.notes.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
                     else -> {

@@ -36,7 +36,7 @@ class PaperlessSettingsScreenTest {
         }
 
         composeTestRule.onNodeWithText("Base URL").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API Token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API token").performScrollTo().assertIsDisplayed()
     }
 
     @Test
