@@ -48,6 +48,7 @@ class FieldDefinitionFormScreenTest {
         state: FieldDefinitionFormState,
         onTypeChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
+        onGroupChange: (String) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -75,6 +76,7 @@ class FieldDefinitionFormScreenTest {
                         onProjectionModeChange = {},
                         onVcardNameChange = {},
                         onSensitivityChange = {},
+                        onGroupChange = onGroupChange,
                         modifier = Modifier.padding(padding),
                     )
                 }
@@ -190,6 +192,7 @@ class FieldDefinitionFormScreenTest {
         onSaved: () -> Unit = {},
     ): FieldDefinitionRepository {
         val repository = mockk<FieldDefinitionRepository>()
+        coEvery { repository.list(any()) } returns Result.success(emptyList())
         if (fieldDefinitionId != null) {
             coEvery { repository.get(fieldDefinitionId) } returns Result.success(
                 FieldDefinition(id = fieldDefinitionId, label = "Coffee order", key = "coffee_order", type = "string"),
@@ -262,5 +265,40 @@ class FieldDefinitionFormScreenTest {
 
         composeTestRule.onNodeWithText("already exists").assertIsDisplayed()
         assertEquals(false, savedCalled)
+    }
+
+    // --- Issue #1731: group field ---
+
+    @Test
+    fun `the group field is shown and prefilled`() {
+        setContent(FieldDefinitionFormState(group = "Travel profile"))
+
+        composeTestRule.onNodeWithText("Group").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Travel profile").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `typing in the group field reports the new text`() {
+        var typed: String? = null
+        setContent(FieldDefinitionFormState(group = ""), onGroupChange = { typed = it })
+
+        composeTestRule.onNodeWithText("Group").performScrollTo().performTextInput("Health")
+
+        assertEquals("Health", typed)
+    }
+
+    @Test
+    fun `matching existing groups are suggested and picking one fills the field`() {
+        var picked: String? = null
+        setContent(
+            FieldDefinitionFormState(group = "Tra", groupSuggestions = listOf("Health", "Travel profile")),
+            onGroupChange = { picked = it },
+        )
+
+        composeTestRule.onNodeWithText("Tra").performScrollTo().performTextInput("v")
+        composeTestRule.onNodeWithText("Health").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Travel profile").performClick()
+
+        assertEquals("Travel profile", picked)
     }
 }

@@ -2003,6 +2003,15 @@
     <string name="conflict_load_latest">Charger la dernière version</string>
     <string name="conflict_keep_editing">Continuer à modifier</string>
     <string name="conflict_dismiss">Pas maintenant</string>
+    <plurals name="contact_custom_field_group_filled">
+        <item quantity="one">%1$d sur %2$d renseigné</item>
+        <item quantity="many">%1$d sur %2$d renseignés</item>
+        <item quantity="other">%1$d sur %2$d renseignés</item>
+    </plurals>
+    <string name="contact_custom_field_group_open">Ouvrir %1$s</string>
+    <string name="settings_custom_fields_group">Groupe</string>
+    <string name="settings_custom_fields_group_hint">Facultatif. Les champs du même groupe sont affichés ensemble sur un contact.</string>
+    <string name="settings_custom_fields_error_group_too_long">Le groupe doit comporter 100 caractères au maximum</string>
     <string name="contact_ambient_toggle">Contact du quotidien : je le vois en permanence</string>
     <string name="ambient_explainer">Compte comme un contact régulier sans consigner d\'activités</string>
     <string name="ambient_reason_household">Vit avec vous (foyer)</string>

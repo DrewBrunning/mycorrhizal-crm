@@ -27,7 +27,10 @@ class FieldDefinitionFormViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val repository = mockk<FieldDefinitionRepository>()
+    private val repository = mockk<FieldDefinitionRepository>().also {
+        // The form loads the existing group labels for its suggestion dropdown (issue #1731).
+        coEvery { it.list(any()) } returns Result.success(emptyList())
+    }
 
     private fun createViewModel(): FieldDefinitionFormViewModel =
         FieldDefinitionFormViewModel(repository, SavedStateHandle())
@@ -357,5 +360,146 @@ class FieldDefinitionFormViewModelTest {
         vm.onEventShown()
 
         assertNull(vm.events.value)
+    }
+
+    // --- Issue #1731: group ---
+
+    private fun createReady(): FieldDefinitionFormViewModel {
+        val vm = createViewModel()
+        vm.onLabelChange("Passport country")
+        vm.onKeyChange("passport_country")
+        return vm
+    }
+
+    @Test
+    fun `create sends the trimmed group`() = runTest(mainDispatcherRule.testDispatcher) {
+        val slot = slot<FieldDefinitionInput>()
+        coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+
+        val vm = createReady()
+        vm.onGroupChange("  Travel profile  ")
+        vm.save()
+        advanceUntilIdle()
+
+        assertEquals("Travel profile", slot.captured.group)
+        assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+    }
+
+    @Test
+    fun `create with no group sends an empty string, never an omitted key`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+
+            val vm = createReady()
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("", slot.captured.group)
+        }
+
+    @Test
+    fun `edit prefills the existing group and saving it unchanged sends it back`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.get("d1") } returns Result.success(
+                FieldDefinition(id = "d1", label = "Seat", key = "seat", type = "string", group = "Travel profile"),
+            )
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.update("d1", capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+
+            val vm = editViewModel()
+            advanceUntilIdle()
+            assertEquals("Travel profile", vm.uiState.value.group)
+
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("Travel profile", slot.captured.group)
+        }
+
+    @Test
+    fun `clearing the group on edit sends an empty string so the server clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.get("d1") } returns Result.success(
+                FieldDefinition(id = "d1", label = "Seat", key = "seat", type = "string", group = "Travel profile"),
+            )
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.update("d1", capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+
+            val vm = editViewModel()
+            advanceUntilIdle()
+            vm.onGroupChange("   ")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("", slot.captured.group)
+        }
+
+    @Test
+    fun `a group of exactly 100 characters is accepted and 101 is blocked before the request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+
+            val vm = createReady()
+            vm.onGroupChange("é".repeat(101))
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(R.string.settings_custom_fields_error_group_too_long, vm.uiState.value.errorRes)
+            coVerify(exactly = 0) { repository.create(any()) }
+
+            vm.onGroupChange("é".repeat(100))
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(100, slot.captured.group?.length)
+            assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+        }
+
+    @Test
+    fun `a server 400 on the group is surfaced and does not emit Saved`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.create(any()) } returns
+                Result.failure(ApiError.Client(400, "group: must be at most 100 characters"))
+
+            val vm = createReady()
+            // Leading/trailing spaces count toward the server's limit even though they're trimmed:
+            // the client trims, so it can only hit the server limit through an older/odd client.
+            vm.onGroupChange("Travel")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("group: must be at most 100 characters", vm.uiState.value.error)
+            assertNull(vm.events.value)
+        }
+
+    @Test
+    fun `existing group labels become suggestions, distinct and sorted`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any()) } returns Result.success(
+                listOf(
+                    FieldDefinition(id = "a", group = "Travel"),
+                    FieldDefinition(id = "b", group = ""),
+                    FieldDefinition(id = "c", group = "Health"),
+                    FieldDefinition(id = "d", group = "Travel"),
+                ),
+            )
+
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(listOf("Health", "Travel"), vm.uiState.value.groupSuggestions)
+        }
+
+    @Test
+    fun `a failed suggestion load leaves free entry working`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list(any()) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.groupSuggestions.isEmpty())
+        assertNull(vm.uiState.value.error)
+        vm.onGroupChange("Anything")
+        assertEquals("Anything", vm.uiState.value.group)
     }
 }

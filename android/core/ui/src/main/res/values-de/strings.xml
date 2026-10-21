@@ -2002,6 +2002,14 @@
     <string name="conflict_load_latest">Neueste Version laden</string>
     <string name="conflict_keep_editing">Weiter bearbeiten</string>
     <string name="conflict_dismiss">Jetzt nicht</string>
+    <plurals name="contact_custom_field_group_filled">
+        <item quantity="one">%1$d von %2$d ausgefüllt</item>
+        <item quantity="other">%1$d von %2$d ausgefüllt</item>
+    </plurals>
+    <string name="contact_custom_field_group_open">%1$s öffnen</string>
+    <string name="settings_custom_fields_group">Gruppe</string>
+    <string name="settings_custom_fields_group_hint">Optional. Felder mit derselben Gruppe werden bei einem Kontakt zusammen angezeigt.</string>
+    <string name="settings_custom_fields_error_group_too_long">Die Gruppe darf höchstens 100 Zeichen lang sein</string>
     <string name="contact_ambient_toggle">Alltagskontakt – ich sehe die Person ständig</string>
     <string name="ambient_explainer">Zählt als regelmäßiger Kontakt, ohne dass Aktivitäten erfasst werden</string>
     <string name="ambient_reason_household">Lebt mit dir zusammen (Haushalt)</string>

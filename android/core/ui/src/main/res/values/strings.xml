@@ -2018,6 +2018,14 @@
     <string name="conflict_load_latest">Load latest version</string>
     <string name="conflict_keep_editing">Keep editing</string>
     <string name="conflict_dismiss">Not now</string>
+    <plurals name="contact_custom_field_group_filled">
+        <item quantity="one">%1$d of %2$d filled</item>
+        <item quantity="other">%1$d of %2$d filled</item>
+    </plurals>
+    <string name="contact_custom_field_group_open">Open %1$s</string>
+    <string name="settings_custom_fields_group">Group</string>
+    <string name="settings_custom_fields_group_hint">Optional. Fields with the same group are shown together on a contact.</string>
+    <string name="settings_custom_fields_error_group_too_long">Group must be 100 characters or fewer</string>
     <string name="contact_ambient_toggle">Ambient contact — I see them all the time</string>
     <string name="ambient_explainer">Counts as in regular contact without logging activities</string>
     <string name="ambient_reason_household">Lives with you (household)</string>
