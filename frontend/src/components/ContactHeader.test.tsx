@@ -206,6 +206,33 @@ test('the More button is a focusable menu button (#1782)', () => {
   expect(more.getAttribute('aria-controls')).toBe(screen.getByRole('menu').id);
 });
 
+test('compact menu items run their action and close the menu (#1782)', async () => {
+  mockMatchMedia(true);
+  const onStayInTouch = vi.fn();
+  const onExportContact = vi.fn();
+  renderHeader({ onStayInTouch, onExportContact });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Stay in Touch' }));
+  expect(onStayInTouch).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Export as vCard 3.0' }));
+  expect(onExportContact).toHaveBeenCalledWith('vcf3');
+});
+
+test('Escape closes the wide More menu (#1782)', async () => {
+  mockMatchMedia(false);
+  renderHeader({ onMergeContact: vi.fn() });
+
+  const more = screen.getByRole('button', { name: 'More' });
+  fireEvent.click(more);
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+  expect(more).not.toHaveAttribute('aria-expanded');
+});
+
 test('both menu triggers name the menu they open (#1782)', () => {
   mockMatchMedia(true);
   renderHeader({ onMergeContact: vi.fn() });

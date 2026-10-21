@@ -723,10 +723,10 @@
       "branchesTotal": 14
     },
     "src/components/ContactHeader.tsx": {
-      "lines": 87.5,
-      "linesTotal": 96,
-      "branches": 91.53,
-      "branchesTotal": 127
+      "lines": 92.78,
+      "linesTotal": 97,
+      "branches": 91.72,
+      "branchesTotal": 133
     },
     "src/components/ContactInformation.tsx": {
       "lines": 76.53,
