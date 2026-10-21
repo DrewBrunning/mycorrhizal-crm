@@ -103,9 +103,15 @@ class OldServerCompatibilityE2ETest {
         // Scroll first (issue #1430): Settings is the drawer's last entry and
         // sits below the visible sheet on a phone, so a plain click would land
         // on the scrim and dismiss the drawer instead of navigating.
-        onLastText("Settings").performScrollTo().performClick()
-        waitForText("API Tokens")
-        compose.onNodeWithText("API Tokens").performScrollTo().performClick()
+        // (Issue #1758: Settings is now pinned below the list, with nothing to scroll in.)
+        val settings = onLastText("Settings")
+        runCatching { settings.performScrollTo() }
+        settings.performClick()
+        // Issue #1759: API tokens moved into the Account group.
+        waitForText("Account")
+        compose.onNodeWithText("Account").performScrollTo().performClick()
+        waitForText("API tokens")
+        compose.onNodeWithText("API tokens").performScrollTo().performClick()
 
         // The screen loaded against the real server (empty token list — a
         // fresh per-container seed user).

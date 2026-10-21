@@ -13,7 +13,7 @@
     <string name="dashboard_data_decay_overdue">Datos por revisar</string>
     <!-- Issue #177: event-driven reach-out suggestions. -->
     <string name="dashboard_reach_out">Motivos para contactar</string>
-    <string name="dashboard_random_contacts">Mantente en Contacto</string>
+    <string name="dashboard_random_contacts">Mantente en contacto</string>
     <!-- Issue #212: the favorites quick-access block (web #173). -->
     <string name="dashboard_favorites">Favoritos</string>
     <string name="dashboard_no_favorites">Aún no hay favoritos</string>
@@ -24,13 +24,17 @@
     <string name="dashboard_unknown_contact">Contacto desconocido</string>
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
-    <string name="nav_tags">Etiquetas</string>
-    <string name="nav_circles">Círculos</string>
+    <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
+    <string name="nav_group_people">Personas</string>
+    <string name="nav_group_interactions">Interacciones</string>
+    <string name="nav_group_data_admin">Datos y administración</string>
+    <string name="nav_notes_unassigned">Notas sin asignar</string>
+    <string name="nav_header_description">Sesión iniciada como %1$s en %2$s</string>
+    <string name="nav_header_action">Abrir servidores</string>
     <string name="nav_network">Red</string>
     <string name="nav_map">Mapa</string>
-    <string name="nav_shares">Compartidos</string>
-    <string name="nav_households">Hogares</string>
     <string name="cd_menu">Menú</string>
+    <string name="row_more_actions_named">Más acciones para %1$s</string>
     <string name="cd_back">Atrás</string>
 
     <!-- Inicio de sesión -->
@@ -43,6 +47,7 @@
     <string name="login_api_token">Token de API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Iniciar sesión con SSO</string>
+    <string name="login_sso_disabled_hint">Introduce la URL de un servidor para usar SSO</string>
     <string name="oidc_login_failed">El inicio de sesión con SSO falló. Inténtalo de nuevo o inicia sesión con tu contraseña.</string>
     <string name="login_sign_in">Iniciar sesión</string>
     <string name="login_error_valid_server_url">Introduce una URL de servidor válida, p. ej. https://crm.example.com</string>
@@ -105,6 +110,7 @@
     <!-- Lista de contactos -->
     <string name="contacts_search_hint">Buscar contactos</string>
     <string name="contacts_empty">Aún no hay contactos</string>
+    <string name="contacts_empty_body">Añade a alguien para empezar o importa tus contactos.</string>
     <string name="contacts_new">Nuevo contacto</string>
     <string name="contacts_photo_description">Foto de %1$s</string>
     <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
@@ -335,18 +341,19 @@
     <!-- M7: editor de direcciones -->
     <string name="contact_address_street">Calle</string>
     <string name="contact_address_city">Ciudad</string>
-    <string name="contact_address_region">Provincia / Región</string>
+    <string name="contact_address_region">Provincia / región</string>
     <string name="contact_address_postal">Código postal</string>
     <string name="contact_address_country">País</string>
     <string name="contact_address_pobox">Apartado de correos</string>
-    <string name="contact_address_apartment">Apartamento / Suite</string>
+    <string name="contact_address_apartment">Apartamento / suite</string>
     <string name="contact_address_floor">Planta</string>
     <string name="contact_address_additional">Campos adicionales</string>
     <string name="map_show_list">Mostrar como lista</string>
     <string name="map_show_map">Mostrar mapa</string>
     <string name="map_open_contact">Abrir contacto</string>
     <string name="map_truncated">Se muestran solo las primeras %1$d direcciones; el mapa está limitado a esta cantidad de puntos.</string>
-    <string name="map_empty">Ningún contacto tiene coordenadas todavía. Añade coordenadas a una dirección de un contacto para verla aquí.</string>
+    <string name="map_empty">Aún no hay contactos en el mapa</string>
+    <string name="map_empty_body">Añade coordenadas a la dirección de un contacto para verlo aquí.</string>
     <string name="contact_address_coordinates">Coordenadas (latitud, longitud)</string>
     <string name="contact_address_coordinates_hint">Por ejemplo 51.5007, -0.1246</string>
     <string name="contact_address_coordinates_invalid">Introduce la latitud (-90 a 90) y la longitud (-180 a 180), separadas por una coma.</string>
@@ -393,8 +400,23 @@
 
     <!-- Ajustes -->
     <string name="settings_title">Ajustes</string>
+    <!-- Issue #1759: the Settings root groups, their one-line summaries, and the new section headings. -->
+    <string name="settings_group_account">Cuenta</string>
+    <string name="settings_group_account_summary">Servidor, contraseña, dos factores, tokens API</string>
+    <string name="settings_group_appearance_summary">Idioma, formato de fecha, tema</string>
+    <string name="settings_group_privacy">Privacidad y seguridad</string>
+    <string name="settings_group_privacy_summary">Bloqueo de la app, capturas de pantalla</string>
+    <string name="settings_group_contacts_fields">Contactos y campos</string>
+    <string name="settings_group_contacts_fields_summary">Campos personalizados, acciones de enlace, depuración</string>
+    <string name="settings_group_tracking_summary">Registro de llamadas y mensajes, notificaciones</string>
+    <string name="settings_group_integrations">Integraciones</string>
+    <string name="settings_group_integrations_summary">Sincronización de calendario, webhooks, fotos y archivos</string>
+    <string name="settings_group_administration">Administración</string>
+    <string name="settings_group_administration_summary">Gestión de usuarios, eventos del sistema</string>
+    <string name="settings_group_about_summary">Versión y detalles de la compilación</string>
+    <string name="settings_security">Seguridad</string>
+    <string name="settings_screen_privacy">Privacidad de pantalla</string>
     <string name="settings_data">Datos</string>
-    <string name="settings_data_review">Sugerencias de datos</string>
     <string name="settings_suggest_relationships">Sugerir relaciones</string>
     <!-- N8: two-factor auth (issue #158 / #814) -->
     <string name="settings_two_factor_title">Autenticación de dos factores</string>
@@ -439,7 +461,7 @@
     <!-- Issue #1293 / ADR 0034: passkey enrollment and management -->
     <string name="settings_passkeys_title">Llaves de acceso</string>
     <string name="settings_passkeys_description">Usa la huella, el rostro o el bloqueo de pantalla de tu dispositivo (o una llave de seguridad) como segundo paso de inicio de sesión en lugar de un código. Las llaves de acceso funcionan junto con una aplicación de autenticación.</string>
-    <string name="settings_passkeys_empty">Aún no hay llaves de acceso.</string>
+    <string name="settings_passkeys_empty">Aún no hay llaves de acceso</string>
     <string name="settings_passkeys_add_button">Añadir una llave de acceso</string>
     <string name="settings_passkeys_add_title">Añadir una llave de acceso</string>
     <string name="settings_passkeys_add_confirm">Continuar</string>
@@ -496,7 +518,7 @@
     <string name="settings_sms_tracking">Registrar mensajes como actividades</string>
         <string name="custom_links_title">Acciones de enlace personalizadas</string>
     <string name="custom_links_new">Nueva acción</string>
-    <string name="custom_links_empty">Aún no hay acciones de enlace personalizadas.</string>
+    <string name="custom_links_empty">Aún no hay acciones de enlace personalizadas</string>
     <string name="custom_links_protocol">Protocolo (p. ej. matrix)</string>
     <string name="custom_links_label">Etiqueta</string>
     <string name="custom_links_mime">MIMETYPE</string>
@@ -520,11 +542,12 @@
     <string name="settings_date_format_eu_mmmm">Europeo completo (DD MMMM, AAAA)</string>
 
     <!-- Settings: password change (M25) -->
-    <string name="settings_password_title">Cambiar Contraseña</string>
+    <string name="settings_password_title">Cambiar contraseña</string>
     <string name="settings_password_current">Contraseña actual</string>
     <string name="settings_password_new">Nueva contraseña</string>
     <string name="settings_password_confirm">Confirmar nueva contraseña</string>
     <string name="settings_password_change_button">Actualizar contraseña</string>
+    <string name="settings_password_change_hint">Introduce tu nueva contraseña y confírmala para continuar</string>
     <string name="settings_password_mismatch">Las nuevas contraseñas no coinciden.</string>
 
     <!-- Settings: bloqueo local de la app (issue #722) -->
@@ -570,19 +593,19 @@
     <string name="biometric_enroll_not_now">Ahora no</string>
     <string name="biometric_enroll_never">No volver a preguntar</string>
     <string name="biometric_enroll_error">No se pudo configurar el inicio de sesión biométrico. Inténtalo de nuevo.</string>
-    <string name="settings_biometric_signin_setup">Configurar el inicio de sesión biométrico</string>
     <string name="settings_biometric_signin_enabled">El inicio de sesión biométrico está activado en este dispositivo</string>
     <string name="settings_biometric_signin_remove">Desactivar el inicio de sesión biométrico</string>
+    <string name="biometric_remove_error">No se pudo desactivar el inicio de sesión biométrico. Comprueba tu conexión e inténtalo de nuevo.</string>
 
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>
     <string name="settings_webhooks_description">Recibe notificaciones HTTP POST cuando ocurren eventos en tu CRM.</string>
-    <string name="settings_webhooks_add">Agregar Webhook</string>
+    <string name="settings_webhooks_add">Agregar webhook</string>
     <string name="settings_webhooks_edit">Editar</string>
     <string name="settings_webhooks_edit_named">Editar %1$s</string>
     <string name="settings_webhooks_delete">Eliminar</string>
     <string name="settings_webhooks_delete_named">Eliminar %1$s</string>
-    <string name="settings_webhooks_delete_title">Eliminar Webhook</string>
+    <string name="settings_webhooks_delete_title">Eliminar webhook</string>
     <string name="settings_webhooks_delete_body">¿Eliminar "%1$s"? Se detendrán todas las entregas futuras.</string>
     <string name="settings_webhooks_test">Probar</string>
     <string name="settings_webhooks_test_named">Probar %1$s</string>
@@ -592,12 +615,12 @@
     <string name="settings_webhooks_events_count">%1$d eventos</string>
     <string name="settings_webhooks_name">Nombre</string>
     <string name="settings_webhooks_url">URL</string>
-    <string name="settings_webhooks_empty">No hay webhooks configurados aún.</string>
+    <string name="settings_webhooks_empty">Aún no hay webhooks</string>
     <string name="settings_webhooks_show_deliveries">Entregas recientes</string>
     <string name="settings_webhooks_hide_deliveries">Ocultar entregas</string>
-    <string name="settings_webhooks_no_deliveries">Aún no hay entregas.</string>
+    <string name="settings_webhooks_no_deliveries">Aún no hay entregas</string>
     <string name="settings_webhooks_test_success">Prueba entregada (%1$s)</string>
-    <string name="settings_webhooks_secret_title">Secreto del Webhook</string>
+    <string name="settings_webhooks_secret_title">Secreto del webhook</string>
     <string name="settings_webhooks_secret_warning">Este secreto se muestra solo una vez. Cópialo antes de cerrar.</string>
     <string name="settings_webhooks_event_contact_created">Contacto creado</string>
     <string name="settings_webhooks_event_contact_updated">Contacto actualizado</string>
@@ -613,9 +636,10 @@
 
     <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
     <string name="settings_api_tokens_title">Tokens API</string>
-    <string name="settings_api_tokens_create">Crear Token</string>
+    <string name="settings_api_tokens_create">Crear token</string>
     <string name="settings_api_tokens_revoke_all">Revocar todo</string>
     <string name="settings_api_tokens_empty">Aún no hay tokens API</string>
+    <string name="settings_api_tokens_empty_body">Los tokens permiten que otras aplicaciones y scripts usen tu cuenta.</string>
     <string name="settings_api_tokens_active">Activo</string>
     <string name="settings_api_tokens_revoked">Revocado</string>
     <string name="settings_api_tokens_expired">Caducado</string>
@@ -627,20 +651,20 @@
     <string name="settings_api_tokens_expires">Caduca %1$s</string>
     <string name="settings_api_tokens_rotate_named">Rotar %1$s</string>
     <string name="settings_api_tokens_revoke_named">Revocar %1$s</string>
-    <string name="settings_api_tokens_create_title">Crear Token API</string>
-    <string name="settings_api_tokens_name_label">Nombre del Token</string>
+    <string name="settings_api_tokens_create_title">Crear token API</string>
+    <string name="settings_api_tokens_name_label">Nombre del token</string>
     <string name="settings_api_tokens_expiry_label">Caduca en</string>
     <string name="settings_api_tokens_expiry_days">%1$d días</string>
     <string name="settings_api_tokens_scope_label">Acceso</string>
     <string name="settings_api_tokens_scope_full_help">Se puede usar en cualquier lugar donde la API acepte un token, incluida la sincronización de CardDAV.</string>
     <string name="settings_api_tokens_scope_carddav_help">Solo funciona para la sincronización de contactos CardDAV. Una credencial de dispositivo filtrada no se puede usar contra el resto de la API.</string>
-    <string name="settings_api_tokens_created_title">Token Creado</string>
+    <string name="settings_api_tokens_created_title">Token creado</string>
     <string name="settings_api_tokens_created_warning">Este token no se mostrará de nuevo. Cópialo ahora y guárdalo de forma segura.</string>
-    <string name="settings_api_tokens_rotated_title">Token Rotado</string>
+    <string name="settings_api_tokens_rotated_title">Token rotado</string>
     <string name="settings_api_tokens_rotated_warning">El token anterior ya está revocado. Este nuevo token no se volverá a mostrar; cópialo ahora y guárdalo de forma segura.</string>
     <string name="settings_api_tokens_copy">Copiar</string>
     <string name="settings_api_tokens_done">Listo, lo guardé</string>
-    <string name="settings_api_tokens_revoke_title">Revocar Token</string>
+    <string name="settings_api_tokens_revoke_title">Revocar token</string>
     <string name="settings_api_tokens_revoke_body">¿Revocar \"%1$s\"? Esto no se puede deshacer.</string>
     <string name="settings_api_tokens_revoke_confirm">Revocar</string>
     <string name="settings_api_tokens_revoke_all_title">Revocar todos los tokens</string>
@@ -668,7 +692,7 @@
     <string name="settings_calendar_sync_future_days">Importar futuro (días)</string>
     <string name="settings_calendar_sync_auto_sync">Sincronizar automáticamente</string>
     <string name="settings_calendar_sync_dialog_info">Mycorrhizal importa periódicamente eventos de este calendario como actividades. Eliminar la suscripción conserva las actividades ya importadas.</string>
-    <string name="settings_calendar_sync_empty">Aún no se han añadido calendarios.</string>
+    <string name="settings_calendar_sync_empty">Aún no hay calendarios</string>
     <string name="settings_calendar_sync_disabled">Desactivado</string>
     <string name="settings_calendar_sync_sync_now">Sincronizar ahora</string>
     <string name="settings_calendar_sync_sync_now_named">Sincronizar %1$s ahora</string>
@@ -844,6 +868,7 @@
     <!-- Actividades -->
     <string name="activities_title">Actividades</string>
     <string name="activities_empty">Aún no hay actividades</string>
+    <string name="activities_empty_body">Registra llamadas, reuniones y mensajes para seguir el contacto.</string>
     <string name="activities_search">Buscar actividades</string>
     <string name="activities_no_results">Ninguna actividad coincide con tus filtros</string>
     <string name="activities_delete_title">¿Eliminar actividad?</string>
@@ -870,12 +895,16 @@
     <!-- Notas -->
     <string name="notes_title">Notas</string>
     <string name="notes_empty">Aún no hay notas</string>
+    <string name="notes_empty_body">Las notas guardan lo que quieres recordar sobre alguien.</string>
+    <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
+    <string name="notes_unassigned_empty">Aún no hay notas sin asignar</string>
+    <string name="notes_unassigned_empty_body">Las notas que guardas sin un contacto aparecen aquí.</string>
+    <string name="notes_inbox_total">%1$d en total</string>
     <string name="notes_search">Buscar notas</string>
     <string name="notes_no_results">Ninguna nota coincide con tus filtros</string>
     <string name="notes_delete_title">¿Eliminar nota?</string>
     <string name="notes_delete_named">Eliminar %1$s</string>
     <string name="notes_delete_confirm">¿Eliminar esta nota? \"%1$s\"</string>
-    <string name="notes_inbox_total">%1$d sin asignar</string>
     <string name="action_load_more">Cargar más</string>
     <string name="note_new">Nueva nota</string>
     <string name="note_edit">Editar nota</string>
@@ -906,6 +935,7 @@
     <!-- Recordatorios -->
     <string name="reminders_title">Recordatorios</string>
     <string name="reminders_empty">Aún no hay recordatorios</string>
+    <string name="reminders_empty_body">Los recordatorios te avisan para contactar en el momento adecuado.</string>
     <string name="reminder_new">Nuevo recordatorio</string>
     <string name="reminder_edit">Editar recordatorio</string>
     <string name="reminder_message">Mensaje</string>
@@ -977,16 +1007,15 @@
     <string name="circles_title">Círculos</string>
     <string name="circles_new">Nuevo círculo</string>
     <string name="circles_rename">Renombrar círculo</string>
-    <string name="circles_rename_named">Renombrar %1$s</string>
     <string name="circles_name">Nombre</string>
     <string name="circles_delete_title">¿Eliminar círculo?</string>
     <string name="circles_delete_confirm">¿Eliminar «%1$s»? Esto quita el círculo y sus membresías.</string>
-    <string name="circles_delete_named">Eliminar %1$s</string>
     <string name="circles_add_member">Añadir miembro</string>
     <string name="circles_remove_member">Quitar miembro</string>
     <string name="circles_remove_member_named">Eliminar miembro %1$s</string>
     <string name="circles_member_vcard_uid">UID de VCard del contacto</string>
     <string name="circles_empty">Aún no hay círculos</string>
+    <string name="circles_empty_body">Los círculos son grupos de personas con las que mantienes el contacto.</string>
     <string name="circles_members_empty">Aún no hay miembros</string>
     <string name="circles_error_missing_id">Falta el ID del círculo</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1002,7 +1031,7 @@
     <string name="triage_contacts_count">%1$d contactos</string>
     <string name="triage_summary">%1$d círculos, %2$d etiquetas, %3$d omitidos</string>
     <string name="triage_apply">Aplicar</string>
-    <string name="triage_empty">No hay cadenas de círculos heredadas que limpiar.</string>
+    <string name="triage_empty">No hay cadenas de círculos heredadas que limpiar</string>
     <string name="triage_done_title">Clasificación completada</string>
     <string name="triage_done_message">Se crearon %1$d círculo(s) y %2$d etiqueta(s).</string>
     <string name="triage_done_partial">No se pudieron crear %1$d elemento(s) y %2$d asignación(es) de miembro fallaron. Vuelve a ejecutar la clasificación para reintentar.</string>
@@ -1010,7 +1039,8 @@
 
     <!-- Admin user management (issue #348) -->
     <string name="users_title">Gestión de usuarios</string>
-    <string name="users_empty">Aún no hay usuarios. Crea la primera cuenta para compartir esta instancia.</string>
+    <string name="users_empty">Aún no hay usuarios</string>
+    <string name="users_empty_body">Crea una cuenta para compartir esta instancia.</string>
     <string name="users_add">Añadir usuario</string>
     <string name="users_edit">Editar usuario</string>
     <string name="users_username">Nombre de usuario</string>
@@ -1045,17 +1075,16 @@
     <string name="tags_title">Etiquetas</string>
     <string name="tags_new">Nueva etiqueta</string>
     <string name="tags_rename">Renombrar etiqueta</string>
-    <string name="tags_rename_named">Renombrar %1$s</string>
     <string name="tags_name">Nombre</string>
     <string name="tags_delete_title">¿Eliminar etiqueta?</string>
     <string name="tags_delete_confirm">¿Eliminar «%1$s»? Esto quita la etiqueta y sus etiquetados de contacto.</string>
-    <string name="tags_delete_named">Eliminar %1$s</string>
     <string name="tags_add_contact">Etiquetar contacto</string>
     <string name="tags_remove_contact">Quitar etiqueta del contacto</string>
     <string name="tags_remove_contact_named">Quitar etiqueta del contacto %1$s</string>
     <string name="tags_contact_vcard_uid">UID de VCard del contacto</string>
     <string name="tags_empty">Aún no hay etiquetas</string>
-    <string name="tags_contacts_empty">Ningún contacto etiquetado</string>
+    <string name="tags_empty_body">Las etiquetas agrupan contactos por tema, como trabajo o familia.</string>
+    <string name="tags_contacts_empty">Aún no hay contactos etiquetados</string>
 
     <!-- Custom field definitions (issue #830) -->
     <!-- Contact field settings (issue #832, web parity) -->
@@ -1069,6 +1098,7 @@
 
     <string name="settings_custom_fields_title">Campos personalizados</string>
     <string name="settings_custom_fields_empty">Aún no hay campos personalizados</string>
+    <string name="settings_custom_fields_empty_body">Añade tus propios campos para guardar datos adicionales de los contactos.</string>
     <string name="settings_custom_fields_new_title">Nuevo campo personalizado</string>
     <string name="settings_custom_fields_edit_title">Editar campo personalizado</string>
     <string name="settings_custom_fields_delete_title">¿Eliminar campo personalizado?</string>
@@ -1115,12 +1145,10 @@
     <string name="households_title">Hogares</string>
     <string name="households_new">Nuevo hogar</string>
     <string name="households_edit">Editar hogar</string>
-    <string name="households_rename_named">Renombrar %1$s</string>
     <string name="households_name">Nombre</string>
     <string name="households_type">Tipo</string>
     <string name="households_delete_title">¿Eliminar hogar?</string>
     <string name="households_delete_confirm">¿Eliminar «%1$s»? Esto quita el hogar y sus membresías.</string>
-    <string name="households_delete_named">Eliminar %1$s</string>
     <string name="households_add_member">Añadir miembro</string>
     <string name="households_remove_member">Quitar miembro</string>
     <string name="households_remove_member_named">Eliminar miembro %1$s</string>
@@ -1128,7 +1156,7 @@
     <string name="households_type_to_search">Escribe para buscar</string>
     <string name="households_no_contacts_found">No se encontraron contactos</string>
     <string name="households_change_selection">Cambiar</string>
-    <string name="households_member_unknown">Contacto desconocido</string>
+    <string name="contact_unknown">Contacto desconocido</string>
     <string name="households_role">Rol</string>
     <string name="households_no_role">Sin rol</string>
     <string name="households_role_adult">Adulto</string>
@@ -1136,6 +1164,7 @@
     <string name="households_role_pet">Mascota</string>
     <string name="households_role_roommate">Compañero/a de piso</string>
     <string name="households_empty">Aún no hay hogares</string>
+    <string name="households_empty_body">Los hogares agrupan a personas que viven juntas.</string>
     <string name="households_members_empty">Aún no hay miembros</string>
     <string name="households_error_missing_id">Falta el ID del hogar</string>
     <string name="households_suggest_relationships">Sugerir relaciones</string>
@@ -1163,6 +1192,7 @@
     <string name="relationships_accept">Aceptar</string>
     <string name="relationships_suggested">Sugerido</string>
     <string name="relationships_empty">Aún no hay relaciones</string>
+    <string name="relationships_empty_body">Las relaciones conectan a las personas, como madre, pareja o colega.</string>
     <string name="relationships_error_missing_contact_id">Falta el ID del contacto</string>
     <string name="relationships_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
     <string name="relationships_entry_mode">¿Cómo se conoce a esta persona?</string>
@@ -1208,7 +1238,8 @@
     <string name="network_relation_hint">p. ej. sibling_of o brother</string>
     <string name="network_relation_apply">Aplicar</string>
     <string name="network_all_circles">Todos los círculos</string>
-    <string name="network_empty">No se encontraron conexiones. Añade relaciones para crear una red aquí.</string>
+    <string name="network_empty">Aún no hay conexiones</string>
+    <string name="network_empty_body">Añade relaciones para crear una red aquí.</string>
     <string name="network_row_description">%1$s — %2$s</string>
     <string name="network_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
 
@@ -1216,8 +1247,8 @@
     <string name="shares_title">Compartición de contactos</string>
     <string name="shares_tab_incoming">Entrantes</string>
     <string name="shares_tab_outgoing">Salientes</string>
-    <string name="shares_incoming_empty">No hay comparticiones entrantes.</string>
-    <string name="shares_outgoing_empty">Aún no has compartido ningún contacto.</string>
+    <string name="shares_incoming_empty">Aún no hay comparticiones entrantes</string>
+    <string name="shares_outgoing_empty">Aún no hay comparticiones salientes</string>
     <string name="shares_from">De %1$s</string>
     <string name="shares_to">Para %1$s</string>
     <string name="shares_status_pending">Pendiente</string>
@@ -1237,7 +1268,7 @@
     <string name="shares_share_dialog_title">Compartir contacto</string>
     <string name="shares_share_dialog_description">Envía una copia filtrada y única de este contacto a otro usuario de esta instancia. Ellos deciden si aceptarla.</string>
     <string name="shares_recipient">Destinatario</string>
-    <string name="shares_no_recipients">No hay otros usuarios en esta instancia con quienes compartir.</string>
+    <string name="shares_no_recipients">No hay otros usuarios en esta instancia con quienes compartir</string>
     <string name="shares_error_no_vcard_uid">Este contacto no tiene UID de vCard — no se puede compartir.</string>
     <string name="shares_share_button">Compartir</string>
     <string name="shares_sharing">Compartiendo…</string>
@@ -1282,7 +1313,8 @@
     <string name="cadence_type_gift">Regalo</string>
     <string name="cadence_type_message">Mensaje</string>
     <string name="cadence_type_shared_activity">Actividad compartida</string>
-    <string name="cadence_no_policy">No hay cadencia establecida para este contacto.</string>
+    <string name="cadence_no_policy">Aún no hay cadencia</string>
+    <string name="cadence_no_policy_body">Define cada cuánto quieres estar en contacto con este contacto.</string>
     <string name="cadence_no_interactions_yet">Aún no hay interacciones que cuenten: la cadencia empieza al registrar la primera.</string>
     <string name="cadence_on_track">Al día</string>
     <string name="cadence_overdue_by">%1$d días de retraso</string>
@@ -1306,27 +1338,35 @@
 
 
     <!-- Timeline entities -->
-    <string name="entities_empty">Nada por aquí todavía</string>
     <string name="entities_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
     <string name="entities_delete_title">¿Eliminar elemento?</string>
     <string name="entities_delete_named">Eliminar %1$s</string>
     <string name="entities_delete_confirm">¿Eliminar «%1$s»? Esto no se puede deshacer.</string>
     <string name="life_events_title">Acontecimientos vitales</string>
     <string name="life_events_new">Nuevo acontecimiento</string>
+    <string name="life_events_empty">Aún no hay acontecimientos vitales</string>
+    <string name="life_events_empty_body">Anota mudanzas, nuevos empleos y otros momentos que merece la pena recordar.</string>
     <string name="life_events_edit">Editar acontecimiento</string>
     <string name="life_events_type">Tipo</string>
     <string name="life_events_description">Descripción</string>
     <string name="gifts_title">Regalos</string>
     <string name="gifts_new">Nuevo regalo</string>
+    <string name="gifts_empty">Aún no hay regalos</string>
+    <string name="gifts_empty_body">Lleva el control de ideas de regalo y de lo que has regalado.</string>
+    <string name="gifts_preferences_empty">Aún no hay preferencias de regalo</string>
     <string name="gifts_edit">Editar regalo</string>
     <string name="gifts_description">Descripción</string>
     <string name="preferences_title">Preferencias</string>
     <string name="preferences_new">Nueva preferencia</string>
+    <string name="preferences_empty">Aún no hay preferencias</string>
+    <string name="preferences_empty_body">Anota gustos, aversiones y alergias para recordarlos.</string>
     <string name="preferences_edit">Editar preferencia</string>
     <string name="preferences_category">Categoría</string>
     <string name="preferences_value">Valor</string>
     <string name="agenda_title">Agenda de conversación</string>
     <string name="agenda_new">Nuevo elemento</string>
+    <string name="agenda_empty">Aún no hay temas en la agenda</string>
+    <string name="agenda_empty_body">Anota de qué quieres hablar la próxima vez.</string>
     <string name="agenda_edit">Editar elemento</string>
     <string name="agenda_content">Contenido</string>
 
@@ -1347,7 +1387,7 @@
     <string name="life_events_category_work_education">Trabajo y educación</string>
     <string name="life_events_category_travel_experiences">Viajes y experiencias</string>
     <string name="life_events_category_family_relationships">Familia y relaciones</string>
-    <string name="life_events_category_uncategorized">Otros / Sin categoría</string>
+    <string name="life_events_category_uncategorized">Otros / sin categoría</string>
     <string name="gifts_status_idea">Idea</string>
     <string name="gifts_status_purchased">Comprado</string>
     <string name="gifts_status_given">Regalado</string>
@@ -1368,7 +1408,7 @@
     <string name="gifts_shopping_notes_header">Tallas de ropa y preferencias de regalo (%1$d)</string>
     <string name="gifts_clothing_type">Tipo</string>
     <string name="gifts_preferences_heading">Preferencias de regalo</string>
-    <string name="preferences_key">Clave</string>
+    <string name="preferences_key">Tipo</string>
     <string name="preferences_notes">Notas</string>
     <string name="preferences_level">Nivel</string>
     <string name="preferences_level_none">Sin nivel</string>
@@ -1486,7 +1526,7 @@
 
     <!-- T93 duplicate review (issue #710, web parity) -->
     <string name="duplicates_title">Revisar duplicados</string>
-    <string name="duplicates_empty">No se han encontrado contactos duplicados.</string>
+    <string name="duplicates_empty">No se han encontrado contactos duplicados</string>
     <string name="duplicates_count">%1$d posibles pares duplicados</string>
     <string name="duplicates_vs">frente a</string>
     <string name="duplicates_reason_email">Mismo correo</string>
@@ -1504,7 +1544,8 @@
     <!-- N7 contact attachments (issue #710, web parity) -->
     <string name="contact_attachments">Adjuntos</string>
     <string name="attachments_upload">Añadir adjunto</string>
-    <string name="attachments_empty">Aún no hay adjuntos.</string>
+    <string name="attachments_empty">Aún no hay adjuntos</string>
+    <string name="attachments_empty_body">Adjunta a este contacto archivos como escaneos, contratos o fotos.</string>
     <string name="attachments_open">Abrir adjunto</string>
     <string name="attachments_size">%1$s</string>
     <string name="attachments_delete">Eliminar</string>
@@ -1542,7 +1583,7 @@
 
     <!-- Import -->
     <string name="import_title">Importar contactos</string>
-    <string name="import_empty">No hay contactos del dispositivo para importar.</string>
+    <string name="import_empty">No hay contactos del dispositivo para importar</string>
     <string name="import_unnamed">(sin nombre)</string>
     <string name="import_button">Importar %1$d seleccionados (%2$d posibles duplicados)</string>
     <string name="import_button_none">Importar</string>
@@ -1599,41 +1640,41 @@
     <!-- Etiquetas de campo para la asignación de columnas CSV (issue #834) -->
     <string name="import_field_firstname">Nombre</string>
     <string name="import_field_lastname">Apellido</string>
-    <string name="import_field_middle_name">Segundo Nombre</string>
-    <string name="import_field_prefix">Prefijo del Nombre</string>
-    <string name="import_field_suffix">Sufijo del Nombre</string>
+    <string name="import_field_middle_name">Segundo nombre</string>
+    <string name="import_field_prefix">Prefijo del nombre</string>
+    <string name="import_field_suffix">Sufijo del nombre</string>
     <string name="import_field_nickname">Apodo</string>
     <string name="import_field_gender">Género</string>
     <string name="import_field_birthday">Cumpleaños</string>
     <string name="import_field_anniversary">Aniversario</string>
     <string name="import_field_email">Correo electrónico</string>
-    <string name="import_field_email_label">Correo electrónico – Tipo</string>
+    <string name="import_field_email_label">Correo electrónico – tipo</string>
     <string name="import_field_phone">Teléfono</string>
-    <string name="import_field_phone_label">Teléfono – Tipo</string>
-    <string name="import_field_address_street">Dirección – Calle</string>
-    <string name="import_field_address_city">Dirección – Ciudad</string>
+    <string name="import_field_phone_label">Teléfono – tipo</string>
+    <string name="import_field_address_street">Dirección – calle</string>
+    <string name="import_field_address_city">Dirección – ciudad</string>
     <string name="import_field_address_region">Dirección – Región/Provincia</string>
-    <string name="import_field_address_postal">Dirección – Código Postal</string>
-    <string name="import_field_address_country">Dirección – País</string>
-    <string name="import_field_address_label">Dirección – Tipo</string>
+    <string name="import_field_address_postal">Dirección – código postal</string>
+    <string name="import_field_address_country">Dirección – país</string>
+    <string name="import_field_address_label">Dirección – tipo</string>
     <string name="import_field_url">Sitio web</string>
-    <string name="import_field_url_label">Sitio web – Tipo</string>
-    <string name="import_field_impp">MI / Redes sociales</string>
-    <string name="import_field_impp_label">MI / Redes sociales – Tipo</string>
+    <string name="import_field_url_label">Sitio web – tipo</string>
+    <string name="import_field_impp">MI / redes sociales</string>
+    <string name="import_field_impp_label">MI / redes sociales – tipo</string>
     <string name="import_field_organization">Organización</string>
     <string name="import_field_department">Departamento</string>
-    <string name="import_field_job_title">Puesto de Trabajo</string>
+    <string name="import_field_job_title">Puesto de trabajo</string>
     <string name="import_field_role">Rol</string>
-    <string name="import_field_how_we_met">Cómo nos Conocimos</string>
-    <string name="import_field_work_information">Información Laboral</string>
-    <string name="import_field_contact_information">Información de Contacto</string>
+    <string name="import_field_how_we_met">Cómo nos conocimos</string>
+    <string name="import_field_work_information">Información laboral</string>
+    <string name="import_field_contact_information">Información de contacto</string>
     <string name="import_field_circles">Círculos</string>
     <string name="import_field_tags">Etiquetas</string>
 
     <!-- Historial de importación (paridad web, issue #651 / #834) -->
     <string name="import_history_entry">Historial de importación</string>
     <string name="import_history_title">Historial de importación</string>
-    <string name="import_history_empty">Aún no hay importaciones.</string>
+    <string name="import_history_empty">Aún no hay importaciones</string>
     <string name="import_history_col_created">Creados</string>
     <string name="import_history_col_updated">Actualizados</string>
     <string name="import_history_col_skipped">Omitidos</string>
@@ -1646,7 +1687,6 @@
     <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
-    <string name="nav_audit">Registro de auditoría</string>
     <string name="audit_title">Registro de auditoría</string>
     <string name="audit_description">Todas las creaciones, modificaciones y eliminaciones de tus contactos y registros, de más reciente a más antiguo.</string>
     <string name="audit_filters_entity_type">Tipo de entidad</string>
@@ -1665,8 +1705,9 @@
     <string name="audit_entity_types_tag">Etiqueta</string>
     <string name="audit_entity_types_household">Hogar</string>
     <string name="audit_entity_types_reminder">Recordatorio</string>
-    <string name="audit_empty">Ningún evento de auditoría coincide con tus filtros.</string>
-    <string name="audit_empty_no_filters">Aún no hay eventos de auditoría. Los cambios que hagas en tus contactos y otros registros aparecerán aquí.</string>
+    <string name="audit_empty">Ningún evento de auditoría coincide con tus filtros</string>
+    <string name="audit_empty_no_filters">Aún no hay eventos de auditoría</string>
+    <string name="audit_empty_no_filters_body">Los cambios que hagas en tus contactos y otros registros aparecerán aquí.</string>
     <string name="audit_undo_button">Deshacer</string>
     <string name="audit_undo_confirm_title">¿Deshacer este cambio?</string>
     <string name="audit_undo_confirm_message">¿Restaurar %1$s a su estado anterior del %2$s?</string>
@@ -1726,8 +1767,8 @@
     <string name="sysevents_details_error">Error</string>
     <string name="sysevents_details_view_related">Ver relacionados</string>
     <string name="sysevents_related_banner">Mostrando todos los eventos de la cadena %1$s.</string>
-    <string name="sysevents_empty">Ningún evento del sistema coincide con tus filtros.</string>
-    <string name="sysevents_empty_no_filters">Aún no se ha registrado ningún evento del sistema.</string>
+    <string name="sysevents_empty">Ningún evento del sistema coincide con tus filtros</string>
+    <string name="sysevents_empty_no_filters">Aún no hay eventos del sistema</string>
     <!-- Subsystem health (issue #427) -->
     <string name="subsystem_health_title">Estado de los subsistemas</string>
     <string name="subsystem_health_refresh">Actualizar</string>
@@ -1790,7 +1831,8 @@
     <string name="network_row_description_with_health">%1$s — %2$s — %3$s</string>
     <string name="occasions_title">Ocasiones</string>
     <string name="occasions_add_event">Nuevo evento</string>
-    <string name="occasions_empty">Aún no hay eventos. Crea uno para planificar a quién invitar.</string>
+    <string name="occasions_empty">Aún no hay eventos</string>
+    <string name="occasions_empty_body">Crea uno para planificar a quién invitar.</string>
     <string name="occasions_event_title">Título</string>
     <string name="occasions_starts_at">Comienza</string>
     <string name="occasions_ends_at">Termina</string>
@@ -1807,7 +1849,7 @@
     <string name="occasions_delete_confirm">¿Eliminar «%1$s»? Esto no se puede deshacer.</string>
     <string name="occasions_attendees">Invitados</string>
     <string name="occasions_attendees_title">Invitados — %1$s</string>
-    <string name="occasions_no_attendees">Todavía no hay nadie invitado.</string>
+    <string name="occasions_no_attendees">Todavía no hay nadie invitado</string>
     <string name="occasions_add_attendee">Añadir invitado</string>
     <string name="occasions_remove_attendee">Quitar invitado</string>
     <string name="occasions_remove_confirm">¿Quitar a %1$s de este evento?</string>
@@ -1819,7 +1861,7 @@
     <string name="occasions_suggest_from_circles">Sugerir invitados desde círculos</string>
     <string name="occasions_suggest">Sugerir</string>
     <string name="occasions_no_suggestions">No hay nuevas sugerencias de esos círculos.</string>
-    <string name="occasions_no_circles">Aún no hay círculos.</string>
+    <string name="occasions_no_circles">Aún no hay círculos</string>
     <string name="occasions_search_contacts">Buscar contactos</string>
     <string name="occasions_rsvp_hint">Anota lo que te dijo cada invitado: desde aquí no se envía ninguna invitación.</string>
     <string name="occasions_error_missing_event_id">No se pudo abrir este evento (falta el id).</string>
@@ -1828,7 +1870,8 @@
     <string name="occasions_validation_end_before_start">La hora de fin no puede ser anterior a la de inicio.</string>
     <string name="settings_servers_title">Servidores</string>
     <string name="settings_servers_add">Añadir servidor</string>
-    <string name="settings_servers_empty">Aún no hay servidores configurados.</string>
+    <string name="settings_servers_empty">Aún no hay servidores</string>
+    <string name="settings_servers_empty_body">Añade la dirección de tu servidor Mycorrhizal para iniciar sesión.</string>
     <string name="settings_servers_label">Etiqueta</string>
     <string name="settings_servers_url">URL del servidor</string>
     <string name="settings_servers_active">Activo</string>
@@ -1952,4 +1995,16 @@
     <string name="conflict_load_latest">Cargar la última versión</string>
     <string name="conflict_keep_editing">Seguir editando</string>
     <string name="conflict_dismiss">Ahora no</string>
+    <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
+    <string name="life_events_category_label">Categoría</string>
+    <string name="life_events_type_label">Tipo de evento</string>
+    <string name="life_events_save_hint">Elige un tipo de evento para continuar</string>
+    <string name="gifts_status_label">Estado</string>
+    <string name="gifts_save_hint_description">Escribe una descripción para continuar</string>
+    <string name="preferences_save_hint">Escribe un valor para continuar</string>
+    <string name="relationships_save_hint_name">Escribe un nombre para continuar</string>
+    <string name="relationships_save_hint_contact">Elige un contacto para continuar</string>
+    <string name="form_save_hint_fix_fields">Corrige los campos resaltados para continuar</string>
+    <string name="preferences_key_suggestions">Sugerencias</string>
+    <string name="note_change_contact">Cambiar</string>
 </resources>

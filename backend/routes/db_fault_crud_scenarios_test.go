@@ -231,6 +231,13 @@ func crudAllowlist() map[string]string {
 		"PUT /activities/:id|query activity_contacts#2": faultReasonPostCommitRead,
 		"POST /cadence-policies|query activities#1":     faultReasonPostCommitRead,
 		"PUT /cadence-policies/:id|query activities#1":  faultReasonPostCommitRead,
+		// Issue #1736 / #1733: the health derivation also reads given gifts and
+		// the ambient flag/household (both scanned rows), post-commit like the
+		// activities read above.
+		"POST /cadence-policies|row c#1":    faultReasonPostCommitRead,
+		"POST /cadence-policies|row c#2":    faultReasonPostCommitRead,
+		"PUT /cadence-policies/:id|row c#1": faultReasonPostCommitRead,
+		"PUT /cadence-policies/:id|row c#2": faultReasonPostCommitRead,
 	} {
 		m[k] = v
 	}

@@ -28,6 +28,7 @@ import AddNoteDialog from './components/AddNoteDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
@@ -35,6 +36,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
+import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -122,6 +124,7 @@ const NotesPage: React.FC = () => {
     setEditingNote(note);
     setEditValues({
       noteContent: note.content || '',
+      // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
       noteContactId: note.contact_id ?? undefined,
     });
@@ -191,58 +194,50 @@ const NotesPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       {conflictDialog}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Typography variant="h5" component="h1">
-            {t('notes.title')}
-          </Typography>
-          {/* Queue depth from the server's `total`, not notes.length -- the
-              latter is the loaded page, so this under-counted anyone with
-              more than one page of unfiled notes and then grew as they
-              clicked "Load more". */}
-          {!error && (
-            <Chip
-              label={unfiledTotal}
+      <PageHeader
+        sx={{ mb: 2 }}
+        leading={
+          <>
+            <Typography variant="h5" component="h1">
+              {t('notes.title')}
+            </Typography>
+            {/* Queue depth from the server's `total`, not notes.length -- the
+                latter is the loaded page, so this under-counted anyone with
+                more than one page of unfiled notes and then grew as they
+                clicked "Load more". */}
+            {!error && (
+              <Chip
+                label={unfiledTotal}
+                size="small"
+                color={unfiledTotal > 0 ? 'primary' : 'default'}
+                variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
+              />
+            )}
+            <IconButton
               size="small"
-              color={unfiledTotal > 0 ? 'primary' : 'default'}
-              variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
-            />
-          )}
-          <IconButton
-            size="small"
-            aria-describedby={infoPopoverId}
-            aria-label={t('common.info')}
-            onClick={handleInfoClick}
+              aria-describedby={infoPopoverId}
+              aria-label={t('common.info')}
+              onClick={handleInfoClick}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </>
+        }
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={
+              <SvgIcon>
+                <path d={mdiNotePlusOutline} />
+              </SvgIcon>
+            }
+            onClick={handleAddNote}
           >
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={
-            <SvgIcon>
-              <path d={mdiNotePlusOutline} />
-            </SvgIcon>
-          }
-          onClick={handleAddNote}
-        >
-          {t('notes.addNote')}
-        </Button>
-      </Box>
+            {t('notes.addNote')}
+          </Button>
+        }
+      />
       <Popover
         id={infoPopoverId}
         open={infoOpen}
@@ -325,7 +320,7 @@ const NotesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(note.date)}</Typography>
+                <Typography variant="body2">{formatDate(calendarDateOnly(note.date))}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">

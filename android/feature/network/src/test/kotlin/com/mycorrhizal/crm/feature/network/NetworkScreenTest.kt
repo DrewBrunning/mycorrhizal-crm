@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.network
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -136,7 +137,7 @@ class NetworkScreenTest {
         setContent(uiState = state(chains = emptyList()))
 
         composeTestRule
-            .onNodeWithText("No connections found. Add relationships to build a network here.")
+            .onNodeWithText("No connections yet")
             .assertIsDisplayed()
     }
 
@@ -336,6 +337,16 @@ class NetworkScreenTest {
 
         composeTestRule.onNodeWithText("Choose a starting contact to explore their network.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Choose contact").assertIsDisplayed()
+    }
+
+    // Issue #1768 follow-up: a start contact whose name has not resolved
+    // shows "Unknown contact", never its raw vCard UID.
+    @Test
+    fun `a start contact with no name shows unknown contact, not the uid`() {
+        setContent(uiState = state(fromName = ""))
+
+        composeTestRule.onNodeWithText("Unknown contact").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("uid-1").assertCountEquals(0)
     }
 
     @Test

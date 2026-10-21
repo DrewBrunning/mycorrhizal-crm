@@ -97,7 +97,11 @@ fun TagDetailScreen(
                 when {
                     state.isLoading && state.contacts.isEmpty() -> LoadingSkeleton()
                     state.contacts.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.tags_contacts_empty))
+                        EmptyState(
+                            title = stringResource(R.string.tags_contacts_empty),
+                            actionLabel = stringResource(R.string.tags_add_contact),
+                            onAction = { showAddDialog = true },
+                        )
                     state.contacts.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,
@@ -111,7 +115,7 @@ fun TagDetailScreen(
                                 val resolved = state.contactsByUid[tagging.contactVCardUid]
                                 TaggedContactRow(
                                     displayName = memberDisplayName(resolved)
-                                        ?: stringResource(R.string.households_member_unknown),
+                                        ?: stringResource(R.string.contact_unknown),
                                     photoUri = resolved?.photoThumbnail ?: resolved?.photo,
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     onNavigateToContact = onNavigateToContact,

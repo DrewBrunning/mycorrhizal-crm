@@ -70,9 +70,18 @@ type CoreBudget struct {
 	// MaxWallMS is the absolute median-wall-clock ceiling at the anchor
 	// profile, in milliseconds. 0 waives the wall-clock budget (the operation
 	// is not on an interactive path); Reason must then say so.
-	MaxWallMS int    `json:"max_wall_ms"`
-	Reason    string `json:"reason"`
+	MaxWallMS int `json:"max_wall_ms"`
+	// LargeMaxWallMS (issue #1791) is an optional second ceiling, evaluated at
+	// the `large` profile (LargeProfile) in the same gated at-scale job. The
+	// anchor-profile ceiling cannot see an operation that is fine at 900
+	// contacts and falls over at 15,000 -- GET /graph and GET /dashboard did
+	// exactly that (8-9 minutes and 14s). 0 means no large-profile ceiling.
+	LargeMaxWallMS int    `json:"large_max_wall_ms,omitempty"`
+	Reason         string `json:"reason"`
 }
+
+// LargeProfile is the dataset profile CoreBudget.LargeMaxWallMS is evaluated at.
+const LargeProfile = "large"
 
 // DataMovementBudget is one PERF-03 bulk operation's budget.
 type DataMovementBudget struct {
@@ -150,6 +159,14 @@ func (bg Budgets) CheckCore(results []Result, base Baseline) []Breach {
 					Detail: "median wall-clock over the absolute interactive budget"})
 			}
 		}
+		if r.Profile == LargeProfile && cb.LargeMaxWallMS > 0 {
+			budget := int64(cb.LargeMaxWallMS) * wallMSToNano
+			if r.MedianNanos > budget {
+				out = append(out, Breach{Operation: r.Operation, Profile: r.Profile, Kind: BreachWallClock,
+					Measured: r.MedianNanos, Budget: budget,
+					Detail: "median wall-clock over the absolute large-profile budget"})
+			}
+		}
 	}
 	return out
 }
@@ -208,6 +225,10 @@ func (bg Budgets) Validate(core []Operation, dm []DataMovementOperation) []strin
 		if cb.MaxWallMS != 0 && (cb.MaxWallMS < minWallMS || cb.MaxWallMS > maxWallMS) {
 			problems = append(problems, fmt.Sprintf("core budget %q: max_wall_ms %d outside [%d,%d] (use 0 to waive)",
 				op.Name, cb.MaxWallMS, minWallMS, maxWallMS))
+		}
+		if cb.LargeMaxWallMS != 0 && (cb.LargeMaxWallMS < minWallMS || cb.LargeMaxWallMS > maxWallMS) {
+			problems = append(problems, fmt.Sprintf("core budget %q: large_max_wall_ms %d outside [%d,%d] (omit to have none)",
+				op.Name, cb.LargeMaxWallMS, minWallMS, maxWallMS))
 		}
 	}
 	for name := range bg.CoreOperations {

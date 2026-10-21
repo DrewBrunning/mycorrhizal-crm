@@ -181,16 +181,18 @@ export async function ensureFixtures(force = false) {
 // Builds every file the workbox precache should contain -- i.e. the set a
 // freshly installed worker caches -- so the harness can expose each fixture's
 // expected precache set to the tests. vite-plugin-pwa's injectManifest globs
-// js/mjs/css/html only (icons, fonts and other public files are runtime
+// `**/*.{js,mjs,wasm,css,html}` (globPatterns in vite.config.ts -- `.mjs` so the
+// MapLibre module worker, issue #1777, is precached alongside the map-vendor
+// chunk that references it; icons, fonts and other public files are runtime
 // requests, not precache entries), and never precaches the worker script
 // itself, the /_recovery.* escape-hatch page, or the /asset-skew.js bootstrap
-// (globIgnores in vite.config.ts).
+// (globIgnores in vite.config.ts). Keep this filter in step with globPatterns.
 export async function precacheableFiles(buildDir) {
   const files = await listFiles(buildDir);
   return files
     .map((f) => f.split(path.sep).join('/'))
     .filter((f) => {
-      if (!/\.(js|mjs|css|html)$/.test(f)) return false;
+      if (!/\.(js|mjs|wasm|css|html)$/.test(f)) return false;
       if (f === 'service-worker.js' || f === 'service-worker.mjs') return false;
       if (f === '_recovery.html' || f === '_recovery.js') return false;
       if (f === 'asset-skew.js') return false;

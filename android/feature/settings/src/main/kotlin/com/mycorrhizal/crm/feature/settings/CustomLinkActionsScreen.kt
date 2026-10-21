@@ -75,7 +75,12 @@ fun CustomLinkActionsScreen(
         },
     ) { padding ->
         if (state.actions.isEmpty()) {
-            EmptyState(message = stringResource(R.string.custom_links_empty), modifier = Modifier.padding(padding))
+            EmptyState(
+                title = stringResource(R.string.custom_links_empty),
+                actionLabel = stringResource(R.string.custom_links_new),
+                onAction = { showAdd = true },
+                modifier = Modifier.padding(padding),
+            )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(state.actions, key = { it.id }) { action ->

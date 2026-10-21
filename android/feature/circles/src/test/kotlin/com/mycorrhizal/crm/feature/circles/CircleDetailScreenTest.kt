@@ -90,10 +90,10 @@ class CircleDetailScreenTest {
     fun `a member missing from the cache shows Unknown contact never its UID`() {
         setScreen()
 
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
         composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.circles_remove_member_named, str(R.string.households_member_unknown)),
+            str(R.string.circles_remove_member_named, str(R.string.contact_unknown)),
         ).assertIsDisplayed()
     }
 
@@ -109,7 +109,7 @@ class CircleDetailScreenTest {
             onNavigate = { opened = it },
         )
 
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).performClick()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).performClick()
         assertEquals(null, opened)
         composeTestRule.onNodeWithText("Alice Smith").performClick()
         assertEquals(42, opened)
@@ -213,7 +213,7 @@ class CircleDetailScreenTest {
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsEnabled().performClick()
 
         coVerify(exactly = 1) { circleRepository.addMember("c1", "uid-new") }
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
     }
 
     @Test

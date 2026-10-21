@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
@@ -173,15 +174,26 @@ class RelationshipsScreenTest {
     }
 
     @Test
-    fun `the fab opens the create relationship dialog`() {
+    fun `the fab opens the create relationship form`() {
         setScreen()
 
         composeTestRule.onNodeWithContentDescription(
             str(R.string.relationships_new),
         ).performClick()
 
-        composeTestRule.onNodeWithText(str(R.string.relationships_new))
-            .assertIsDisplayed()
+        // Issue #1773: a full-screen form replaced the list (and its FAB).
+        composeTestRule.onNodeWithTag("relationship-type").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the empty state offers the create action and opens the form`() {
+        setScreen()
+
+        composeTestRule.onNodeWithText(str(R.string.relationships_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.relationships_empty_body)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.relationships_new)).performClick()
+
+        composeTestRule.onNodeWithTag("relationship-type").assertIsDisplayed()
     }
 
     @Test

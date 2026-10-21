@@ -144,7 +144,8 @@
     "yearsOld": "({{age}} years old)",
     "birthdaysInfo": "Shows birthdays for at least the next two weeks.",
     "remindersInfo": "Shows at least all reminders due up to and including today. Reminders will stay visible until they are marked as completed.",
-    "stayInTouchInfo": "Shows five random contacts to help you stay connected. The list is refreshed on every page reload."
+    "stayInTouchInfo": "Shows five random contacts to help you stay connected. The list is refreshed on every page reload.",
+    "showingOf": "Showing {{shown}} of {{total}}"
   },
   "login": {
     "title": "Login",
@@ -607,7 +608,6 @@
     "timeline": "Timeline",
     "noActivity": "No notes or activities yet",
     "note": "Note",
-    "noDescription": "No description",
     "addNote": "Add Note",
     "addActivity": "Add Activity",
     "exportVCard": "Export vCard",
@@ -656,6 +656,8 @@
     "newTag": "New tag...",
     "add": "Add",
     "actions": "Actions",
+    "moreActions": "More",
+    "exportAs": "Export as {{format}}",
     "jumpNav": "Jump to section",
     "markAsMe": "This is me",
     "unmarkAsMe": "This isn't me"
@@ -1777,7 +1779,9 @@
     "panUp": "Pan up",
     "panDown": "Pan down",
     "panLeft": "Pan left",
-    "panRight": "Pan right"
+    "panRight": "Pan right",
+    "egoNotice": "Showing your own contact and everyone within {{depth}} connections of it. Turn on \"Show entire network\" to load every contact.",
+    "showEntireNetwork": "Show entire network"
   },
   "map": {
     "title": "Contact map",

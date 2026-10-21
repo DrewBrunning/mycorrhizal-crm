@@ -128,6 +128,8 @@ func buildContactBriefing(db *gorm.DB, userID uint, contact *models.Contact, now
 				LastInteraction:          health.LastInteraction,
 				NextDue:                  health.NextDue,
 				OverdueBy:                health.OverdueBy,
+				Ambient:                  health.Ambient,
+				AmbientReason:            health.AmbientReason,
 			},
 		}
 	}

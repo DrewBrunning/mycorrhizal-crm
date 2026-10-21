@@ -144,7 +144,8 @@
     "yearsOld": "({{age}} Jahre alt)",
     "birthdaysInfo": "Zeigt Geburtstage für mindestens die nächsten zwei Wochen.",
     "remindersInfo": "Zeigt mindestens alle Erinnerungen, die bis einschließlich heute fällig sind. Erinnerungen bleiben sichtbar, bis sie als erledigt markiert werden.",
-    "stayInTouchInfo": "Zeigt fünf zufällige Kontakte, um in Verbindung zu bleiben. Die Liste wird bei jedem Neuladen der Seite aktualisiert."
+    "stayInTouchInfo": "Zeigt fünf zufällige Kontakte, um in Verbindung zu bleiben. Die Liste wird bei jedem Neuladen der Seite aktualisiert.",
+    "showingOf": "{{shown}} von {{total}} werden angezeigt"
   },
   "login": {
     "title": "Anmelden",
@@ -607,7 +608,6 @@
     "timeline": "Zeitachse",
     "noActivity": "Noch keine Notizen oder Aktivitäten",
     "note": "Notiz",
-    "noDescription": "Keine Beschreibung",
     "addNote": "Notiz hinzufügen",
     "addActivity": "Aktivität hinzufügen",
     "exportVCard": "vCard exportieren",
@@ -656,6 +656,8 @@
     "newTag": "Neuer Tag...",
     "add": "Hinzufügen",
     "actions": "Aktionen",
+    "moreActions": "Mehr",
+    "exportAs": "Als {{format}} exportieren",
     "jumpNav": "Zum Abschnitt springen",
     "markAsMe": "Das bin ich",
     "unmarkAsMe": "Das bin nicht ich"
@@ -1749,7 +1751,9 @@
     "panUp": "Nach oben verschieben",
     "panDown": "Nach unten verschieben",
     "panLeft": "Nach links verschieben",
-    "panRight": "Nach rechts verschieben"
+    "panRight": "Nach rechts verschieben",
+    "egoNotice": "Angezeigt werden Ihr eigener Kontakt und alle Kontakte innerhalb von {{depth}} Verbindungen. Aktivieren Sie „Gesamtes Netzwerk anzeigen“, um alle Kontakte zu laden.",
+    "showEntireNetwork": "Gesamtes Netzwerk anzeigen"
   },
   "map": {
     "title": "Kontaktkarte",

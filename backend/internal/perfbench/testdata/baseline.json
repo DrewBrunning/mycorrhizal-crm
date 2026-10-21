@@ -10,12 +10,12 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 3,
+          "queries": 5,
           "result_size": 5,
           "row_scale": 350
         },
         "typical": {
-          "queries": 3,
+          "queries": 5,
           "result_size": 27,
           "row_scale": 945
         }
@@ -154,12 +154,12 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 12,
+          "queries": 14,
           "result_size": 0,
           "row_scale": 350
         },
         "typical": {
-          "queries": 12,
+          "queries": 14,
           "result_size": 0,
           "row_scale": 945
         }
@@ -257,6 +257,38 @@
         "typical": {
           "queries": 3,
           "result_size": 10,
+          "row_scale": 945
+        }
+      }
+    },
+    "graph.ego": {
+      "category": "read",
+      "expected_growth": "constant",
+      "profiles": {
+        "smoke": {
+          "queries": 14,
+          "result_size": 10,
+          "row_scale": 350
+        },
+        "typical": {
+          "queries": 14,
+          "result_size": 10,
+          "row_scale": 945
+        }
+      }
+    },
+    "graph.full": {
+      "category": "read",
+      "expected_growth": "constant",
+      "profiles": {
+        "smoke": {
+          "queries": 13,
+          "result_size": 195,
+          "row_scale": 350
+        },
+        "typical": {
+          "queries": 13,
+          "result_size": 1053,
           "row_scale": 945
         }
       }

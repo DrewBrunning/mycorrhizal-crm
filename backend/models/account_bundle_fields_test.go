@@ -116,6 +116,7 @@ var bundleFieldExcluded = map[string]map[string]string{
 		"JobTitle": reasonFlatDerived, "Role": reasonFlatDerived,
 		"HowWeMet": reasonFlatEnvelope, "WorkInformation": reasonFlatEnvelope,
 		"ContactInformation": reasonFlatEnvelope, "Circles": reasonFlatEnvelope,
+		"Ambient":        reasonFlatEnvelope, // crm.ambient (issue #1733)
 		"Photo":          reasonFlatPhoto,
 		"PhotoThumbnail": reasonFlatPhoto,
 	},

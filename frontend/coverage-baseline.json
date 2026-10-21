@@ -3,9 +3,9 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 92.47,
-      "linesTotal": 93,
-      "branches": 90.78,
+      "lines": 92.55,
+      "linesTotal": 94,
+      "branches": 92.1,
       "branchesTotal": 76
     },
     "src/App.tsx": {
@@ -27,10 +27,10 @@
       "branchesTotal": 47
     },
     "src/CircleTagTriagePage.tsx": {
-      "lines": 79.57,
-      "linesTotal": 142,
-      "branches": 73.52,
-      "branchesTotal": 68
+      "lines": 79.86,
+      "linesTotal": 144,
+      "branches": 74.28,
+      "branchesTotal": 70
     },
     "src/CirclesTagsPage.tsx": {
       "lines": 100,
@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.42,
-      "linesTotal": 280,
+      "lines": 86.47,
+      "linesTotal": 281,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -57,10 +57,10 @@
       "branchesTotal": 110
     },
     "src/DashboardPage.tsx": {
-      "lines": 73.79,
-      "linesTotal": 145,
-      "branches": 60.63,
-      "branchesTotal": 94
+      "lines": 75.48,
+      "linesTotal": 155,
+      "branches": 62.5,
+      "branchesTotal": 96
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
@@ -93,10 +93,10 @@
       "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
-      "lines": 83.87,
-      "linesTotal": 93,
-      "branches": 73.07,
-      "branchesTotal": 78
+      "lines": 84.21,
+      "linesTotal": 95,
+      "branches": 73.62,
+      "branchesTotal": 91
     },
     "src/NotesPage.tsx": {
       "lines": 88.88,
@@ -143,8 +143,8 @@
     "src/SystemStatusPage.tsx": {
       "lines": 98.91,
       "linesTotal": 92,
-      "branches": 85.48,
-      "branchesTotal": 124
+      "branches": 86.06,
+      "branchesTotal": 122
     },
     "src/UsersPage.tsx": {
       "lines": 92,
@@ -358,9 +358,9 @@
     },
     "src/api/graph.ts": {
       "lines": 100,
-      "linesTotal": 11,
+      "linesTotal": 12,
       "branches": 100,
-      "branchesTotal": 8
+      "branchesTotal": 10
     },
     "src/api/health.ts": {
       "lines": 100,
@@ -633,15 +633,15 @@
       "branchesTotal": 14
     },
     "src/components/AuthImg.tsx": {
-      "lines": 96.55,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 68.75,
+      "branches": 75,
       "branchesTotal": 16
     },
     "src/components/BackgroundJobsPanel.tsx": {
-      "lines": 97.29,
+      "lines": 100,
       "linesTotal": 37,
-      "branches": 72.13,
+      "branches": 73.77,
       "branchesTotal": 61
     },
     "src/components/BrandLogo.tsx": {
@@ -723,10 +723,10 @@
       "branchesTotal": 14
     },
     "src/components/ContactHeader.tsx": {
-      "lines": 80.39,
-      "linesTotal": 102,
-      "branches": 91.53,
-      "branchesTotal": 130
+      "lines": 92.78,
+      "linesTotal": 97,
+      "branches": 91.72,
+      "branchesTotal": 133
     },
     "src/components/ContactInformation.tsx": {
       "lines": 76.53,
@@ -736,7 +736,7 @@
     },
     "src/components/ContactMap.tsx": {
       "lines": 100,
-      "linesTotal": 73,
+      "linesTotal": 74,
       "branches": 100,
       "branchesTotal": 22
     },
@@ -747,10 +747,10 @@
       "branchesTotal": 74
     },
     "src/components/ContactTimeline.tsx": {
-      "lines": 81.48,
-      "linesTotal": 27,
-      "branches": 67.56,
-      "branchesTotal": 74
+      "lines": 93.1,
+      "linesTotal": 29,
+      "branches": 92.85,
+      "branchesTotal": 84
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 96.77,
@@ -831,9 +831,9 @@
       "branchesTotal": 33
     },
     "src/components/ErrorAggregationPanel.tsx": {
-      "lines": 95.45,
+      "lines": 100,
       "linesTotal": 22,
-      "branches": 62.5,
+      "branches": 66.66,
       "branchesTotal": 24
     },
     "src/components/ErrorBoundary.tsx": {
@@ -923,7 +923,7 @@
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 96.61,
       "linesTotal": 59,
-      "branches": 93.22,
+      "branches": 94.91,
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
@@ -993,7 +993,7 @@
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
-      "lines": 84,
+      "lines": 83.33,
       "linesTotal": 150,
       "branches": 85.08,
       "branchesTotal": 114
@@ -1015,6 +1015,12 @@
       "linesTotal": 59,
       "branches": 93.33,
       "branchesTotal": 30
+    },
+    "src/components/LoadError.tsx": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 2
     },
     "src/components/LoadingSkeletons.tsx": {
       "lines": 60,
@@ -1095,7 +1101,7 @@
       "branchesTotal": 48
     },
     "src/components/NotificationHealthPanel.tsx": {
-      "lines": 92.3,
+      "lines": 100,
       "linesTotal": 13,
       "branches": 95.65,
       "branchesTotal": 23
@@ -1147,6 +1153,12 @@
       "linesTotal": 6,
       "branches": 85.71,
       "branchesTotal": 14
+    },
+    "src/components/PageHeader.tsx": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 100,
+      "branchesTotal": 8
     },
     "src/components/PaperlessDocumentSearchDialog.tsx": {
       "lines": 83.87,
@@ -1221,7 +1233,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 83.33,
+      "lines": 84.21,
       "linesTotal": 114,
       "branches": 79.77,
       "branchesTotal": 89
@@ -1245,9 +1257,9 @@
       "branchesTotal": 29
     },
     "src/components/ReminderList.tsx": {
-      "lines": 97.36,
-      "linesTotal": 38,
-      "branches": 76.47,
+      "lines": 97.05,
+      "linesTotal": 34,
+      "branches": 94.11,
       "branchesTotal": 17
     },
     "src/components/ReviewDuplicatesDialog.tsx": {
@@ -1329,7 +1341,7 @@
       "branchesTotal": 12
     },
     "src/components/SubsystemHealthPanel.tsx": {
-      "lines": 96.15,
+      "lines": 100,
       "linesTotal": 26,
       "branches": 81.25,
       "branchesTotal": 32
@@ -1393,6 +1405,12 @@
       "linesTotal": 27,
       "branches": 100,
       "branchesTotal": 26
+    },
+    "src/components/timelineLayout.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/contactFields.ts": {
       "lines": 100,
@@ -1632,7 +1650,7 @@
       "lines": 100,
       "linesTotal": 25,
       "branches": 100,
-      "branchesTotal": 12
+      "branchesTotal": 15
     },
     "src/hooks/useHouseholds.ts": {
       "lines": 100,
@@ -1994,6 +2012,12 @@
       "branches": 93.75,
       "branchesTotal": 32
     },
+    "src/utils/localDate.ts": {
+      "lines": 100,
+      "linesTotal": 14,
+      "branches": 100,
+      "branchesTotal": 8
+    },
     "src/utils/networkGraphData.ts": {
       "lines": 100,
       "linesTotal": 58,
@@ -2041,12 +2065,6 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 5
-    },
-    "src/components/LoadError.tsx": {
-      "lines": 100,
-      "linesTotal": 2,
-      "branches": 100,
-      "branchesTotal": 2
     }
   }
 }

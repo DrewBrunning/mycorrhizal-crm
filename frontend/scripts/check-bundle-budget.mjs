@@ -159,6 +159,37 @@ export function renderTable(rows) {
   return `${head}\n${body}`;
 }
 
+// --- Required assets (issue #1777) -----------------------------------------
+
+// maplibre-gl 6 loads its worker from a sibling file Vite does not see on its
+// own, so the production build silently shipped without it and the contact map
+// never rendered. ContactMap imports it with `?url` so Vite emits it; this
+// check fails the build job if that emission (or the JS reference to it) is
+// ever lost. `files` is the build/assets listing; `readJs(name)` returns a JS
+// chunk's text.
+const WORKER_ASSET = /^maplibre-gl-worker-[A-Za-z0-9_-]{8,}\.mjs$/;
+
+/**
+ * @param {string[]} files
+ * @param {(name: string) => string} readJs
+ * @returns {string[]} human-readable problems (empty when fine)
+ */
+export function checkRequiredAssets(files, readJs) {
+  const worker = files.find((f) => WORKER_ASSET.test(f));
+  if (!worker) {
+    return [
+      'maplibre-gl worker (assets/maplibre-gl-worker-<hash>.mjs) was not emitted; ' +
+        'the contact map cannot load its worker (issue #1777)',
+    ];
+  }
+  const referenced = files.some((f) => f.endsWith('.js') && readJs(f).includes(worker));
+  return referenced
+    ? []
+    : [
+        `${worker} is emitted but no JS chunk references it, so setWorkerUrl points elsewhere (issue #1777)`,
+      ];
+}
+
 // --- CLI -------------------------------------------------------------------
 
 function main() {
@@ -178,6 +209,14 @@ function main() {
       `bundle budget: no hashed chunks found in ${ASSETS_DIR} -- did the build succeed?`,
     );
     process.exit(2);
+  }
+
+  const assetProblems = checkRequiredAssets(readdirSync(ASSETS_DIR), (f) =>
+    readFileSync(join(ASSETS_DIR, f), 'utf8'),
+  );
+  if (assetProblems.length > 0) {
+    for (const p of assetProblems) console.error(`bundle budget: ${p}`);
+    process.exit(1);
   }
 
   if (update) {

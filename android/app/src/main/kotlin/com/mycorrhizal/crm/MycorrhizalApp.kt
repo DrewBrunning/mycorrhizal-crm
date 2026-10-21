@@ -7,6 +7,8 @@ package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
 import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -22,21 +25,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Contacts
-import androidx.compose.material.icons.outlined.Dataset
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.EventNote
-import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.HomeWork
-import androidx.compose.material.icons.outlined.IosShare
-import androidx.compose.material.icons.outlined.Label
-import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -73,6 +61,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,7 +137,17 @@ import com.mycorrhizal.crm.feature.settings.PaperlessSettingsScreen
 import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
 import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
 import com.mycorrhizal.crm.feature.settings.ServersScreen
+import com.mycorrhizal.crm.feature.settings.AboutSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AccountSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AdministrationSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AppearanceSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ChangePasswordScreen
+import com.mycorrhizal.crm.feature.settings.ContactsFieldsSettingsScreen
+import com.mycorrhizal.crm.feature.settings.IntegrationsSettingsScreen
+import com.mycorrhizal.crm.feature.settings.PrivacySettingsScreen
+import com.mycorrhizal.crm.feature.settings.SettingsRoutes
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.settings.TrackingSettingsScreen
 import com.mycorrhizal.crm.feature.settings.PasskeysScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
 import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
@@ -183,55 +182,6 @@ import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.EmptyState
 import kotlinx.coroutines.flow.filterNotNull
 
-private data class DrawerDestination(
-    val route: String,
-    @StringRes val labelRes: Int,
-    val icon: ImageVector,
-)
-
-/** Primary navigation, matching the web's order. Reachable from the drawer/rail. */
-private val primaryDestinations = listOf(
-    DrawerDestination("home", R.string.nav_dashboard, Icons.Outlined.Home),
-    DrawerDestination("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
-    DrawerDestination("activities", R.string.nav_activities, Icons.Outlined.EventNote),
-    DrawerDestination("notes", R.string.nav_notes, Icons.Outlined.EditNote),
-)
-
-/** Secondary destinations, below the primary set in the drawer/rail. */
-private val secondaryDestinations = listOf(
-    DrawerDestination("network", R.string.nav_network, Icons.Outlined.Share),
-    DrawerDestination("map", R.string.nav_map, Icons.Outlined.Map),
-    DrawerDestination("shares", R.string.nav_shares, Icons.Outlined.IosShare),
-    DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
-    DrawerDestination("occasions", R.string.occasions_title, Icons.Outlined.Event),
-    DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
-    DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
-    DrawerDestination("audit", R.string.nav_audit, Icons.Outlined.History),
-    // Web exposes the address/relationship-suggestion review as top-level nav;
-    // on Android it was reachable only from deep inside Settings. Promoted here
-    // (the Settings shortcut stays as a secondary entry point).
-    DrawerDestination("data", R.string.settings_data_review, Icons.Outlined.Dataset),
-    DrawerDestination("import", R.string.import_title, Icons.Outlined.FileUpload),
-    DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
-)
-
-/**
- * Every drawer/rail destination route, in order. Exposed to host-level tests
- * (DrawerScrollTest, LandscapeNavigationTest) so their scroll/reachability
- * coverage derives from the real registry rather than a hand-maintained copy.
- * Issue #1430: "map" was added to the drawer while those hardcoded lists
- * weren't, so the guarantee silently missed the new entry.
- */
-internal val allDrawerRoutes: List<String> =
-    (primaryDestinations + secondaryDestinations).map { it.route }
-
-/** True when the current destination is inside a [DrawerDestination]'s route. */
-private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean {
-    val route = currentRoute ?: return false
-    // The bare contacts destination's pattern carries an optional query arg (issue #1269).
-    return route == item.route || route.startsWith("${item.route}/") || route.startsWith("${item.route}?")
-}
-
 /**
  * Issue #1263 / ADR 0028 Decision 2: a nav entry is shown only when the
  * connected deployment offers its capability. Fail-open when the set is unknown
@@ -240,7 +190,7 @@ private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean 
  * the drawer is available on every deployment.
  */
 private fun isDestinationAvailable(
-    item: DrawerDestination,
+    item: TopLevelDestination,
     capabilities: ServerCapabilitiesInfo,
 ): Boolean = when (item.route) {
     "shares" -> capabilities.supports(ServerCapability.CONTACT_SHARES)
@@ -378,16 +328,21 @@ fun MycorrhizalApp(
     val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
     val surfaceArgb = MaterialTheme.colorScheme.surface.toArgbCompat()
     val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
-    LaunchedEffect(session.isLoggedIn, darkTheme, drawerOpen, primaryArgb, surfaceArgb, surfaceContainerLowArgb) {
-        val onPrimaryBar = session.isLoggedIn && !drawerOpen
-        activity.window.statusBarColor = when {
+    val onPrimaryBar = session.isLoggedIn && !drawerOpen
+    // Issue #1771: both bars follow the resolved `darkTheme` on a live Settings theme
+    // switch. Before, only the status bar was re-applied; the navigation bar kept its
+    // onCreate (enableEdgeToEdge) appearance until the next cold start (see SystemBars.kt).
+    SystemBarsEffect(
+        window = activity.window,
+        darkTheme = darkTheme,
+        onPrimaryBar = onPrimaryBar,
+        statusBarColor = when {
             onPrimaryBar -> primaryArgb
             session.isLoggedIn -> surfaceContainerLowArgb
             else -> surfaceArgb
-        }
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-            .isAppearanceLightStatusBars = if (onPrimaryBar) darkTheme else !darkTheme
-    }
+        },
+        navigationBarColor = surfaceArgb,
+    )
 
     // Issue #722: the root branches on where the user is in the session +
     // local-auth flow. While the app-lock controller is still deciding
@@ -484,6 +439,7 @@ fun MycorrhizalApp(
                     darkTheme = darkTheme,
                     drawerState = drawerState,
                     serverUrl = session.serverUrl.orEmpty(),
+                    username = session.username,
                     serverVersion = serverVersion,
                     serverCapabilities = serverCapabilities,
                     deepLinks = deepLinks,
@@ -565,6 +521,7 @@ private fun MainScaffold(
     darkTheme: Boolean,
     drawerState: DrawerState,
     serverUrl: String,
+    username: String? = null,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
     deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
@@ -670,6 +627,11 @@ private fun MainScaffold(
             windowSizeClass = windowSizeClass,
             drawerState = drawerState,
             onDestinationClick = onDestinationClick,
+            username = username,
+            serverHost = serverHostOf(serverUrl),
+            // Issue #1758: the header opens Servers, so which server you are on is also
+            // where you switch it.
+            onHeaderClick = { onDestinationClick("servers") },
         ) {
             AdaptiveMainContent(
                 isTwoPane = isTwoPane,
@@ -739,6 +701,9 @@ internal fun MainNavScaffold(
     windowSizeClass: WindowSizeClass,
     drawerState: DrawerState,
     onDestinationClick: (String) -> Unit,
+    username: String? = null,
+    serverHost: String? = null,
+    onHeaderClick: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     if (usesPermanentNavigation(windowSizeClass)) {
@@ -757,6 +722,9 @@ internal fun MainNavScaffold(
                 DrawerContent(
                     currentRoute = currentRoute,
                     onDestinationClick = onDestinationClick,
+                    username = username,
+                    serverHost = serverHost,
+                    onHeaderClick = onHeaderClick,
                 )
             },
         ) {
@@ -771,6 +739,8 @@ internal fun MainNavScaffold(
  * (twelve+ labeled items rarely fit a viewport), which keeps every drawer
  * destination reachable. Labels
  * are always shown: the rail only appears where there is room for them.
+ * Issue #1758: it walks the same grouped [navDestinations] registry as the drawer
+ * (a divider between groups); the rail's own top-level set and layout are #1776.
  *
  * The width is pinned to M3's [NavigationRail] container width: the rail's inner
  * [Column] only declares `widthIn(min=80.dp)` and the `HorizontalDivider` below
@@ -790,24 +760,27 @@ private fun MycorrhizalNavigationRail(
         modifier = Modifier.width(NavigationRailWidth).testTag("navigation-rail"),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        // Issue #1419: one scroll for the whole rail (primary + secondary), the
-        // same shape as the drawer's, so no block is pinned and squeezed.
+        // Issue #1419: one scroll for the whole rail, the same shape as the drawer's,
+        // so no block is pinned and squeezed.
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
-            primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-                RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
-            }
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-                RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
+            NavGroup.entries.forEachIndexed { index, group ->
+                val items = navDestinationsIn(group).filter { isDestinationAvailable(it, capabilities) }
+                if (items.isEmpty()) return@forEachIndexed
+                if (index > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                items.forEach { item ->
+                    RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
+                }
             }
         }
     }
@@ -815,7 +788,7 @@ private fun MycorrhizalNavigationRail(
 
 @Composable
 private fun RailDestinationItem(
-    item: DrawerDestination,
+    item: TopLevelDestination,
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
 ) {
@@ -837,27 +810,27 @@ private fun RailDestinationItem(
 
 /**
  * The phone/compact-width navigation drawer. Issue #1402: the destinations sit
- * in a scrolling column under the fixed app-name header. Directly in the sheet's
+ * in a scrolling column under the fixed header. Directly in the sheet's
  * non-scrolling Column, 15 entries overflowed a phone screen and the trailing
  * ones (Settings first) were squeezed below 48dp or collapsed to zero height.
+ *
+ * Issue #1758: the header shows who is signed in and on which server (tap opens
+ * Servers); destinations are grouped under [NavGroup] headings (TalkBack headings),
+ * the current one is `selected`, and Settings is pinned below the scrolling list.
  * Internal so host-level tests can render it at a short height / large font scale.
  */
 @Composable
 internal fun DrawerContent(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
+    username: String? = null,
+    serverHost: String? = null,
+    onHeaderClick: () -> Unit = {},
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
     ModalDrawerSheet {
-        // #208: the drawer's sheet title carried no heading semantics.
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier
-                .padding(16.dp)
-                .semantics { heading() },
-        )
+        DrawerHeader(username = username, serverHost = serverHost, onClick = onHeaderClick)
         HorizontalDivider()
         Column(
             modifier = Modifier
@@ -865,43 +838,115 @@ internal fun DrawerContent(
                 .verticalScroll(rememberScrollState())
                 .testTag("drawer-list"),
         ) {
-            primaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-                NavigationDrawerItem(
-                    // T100: labelLarge is 14sp -- Material's chip/button
-                    // size, too small for the app's only global nav. Bumped
-                    // here rather than in Theme.kt because labelLarge is
-                    // also the M3 default for Button and Snackbar, so a
-                    // global change would resize every button in the app.
-                    // (T99 removed the serif family this override also
-                    // used to carry.)
-                    label = {
-                        Text(
-                            stringResource(item.labelRes),
-                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
-                        )
-                    },
-                    selected = isSelected(currentRoute, item),
-                    onClick = { onDestinationClick(item.route) },
-                    icon = { Icon(item.icon, contentDescription = null) },
-                    modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
-                )
+            NavGroup.entries.filter { it != NavGroup.FOOTER }.forEachIndexed { index, group ->
+                val items = navDestinationsIn(group).filter { isDestinationAvailable(it, capabilities) }
+                if (items.isEmpty()) return@forEachIndexed
+                if (index > 0) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp))
+                }
+                group.labelRes?.let { label ->
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(start = 28.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+                            .testTag("drawer-group-${group.name.lowercase()}")
+                            .semantics { heading() },
+                    )
+                }
+                items.forEach { item -> DrawerItem(item, currentRoute, onDestinationClick) }
             }
-            secondaryDestinations.filter { isDestinationAvailable(it, capabilities) }.forEach { item ->
-                NavigationDrawerItem(
-                    // T100/T99: see the primaryDestinations loop's
-                    // matching comment above.
-                    label = {
-                        Text(
-                            stringResource(item.labelRes),
-                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
-                        )
-                    },
-                    selected = isSelected(currentRoute, item),
-                    onClick = { onDestinationClick(item.route) },
-                    icon = { Icon(item.icon, contentDescription = null) },
-                    modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
-                )
-            }
+        }
+        // Settings (and any future footer entry) stays reachable without scrolling.
+        val footer = navDestinationsIn(NavGroup.FOOTER).filter { isDestinationAvailable(it, capabilities) }
+        if (footer.isNotEmpty()) {
+            HorizontalDivider()
+            footer.forEach { item -> DrawerItem(item, currentRoute, onDestinationClick) }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun DrawerItem(
+    item: TopLevelDestination,
+    currentRoute: String?,
+    onDestinationClick: (String) -> Unit,
+) {
+    NavigationDrawerItem(
+        // T100: labelLarge is 14sp -- Material's chip/button size, too small for the
+        // app's only global nav. Bumped here rather than in Theme.kt because labelLarge
+        // is also the M3 default for Button and Snackbar, so a global change would
+        // resize every button in the app.
+        label = {
+            Text(
+                stringResource(item.labelRes),
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+            )
+        },
+        // Issue #1758: selected is tied to the current route; the M3 item exposes it to
+        // TalkBack as a selected tab-role node.
+        selected = isSelected(currentRoute, item),
+        onClick = { onDestinationClick(item.route) },
+        icon = { Icon(item.icon, contentDescription = null) },
+        modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
+    )
+}
+
+/**
+ * Issue #1758: who is signed in and where. With several servers configured the
+ * host is what tells them apart. Tapping opens the Servers screen. Falls back to
+ * the app name when no session details are known.
+ */
+@Composable
+private fun DrawerHeader(
+    username: String?,
+    serverHost: String?,
+    onClick: () -> Unit,
+) {
+    val hasIdentity = !username.isNullOrBlank() || !serverHost.isNullOrBlank()
+    if (!hasIdentity) {
+        // #208: the sheet title carries heading semantics.
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier
+                .padding(16.dp)
+                .testTag("drawer-header")
+                .semantics { heading() },
+        )
+        return
+    }
+    val dash = stringResource(R.string.settings_value_placeholder)
+    val description = stringResource(
+        R.string.nav_header_description,
+        username?.takeIf { it.isNotBlank() } ?: dash,
+        serverHost?.takeIf { it.isNotBlank() } ?: dash,
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = stringResource(R.string.nav_header_action), onClick = onClick)
+            .padding(16.dp)
+            .testTag("drawer-header")
+            .semantics(mergeDescendants = true) { contentDescription = description },
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = username?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        serverHost?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -981,7 +1026,7 @@ private fun ContactListPlaceholder() {
         },
     ) { padding ->
         EmptyState(
-            message = stringResource(R.string.contacts_select_contact),
+            title = stringResource(R.string.contacts_select_contact),
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }
@@ -1356,7 +1401,7 @@ private fun AppNavGraph(
         }
         composable("occasions") {
             OccasionsScreen(
-                onBack = { navController.navigateToRoot("home") },
+                onMenuClick = menu,
                 onOpenAttendees = { eventId -> navController.navigate("occasions/$eventId/attendees") },
             )
         }
@@ -1433,6 +1478,8 @@ private fun AppNavGraph(
             NotesInboxScreen(
                 onMenuClick = menu,
                 onNoteClick = { id -> navController.navigate("contacts/0/notes/$id/edit") },
+                // Issue #1757: contact id 0 = no contact, so the form creates an unassigned note.
+                onCreateNote = { navController.navigate("contacts/0/notes/new") },
             )
         }
         composable("activities") {
@@ -1468,25 +1515,73 @@ private fun AppNavGraph(
             DashboardScreen(
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
                 onMenuClick = menu,
-                onBackUp = { navController.navigate("data") },
+                onBackUp = { navController.navigateToRoot("data") },
             )
         }
 
-        composable("settings") {
+        // Issue #1759: the Settings root is an index of grouped rows; each group is a sub-screen
+        // (below). The screens that already existed (webhooks, two-factor, ...) keep their routes
+        // and are opened from the group that owns them, with a plain push so back returns there.
+        composable(SettingsRoutes.ROOT) {
             SettingsScreen(
                 onMenuClick = menu,
                 onLoggedOut = { navController.popBackStack() },
-                onCustomLinks = { navController.navigate("custom-links") },
-                onWebhooks = { navController.navigate("webhooks") },
-                // Issue #413's Android follow-up (#573): API token management.
-                onApiTokens = { navController.navigate("api-tokens") },
-                // Issue #390's Android follow-up (#628): calendar/contact sync management.
-                onCalendarSync = { navController.navigate("calendar-sync") },
+                onNavigate = { route -> navController.navigate(route) },
+            )
+        }
+        composable(SettingsRoutes.ACCOUNT) {
+            AccountSettingsScreen(
+                onBack = { navController.popBackStack() },
+                // ADR 0028 Decision 1: server-profile management.
+                onServers = { navController.navigate("servers") },
+                onChangePassword = { navController.navigate(SettingsRoutes.CHANGE_PASSWORD) },
                 // Issue #814 Phase 2: TOTP two-factor enrollment/management.
                 onTwoFactor = { navController.navigate("two-factor") },
                 // Issue #1293: passkey enrollment/management (entry shown only when the gate is open).
                 onPasskeys = { navController.navigate("passkeys") },
+                // Issue #413's Android follow-up (#573): API token management.
+                onApiTokens = { navController.navigate("api-tokens") },
+            )
+        }
+        composable(SettingsRoutes.CHANGE_PASSWORD) {
+            ChangePasswordScreen(
+                onBack = { navController.popBackStack() },
+                onLoggedOut = { navController.popBackStack() },
+            )
+        }
+        composable(SettingsRoutes.APPEARANCE) {
+            AppearanceSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onLocaleChanged = onLocaleChanged,
+            )
+        }
+        composable(SettingsRoutes.PRIVACY) {
+            PrivacySettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(SettingsRoutes.CONTACTS_FIELDS) {
+            ContactsFieldsSettingsScreen(
+                onBack = { navController.popBackStack() },
+                // Issue #830: the custom field-definition management screen.
+                onCustomFields = { navController.navigate("custom-field-definitions") },
+                // Issue #832: the enabled-contact-fields toggle screen.
+                onContactFieldSettings = { navController.navigate("contact-field-settings") },
+                onCustomLinks = { navController.navigate("custom-links") },
+                // M26: the one-time legacy circle/tag cleanup tool.
+                onCircleTagTriage = { navController.navigate("circle-tag-triage") },
+            )
+        }
+        composable(SettingsRoutes.TRACKING) {
+            TrackingSettingsScreen(
+                onBack = { navController.popBackStack() },
                 onNotificationChannels = { navController.navigate("notification-channels") },
+            )
+        }
+        composable(SettingsRoutes.INTEGRATIONS) {
+            IntegrationsSettingsScreen(
+                onBack = { navController.popBackStack() },
+                // Issue #390's Android follow-up (#628): calendar/contact sync management.
+                onCalendarSync = { navController.navigate("calendar-sync") },
+                onWebhooks = { navController.navigate("webhooks") },
                 onImmichSettings = { navController.navigate("immich-settings") },
                 // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
                 onPaperlessSettings = { navController.navigate("paperless-settings") },
@@ -1494,22 +1589,19 @@ private fun AppNavGraph(
                 onNextcloudSettings = { navController.navigate("nextcloud-settings") },
                 // Issue #160: GeoPulse location-history connection settings.
                 onGeoPulseSettings = { navController.navigate("geopulse-settings") },
-                // M26: the one-time legacy circle/tag cleanup tool.
-                onCircleTagTriage = { navController.navigate("circle-tag-triage") },
-                // T104 + address suggestions: the Data review surface.
-                onData = { navController.navigate("data") },
-                // Issue #830: the custom field-definition management screen.
-                onManageCustomFields = { navController.navigate("custom-field-definitions") },
-                // Issue #832: the enabled-contact-fields toggle screen.
-                onContactFieldSettings = { navController.navigate("contact-field-settings") },
+            )
+        }
+        composable(SettingsRoutes.ADMINISTRATION) {
+            AdministrationSettingsScreen(
+                onBack = { navController.popBackStack() },
                 // Issue #348: admin user management.
                 onManageUsers = { navController.navigate("admin/users") },
                 // Issue #424: the operational-event timeline.
                 onSystemEvents = { navController.navigate("admin/system-events") },
-                // ADR 0028 Decision 1: server-profile management.
-                onServers = { navController.navigate("servers") },
-                onLocaleChanged = onLocaleChanged,
             )
+        }
+        composable(SettingsRoutes.ABOUT) {
+            AboutSettingsScreen(onBack = { navController.popBackStack() })
         }
         // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
         // screen. The "Use on this device only" entry is behind the
@@ -1548,7 +1640,7 @@ private fun AppNavGraph(
         // T104 + address suggestions: the "propose data" review screen.
         composable("data") {
             DataScreen(
-                onBack = { navController.popBackStack() },
+                onMenuClick = menu,
                 onCustomExport = { navController.navigate("data/custom-export") },
                 onRestoreBundle = { navController.navigate("data/restore-bundle") },
             )
@@ -1572,7 +1664,7 @@ private fun AppNavGraph(
         // resolves.
         composable("audit") {
             AuditScreen(
-                onBack = { navController.popBackStack() },
+                onMenuClick = menu,
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
             )
         }

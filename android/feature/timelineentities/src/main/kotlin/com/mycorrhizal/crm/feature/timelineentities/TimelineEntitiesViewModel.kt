@@ -196,8 +196,18 @@ class LifeEventsViewModel @Inject constructor(
 
     fun findById(id: String): LifeEvent? = loaded.find { it.id == id }
 
-    /** Resolves the edit dialog's initial related contacts for display. */
+    // Which form the related-contact selection belongs to (an item id, or NEW_FORM_KEY).
+    // The full-screen form (issue #1773) survives rotation, and its LaunchedEffect runs
+    // again on the recreated composition; without this the second call would reset the
+    // contacts the user had already added. A new ViewModel (process death) starts at
+    // null, so a restored edit form re-resolves the item's saved contacts.
+    private var relatedOpenedFor: String? = null
+
+    /** Resolves the edit form's initial related contacts for display. */
     fun onDialogOpened(initial: LifeEvent?) {
+        val key = initial?.id ?: NEW_FORM_KEY
+        if (key == relatedOpenedFor) return
+        relatedOpenedFor = key
         val uids = initial?.relatedEntityIds.orEmpty().filter { it.isNotBlank() }
         if (uids.isEmpty()) {
             _relatedContacts.value = emptyList()
@@ -251,6 +261,12 @@ class LifeEventsViewModel @Inject constructor(
         _relatedSearchQuery.value = ""
         _relatedSearchResults.value = emptyList()
         _relatedSearchLoading.value = false
+    }
+
+    /** The form was saved or left: the next one starts its related contacts afresh. */
+    fun onFormClosed() {
+        clearRelatedSearch()
+        relatedOpenedFor = null
     }
 
     fun create(form: LifeEventFormData) {
@@ -324,6 +340,9 @@ class LifeEventsViewModel @Inject constructor(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
+
+        /** [relatedOpenedFor] key of the add form (item ids are UUIDs, so never equal). */
+        const val NEW_FORM_KEY = "\u0000new"
     }
 }
 
@@ -752,6 +771,9 @@ fun preferenceSection(category: String): String = PreferenceCategory.sectionOf(c
 // Conversation agenda
 // ---------------------------------------------------------------------------
 
+/** SavedStateHandle key for the open mark-discussed dialog's item id (issue #1723). */
+private const val PENDING_DISCUSS_KEY = "agenda_pending_discuss_id"
+
 @HiltViewModel
 class ConversationAgendaViewModel @Inject constructor(
     private val agendaRepository: ConversationAgendaRepository,
@@ -773,6 +795,15 @@ class ConversationAgendaViewModel @Inject constructor(
     private val _discussingId = MutableStateFlow<String?>(null)
     val discussingId: StateFlow<String?> = _discussingId.asStateFlow()
 
+    // The item whose mark-discussed dialog is open (issue #1723). It is state,
+    // not a one-shot event: a success-only SharedFlow with no replay drops the
+    // close signal if it lands while the screen is not collecting (rotation
+    // mid-request). Held in the SavedStateHandle, so the open dialog survives
+    // rotation and process death. Closed only by a successful PATCH or a dismiss,
+    // so a failed PATCH leaves the dialog open next to the error snackbar.
+    private val savedState = savedStateHandle
+    val pendingDiscussId: StateFlow<String?> = savedStateHandle.getStateFlow(PENDING_DISCUSS_KEY, null)
+
     init { load() }
 
     fun load() {
@@ -789,6 +820,14 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
+                    // A dialog restored after process death whose item is gone or
+                    // already discussed (the PATCH landed before the process died)
+                    // has nothing left to confirm.
+                    savedState.get<String>(PENDING_DISCUSS_KEY)?.let { pending ->
+                        if (items.none { it.id == pending && it.discussedAt == null }) {
+                            savedState[PENDING_DISCUSS_KEY] = null
+                        }
+                    }
                     // M18: open/discussed section split (discussed_at == null),
                     // sorted so open items come first regardless of the
                     // server's updated_at order — the scaffold's section
@@ -867,6 +906,7 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.discuss(id, activityId).foldApiError(
                 onSuccess = {
                     _discussingId.value = null
+                    if (savedState.get<String>(PENDING_DISCUSS_KEY) == id) savedState[PENDING_DISCUSS_KEY] = null
                     load()
                 },
                 onError = { e ->
@@ -879,6 +919,17 @@ class ConversationAgendaViewModel @Inject constructor(
 
     fun clearDiscussing() {
         _discussingId.value = null
+    }
+
+    /** Opens the mark-discussed dialog for [id]. */
+    fun openDiscuss(id: String) {
+        savedState[PENDING_DISCUSS_KEY] = id
+    }
+
+    /** Closes the mark-discussed dialog (Cancel / outside tap). */
+    fun dismissDiscuss() {
+        clearDiscussing()
+        savedState[PENDING_DISCUSS_KEY] = null
     }
 
     fun delete(id: String) {

@@ -105,10 +105,10 @@ class TagDetailScreenTest {
     fun `a tagged contact missing from the cache shows Unknown contact never its UID`() {
         setScreen()
 
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
         composeTestRule.onNodeWithText("uid-bob").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.tags_remove_contact_named, str(R.string.households_member_unknown)),
+            str(R.string.tags_remove_contact_named, str(R.string.contact_unknown)),
         ).assertIsDisplayed()
     }
 
@@ -117,7 +117,7 @@ class TagDetailScreenTest {
         var opened: Int? = null
         setScreen(onNavigate = { opened = it })
 
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).performClick()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).performClick()
         assertEquals(null, opened)
         composeTestRule.onNodeWithText("Alice Smith").assertHasClickAction().performClick()
         assertEquals(42, opened)
@@ -221,7 +221,7 @@ class TagDetailScreenTest {
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsEnabled().performClick()
 
         coVerify(exactly = 1) { repository.addContact("t1", "uid-new") }
-        composeTestRule.onNodeWithText(str(R.string.households_member_unknown)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
     }
 
     @Test

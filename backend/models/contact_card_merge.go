@@ -102,6 +102,8 @@ func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record 
 			WorkInformation:    fresh.Envelope.WorkInformation,
 			ContactInformation: fresh.Envelope.ContactInformation,
 			Gender:             fresh.Envelope.Gender,
+			// Ambient mirrors the flat Contact.Ambient column (issue #1733).
+			Ambient: fresh.Envelope.Ambient,
 			// Periods have no flat-field home (no RFC home either — ADR
 			// 0023), so the flat path cannot express them and fresh never has
 			// any. Preserve the loaded periods whose Card entry still exists

@@ -136,19 +136,19 @@ class CadenceScreenTest {
         composeTestRule.waitForIdle()
 
         coVerify { policyRepository.delete("p1") }
-        composeTestRule.onNodeWithText("No cadence set for this contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No cadence yet").assertIsDisplayed()
     }
 
     @Test
     fun `the add fab shows only in the empty state`() {
         setScreen(policy = null)
-        composeTestRule.onNodeWithContentDescription("Add Cadence").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add cadence").assertIsDisplayed()
     }
 
     @Test
     fun `the add fab is hidden once a policy exists`() {
         setScreen(policy())
-        composeTestRule.onNodeWithContentDescription("Add Cadence").assertIsNotDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add cadence").assertIsNotDisplayed()
     }
 
     @Test
@@ -177,13 +177,13 @@ class CadenceScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithContentDescription("Add Cadence").performClick()
+        composeTestRule.onNodeWithContentDescription("Add cadence").performClick()
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 
         // The empty state is restored so the user can retry — a transient write
         // failure must not leave the no-policy body replaced by dead error text.
-        composeTestRule.onNodeWithText("No cadence set for this contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No cadence yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("A cadence already exists").assertIsDisplayed()
     }
 

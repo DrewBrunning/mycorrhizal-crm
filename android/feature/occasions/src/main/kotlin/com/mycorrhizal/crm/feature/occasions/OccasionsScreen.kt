@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -25,11 +24,12 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -61,6 +61,7 @@ import com.mycorrhizal.crm.model.registry.OccasionSensitivity
 import com.mycorrhizal.crm.ui.R
 import java.time.Instant
 import java.time.ZoneOffset
+import androidx.compose.material.icons.outlined.Menu
 
 /**
  * The Occasions events list (docs/adrs/0026-occasions-events.md, issue #1228):
@@ -69,7 +70,8 @@ import java.time.ZoneOffset
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OccasionsScreen(
-    onBack: () -> Unit,
+    // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
+    onMenuClick: (() -> Unit)? = {},
     onOpenAttendees: (String) -> Unit,
     viewModel: OccasionsViewModel = hiltViewModel(),
 ) {
@@ -90,8 +92,12 @@ fun OccasionsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    // Issue #1758: a top-level drawer destination opens the drawer (no Back arrow);
+                    // null at Expanded width where the rail replaces it.
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = { Text(stringResource(R.string.occasions_title), style = MaterialTheme.typography.titleLarge) },
@@ -104,7 +110,7 @@ fun OccasionsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { editing = null; showDialog = true }) {
+            BrandFab(onClick = { editing = null; showDialog = true }) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.occasions_add_event))
             }
         },
@@ -114,7 +120,12 @@ fun OccasionsScreen(
             when {
                 state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
                 state.isLoading && state.events.isEmpty() -> CenteredMessage(stringResource(R.string.a11y_state_loading))
-                state.events.isEmpty() -> CenteredMessage(stringResource(R.string.occasions_empty))
+                state.events.isEmpty() -> EmptyState(
+                    title = stringResource(R.string.occasions_empty),
+                    body = stringResource(R.string.occasions_empty_body),
+                    actionLabel = stringResource(R.string.occasions_add_event),
+                    onAction = { editing = null; showDialog = true },
+                )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

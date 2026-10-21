@@ -82,7 +82,7 @@ fun TriageScreen(
                     state.isLoading && state.items.isEmpty() -> LoadingSkeleton()
                     state.done -> DoneContent(state = state, onBack = onBack)
                     state.items.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.triage_empty))
+                        EmptyState(title = stringResource(R.string.triage_empty))
                     state.items.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),

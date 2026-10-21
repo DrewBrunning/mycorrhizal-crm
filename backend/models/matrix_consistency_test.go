@@ -27,6 +27,7 @@ func TestEnvelopeLossConceptsAlignWithMatrix(t *testing.T) {
 			HowWeMet:           "x",
 			WorkInformation:    "x",
 			ContactInformation: "x",
+			Ambient:            ambientPtr(true),
 			Periods: []contactmodel.EntryPeriod{{
 				Kind:    contactmodel.PeriodKindAddress,
 				EntryID: "a1",

@@ -69,7 +69,7 @@ class WebhooksScreenTest {
         composeTestRule
             .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertExists()
-        composeTestRule.onNodeWithText("No webhooks configured yet.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No webhooks yet").assertDoesNotExist()
     }
 
     @Test
@@ -79,7 +79,7 @@ class WebhooksScreenTest {
 
         setScreen(WebhooksViewModel(repository))
 
-        composeTestRule.onNodeWithText("No webhooks configured yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No webhooks yet").assertIsDisplayed()
     }
 
     @Test
@@ -212,7 +212,7 @@ class WebhooksScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No deliveries yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No deliveries yet").assertIsDisplayed()
     }
 
     @Test
@@ -234,7 +234,7 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("URL").performTextInput("https://example.com/a")
         composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
 
-        composeTestRule.onNodeWithText("Contact Created").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Contact created").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Save").performClick()
 
         val input = confirmed
@@ -261,7 +261,7 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("Edit").assertIsDisplayed()
         // The existing event chip is already selected and the active switch off —
         // both reflected via their labels.
-        composeTestRule.onNodeWithText("Note Created").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Note created").performScrollTo().assertIsDisplayed()
     }
 
     @Test

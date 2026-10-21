@@ -99,9 +99,9 @@ fun ShareContactScreen(
                 // No other users on the instance (empty directory, no error): there is
                 // nobody to share with — explain rather than showing an unusable form.
                 state.recipients.isEmpty() && state.error == null && !state.isLoading ->
-                    EmptyState(message = stringResource(R.string.shares_no_recipients))
+                    EmptyState(title = stringResource(R.string.shares_no_recipients))
                 state.recipients.isEmpty() && state.error != null ->
-                    EmptyState(message = state.error.orEmpty())
+                    EmptyState(title = state.error.orEmpty())
                 else -> {
                     Column(
                         modifier = Modifier

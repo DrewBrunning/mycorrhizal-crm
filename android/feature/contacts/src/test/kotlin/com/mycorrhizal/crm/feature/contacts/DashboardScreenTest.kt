@@ -152,18 +152,18 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Z Smith").assertIsDisplayed()
 
         // Overdue cadences.
-        scrollTo("Overdue Relationships")
+        scrollTo("Overdue relationships")
         composeTestRule.onNodeWithText("Carol Davis").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 days overdue").assertIsDisplayed()
 
         // Data decay (issue #352).
-        scrollTo("Info Needs a Check")
+        scrollTo("Info needs a check")
         composeTestRule.onNodeWithText("Eve Stale").assertIsDisplayed()
         composeTestRule.onNodeWithText("40 days overdue").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Confirm still current").assertIsDisplayed()
 
         // Reach-out suggestions (issue #177).
-        scrollTo("Reasons to Reach Out")
+        scrollTo("Reasons to reach out")
         composeTestRule.onNodeWithText("Dana Prince").assertIsDisplayed()
         composeTestRule.onNodeWithText("OldCo → NewCo").assertIsDisplayed()
         composeTestRule.onNodeWithText("New employer").assertIsDisplayed()
@@ -216,11 +216,11 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("No upcoming reminders").assertIsDisplayed()
         composeTestRule.onNodeWithText("No contacts available").assertIsDisplayed()
         // Web parity: an all-clear dashboard hides the overdue section entirely.
-        composeTestRule.onNodeWithText("Overdue Relationships").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Overdue relationships").assertDoesNotExist()
         // Same treatment for reach-out suggestions (issue #177).
-        composeTestRule.onNodeWithText("Reasons to Reach Out").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Reasons to reach out").assertDoesNotExist()
         // Same treatment for data decay (issue #352).
-        composeTestRule.onNodeWithText("Info Needs a Check").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Info needs a check").assertDoesNotExist()
     }
 
     @Test
@@ -249,7 +249,7 @@ class DashboardScreenTest {
         var opened: Int? = null
         setContent(populatedState(), onOpenContact = { opened = it })
 
-        scrollTo("Overdue Relationships")
+        scrollTo("Overdue relationships")
         composeTestRule.onNodeWithText("Carol Davis").performClick()
 
         assertEquals(3, opened)
@@ -260,7 +260,7 @@ class DashboardScreenTest {
         var opened: Int? = null
         setContent(populatedState(), onOpenContact = { opened = it })
 
-        scrollTo("Reasons to Reach Out")
+        scrollTo("Reasons to reach out")
         composeTestRule.onNodeWithText("Dana Prince").performClick()
 
         assertEquals(5, opened)
@@ -284,7 +284,7 @@ class DashboardScreenTest {
         var opened: Int? = null
         setContent(populatedState(), onOpenContact = { opened = it })
 
-        scrollTo("Info Needs a Check")
+        scrollTo("Info needs a check")
         composeTestRule.onNodeWithText("Eve Stale").performClick()
 
         assertEquals(6, opened)
@@ -428,11 +428,11 @@ class DashboardScreenTest {
         scrollTo("Upcoming birthdays")
         composeTestRule.onNodeWithText("Upcoming birthdays")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
-        scrollTo("Overdue Relationships")
-        composeTestRule.onNodeWithText("Overdue Relationships")
+        scrollTo("Overdue relationships")
+        composeTestRule.onNodeWithText("Overdue relationships")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
-        scrollTo("Reasons to Reach Out")
-        composeTestRule.onNodeWithText("Reasons to Reach Out")
+        scrollTo("Reasons to reach out")
+        composeTestRule.onNodeWithText("Reasons to reach out")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 

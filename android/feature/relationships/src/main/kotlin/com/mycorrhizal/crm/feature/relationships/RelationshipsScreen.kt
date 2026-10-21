@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
@@ -23,10 +26,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,9 +45,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,7 +65,10 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
@@ -75,8 +82,13 @@ fun RelationshipsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showDialogFor by remember { mutableStateOf<RelationshipEdge?>(null) }
-    var showCreateDialog by remember { mutableStateOf(false) }
+    // Issue #1773: the create/edit form is full screen and replaces the list, so the open
+    // flag and the edited edge's id are saved (rotation, process death) and the list's scroll
+    // state is hoisted above the switch (Back returns to where the list was).
+    var showCreateForm by rememberSaveable { mutableStateOf(false) }
+    var editingEdgeId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingEdge = editingEdgeId?.let { id -> state.edges.firstOrNull { it.id == id } }
+    val listState = rememberLazyListState()
     var pendingDelete by remember { mutableStateOf<RelationshipEdge?>(null) }
     var pendingReject by remember { mutableStateOf<RelationshipEdge?>(null) }
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
@@ -88,88 +100,119 @@ fun RelationshipsScreen(
         return contact?.let { displayNameFor(it) } ?: stringResource(R.string.relationships_unknown_contact)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                title = {
-                    Text(stringResource(R.string.relationships_title), style = MaterialTheme.typography.titleLarge)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-        floatingActionButton = {
-            BrandFab(onClick = {
+    if (showCreateForm || editingEdge != null) {
+        RelationshipEdgeForm(
+            edge = editingEdge,
+            state = state,
+            snackbarHostState = snackbarHostState,
+            onSearchChange = viewModel::searchContacts,
+            onConfirm = { type, uid, name, gender, birthday, sensitivity, linked ->
+                if (editingEdge != null) {
+                    viewModel.update(editingEdge.id, type, sensitivity)
+                    editingEdgeId = null
+                } else {
+                    viewModel.create(type, uid, name, gender, birthday, sensitivity, linked)
+                    showCreateForm = false
+                }
+            },
+            onDismiss = {
+                showCreateForm = false
+                editingEdgeId = null
                 viewModel.clearContactSearch()
-                showCreateDialog = true
-            }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.relationships_new))
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            RefreshableContent(
-                isRefreshing = state.isLoading && state.edges.isNotEmpty(),
-                onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when {
-                    state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
-                    state.edges.isEmpty() && errorMessage == null ->
-                        EmptyState(message = stringResource(R.string.relationships_empty))
-                    state.edges.isEmpty() && errorMessage != null -> {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
-                        )
-                    }
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(state.confirmedEdges, key = { it.id }) { edge ->
-                                RelationshipEdgeRow(
-                                    edge = edge,
-                                    displayName = displayName(edge),
-                                    resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
-                                    viewedUid = state.contactVCardUid,
-                                    onNavigateToContact = onNavigateToContact,
-                                    onEdit = { showDialogFor = edge },
-                                    onDelete = { pendingDelete = edge },
-                                )
-                            }
-                            if (state.suggestedEdges.isNotEmpty()) {
-                                item {
-                                    if (state.confirmedEdges.isNotEmpty()) {
-                                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                                    }
-                                    Text(
-                                        text = stringResource(R.string.relationships_suggested_section),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                    )
-                                }
-                                items(state.suggestedEdges, key = { it.id }) { edge ->
+            },
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    navigationIcon = {
+                        AccessibleIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        }
+                    },
+                    title = {
+                        Text(stringResource(R.string.relationships_title), style = MaterialTheme.typography.titleLarge)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            },
+            floatingActionButton = {
+                BrandFab(onClick = {
+                    viewModel.clearContactSearch()
+                    showCreateForm = true
+                }) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.relationships_new))
+                }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                RefreshableContent(
+                    isRefreshing = state.isLoading && state.edges.isNotEmpty(),
+                    onRefresh = viewModel::load,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
+                        state.edges.isEmpty() && errorMessage == null ->
+                            EmptyState(
+                                title = stringResource(R.string.relationships_empty),
+                                body = stringResource(R.string.relationships_empty_body),
+                                actionLabel = stringResource(R.string.relationships_new),
+                                onAction = {
+                                    viewModel.clearContactSearch()
+                                    showCreateForm = true
+                                },
+                            )
+                        state.edges.isEmpty() && errorMessage != null -> {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+                        }
+                        else -> {
+                            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("relationship-list")) {
+                                items(state.confirmedEdges, key = { it.id }) { edge ->
                                     RelationshipEdgeRow(
                                         edge = edge,
                                         displayName = displayName(edge),
                                         resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
                                         viewedUid = state.contactVCardUid,
                                         onNavigateToContact = onNavigateToContact,
-                                        accepting = state.acceptingId == edge.id,
-                                        onAccept = { viewModel.accept(edge.id) },
-                                        onReject = { pendingReject = edge },
+                                        onEdit = { editingEdgeId = edge.id },
+                                        onDelete = { pendingDelete = edge },
                                     )
+                                }
+                                if (state.suggestedEdges.isNotEmpty()) {
+                                    item {
+                                        if (state.confirmedEdges.isNotEmpty()) {
+                                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                        }
+                                        Text(
+                                            text = stringResource(R.string.relationships_suggested_section),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                        )
+                                    }
+                                    items(state.suggestedEdges, key = { it.id }) { edge ->
+                                        RelationshipEdgeRow(
+                                            edge = edge,
+                                            displayName = displayName(edge),
+                                            resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
+                                            viewedUid = state.contactVCardUid,
+                                            onNavigateToContact = onNavigateToContact,
+                                            accepting = state.acceptingId == edge.id,
+                                            onAccept = { viewModel.accept(edge.id) },
+                                            onReject = { pendingReject = edge },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -177,35 +220,6 @@ fun RelationshipsScreen(
                 }
             }
         }
-    }
-
-    if (showCreateDialog) {
-        RelationshipEdgeDialog(
-            edge = null,
-            state = state,
-            onSearchChange = viewModel::searchContacts,
-            onConfirm = { type, uid, name, gender, birthday, sensitivity, linked ->
-                viewModel.create(type, uid, name, gender, birthday, sensitivity, linked)
-                showCreateDialog = false
-            },
-            onDismiss = {
-                showCreateDialog = false
-                viewModel.clearContactSearch()
-            },
-        )
-    }
-
-    showDialogFor?.let { edge ->
-        RelationshipEdgeDialog(
-            edge = edge,
-            state = state,
-            onSearchChange = viewModel::searchContacts,
-            onConfirm = { type, _, _, _, _, sensitivity, _ ->
-                viewModel.update(edge.id, type, sensitivity)
-                showDialogFor = null
-            },
-            onDismiss = { showDialogFor = null },
-        )
     }
 
     pendingDelete?.let { edge ->
@@ -353,13 +367,43 @@ fun relationshipLabel(@Suppress("UnusedParameter") type: String, edge: Relations
     return effectiveType(edge, viewedUid).replace('_', ' ')
 }
 
-private enum class EntryMode { MANUAL, LINKED }
+/** Linked-contact selection survives rotation and process death (a plain data class is not Parcelable). */
+private val ContactSummarySaver = listSaver<ContactSummary?, Any?>(
+    save = { c ->
+        if (c == null) emptyList() else listOf(c.id, c.uid, c.firstname, c.lastname, c.nickname, c.fn)
+    },
+    restore = { l ->
+        if (l.isEmpty()) {
+            null
+        } else {
+            ContactSummary(
+                id = l[0] as Int,
+                uid = l[1] as String?,
+                firstname = l[2] as String?,
+                lastname = l[3] as String?,
+                nickname = l[4] as String?,
+                fn = l[5] as String?,
+            )
+        }
+    },
+)
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Issue #1773 (maintainer decision 2026-10-20): the relationship create/edit form is full
+ * screen -- it has a contact search and two fixed-list pickers, and the rule is that any
+ * picker means a full-screen form. [FormScaffold] with the pinned Save/Create button that
+ * says what enables it while disabled. System back and the top-bar arrow leave the form,
+ * discarding what was typed (what Cancel did in the dialog this replaced). All state is
+ * `rememberSaveable`, so the open form and its input survive rotation and process death.
+ *
+ * The type picker's tokens describe the OTHER party relative to the viewed contact
+ * (create sends `target_id = viewed contact`); [onConfirm] gets that token unchanged.
+ */
 @Composable
-fun RelationshipEdgeDialog(
+fun RelationshipEdgeForm(
     edge: RelationshipEdge?,
     state: RelationshipsUiState,
+    snackbarHostState: SnackbarHostState,
     onSearchChange: (String) -> Unit,
     onConfirm: (
         type: String,
@@ -372,247 +416,217 @@ fun RelationshipEdgeDialog(
     ) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    BackHandler(onBack = onDismiss)
     val isEditing = edge != null
-    var entryMode by remember { mutableStateOf(EntryMode.MANUAL) }
-    var type by remember {
+    var linkedMode by rememberSaveable(edge?.id) { mutableStateOf(false) }
+    var type by rememberSaveable(edge?.id) {
         mutableStateOf(
             edge?.let { effectiveType(it, state.contactVCardUid) } ?: RelationshipEdgeTypes.FRIEND_OF,
         )
     }
-    var typeExpanded by remember { mutableStateOf(false) }
-    var sensitivity by remember { mutableStateOf(edge?.sensitivity ?: RelationshipEdgeSensitivities.NORMAL) }
-    var sensitivityExpanded by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
-    var birthday by remember { mutableStateOf("") }
-    var selectedContact by remember { mutableStateOf<ContactSummary?>(null) }
+    var sensitivity by rememberSaveable(edge?.id) {
+        mutableStateOf(edge?.sensitivity ?: RelationshipEdgeSensitivities.NORMAL)
+    }
+    var name by rememberSaveable(edge?.id) { mutableStateOf("") }
+    var gender by rememberSaveable(edge?.id) { mutableStateOf("") }
+    var birthday by rememberSaveable(edge?.id) { mutableStateOf("") }
+    var selectedContact by rememberSaveable(edge?.id, stateSaver = ContactSummarySaver) {
+        mutableStateOf<ContactSummary?>(null)
+    }
 
     val otherPartyName = edge?.let { e ->
         state.contactsByUid[otherPartyId(e, state.contactVCardUid)]?.let { displayNameFor(it) }
     }
+    val canConfirm = isEditing ||
+        (!linkedMode && name.isNotBlank()) ||
+        (linkedMode && selectedContact != null)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.relationships_edit_title else R.string.relationships_new)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isEditing) {
-                    Column {
-                        Text(
-                            text = otherPartyName ?: stringResource(R.string.relationships_unknown_contact),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.relationships_other_party_readonly_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+    FormScaffold(
+        title = stringResource(if (isEditing) R.string.relationships_edit_title else R.string.relationships_new),
+        onBack = onDismiss,
+        saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
+        isSaving = false,
+        onSave = {
+            onConfirm(type, selectedContact?.uid.orEmpty(), name, gender, birthday, sensitivity, selectedContact)
+        },
+        snackbarHostState = snackbarHostState,
+        saveEnabled = canConfirm,
+        saveDisabledHint = stringResource(
+            if (linkedMode) R.string.relationships_save_hint_contact else R.string.relationships_save_hint_name,
+        ),
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (isEditing) {
+                Column {
+                    Text(
+                        text = otherPartyName ?: stringResource(R.string.relationships_unknown_contact),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(R.string.relationships_other_party_readonly_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                // #199: bare RadioButtons have no text of their own, and the
+                // label Text carried its own separate .clickable — TalkBack
+                // found two adjacent focusable nodes per row (an unnamed
+                // radio, then a plain clickable label with no role/state).
+                // Modifier.selectable on each row merges the label into the
+                // radio's accessible name; selectableGroup on the Column
+                // groups them for correct radio-group navigation.
+                Column(modifier = Modifier.selectableGroup()) {
+                    Text(stringResource(R.string.relationships_entry_mode), style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.selectable(
+                            selected = !linkedMode,
+                            onClick = { linkedMode = false },
+                            role = Role.RadioButton,
+                        ),
+                    ) {
+                        RadioButton(selected = !linkedMode, onClick = null)
+                        Text(text = stringResource(R.string.relationships_enter_manually))
                     }
-                } else {
-                    // #199: bare RadioButtons have no text of their own, and the
-                    // label Text carried its own separate .clickable — TalkBack
-                    // found two adjacent focusable nodes per row (an unnamed
-                    // radio, then a plain clickable label with no role/state).
-                    // Modifier.selectable on each row merges the label into the
-                    // radio's accessible name; selectableGroup on the Column
-                    // groups them for correct radio-group navigation.
-                    Column(modifier = Modifier.selectableGroup()) {
-                        Text(stringResource(R.string.relationships_entry_mode), style = MaterialTheme.typography.labelMedium)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.selectable(
-                                selected = entryMode == EntryMode.MANUAL,
-                                onClick = { entryMode = EntryMode.MANUAL },
-                                role = Role.RadioButton,
-                            ),
-                        ) {
-                            RadioButton(
-                                selected = entryMode == EntryMode.MANUAL,
-                                onClick = null,
-                            )
-                            Text(text = stringResource(R.string.relationships_enter_manually))
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.selectable(
-                                selected = entryMode == EntryMode.LINKED,
-                                onClick = { entryMode = EntryMode.LINKED },
-                                role = Role.RadioButton,
-                            ),
-                        ) {
-                            RadioButton(
-                                selected = entryMode == EntryMode.LINKED,
-                                onClick = null,
-                            )
-                            Text(text = stringResource(R.string.relationships_link_to_contact))
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.selectable(
+                            selected = linkedMode,
+                            onClick = { linkedMode = true },
+                            role = Role.RadioButton,
+                        ),
+                    ) {
+                        RadioButton(selected = linkedMode, onClick = null)
+                        Text(text = stringResource(R.string.relationships_link_to_contact))
                     }
+                }
 
-                    if (entryMode == EntryMode.LINKED) {
-                        if (selectedContact != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    text = displayNameFor(selectedContact!!),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                TextButton(onClick = {
-                                    selectedContact = null
-                                    onSearchChange("")
-                                }) {
-                                    Text(stringResource(R.string.relationships_change_selection))
-                                }
-                            }
-                        } else {
-                            OutlinedTextField(
-                                value = state.contactSearchQuery,
-                                onValueChange = onSearchChange,
-                                label = { Text(stringResource(R.string.relationships_search_contacts)) },
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (state.contactSearchLoading) {
-                                        CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
+                if (linkedMode) {
+                    val chosen = selectedContact
+                    if (chosen != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = displayNameFor(chosen),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
                             )
-                            when {
-                                state.contactSearchQuery.isBlank() -> Text(
-                                    text = stringResource(R.string.relationships_type_to_search),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                state.contactSearchResults.isEmpty() && !state.contactSearchLoading -> Text(
-                                    text = stringResource(R.string.relationships_no_contacts_found),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                else -> LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                                    items(state.contactSearchResults, key = { it.id }) { contact ->
-                                        Text(
-                                            text = displayNameFor(contact),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { selectedContact = contact }
-                                                .padding(vertical = 8.dp),
-                                        )
-                                    }
-                                }
+                            TextButton(onClick = {
+                                selectedContact = null
+                                onSearchChange("")
+                            }) {
+                                Text(stringResource(R.string.relationships_change_selection))
                             }
                         }
                     } else {
                         OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text(stringResource(R.string.relationships_other_name)) },
+                            value = state.contactSearchQuery,
+                            onValueChange = onSearchChange,
+                            label = { Text(stringResource(R.string.relationships_search_contacts)) },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                if (state.contactSearchLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("relationship-contact-search"),
                         )
-                    }
-                }
-
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = type.replace('_', ' '),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.relationships_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false },
-                    ) {
-                        RelationshipEdgeTypes.TYPE_TOKENS.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t.replace('_', ' ')) },
-                                onClick = { type = t; typeExpanded = false },
+                        when {
+                            state.contactSearchQuery.isBlank() -> Text(
+                                text = stringResource(R.string.relationships_type_to_search),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            state.contactSearchResults.isEmpty() && !state.contactSearchLoading -> Text(
+                                text = stringResource(R.string.relationships_no_contacts_found),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            // A plain Column, not a LazyColumn: the form scrolls as a whole and
+                            // the search returns at most a page (25) of results.
+                            else -> Column {
+                                state.contactSearchResults.forEach { contact ->
+                                    Text(
+                                        text = displayNameFor(contact),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 48.dp)
+                                            .clickable(role = Role.Button) { selectedContact = contact }
+                                            .padding(vertical = 12.dp),
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-
-                if (!isEditing && entryMode == EntryMode.MANUAL) {
+                } else {
                     OutlinedTextField(
-                        value = gender,
-                        onValueChange = { gender = it },
-                        label = { Text(stringResource(R.string.relationships_gender)) },
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.relationships_other_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
-                        value = birthday,
-                        onValueChange = { birthday = it },
-                        label = { Text(stringResource(R.string.relationships_birthday)) },
-                        placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                ExposedDropdownMenuBox(
-                    expanded = sensitivityExpanded,
-                    onExpandedChange = { sensitivityExpanded = it },
-                ) {
-                    val sensitivityLabel = when (sensitivity) {
-                        RelationshipEdgeSensitivities.PRIVATE -> stringResource(R.string.relationships_sensitivity_private)
-                        RelationshipEdgeSensitivities.SECRET -> stringResource(R.string.relationships_sensitivity_secret)
-                        else -> stringResource(R.string.relationships_sensitivity_normal)
-                    }
-                    OutlinedTextField(
-                        value = sensitivityLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.relationships_sensitivity)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sensitivityExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = sensitivityExpanded,
-                        onDismissRequest = { sensitivityExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.relationships_sensitivity_normal)) },
-                            onClick = { sensitivity = RelationshipEdgeSensitivities.NORMAL; sensitivityExpanded = false },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.relationships_sensitivity_private)) },
-                            onClick = { sensitivity = RelationshipEdgeSensitivities.PRIVATE; sensitivityExpanded = false },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.relationships_sensitivity_secret)) },
-                            onClick = { sensitivity = RelationshipEdgeSensitivities.SECRET; sensitivityExpanded = false },
-                        )
-                    }
                 }
             }
-        },
-        confirmButton = {
-            val canConfirm = isEditing ||
-                (entryMode == EntryMode.MANUAL && name.isNotBlank()) ||
-                (entryMode == EntryMode.LINKED && selectedContact != null)
-            TextButton(
-                onClick = {
-                    onConfirm(type, selectedContact?.uid.orEmpty(), name, gender, birthday, sensitivity, selectedContact)
+
+            LabelledDropdown(
+                label = stringResource(R.string.relationships_type),
+                valueText = type.replace('_', ' '),
+                options = RelationshipEdgeTypes.TYPE_TOKENS.map { DropdownOption(it, it.replace('_', ' ')) },
+                onSelect = { type = it },
+                modifier = Modifier.testTag("relationship-type"),
+            )
+
+            if (!isEditing && !linkedMode) {
+                OutlinedTextField(
+                    value = gender,
+                    onValueChange = { gender = it },
+                    label = { Text(stringResource(R.string.relationships_gender)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = birthday,
+                    onValueChange = { birthday = it },
+                    label = { Text(stringResource(R.string.relationships_birthday)) },
+                    placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            LabelledDropdown(
+                label = stringResource(R.string.relationships_sensitivity),
+                valueText = when (sensitivity) {
+                    RelationshipEdgeSensitivities.PRIVATE -> stringResource(R.string.relationships_sensitivity_private)
+                    RelationshipEdgeSensitivities.SECRET -> stringResource(R.string.relationships_sensitivity_secret)
+                    else -> stringResource(R.string.relationships_sensitivity_normal)
                 },
-                enabled = canConfirm,
-            ) {
-                Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    )
+                options = listOf(
+                    DropdownOption(
+                        RelationshipEdgeSensitivities.NORMAL,
+                        stringResource(R.string.relationships_sensitivity_normal),
+                    ),
+                    DropdownOption(
+                        RelationshipEdgeSensitivities.PRIVATE,
+                        stringResource(R.string.relationships_sensitivity_private),
+                    ),
+                    DropdownOption(
+                        RelationshipEdgeSensitivities.SECRET,
+                        stringResource(R.string.relationships_sensitivity_secret),
+                    ),
+                ),
+                onSelect = { sensitivity = it },
+                modifier = Modifier.testTag("relationship-sensitivity"),
+            )
+        }
+    }
 }

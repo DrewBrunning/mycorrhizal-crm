@@ -12,50 +12,50 @@ interface UseGraphResult {
   refetch: () => Promise<void>;
 }
 
-export function useGraph(): UseGraphResult {
+// full: fetch the whole account's graph instead of the default ego-network
+// of the self contact (issue #1791). Changing it refetches.
+export function useGraph(full = false): UseGraphResult {
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const fetchGraph = useCallback(
-    async () => {
-      // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
-      const requestId = requestRef.current + 1;
-      requestRef.current = requestId;
-      setLoading(true);
-      setError(null);
+  const fetchGraph = useCallback(async () => {
+    // Stryker disable next-line ArithmeticOperator: the counter has a single increment site, so any strictly monotonic id sequence works
+    const requestId = requestRef.current + 1;
+    requestRef.current = requestId;
+    setLoading(true);
+    setError(null);
 
-      try {
-        if (!isAuthenticated()) {
-          throw new Error('No authentication token found');
-        }
-
-        const response = await getGraph();
-
-        if (requestRef.current !== requestId) {
-          return;
-        }
-
-        setData({
-          nodes: response.nodes || [],
-          edges: response.edges || [],
-        });
-      } catch (err) {
-        if (requestRef.current !== requestId) {
-          return;
-        }
-        const message = handleFetchError(err, 'fetching network graph');
-        setError(message);
-      } finally {
-        if (requestRef.current === requestId) {
-          setLoading(false);
-        }
+    try {
+      if (!isAuthenticated()) {
+        throw new Error('No authentication token found');
       }
-    },
-    // Stryker disable next-line ArrayDeclaration: fetchGraph closes over state setters and a ref only (stable), so its deps array is equivalent either way
-    [],
-  );
+
+      const response = full ? await getGraph({ full: true }) : await getGraph();
+
+      if (requestRef.current !== requestId) {
+        return;
+      }
+
+      setData({
+        nodes: response.nodes || [],
+        edges: response.edges || [],
+        scoped: response.scoped,
+        depth: response.depth,
+      });
+    } catch (err) {
+      if (requestRef.current !== requestId) {
+        return;
+      }
+      const message = handleFetchError(err, 'fetching network graph');
+      setError(message);
+    } finally {
+      if (requestRef.current === requestId) {
+        setLoading(false);
+      }
+    }
+  }, [full]);
 
   useEffect(
     () => {

@@ -17,6 +17,14 @@ type ContactScoreResponse struct {
 	Closeness   ContactScoreFacet `json:"closeness"`
 	ReachOut    ContactScoreFacet `json:"reach_out"`
 	LastUpdated ContactScoreFacet `json:"last_updated"`
+
+	// Ambient is always present: true when the contact counts as in regular
+	// contact without logged activity (issue #1733), in which case Recency and
+	// Frequency are both 100. AmbientReason is "household" (lives with the
+	// user's self-contact) or "flag" (the contact's own ambient flag), and is
+	// omitted when Ambient is false.
+	Ambient       bool   `json:"ambient"`
+	AmbientReason string `json:"ambient_reason,omitempty"`
 }
 
 // ContactScoreFacet is one weighted facet's contribution and plain-language

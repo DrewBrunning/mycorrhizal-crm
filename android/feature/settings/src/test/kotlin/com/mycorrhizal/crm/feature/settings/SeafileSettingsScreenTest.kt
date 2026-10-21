@@ -36,7 +36,7 @@ class SeafileSettingsScreenTest {
         }
 
         composeTestRule.onNodeWithText("Server URL").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API Token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API token").performScrollTo().assertIsDisplayed()
     }
 
     @Test

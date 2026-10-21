@@ -238,6 +238,8 @@ export type BriefingCadence = {
 };
 
 export type BriefingCadenceHealth = {
+  ambient?: boolean;
+  ambient_reason?: 'household' | 'flag';
   has_qualifying_interaction?: boolean;
   last_interaction?: string | null;
   next_due?: string | null;
@@ -277,6 +279,7 @@ export type BulkOperationResult = {
 };
 
 export type CRMEnvelope = {
+  ambient?: boolean;
   circles?: string[];
   contact_information?: string;
   gender?: string;
@@ -287,6 +290,8 @@ export type CRMEnvelope = {
 };
 
 export type CadenceHealth = {
+  ambient: boolean;
+  ambient_reason?: 'household' | 'flag';
   has_qualifying_interaction: boolean;
   last_interaction?: string | null;
   next_due?: string | null;
@@ -658,6 +663,8 @@ export type ContactScoreFacet = {
 };
 
 export type ContactScoreResponse = {
+  ambient?: boolean;
+  ambient_reason?: 'household' | 'flag';
   band?: 'moss' | 'chanterelle' | 'russula';
   closeness?: ContactScoreFacet;
   contact_id?: number;
@@ -817,13 +824,19 @@ export type DashboardReminder = Reminder & {
 
 export type DashboardResponse = {
   birthdays: Birthday[];
+  birthdays_total: number;
   contact_sync_conflicts: ContactSyncConflict[];
+  contact_sync_conflicts_total: number;
   data_decay_overdue: OverdueDataDecayPolicy[];
+  data_decay_overdue_total: number;
   favorites: ContactResponse[];
   overdue: OverdueCadence[];
+  overdue_total: number;
   random_contacts: ContactResponse[];
   reach_out_suggestions: ReachOutSuggestion[];
+  reach_out_suggestions_total: number;
   upcoming_reminders: DashboardReminder[];
+  upcoming_reminders_total: number;
 };
 
 export type DataDecayHealth = {
@@ -1095,6 +1108,7 @@ export type FieldConstraints = {
 export type FieldDefinition = {
   constraints?: FieldConstraints;
   created_at: string;
+  group: string;
   id: string;
   key: string;
   label: string;
@@ -1108,6 +1122,7 @@ export type FieldDefinition = {
 
 export type FieldDefinitionInput = {
   constraints?: FieldConstraints;
+  group?: string;
   key: string;
   label: string;
   projection?: string;
@@ -1288,8 +1303,11 @@ export type GraphNode = {
 };
 
 export type GraphResponse = {
+  depth?: number;
   edges?: GraphEdge[];
+  from_vcard_uid?: string;
   nodes?: GraphNode[];
+  scoped?: boolean;
 };
 
 export type HealthCheckDetail = {

@@ -18,7 +18,12 @@ function overdueItem(overrides: Partial<OverdueCadence> = {}): OverdueCadence {
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     },
-    health: { has_qualifying_interaction: true, overdue_by: 12, next_due: '2026-01-20T00:00:00Z' },
+    health: {
+      has_qualifying_interaction: true,
+      overdue_by: 12,
+      ambient: false,
+      next_due: '2026-01-20T00:00:00Z',
+    },
     contact_id: 7,
     contact_name: 'Alice Smith',
     ...overrides,

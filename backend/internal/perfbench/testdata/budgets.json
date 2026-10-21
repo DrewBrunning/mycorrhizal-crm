@@ -4,7 +4,8 @@
   "core_operations": {
     "cadence.list_overdue": {
       "max_wall_ms": 200,
-      "reason": "Dashboard/cadence widget, on the home screen's load path. One indexed query (~15us measured). 200ms is a >10,000x margin — it only fires if the query stops using its index entirely."
+      "large_max_wall_ms": 1000,
+      "reason": "Dashboard/cadence widget, on the home screen's load path. One indexed query (~15us measured at `typical`). 200ms is a >10,000x margin there. large_max_wall_ms (issue #1791): this was 13.2s at `large` (the same join-order bug as the dashboard); measured 36ms after the fix, 1000ms is ~25x headroom."
     },
     "contact_create": {
       "max_wall_ms": 500,
@@ -26,6 +27,10 @@
       "max_wall_ms": 300,
       "reason": "Interactive: the default contact list — the first screen after login. One query, 50-row page. 300ms is a ~800x margin over the sub-millisecond median; effectively only a full-table-scan regression trips it."
     },
+    "contact_map": {
+      "max_wall_ms": 500,
+      "reason": "Interactive: the contact map's single bulk read. One query, bounded by MaxContactMapPoints (5000); the SQL pre-filter plus ParseGeoURI keep it a single pass. 500ms is generous over a sub-10ms median so only a scan-per-contact (N+1) regression trips it."
+    },
     "contact_merge": {
       "max_wall_ms": 1500,
       "reason": "Interactive but not latency-critical: an explicit admin action with a confirmation step, run once. 100 queries (the dependent-table walk) is the gate. 1500ms wall-clock is ~100x the 15ms measured median — generous because merge legitimately does a lot of work."
@@ -34,13 +39,10 @@
       "max_wall_ms": 500,
       "reason": "Interactive: the contact form's save on an existing record. 11 queries is the gate; 500ms is ~300x the 1.7ms median, matching contact_create's save-latency ceiling."
     },
-    "contact_map": {
-      "max_wall_ms": 500,
-      "reason": "Interactive: the contact map's single bulk read. One query, bounded by MaxContactMapPoints (5000); the SQL pre-filter plus ParseGeoURI keep it a single pass. 500ms is generous over a sub-10ms median so only a scan-per-contact (N+1) regression trips it."
-    },
     "dashboard": {
       "max_wall_ms": 300,
-      "reason": "Interactive: the home screen. 8 fixed aggregate queries is the gate. 300ms is ~230x the 1.3ms median; a dashboard tile that started iterating contacts would trip it."
+      "large_max_wall_ms": 2000,
+      "reason": "Interactive: the home screen. 14 fixed aggregate queries is the gate (12 before #1733/#1736 added the overdue list's given-gift and ambient reads). 300ms is ~230x the 1.3ms median at `typical`. large_max_wall_ms (issue #1791): at the `large` profile (15k contacts) it took 14.1s -- an activities-driven join that re-probed a 1.7k-entry vcard_uid IN list per activity row (~17M index probes); measured 129ms after the fix, so 2000ms (the issue's acceptance bar) is ~15x headroom and only a return of that class of bug trips it."
     },
     "delete_cascade": {
       "max_wall_ms": 1000,
@@ -50,6 +52,14 @@
       "max_wall_ms": 0,
       "reason": "WAIVED. Background maintenance feeding a review surface — never on an interactive request path. Already a recorded super-linear finding (#469): its pair count is O(cluster^2). The deterministic budget (query count 5, result size at the baseline) still applies; wall-clock stays a trend signal only."
     },
+    "feed.aggregate": {
+      "max_wall_ms": 500,
+      "reason": "Background: a reader polling the all-contacts feed. Subquery semi-joins keep the per-table query count constant as the address book grows (the PERF-02 growth gate); 500ms is a loose ceiling for a poll, deliberately looser than the 300ms interactive reads."
+    },
+    "feed.contact": {
+      "max_wall_ms": 500,
+      "reason": "Background: a feed reader polling one contact's feed (issue #382, ADR 0030). The six per-type queries are bounded (limit+1 rows each); the query count is the #469 gate. 500ms is a loose ceiling for a poll whose result is a small XML document, not a page render."
+    },
     "fts.contact_list_search": {
       "max_wall_ms": 300,
       "reason": "Interactive: the contact-list search box. One FTS5 query. 300ms is ~250x the 1.2ms median; a search that fell back off the FTS index to a LIKE scan would trip it."
@@ -57,6 +67,16 @@
     "fts.search_all": {
       "max_wall_ms": 300,
       "reason": "Interactive: the global search across contacts/notes/activities. Three FTS5 queries (one per corpus). 300ms is ~350x the 858us median."
+    },
+    "graph.ego": {
+      "max_wall_ms": 500,
+      "large_max_wall_ms": 2000,
+      "reason": "Interactive: the default GET /graph, loaded on every /network visit -- the depth-2 ego-network of the self contact (issue #1791). Bounded by the neighbourhood, not the account: 14 queries is the gate (11 before #1733/#1736 added the score's ambient and two given-gift reads), 43ms measured at `large`. 500ms at `typical` and 2000ms at `large` are order-of-magnitude margins; it only fires if the scoped path regresses to scanning the account."
+    },
+    "graph.full": {
+      "max_wall_ms": 1000,
+      "large_max_wall_ms": 8000,
+      "reason": "The explicit ?full=true 'entire network' view (issue #1791): every non-archived contact, scored in bulk, linear in the account by design with a constant 13 queries as the gate (10 before #1733/#1736 added the score's ambient and two given-gift reads; those lookups must probe by entity/member index, since a user_id-index plan rescans per contact and took this op to 19.6s at `large`). Before the fix it took 8-9 MINUTES at `large` (the closeness score enumerated every simple path to depth 5); measured 1.9s for ~16.7k nodes after (BFS over one edge query). 8000ms at `large` stays well under the web client's 30s timeout while leaving ~4x headroom for slow CI; 1000ms at `typical` is ~100x the measured median."
     },
     "graph.traverse_deep": {
       "max_wall_ms": 0,
@@ -73,14 +93,6 @@
     "reachout.detect": {
       "max_wall_ms": 300,
       "reason": "Interactive: the reach-out suggestions strip. Five bounded queries. 300ms is ~1,000x the 285us median."
-    },
-    "feed.contact": {
-      "max_wall_ms": 500,
-      "reason": "Background: a feed reader polling one contact's feed (issue #382, ADR 0030). The six per-type queries are bounded (limit+1 rows each); the query count is the #469 gate. 500ms is a loose ceiling for a poll whose result is a small XML document, not a page render."
-    },
-    "feed.aggregate": {
-      "max_wall_ms": 500,
-      "reason": "Background: a reader polling the all-contacts feed. Subquery semi-joins keep the per-table query count constant as the address book grows (the PERF-02 growth gate); 500ms is a loose ceiling for a poll, deliberately looser than the 300ms interactive reads."
     }
   },
   "data_movement_operations": {

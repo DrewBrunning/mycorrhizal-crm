@@ -55,7 +55,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -124,8 +123,14 @@ fun CadenceScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.policy == null && fatalError != null ->
-                    EmptyState(message = fatalError)
-                state.policy == null -> CadenceEmptyState(onAdd = { showDialog = true })
+                    EmptyState(title = fatalError)
+                state.policy == null -> EmptyState(
+                    title = stringResource(R.string.cadence_no_policy),
+                    body = stringResource(R.string.cadence_no_policy_body),
+                    actionLabel = stringResource(R.string.cadence_add),
+                    onAction = { showDialog = true },
+                    modifier = Modifier.fillMaxSize(),
+                )
                 else -> CadencePanelContent(
                     policy = state.policy!!,
                     dateFormat = state.dateFormat ?: DateFormat.EU,
@@ -184,25 +189,6 @@ fun CadenceScreen(
         LaunchedEffect(transientError) {
             snackbarHostState.showSnackbar(transientError)
             viewModel.onErrorShown()
-        }
-    }
-}
-
-@Composable
-private fun CadenceEmptyState(onAdd: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.cadence_no_policy),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        OutlinedButton(onClick = onAdd, modifier = Modifier.padding(top = 16.dp)) {
-            Text(stringResource(R.string.cadence_add))
         }
     }
 }
