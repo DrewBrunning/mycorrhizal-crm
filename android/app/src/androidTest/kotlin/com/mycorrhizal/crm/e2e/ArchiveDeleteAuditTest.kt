@@ -97,7 +97,9 @@ class ArchiveDeleteAuditTest : E2eBaseTest() {
         // Back out of the audit screen (a drawer destination pops to home, not
         // back to the contacts list) and into a fresh contacts view — with the
         // archived toggle off, the restored contact shows in the default list.
-        clickBack()
+        // Issue #1758: Audit log is a top-level destination with the Menu icon, so
+        // this is the system Back, not a top-bar arrow.
+        systemBack()
         waitForText("Dashboard")
         navigateViaDrawer("Contacts")
         searchFor(archGiven)

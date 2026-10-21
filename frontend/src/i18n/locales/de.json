@@ -615,7 +615,6 @@
     "timeline": "Zeitachse",
     "noActivity": "Noch keine Notizen oder Aktivitäten",
     "note": "Notiz",
-    "noDescription": "Keine Beschreibung",
     "addNote": "Notiz hinzufügen",
     "addActivity": "Aktivität hinzufügen",
     "exportVCard": "vCard exportieren",
@@ -664,6 +663,8 @@
     "newTag": "Neuer Tag...",
     "add": "Hinzufügen",
     "actions": "Aktionen",
+    "moreActions": "Mehr",
+    "exportAs": "Als {{format}} exportieren",
     "jumpNav": "Zum Abschnitt springen",
     "markAsMe": "Das bin ich",
     "unmarkAsMe": "Das bin nicht ich"

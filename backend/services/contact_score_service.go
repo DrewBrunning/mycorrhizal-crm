@@ -106,6 +106,11 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 		}
 	}
 
+	ambient, err := ambientByEntityID(db, userID, uids, now)
+	if err != nil {
+		return nil, fmt.Errorf("loading ambient contacts: %w", err)
+	}
+
 	pendingReachOut, err := pendingReachOutEntityIDs(db, userID, uids)
 	if err != nil {
 		return nil, fmt.Errorf("loading pending reach-out suggestions: %w", err)
@@ -133,6 +138,10 @@ func computeContactScores(db *gorm.DB, userID uint, now time.Time, contacts []mo
 			raw.ReachableHops = &h
 		}
 		raw.HasPendingReachOut = pendingReachOut[c.VCardUID]
+		if reason, ok := ambient[c.VCardUID]; ok {
+			raw.Ambient = true
+			raw.AmbientReason = reason
+		}
 
 		results[c.ID] = scoring.Compute(raw, cfg)
 	}
@@ -182,6 +191,12 @@ func lastQualifyingInteractionByEntityID(db *gorm.DB, userID uint, uids []string
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
+	// Issue #1736: given gifts are interactions of type "gift" (one bulk query).
+	gifts, err := givenGiftDateRows(db, userID, uids, nil)
+	if err != nil {
+		return nil, err
+	}
+	rows = mergeRowsDateDesc(rows, gifts)
 
 	// Group once by contact (rows are date DESC): O(rows + contacts) rather
 	// than rescanning every row per contact (issue #1791, the 15k x rows
@@ -211,6 +226,13 @@ func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []stri
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
+
+	// Issue #1736: given gifts in the window count like activities.
+	gifts, err := givenGiftDateRows(db, userID, uids, &since)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, gifts...)
 
 	counts := make(map[string]int, len(uids))
 	for i := range rows {

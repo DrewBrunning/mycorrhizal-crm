@@ -82,6 +82,9 @@ func computeCloseness(raw RawInputs, cfg Config) (defaultIntervalDays int, facet
 // (which would make a same-day-created contact coincidentally match "1 day
 // overdue" — an accident, not a decision).
 func computeRecency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
+	if raw.Ambient {
+		return ambientFacet(raw, cfg.WeightRecency)
+	}
 	if !raw.HasQualifyingInteraction {
 		return FacetResult{
 			Value:  cfg.RecencyNoInteractionValue,
@@ -102,6 +105,9 @@ func computeRecency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
 // against how many would be "on pace" given intervalDays over the tunable
 // FrequencyWindowDays window.
 func computeFrequency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
+	if raw.Ambient {
+		return ambientFacet(raw, cfg.WeightFrequency)
+	}
 	expected := float64(cfg.FrequencyWindowDays) / float64(intervalDays)
 	var ratio float64
 	if expected > 0 {
@@ -147,4 +153,15 @@ func computeLastUpdated(raw RawInputs, cfg Config) FacetResult {
 		Weight: cfg.WeightLastUpdated,
 		Reason: fmt.Sprintf("Contact record last edited %d day(s) ago", raw.DaysSinceUpdated),
 	}
+}
+
+// ambientFacet is the Recency/Frequency result for an ambient contact (issue
+// #1733): a full score, because the user is in regular contact with them
+// without logging it.
+func ambientFacet(raw RawInputs, weight float64) FacetResult {
+	reason := "Ambient contact (marked)"
+	if raw.AmbientReason == AmbientReasonHousehold {
+		reason = "Ambient contact (lives with you)"
+	}
+	return FacetResult{Value: 100, Weight: weight, Reason: reason}
 }

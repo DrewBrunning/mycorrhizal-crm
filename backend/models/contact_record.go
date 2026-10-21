@@ -89,11 +89,15 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		card.PersonalInfo = projectPreferences(db, c.VCardUID, card.PersonalInfo, includeSensitive)
 		passthrough := c.Passthrough
 		passthrough.VCard = projectCustomFields(db, c.VCardUID, passthrough.VCard, includeSensitive)
+		// The flat column is authoritative for Ambient (issue #1733); overlay it so
+		// a crm JSON column that predates the flag still reads correctly.
+		envelope := c.CRM
+		envelope.Ambient = ambientPtr(c.Ambient)
 		return ApplyFieldSelection(&contactmodel.Record{
 			UID:         c.VCardUID,
 			ETag:        c.ETag,
 			Card:        card,
-			Envelope:    c.CRM,
+			Envelope:    envelope,
 			Passthrough: passthrough,
 		}, sel)
 	}
@@ -439,6 +443,7 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 		WorkInformation:    c.WorkInformation,
 		ContactInformation: c.ContactInformation,
 		Gender:             c.Gender,
+		Ambient:            ambientPtr(c.Ambient),
 	}
 
 	// Gender (c.Gender) maps into Record.Envelope.Gender (issue #515),
@@ -538,6 +543,15 @@ func EnvelopeExportLossDiagnostics(rec *contactmodel.Record) []contactmodel.Diag
 		diags = append(diags, contactmodel.Diagnostic{
 			Severity: "warn",
 			Concept:  "crm.periods",
+			Message:  "CRM-only field has no home in this export format and is dropped from the file",
+		})
+	}
+	// Ambient (issue #1733) is the same shape of loss, reported only when the
+	// flag is actually set: an unset flag is the default and loses nothing.
+	if env.Ambient != nil && *env.Ambient {
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "warn",
+			Concept:  "crm.ambient",
 			Message:  "CRM-only field has no home in this export format and is dropped from the file",
 		})
 	}
@@ -892,4 +906,16 @@ func buildPassthrough(c *Contact) contactmodel.Passthrough {
 		}
 	}
 	return pt
+}
+
+// ambientPtr maps the flat Contact.Ambient column onto CRMEnvelope.Ambient for
+// the read side: a pointer to true when set, nil (omitted from the wire) when
+// not. Omitting false keeps every non-ambient contact's envelope exactly as it
+// was before the flag existed; clients read absent as false, and an explicit
+// false on a write (a non-nil pointer) still clears the flag.
+func ambientPtr(v bool) *bool {
+	if !v {
+		return nil
+	}
+	return &v
 }

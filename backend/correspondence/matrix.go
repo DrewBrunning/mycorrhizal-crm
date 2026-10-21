@@ -149,6 +149,10 @@ var noHomeFields = []NoHomeField{
 		Note: "start/end ranges for addresses/employers/titles (ADR 0025); no RFC 9553/9554/9555 home, so never serialized to a contact file",
 	},
 	{
+		Key: "crm.ambient", Field: "Ambient", Home: "CRMEnvelope.Ambient", LossReport: true,
+		Note: "the explicit \"I see them all the time\" flag (issue #1733, ADR-0023 amendment); CRM-only, never serialized to a contact file",
+	},
+	{
 		Key: "crm.archived", Field: "Archived", Home: "none (Contact.Archived flat column)", LossReport: false,
 		Note: "CRM-local flag; deliberately never exported (ADR-0002 audit rule 4)",
 	},
