@@ -492,7 +492,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Set up JDK
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
@@ -1233,7 +1233,7 @@ jobs:
       # scan step failed -- otherwise a red gate shows only "exit code 1".
       - name: Upload Trivy scan results to GitHub Security tab
         if: ${{ always() && hashFiles('trivy-results.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: 'trivy-results.sarif'
 

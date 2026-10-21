@@ -49,7 +49,7 @@ jobs:
       # only, so the `--fail` exit code (183 on findings) gates on real leaks
       # without drowning in unverified entropy matches.
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@b2b0a92070f206ab7b5a1105d82a7f2f48d92341 # v3.99.0
+        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
         with:
           path: ./
           # NOTE: this is a ghcr.io/trufflesecurity/trufflehog image tag, not

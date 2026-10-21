@@ -94,6 +94,11 @@ data class ContactFormState(
     // controlled dropdown with an explicit "None" option, so blank is a deliberate clear, not
     // "untouched" (see toInput).
     val cardKind: String = "",
+    // Issue #1734: crm.ambient. Null = the contact has no flag ("absent"); the switch reads
+    // `ambient == true`. Kept three-state so an untouched form sends back exactly what it read
+    // (null stays absent, true stays true) -- the server keeps the stored value for an absent
+    // key, so only an explicit toggle ever writes `false`.
+    val ambient: Boolean? = null,
     // M24: the card's default language tag; defaults to the device locale on create, mirroring
     // web's defaultLanguage() (i18n.language).
     val language: String = "",
@@ -278,6 +283,9 @@ data class ContactFormState(
             gender = gender.trim().ifBlank { baseCrm.gender },
             contactInformation = contactInformation.trim().ifBlank { baseCrm.contactInformation },
             periods = mergedPeriods.ifEmpty { null },
+            // Issue #1734: send what was read. `ambient` (the state) is null until loaded or
+            // toggled, so fall back to the base record's value rather than dropping the key.
+            ambient = ambient ?: baseCrm.ambient,
         )
         return ContactRecordInput(
             gender = base?.gender,
@@ -598,6 +606,7 @@ class ContactFormViewModel @Inject constructor(
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onKindChange(value: String) = _uiState.update { it.copy(kind = value) }
     fun onCardKindChange(value: String) = _uiState.update { it.copy(cardKind = value) }
+    fun onAmbientChange(value: Boolean) = _uiState.update { it.copy(ambient = value) }
     fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
     // M7: each multi-value list takes the whole edited list from MultiValueEditor. The
     // editor only ever `.copy()`s the exact object at an index (never reconstructs), so
@@ -829,6 +838,7 @@ class ContactFormViewModel @Inject constructor(
             suffix = suffix,
             nickname = nickname,
             kind = kind,
+            ambient = record.crm?.ambient,
             cardKind = cardKind,
             language = language,
             emails = emails,
