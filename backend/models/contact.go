@@ -465,8 +465,11 @@ func (c *Contact) deriveDenormalized() {
 	// The flat column is authoritative for Ambient (issue #1733): mirror it into
 	// the persisted envelope on every save, so the crm JSON column never
 	// disagrees with it (ApplyRecordToContact already folded an incoming
-	// non-nil envelope value into the flat column).
-	c.CRM.Ambient = ambientPtr(c.Ambient)
+	// non-nil envelope value into the flat column). Build the mirror on the
+	// local Record and assign the whole envelope — a direct c.CRM.<field>
+	// mutation is the trap #2 shape the semgrep gate rejects.
+	record.Envelope.Ambient = ambientPtr(c.Ambient)
+	c.CRM = record.Envelope
 
 	proj := contactmodel.DeriveProjection(record)
 	if proj.Firstname != "" {
