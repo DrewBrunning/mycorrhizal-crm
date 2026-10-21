@@ -97,6 +97,6 @@ func (p *DataDecayPolicy) AfterDelete(tx *gorm.DB) error {
 // cannot import — services imports models, so models must not import
 // services), the same reasoning BriefingCadenceHealth documents.
 type DataDecayHealth struct {
-	NextDue   time.Time `json:"next_due"`
-	OverdueBy int       `json:"overdue_by"`
+	NextDue   CalendarDate `json:"next_due"`
+	OverdueBy int          `json:"overdue_by"`
 }

@@ -73,14 +73,17 @@ class EntityListScaffoldTest {
         sectionLabel: (@Composable (String) -> String)? = null,
         onItemClick: (String) -> Unit = {},
         onDelete: (String) -> Unit = {},
+        onAdd: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 EntityListScaffold(
                     title = "Life events",
                     addLabel = "New life event",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(items = items),
-                    onAdd = {},
+                    onAdd = onAdd,
                     onItemClick = onItemClick,
                     onDelete = onDelete,
                     onErrorShown = {},
@@ -90,6 +93,17 @@ class EntityListScaffoldTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `an empty list shows the shared empty state with the create action`() {
+        var added = 0
+        setContent(items = emptyList(), onAdd = { added += 1 })
+        composeTestRule.onNodeWithText("No items yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add the first one.").assertIsDisplayed()
+        // The empty-state button carries the same label as the FAB's description.
+        composeTestRule.onNodeWithText("New life event").performClick()
+        assertEquals(1, added)
     }
 
     @Test
@@ -138,6 +152,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Agenda",
                     addLabel = "New item",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(
                             EntityItem(id = "a1", label = "Open item", sectionKey = "open"),
@@ -175,6 +191,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Preferences",
                     addLabel = "New preference",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(EntityItem(id = "p1", label = "food: Peanuts", sectionKey = "food_drink")),
                     ),
@@ -209,6 +227,8 @@ class EntityListScaffoldTest {
                 EntityListScaffold(
                     title = "Gifts",
                     addLabel = "New gift",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
                         items = listOf(
                             EntityItem(id = "g1", label = "First gift"),
@@ -250,7 +270,7 @@ class EntityListScaffoldTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class LifeEventDialogTest {
+class LifeEventFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -260,7 +280,7 @@ class LifeEventDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = initial,
                     relatedContacts = emptyList(),
                     contactSearchQuery = "",
@@ -286,7 +306,7 @@ class LifeEventDialogTest {
 
         // Pick the family category, then a category-scoped type.
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("Married").performClick()
 
@@ -304,7 +324,7 @@ class LifeEventDialogTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("Anniversary").performClick()
 
@@ -329,7 +349,7 @@ class LifeEventDialogTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithText("Family & relationships").performClick()
         composeTestRule.onNodeWithTag("life-event-type").performClick()
         composeTestRule.onNodeWithText("Anniversary").performClick()
 
@@ -380,7 +400,7 @@ class LifeEventDialogTest {
             onConfirm = { confirmed = it },
         )
 
-        composeTestRule.onNodeWithText("Other / Uncategorized").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Other / uncategorized").assertIsDisplayed()
         // The type is free text under the sentinel, and editable.
         composeTestRule.onNodeWithText("went to the lake").assertIsDisplayed()
         composeTestRule.onNodeWithText("went to the lake").performTextReplacement("went to the sea")
@@ -396,7 +416,7 @@ class LifeEventDialogTest {
         var removed: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                LifeEventDialog(
+                LifeEventForm(
                     initial = null,
                     relatedContacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice")),
                     contactSearchQuery = "",
@@ -411,7 +431,7 @@ class LifeEventDialogTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Remove Alice").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove Alice").performScrollTo().performClick()
 
         assertEquals("u1", removed)
     }
@@ -420,7 +440,7 @@ class LifeEventDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class GiftDialogTest {
+class GiftFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -430,7 +450,7 @@ class GiftDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                GiftDialog(
+                GiftForm(
                     initial = initial,
                     lifeEvents = emptyList(),
                     activities = emptyList(),
@@ -520,7 +540,7 @@ class GiftDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class PreferenceDialogTest {
+class PreferenceFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -531,7 +551,7 @@ class PreferenceDialogTest {
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = initial,
                     sections = sections,
                     onConfirm = onConfirm,
@@ -564,9 +584,9 @@ class PreferenceDialogTest {
         setContent()
 
         composeTestRule.onNodeWithTag("preference-category").performClick()
-        composeTestRule.onNodeWithText("Food & Drink").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Food & drink").assertIsDisplayed()
         // Further down the (scrollable) popup — scroll each into view first.
-        composeTestRule.onNodeWithText("Jewelry & Style").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Jewelry & style").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Jewelry — metal").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Flowers").performScrollTo().assertIsDisplayed()
     }
@@ -611,7 +631,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills category value notes and sensitivity`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",
@@ -681,7 +701,7 @@ class PreferenceDialogTest {
     fun `edit mode pre-fills an existing hobby level`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PreferenceDialog(
+                PreferenceForm(
                     initial = Preference(
                         id = "p1",
                         entityId = "uid",
@@ -867,7 +887,7 @@ class AgendaDialogTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class MarkDiscussedDialogTest {
+class MarkDiscussedFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -877,7 +897,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = emptyList(),
                     confirming = false,
@@ -899,7 +919,7 @@ class MarkDiscussedDialogTest {
         var confirmed: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MarkDiscussedDialog(
+                MarkDiscussedForm(
                     item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
                     activities = listOf(
                         com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat"),

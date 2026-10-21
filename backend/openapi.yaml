@@ -13198,6 +13198,20 @@ components:
           $ref: "#/components/schemas/ContactScoreFacet"
         last_updated:
           $ref: "#/components/schemas/ContactScoreFacet"
+        ambient:
+          type: boolean
+          description: >
+            Issue #1733: true when the contact counts as in regular contact
+            without logged activity (they live with the user's self-contact, or
+            the user flagged them). Recency and Frequency are then both 100.
+            Always present.
+        ambient_reason:
+          type: string
+          enum: [household, flag]
+          description: >
+            Why the contact is ambient: household (a current member of a
+            household the self-contact is also a current member of) or flag
+            (crm.ambient). Absent when ambient is false.
     ContactScoreFacet:
       type: object
       description: One weighted facet's 0-100 sub-score, weight, and plain-language reason.
@@ -13234,8 +13248,10 @@ components:
       properties:
         has_qualifying_interaction: { type: boolean }
         last_interaction: { type: string, format: date-time, nullable: true }
-        next_due: { type: string, format: date-time, nullable: true }
+        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD) in the reminder zone, not an instant (issue #1778)." }
         overdue_by: { type: integer }
+        ambient: { type: boolean, description: "Issue #1733: an ambient contact is never overdue (overdue_by is 0). Always present." }
+        ambient_reason: { type: string, enum: [household, flag], description: "Why the contact is ambient; absent when ambient is false." }
     BriefingRelationship:
       type: object
       description: One confirmed relationship edge resolved for display.
@@ -14934,7 +14950,14 @@ components:
         date:
           type: string
           format: date-time
-          description: When the gift was given/received. An idea may have no date.
+          description: >
+            When the gift was given/received. An idea may have no date. A gift
+            with status given counts as a qualifying interaction of type gift
+            for its recipient on this date (issue #1736). When a gift is marked
+            given without a date (created as given, or updated from another
+            status to given), the server sets it to now. A gift that was already
+            given is saved with exactly the date the body carries, so an update
+            that omits it leaves the gift undated (and no longer counted).
         value_cents:
           type: integer
           description: Optional value in the currency's minor unit; must pair with currency.
@@ -15195,16 +15218,28 @@ components:
         the timeline, never persisted. Undefined (has_qualifying_interaction
         false) until the contact has at least one qualifying interaction;
         cadence does NOT count from the contact's creation date.
-      required: [has_qualifying_interaction, overdue_by]
+      required: [has_qualifying_interaction, overdue_by, ambient]
       properties:
         has_qualifying_interaction: { type: boolean }
         last_interaction: { type: string, format: date-time, nullable: true }
-        next_due: { type: string, format: date-time, nullable: true }
+        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD) in the reminder zone, not an instant (issue #1778)." }
         overdue_by:
           type: integer
           description: >
             Whole calendar days past due. 0 when due today, in the future, or
-            undefined. "Due today" is not overdue.
+            undefined. "Due today" is not overdue. Always 0 for an ambient
+            contact.
+        ambient:
+          type: boolean
+          description: >
+            Issue #1733: true when the contact counts as in regular contact
+            without logged activity (lives with the user, or flagged), so is
+            never overdue. A given gift (issue #1736) counts as a qualifying
+            interaction of type gift for last_interaction/next_due.
+        ambient_reason:
+          type: string
+          enum: [household, flag]
+          description: Why the contact is ambient; absent when ambient is false.
     CadencePolicyWithHealth:
       type: object
       description: A cadence policy with its derived health embedded.
@@ -15276,7 +15311,7 @@ components:
         baseline, so next_due is always defined.
       required: [next_due, overdue_by]
       properties:
-        next_due: { type: string, format: date-time }
+        next_due: { type: string, format: date, description: "Calendar day (YYYY-MM-DD) in the reminder zone, not an instant (issue #1778)." }
         overdue_by:
           type: integer
           description: >
@@ -16483,6 +16518,18 @@ components:
             sibling `gender` field on the contact DTOs remains for backward
             compat; when both are present, crm.gender wins (it is the
             authoritative copy).
+        ambient:
+          type: boolean
+          description: >
+            Issue #1733: the explicit "I see them all the time" flag. An
+            ambient contact counts as in regular contact for the relationship
+            health score and cadence without logged activity (a co-resident
+            household member is ambient too, derived, not stored here). Responses
+            carry it only when true (absent reads as false). On a write, ABSENT
+            means "keep the stored value" (so a client that predates the field
+            and rebuilds crm on every save cannot clear it); true/false sets it. Internal CRM data: never
+            exported to vCard/JSContact (reported as crm.ambient when set); the
+            CSV export and account bundle carry it.
         periods:
           type: array
           items:

@@ -39,8 +39,8 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.42,
-      "linesTotal": 280,
+      "lines": 86.47,
+      "linesTotal": 281,
       "branches": 75.18,
       "branchesTotal": 133
     },
@@ -723,10 +723,10 @@
       "branchesTotal": 14
     },
     "src/components/ContactHeader.tsx": {
-      "lines": 80.39,
-      "linesTotal": 102,
-      "branches": 91.53,
-      "branchesTotal": 130
+      "lines": 92.78,
+      "linesTotal": 97,
+      "branches": 91.72,
+      "branchesTotal": 133
     },
     "src/components/ContactInformation.tsx": {
       "lines": 76.53,
@@ -747,10 +747,10 @@
       "branchesTotal": 74
     },
     "src/components/ContactTimeline.tsx": {
-      "lines": 81.48,
-      "linesTotal": 27,
-      "branches": 67.56,
-      "branchesTotal": 74
+      "lines": 92.85,
+      "linesTotal": 28,
+      "branches": 75.58,
+      "branchesTotal": 86
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 96.77,
@@ -1148,6 +1148,12 @@
       "branches": 85.71,
       "branchesTotal": 14
     },
+    "src/components/PageHeader.tsx": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 87.5,
+      "branchesTotal": 8
+    },
     "src/components/PaperlessDocumentSearchDialog.tsx": {
       "lines": 83.87,
       "linesTotal": 31,
@@ -1393,6 +1399,12 @@
       "linesTotal": 27,
       "branches": 100,
       "branchesTotal": 26
+    },
+    "src/components/timelineLayout.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/contactFields.ts": {
       "lines": 100,
@@ -1993,6 +2005,12 @@
       "linesTotal": 38,
       "branches": 93.75,
       "branchesTotal": 32
+    },
+    "src/utils/localDate.ts": {
+      "lines": 100,
+      "linesTotal": 9,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,

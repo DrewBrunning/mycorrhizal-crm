@@ -382,6 +382,39 @@ test('editing an activity prefills the dialog, fetches all contacts once, and sa
   });
 });
 
+// #1727/#1778: west of UTC, a date picked in the date input (saved at 00:00Z)
+// shows the same calendar day in the list, in the edit form, and after saving.
+test('west of UTC an activity date shows the same day in the list and the edit form', async () => {
+  const originalTZ = process.env.TZ;
+  process.env.TZ = 'America/Chicago';
+  try {
+    const calls = mockFetchRoutes([
+      {
+        pattern: '/activities?',
+        handler: { body: { activities: [activity()], next_cursor: '', limit: 25 } },
+      },
+      { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+      { pattern: '/activities/1', handler: { method: 'PUT', body: activity() } },
+    ]);
+
+    renderPage();
+    // date is 2026-01-05T00:00:00Z: 18:00 on 4 January in Chicago.
+    // Both the sm+ date column and the phone caption (#1783) show the calendar day.
+    await waitFor(() => expect(screen.getAllByText('05.01.2026')).toHaveLength(2));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+    await waitFor(() => expect(screen.getByDisplayValue('2026-01-05')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      const putCall = calls.find((c) => c.method === 'PUT');
+      expect(putCall?.body).toMatchObject({ date: '2026-01-05T00:00:00.000Z' });
+    });
+  } finally {
+    process.env.TZ = originalTZ;
+  }
+});
+
 test('saving an edit with a blank title is a no-op guard, not a request', async () => {
   const calls = mockFetchRoutes([
     {
@@ -559,6 +592,26 @@ test('a non-412 failure on save or delete logs and shows no conflict dialog', as
     expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.anything()),
   );
   expect(screen.queryByText('Changed elsewhere')).toBeNull();
+});
+
+test('an activity without a title renders its description without a title line', async () => {
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [activity({ title: '', description: 'No title here' })],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No title here')).toBeDefined());
+  expect(screen.queryByText('Coffee catch-up')).toBeNull();
 });
 
 test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {

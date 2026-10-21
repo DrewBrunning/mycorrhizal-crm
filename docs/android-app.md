@@ -55,7 +55,7 @@ Each profile's sign-in credential is stored separately, so switching between
 servers — a home instance and a work instance, or re-pointing after a domain
 move — does not sign you out of the other.
 
-Manage them under **Settings → Servers**:
+Manage them under **Settings → Account → Servers**:
 
 - **Add server** — a label and a URL, then sign in for that server. A new
   profile has no saved session, so the app lands on the sign-in screen for it.
@@ -94,7 +94,7 @@ Constraints:
   seccomp filter, and `GOOS=android` links internally only for arm64.)
 - **The local store is the only copy.** It is not backed by any server and is
   *not* included in Android's cloud backup (`allowBackup=false`). Removing the
-  app, or **Settings → Servers → (local) → Delete local data**, permanently
+  app, or **Settings → Account → Servers → (local) → Delete local data**, permanently
   deletes it — hence the typed confirmation.
 - **Backup and attach are user-initiated.** "Export account bundle to file"
   writes a full-fidelity JSON backup through the system file picker; a local
@@ -103,7 +103,7 @@ Constraints:
 
 ### Moving a local profile to a server
 
-**Settings → Servers**, on the active local profile, offers **Move this data to
+**Settings → Account → Servers**, on the active local profile, offers **Move this data to
 a server** (ADR 0028 Decision 3, one-time — never a live sync). The wizard:
 
 1. asks you to add or pick a *Remote* server and sign in to it (2FA supported) —
@@ -146,7 +146,7 @@ records which contact is Me (`self_contact_uid`), and a bundle without it
 imports every contact as new.
 
 The entry point ("Use on this device only", on the sign-in screen and in
-**Settings → Servers**, below the profile list so it stays reachable however many
+**Settings → Account → Servers**, below the profile list so it stays reachable however many
 profiles exist) is offered in every distribution variant. A local profile
 holds the only copy of its data, so the app pairs it with the user-initiated
 account-bundle backup described above.
@@ -188,7 +188,7 @@ tag opens `/circles?tab=tags`, a circle opens `/circles`).
 
 ## Log activities from location history (GeoPulse)
 
-With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → GeoPulse**: server URL and a
+With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → Integrations → GeoPulse**: server URL and a
 write-only API token, **Test connection**, **Disconnect**; the token must be re-entered on first connect and
 whenever the server's origin changes), the **Activities** screen's top bar has **Log from location history**.
 Pick a date and **Look up**: each recorded stay shows its place, local start time, duration, city/country, the
@@ -257,10 +257,84 @@ in landscape is wide but short, so the rail would not leave room to scroll its o
 two-pane layout therefore apply only when the window is both wide (the Expanded width class) and at least medium in
 height; a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination stays reachable.
 
+## Navigation and Settings
+
+The navigation drawer (and, at expanded widths, the rail) is built from one destination registry,
+`android/app/src/main/kotlin/com/mycorrhizal/crm/NavDestinations.kt` (issues #1758, #1759, #1757):
+
+- **People**: Dashboard, Contacts, Circles, Tags, Households, Network, Map. **Interactions**: Activities,
+  Unassigned notes, Occasions, Contact shares. **Data & admin**: Data, Import contacts, Audit log. **Settings** is
+  pinned below the scrolling list.
+- The current destination is the `selected` item (announced by TalkBack); the header shows the signed-in user and
+  the server host and opens **Servers**. Every destination opens with the Menu icon, and back from one returns to the
+  Dashboard. A drawer label is always the destination's screen title (pinned in every locale by `NavDestinationsTest`).
+- **Unassigned notes** lists only notes that have no contact, so it is named for that set; **New note** creates one.
+- **Settings** is a short index of groups, each a sub-screen: **Account** (session, Servers, Change password,
+  Two-factor authentication, Passkeys, API tokens), **Appearance** (language, date format, theme), **Privacy &
+  security** (App lock, Block screenshots), **Contacts & fields**, **Tracking & notifications**, **Integrations**,
+  **Administration** (admin accounts only), **About**, and **Log out**. **App lock** is one switch: turning it on
+  also enrols biometric sign-in on servers that support it, and turning it off revokes that enrolment on the
+  server first (if the revoke fails, for example offline, the lock stays on). A biometric sign-in set up from the
+  post-login prompt while the lock is off has its own **Turn off biometric sign-in** button there.
+
+## Design system
+
+The conventions every Android screen follows (issue #1760). They apply to all five locales (`en`, `de`, `es`,
+`fr`, `it`); a new screen that breaks one is a bug, and the rules marked "enforced" are pinned by a test. The web
+app is held to the same written rules ([UX audit](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1717);
+its empty states are tracked in issue #1779).
+
+- **Sentence case** for every heading, label, button and menu item: capitalise the first word and proper nouns
+  only ("Overdue relationships", "Change password", "API tokens"), never "Overdue Relationships". German keeps
+  every noun capitalised because the language requires it; the other locales follow the same sentence-case rule
+  as English. Enforced for `en`, `es`, `fr` and `it` by `SentenceCaseStringsTest`
+  (`android/core/ui/src/test/kotlin/com/mycorrhizal/crm/ui/SentenceCaseStringsTest.kt`), which fails on a short
+  string with a Title Case word that is not a listed proper noun. A proper noun the test does not know (a new
+  integration name) is added to its `properNouns` set with the change that introduces it.
+- **Empty states** use the one shared `EmptyState` composable in `core/ui` (`StateComponents.kt`): an optional
+  icon, a **title** of the form `No <things> yet` with no trailing period, at most one sentence of **body**
+  saying what the list is for, and, wherever the screen can create the thing, the **primary create action** as a
+  button (`actionLabel` + `onAction`). A filtered "no results" state and a fatal error show the title alone: a
+  create button would not fix them. Do not hand-roll an empty `Text`.
+- **One add affordance per list.** A screen's primary create action is the **floating action button** (`BrandFab`);
+  its empty state repeats the same action. Do not also put a top-bar `+` or an inline "Add" button beside it. A
+  create action that only makes sense in the empty state (a contact has at most one cadence policy) still uses the
+  FAB. An in-flight upload or save is shown on the FAB itself.
+- **Row actions.** A list row's secondary actions (rename, delete, …) go behind one overflow menu
+  (`RowOverflowMenu`, a `⋮` button) rather than a pair of icon buttons per row. Its TalkBack label names the row
+  ("More actions for Family") so no two rows announce the same thing. A row with exactly one secondary action may
+  show it inline. Swipe-to-act is allowed only with an undo.
+- **Disabled controls say what enables them.** A button that is disabled until some input is present shows a short
+  helper line under it, and the same sentence as its TalkBack state description: "Enter a server URL to use SSO",
+  "Enter your new password and confirm it to continue". A dialog's confirm button that waits for a required text
+  field is the one standard exception: the field itself is already marked required.
+
+- **Dialog or full-screen form (issue #1773).** **Any picker, including a fixed-list dropdown
+  (`LabelledDropdown`), means a full-screen form.** A create/edit form that has a picker, a contact search, more
+  than about four typed (text) fields, or a body that scrolls is a full-screen form built on `FormScaffold`
+  (`EntityFormScreen` for the timeline entities) with the pinned Save/Create button: note, activity, reminder,
+  gift, life event, preference, relationship and mark discussed. There is no recorded exception: the
+  preference form (category, level and sensitivity dropdowns) and the relationship form (contact search plus
+  type and sensitivity dropdowns) were dialogs before the maintainer's 2026-10-20 decision and are full screen
+  now. An `AlertDialog` is only for a **short, picker-free** interaction: a confirmation (delete, discard,
+  reject) or a form of a few typed fields that fits without scrolling at the default font size and has no
+  picker (the conversation agenda item: content and a reference URL). Dialogs on other screens that predate this
+  rule and still carry a picker are converted as those screens are next touched, not by exception.
+  - A full-screen entity form keeps the list underneath where it was (the list's scroll state is hoisted above
+    the form/list switch), and the open form and its typed input survive rotation and process death
+    (`rememberSaveable`, or the ViewModel's `SavedStateHandle` for mark discussed). System back and the top-bar
+    arrow leave the form and discard what was typed, the same as Cancel did in the dialogs; the "Discard
+    changes?" guard is #1751's, and `EntityFormScreen` is the one place it plugs into for the timeline
+    entities.
+- **Pickers are labelled dropdowns.** A choice among a fixed list is a `LabelledDropdown` (`core/ui`): a read-only
+  outlined field with a visible label and a trailing arrow, never a bare button showing only the current value.
+  TalkBack hears "<label>, <value>, drop-down list". Quick-fill values for a text field (the preference "Kind")
+  are a labelled row of `SuggestionChip`s under a "Suggestions" caption, not text buttons.
+
 ## Passkeys
 
 The app can use a passkey as your second sign-in step and lets you add, list and remove passkeys
-(**Settings → Passkeys**), through the platform's Credential Manager. Your passkey's private key
+(**Settings → Account → Passkeys**), through the platform's Credential Manager. Your passkey's private key
 stays in the Android credential provider (for example Google Password Manager), never in the app.
 The design and its limits are recorded in [ADR 0034](adrs/0034-android-passkeys.md).
 

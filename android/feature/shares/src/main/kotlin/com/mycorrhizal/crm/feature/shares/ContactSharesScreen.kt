@@ -106,7 +106,7 @@ fun ContactSharesScreen(
                     when {
                         state.isLoading && list.isEmpty() -> LoadingSkeleton()
                         list.isEmpty() && state.error == null -> EmptyState(
-                            message = stringResource(
+                            title = stringResource(
                                 if (state.selectedTab == SharesTab.INCOMING) {
                                     R.string.shares_incoming_empty
                                 } else {

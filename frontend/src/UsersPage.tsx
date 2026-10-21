@@ -44,6 +44,7 @@ import {
 } from './api/admin';
 import { isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
+import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import type { User, UserCreateInput, UserUpdateInput } from './types';
@@ -317,33 +318,24 @@ export default function UsersPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 1.5,
-          gap: 1,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Typography variant="h5" component="h1">
-          {t('users.title')}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
-            {t('users.addUser')}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={triggerLoading ? <CircularProgress size={16} /> : <SendIcon />}
-            onClick={() => void handleTriggerReminders()}
-            disabled={triggerLoading}
-          >
-            {t('users.triggerReminders')}
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title={t('users.title')}
+        actions={
+          <>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
+              {t('users.addUser')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={triggerLoading ? <CircularProgress size={16} /> : <SendIcon />}
+              onClick={() => void handleTriggerReminders()}
+              disabled={triggerLoading}
+            >
+              {t('users.triggerReminders')}
+            </Button>
+          </>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

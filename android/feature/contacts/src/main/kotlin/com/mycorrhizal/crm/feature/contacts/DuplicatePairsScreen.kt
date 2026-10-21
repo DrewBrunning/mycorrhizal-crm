@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.DuplicatePair
 import com.mycorrhizal.crm.model.network.DuplicateReasons
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
@@ -151,14 +152,9 @@ fun DuplicatePairsScreenContent(
                     }
                 }
                 uiState.pairs.isEmpty() -> {
-                    Text(
-                        text = stringResource(R.string.duplicates_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                            .testTag("duplicates-empty"),
+                    EmptyState(
+                        title = stringResource(R.string.duplicates_empty),
+                        modifier = Modifier.testTag("duplicates-empty"),
                     )
                 }
                 else -> {

@@ -206,8 +206,18 @@ class LifeEventsViewModel @Inject constructor(
 
     fun findById(id: String): LifeEvent? = loaded.find { it.id == id }
 
-    /** Resolves the edit dialog's initial related contacts for display. */
+    // Which form the related-contact selection belongs to (an item id, or NEW_FORM_KEY).
+    // The full-screen form (issue #1773) survives rotation, and its LaunchedEffect runs
+    // again on the recreated composition; without this the second call would reset the
+    // contacts the user had already added. A new ViewModel (process death) starts at
+    // null, so a restored edit form re-resolves the item's saved contacts.
+    private var relatedOpenedFor: String? = null
+
+    /** Resolves the edit form's initial related contacts for display. */
     fun onDialogOpened(initial: LifeEvent?) {
+        val key = initial?.id ?: NEW_FORM_KEY
+        if (key == relatedOpenedFor) return
+        relatedOpenedFor = key
         val uids = initial?.relatedEntityIds.orEmpty().filter { it.isNotBlank() }
         if (uids.isEmpty()) {
             _relatedContacts.value = emptyList()
@@ -261,6 +271,12 @@ class LifeEventsViewModel @Inject constructor(
         _relatedSearchQuery.value = ""
         _relatedSearchResults.value = emptyList()
         _relatedSearchLoading.value = false
+    }
+
+    /** The form was saved or left: the next one starts its related contacts afresh. */
+    fun onFormClosed() {
+        clearRelatedSearch()
+        relatedOpenedFor = null
     }
 
     fun create(form: LifeEventFormData) {
@@ -334,6 +350,9 @@ class LifeEventsViewModel @Inject constructor(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
+
+        /** [relatedOpenedFor] key of the add form (item ids are UUIDs, so never equal). */
+        const val NEW_FORM_KEY = "\u0000new"
     }
 }
 

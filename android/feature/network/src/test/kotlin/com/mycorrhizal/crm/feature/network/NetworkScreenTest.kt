@@ -137,7 +137,7 @@ class NetworkScreenTest {
         setContent(uiState = state(chains = emptyList()))
 
         composeTestRule
-            .onNodeWithText("No connections found. Add relationships to build a network here.")
+            .onNodeWithText("No connections yet")
             .assertIsDisplayed()
     }
 

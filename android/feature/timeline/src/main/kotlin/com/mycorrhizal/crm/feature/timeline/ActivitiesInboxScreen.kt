@@ -155,7 +155,7 @@ fun ActivitiesInboxScreenContent(
                     state.isLoading && state.activities.isEmpty() ->
                         LoadingSkeleton(modifier = Modifier.testTag("activities-inbox-loading"))
                     state.activities.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(R.string.activities_empty))
+                        EmptyState(title = stringResource(R.string.activities_empty))
                     state.activities.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
                     else -> {

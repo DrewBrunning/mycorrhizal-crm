@@ -34,6 +34,11 @@ export interface CadenceHealth {
   // Whole calendar days past due. 0 when due today, in the future, or
   // undefined. "Due today" is not overdue.
   overdue_by: number;
+  // Issue #1733: an ambient contact (lives with the user, or flagged) is never
+  // overdue -- overdue_by is 0. Always sent (required in the spec's
+  // CadenceHealth); the reason is absent when false.
+  ambient: boolean;
+  ambient_reason?: 'household' | 'flag';
 }
 
 export interface CadencePolicy {
