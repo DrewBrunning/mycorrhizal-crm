@@ -656,6 +656,8 @@
     "newTag": "Nouvelle étiquette...",
     "add": "Ajouter",
     "actions": "Actions",
+    "moreActions": "Plus",
+    "exportAs": "Exporter en {{format}}",
     "jumpNav": "Aller à la section",
     "markAsMe": "C'est moi",
     "unmarkAsMe": "Ce n'est pas moi"

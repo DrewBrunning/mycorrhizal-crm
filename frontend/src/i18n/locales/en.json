@@ -656,6 +656,8 @@
     "newTag": "New tag...",
     "add": "Add",
     "actions": "Actions",
+    "moreActions": "More",
+    "exportAs": "Export as {{format}}",
     "jumpNav": "Jump to section",
     "markAsMe": "This is me",
     "unmarkAsMe": "This isn't me"
