@@ -9,8 +9,8 @@
       "branchesTotal": 68
     },
     "src/App.tsx": {
-      "lines": 72.89,
-      "linesTotal": 107,
+      "lines": 73.14,
+      "linesTotal": 108,
       "branches": 54,
       "branchesTotal": 50
     },
@@ -21,10 +21,10 @@
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
-      "lines": 87.67,
-      "linesTotal": 73,
-      "branches": 81.39,
-      "branchesTotal": 43
+      "lines": 88.31,
+      "linesTotal": 77,
+      "branches": 83.33,
+      "branchesTotal": 48
     },
     "src/CircleTagTriagePage.tsx": {
       "lines": 79.56,
@@ -51,10 +51,10 @@
       "branchesTotal": 29
     },
     "src/ContactsPage.tsx": {
-      "lines": 87.42,
-      "linesTotal": 175,
-      "branches": 81.81,
-      "branchesTotal": 110
+      "lines": 89,
+      "linesTotal": 191,
+      "branches": 84.44,
+      "branchesTotal": 135
     },
     "src/DashboardPage.tsx": {
       "lines": 75.48,
@@ -987,7 +987,7 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 81.01,
+      "lines": 86.44,
       "linesTotal": 295,
       "branches": 76.5,
       "branchesTotal": 200
@@ -1277,7 +1277,7 @@
     "src/components/ReviewDuplicatesDialog.tsx": {
       "lines": 86.11,
       "linesTotal": 36,
-      "branches": 75,
+      "branches": 77.77,
       "branchesTotal": 36
     },
     "src/components/RouteLoadingFallback.tsx": {

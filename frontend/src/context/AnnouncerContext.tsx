@@ -40,8 +40,13 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
         aria-atomic="true"
         sx={{
           position: 'absolute',
-          width: 1,
-          height: 1,
+          // Pixel strings, not `1`: MUI's sx reads a bare number in 0..1 as a
+          // *fraction* (width: 1 = 100%). This live region was therefore as
+          // wide and tall as its containing block, and being absolutely
+          // positioned below the app it stretched every page's scroll height by
+          // a viewport of blank space (#1788).
+          width: '1px',
+          height: '1px',
           overflow: 'hidden',
           clip: 'rect(0 0 0 0)',
           clipPath: 'inset(50%)',

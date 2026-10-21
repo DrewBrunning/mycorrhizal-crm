@@ -81,6 +81,12 @@ actually computing hex/contrast rather than eyeballing the OKLCH values:
   label color — white peaks at 4.05:1, dark labels do worse. Corrected `L` 0.60 → 0.56
   (`oklch(0.56 0.070 300)`, `#7B6B98`) for a clean 4.77:1 with white.
 
+- **Status colours as text (issue #1792).** The status tokens are also rendered as *text* (outlined chips,
+  `color="error"`, the "On track" line), so each `base` must clear 4.5:1 on every surface tier. Light:
+  `moss` -> `#0A6E3F`, `chanterelle` -> `#8A5A00` (now takes a **white** label), `laccaria` -> `#6A5A87`.
+  Dark: `moss` -> `#3FAE72`, `russula` -> `#DE8579`, `laccaria` -> `#A898C7` (clears the elevated dialog
+  paper, the hardest dark surface). Pinned by `themeAccessibility.test.ts`.
+
 `contrastOnStatusColors` in `tokens.json` records the verified label per token per mode. Two are
 mode-dependent in the same way `mycelium`'s `contrastText` is (light label in light mode, dark `bone`
 label in dark mode, since dark-mode fills sit at a higher `L`): `russula` and `laccaria`. `chanterelle` is

@@ -74,7 +74,7 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
   };
 
   return (
-    <Box component="section" sx={{ mt: 2 }}>
+    <Box component="section" sx={{ mt: 2, width: '100%', maxWidth: 960, mx: 'auto' }}>
       <Typography variant="h6" component="h2" gutterBottom>
         {t('network.listView')}
       </Typography>

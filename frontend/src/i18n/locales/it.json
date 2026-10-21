@@ -294,7 +294,14 @@
     "favoriteContact": "Segna {{name}} come preferito",
     "unfavoriteContact": "Rimuovi {{name}} dai preferiti",
     "favoriteError": "Impossibile aggiornare il preferito",
-    "showAll": "Mostra tutti",
+    "onlyWithContactInfo": "Solo con dati di contatto",
+    "filters": {
+      "button": "Filtri",
+      "buttonActive": "Filtri ({{count}})",
+      "title": "Filtri",
+      "done": "Fatto"
+    },
+    "moreActions": "Altre azioni",
     "hiddenContactable_one": "{{count}} contatto senza informazioni di contatto è nascosto",
     "hiddenContactable_other": "{{count}} contatti senza informazioni di contatto sono nascosti",
     "archived": "Archiviato",
