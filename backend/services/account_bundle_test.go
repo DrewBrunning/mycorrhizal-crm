@@ -162,6 +162,9 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 	require.NoError(t, db.Create(&ada).Error)
 	require.NotEmpty(t, ada.VCardUID)
 	bob := mkContact("Bob" + marker)
+	// Issue #1796: Bob's target closeness must survive the bundle round-trip
+	// (ApplyRecordToContact never writes it, so the import sets it explicitly).
+	require.NoError(t, db.Model(&bob).Update("target_closeness", "casual").Error)
 	// Cy is archived and a favorite; the two flags have their own mapping lines.
 	cy := models.Contact{UserID: user.ID, Firstname: "Cy" + marker, Lastname: marker, Archived: true, IsFavorite: true}
 	require.NoError(t, db.Create(&cy).Error)
@@ -419,6 +422,13 @@ func TestAccountBundle_RoundTrip(t *testing.T) {
 	require.NoError(t, targetDB.First(&targetUser, target.ID).Error)
 	require.NotNil(t, targetUser.SelfContactVCardUID)
 	assert.Equal(t, ada0.VCardUID, *targetUser.SelfContactVCardUID)
+
+	// Issue #1796: Bob's target closeness landed in the flat column.
+	bob0 := seed.Contacts[1]
+	var importedBob models.Contact
+	require.NoError(t, targetDB.Where("user_id = ? AND vcard_uid = ?", target.ID, bob0.VCardUID).First(&importedBob).Error)
+	require.NotNil(t, importedBob.TargetCloseness)
+	assert.Equal(t, "casual", *importedBob.TargetCloseness)
 
 	// Issue #1308: the embedded photo must land in the destination's own photo
 	// directory and flat columns, not only as a data: entry in the stored Card.
