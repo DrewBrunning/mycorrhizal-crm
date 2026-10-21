@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -226,6 +228,7 @@ internal fun DashboardContent(
                     if (cadence.contactId > 0) onOpenContact(cadence.contactId.toInt())
                 })
             }
+            dashboardTruncationCaption("cadence", state.overdueCadences.size, state.totals.overdue)
         }
         // Issue #352: contacts whose info is due for re-verification. Same
         // "hidden entirely when clear" treatment as overdue cadences above.
@@ -240,6 +243,7 @@ internal fun DashboardContent(
                     onVerify = { overdue.policy?.id?.let(onVerifyDataDecay) },
                 )
             }
+            dashboardTruncationCaption("data-decay", state.dataDecayOverdue.size, state.totals.dataDecayOverdue)
         }
         // Issue #177: event-driven reach-out suggestions — the change-driven
         // counterpart to overdue cadences above. Same "hidden entirely when
@@ -254,6 +258,7 @@ internal fun DashboardContent(
                     onDismiss = { onDismissReachOutSuggestion(suggestion.id) },
                 )
             }
+            dashboardTruncationCaption("reach-out", state.reachOutSuggestions.size, state.totals.reachOutSuggestions)
         }
         item { DashboardSectionHeader(stringResource(R.string.dashboard_birthdays), Icons.Outlined.Cake) }
         if (state.birthdays.isEmpty()) {
@@ -264,6 +269,7 @@ internal fun DashboardContent(
                     if (birthday.contactId > 0) onOpenContact(birthday.contactId.toInt())
                 })
             }
+            dashboardTruncationCaption("birthday", state.birthdays.size, state.totals.birthdays)
         }
         item { DashboardSectionHeader(stringResource(R.string.dashboard_reminders), Icons.Outlined.Notifications) }
         if (state.upcomingReminders.isEmpty()) {
@@ -279,6 +285,7 @@ internal fun DashboardContent(
                     onClick = { reminder.contactId?.takeIf { it > 0 }?.let(onOpenContact) },
                 )
             }
+            dashboardTruncationCaption("reminder", state.upcomingReminders.size, state.totals.upcomingReminders)
         }
         item { DashboardSectionHeader(stringResource(R.string.dashboard_random_contacts), Icons.Outlined.Shuffle) }
         if (state.randomContacts.isEmpty()) {
@@ -313,6 +320,30 @@ internal fun DashboardContent(
         )
     }
 }
+
+/**
+ * Issue #1824: the server caps each list block at 25 rows and reports the
+ * pre-cap size as `*_total`. When the block shows fewer rows than that total,
+ * say so ("Showing 25 of 60") so the user doesn't assume the list is complete.
+ * Hidden when [total] is null (an older server) or nothing is truncated.
+ *
+ * Caption only, not a link: Android has no cross-contact reminders list and
+ * no overdue filter on the contacts list for any capped block to point at.
+ */
+private fun LazyListScope.dashboardTruncationCaption(section: String, shown: Int, total: Int?) {
+    if (!isDashboardTruncated(shown, total)) return
+    item(key = dashboardKey("truncated", section)) {
+        Text(
+            text = pluralStringResource(R.plurals.dashboard_showing_of_total, total!!, shown, total),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("dashboard-truncated-$section"),
+        )
+    }
+}
+
+/** True when a block shows fewer rows than the server's pre-cap [total]; false when [total] is absent. */
+internal fun isDashboardTruncated(shown: Int, total: Int?): Boolean = total != null && total > shown
 
 /**
  * Every DashboardContent section shares one LazyColumn, so a bare entity id

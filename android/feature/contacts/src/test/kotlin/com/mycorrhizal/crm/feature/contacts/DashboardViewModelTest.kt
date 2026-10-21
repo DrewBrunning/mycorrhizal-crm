@@ -372,6 +372,126 @@ class DashboardViewModelTest {
             assertNull(state.verifyingDataDecayId)
         }
 
+    // Issue #1824: pre-cap totals feed the "Showing N of M" captions.
+
+    private fun cappedDashboard() = DashboardResponse(
+        upcomingReminders = listOf(
+            DashboardReminder(id = 1, message = "A", contactName = "X"),
+            DashboardReminder(id = 2, message = "B", contactName = "X"),
+        ),
+        reachOutSuggestions = listOf(
+            ReachOutSuggestion(id = "s1", kind = "organization", contactId = 1L, contactName = "X"),
+            ReachOutSuggestion(id = "s2", kind = "organization", contactId = 2L, contactName = "Y"),
+        ),
+        dataDecayOverdue = listOf(
+            OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "X"),
+            OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Y"),
+        ),
+        birthdaysTotal = 40,
+        upcomingRemindersTotal = 60,
+        overdueTotal = 26,
+        reachOutSuggestionsTotal = 30,
+        dataDecayOverdueTotal = 27,
+    )
+
+    @Test
+    fun `the server's pre-cap totals are carried into the ui state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
+
+            advanceUntilIdle()
+
+            assertEquals(
+                DashboardTotals(
+                    birthdays = 40, upcomingReminders = 60, overdue = 26,
+                    reachOutSuggestions = 30, dataDecayOverdue = 27,
+                ),
+                viewModel.uiState.value.totals,
+            )
+        }
+
+    @Test
+    fun `an older server without totals leaves every total null`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
+
+            advanceUntilIdle()
+
+            assertEquals(DashboardTotals(), viewModel.uiState.value.totals)
+        }
+
+    @Test
+    fun `completing a reminder shrinks its total and a failure restores it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
+            coEvery { apiClient.completeReminder(1, false) } returns Result.success(ReminderCompleteResponse(message = "ok"))
+            coEvery { apiClient.completeReminder(2, false) } returns Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.completeReminder(1)
+            advanceUntilIdle()
+            // The row left the list and the pre-cap total shrinks with it, so
+            // the caption never reads "Showing 1 of 60" for a 59-row block.
+            assertEquals(59, viewModel.uiState.value.totals.upcomingReminders)
+
+            viewModel.completeReminder(2)
+            advanceUntilIdle()
+            assertEquals(59, viewModel.uiState.value.totals.upcomingReminders)
+        }
+
+    @Test
+    fun `dismissing a suggestion shrinks its total and a failure restores it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
+            coEvery { apiClient.dismissReachOutSuggestion("s1") } returns Result.success(MessageResponse(message = "ok"))
+            coEvery { apiClient.dismissReachOutSuggestion("s2") } returns Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.dismissReachOutSuggestion("s1")
+            advanceUntilIdle()
+            assertEquals(29, viewModel.uiState.value.totals.reachOutSuggestions)
+
+            viewModel.dismissReachOutSuggestion("s2")
+            advanceUntilIdle()
+            assertEquals(29, viewModel.uiState.value.totals.reachOutSuggestions)
+        }
+
+    @Test
+    fun `verifying a policy shrinks its total and a failure restores it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
+            coEvery { apiClient.verifyDataDecayPolicy("d1") } returns Result.success(DataDecayPolicy(id = "d1"))
+            coEvery { apiClient.verifyDataDecayPolicy("d2") } returns Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.verifyDataDecay("d1")
+            advanceUntilIdle()
+            assertEquals(26, viewModel.uiState.value.totals.dataDecayOverdue)
+
+            viewModel.verifyDataDecay("d2")
+            advanceUntilIdle()
+            assertEquals(26, viewModel.uiState.value.totals.dataDecayOverdue)
+        }
+
+    @Test
+    fun `a failed action keeps an absent total null`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
+            coEvery { apiClient.completeReminder(7, false) } returns Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.completeReminder(7)
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.totals.upcomingReminders)
+        }
+
     @Test
     fun `dateFormat reflects the signed-in user's date_format preference`() =
         runTest(mainDispatcherRule.testDispatcher) {
