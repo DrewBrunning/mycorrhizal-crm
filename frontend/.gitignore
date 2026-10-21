@@ -25,6 +25,13 @@
 /playwright-results/
 /test-results-sw/
 
+# Issue #1825: a local Playwright run writes these. The root .gitignore lists
+# them too, but Biome's VCS integration reads ignore files relative to
+# frontend/ (the directory holding biome.json), so without these local entries
+# the pre-commit hook's `biome ci` lints the generated JSON and fails.
+/playwright/.auth/
+/test-results/
+
 # misc
 .DS_Store
 .env.local
