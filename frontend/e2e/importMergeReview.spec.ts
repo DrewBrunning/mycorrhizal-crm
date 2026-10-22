@@ -55,15 +55,15 @@ test.describe('Import merge review', () => {
 
       // The review step shows the match, the diff, and the conflict heading.
       await expect(dialog.getByText(/Matches: .*Jane Smith/)).toBeVisible();
-      await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
+      await expect(dialog.getByText('Resolve Conflict (1 remaining)')).toBeVisible();
       await expect(dialog.getByText(/\+ new phone: \+15559998888/)).toBeVisible();
       await expect(dialog.getByText(/Job Title: .*Staff Engineer/)).toBeVisible();
 
       // Merge is the default; apply the single decision.
-      await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
+      await dialog.getByRole('button', { name: /apply decision \(1\)/i }).click();
 
       // Result step reports one update.
-      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await expect(dialog.getByText('1 contact updated')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact gained the new phone (additive union) and the
@@ -126,13 +126,13 @@ test.describe('Import merge review', () => {
         buffer: Buffer.from(vcf),
       });
 
-      await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
+      await expect(dialog.getByText('Resolve Conflict (1 remaining)')).toBeVisible();
 
       // Switch the decision to Keep Both (add), then apply.
       await dialog.getByRole('button', { name: 'Keep Both' }).click();
-      await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
+      await dialog.getByRole('button', { name: /apply decision \(1\)/i }).click();
 
-      await expect(dialog.getByText('1 contacts created')).toBeVisible();
+      await expect(dialog.getByText('1 contact created')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact is untouched, and a second one now exists.
@@ -188,17 +188,17 @@ test.describe('Import merge review', () => {
         buffer: Buffer.from(vcf),
       });
 
-      await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
+      await expect(dialog.getByText('Resolve Conflict (1 remaining)')).toBeVisible();
 
       await dialog.getByRole('button', { name: 'Discard New' }).click();
       // The heading switches to the all-resolved copy — not the "no matches"
       // claim, since the row still matched something.
       await expect(dialog.getByText(/all conflicts resolved/i)).toBeVisible();
-      await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
+      await dialog.getByRole('button', { name: /apply decision \(1\)/i }).click();
 
-      await expect(dialog.getByText('1 contacts updated')).not.toBeVisible();
-      await expect(dialog.getByText('1 contacts created')).not.toBeVisible();
-      await expect(dialog.getByText('1 rows skipped')).toBeVisible();
+      await expect(dialog.getByText('1 contact updated')).not.toBeVisible();
+      await expect(dialog.getByText('1 contact created')).not.toBeVisible();
+      await expect(dialog.getByText('1 row skipped')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing record gained nothing.
@@ -250,12 +250,12 @@ test.describe('Import merge review', () => {
 
       // Review step: the CSV row matched by email, defaults to Merge, and the
       // diff shows the new phone the merge will add.
-      await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
+      await expect(dialog.getByText('Resolve Conflict (1 remaining)')).toBeVisible();
       await expect(dialog.getByText(/\+ new phone: \+15554443333/)).toBeVisible();
       await expect(dialog.getByText('1 to update')).toBeVisible();
 
-      await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
-      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await dialog.getByRole('button', { name: /apply decision \(1\)/i }).click();
+      await expect(dialog.getByText('1 contact updated')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
       // The existing contact gained the CSV's phone; no second contact exists.
@@ -315,7 +315,7 @@ test.describe('Import merge review', () => {
       await expect(dialog.getByText('1 to skip')).toBeVisible();
 
       await dialog.getByRole('button', { name: /apply decisions \(2\)/i }).click();
-      await expect(dialog.getByText('1 contacts created')).toBeVisible();
+      await expect(dialog.getByText('1 contact created')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
       const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
