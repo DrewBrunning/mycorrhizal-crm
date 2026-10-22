@@ -6,6 +6,7 @@ import {
   getConditionalHeaders,
   parseErrorResponse,
 } from './client';
+import type { TargetClosenessTier } from './targetCloseness';
 
 export interface ContactValue {
   type: string;
@@ -390,6 +391,10 @@ export interface CRMEnvelope {
   // stored value (older clients that rebuild crm cannot clear it); true/false
   // sets it.
   ambient?: boolean;
+  // Issue #1796/#1797: read-only through the contact PUT. Set it with
+  // PUT/DELETE /contacts/:id/target-closeness (api/targetCloseness.ts), never
+  // via toContactRecordInput -- the server ignores it there.
+  target_closeness?: TargetClosenessTier;
 }
 
 export interface ContactRecordInput {

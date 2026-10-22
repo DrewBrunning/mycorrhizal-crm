@@ -2580,6 +2580,28 @@
     "unknownContact": "Contacto desconocido",
     "dueOn": "Vence el {{date}}"
   },
+  "targetCloseness": {
+    "label": "Cercanía objetivo",
+    "none": "Sin objetivo",
+    "chip": "Objetivo: {{tier}} · {{status}}",
+    "tier": {
+      "immediate": "Inmediata",
+      "close": "Cercana",
+      "casual": "Casual",
+      "distant": "Distante"
+    },
+    "status": {
+      "on_track": "Al día",
+      "drifting": "Alejándose",
+      "behind": "Atrasado"
+    },
+    "offer": {
+      "title": "¿Crear una cadencia?",
+      "body": "¿Mantener el contacto con {{name}} cada {{days}} días?",
+      "accept": "Crear cadencia",
+      "dismiss": "Ahora no"
+    }
+  },
   "reachOut": {
     "title": "Motivos para contactar",
     "empty": "No hay sugerencias para contactar en este momento.",
@@ -2591,7 +2613,8 @@
       "title": "Nuevo puesto",
       "address": "Se mudó",
       "target_behind": "Por debajo del objetivo"
-    }
+    },
+    "behindTarget": "Por debajo de tu objetivo {{tier}} · último contacto {{date}}"
   },
   "syncConflicts": {
     "title": "Conflictos de sincronización",

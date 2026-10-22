@@ -19,6 +19,7 @@ import type { ElementType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { ReachOutSuggestion, ReachOutSuggestionKind } from '../api/reachOutSuggestions';
+import { useDateFormat } from '../DateFormatProvider';
 
 interface ReachOutSuggestionsListProps {
   suggestions: ReachOutSuggestion[];
@@ -46,6 +47,7 @@ export default function ReachOutSuggestionsList({
   onDismiss,
 }: ReachOutSuggestionsListProps) {
   const { t } = useTranslation();
+  const { formatDate } = useDateFormat();
 
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -129,9 +131,14 @@ export default function ReachOutSuggestionsList({
                           color: 'text.secondary',
                         }}
                       >
-                        {s.old_value
-                          ? t('reachOut.changedFromTo', { old: s.old_value, new: s.new_value })
-                          : t('reachOut.changedTo', { new: s.new_value })}
+                        {s.kind === 'target_behind'
+                          ? t('reachOut.behindTarget', {
+                              tier: t(`targetCloseness.tier.${s.old_value}`),
+                              date: formatDate(s.new_value),
+                            })
+                          : s.old_value
+                            ? t('reachOut.changedFromTo', { old: s.old_value, new: s.new_value })
+                            : t('reachOut.changedTo', { new: s.new_value })}
                       </Typography>
                     </Box>
                     <Chip
