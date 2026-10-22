@@ -58,7 +58,6 @@ class ContactFormScreenTest {
         onPronounsChange: (List<com.mycorrhizal.crm.model.network.Pronouns>) -> Unit = {},
         onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
         onKeywordsChange: (List<String>) -> Unit = {},
-        onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
         onCardKindChange: (String) -> Unit = {},
         onAmbientChange: (Boolean) -> Unit = {},
     ) {
@@ -80,12 +79,10 @@ class ContactFormScreenTest {
                         onEmailsChange = {},
                         onPhonesChange = {},
                         onAddressesChange = {},
-                        onTitlesChange = {},
                         onImppChange = {},
                         onSocialChange = {},
                         onOtherServicesChange = {},
                         onLinksChange = {},
-                        onPersonalInfoChange = {},
                         onBirthdayChange = {},
                         onCardNotesChange = onCardNotesChange,
                         onCardKindChange = onCardKindChange,
@@ -95,7 +92,6 @@ class ContactFormScreenTest {
                         onPronounsChange = onPronounsChange,
                         onGrammaticalGendersChange = onGrammaticalGendersChange,
                         onKeywordsChange = onKeywordsChange,
-                        onAnniversariesChange = onAnniversariesChange,
                         onCircleToggle = onCircleToggle,
                         onTagToggle = onTagToggle,
                         modifier = Modifier.padding(padding),
@@ -158,12 +154,9 @@ class ContactFormScreenTest {
         // M7: the previously read-only/invisible field groups now have editors.
         composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Street").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Instant messaging").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Personal information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").performScrollTo().assertIsDisplayed()
@@ -172,10 +165,15 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Speak to as").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Keywords").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("No circles yet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("No tags yet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
+        // Issue #1728: these groups moved to their own contact-page drill-downs.
+        composeTestRule.onNodeWithText("Organization").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Job titles").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Personal information").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Work information").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Anniversaries").assertDoesNotExist()
     }
 
     @Test
@@ -324,7 +322,7 @@ class ContactFormScreenTest {
     }
 
     @Test
-    fun `anniversaries editor is rendered separately from the birthday field`() {
+    fun `non-birth anniversaries are no longer rendered by the edit form`() {
         setContent(
             state = ContactFormState(
                 anniversaries = listOf(
@@ -338,11 +336,11 @@ class ContactFormScreenTest {
                 enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES,
             ),
         )
+        // Issue #1728: the birthday picker stays in the identity form; every
+        // other anniversary moved to the Anniversaries drill-down.
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
-        // #1726: the anniversary value is a read-only date picker rendered in
-        // the user's date format (EU by default), not a raw edit mask.
-        composeTestRule.onNodeWithText("01.06.2020").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Anniversaries").assertDoesNotExist()
+        composeTestRule.onNodeWithText("01.06.2020").assertDoesNotExist()
     }
 
     // --- Issue #832: gating by the enabled-fields toggle set ---

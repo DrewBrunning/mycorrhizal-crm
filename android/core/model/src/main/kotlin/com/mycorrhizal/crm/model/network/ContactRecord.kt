@@ -151,6 +151,15 @@ data class CRMEnvelope(
      * `false` is only sent after the user turned the toggle off.
      */
     val ambient: Boolean? = null,
+    /**
+     * Issue #1738: per-[PersonalInfo] metadata (sensitivity/favorite/notes/
+     * provenance), keyed by the entry's stable Card ID. Kept on the envelope so
+     * the form's full-record PUT round-trips it unchanged — this is the same
+     * "unmodelled field is silently dropped" class [periods] warns about. The
+     * backend preserves the stored map when the key is absent and clears it on
+     * an explicit empty object.
+     */
+    @Json(name = "personalInfoMeta") val personalInfoMeta: Map<String, PersonalInfoMeta>? = null,
 )
 
 /**

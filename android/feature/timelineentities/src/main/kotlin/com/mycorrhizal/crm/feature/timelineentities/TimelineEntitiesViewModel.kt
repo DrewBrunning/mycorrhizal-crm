@@ -686,7 +686,10 @@ class PreferencesViewModel @Inject constructor(
                         PreferenceSection.FOOD_DRINK to 0,
                         PreferenceSection.MEDIA to 1,
                         PreferenceSection.HOBBY to 2,
-                        PreferenceSection.OTHER to 3,
+                        // Issue #1738: Dislikes is its own overview section, ordered
+                        // before the catch-all Other bucket.
+                        PreferenceSection.DISLIKES to 3,
+                        PreferenceSection.OTHER to 4,
                     )
                     _uiState.update {
                         it.copy(

@@ -1125,7 +1125,16 @@ internal fun PreferenceForm(
     onConfirm: (PreferenceFormData) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val availableCategories = remember(sections) { PreferenceCategory.CONFIG.filter { it.section in sections } }
+    // Issue #1738: the add-preference dialog no longer offers `hobby` (hobbies
+    // are created from the contact's Skills & interests drill-down). An
+    // existing hobby row stays editable: when [initial] is non-null the
+    // deprecated category remains in the dropdown so the form can show and
+    // preserve it until #1739 removes the rows.
+    val availableCategories = remember(sections, initial) {
+        PreferenceCategory.CONFIG.filter {
+            it.section in sections && (initial != null || it.category != PreferenceCategory.HOBBY)
+        }
+    }
     val defaultCategory = availableCategories.firstOrNull()?.category ?: PreferenceCategory.FOOD
     val isEditing = initial != null
     var category by rememberSaveable(initial?.id) { mutableStateOf(initial?.category ?: defaultCategory) }

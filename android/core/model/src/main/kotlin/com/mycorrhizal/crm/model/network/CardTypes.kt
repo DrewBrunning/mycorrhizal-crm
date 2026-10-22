@@ -161,6 +161,24 @@ data class PersonalInfo(
     val label: String? = null,
 )
 
+/**
+ * Issue #1738: CRM-only metadata attached to one [PersonalInfo] entry, keyed
+ * by the entry's stable Card ID in `crm.personalInfoMeta`. Sensitivity,
+ * favorite and notes have no RFC home, so they never leave the instance via a
+ * vCard/JSContact export or sync. Mirrors backend
+ * contactmodel.PersonalInfoMeta; every field is optional and the zero value
+ * means normal sensitivity with no metadata.
+ */
+@JsonClass(generateAdapter = true)
+data class PersonalInfoMeta(
+    val sensitivity: String? = null,
+    val favorite: Boolean? = null,
+    val notes: String? = null,
+    val source: String? = null,
+    val confidence: Double? = null,
+    @Json(name = "last_confirmed") val lastConfirmed: String? = null,
+)
+
 @JsonClass(generateAdapter = true)
 data class Author(
     val name: String? = null,
