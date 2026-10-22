@@ -44,7 +44,8 @@ import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.Title
-import com.mycorrhizal.crm.model.util.formatForEdit
+import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.ui.R
 
@@ -127,6 +128,12 @@ interface MultiValueSpec<T> {
     val keyboardType: KeyboardType
     /** False for entry types that carry no `pref` (Title, PersonalInfo, OnlineService) — hides the star. */
     val supportsPref: Boolean get() = true
+    /**
+     * When set, the value field is the shared [DateField] in this mode
+     * (issue #1726 — anniversaries are partial dates) instead of a plain text
+     * field.
+     */
+    val valueMode: DateFieldMode? get() = null
     /** True for entry types with a separate service/display name (OnlineService). */
     val supportsService: Boolean get() = false
     fun serviceName(item: T): String = ""
@@ -281,12 +288,11 @@ object GrammaticalGenderSpec : MultiValueSpec<GrammaticalGender> {
  * entries — the existing scalar `birthday` field keeps owning `kind=="birth"`
  * (see [ContactFormState.mergeBirthday]); this editor is for everything else
  * (wedding/death/extra births beyond the one quick-entry field). The value
- * field is the same round-trip date mask the birthday field has always used
- * (`PartialDate.formatForEdit`/`parsePartialDateForEdit`), not a date picker
- * — neither platform has one.
+ * field is the shared partial-date picker (issue #1726), reading/writing the
+ * same `YYYY-MM-DD` / `--MM-DD` shape as the birthday field.
  */
 object AnniversarySpec : MultiValueSpec<Anniversary> {
-    override fun value(item: Anniversary) = item.date?.partial?.formatForEdit().orEmpty()
+    override fun value(item: Anniversary) = DateFieldValue.partialFieldValue(item.date?.partial)
     override fun withValue(item: Anniversary, value: String) =
         item.copy(date = AnniversaryDate(partial = parsePartialDateForEdit(value)))
     override fun type(item: Anniversary) = item.kind
@@ -297,6 +303,7 @@ object AnniversarySpec : MultiValueSpec<Anniversary> {
     override val typeOptions = ANNIVERSARY_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
     override val supportsPref = false
+    override val valueMode = DateFieldMode.PARTIAL
 }
 
 /**
@@ -406,7 +413,19 @@ private fun <T> MultiValueRow(
             // T115: email/phone rows advertise their ContentType so the
             // Autofill service can offer a fill; other specs keep the plain
             // field (no standard hint exists for links/services/titles/info).
-            if (spec.contentType != null) {
+            // Issue #1726: date-valued entries (anniversaries) use the shared
+            // read-only picker instead of a free-text mask.
+            val valueMode = spec.valueMode
+            if (valueMode != null) {
+                DateField(
+                    value = spec.value(item),
+                    onValueChange = onValueChange,
+                    label = stringResource(R.string.contact_value_n, rowNumber),
+                    mode = valueMode,
+                    allowClear = true,
+                    modifier = Modifier.weight(1f),
+                )
+            } else if (spec.contentType != null) {
                 AutofillOutlinedTextField(
                     value = spec.value(item),
                     onValueChange = onValueChange,

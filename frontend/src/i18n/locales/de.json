@@ -1211,6 +1211,16 @@
         "eu-mmmm": "Europäisch ausgeschrieben (TT MMMM, JJJJ)"
       }
     },
+    "timeFormat": {
+      "title": "Zeitformat",
+      "label": "Zeitformat",
+      "description": "Wählen Sie, ob Uhrzeiten im 12- oder 24-Stunden-Format angezeigt werden. „Automatisch“ verwendet die übliche Darstellung Ihrer Browsersprache.",
+      "options": {
+        "auto": "Automatisch (richtet sich nach der Sprache)",
+        "12h": "12-Stunden (3:30 PM)",
+        "24h": "24-Stunden (15:30)"
+      }
+    },
     "theme": {
       "title": "Darstellung",
       "label": "Design",

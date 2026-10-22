@@ -39,11 +39,15 @@ type Activity struct {
 	// migrations/000030_add_interaction_fields.
 	UUID string `gorm:"column:uuid;index" json:"uuid,omitempty"`
 
-	Title       string    `json:"title" validate:"required,min=1,max=200"`
-	Description string    `json:"description" validate:"max=2000"`
-	Location    string    `json:"location" validate:"max=300"`
-	Date        time.Time `json:"date" validate:"required"`
-	Contacts    []Contact `gorm:"many2many:activity_contacts;foreignKey:ID;joinForeignKey:ActivityID;References:ID;joinReferences:ContactID" json:"contacts,omitempty"`
+	Title       string `json:"title" validate:"required,min=1,max=200"`
+	Description string `json:"description" validate:"max=2000"`
+	Location    string `json:"location" validate:"max=300"`
+	// Date is the interaction's calendar day, not an instant: clients write the
+	// picked day at 00:00:00Z and every calendar-day derivation reads the UTC
+	// date of the stored value with no zone conversion (ADR 0015 category 2,
+	// issue #1823). The wire shape stays an RFC 3339 timestamp.
+	Date     time.Time `json:"date" validate:"required"`
+	Contacts []Contact `gorm:"many2many:activity_contacts;foreignKey:ID;joinForeignKey:ActivityID;References:ID;joinReferences:ContactID" json:"contacts,omitempty"`
 
 	// Type is Interaction's classifier, conventional/unvalidated —
 	// see the InteractionType* constants above.

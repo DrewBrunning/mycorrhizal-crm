@@ -71,6 +71,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /login":              bindingFor(controllers.LoginInput{}),
 	"PATCH /users/language":    bindingFor(controllers.UpdateLanguageInput{}),
 	"PATCH /users/date-format": bindingFor(controllers.UpdateDateFormatInput{}),
+	"PATCH /users/time-format": bindingFor(controllers.UpdateTimeFormatInput{}),
 	"POST /check-password-strength": {
 		boundFieldsOverride: []string{"password"}, // user_controller.go CheckPasswordStrength
 	},

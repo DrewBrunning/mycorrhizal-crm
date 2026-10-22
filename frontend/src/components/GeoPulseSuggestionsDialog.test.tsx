@@ -9,6 +9,7 @@ import {
   type GeoPulseSuggestionsResponse,
   getGeoPulseSuggestions,
 } from '../api/geopulse';
+import { setTimeFormat } from '../timeFormat';
 import GeoPulseSuggestionsDialog from './GeoPulseSuggestionsDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -115,6 +116,30 @@ test('looking up sends the chosen date and the browser timezone', async () => {
   const [date, timezone] = vi.mocked(getGeoPulseSuggestions).mock.calls[0];
   expect(date).toBe('2026-09-20');
   expect(timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+});
+
+// Issue #1830: a stay's time of day follows the 12/24-hour preference.
+test('a stay time renders 24-hour or 12-hour per the time-format preference', async () => {
+  vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
+  try {
+    setTimeFormat('24h');
+    const first = renderDialog();
+    await lookUp();
+    await screen.findByText('Cafe Nero');
+    const row24 = screen.getByText(/45 min/);
+    expect(row24?.textContent).toMatch(/\d{2}:\d{2}/);
+    expect(row24?.textContent).not.toMatch(/AM|PM/i);
+    first.unmount();
+
+    setTimeFormat('12h');
+    renderDialog();
+    await lookUp();
+    await screen.findByText('Cafe Nero');
+    const row12 = screen.getByText(/45 min/);
+    expect(row12?.textContent).toMatch(/AM|PM/i);
+  } finally {
+    setTimeFormat('auto');
+  }
 });
 
 test('shows a loading state while the lookup is in flight', async () => {

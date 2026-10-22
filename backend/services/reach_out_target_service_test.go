@@ -331,20 +331,25 @@ func TestDetectReachOutSuggestions_TargetPassFailureIsLoggedNotFatal(t *testing.
 	require.NoError(t, err)
 }
 
-// The reminder's "last interaction" date is the wall-clock date in the
-// reminder location (ADR 0023 amendment), while the dedup key (new_value)
-// stays RFC3339 UTC. Kiritimati (UTC+14) moves 2030-05-06 12:00 UTC onto
-// 2030-05-07, so a UTC-formatted date would fail here.
-func TestTargetBehind_ReminderDateUsesReminderLocation(t *testing.T) {
-	e := newTargetEnv(t)
-	e.cfg.ReminderTimezone = "Pacific/Kiritimati"
-	c := e.contact(t, "Alice", "close")
-	last := e.activity(t, c, 40)
+// The reminder's "last interaction" date is the activity's calendar day, so it
+// is formatted from the stored UTC date in every reminder zone (ADR 0015
+// category 2, issue #1823). Kiritimati (UTC+14) used to move 2030-05-06 12:00
+// UTC onto the 7th; the dedup key (new_value) stays RFC3339 UTC.
+func TestTargetBehind_ReminderDateUsesActivityUTCDate(t *testing.T) {
+	for _, zone := range []string{"America/Chicago", "Pacific/Kiritimati"} {
+		t.Run(zone, func(t *testing.T) {
+			e := newTargetEnv(t)
+			e.cfg.ReminderTimezone = zone
+			c := e.contact(t, "Alice", "close")
+			last := time.Date(2030, 5, 6, 0, 0, 0, 0, time.UTC)
+			createScoreTestActivity(t, e.db, e.user.ID, c, models.InteractionTypeCall, last)
 
-	require.Equal(t, 1, e.run(t))
-	row := e.rows(t)[0]
-	assert.Equal(t, last.UTC().Format(time.RFC3339), row.NewValue)
-	var reminder models.Reminder
-	require.NoError(t, e.db.First(&reminder, *row.ReminderID).Error)
-	assert.Equal(t, "Reach out — behind your close target: Alice Target (last interaction 2030-05-07)", reminder.Message)
+			require.Equal(t, 1, e.run(t))
+			row := e.rows(t)[0]
+			assert.Equal(t, last.UTC().Format(time.RFC3339), row.NewValue)
+			var reminder models.Reminder
+			require.NoError(t, e.db.First(&reminder, *row.ReminderID).Error)
+			assert.Equal(t, "Reach out — behind your close target: Alice Target (last interaction 2030-05-06)", reminder.Message)
+		})
+	}
 }

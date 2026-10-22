@@ -511,6 +511,7 @@ func issueLoginSession(c *gin.Context, cfg *config.Config, db *gorm.DB, user mod
 	c.JSON(http.StatusOK, gin.H{
 		"language":    user.Language,
 		"date_format": user.DateFormat,
+		"time_format": user.TimeFormat,
 	})
 }
 

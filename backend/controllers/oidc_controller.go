@@ -394,6 +394,7 @@ func OIDCNativeExchangeHandler(cfg *config.Config) gin.HandlerFunc {
 			Token:      tokenString,
 			Language:   user.Language,
 			DateFormat: user.DateFormat,
+			TimeFormat: user.TimeFormat,
 		})
 	}
 }

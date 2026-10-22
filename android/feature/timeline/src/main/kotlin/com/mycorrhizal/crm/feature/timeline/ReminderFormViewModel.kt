@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -46,7 +47,7 @@ data class ReminderFormState(
     fun toReminder(): Reminder = Reminder(
         id = reminderId ?: 0,
         message = message.trim(),
-        remindAt = remindAt.trim().ifBlank { null },
+        remindAt = DateFieldValue.normalizeCalendarDayInstant(remindAt),
         recurrence = recurrence,
         byMail = byMail,
         reoccurFromCompletion = reoccurFromCompletion,
@@ -56,16 +57,11 @@ data class ReminderFormState(
     fun validate(): Int? = when {
         !hasMessage -> R.string.reminder_error_message
         remindAt.isBlank() -> R.string.reminder_error_remind_at_required
-        remindAt.isNotBlank() && !remindAt.matches(ISO_DATETIME_REGEX) -> R.string.reminder_error_remind_at
         recurrence !in ReminderRecurrence.ALL -> R.string.reminder_error_recurrence
         else -> null
     }
 
     companion object {
-        val ISO_DATETIME_REGEX = Regex(
-            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
-        )
-
         /**
          * Web's `getDateForRecurrence` (ReminderDialog.tsx): the default due
          * date on create for a chosen recurrence, computed from today. Returns

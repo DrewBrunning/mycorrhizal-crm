@@ -3,6 +3,7 @@
 // Token is stored in httpOnly cookie (not accessible from JS for security)
 // User info is cached in localStorage for UI purposes
 
+import { initializeTimeFormatFromBackend } from './timeFormat';
 import { getAssertion } from './webauthnCeremony';
 
 // `?.` (not just `||`) because this module is also loaded directly by Node in
@@ -19,6 +20,7 @@ const USER_INFO_KEY = 'user_info';
 export interface LoginResponse {
   language?: string;
   date_format?: string;
+  time_format?: string;
   // N8: present and true when the account has 2FA enabled. In that case NO
   // session exists yet — call login2FA() with a TOTP/recovery code to
   // complete the login.
@@ -70,6 +72,7 @@ export async function loginUser(identifier: string, password: string): Promise<L
   return {
     language: data.language,
     date_format: data.date_format,
+    time_format: data.time_format,
   };
 }
 
@@ -108,6 +111,7 @@ export async function login2FA(code: string): Promise<LoginResponse> {
   return {
     language: data.language,
     date_format: data.date_format,
+    time_format: data.time_format,
   };
 }
 
@@ -138,7 +142,11 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
 
   await fetchAndCacheUserInfo();
 
-  return { language: data.language, date_format: data.date_format };
+  return {
+    language: data.language,
+    date_format: data.date_format,
+    time_format: data.time_format,
+  };
 }
 
 async function passkeyErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -170,6 +178,9 @@ export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
       self_contact_vcard_uid: data.self_contact_vcard_uid ?? null,
     };
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    // Issue #1830: keep the time-format preference in step with the server (it
+    // may have been changed on another device).
+    initializeTimeFormatFromBackend(data.time_format);
     return userInfo;
   } catch {
     return null;

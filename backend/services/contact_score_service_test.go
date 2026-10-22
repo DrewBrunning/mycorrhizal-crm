@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -359,6 +360,48 @@ func TestDaysBetween(t *testing.T) {
 		// somehow does.
 		assert.Equal(t, 0, daysBetween(now.AddDate(0, 0, 5), now))
 	})
+}
+
+// TestComputeContactScore_RecencyUsesActivityUTCCalendarDay pins issue #1823's
+// recency half: the interaction's calendar day is its stored UTC date, and
+// "days since" counts whole calendar days against today in the reminder zone.
+// Elapsed hours got both edges wrong -- a same-day activity could read "1 day
+// ago" late west of UTC, and a just-past-midnight day could still read "0".
+func TestComputeContactScore_RecencyUsesActivityUTCCalendarDay(t *testing.T) {
+	cases := []struct {
+		name     string
+		zone     string
+		nowUTC   time.Time
+		wantDays int
+	}{
+		// 23:00 on 22 Oct in Chicago is already 04:00Z on the 23rd; elapsed
+		// hours from the 22nd's 00:00Z would say 1 day, the calendar day says 0.
+		{"west of UTC, late on the activity day", "America/Chicago", time.Date(2026, 10, 23, 4, 0, 0, 0, time.UTC), 0},
+		// 00:30 on 23 Oct in Auckland is still 11:30Z on the 22nd; elapsed
+		// hours would say 0, but the local calendar has ticked over to day 1.
+		{"east of UTC, just past local midnight", "Pacific/Auckland", time.Date(2026, 10, 22, 11, 30, 0, 0, time.UTC), 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			useFakeClock(t, tc.nowUTC)
+			db := setupContactScoreTestDB(t)
+			user := createScoreTestUser(t, db, "score-recency-day")
+			contact := createScoreTestContact(t, db, user.ID, "Alice")
+			createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall,
+				time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC))
+			require.NoError(t, db.Create(&models.CadencePolicy{
+				UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 7,
+			}).Error)
+
+			loc, err := time.LoadLocation(tc.zone)
+			require.NoError(t, err)
+			result, err := ComputeContactScore(db, user.ID, &contact, Now().In(loc))
+			require.NoError(t, err)
+			assert.Contains(t, result.Recency.Reason,
+				"Last qualifying interaction "+strconv.Itoa(tc.wantDays)+" day(s) ago (target every 7 days)")
+		})
+	}
 }
 
 // --- Error-path coverage: each bulk query's failure must be reported, not

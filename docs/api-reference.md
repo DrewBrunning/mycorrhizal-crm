@@ -96,6 +96,7 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 | `POST` | `/users/change-password` | Change password |
 | `PATCH` | `/users/language` | Update UI language preference |
 | `PATCH` | `/users/date-format` | Update date format preference |
+| `PATCH` | `/users/time-format` | Update time format (auto/12h/24h) preference |
 | `GET` | `/users/custom-fields` | Get custom field names |
 | `PATCH` | `/users/custom-fields` | Update custom field names |
 

@@ -45,6 +45,7 @@ import {
   type WebhookCreateResponse,
   type WebhookDelivery,
 } from '../api/webhooks';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 import LoadError from './LoadError';
 
 const SUPPORTED_EVENTS = [
@@ -462,7 +463,7 @@ export default function WebhooksSettings() {
                                     color: 'text.secondary',
                                   }}
                                 >
-                                  {new Date(d.created_at).toLocaleString()}
+                                  {formatLocalDateTime(new Date(d.created_at))}
                                 </Typography>
                                 {d.failed_permanently && (
                                   <Chip

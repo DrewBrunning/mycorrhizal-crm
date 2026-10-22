@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -319,25 +320,34 @@ class LifeEventFormTest {
     }
 
     @Test
-    fun `partial date with month and day enables the yearly reminder`() {
+    fun `a yearless partial date opens with year unknown checked and enables the reminder`() {
         var confirmed: LifeEventFormData? = null
-        setContent(onConfirm = { confirmed = it })
+        setContent(
+            initial = LifeEvent(
+                id = "e1",
+                entityId = "uid",
+                type = "anniversary",
+                category = "family_relationships",
+                date = com.mycorrhizal.crm.model.network.PartialDate(month = 6, day = 15),
+            ),
+            onConfirm = { confirmed = it },
+        )
 
-        composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & relationships").performClick()
-        composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("Anniversary").performClick()
+        // Issue #1726: the partial date is one picker field, rendered in the
+        // user's date format (EU by default), not Year/Month/Day text boxes.
+        composeTestRule.onNodeWithText("15.06.").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("life-event-date").performClick()
+        composeTestRule.onNodeWithTag("date-field-year-unknown").assertIsOn()
+        composeTestRule.onNodeWithText("Cancel").performClick()
 
-        // Month+day present enables the reminder checkbox; then confirm.
-        composeTestRule.onNodeWithText("Month").performScrollTo().performTextReplacement("6")
-        composeTestRule.onNodeWithText("Day").performScrollTo().performTextReplacement("15")
         // #199: Modifier.toggleable on the row merges "Remind me yearly" into
         // the checkbox's own accessible name -- previously an unnamed
         // Checkbox sat next to a plain, unassociated Text.
         composeTestRule.onNodeWithText("Remind me yearly").performScrollTo().assertIsToggleable()
         composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
 
+        assertNull(confirmed?.date?.year)
         assertEquals(6, confirmed?.date?.month)
         assertEquals(15, confirmed?.date?.day)
         assertEquals(true, confirmed?.remind)
@@ -346,16 +356,21 @@ class LifeEventFormTest {
     @Test
     fun `a year-only date cannot enable the reminder`() {
         var confirmed: LifeEventFormData? = null
-        setContent(onConfirm = { confirmed = it })
+        setContent(
+            initial = LifeEvent(
+                id = "e1",
+                entityId = "uid",
+                type = "anniversary",
+                category = "family_relationships",
+                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2019),
+            ),
+            onConfirm = { confirmed = it },
+        )
 
-        composeTestRule.onNodeWithTag("life-event-category").performClick()
-        composeTestRule.onNodeWithText("Family & relationships").performClick()
-        composeTestRule.onNodeWithTag("life-event-type").performClick()
-        composeTestRule.onNodeWithText("Anniversary").performClick()
-
-        composeTestRule.onNodeWithText("Year").performScrollTo().performTextReplacement("2019")
-        composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.onNodeWithText("2019").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().assertIsNotEnabled()
+        composeTestRule.onNodeWithTag("date-field-year-unknown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Save").performClick()
 
         // Remind is forced false when month/day are absent.
         assertEquals(2019, confirmed?.date?.year)
@@ -372,15 +387,14 @@ class LifeEventFormTest {
                 type = "job_change",
                 category = "work_education",
                 description = "Started at Acme",
-                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2024, month = 3),
+                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2024, month = 3, day = 1),
             ),
             onConfirm = { confirmed = it },
         )
 
         composeTestRule.onNodeWithText("Edit life event").assertIsDisplayed()
         composeTestRule.onNodeWithText("Started a new job").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2024").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("3").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("01.03.2024").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Started at Acme").performScrollTo().assertIsDisplayed()
     }
 
