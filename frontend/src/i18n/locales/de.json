@@ -226,7 +226,15 @@
     "registrationFailed": "Registrierung fehlgeschlagen",
     "registrationSuccess": "Registrierung erfolgreich! Sie können sich jetzt anmelden.",
     "registrationDisabled": "Die Registrierung ist auf diesem Server derzeit deaktiviert. Wenden Sie sich an Ihren Administrator, wenn Sie ein Konto benötigen.",
-    "backToLogin": "Zurück zur Anmeldung"
+    "backToLogin": "Zurück zur Anmeldung",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto? Anmelden",
+    "passwordHelp": "Mindestens 8 Zeichen. Sicherer sind 15+ Zeichen oder eine Passphrase mit 20+ Zeichen. Vermeiden Sie gängige Passwörter."
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "description": "Diese Seite existiert nicht. Sie wurde möglicherweise verschoben, oder der Link ist falsch.",
+    "goToContacts": "Zu den Kontakten",
+    "goToDashboard": "Zum Dashboard"
   },
   "contacts": {
     "title": "Kontakte",
@@ -578,7 +586,7 @@
       "relatedTo": "Verwandt mit",
       "members": "Mitglieder"
     },
-    "cardKindLabel": "Kontaktart",
+    "cardKindLabel": "Art",
     "speakToAsLabel": "Pronomen & grammatikalisches Geschlecht",
     "personalInfoLabel": "Persönliche Angaben (Expertise / Hobbys / Interessen)",
     "keywordsLabel": "Schlagwörter",
@@ -617,6 +625,7 @@
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
+    "notFoundDescription": "Dieser Kontakt wurde möglicherweise gelöscht, oder der Link ist falsch.",
     "loadError": "Dieser Kontakt konnte nicht geladen werden.",
     "timelineLoadError": "Einige Zeitachsendaten konnten nicht geladen werden. Bitte lade die Seite neu.",
     "section": {
@@ -1364,10 +1373,18 @@
       "unsupported": "Dieser Browser unterstützt keine Passkeys.",
       "removeButton": "Entfernen",
       "removeAria": "Passkey {{name}} entfernen",
+      "renameButton": "Umbenennen",
+      "renameAria": "Passkey {{name}} umbenennen",
+      "renameSuccess": "Passkey umbenannt.",
+      "renameError": "Der Passkey konnte nicht umbenannt werden. Bitte versuchen Sie es erneut.",
       "removeSuccess": "Passkey entfernt.",
       "invalidProof": "Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
       "createdLastUsed": "Hinzugefügt am {{created}} · zuletzt verwendet am {{lastUsed}}",
       "createdNeverUsed": "Hinzugefügt am {{created}} · nie verwendet",
+      "rename": {
+        "title": "Passkey umbenennen",
+        "label": "Name des Passkeys"
+      },
       "remove": {
         "title": "Passkey entfernen",
         "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein, um „{{name}}“ zu entfernen.",
@@ -1596,7 +1613,13 @@
         "name": "Name",
         "work": "Beruf",
         "personal": "Persönlich",
-        "mycorrhizal": "Notizen"
+        "mycorrhizal": "Beziehungsnotizen"
+      },
+      "descriptions": {
+        "anniversary": "Ein einzelnes Datum, etwa eine Hochzeit oder das erste Kennenlernen.",
+        "anniversaries": "Eine Liste von Daten, die Sie sich merken möchten, jeweils mit eigener Art.",
+        "language": "Die Sprache, in der diese Kontaktkarte geschrieben ist – nicht eine Sprache, die die Person spricht.",
+        "preferredLanguages": "Die Sprachen, die diese Person spricht."
       }
     },
     "data": {
@@ -2259,7 +2282,7 @@
     "hiddenMatchesHidden_other": "{{count}} über andere Felder gefunden"
   },
   "triage": {
-    "title": "Kreis-/Tag-Migration",
+    "title": "Kreis- & Tag-Bereinigung",
     "description": "Ordnen Sie Ihre bisherigen Kreise als Kreise (soziale Gruppen) oder Tags (Eigenschaften) ein oder überspringen Sie sie. Führen Sie dies einmalig aus, um vom alten Freitext-System zu migrieren.",
     "stepClassify": "Einordnen",
     "stepPreview": "Vorschau",

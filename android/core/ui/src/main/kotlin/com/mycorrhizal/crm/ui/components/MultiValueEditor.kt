@@ -3,24 +3,26 @@ package com.mycorrhizal.crm.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Anniversary
@@ -101,6 +105,18 @@ fun replaceFirstContext(contexts: List<String>?, type: String?): List<String>? =
     else listOf(type) + (contexts?.drop(1) ?: emptyList())
 
 /**
+ * Issue #1724: legacy flat-Type data stores the type in `label`, while the
+ * editor writes `contexts[0]`. When `contexts` is empty, show the label in the
+ * Type dropdown if it is a known token, so the form and the detail screen
+ * (which already falls back to `label`) agree. A free-text custom label is
+ * left out of the dropdown — it is not a type the user can select here.
+ */
+private fun knownTypeFromLabel(label: String?, options: List<String>): String? =
+    label?.trim()?.takeIf { it.isNotEmpty() }?.let { candidate ->
+        options.firstOrNull { it.equals(candidate, ignoreCase = true) }
+    }
+
+/**
  * Per-type editor contract for [MultiValueEditor]. One spec per nested Card
  * entry type (Email/Phone/OnlineService/Title/PersonalInfo/Resource). The
  * three accessor pairs are the whole guarantee of the ticket: a value/type
@@ -126,7 +142,27 @@ interface MultiValueSpec<T> {
     fun blank(): T
     val typeOptions: List<String>
     val keyboardType: KeyboardType
-    /** False for entry types that carry no `pref` (Title, PersonalInfo, OnlineService) — hides the star. */
+    /**
+     * Issue #1724: the field-specific label for the value input, replacing the
+     * generic "Value N". Every spec must name what the box holds — the
+     * grammatical-gender row's free text is a *language* tag, not a gender.
+     */
+    val valueLabel: Int
+    /**
+     * Issue #1724: a literal format example shown as the input placeholder
+     * (e.g. `name@example.com`, `de, en-US, de-AT`), or null when the format
+     * is free text. The example itself stays literal across locales.
+     */
+    val valueExample: Int? get() = null
+    /** Issue #1724: translated supporting text under the input, or null. */
+    val valueHint: Int? get() = null
+    /**
+     * Issue #1724: the singular noun used for the add/remove actions
+     * ("Add email", "Remove email 2"). Separate from [valueLabel] where the
+     * field label is not a noun (e.g. "Address / URL" → "Online service").
+     */
+    val itemLabel: Int
+    /** False for entry types that carry no `pref` (Title, PersonalInfo, OnlineService) — hides the preferred chip. */
     val supportsPref: Boolean get() = true
     /**
      * When set, the value field is the shared [DateField] in this mode
@@ -149,13 +185,17 @@ interface MultiValueSpec<T> {
 object EmailSpec : MultiValueSpec<Email> {
     override fun value(item: Email) = item.address.orEmpty()
     override fun withValue(item: Email, value: String) = item.copy(address = value)
-    override fun type(item: Email) = item.contexts?.firstOrNull()
+    override fun type(item: Email) =
+        item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
     override fun withType(item: Email, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
     override fun pref(item: Email) = item.pref
     override fun withPref(item: Email, pref: Int?) = item.copy(pref = pref)
     override fun blank() = Email(address = "")
     override val typeOptions = CONTACT_TYPE_OPTIONS
     override val keyboardType = KeyboardType.Email
+    override val valueLabel = R.string.contact_email
+    override val valueExample = R.string.contact_example_email
+    override val itemLabel = R.string.contact_item_email
     override val contentType = ContentType.EmailAddress
 }
 
@@ -164,7 +204,10 @@ object PhoneSpec : MultiValueSpec<Phone> {
     override fun withValue(item: Phone, value: String) = item.copy(number = value)
     // The web's type is `features[0] || contexts[0]` (contacts.ts); mirror it so a
     // vCard-imported "voice,fax" phone shows its feature, not a stale context.
-    override fun type(item: Phone) = item.features?.firstOrNull() ?: item.contexts?.firstOrNull()
+    override fun type(item: Phone) =
+        item.features?.firstOrNull()
+            ?: item.contexts?.firstOrNull()
+            ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
     override fun withType(item: Phone, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
     override fun pref(item: Phone) = item.pref
     override fun withPref(item: Phone, pref: Int?) = item.copy(pref = pref)
@@ -174,6 +217,10 @@ object PhoneSpec : MultiValueSpec<Phone> {
     override fun blank() = Phone(number = "", contexts = listOf("cell"))
     override val typeOptions = CONTACT_TYPE_OPTIONS
     override val keyboardType = KeyboardType.Phone
+    override val valueLabel = R.string.contact_phone_number
+    override val valueExample = R.string.contact_example_phone
+    override val valueHint = R.string.contact_phone_format_hint
+    override val itemLabel = R.string.contact_item_phone
     override val contentType = ContentType.PhoneNumber
 }
 
@@ -185,13 +232,17 @@ object OnlineServiceSpec : MultiValueSpec<OnlineService> {
         // link-resolver key) rides along untouched.
         if (item.uri.isNullOrBlank() && !item.user.isNullOrBlank()) item.copy(uri = value, user = null)
         else item.copy(uri = value)
-    override fun type(item: OnlineService) = item.contexts?.firstOrNull()
+    override fun type(item: OnlineService) =
+        item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTEXT_OPTIONS)
     override fun withType(item: OnlineService, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
     override fun pref(item: OnlineService) = item.pref
     override fun withPref(item: OnlineService, pref: Int?) = item.copy(pref = pref)
     override fun blank() = OnlineService()
     override val typeOptions = CONTEXT_OPTIONS
     override val keyboardType = KeyboardType.Uri
+    override val valueLabel = R.string.contact_online_service_value
+    override val valueExample = R.string.contact_example_online_service
+    override val itemLabel = R.string.contact_item_online_service
     // The web's OnlineServiceEditor has no preferred star; don't offer one here either.
     override val supportsPref = false
     override val supportsService = true
@@ -202,13 +253,17 @@ object OnlineServiceSpec : MultiValueSpec<OnlineService> {
 object LinkSpec : MultiValueSpec<Resource> {
     override fun value(item: Resource) = item.uri.orEmpty()
     override fun withValue(item: Resource, value: String) = item.copy(uri = value)
-    override fun type(item: Resource) = item.contexts?.firstOrNull()
+    override fun type(item: Resource) =
+        item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
     override fun withType(item: Resource, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
     override fun pref(item: Resource) = item.pref
     override fun withPref(item: Resource, pref: Int?) = item.copy(pref = pref)
     override fun blank() = Resource()
     override val typeOptions = CONTACT_TYPE_OPTIONS
     override val keyboardType = KeyboardType.Uri
+    override val valueLabel = R.string.contact_url
+    override val valueExample = R.string.contact_example_url
+    override val itemLabel = R.string.contact_item_link
 }
 
 object TitleSpec : MultiValueSpec<Title> {
@@ -221,6 +276,8 @@ object TitleSpec : MultiValueSpec<Title> {
     override fun blank() = Title(name = "", kind = "title")
     override val typeOptions = TITLE_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_title_or_role
+    override val itemLabel = R.string.contact_item_title
     override val supportsPref = false
 }
 
@@ -234,6 +291,8 @@ object PersonalInfoSpec : MultiValueSpec<PersonalInfo> {
     override fun blank() = PersonalInfo(kind = "hobby", value = "")
     override val typeOptions = PERSONAL_INFO_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_personal_info_value
+    override val itemLabel = R.string.contact_item_personal_info
     override val supportsPref = false
 }
 
@@ -248,6 +307,10 @@ object LanguagePrefSpec : MultiValueSpec<LanguagePref> {
     override fun blank() = LanguagePref(language = "")
     override val typeOptions = CONTEXT_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_language
+    override val valueExample = R.string.contact_example_languages
+    override val valueHint = R.string.contact_language_hint
+    override val itemLabel = R.string.contact_item_preferred_language
 }
 
 /** Issue #832: `SpeakToAs.pronouns[]` — same shape as [EmailSpec], free-text pronouns value. */
@@ -261,6 +324,9 @@ object PronounsSpec : MultiValueSpec<Pronouns> {
     override fun blank() = Pronouns(pronouns = "")
     override val typeOptions = CONTEXT_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_pronouns
+    override val valueExample = R.string.contact_example_pronouns
+    override val itemLabel = R.string.contact_item_pronoun
 }
 
 /**
@@ -280,6 +346,10 @@ object GrammaticalGenderSpec : MultiValueSpec<GrammaticalGender> {
     override fun blank() = GrammaticalGender(value = "common")
     override val typeOptions = GRAMMATICAL_GENDER_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_language
+    override val valueExample = R.string.contact_example_grammatical_gender_language
+    override val valueHint = R.string.contact_grammatical_gender_hint
+    override val itemLabel = R.string.contact_item_grammatical_gender
     override val supportsPref = false
 }
 
@@ -302,6 +372,8 @@ object AnniversarySpec : MultiValueSpec<Anniversary> {
     override fun blank() = Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate()))
     override val typeOptions = ANNIVERSARY_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
+    override val valueLabel = R.string.contact_date
+    override val itemLabel = R.string.contact_item_anniversary
     override val supportsPref = false
     override val valueMode = DateFieldMode.PARTIAL
 }
@@ -328,7 +400,7 @@ fun <T> applyPrefToggle(items: List<T>, index: Int, spec: MultiValueSpec<T>): Li
  * the only per-type difference is the spec, so EmailSpec/PhoneSpec/
  * OnlineServiceSpec/… share the exact same add/edit/delete/preferred flow.
  *
- * The `pref` star is list-level logic, not per-spec: at most one entry per
+ * The `pref` chip is list-level logic, not per-spec: at most one entry per
  * list may hold `pref = 1` (the shipped web behavior, T58), so toggling it on
  * one row clears it on every other row. Enforcing it here means no future spec
  * can forget it.
@@ -351,6 +423,7 @@ fun <T> MultiValueEditor(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 8.dp),
         )
+        val itemLabel = stringResource(spec.itemLabel)
         items.forEachIndexed { index, item ->
             val canRemove = items.size > 1
             MultiValueRow(
@@ -358,6 +431,9 @@ fun <T> MultiValueEditor(
                 spec = spec,
                 rowNumber = index + 1,
                 canRemove = canRemove,
+                // Issue #1724: a row number only in TalkBack's description, when
+                // there is more than one row to tell apart.
+                showRowNumber = items.size > 1,
                 onValueChange = { value ->
                     onChange(items.mapIndexed { i, it -> if (i == index) spec.withValue(it, value) else it })
                 },
@@ -375,8 +451,12 @@ fun <T> MultiValueEditor(
                 },
             )
         }
-        IconButton(onClick = { onChange(items + spec.blank()) }) {
-            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
+        // Issue #1724: visible "Add email" text (web parity) instead of a bare
+        // plus whose only labelling was the generic "Add".
+        TextButton(onClick = { onChange(items + spec.blank()) }) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.contact_add_named, itemLabel))
         }
     }
 }
@@ -387,12 +467,20 @@ private fun <T> MultiValueRow(
     spec: MultiValueSpec<T>,
     rowNumber: Int,
     canRemove: Boolean,
+    showRowNumber: Boolean,
     onValueChange: (String) -> Unit,
     onServiceNameChange: (String) -> Unit,
     onTypeChange: (String?) -> Unit,
     onPrefToggle: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val valueLabel = stringResource(spec.valueLabel)
+    val valueExample = spec.valueExample?.let { stringResource(it) }
+    val valueHint = spec.valueHint?.let { stringResource(it) }
+    val itemLabel = stringResource(spec.itemLabel)
+    val valueDescription =
+        if (showRowNumber) stringResource(R.string.contact_field_row_named, valueLabel, rowNumber) else valueLabel
+    val valueModifier = Modifier.semantics { contentDescription = valueDescription }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (spec.supportsService) {
             // The service name (e.g. "Signal") is what the detail screen's link-action
@@ -420,32 +508,39 @@ private fun <T> MultiValueRow(
                 DateField(
                     value = spec.value(item),
                     onValueChange = onValueChange,
-                    label = stringResource(R.string.contact_value_n, rowNumber),
+                    label = valueLabel,
                     mode = valueMode,
                     allowClear = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = valueModifier.weight(1f),
                 )
             } else if (spec.contentType != null) {
                 AutofillOutlinedTextField(
                     value = spec.value(item),
                     onValueChange = onValueChange,
-                    label = stringResource(R.string.contact_value_n, rowNumber),
+                    label = valueLabel,
                     contentType = spec.contentType,
                     keyboardOptions = KeyboardOptions(keyboardType = spec.keyboardType),
-                    modifier = Modifier.weight(1f),
+                    placeholder = valueExample,
+                    supportingText = valueHint,
+                    modifier = valueModifier.weight(1f),
                 )
             } else {
                 OutlinedTextField(
                     value = spec.value(item),
                     onValueChange = onValueChange,
-                    label = { Text(stringResource(R.string.contact_value_n, rowNumber)) },
+                    label = { Text(valueLabel) },
+                    placeholder = valueExample?.let { { Text(it) } },
+                    supportingText = valueHint?.let { { Text(it) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = spec.keyboardType),
-                    modifier = Modifier.weight(1f),
+                    modifier = valueModifier.weight(1f),
                 )
             }
             IconButton(onClick = onRemove, enabled = canRemove) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.contact_remove_named, itemLabel, rowNumber),
+                )
             }
         }
         Row(
@@ -459,16 +554,14 @@ private fun <T> MultiValueRow(
                 modifier = Modifier.weight(1f),
             )
             if (spec.supportsPref) {
-                val preferred = spec.pref(item) == 1
-                IconButton(onClick = onPrefToggle) {
-                    Icon(
-                        imageVector = if (preferred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = stringResource(
-                            if (preferred) R.string.contact_preferred else R.string.contact_set_preferred,
-                        ),
-                        tint = if (preferred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // Issue #1724: a star here means "preferred value", but a star
+                // everywhere else in the app means "favourite contact". A
+                // selected FilterChip is unambiguous and announces its state.
+                FilterChip(
+                    selected = spec.pref(item) == 1,
+                    onClick = onPrefToggle,
+                    label = { Text(stringResource(R.string.contact_preferred)) },
+                )
             }
         }
     }

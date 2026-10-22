@@ -5,6 +5,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -293,5 +294,44 @@ class ApiTokensScreenTest {
 
         composeTestRule.onNodeWithText("Done, I saved it").performClick()
         assert(dismissed)
+    }
+
+    // --- Issue #1775: destructive Revoke all moved out of the top bar ---
+
+    @Test
+    fun `revoke all is not a top-bar icon and lives in the overflow`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+        setScreen(ApiTokensViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription("Revoke all").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("More options").assertIsDisplayed()
+    }
+
+    @Test
+    fun `opening the overflow then revoke all shows the confirmation and revokes`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+        coEvery { repository.revokeAll() } returns Result.success(RevokeAllApiTokensResponse(revoked = 1))
+        setScreen(ApiTokensViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("Revoke all").performClick()
+        composeTestRule.onNodeWithText("Revoke all tokens").assertIsDisplayed()
+        // The dialog's confirm button carries the same label as the menu item.
+        composeTestRule.onAllNodesWithText("Revoke all")[0].performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("1 tokens revoked").assertIsDisplayed()
+    }
+
+    @Test
+    fun `revoke all is disabled in the overflow when no token is active`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Old", revokedAt = "2026-01-02T00:00:00Z")))
+        setScreen(ApiTokensViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("Revoke all").assertIsNotEnabled()
     }
 }

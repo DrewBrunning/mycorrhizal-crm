@@ -127,4 +127,51 @@ class ContactFieldSettingsScreenTest {
 
         composeTestRule.onNodeWithText("Email").assertDoesNotExist()
     }
+
+    @Test
+    fun `the former Mycorrhizal group is renamed to Relationship notes`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactFieldSettingsContent(state = ContactFieldSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Relationship notes").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Mycorrhizal").assertDoesNotExist()
+    }
+
+    @Test
+    fun `ambiguous pairs carry one-line descriptions`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactFieldSettingsContent(state = ContactFieldSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "A single date, such as a wedding or the first time you met.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "A list of dates you want to remember, each with its own type.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "The language this contact card is written in, not a language the person speaks.",
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "The languages this person speaks.",
+        ).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `jargon labels match the form wording`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactFieldSettingsContent(state = ContactFieldSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Kind").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Instant messaging").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
+    }
 }

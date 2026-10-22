@@ -35,9 +35,9 @@ class NextcloudSettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Server URL").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Username").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("App password").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Nextcloud server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Username *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("App password *").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -151,5 +151,18 @@ class NextcloudSettingsScreenTest {
 
         composeTestRule.onNodeWithText("Could not save")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+    }
+
+    @Test
+    fun `a disabled save button explains what is required`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NextcloudSettingsContent(state = NextcloudSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Fill in the required fields to enable Save.")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }

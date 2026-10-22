@@ -51,6 +51,7 @@ data class FieldDefinitionFormState(
     val groupSuggestions: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isDeleting: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
@@ -64,6 +65,7 @@ data class FieldDefinitionFormState(
         groupSuggestions = emptyList(),
         isLoading = false,
         isSaving = false,
+        isDeleting = false,
         errorRes = null,
         error = null,
         baseline = null,
@@ -146,6 +148,7 @@ private fun formatConstraintNumber(value: Double): String =
 
 sealed interface FieldDefinitionFormEvent {
     data object Saved : FieldDefinitionFormEvent
+    data object Deleted : FieldDefinitionFormEvent
 }
 
 @HiltViewModel
@@ -250,6 +253,28 @@ class FieldDefinitionFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Issue #1775: delete lives on the edit screen now, not as a per-row list action.
+     * Emits [FieldDefinitionFormEvent.Deleted] so the caller can pop back; a failure keeps
+     * the form open and surfaces the error like a save failure.
+     */
+    fun delete() {
+        val id = _uiState.value.fieldDefinitionId ?: return
+        if (_uiState.value.isDeleting) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDeleting = true, errorRes = null, error = null) }
+            repository.delete(id).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isDeleting = false) }
+                    _events.value = FieldDefinitionFormEvent.Deleted
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isDeleting = false, error = error.displayMessage) }
                 },
             )
         }

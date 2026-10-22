@@ -35,8 +35,8 @@ class PaperlessSettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Base URL").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Paperless server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -143,5 +143,18 @@ class PaperlessSettingsScreenTest {
 
         composeTestRule.onNodeWithText("Could not save")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+    }
+
+    @Test
+    fun `a disabled save button explains what is required`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Fill in the required fields to enable Save.")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }

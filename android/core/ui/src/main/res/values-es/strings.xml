@@ -62,6 +62,7 @@
     <string name="nav_map">Mapa</string>
     <string name="cd_menu">Menú</string>
     <string name="row_more_actions_named">Más acciones para %1$s</string>
+    <string name="cd_more_options">Más opciones</string>
     <string name="cd_back">Atrás</string>
 
     <!-- Inicio de sesión -->
@@ -319,13 +320,45 @@
     <string name="contact_tags_select">Seleccionar etiqueta…</string>
     <string name="contact_birthday">Cumpleaños</string>
     <string name="contact_value_n">Valor %1$d</string>
+    <!-- Issue #1724: etiquetas por campo, ejemplos de formato y nombres de
+         añadir/eliminar para los editores de varios valores. -->
+    <string name="contact_phone_number">Número de teléfono</string>
+    <string name="contact_online_service_value">Dirección / URL</string>
+    <string name="contact_title_or_role">Título o rol</string>
+    <string name="contact_personal_info_value">Experiencia / afición / interés</string>
+    <string name="contact_url">URL</string>
+    <string name="contact_date">Fecha</string>
+    <string name="contact_item_link">enlace</string>
+    <string name="contact_item_title">título</string>
+    <string name="contact_item_online_service">servicio en línea</string>
+    <string name="contact_item_preferred_language">idioma preferido</string>
+    <string name="contact_item_pronoun">pronombre</string>
+    <string name="contact_item_email">correo electrónico</string>
+    <string name="contact_item_phone">número de teléfono</string>
+    <string name="contact_item_address">dirección</string>
+    <string name="contact_item_personal_info">información personal</string>
+    <string name="contact_item_grammatical_gender">género gramatical</string>
+    <string name="contact_item_anniversary">aniversario</string>
+    <string name="contact_example_email">name@example.com</string>
+    <string name="contact_example_phone">+1 555 123 4567</string>
+    <string name="contact_phone_format_hint">Se recomienda el formato internacional.</string>
+    <string name="contact_example_online_service">https://… o user@server</string>
+    <string name="contact_example_url">https://example.com</string>
+    <string name="contact_example_language_tag">de-AT</string>
+    <string name="contact_example_languages">de, en-US, de-AT</string>
+    <string name="contact_language_hint">Etiqueta BCP-47, p. ej. de, en-US, de-AT.</string>
+    <string name="contact_example_grammatical_gender_language">de, fr, es</string>
+    <string name="contact_grammatical_gender_hint">Etiqueta de idioma BCP-47; el desplegable es el género.</string>
+    <string name="contact_example_pronouns">they/them, she/her</string>
+    <string name="contact_add_named">Añadir %1$s</string>
+    <string name="contact_remove_named">Eliminar %1$s %2$d</string>
+    <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Eliminar</string>
     <string name="contact_add">Añadir</string>
     <!-- M7: editor de valores múltiples -->
     <string name="contact_field_type">Tipo</string>
     <string name="contact_type_none">Ninguno</string>
     <string name="contact_preferred">Preferido</string>
-    <string name="contact_set_preferred">Marcar como preferido</string>
     <string name="contact_type_home">Casa</string>
     <string name="contact_type_work">Trabajo</string>
     <string name="contact_type_cell">Móvil</string>
@@ -353,7 +386,7 @@
     <string name="contact_anniversary_kind_death">Fallecimiento</string>
     <string name="contact_anniversary_kind_wedding">Boda</string>
     <!-- Issue #832: Card.kind enum (RFC 9553 §2.1.4) — distinct from crm.kind (human/animal) -->
-    <string name="contact_card_kind_label">Tipo de tarjeta</string>
+    <string name="contact_card_kind_label">Tipo</string>
     <string name="contact_card_kind_individual">Individual</string>
     <string name="contact_card_kind_group">Grupo</string>
     <string name="contact_card_kind_org">Organización</string>
@@ -666,6 +699,7 @@
     <string name="settings_webhooks_event_birthday_occurred">Cumpleaños</string>
 
     <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_save_requires_fields">Completa los campos obligatorios para activar Guardar.</string>
     <string name="settings_api_tokens_title">Tokens API</string>
     <string name="settings_api_tokens_create">Crear token</string>
     <string name="settings_api_tokens_revoke_all">Revocar todo</string>
@@ -785,7 +819,7 @@
     <string name="settings_immich_title">Immich</string>
     <string name="immich_settings_description">Conecta Immich para vincular fotos y personas a tus contactos.</string>
     <string name="immich_settings_base_url">URL del servidor Immich</string>
-    <string name="immich_settings_api_key">Clave de API</string>
+    <string name="immich_settings_api_key">Token de API</string>
     <string name="immich_settings_api_key_hint_existing">Ya hay una clave guardada. Deja el campo vacío para conservarla.</string>
     <string name="immich_settings_api_key_hint_new">Crea una clave de API en los ajustes de tu cuenta de Immich.</string>
     <string name="immich_settings_sync_enabled">Sincronizar automáticamente</string>
@@ -801,7 +835,7 @@
     <!-- Ajustes: configuración de la conexión Paperless-ngx (issue #833). -->
     <string name="settings_paperless_title">Paperless-ngx</string>
     <string name="paperless_settings_description">Conecta una instancia de Paperless-ngx autoalojada para enlazar contactos con documentos (contratos, escaneos, formularios). El token de API se almacena cifrado y solo se usa para leer de tu propio servidor.</string>
-    <string name="paperless_settings_base_url">URL base</string>
+    <string name="paperless_settings_base_url">URL del servidor de Paperless</string>
     <string name="paperless_settings_api_token">Token de API</string>
     <string name="paperless_settings_api_token_hint_existing">Ya hay un token almacenado. Deja el campo vacío para conservarlo.</string>
     <string name="paperless_settings_api_token_hint_new">Pega el token de API de tu instancia de Paperless (Configuración → Token de API).</string>
@@ -816,7 +850,7 @@
     <!-- Ajustes: configuración de la conexión Seafile (issue #833). -->
     <string name="settings_seafile_title">Seafile</string>
     <string name="seafile_settings_description">Conecta un servidor Seafile autoalojado para enlazar contactos con archivos y carpetas de tus bibliotecas. El token de API se almacena cifrado y solo se usa para leer de tu propio servidor.</string>
-    <string name="seafile_settings_base_url">URL del servidor</string>
+    <string name="seafile_settings_base_url">URL del servidor de Seafile</string>
     <string name="seafile_settings_api_token">Token de API</string>
     <string name="seafile_settings_api_token_hint_existing">Ya hay un token almacenado. Deja el campo vacío para conservarlo.</string>
     <string name="seafile_settings_api_token_hint_new">Pega el token de API de tu cuenta de Seafile (Avatar → Configuración → Token de API).</string>
@@ -831,7 +865,7 @@
     <!-- Ajustes: configuración de la conexión Nextcloud/ownCloud (issue #833). -->
     <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
     <string name="nextcloud_settings_description">Conecta una instancia de Nextcloud u ownCloud autoalojada (mediante WebDAV) para enlazar contactos con archivos y carpetas. La contraseña de aplicación se almacena cifrada y solo se usa para leer de tu propio servidor. Solo se acepta una contraseña de aplicación, nunca la contraseña de tu cuenta.</string>
-    <string name="nextcloud_settings_base_url">URL del servidor</string>
+    <string name="nextcloud_settings_base_url">URL del servidor de Nextcloud</string>
     <string name="nextcloud_settings_username">Nombre de usuario</string>
     <string name="nextcloud_settings_app_password">Contraseña de aplicación</string>
     <string name="nextcloud_settings_app_password_hint_existing">Ya hay una contraseña de aplicación almacenada. Deja el campo vacío para conservarla.</string>
@@ -1127,9 +1161,17 @@
     <string name="settings_contact_fields_group_name">Nombre</string>
     <string name="settings_contact_fields_group_work">Trabajo</string>
     <string name="settings_contact_fields_group_personal">Personal</string>
-    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Notas de relación</string>
+    <string name="settings_contact_fields_anniversary_description">Una sola fecha, como una boda o la primera vez que se conocieron.</string>
+    <string name="settings_contact_fields_anniversaries_description">Una lista de fechas que quieres recordar, cada una con su propio tipo.</string>
+    <string name="settings_contact_fields_language_description">El idioma en el que está escrita esta tarjeta de contacto, no un idioma que hable la persona.</string>
+    <string name="settings_contact_fields_preferred_languages_description">Los idiomas que habla esta persona.</string>
 
     <string name="settings_custom_fields_title">Campos personalizados</string>
+    <string name="settings_custom_fields_reorder_named">Reordenar %1$s</string>
+    <string name="settings_custom_fields_delete_button">Eliminar campo personalizado</string>
+    <string name="settings_custom_fields_advanced">Avanzado</string>
+    <string name="settings_custom_fields_advanced_hint">Proyección estándar y nombre de propiedad vCard.</string>
     <string name="settings_custom_fields_empty">Aún no hay campos personalizados</string>
     <string name="settings_custom_fields_empty_body">Añade tus propios campos para guardar datos adicionales de los contactos.</string>
     <string name="settings_custom_fields_new_title">Nuevo campo personalizado</string>

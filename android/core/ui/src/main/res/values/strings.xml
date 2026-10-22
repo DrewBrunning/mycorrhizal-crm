@@ -61,6 +61,7 @@
     <string name="nav_header_action">Open servers</string>
     <string name="cd_menu">Menu</string>
     <string name="row_more_actions_named">More actions for %1$s</string>
+    <string name="cd_more_options">More options</string>
     <string name="cd_back">Back</string>
 
     <!-- Login -->
@@ -324,13 +325,45 @@
     <string name="contact_tags_select">Select tag…</string>
     <string name="contact_birthday">Birthday</string>
     <string name="contact_value_n">Value %1$d</string>
+    <!-- Issue #1724: field-specific labels, format examples and add/remove names
+         for the multi-value editors. Example values are literal. -->
+    <string name="contact_phone_number">Phone number</string>
+    <string name="contact_online_service_value">Address / URL</string>
+    <string name="contact_title_or_role">Title or role</string>
+    <string name="contact_personal_info_value">Expertise / hobby / interest</string>
+    <string name="contact_url">URL</string>
+    <string name="contact_date">Date</string>
+    <string name="contact_item_link">link</string>
+    <string name="contact_item_title">title</string>
+    <string name="contact_item_online_service">online service</string>
+    <string name="contact_item_preferred_language">preferred language</string>
+    <string name="contact_item_pronoun">pronoun</string>
+    <string name="contact_item_email">email</string>
+    <string name="contact_item_phone">phone number</string>
+    <string name="contact_item_address">address</string>
+    <string name="contact_item_personal_info">personal information</string>
+    <string name="contact_item_grammatical_gender">grammatical gender</string>
+    <string name="contact_item_anniversary">anniversary</string>
+    <string name="contact_example_email">name@example.com</string>
+    <string name="contact_example_phone">+1 555 123 4567</string>
+    <string name="contact_phone_format_hint">International format recommended.</string>
+    <string name="contact_example_online_service">https://… or user@server</string>
+    <string name="contact_example_url">https://example.com</string>
+    <string name="contact_example_language_tag">de-AT</string>
+    <string name="contact_example_languages">de, en-US, de-AT</string>
+    <string name="contact_language_hint">BCP-47 tag, e.g. de, en-US, de-AT.</string>
+    <string name="contact_example_grammatical_gender_language">de, fr, es</string>
+    <string name="contact_grammatical_gender_hint">BCP-47 language tag; the dropdown is the gender.</string>
+    <string name="contact_example_pronouns">they/them, she/her</string>
+    <string name="contact_add_named">Add %1$s</string>
+    <string name="contact_remove_named">Remove %1$s %2$d</string>
+    <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Remove</string>
     <string name="contact_add">Add</string>
     <!-- M7: generic multi-value editor -->
     <string name="contact_field_type">Type</string>
     <string name="contact_type_none">None</string>
     <string name="contact_preferred">Preferred</string>
-    <string name="contact_set_preferred">Set as preferred</string>
     <string name="contact_type_home">Home</string>
     <string name="contact_type_work">Work</string>
     <string name="contact_type_cell">Mobile</string>
@@ -358,7 +391,7 @@
     <string name="contact_anniversary_kind_death">Death</string>
     <string name="contact_anniversary_kind_wedding">Wedding</string>
     <!-- Issue #832: Card.kind enum (RFC 9553 §2.1.4) — distinct from crm.kind (human/animal) -->
-    <string name="contact_card_kind_label">Card kind</string>
+    <string name="contact_card_kind_label">Kind</string>
     <string name="contact_card_kind_individual">Individual</string>
     <string name="contact_card_kind_group">Group</string>
     <string name="contact_card_kind_org">Organization</string>
@@ -700,6 +733,7 @@
     <string name="settings_webhooks_event_birthday_occurred">Birthday</string>
 
     <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_save_requires_fields">Fill in the required fields to enable Save.</string>
     <string name="settings_api_tokens_title">API tokens</string>
     <string name="settings_api_tokens_create">Create token</string>
     <string name="settings_api_tokens_revoke_all">Revoke all</string>
@@ -821,7 +855,7 @@
     <string name="settings_immich_title">Immich</string>
     <string name="immich_settings_description">Connect Immich to link photos and people to your contacts.</string>
     <string name="immich_settings_base_url">Immich server URL</string>
-    <string name="immich_settings_api_key">API key</string>
+    <string name="immich_settings_api_key">API token</string>
     <string name="immich_settings_api_key_hint_existing">A key is already stored. Leave the field empty to keep it.</string>
     <string name="immich_settings_api_key_hint_new">Create an API key in your Immich account settings.</string>
     <string name="immich_settings_sync_enabled">Sync automatically</string>
@@ -839,7 +873,7 @@
          this is the missing configuration surface it depends on. -->
     <string name="settings_paperless_title">Paperless-ngx</string>
     <string name="paperless_settings_description">Connect a self-hosted Paperless-ngx instance to link contacts to documents (contracts, scans, forms). The API token is stored encrypted and is only used to read from your own server.</string>
-    <string name="paperless_settings_base_url">Base URL</string>
+    <string name="paperless_settings_base_url">Paperless server URL</string>
     <string name="paperless_settings_api_token">API token</string>
     <string name="paperless_settings_api_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
     <string name="paperless_settings_api_token_hint_new">Paste the API token from your Paperless instance (Settings → API token).</string>
@@ -856,7 +890,7 @@
          is the missing configuration surface it depends on. -->
     <string name="settings_seafile_title">Seafile</string>
     <string name="seafile_settings_description">Connect a self-hosted Seafile server to link contacts to files and folders in your libraries. The API token is stored encrypted and is only used to read from your own server.</string>
-    <string name="seafile_settings_base_url">Server URL</string>
+    <string name="seafile_settings_base_url">Seafile server URL</string>
     <string name="seafile_settings_api_token">API token</string>
     <string name="seafile_settings_api_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
     <string name="seafile_settings_api_token_hint_new">Paste the API token from your Seafile account (Avatar → Settings → API Token).</string>
@@ -873,7 +907,7 @@
          exists; this is the missing configuration surface it depends on. -->
     <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
     <string name="nextcloud_settings_description">Connect a self-hosted Nextcloud or ownCloud instance (over WebDAV) to link contacts to files and folders. The app password is stored encrypted and is only used to read from your own server. Only an app password is accepted — never your account password.</string>
-    <string name="nextcloud_settings_base_url">Server URL</string>
+    <string name="nextcloud_settings_base_url">Nextcloud server URL</string>
     <string name="nextcloud_settings_username">Username</string>
     <string name="nextcloud_settings_app_password">App password</string>
     <string name="nextcloud_settings_app_password_hint_existing">An app password is already stored. Leave the field empty to keep it.</string>
@@ -1143,10 +1177,18 @@
     <string name="settings_contact_fields_group_name">Name</string>
     <string name="settings_contact_fields_group_work">Work</string>
     <string name="settings_contact_fields_group_personal">Personal</string>
-    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Relationship notes</string>
+    <string name="settings_contact_fields_anniversary_description">A single date, such as a wedding or the first time you met.</string>
+    <string name="settings_contact_fields_anniversaries_description">A list of dates you want to remember, each with its own type.</string>
+    <string name="settings_contact_fields_language_description">The language this contact card is written in, not a language the person speaks.</string>
+    <string name="settings_contact_fields_preferred_languages_description">The languages this person speaks.</string>
 
     <!-- Custom field definitions (issue #830) -->
     <string name="settings_custom_fields_title">Custom fields</string>
+    <string name="settings_custom_fields_reorder_named">Reorder %1$s</string>
+    <string name="settings_custom_fields_delete_button">Delete custom field</string>
+    <string name="settings_custom_fields_advanced">Advanced</string>
+    <string name="settings_custom_fields_advanced_hint">Standards projection and vCard property name.</string>
     <string name="settings_custom_fields_empty">No custom fields yet</string>
     <string name="settings_custom_fields_empty_body">Add your own fields to store extra details on contacts.</string>
     <string name="settings_custom_fields_new_title">New custom field</string>

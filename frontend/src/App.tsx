@@ -103,12 +103,14 @@ import ContactsPage from './ContactsPage';
 import BrandLogo from './components/BrandLogo';
 import ErrorBoundary from './components/ErrorBoundary';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
+import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
 import NotesPage from './NotesPage';
+import NotFoundPage from './NotFoundPage';
 import OccasionsPage from './OccasionsPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
@@ -381,7 +383,7 @@ function AppContent({
     return (
       <Box component="main" sx={{ p: 2, width: '100%' }}>
         <Routes>
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<RegisterPage setToken={setToken} />} />
           <Route path="*" element={<LoginPage setToken={setToken} />} />
         </Routes>
       </Box>
@@ -686,6 +688,7 @@ function AppContent({
             pathname so navigating to a different route recovers on its own;
             an ErrorBoundary's caught-error state does not otherwise clear
             just because its children changed. */}
+        <SessionExpiredNotice />
         <ErrorBoundary key={location.pathname} name="Page">
           <Routes>
             <Route
@@ -851,9 +854,13 @@ function AppContent({
                 </Suspense>
               }
             />
-            <Route path="/login" element={<Navigate to="/" replace />} />
+            {/* Issue #1793: the logged-in shell used to redirect /login away
+                even when the cached user_info outlived the session cookie,
+                making an explicit visit a dead end. Let the form render so a
+                stale-cache visitor can sign in again. */}
+            <Route path="/login" element={<LoginPage setToken={setToken} />} />
             <Route path="/register" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ErrorBoundary>
       </Box>

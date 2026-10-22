@@ -1,23 +1,20 @@
 package com.mycorrhizal.crm.feature.settings
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,19 +22,25 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,12 +53,18 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import kotlin.math.roundToInt
 
 /**
  * Issue #830: Settings → Data → Custom fields — the field-definition list, mirroring web's
- * `CustomFieldsSettings.tsx`. Shaped like `TagsScreen` (list + FAB create + per-row edit/delete),
- * but reached via back-navigation from Settings rather than the hamburger drawer, so the app bar
- * uses a back arrow like [ImmichSettingsScreen].
+ * `CustomFieldsSettings.tsx`. Shaped like `TagsScreen` (list + FAB create), but reached via
+ * back-navigation from Settings rather than the hamburger drawer, so the app bar uses a back
+ * arrow like [ImmichSettingsScreen].
+ *
+ * Issue #1775: a row is now tap-to-edit with one visible action (a drag handle). Reordering is
+ * by drag, with move up/down exposed as TalkBack custom actions; delete moved into the edit
+ * screen. The metadata is plain readable text, not disabled chips, and the raw vCard property
+ * name is no longer shown here.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +76,10 @@ fun FieldDefinitionsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Reload when the screen re-enters composition, so a delete performed on the edit screen
+    // (issue #1775) is reflected when we come back.
+    LaunchedEffect(Unit) { viewModel.load() }
 
     Scaffold(
         topBar = {
@@ -121,14 +134,13 @@ fun FieldDefinitionsScreen(
                             itemsIndexed(state.definitions, key = { _, definition -> definition.id }) { index, definition ->
                                 FieldDefinitionListItem(
                                     definition = definition,
-                                    deleting = state.deletingId == definition.id,
                                     canMoveUp = index > 0,
                                     canMoveDown = index < state.definitions.lastIndex,
                                     reordering = state.isReordering,
                                     onMoveUp = { viewModel.move(definition.id, -1) },
                                     onMoveDown = { viewModel.move(definition.id, 1) },
+                                    onMoveBy = { steps -> viewModel.moveBy(definition.id, steps) },
                                     onEdit = { onEdit(definition.id) },
-                                    onDelete = { viewModel.delete(definition.id) },
                                 )
                             }
                         }
@@ -149,117 +161,119 @@ fun FieldDefinitionsScreen(
 @Composable
 private fun FieldDefinitionListItem(
     definition: FieldDefinition,
-    deleting: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     reordering: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onMoveBy: (Int) -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
 ) {
-    var confirmingDelete by remember { mutableStateOf(false) }
+    val label = definition.label.orEmpty()
+    val moveUpLabel = stringResource(R.string.settings_custom_fields_move_up_named, label)
+    val moveDownLabel = stringResource(R.string.settings_custom_fields_move_down_named, label)
+    val reorderLabel = stringResource(R.string.settings_custom_fields_reorder_named, label)
 
-    if (confirmingDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmingDelete = false },
-            title = {
-                Text(
-                    stringResource(R.string.settings_custom_fields_delete_title),
-                    modifier = Modifier.semantics { heading() },
-                )
-            },
-            text = {
-                Text(
-                    stringResource(
-                        R.string.settings_custom_fields_delete_confirm,
-                        definition.label.orEmpty(),
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !deleting,
-                    onClick = { onDelete(); confirmingDelete = false },
-                ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmingDelete = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
+    val threshold = with(LocalDensity.current) { 56.dp.toPx() }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                translationY = dragOffset
+                if (dragging) shadowElevation = 8.dp.toPx()
+            },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(role = Role.Button, onClick = onEdit)
+                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+        ) {
             Text(
-                text = definition.label.orEmpty(),
+                text = label,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
             )
-            AccessibleIconButton(onClick = onMoveUp, enabled = canMoveUp && !reordering) {
-                Icon(
-                    Icons.Outlined.ArrowUpward,
-                    contentDescription = stringResource(
-                        R.string.settings_custom_fields_move_up_named,
-                        definition.label.orEmpty(),
-                    ),
-                )
-            }
-            AccessibleIconButton(onClick = onMoveDown, enabled = canMoveDown && !reordering) {
-                Icon(
-                    Icons.Outlined.ArrowDownward,
-                    contentDescription = stringResource(
-                        R.string.settings_custom_fields_move_down_named,
-                        definition.label.orEmpty(),
-                    ),
-                )
-            }
-            AccessibleIconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Outlined.Edit,
-                    contentDescription = stringResource(
-                        R.string.settings_custom_fields_edit_named,
-                        definition.label.orEmpty(),
-                    ),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-            AccessibleIconButton(onClick = { confirmingDelete = true }) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = stringResource(
-                        R.string.settings_custom_fields_delete_named,
-                        definition.label.orEmpty(),
-                    ),
-                )
-            }
+            Text(
+                text = metadataSummary(definition),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(top = 4.dp),
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .pointerInput(definition.id, canMoveUp, canMoveDown, reordering) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = {
+                            if (!reordering) {
+                                dragging = true
+                                dragOffset = 0f
+                            }
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            dragOffset = 0f
+                        },
+                        onDragEnd = {
+                            if (dragging) {
+                                val steps = (dragOffset / threshold).roundToInt()
+                                dragging = false
+                                dragOffset = 0f
+                                if (steps != 0) onMoveBy(steps)
+                            }
+                        },
+                        onDrag = { change, amount ->
+                            if (dragging) {
+                                change.consume()
+                                dragOffset += amount.y
+                            }
+                        },
+                    )
+                }
+                .semantics(mergeDescendants = true) {
+                    contentDescription = reorderLabel
+                    customActions = buildList {
+                        if (canMoveUp && !reordering) {
+                            add(CustomAccessibilityAction(moveUpLabel) { onMoveUp(); true })
+                        }
+                        if (canMoveDown && !reordering) {
+                            add(CustomAccessibilityAction(moveDownLabel) { onMoveDown(); true })
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center,
         ) {
-            AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(fieldTypeLabelRes(definition.type))) })
-            if (definition.constraints?.multi == true) {
-                AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(R.string.settings_custom_fields_multi)) })
-            }
-            AssistChip(
-                onClick = {},
-                enabled = false,
-                label = { Text(stringResource(sensitivityLabelRes(definition.sensitivity))) },
+            Icon(
+                Icons.Outlined.DragHandle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (definition.projection != null && definition.projection != "internal-only") {
-                AssistChip(onClick = {}, enabled = false, label = { Text(definition.projection.orEmpty()) })
-            }
         }
     }
+}
+
+/** One readable metadata line instead of three low-contrast disabled chips (issue #1775). */
+@Composable
+private fun metadataSummary(definition: FieldDefinition): String {
+    val parts = buildList {
+        add(stringResource(fieldTypeLabelRes(definition.type)))
+        if (definition.constraints?.multi == true) {
+            add(stringResource(R.string.settings_custom_fields_multi))
+        }
+        if (definition.group.isNotBlank()) {
+            add("${stringResource(R.string.settings_custom_fields_group)}: ${definition.group}")
+        }
+        add(stringResource(sensitivityLabelRes(definition.sensitivity)))
+    }
+    return parts.joinToString(" · ")
 }
 
 /** Localized field-type label, mirroring web's `customFields.types.*` i18n keys. */

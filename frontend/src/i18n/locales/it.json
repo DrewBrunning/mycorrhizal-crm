@@ -232,7 +232,15 @@
     "registrationFailed": "Registrazione fallita",
     "registrationSuccess": "Registrazione completata! Ora puoi accedere.",
     "registrationDisabled": "La registrazione è attualmente disabilitata su questo server. Contatta il tuo amministratore se hai bisogno di un account.",
-    "backToLogin": "Torna al login"
+    "backToLogin": "Torna al login",
+    "alreadyHaveAccount": "Hai già un account? Accedi",
+    "passwordHelp": "Usa almeno 8 caratteri. Una password di 15+ caratteri o una passphrase di 20+ caratteri è più sicura. Evita le password comuni."
+  },
+  "notFound": {
+    "title": "Pagina non trovata",
+    "description": "Questa pagina non esiste. Potrebbe essere stata spostata o il link è errato.",
+    "goToContacts": "Vai ai contatti",
+    "goToDashboard": "Vai alla dashboard"
   },
   "contacts": {
     "title": "Contatti",
@@ -461,7 +469,7 @@
       }
     },
     "urls": "Siti web",
-    "impps": "Messaggistica",
+    "impps": "Messaggistica istantanea",
     "prefix": "Prefisso",
     "middleName": "Secondo nome",
     "suffix": "Suffisso",
@@ -600,7 +608,7 @@
       "relatedTo": "Correlato a",
       "members": "Membri"
     },
-    "cardKindLabel": "Tipo di contatto",
+    "cardKindLabel": "Tipo",
     "speakToAsLabel": "Pronomi e genere grammaticale",
     "personalInfoLabel": "Informazioni personali (competenze / hobby / interessi)",
     "keywordsLabel": "Parole chiave",
@@ -639,6 +647,7 @@
   },
   "contactDetail": {
     "notFound": "Contatto non trovato",
+    "notFoundDescription": "Questo contatto potrebbe essere stato eliminato o il link è errato.",
     "loadError": "Impossibile caricare questo contatto.",
     "timelineLoadError": "Impossibile caricare alcuni dati della cronologia. Prova ad aggiornare la pagina.",
     "section": {
@@ -1395,10 +1404,18 @@
       "unsupported": "Questo browser non supporta le passkey.",
       "removeButton": "Rimuovi",
       "removeAria": "Rimuovi la passkey {{name}}",
+      "renameButton": "Rinomina",
+      "renameAria": "Rinomina la passkey {{name}}",
+      "renameSuccess": "Passkey rinominata.",
+      "renameError": "Impossibile rinominare la passkey. Riprova.",
       "removeSuccess": "Passkey rimossa.",
       "invalidProof": "Verifica non riuscita. Riprova.",
       "createdLastUsed": "Aggiunta il {{created}} · ultimo utilizzo il {{lastUsed}}",
       "createdNeverUsed": "Aggiunta il {{created}} · mai utilizzata",
+      "rename": {
+        "title": "Rinomina passkey",
+        "label": "Nome della passkey"
+      },
       "remove": {
         "title": "Rimuovi passkey",
         "description": "Inserisci un codice attuale della tua app di autenticazione, o un codice di recupero, per rimuovere «{{name}}».",
@@ -1631,7 +1648,13 @@
         "name": "Nome",
         "work": "Lavoro",
         "personal": "Personale",
-        "mycorrhizal": "Note"
+        "mycorrhizal": "Note sulle relazioni"
+      },
+      "descriptions": {
+        "anniversary": "Una singola data, come un matrimonio o il primo incontro.",
+        "anniversaries": "Un elenco di date da ricordare, ciascuna con il proprio tipo.",
+        "language": "La lingua in cui è scritta questa scheda contatto, non una lingua parlata dalla persona.",
+        "preferredLanguages": "Le lingue parlate da questa persona."
       }
     },
     "data": {
@@ -2336,7 +2359,7 @@
     "hiddenMatchesHidden_many": "{{count}} trovati su altri campi"
   },
   "triage": {
-    "title": "Migrazione di cerchie ed etichette",
+    "title": "Classificazione cerchi ed etichette",
     "description": "Classifica le tue vecchie cerchie come Cerchie (gruppi sociali) o Etichette (attributi), oppure ignorale. Esegui questa operazione una sola volta per migrare dal vecchio sistema a testo semplice.",
     "stepClassify": "Classifica",
     "stepPreview": "Anteprima",

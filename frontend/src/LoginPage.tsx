@@ -3,6 +3,7 @@ import { Alert, Box, Button, Divider, Paper, Stack, TextField, Typography } from
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { notifySessionRestored } from './api/sessionExpiry';
 import { API_BASE_URL, isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
 import BrandLogo from './components/BrandLogo';
 import ForgotPasswordDialog from './components/ForgotPasswordDialog';
@@ -69,6 +70,10 @@ export default function LoginPage({ setToken }: LoginPageProps) {
     // Sync date format preference from backend
     initializeDateFormatFromBackend(date_format);
     initializeTimeFormatFromBackend(time_format);
+
+    // Issue #1793: a successful sign-in from the routed form clears the
+    // app-shell session-expired notice too (the modal gate does the same).
+    notifySessionRestored();
 
     void navigate('/');
   };

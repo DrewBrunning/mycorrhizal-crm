@@ -156,8 +156,8 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
         composeTestRule.onNodeWithText("Prefix").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Kind").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Card kind").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-kind-field").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Language").performScrollTo().assertIsDisplayed()
         // M7: the previously read-only/invisible field groups now have editors.
         composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
@@ -380,7 +380,7 @@ class ContactFormScreenTest {
         // givenName/surname. A prior pass wired ContactFieldKey.CARD_KIND to this
         // dropdown by mistake; that key now correctly gates a separate field (below).
         setContent(state = ContactFormState(enabledFields = emptySet()))
-        composeTestRule.onNodeWithText("Kind").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-kind-field").assertIsDisplayed()
     }
 
     @Test
@@ -388,13 +388,14 @@ class ContactFormScreenTest {
         setContent(
             state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
         )
-        composeTestRule.onNodeWithText("Card kind").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-kind-field").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `the cardKind dropdown does not render when its key is disabled`() {
         setContent(state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS))
-        composeTestRule.onNodeWithText("Card kind").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("card-kind-field").assertDoesNotExist()
     }
 
     @Test
@@ -404,7 +405,7 @@ class ContactFormScreenTest {
             state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
             onCardKindChange = { cardKind = it },
         )
-        composeTestRule.onNodeWithText("Card kind").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Organization").performClick()
         assertEquals("org", cardKind)
     }

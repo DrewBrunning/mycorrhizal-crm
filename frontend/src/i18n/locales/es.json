@@ -232,7 +232,15 @@
     "registrationFailed": "Error en el registro",
     "registrationSuccess": "¡Registro completado! Ahora puedes iniciar sesión.",
     "registrationDisabled": "El registro está actualmente desactivado en este servidor. Contacta con tu administrador si necesitas una cuenta.",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta? Inicia sesión",
+    "passwordHelp": "Usa al menos 8 caracteres. Es más seguro usar 15+ caracteres o una frase de contraseña de 20+ caracteres. Evita las contraseñas comunes."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "Esta página no existe. Puede que se haya movido o que el enlace sea incorrecto.",
+    "goToContacts": "Ir a Contactos",
+    "goToDashboard": "Ir al panel"
   },
   "contacts": {
     "title": "Contactos",
@@ -461,7 +469,7 @@
       }
     },
     "urls": "Sitios Web",
-    "impps": "Mensajería Instantánea",
+    "impps": "Mensajería instantánea",
     "prefix": "Prefijo",
     "middleName": "Segundo Nombre",
     "suffix": "Sufijo",
@@ -600,7 +608,7 @@
       "relatedTo": "Relacionado con",
       "members": "Miembros"
     },
-    "cardKindLabel": "Tipo de contacto",
+    "cardKindLabel": "Tipo",
     "speakToAsLabel": "Pronombres y género gramatical",
     "personalInfoLabel": "Información personal (habilidades / aficiones / intereses)",
     "keywordsLabel": "Palabras clave",
@@ -639,6 +647,7 @@
   },
   "contactDetail": {
     "notFound": "Contacto no encontrado",
+    "notFoundDescription": "Es posible que este contacto se haya eliminado o que el enlace sea incorrecto.",
     "loadError": "No se pudo cargar este contacto.",
     "timelineLoadError": "No se pudieron cargar algunos datos de la cronología. Intenta actualizar la página.",
     "section": {
@@ -1395,10 +1404,18 @@
       "unsupported": "Este navegador no admite llaves de acceso.",
       "removeButton": "Eliminar",
       "removeAria": "Eliminar la llave de acceso {{name}}",
+      "renameButton": "Cambiar nombre",
+      "renameAria": "Cambiar el nombre de la llave de acceso {{name}}",
+      "renameSuccess": "Nombre de la llave de acceso cambiado.",
+      "renameError": "No pudimos cambiar el nombre de la llave de acceso. Inténtalo de nuevo.",
       "removeSuccess": "Llave de acceso eliminada.",
       "invalidProof": "La verificación falló. Inténtalo de nuevo.",
       "createdLastUsed": "Añadida el {{created}} · último uso el {{lastUsed}}",
       "createdNeverUsed": "Añadida el {{created}} · nunca usada",
+      "rename": {
+        "title": "Cambiar nombre de la llave de acceso",
+        "label": "Nombre de la llave de acceso"
+      },
       "remove": {
         "title": "Eliminar llave de acceso",
         "description": "Introduce un código actual de tu aplicación de autenticación o un código de recuperación para eliminar «{{name}}».",
@@ -1631,7 +1648,13 @@
         "name": "Nombre",
         "work": "Trabajo",
         "personal": "Personal",
-        "mycorrhizal": "Notas"
+        "mycorrhizal": "Notas de relación"
+      },
+      "descriptions": {
+        "anniversary": "Una sola fecha, como una boda o la primera vez que se conocieron.",
+        "anniversaries": "Una lista de fechas que quieres recordar, cada una con su propio tipo.",
+        "language": "El idioma en el que está escrita esta tarjeta de contacto, no un idioma que hable la persona.",
+        "preferredLanguages": "Los idiomas que habla esta persona."
       }
     },
     "data": {
@@ -2336,7 +2359,7 @@
     "hiddenMatchesHidden_many": "{{count}} coincidentes en otros campos"
   },
   "triage": {
-    "title": "Migración de círculos y etiquetas",
+    "title": "Clasificación de círculos y etiquetas",
     "description": "Clasifique sus círculos antiguos como Círculos (grupos sociales) o Etiquetas (atributos), u omítalos. Ejecute esto una sola vez para migrar desde el antiguo sistema de texto plano.",
     "stepClassify": "Clasificar",
     "stepPreview": "Vista previa",

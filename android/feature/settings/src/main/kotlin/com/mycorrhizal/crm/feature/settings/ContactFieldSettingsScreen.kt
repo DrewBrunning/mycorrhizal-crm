@@ -37,6 +37,7 @@ import com.mycorrhizal.crm.model.network.CONTACT_FIELD_GROUP
 import com.mycorrhizal.crm.model.network.CONTACT_FIELD_GROUP_ORDER
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.contactFieldDescription
 import com.mycorrhizal.crm.ui.components.contactFieldGroupLabel
 import com.mycorrhizal.crm.ui.components.contactFieldLabel
 
@@ -136,6 +137,7 @@ fun ContactFieldSettingsContent(
             keysInGroup.forEach { key ->
                 FieldToggleRow(
                     label = contactFieldLabel(key),
+                    description = contactFieldDescription(key),
                     checked = key in state.enabled,
                     enabled = state.savingKey == null,
                     onCheckedChange = { onToggle(key) },
@@ -154,6 +156,7 @@ fun ContactFieldSettingsContent(
 @Composable
 private fun FieldToggleRow(
     label: String,
+    description: String?,
     checked: Boolean,
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -166,7 +169,16 @@ private fun FieldToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            if (description != null) {
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }

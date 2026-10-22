@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.ui.components.EmailSpec
+import com.mycorrhizal.crm.ui.components.LinkSpec
 import com.mycorrhizal.crm.ui.components.MultiValueSpec
 import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
 import com.mycorrhizal.crm.ui.components.PhoneSpec
@@ -54,6 +55,36 @@ class MultiValueSpecTest {
             Email(address = "b@b.b"),
             Email(address = "c@c.c"),
         )
+    }
+
+    @Test
+    fun `label-only legacy types pre-select a known dropdown option but custom labels do not`() {
+        // Issue #1724: Nadia's email has type "home" only in `label` (legacy
+        // flat-Type data). The form used to show a blank dropdown while the
+        // detail screen showed "home"; both now agree.
+        assertEquals("home", EmailSpec.type(Email(address = "a@b.c", label = "home")))
+        // Case-insensitive, like the backend's token handling.
+        assertEquals("work", EmailSpec.type(Email(address = "a@b.c", label = "WORK")))
+        // contexts[0] still wins when both are present.
+        assertEquals(
+            "work",
+            EmailSpec.type(Email(address = "a@b.c", contexts = listOf("work"), label = "home")),
+        )
+        // A free-text X-ABLabel is not a selectable type: leave the dropdown blank.
+        assertNull(EmailSpec.type(Email(address = "a@b.c", label = "custom", contexts = null)))
+        // Phones use the same fallback after features/contexts; an imported
+        // feature still wins over a legacy label.
+        assertEquals("cell", PhoneSpec.type(Phone(number = "+1", label = "cell")))
+        assertEquals(
+            "voice",
+            PhoneSpec.type(Phone(number = "+1", features = listOf("voice"), label = "home")),
+        )
+        assertEquals(
+            "home",
+            PhoneSpec.type(Phone(number = "+1", features = null, contexts = null, label = "home")),
+        )
+        assertEquals("work", OnlineServiceSpec.type(OnlineService(uri = "x", label = "work")))
+        assertEquals("home", LinkSpec.type(com.mycorrhizal.crm.model.network.Resource(uri = "x", label = "home")))
     }
 
     @Test

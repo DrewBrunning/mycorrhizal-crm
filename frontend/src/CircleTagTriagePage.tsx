@@ -311,53 +311,88 @@ export default function CircleTagTriagePage() {
           </Paper>
         ) : (
           <>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('triage.colCircleName')}</TableCell>
-                    <TableCell width={100}>{t('triage.colContactCount')}</TableCell>
-                    <TableCell width={140}>{t('triage.colClassification')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {items.map((item, index) => (
-                    <TableRow key={item.original}>
-                      <TableCell>
-                        <TextField
-                          size="small"
-                          value={item.name}
-                          onChange={(e) => handleNameChange(index, e.target.value)}
-                          fullWidth
-                          variant="standard"
-                          slotProps={{
-                            htmlInput: { 'aria-label': t('triage.colCircleName') },
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={item.contactCount} size="small" />
-                      </TableCell>
-                      <TableCell>
-                        <FormControl size="small" fullWidth>
-                          <Select
-                            value={item.classification}
-                            onChange={(e) =>
-                              handleClassificationChange(index, e.target.value as Classification)
-                            }
-                            inputProps={{ 'aria-label': t('triage.colClassification') }}
-                          >
-                            <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
-                            <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>
-                            <MenuItem value="skip">{t('triage.classificationSkip')}</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </TableCell>
+            {compactStepper ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {items.map((item, index) => (
+                  <Paper key={item.original} variant="outlined" sx={{ p: 1.5 }}>
+                    <TextField
+                      size="small"
+                      value={item.name}
+                      onChange={(e) => handleNameChange(index, e.target.value)}
+                      fullWidth
+                      label={t('triage.colCircleName')}
+                      slotProps={{
+                        htmlInput: { 'aria-label': t('triage.colCircleName') },
+                      }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
+                      <Chip label={item.contactCount} size="small" />
+                      <FormControl size="small" sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Select
+                          value={item.classification}
+                          onChange={(e) =>
+                            handleClassificationChange(index, e.target.value as Classification)
+                          }
+                          inputProps={{ 'aria-label': t('triage.colClassification') }}
+                        >
+                          <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
+                          <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>
+                          <MenuItem value="skip">{t('triage.classificationSkip')}</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
+            ) : (
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('triage.colCircleName')}</TableCell>
+                      <TableCell width={100}>{t('triage.colContactCount')}</TableCell>
+                      <TableCell width={140}>{t('triage.colClassification')}</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {items.map((item, index) => (
+                      <TableRow key={item.original}>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={item.name}
+                            onChange={(e) => handleNameChange(index, e.target.value)}
+                            fullWidth
+                            variant="standard"
+                            slotProps={{
+                              htmlInput: { 'aria-label': t('triage.colCircleName') },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={item.contactCount} size="small" />
+                        </TableCell>
+                        <TableCell>
+                          <FormControl size="small" fullWidth>
+                            <Select
+                              value={item.classification}
+                              onChange={(e) =>
+                                handleClassificationChange(index, e.target.value as Classification)
+                              }
+                              inputProps={{ 'aria-label': t('triage.colClassification') }}
+                            >
+                              <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
+                              <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>
+                              <MenuItem value="skip">{t('triage.classificationSkip')}</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
             <Typography
               variant="body2"
               sx={{

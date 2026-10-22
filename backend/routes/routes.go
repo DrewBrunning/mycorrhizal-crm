@@ -195,6 +195,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/webauthn/register/finish", controllers.WebAuthnRegisterFinish)
 				protected.POST("/webauthn/assert/begin", controllers.WebAuthnProofBegin)
 				protected.GET("/webauthn/credentials", controllers.ListWebAuthnCredentials)
+				protected.PATCH("/webauthn/credentials/:id", controllers.RenameWebAuthnCredential)
 				protected.DELETE("/webauthn/credentials/:id", controllers.DeleteWebAuthnCredential)
 			}
 			// P1 contact sharing recipient picker — the only non-admin way to discover

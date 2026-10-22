@@ -13,7 +13,7 @@ import { API_BASE_URL } from './global-setup';
 
 // T44
 // — the LinkFieldType registry must reach the editors, not just the display
-// resolution. Social Profiles / Other Online Services / Instant Messaging are
+// resolution. Social Profiles / Other Online Services / Instant messaging are
 // all opt-in contact fields (not in DEFAULT_ENABLED_CONTACT_FIELDS), so each
 // test toggles the worker user's account-level field-visibility setting
 // for its own duration and restores it in a finally block.
@@ -158,7 +158,7 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
     }
   });
 
-  test('Instant Messaging uses the registry-aware editor and preserves a pre-existing entry with no service', async ({
+  test('Instant messaging uses the registry-aware editor and preserves a pre-existing entry with no service', async ({
     page,
   }) => {
     const restore = await withRegistryFieldsEnabled(page);
@@ -191,7 +191,7 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
 
       // Editor: OnlineServiceEditor in uriOnly mode — service + address, no
       // separate user/handle field, and the same registry Autocomplete.
-      const imppRow = fieldRow(page, 'Instant Messaging');
+      const imppRow = fieldRow(page, 'Instant messaging');
       await imppRow.hover();
       await stableClick(imppRow.getByLabel('Edit'));
 

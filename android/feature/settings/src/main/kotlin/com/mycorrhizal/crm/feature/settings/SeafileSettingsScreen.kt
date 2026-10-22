@@ -36,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -166,7 +165,7 @@ fun SeafileSettingsContent(
             OutlinedTextField(
                 value = state.baseUrl,
                 onValueChange = onBaseUrlChange,
-                label = { Text(stringResource(R.string.seafile_settings_base_url)) },
+                label = { Text(requiredFieldLabel(stringResource(R.string.seafile_settings_base_url))) },
                 placeholder = { Text("https://seafile.example.com") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -174,7 +173,7 @@ fun SeafileSettingsContent(
             OutlinedTextField(
                 value = state.apiToken,
                 onValueChange = onApiTokenChange,
-                label = { Text(stringResource(R.string.seafile_settings_api_token)) },
+                label = { Text(requiredFieldLabel(stringResource(R.string.seafile_settings_api_token), state.tokenRequired)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -222,19 +221,12 @@ fun SeafileSettingsContent(
                 )
             }
 
-            val savingLabel = stringResource(R.string.a11y_state_saving)
-            Button(
+            SettingsSaveButton(
+                canSave = state.baseUrl.isNotBlank() && (state.hasApiToken || state.apiToken.isNotBlank()),
+                isSaving = state.isSaving,
                 onClick = onSave,
-                enabled = !state.isSaving && state.baseUrl.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { if (state.isSaving) stateDescription = savingLabel },
-            ) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
-                }
-                Text(stringResource(R.string.action_save))
-            }
+                disabledHint = stringResource(R.string.settings_save_requires_fields),
+            )
 
             if (state.hasApiToken) {
                 OutlinedButton(

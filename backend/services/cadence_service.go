@@ -459,7 +459,11 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 		return nil, err
 	}
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
+	// Exclude the caller's own self contact (issue #1793): a cadence policy on
+	// "me" is not a relationship to maintain. The row is dropped from the map
+	// below, so the candidate loop must tolerate a missing contact.
+	if err := ExcludeSelfContact(db.Where("user_id = ? AND vcard_uid IN ?", userID, uids), userID).
+		Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 	contactByUID := make(map[string]models.Contact, len(contacts))
@@ -472,7 +476,11 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 		if _, isAmbient := ambient[cand.policy.EntityID]; isAmbient {
 			continue
 		}
-		c := contactByUID[cand.policy.EntityID]
+		c, exists := contactByUID[cand.policy.EntityID]
+		if !exists {
+			// The self contact (or a racing delete) is intentionally absent.
+			continue
+		}
 		// Issue #1193: a deceased contact generates no overdue-cadence
 		// nudges -- there is no one left to reach out to.
 		if c.Card.IsDeceased() {
@@ -650,7 +658,8 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 			uids[i] = p.EntityID
 		}
 		var contacts []models.Contact
-		if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
+		if err := ExcludeSelfContact(db.Where("user_id = ? AND vcard_uid IN ?", userID, uids), userID).
+			Find(&contacts).Error; err != nil {
 			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to resolve contacts for webhook payload")
 			continue
 		}
@@ -675,6 +684,11 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 
 		for i := range userPolicies {
 			p := userPolicies[i]
+			if _, resolved := contactID[key{p.UserID, p.EntityID}]; !resolved {
+				// The self contact (issue #1793) is excluded above; a vanished
+				// contact has no webhook payload either.
+				continue
+			}
 			if deceasedByUID[p.EntityID] {
 				continue
 			}

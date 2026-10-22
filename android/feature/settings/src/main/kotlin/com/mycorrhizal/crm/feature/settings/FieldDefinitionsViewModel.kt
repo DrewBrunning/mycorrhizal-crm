@@ -18,7 +18,6 @@ data class FieldDefinitionsUiState(
     val definitions: List<FieldDefinition> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val deletingId: String? = null,
     val isReordering: Boolean = false,
 )
 
@@ -29,10 +28,6 @@ class FieldDefinitionsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(FieldDefinitionsUiState())
     val uiState: StateFlow<FieldDefinitionsUiState> = _uiState.asStateFlow()
-
-    init {
-        load()
-    }
 
     fun load() {
         if (_uiState.value.isLoading) return
@@ -49,40 +44,28 @@ class FieldDefinitionsViewModel @Inject constructor(
         }
     }
 
-    fun delete(id: String) {
-        if (_uiState.value.deletingId != null) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(deletingId = id, error = null) }
-            repository.delete(id).foldApiError(
-                onSuccess = {
-                    _uiState.update { state ->
-                        state.copy(deletingId = null, definitions = state.definitions.filterNot { it.id == id })
-                    }
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
-            )
-        }
-    }
-
     fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
     }
 
+    /** Move one step (-1 = up, +1 = down) — the TalkBack custom-action path. */
+    fun move(id: String, direction: Int) = moveBy(id, direction)
+
     /**
-     * Swap the definition with its immediate neighbor (direction -1 = up, +1 = down) and persist
-     * the full resulting order in one call (issue #1210). A boundary move is a no-op, and a
+     * Move [id] by [delta] positions and persist the full resulting order in one call
+     * (issue #1210). This is what a completed drag calls with the number of rows crossed;
+     * [move] is the one-step custom-action form. A clamped (boundary) move is a no-op, and a
      * reorder already in flight blocks another so two overlapping full-set calls can't race.
      */
-    fun move(id: String, direction: Int) {
-        if (_uiState.value.isReordering) return
+    fun moveBy(id: String, delta: Int) {
+        if (delta == 0 || _uiState.value.isReordering) return
         val ids = _uiState.value.definitions.map { it.id }.toMutableList()
         val index = ids.indexOf(id)
         if (index == -1) return
-        val swapIndex = index + direction
-        if (swapIndex < 0 || swapIndex >= ids.size) return
-        ids[index] = ids[swapIndex].also { ids[swapIndex] = ids[index] }
+        val target = (index + delta).coerceIn(0, ids.lastIndex)
+        if (target == index) return
+        ids.removeAt(index)
+        ids.add(target, id)
 
         viewModelScope.launch {
             _uiState.update { it.copy(isReordering = true, error = null) }

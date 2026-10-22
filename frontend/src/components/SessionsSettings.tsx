@@ -12,6 +12,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { getSessions, revokeOtherSessions, revokeSession, type Session } from '../api/sessions';
 import { useSnackbar } from '../context/SnackbarContext';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import { describeUserAgent } from '../utils/userAgent';
 
 // SessionsSettings is the settings-page card for issue #866 (ASVS 3.3.4): the
 // list of this account's active server-side sessions, each revocable, plus a
@@ -119,37 +121,47 @@ export default function SessionsSettings() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell>
-                        <Box
-                          sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
-                        >
-                          <span>{session.user_agent || t('sessions.unknownDevice')}</span>
-                          {session.current && (
-                            <Chip size="small" color="primary" label={t('sessions.thisDevice')} />
+                  {sessions.map((session) => {
+                    const device = describeUserAgent(session.user_agent);
+                    const deviceLabel = device.label || t('sessions.unknownDevice');
+                    return (
+                      <TableRow key={session.id}>
+                        <TableCell>
+                          <Box
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+                          >
+                            {session.user_agent ? (
+                              <Tooltip title={session.user_agent}>
+                                <span>{deviceLabel}</span>
+                              </Tooltip>
+                            ) : (
+                              <span>{deviceLabel}</span>
+                            )}
+                            {session.current && (
+                              <Chip size="small" color="primary" label={t('sessions.thisDevice')} />
+                            )}
+                          </Box>
+                          {session.ip && (
+                            <Typography variant="caption" color="text.secondary">
+                              {session.ip}
+                            </Typography>
                           )}
-                        </Box>
-                        {session.ip && (
-                          <Typography variant="caption" color="text.secondary">
-                            {session.ip}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatWhen(session.last_seen_at)}</TableCell>
-                      <TableCell>{formatWhen(session.created_at)}</TableCell>
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          color="error"
-                          disabled={busyId === session.id}
-                          onClick={() => void handleRevoke(session)}
-                        >
-                          {session.current ? t('sessions.revokeCurrent') : t('sessions.revoke')}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>{formatWhen(session.last_seen_at)}</TableCell>
+                        <TableCell>{formatWhen(session.created_at)}</TableCell>
+                        <TableCell align="right">
+                          <Button
+                            size="small"
+                            color="error"
+                            disabled={busyId === session.id}
+                            onClick={() => void handleRevoke(session)}
+                          >
+                            {session.current ? t('sessions.revokeCurrent') : t('sessions.revoke')}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Box>

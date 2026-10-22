@@ -17,6 +17,10 @@ import { DateFormatProvider } from './DateFormatProvider';
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  window.history.replaceState({}, '', '/');
+  // Keep the module-scope data router in sync with the reset URL, so this
+  // file's not-found test cannot leak its location into later App tests.
+  window.dispatchEvent(new PopStateEvent('popstate'));
   vi.clearAllMocks();
 });
 
@@ -64,6 +68,21 @@ function setLoggedInUser(isAdminValue: boolean) {
     JSON.stringify({ user_id: 1, username: 'alice', is_admin: isAdminValue }),
   );
 }
+
+test('an unknown URL renders the not-found page instead of silently landing on the dashboard', () => {
+  setLoggedInUser(false);
+  window.history.pushState({}, '', '/definitely-not-a-route');
+  // The data router is created at module scope; notify it of the new URL the
+  // same way a browser Back/Forward would.
+  window.dispatchEvent(new PopStateEvent('popstate'));
+
+  renderApp();
+
+  expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Go to Contacts' })).toHaveAttribute('href', '/contacts');
+  expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/');
+  expect(document.title).toBe('Page not found · Mycorrhizal CRM');
+});
 
 test('renders app component', () => {
   const { container } = renderApp();

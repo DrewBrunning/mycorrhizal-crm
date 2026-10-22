@@ -1062,6 +1062,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
   /webauthn/credentials/{id}:
+    patch:
+      summary: Rename a passkey
+      operationId: renameWebauthnCredential
+      description: >
+        Relabels one of the caller's own passkeys (issue #1793). A label is
+        display-only, so this needs no second-factor proof; adding or removing
+        a factor still does.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnRenameInput"
+      responses:
+        "200":
+          description: The renamed passkey.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnCredential"
+        "400":
+          description: Missing, empty, or over-long name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such passkey for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Remove a passkey
       operationId: deleteWebauthnCredential
@@ -12779,6 +12822,11 @@ components:
           type: object
           additionalProperties: true
           description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
+    WebAuthnRenameInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: "New display label, e.g. Kitchen tablet." }
     TwoFactorStatusResponse:
       type: object
       required: [enabled]

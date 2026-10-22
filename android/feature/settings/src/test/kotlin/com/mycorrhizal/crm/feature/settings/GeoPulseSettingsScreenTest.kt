@@ -39,6 +39,7 @@ class GeoPulseSettingsScreenTest {
     fun `first connect marks the token required and offers neither test nor disconnect`() {
         setContent(GeoPulseSettingsUiState(isLoading = false, baseUrl = "https://geo.example.com"))
 
+        composeTestRule.onNodeWithText("GeoPulse server URL *").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create a token in GeoPulse (Profile → Security) and paste it here.")
             .performScrollTo().assertIsDisplayed()
@@ -116,5 +117,18 @@ class GeoPulseSettingsScreenTest {
         )
 
         composeTestRule.onNodeWithText("The API token is required to connect.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a disabled save button explains what is required`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                GeoPulseSettingsContent(state = GeoPulseSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Fill in the required fields to enable Save.")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }

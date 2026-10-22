@@ -26,6 +26,7 @@ import {
   type Passkey,
   proveWithAnyPasskey,
   proveWithOtherPasskey,
+  renamePasskey,
   type SecondFactorProof,
 } from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -67,6 +68,12 @@ export default function PasskeySettings() {
   const [proofCode, setProofCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [removeError, setRemoveError] = useState('');
+
+  // Rename dialog (issue #1793): a label is display-only, so no proof.
+  const [renaming, setRenaming] = useState<Passkey | null>(null);
+  const [renameName, setRenameName] = useState('');
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [renameError, setRenameError] = useState('');
 
   useEffect(() => {
     getTwoFactorStatus()
@@ -147,6 +154,31 @@ export default function PasskeySettings() {
     setRemoving(passkey);
     setProofCode('');
     setRemoveError('');
+  };
+
+  const openRename = (passkey: Passkey) => {
+    setRenaming(passkey);
+    setRenameName(passkey.name);
+    setRenameError('');
+  };
+
+  const submitRename = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!renaming) return;
+    setRenameBusy(true);
+    setRenameError('');
+    try {
+      await renamePasskey(renaming.id, renameName.trim());
+      setRenaming(null);
+      await refresh();
+      showSuccess(t('settings.passkeys.renameSuccess'));
+    } catch (err) {
+      setRenameError(
+        err instanceof Error && err.message ? err.message : t('settings.passkeys.renameError'),
+      );
+    } finally {
+      setRenameBusy(false);
+    }
   };
 
   const finishRemove = async (proof: Parameters<typeof remove>[1]) => {
@@ -237,14 +269,23 @@ export default function PasskeySettings() {
                     key={p.id}
                     disableGutters
                     secondaryAction={
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => openRemove(p)}
-                        aria-label={t('settings.passkeys.removeAria', { name: p.name })}
-                      >
-                        {t('settings.passkeys.removeButton')}
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Button
+                          size="small"
+                          onClick={() => openRename(p)}
+                          aria-label={t('settings.passkeys.renameAria', { name: p.name })}
+                        >
+                          {t('settings.passkeys.renameButton')}
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => openRemove(p)}
+                          aria-label={t('settings.passkeys.removeAria', { name: p.name })}
+                        >
+                          {t('settings.passkeys.removeButton')}
+                        </Button>
+                      </Box>
                     }
                   >
                     <ListItemText
@@ -310,6 +351,48 @@ export default function PasskeySettings() {
         onUsePasskey={() => void submitProof(proveWithAnyPasskey)}
         onClose={() => setProofOpen(false)}
       />
+
+      <AppDialog
+        open={renaming !== null}
+        onClose={() => !renameBusy && setRenaming(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{t('settings.passkeys.rename.title')}</DialogTitle>
+        <DialogContent>
+          <form onSubmit={(event) => void submitRename(event)}>
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <TextField
+                label={t('settings.passkeys.rename.label')}
+                value={renameName}
+                onChange={(event) => setRenameName(event.target.value)}
+                required
+                fullWidth
+                size="small"
+                autoFocus
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+              />
+              {renameError && (
+                <Alert severity="error" sx={{ py: 0 }}>
+                  {renameError}
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={renameBusy || renameName.trim().length === 0}
+              >
+                {renameBusy ? t('common.saving') : t('common.save')}
+              </Button>
+            </Stack>
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRenaming(null)} disabled={renameBusy}>
+            {t('common.cancel')}
+          </Button>
+        </DialogActions>
+      </AppDialog>
 
       {/* Live second-factor proof for removal */}
       <AppDialog

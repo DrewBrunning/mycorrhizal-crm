@@ -27,8 +27,10 @@ data class NextcloudSettingsUiState(
     val hasAppPassword: Boolean = false,
     /** Write-only: what the user typed this session. Empty on save keeps the stored password. */
     val appPassword: String = "",
-)
-
+) {
+    /** Issue #1775: the app password is required on first connect (there is no stored one to keep). */
+    val tokenRequired: Boolean get() = !hasAppPassword
+}
 data class NextcloudTestOutcome(val ok: Boolean, val message: String?)
 
 /**

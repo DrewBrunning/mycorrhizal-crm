@@ -551,3 +551,32 @@ func TestContactRelationships_PropagatesQueryFailures(t *testing.T) {
 		assert.Contains(t, err.Error(), "loading last qualifying interactions")
 	})
 }
+
+// TestListOverdueCadences_ExcludesSelfContact is the issue #1793 regression:
+// a policy on the auto-created self contact is the user's own relationship
+// with themselves, not something to be nudged about.
+func TestListOverdueCadences_ExcludesSelfContact(t *testing.T) {
+	db, user, self := setupCadenceServiceTestDB(t)
+	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+	seedActivity(t, db, user, self, models.InteractionTypeCall,
+		time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: self.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	other := models.Contact{UserID: user.ID, Firstname: "Other"}
+	require.NoError(t, db.Create(&other).Error)
+	seedActivity(t, db, user, other, models.InteractionTypeCall,
+		time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: other.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	overdue, err := ListOverdueCadences(db, user.ID, now)
+	require.NoError(t, err)
+	require.Len(t, overdue, 1, "the self contact's overdue policy must not be listed")
+	assert.Equal(t, other.VCardUID, overdue[0].Policy.EntityID)
+	assert.Equal(t, "Other", overdue[0].ContactName)
+}

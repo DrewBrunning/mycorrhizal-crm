@@ -371,3 +371,45 @@ func TestGetDashboard_RandomContactReasonQueryFails(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 	assert.Contains(t, w.Body.String(), "Failed to retrieve contacts")
 }
+
+// Issue #1793: a brand-new account's dashboard told the user to stay in touch
+// with themselves. The self contact is excluded from every people-shaped block
+// the dashboard composes.
+func TestGetDashboard_ExcludesSelfContact(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/dashboard", GetDashboard)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	self := models.Contact{UserID: user.ID, Firstname: "Me"}
+	require.NoError(t, db.Create(&self).Error)
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+
+	// Make the self contact overdue on every block that could surface it.
+	oldActivity := models.Activity{
+		UserID: user.ID, Title: "Old self note", Date: time.Now().AddDate(0, 0, -40),
+		Type: models.InteractionTypeCall, Contacts: []models.Contact{self},
+	}
+	require.NoError(t, db.Create(&oldActivity).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: self.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+	require.NoError(t, db.Create(&models.ReachOutSuggestion{
+		UserID: user.ID, ContactVCardUID: self.VCardUID, Kind: models.ReachOutKindOrganization,
+		OldValue: "Old", NewValue: "New", AuditEventID: 1, Status: models.ReachOutStatusPending,
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp models.DashboardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Empty(t, resp.RandomContacts, "self contact must not be a random Stay in Touch row")
+	assert.Empty(t, resp.Overdue, "self contact must not have an overdue cadence")
+	assert.Empty(t, resp.ReachOutSuggestions, "self contact must not have a reach-out suggestion")
+	assert.Zero(t, resp.OverdueTotal)
+	assert.Zero(t, resp.ReachOutSuggestionsTotal)
+}

@@ -226,7 +226,15 @@
     "registrationFailed": "Registration failed",
     "registrationSuccess": "Registration successful! You can now log in.",
     "registrationDisabled": "Registration is currently disabled on this server. Contact your administrator if you need an account.",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "alreadyHaveAccount": "Already have an account? Log in",
+    "passwordHelp": "Use at least 8 characters. 15+ characters or a 20+ character passphrase is stronger. Avoid common passwords."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This page doesn't exist. It may have moved, or the link may be wrong.",
+    "goToContacts": "Go to Contacts",
+    "goToDashboard": "Go to Dashboard"
   },
   "contacts": {
     "title": "Contacts",
@@ -439,7 +447,7 @@
       }
     },
     "urls": "Websites",
-    "impps": "Instant Messaging",
+    "impps": "Instant messaging",
     "prefix": "Prefix",
     "middleName": "Middle Name",
     "suffix": "Suffix",
@@ -456,8 +464,8 @@
     "personalInfoLabel": "Personal Info (Expertise / Hobbies / Interests)",
     "keywordsLabel": "Keywords",
     "cardNotesLabel": "Notes (vCard)",
-    "preferredLanguagesLabel": "Preferred Languages",
-    "cardKindLabel": "Contact Kind",
+    "preferredLanguagesLabel": "Preferred languages",
+    "cardKindLabel": "Kind",
     "language": "Language",
     "languageInfo": "The language of this vCard as an ISO-639 / BCP-47 tag (e.g. 'de-AT'). This is card metadata — the language the card data is written in — not the languages the contact speaks. Pronouns, grammatical gender, and preferred languages refer to spoken languages.",
     "anniversaryFields": {
@@ -617,6 +625,7 @@
   },
   "contactDetail": {
     "notFound": "Contact not found",
+    "notFoundDescription": "This contact may have been deleted, or the link may be wrong.",
     "loadError": "Couldn't load this contact.",
     "timelineLoadError": "Some timeline data failed to load. Try refreshing the page.",
     "section": {
@@ -915,7 +924,7 @@
     }
   },
   "triage": {
-    "title": "Circle/Tag Migration",
+    "title": "Circle & tag triage",
     "description": "Classify your legacy circles into Circles (social groups) and Tags (attributes), or skip them. Run this once to migrate from the old flat-string system.",
     "stepClassify": "Classify",
     "stepPreview": "Preview",
@@ -929,10 +938,10 @@
     "summary": "{{items}} — {{circles}}, {{tags}}, {{skipped}}",
     "summaryItems_one": "{{count}} item",
     "summaryItems_other": "{{count}} items",
-    "summaryCircles_one": "{{count}} Circle",
-    "summaryCircles_other": "{{count}} Circles",
-    "summaryTags_one": "{{count}} Tag",
-    "summaryTags_other": "{{count}} Tags",
+    "summaryCircles_one": "{{count}} circle",
+    "summaryCircles_other": "{{count}} circles",
+    "summaryTags_one": "{{count}} tag",
+    "summaryTags_other": "{{count}} tags",
     "summarySkipped_one": "{{count}} skipped",
     "summarySkipped_other": "{{count}} skipped",
     "next": "Next",
@@ -1404,10 +1413,18 @@
       "unsupported": "This browser doesn't support passkeys.",
       "removeButton": "Remove",
       "removeAria": "Remove passkey {{name}}",
+      "renameButton": "Rename",
+      "renameAria": "Rename passkey {{name}}",
+      "renameSuccess": "Passkey renamed.",
+      "renameError": "We couldn't rename the passkey. Please try again.",
       "removeSuccess": "Passkey removed.",
       "invalidProof": "Verification failed. Please try again.",
       "createdLastUsed": "Added {{created}} · last used {{lastUsed}}",
       "createdNeverUsed": "Added {{created}} · never used",
+      "rename": {
+        "title": "Rename passkey",
+        "label": "Passkey name"
+      },
       "remove": {
         "title": "Remove passkey",
         "description": "Enter a current code from your authenticator app, or a recovery code, to remove \"{{name}}\".",
@@ -1636,7 +1653,13 @@
         "name": "Name",
         "work": "Work",
         "personal": "Personal",
-        "mycorrhizal": "Notes"
+        "mycorrhizal": "Relationship notes"
+      },
+      "descriptions": {
+        "anniversary": "A single date, such as a wedding or the first time you met.",
+        "anniversaries": "A list of dates you want to remember, each with its own type.",
+        "language": "The language this contact card is written in, not a language the person speaks.",
+        "preferredLanguages": "The languages this person speaks."
       }
     },
     "data": {
