@@ -24,6 +24,7 @@ import {
   type FieldSensitivity,
   type FieldType,
 } from '../api/fieldDefinitions';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { useRowKeys } from '../hooks/useRowKeys';
 import { groupLength, MAX_GROUP_LENGTH } from '../utils/customFieldGroups';
 import AppDialog from './AppDialog';
@@ -113,7 +114,10 @@ export default function FieldDefinitionDialog({
     }
   }, [open, definition]);
 
-  const set = (patch: Partial<FormState>) => setForm((prev) => ({ ...prev, ...patch }));
+  const set = (patch: Partial<FormState>) => {
+    markDirty();
+    setForm((prev) => ({ ...prev, ...patch }));
+  };
 
   const updateEnumRow = (index: number, next: string) => {
     set({ enumValues: form.enumValues.map((v, i) => (i === index ? next : v)) });
@@ -197,9 +201,10 @@ export default function FieldDefinitionDialog({
     setForm(emptyForm);
     onClose();
   };
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {isEditing ? t('customFields.editTitle') : t('customFields.addTitle')}
       </DialogTitle>
@@ -376,13 +381,14 @@ export default function FieldDefinitionDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

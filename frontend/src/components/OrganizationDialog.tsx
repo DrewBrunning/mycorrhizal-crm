@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardOrganization, CardTemporalRange } from '../api/contacts';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface OrganizationFormData {
@@ -47,6 +48,7 @@ export default function OrganizationDialog({
   const [endYear, setEndYear] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -92,7 +94,7 @@ export default function OrganizationDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {organization
           ? t('contactDetail.work.editOrganization')
@@ -104,6 +106,7 @@ export default function OrganizationDialog({
             label={t('contacts.organization')}
             value={name}
             onChange={(e) => {
+              markDirty();
               setName(e.target.value);
               setError('');
             }}
@@ -113,7 +116,10 @@ export default function OrganizationDialog({
           <TextField
             label={t('contacts.department')}
             value={department}
-            onChange={(e) => setDepartment(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setDepartment(e.target.value);
+            }}
             fullWidth
           />
           <Box sx={{ display: 'flex', gap: 2 }}>
@@ -122,6 +128,7 @@ export default function OrganizationDialog({
               label={t('contactDetail.period.from')}
               value={startYear}
               onChange={(e) => {
+                markDirty();
                 setStartYear(e.target.value);
                 setError('');
               }}
@@ -133,6 +140,7 @@ export default function OrganizationDialog({
               label={t('contactDetail.period.to')}
               value={endYear}
               onChange={(e) => {
+                markDirty();
                 setEndYear(e.target.value);
                 setError('');
               }}
@@ -148,13 +156,14 @@ export default function OrganizationDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

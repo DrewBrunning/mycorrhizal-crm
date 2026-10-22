@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider, useNavigate } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
 import '../i18n/config';
@@ -458,4 +459,127 @@ test('a server VALIDATION_ERROR on card.name lands on the first-name field, keep
 
   fireEvent.change(field, { target: { value: 'Rejected again' } });
   expect(field).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+// Issue #1780: opening the dialog should put the caret in the first field, so
+// a new contact can be typed immediately.
+test('focuses the First Name field on open', () => {
+  renderDialog();
+  expect(screen.getByLabelText('First Name *')).toHaveFocus();
+});
+
+// Issue #1781: below the `sm` breakpoint the long create-contact form takes the
+// whole screen instead of staying a cramped centred modal.
+test('renders full-screen below the sm breakpoint', () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width:599.95px'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+
+  try {
+    renderDialog();
+    expect(document.querySelector('.MuiDialog-paperFullScreen')).not.toBeNull();
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
+});
+
+test('stays a centred dialog at sm and above', () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+
+  try {
+    renderDialog();
+    expect(document.querySelector('.MuiDialog-paperFullScreen')).toBeNull();
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
+});
+
+// Issue #1780: every editable field/shortcut arms the discard guard -- not
+// just the first-name input the parameterised guard suite types into.
+test('phone, email, and Enter-to-add circle/tag edits all arm the discard guard', () => {
+  renderDialog();
+
+  // Add a phone row and an email row, then type into them.
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1]);
+  fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '555-0100' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+
+  // Enter in either "Or create new..." field adds the chip.
+  const newFields = screen.getAllByLabelText('Or create new...');
+  fireEvent.change(newFields[0], { target: { value: 'Book Club' } });
+  fireEvent.keyDown(newFields[0], { key: 'Enter' });
+  fireEvent.change(newFields[1], { target: { value: 'VIP' } });
+  fireEvent.keyDown(newFields[1], { key: 'Enter' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+});
+
+// Issue #1780 regression: the form is dirty with the first name that was just
+// submitted, and the parent navigates to the new contact. The discard guard
+// must not intercept that navigation -- otherwise the contact is created but
+// the user is left on /contacts with a "Discard unsaved changes?" dialog.
+test('navigates to the created contact even though the form was dirty', async () => {
+  vi.mocked(createContactRecord).mockResolvedValue({
+    id: 42,
+    uid: 'uid-42',
+    etag: '',
+    revision: 1,
+    card: {},
+    crm: {},
+  });
+
+  function AddContactRoute() {
+    const navigate = useNavigate();
+    return (
+      <AddContactDialog
+        open
+        onClose={vi.fn()}
+        onContactAdded={(contactId) => void navigate(`/contacts/${contactId}`)}
+        availableCircles={[]}
+        availableTags={[]}
+      />
+    );
+  }
+
+  const router = createMemoryRouter(
+    [
+      { path: '/contacts', element: <AddContactRoute /> },
+      { path: '/contacts/:id', element: <div>contact detail</div> },
+    ],
+    { initialEntries: ['/contacts'] },
+  );
+
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <RouterProvider router={router} />
+      </SnackbarProvider>
+    </DateFormatProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Grace' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(router.state.location.pathname).toBe('/contacts/42'));
+  expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
 });

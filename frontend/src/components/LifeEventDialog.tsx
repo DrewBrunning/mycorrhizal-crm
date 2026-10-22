@@ -26,6 +26,7 @@ import {
   partialDateHasMonthDay,
   partialDateIsYearOnly,
 } from '../api/lifeEvents';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { handleFetchError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -107,6 +108,7 @@ export default function LifeEventDialog({
   const [relatedContacts, setRelatedContacts] = useState<ContactBrief[]>([]);
 
   const isEditing = !!initial;
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   const loadContacts = useCallback(
     async (search: string = '') => {
@@ -229,6 +231,7 @@ export default function LifeEventDialog({
   const isYearOnly = partialDateIsYearOnly(currentDate);
 
   const handleCategoryChange = (value: LifeEventCategory | typeof UNCATEGORIZED) => {
+    markDirty();
     setCategory(value);
     setType('');
     setUseCustomType(false);
@@ -236,6 +239,7 @@ export default function LifeEventDialog({
   };
 
   const handleTypeSelectChange = (value: string) => {
+    markDirty();
     if (value === CUSTOM_TYPE) {
       setUseCustomType(true);
       setType('');
@@ -280,7 +284,7 @@ export default function LifeEventDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEditing ? t('lifeEvent.editTitle') : t('lifeEvent.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -324,6 +328,7 @@ export default function LifeEventDialog({
               label={t('lifeEvent.type')}
               value={type}
               onChange={(e) => {
+                markDirty();
                 setType(e.target.value);
                 setError('');
               }}
@@ -354,6 +359,7 @@ export default function LifeEventDialog({
                   label={t('lifeEvent.customTypeLabel')}
                   value={type}
                   onChange={(e) => {
+                    markDirty();
                     setType(e.target.value);
                     setError('');
                   }}
@@ -375,7 +381,10 @@ export default function LifeEventDialog({
               label={t('lifeEvent.dateYear')}
               type="number"
               value={dateYear}
-              onChange={(e) => setDateYear(e.target.value)}
+              onChange={(e) => {
+                markDirty();
+                setDateYear(e.target.value);
+              }}
               fullWidth
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1900, max: 2100 } }}
             />
@@ -383,7 +392,10 @@ export default function LifeEventDialog({
               label={t('lifeEvent.dateMonth')}
               type="number"
               value={dateMonth}
-              onChange={(e) => setDateMonth(e.target.value)}
+              onChange={(e) => {
+                markDirty();
+                setDateMonth(e.target.value);
+              }}
               fullWidth
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 12 } }}
             />
@@ -391,7 +403,10 @@ export default function LifeEventDialog({
               label={t('lifeEvent.dateDay')}
               type="number"
               value={dateDay}
-              onChange={(e) => setDateDay(e.target.value)}
+              onChange={(e) => {
+                markDirty();
+                setDateDay(e.target.value);
+              }}
               fullWidth
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 31 } }}
             />
@@ -409,7 +424,10 @@ export default function LifeEventDialog({
                 label={t('lifeEvent.endDateYear')}
                 type="number"
                 value={endDateYear}
-                onChange={(e) => setEndDateYear(e.target.value)}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDateYear(e.target.value);
+                }}
                 fullWidth
                 slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1900, max: 2100 } }}
               />
@@ -417,7 +435,10 @@ export default function LifeEventDialog({
                 label={t('lifeEvent.endDateMonth')}
                 type="number"
                 value={endDateMonth}
-                onChange={(e) => setEndDateMonth(e.target.value)}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDateMonth(e.target.value);
+                }}
                 fullWidth
                 slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 12 } }}
               />
@@ -425,7 +446,10 @@ export default function LifeEventDialog({
                 label={t('lifeEvent.endDateDay')}
                 type="number"
                 value={endDateDay}
-                onChange={(e) => setEndDateDay(e.target.value)}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDateDay(e.target.value);
+                }}
                 fullWidth
                 slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 31 } }}
               />
@@ -437,7 +461,10 @@ export default function LifeEventDialog({
             multiline
             rows={3}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setDescription(e.target.value);
+            }}
             fullWidth
           />
 
@@ -446,7 +473,10 @@ export default function LifeEventDialog({
             options={contacts}
             getOptionLabel={contactLabel}
             value={relatedContacts}
-            onChange={(_, value) => setRelatedContacts(value)}
+            onChange={(_, value) => {
+              markDirty();
+              setRelatedContacts(value);
+            }}
             onInputChange={(_, value, reason) => {
               if (reason === 'input') setSearchInput(value);
             }}
@@ -501,7 +531,10 @@ export default function LifeEventDialog({
               control={
                 <Checkbox
                   checked={remind}
-                  onChange={(e) => setRemind(e.target.checked)}
+                  onChange={(e) => {
+                    markDirty();
+                    setRemind(e.target.checked);
+                  }}
                   disabled={!canRemind}
                 />
               }
@@ -517,13 +550,14 @@ export default function LifeEventDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('lifeEvent.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('lifeEvent.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

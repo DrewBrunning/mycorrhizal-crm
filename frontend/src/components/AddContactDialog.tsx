@@ -11,6 +11,8 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +28,7 @@ import {
 import { addContactTag, createTag, type Tag } from '../api/tags';
 import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import i18n from '../i18n/config';
 import { getErrorMessage, handleError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
@@ -62,6 +65,10 @@ export default function AddContactDialog({
 }: AddContactDialogProps) {
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnackbar();
+  const theme = useTheme();
+  // Issue #1781: this is a long form; a phone-sized modal leaves too little
+  // horizontal room for the circle/tag pickers.
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
@@ -105,7 +112,29 @@ export default function AddContactDialog({
   // rather than only as a generic banner.
   const [serverNameError, setServerNameError] = useState('');
 
+  const handleClose = () => {
+    setFormData({ ...emptyForm, language: defaultLanguage() });
+    setEmails([]);
+    setPhones([]);
+    setSelectedCircles([]);
+    setNewCircle('');
+    setSelectedTags([]);
+    setNewTag('');
+    setError('');
+    setServerNameError('');
+    setSubmitAttempted(false);
+    onClose();
+  };
+  // Issue #1780: Cancel/Escape, tab close, and in-app navigation all go
+  // through the discard guard -- a half-typed contact is never dropped
+  // silently.
+  const { markDirty, clearDirty, allowNavigation, requestClose, guardElement } = useDirtyDialog(
+    open,
+    handleClose,
+  );
+
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    markDirty();
     if (field === 'firstname') setServerNameError('');
     setFormData({ ...formData, [field]: event.target.value });
   };
@@ -113,6 +142,7 @@ export default function AddContactDialog({
   const handleAddCircle = () => {
     const trimmed = newCircle.trim();
     if (trimmed && !selectedCircles.find((sc) => sc.name === trimmed)) {
+      markDirty();
       setSelectedCircles([
         ...selectedCircles,
         { id: '', created_at: '', updated_at: '', name: trimmed },
@@ -122,18 +152,21 @@ export default function AddContactDialog({
   };
 
   const handleRemoveCircle = (circle: Circle) => {
+    markDirty();
     setSelectedCircles(selectedCircles.filter((c) => c.id !== circle.id && c.name !== circle.name));
   };
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
     if (trimmed && !selectedTags.find((t) => t.name === trimmed)) {
+      markDirty();
       setSelectedTags([...selectedTags, { id: '', created_at: '', updated_at: '', name: trimmed }]);
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tag: Tag) => {
+    markDirty();
     setSelectedTags(selectedTags.filter((t) => t.id !== tag.id && t.name !== tag.name));
   };
 
@@ -204,6 +237,11 @@ export default function AddContactDialog({
         }
       }
 
+      // The parent navigates to the new contact's detail page. That is an
+      // in-app navigation, and the form is dirty from the input that created
+      // it -- let it through instead of showing "Discard unsaved changes?".
+      clearDirty();
+      allowNavigation();
       onContactAdded(newRecord.id);
       showSuccess(t('contacts.add.success'));
       handleClose();
@@ -223,22 +261,8 @@ export default function AddContactDialog({
     }
   };
 
-  const handleClose = () => {
-    setFormData({ ...emptyForm, language: defaultLanguage() });
-    setEmails([]);
-    setPhones([]);
-    setSelectedCircles([]);
-    setNewCircle('');
-    setSelectedTags([]);
-    setNewTag('');
-    setError('');
-    setServerNameError('');
-    setSubmitAttempted(false);
-    onClose();
-  };
-
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth fullScreen={fullScreen}>
       <DialogTitle>{t('contacts.add.title')}</DialogTitle>
       <DialogContent
         // 1.4.12 Text Spacing: the Circles section is the last form section
@@ -276,6 +300,7 @@ export default function AddContactDialog({
               value={formData.firstname}
               onChange={handleChange('firstname')}
               required
+              autoFocus
               error={firstNameInvalid || !!serverNameError}
               helperText={
                 serverNameError ||
@@ -337,7 +362,10 @@ export default function AddContactDialog({
             <MultiValueField
               label={t('contacts.phone')}
               value={phones}
-              onChange={setPhones}
+              onChange={(next) => {
+                markDirty();
+                setPhones(next);
+              }}
               valueType="tel"
               defaultType="cell"
             />
@@ -346,7 +374,10 @@ export default function AddContactDialog({
             <MultiValueField
               label={t('contacts.email')}
               value={emails}
-              onChange={setEmails}
+              onChange={(next) => {
+                markDirty();
+                setEmails(next);
+              }}
               valueType="email"
               defaultType="home"
             />
@@ -366,7 +397,14 @@ export default function AddContactDialog({
                 />
               ))}
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.selectCircle')}
@@ -380,10 +418,12 @@ export default function AddContactDialog({
                       circle &&
                       !selectedCircles.find((sc) => sc.id === circle.id || sc.name === circle.name)
                     ) {
+                      markDirty();
                       setSelectedCircles([...selectedCircles, circle]);
                     }
                   }
                 }}
+                sx={{ minWidth: { xs: 0, sm: 200 } }}
               >
                 <MenuItem value="">{t('contacts.selectCircle')}</MenuItem>
                 {availableCircles
@@ -396,22 +436,27 @@ export default function AddContactDialog({
                     </MenuItem>
                   ))}
               </TextField>
-              <TextField
-                label={t('contacts.newCircle')}
-                value={newCircle}
-                onChange={(e) => setNewCircle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCircle();
-                  }
-                }}
-                sx={{ minWidth: 150 }}
-              />
-              <Button onClick={handleAddCircle} variant="outlined">
-                {t('contacts.add.addCircle')}
-              </Button>
-            </Stack>
+              <Box sx={{ display: 'flex', gap: 1, minWidth: 0 }}>
+                <TextField
+                  label={t('contacts.newCircle')}
+                  value={newCircle}
+                  onChange={(e) => {
+                    markDirty();
+                    setNewCircle(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCircle();
+                    }
+                  }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+                <Button onClick={handleAddCircle} variant="outlined" sx={{ flexShrink: 0 }}>
+                  {t('contacts.add.addCircle')}
+                </Button>
+              </Box>
+            </Box>
           </Box>
           <Box>
             <Typography variant="subtitle2" gutterBottom>
@@ -427,7 +472,14 @@ export default function AddContactDialog({
                 />
               ))}
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.selectTag')}
@@ -441,10 +493,12 @@ export default function AddContactDialog({
                       tag &&
                       !selectedTags.find((st) => st.id === tag.id || st.name === tag.name)
                     ) {
+                      markDirty();
                       setSelectedTags([...selectedTags, tag]);
                     }
                   }
                 }}
+                sx={{ minWidth: { xs: 0, sm: 200 } }}
               >
                 <MenuItem value="">{t('contacts.selectTag')}</MenuItem>
                 {availableTags
@@ -455,33 +509,39 @@ export default function AddContactDialog({
                     </MenuItem>
                   ))}
               </TextField>
-              <TextField
-                label={t('contacts.newTag')}
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                sx={{ minWidth: 150 }}
-              />
-              <Button onClick={handleAddTag} variant="outlined">
-                {t('common.add')}
-              </Button>
-            </Stack>
+              <Box sx={{ display: 'flex', gap: 1, minWidth: 0 }}>
+                <TextField
+                  label={t('contacts.newTag')}
+                  value={newTag}
+                  onChange={(e) => {
+                    markDirty();
+                    setNewTag(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+                <Button onClick={handleAddTag} variant="outlined" sx={{ flexShrink: 0 }}>
+                  {t('common.add')}
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
+        <Button onClick={requestClose} disabled={loading}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSubmit()} variant="contained" disabled={loading}>
           {loading ? t('common.saving') : t('contacts.add.create')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

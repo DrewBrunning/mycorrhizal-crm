@@ -14,6 +14,7 @@ import type { Activity } from '../api/activities';
 import { GIFT_STATUSES, type Gift, type GiftStatus } from '../api/gifts';
 import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 import { calendarDateOnly } from '../utils/localDate';
 import AppDialog from './AppDialog';
@@ -89,6 +90,7 @@ export default function GiftDialog({
   const [activityId, setActivityId] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -173,7 +175,7 @@ export default function GiftDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{gift ? t('gifts.editTitle') : t('gifts.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -182,6 +184,7 @@ export default function GiftDialog({
             label={t('gifts.statusLabel')}
             value={status}
             onChange={(e) => {
+              markDirty();
               setStatus(e.target.value as GiftStatus);
               setError('');
             }}
@@ -198,6 +201,7 @@ export default function GiftDialog({
             label={t('gifts.description')}
             value={description}
             onChange={(e) => {
+              markDirty();
               setDescription(e.target.value);
               setError('');
             }}
@@ -212,6 +216,7 @@ export default function GiftDialog({
             type="url"
             value={url}
             onChange={(e) => {
+              markDirty();
               setUrl(e.target.value);
               setError('');
             }}
@@ -224,6 +229,7 @@ export default function GiftDialog({
             label={t('gifts.notes')}
             value={notes}
             onChange={(e) => {
+              markDirty();
               setNotes(e.target.value);
               setError('');
             }}
@@ -236,7 +242,10 @@ export default function GiftDialog({
           <TextField
             label={t('gifts.occasion')}
             value={occasion}
-            onChange={(e) => setOccasion(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setOccasion(e.target.value);
+            }}
             fullWidth
             helperText={t('gifts.occasionHint')}
           />
@@ -245,7 +254,10 @@ export default function GiftDialog({
             label={t('gifts.date')}
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setDate(e.target.value);
+            }}
             fullWidth
             slotProps={{ inputLabel: { shrink: true } }}
           />
@@ -260,7 +272,10 @@ export default function GiftDialog({
               label={t('gifts.amount')}
               type="number"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                markDirty();
+                setAmount(e.target.value);
+              }}
               fullWidth
               slotProps={{
                 inputLabel: { shrink: true },
@@ -270,7 +285,10 @@ export default function GiftDialog({
             <TextField
               label={t('gifts.currency')}
               value={currency}
-              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                markDirty();
+                setCurrency(e.target.value.toUpperCase());
+              }}
               fullWidth
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { maxLength: 3 } }}
               placeholder="EUR"
@@ -283,6 +301,7 @@ export default function GiftDialog({
               label={t('gifts.lifeEvent')}
               value={lifeEventId}
               onChange={(e) => {
+                markDirty();
                 setLifeEventId(e.target.value);
                 setError('');
               }}
@@ -305,6 +324,7 @@ export default function GiftDialog({
               label={t('gifts.activity')}
               value={activityId}
               onChange={(e) => {
+                markDirty();
                 setActivityId(e.target.value === '' ? '' : Number(e.target.value));
                 setError('');
               }}
@@ -329,13 +349,14 @@ export default function GiftDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

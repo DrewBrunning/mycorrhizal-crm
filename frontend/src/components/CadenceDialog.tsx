@@ -18,6 +18,7 @@ import {
   QUALIFYING_INTERACTION_TYPE_TOKENS,
 } from '../api/cadencePolicies';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage, handleError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -54,6 +55,7 @@ export default function CadenceDialog({
   }, [open, policy]);
 
   const toggleType = (token: string) => {
+    markDirty();
     setQualifyingTypes((prev) =>
       prev.includes(token) ? prev.filter((t) => t !== token) : [...prev, token],
     );
@@ -64,6 +66,7 @@ export default function CadenceDialog({
     setError('');
     onClose();
   };
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
 
   const handleSave = async () => {
     if (!Number.isFinite(intervalDays) || intervalDays < 1) {
@@ -87,7 +90,7 @@ export default function CadenceDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEditing ? t('cadence.editTitle') : t('cadence.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -96,6 +99,7 @@ export default function CadenceDialog({
             type="number"
             value={intervalDays}
             onChange={(e) => {
+              markDirty();
               setIntervalDays(Number(e.target.value));
               setError('');
             }}
@@ -139,13 +143,14 @@ export default function CadenceDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

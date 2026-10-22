@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardTemporalRange, CardTitle } from '../api/contacts';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface TitleFormData {
@@ -42,6 +43,7 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
   const [endYear, setEndYear] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -78,7 +80,7 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {title
           ? t('contactDetail.work.editTitleDialog')
@@ -90,7 +92,10 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
             select
             label={t('contactDetail.work.kind')}
             value={kind}
-            onChange={(e) => setKind(e.target.value as 'title' | 'role')}
+            onChange={(e) => {
+              markDirty();
+              setKind(e.target.value as 'title' | 'role');
+            }}
             fullWidth
           >
             <MenuItem value="title">{t('contacts.jobTitle')}</MenuItem>
@@ -100,6 +105,7 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
             label={t('contactDetail.work.titleName')}
             value={name}
             onChange={(e) => {
+              markDirty();
               setName(e.target.value);
               setError('');
             }}
@@ -112,6 +118,7 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
               label={t('contactDetail.period.from')}
               value={startYear}
               onChange={(e) => {
+                markDirty();
                 setStartYear(e.target.value);
                 setError('');
               }}
@@ -123,6 +130,7 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
               label={t('contactDetail.period.to')}
               value={endYear}
               onChange={(e) => {
+                markDirty();
                 setEndYear(e.target.value);
                 setError('');
               }}
@@ -138,13 +146,14 @@ export default function TitleDialog({ open, onClose, onSave, title, period }: Ti
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

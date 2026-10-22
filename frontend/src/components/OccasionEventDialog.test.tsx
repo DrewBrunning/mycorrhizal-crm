@@ -97,3 +97,18 @@ test('toDatetimeLocal / fromDatetimeLocal round-trip and handle blanks', () => {
   const iso = new Date('2026-07-04T15:00').toISOString();
   expect(fromDatetimeLocal(toDatetimeLocal(iso))).toBe(iso);
 });
+
+// Issue #1780: sensitivity and notes are user edits too, so they arm the
+// discard guard (previously the dialog closed and lost them silently).
+test('changing sensitivity or notes marks the form dirty', () => {
+  const onClose = vi.fn();
+  render(<OccasionEventDialog open onClose={onClose} onSave={vi.fn()} event={baseEvent} />);
+
+  fireEvent.mouseDown(screen.getByLabelText('Sensitivity'));
+  fireEvent.click(screen.getByRole('option', { name: 'Private' }));
+  fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Bring chairs' } });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});

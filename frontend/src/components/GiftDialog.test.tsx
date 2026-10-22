@@ -267,3 +267,24 @@ test('the life event and activity selectors offer the links', () => {
   fireEvent.mouseDown(screen.getByLabelText(/Relates to an interaction/i));
   expect(screen.getByText(/Coffee catch-up/)).toBeInTheDocument();
 });
+
+// Issue #1780: every optional field and both link selectors are user edits,
+// so each must mark the dialog dirty.
+test('occasion, date, currency, and both link selectors are editable', async () => {
+  renderDialog();
+
+  fireEvent.change(screen.getByLabelText('Occasion (optional)'), {
+    target: { value: 'anniversary' },
+  });
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-09' } });
+  fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'gbp' } });
+
+  expect(screen.getByLabelText('Date')).toHaveValue('2026-09-09');
+  expect(screen.getByLabelText('Currency')).toHaveValue('GBP');
+
+  fireEvent.mouseDown(screen.getByLabelText(/Relates to a life event/i));
+  fireEvent.click(await screen.findByRole('option', { name: /Married/ }));
+
+  fireEvent.mouseDown(screen.getByLabelText(/Relates to an interaction/i));
+  fireEvent.click(await screen.findByRole('option', { name: /Coffee catch-up/ }));
+});

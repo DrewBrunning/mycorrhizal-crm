@@ -138,3 +138,41 @@ test.describe('Mobile layout: page headers wrap in every locale (#1785)', () => 
     }
   }
 });
+
+// Issues #1780/#1781: Add Contact is a long form with two three-control rows.
+// On a phone it goes full-screen, focuses the first field, and the
+// existing-circle/tag pickers each get their own full-width line -- they used
+// to be squeezed next to the "Or create new..." field and Add button until
+// only the dropdown arrow was visible.
+test.describe('Mobile layout: Add Contact (#1780, #1781)', () => {
+  for (const width of [320, 360, 390]) {
+    test(`full-screen with usable Circle/Tag pickers at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/contacts');
+      await page.getByRole('button', { name: /add/i }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      // Issue #1780: the caret starts in First Name.
+      await expect(page.getByLabel(/first.*name/i)).toBeFocused();
+
+      // Issue #1781: below `sm` the dialog paper fills the viewport instead of
+      // remaining a centred modal with wide margins. MUI's role="dialog"
+      // element is the paper itself, so measure the dialog locator directly.
+      const paperBox = await dialog.boundingBox();
+      expect(paperBox, 'dialog paper is laid out').not.toBeNull();
+      // Allow for a classic scrollbar the modal may reserve.
+      expect(paperBox?.width).toBeGreaterThanOrEqual(width - 20);
+
+      // Both "select existing..." pickers are usable, not collapsed to an arrow.
+      for (const label of [/select existing circle/i, /select existing tag/i]) {
+        const pickerBox = await dialog.getByLabel(label).boundingBox();
+        expect(pickerBox, `${label} is laid out`).not.toBeNull();
+        expect(pickerBox?.width, `${label} is usable`).toBeGreaterThanOrEqual(200);
+      }
+
+      await noHorizontalOverflow(page);
+    });
+  }
+});
