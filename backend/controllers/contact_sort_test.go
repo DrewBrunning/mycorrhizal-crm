@@ -302,8 +302,9 @@ func TestGetContacts_CreatedAtSortOrdersByCreationTime(t *testing.T) {
 }
 
 // TestGetContacts_CreatedAtSortPagingIsTotal walks every page of a
-// created_at-sorted list, including a tie on the timestamp, and asserts each
-// row appears exactly once in (created_at, id) order.
+// created_at-sorted list in both directions, including a tie on the
+// timestamp, and asserts each row appears exactly once in (created_at, id)
+// order.
 func TestGetContacts_CreatedAtSortPagingIsTotal(t *testing.T) {
 	db, router := setupRouter(t)
 	var user models.User
@@ -317,23 +318,33 @@ func TestGetContacts_CreatedAtSortPagingIsTotal(t *testing.T) {
 		require.NoError(t, db.Model(&c).UpdateColumn("created_at", base.Add(time.Duration(i/2)*time.Hour)).Error) // pairs share a timestamp
 	}
 
-	var all []map[string]any
-	next := ""
-	for page := 0; ; page++ {
-		query := "sort=created_at&order=asc&limit=2"
-		if next != "" {
-			query += "&cursor=" + next
-		}
-		items, n := sortPage(t, router, query)
-		all = append(all, items...)
-		if n == "" {
-			break
-		}
-		next = n
-		require.Less(t, page, 10, "created_at pagination did not terminate")
+	for _, tc := range []struct {
+		order string
+		want  []string
+	}{
+		{"asc", []string{"One", "Two", "Three", "Four"}},
+		{"desc", []string{"Four", "Three", "Two", "One"}},
+	} {
+		t.Run(tc.order, func(t *testing.T) {
+			var all []map[string]any
+			next := ""
+			for page := 0; ; page++ {
+				query := "sort=created_at&order=" + tc.order + "&limit=2"
+				if next != "" {
+					query += "&cursor=" + next
+				}
+				items, n := sortPage(t, router, query)
+				all = append(all, items...)
+				if n == "" {
+					break
+				}
+				next = n
+				require.Less(t, page, 10, "created_at pagination did not terminate")
+			}
+			require.Len(t, all, 4, "a created_at walk must return every row exactly once")
+			assert.Equal(t, tc.want, firstnames(all))
+		})
 	}
-	require.Len(t, all, 4, "a created_at walk must return every row exactly once")
-	assert.Equal(t, []string{"One", "Two", "Three", "Four"}, firstnames(all))
 }
 
 // TestGetContacts_CreatedAtSortRejectsSince: ?since= is the updated_at feed,
