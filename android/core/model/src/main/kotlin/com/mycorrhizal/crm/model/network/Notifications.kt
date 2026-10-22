@@ -53,6 +53,9 @@ object ReachOutKind {
     const val ORGANIZATION = "organization"
     const val TITLE = "title"
     const val ADDRESS = "address"
+
+    /** Issue #1798: the contact is behind its target closeness (ADR 0023 amendment). */
+    const val TARGET_BEHIND = "target_behind"
 }
 
 /**

@@ -2101,4 +2101,21 @@
     <string name="form_save_hint_fix_fields">Corrigez les champs en surbrillance pour continuer</string>
     <string name="preferences_key_suggestions">Suggestions</string>
     <string name="note_change_contact">Modifier</string>
+    <!-- Issue #1798 (ADR 0023 amendment): per-contact target closeness. -->
+    <string name="target_closeness_label">Proximité visée</string>
+    <string name="target_closeness_none">Aucun objectif</string>
+    <string name="target_closeness_chip">Objectif : %1$s · %2$s</string>
+    <string name="target_closeness_tier_immediate">Immédiate</string>
+    <string name="target_closeness_tier_close">Proche</string>
+    <string name="target_closeness_tier_casual">Occasionnelle</string>
+    <string name="target_closeness_tier_distant">Lointaine</string>
+    <string name="target_closeness_status_on_track">En bonne voie</string>
+    <string name="target_closeness_status_drifting">En train de s\'éloigner</string>
+    <string name="target_closeness_status_behind">En retard</string>
+    <string name="target_closeness_offer_title">Créer une cadence ?</string>
+    <string name="target_closeness_offer_body">Rester en contact avec %1$s tous les %2$d jours ?</string>
+    <string name="target_closeness_offer_accept">Créer la cadence</string>
+    <string name="target_closeness_offer_dismiss">Plus tard</string>
+    <string name="reach_out_kind_target_behind">En retard sur l\'objectif</string>
+    <string name="reach_out_behind_target">En retard sur votre objectif %1$s · dernier contact %2$s</string>
 </resources>

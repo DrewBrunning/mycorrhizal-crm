@@ -131,6 +131,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
@@ -150,6 +151,7 @@ import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.TargetClosenessTier
 import com.mycorrhizal.crm.model.network.editorToWireValue
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.network.isEditorValueEmpty
@@ -164,6 +166,10 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
+import com.mycorrhizal.crm.ui.components.healthBandColor
+import com.mycorrhizal.crm.ui.components.targetStatusBand
+import com.mycorrhizal.crm.ui.components.targetStatusLabel
+import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -742,6 +748,11 @@ fun ContactDetailScreen(
                     isMe = isMe,
                     // Issue #383 (ADR-0023): the relationship health score badge.
                     score = state.score,
+                    // Issue #1798: the target picker/offer flow.
+                    onSetTargetCloseness = viewModel::setTargetCloseness,
+                    cadencePolicyOffer = state.cadencePolicyOffer,
+                    onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
+                    onDismissCadenceOffer = viewModel::dismissCadenceOffer,
                     externalIdentities = state.externalIdentities,
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
@@ -1152,6 +1163,17 @@ fun ContactDetailContent(
     // omits the badge — never errors the screen (ContactScoreRepository's own
     // doc comment: server-computed, nothing to mirror or retry locally here).
     score: ContactScoreResponse? = null,
+    // Issue #1798 (ADR 0023 amendment): the target picker inside the score
+    // dialog writes through its own route; these thread the ViewModel actions.
+    onSetTargetCloseness: (String?) -> Unit = {},
+    /**
+     * Issue #1798: the pending cadence-policy offer returned by a target write.
+     * Non-null shows the offer dialog; accepting creates the policy, dismissing
+     * leaves the target set with no policy (a server no-op).
+     */
+    cadencePolicyOffer: CadencePolicyInput? = null,
+    onAcceptCadenceOffer: () -> Unit = {},
+    onDismissCadenceOffer: () -> Unit = {},
     // Issue #1763: drill-down trailing counts (null until loaded / on fetch failure).
     lifeEventCount: Int? = null,
     giftCount: Int? = null,
@@ -1251,6 +1273,25 @@ fun ContactDetailContent(
                             band = score.band,
                             onClick = { showScoreDetails = true },
                         )
+                        // Issue #1798: "Target: close · drifting", tinted by the
+                        // target status band. Tapping opens the same breakdown.
+                        val target = score.target
+                        if (target != null) {
+                            AssistChip(
+                                onClick = { showScoreDetails = true },
+                                label = {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.target_closeness_chip,
+                                            targetTierLabel(target.tier),
+                                            targetStatusLabel(target.status),
+                                        ),
+                                        color = healthBandColor(targetStatusBand(target.status)),
+                                    )
+                                },
+                                modifier = Modifier.testTag("target-closeness-chip"),
+                            )
+                        }
                     }
                     // Issue #212: the always-visible star toggle, mirroring web
                     // ContactHeader — optimistic flip + rollback in the
@@ -1696,6 +1737,26 @@ fun ContactDetailContent(
                     ScoreFacetRow(stringResource(R.string.health_score_facet_closeness), score.closeness)
                     ScoreFacetRow(stringResource(R.string.health_score_facet_reach_out), score.reachOut)
                     ScoreFacetRow(stringResource(R.string.health_score_facet_last_updated), score.lastUpdated)
+                    // Issue #1798: the target-closeness picker + the server's
+                    // plain-language explanation of the current status.
+                    HorizontalDivider()
+                    Text(
+                        text = stringResource(R.string.target_closeness_label),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    TargetClosenessPicker(
+                        selected = contact.crm?.targetCloseness,
+                        onSelect = onSetTargetCloseness,
+                    )
+                    val target = score.target
+                    if (target != null) {
+                        Text(
+                            text = target.reason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("target-closeness-reason"),
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -1704,6 +1765,86 @@ fun ContactDetailContent(
                 }
             },
         )
+    }
+
+    // Issue #1798 (ADR 0023 amendment, decision 1): setting a target on a
+    // contact with no cadence policy offers to create one at the tier's
+    // default interval. Accepting creates it; dismissing is a server no-op,
+    // leaving the target set without a policy.
+    if (cadencePolicyOffer != null) {
+        val contactName = card?.displayName ?: stringResource(R.string.contact_title_fallback)
+        AlertDialog(
+            onDismissRequest = onDismissCadenceOffer,
+            modifier = Modifier.testTag("target-closeness-offer"),
+            title = { Text(stringResource(R.string.target_closeness_offer_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.target_closeness_offer_body,
+                        contactName,
+                        cadencePolicyOffer.targetIntervalDays,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onAcceptCadenceOffer) {
+                    Text(stringResource(R.string.target_closeness_offer_accept))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissCadenceOffer) {
+                    Text(stringResource(R.string.target_closeness_offer_dismiss))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Issue #1798: the target-closeness dropdown in the score breakdown. "No
+ * target" plus the four tier tokens; the selected value is the contact's
+ * current `crm.target_closeness`. Selecting writes through the ViewModel's
+ * dedicated target-closeness route (the contact PUT never writes it).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TargetClosenessPicker(
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = selected?.let { targetTierLabel(it) }
+        ?: stringResource(R.string.target_closeness_none)
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.target_closeness_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+                .testTag("target-closeness-picker"),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.target_closeness_none)) },
+                onClick = {
+                    onSelect(null)
+                    expanded = false
+                },
+            )
+            TargetClosenessTier.ALL.forEach { tier ->
+                DropdownMenuItem(
+                    text = { Text(targetTierLabel(tier)) },
+                    onClick = {
+                        onSelect(tier)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

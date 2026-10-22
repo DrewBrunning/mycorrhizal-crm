@@ -2099,4 +2099,21 @@
     <string name="form_save_hint_fix_fields">Korrigiere die markierten Felder, um fortzufahren</string>
     <string name="preferences_key_suggestions">Vorschläge</string>
     <string name="note_change_contact">Ändern</string>
+    <!-- Issue #1798 (ADR 0023 amendment): per-contact target closeness. -->
+    <string name="target_closeness_label">Ziel-Nähe</string>
+    <string name="target_closeness_none">Kein Ziel</string>
+    <string name="target_closeness_chip">Ziel: %1$s · %2$s</string>
+    <string name="target_closeness_tier_immediate">Unmittelbar</string>
+    <string name="target_closeness_tier_close">Eng</string>
+    <string name="target_closeness_tier_casual">Locker</string>
+    <string name="target_closeness_tier_distant">Entfernt</string>
+    <string name="target_closeness_status_on_track">Im Plan</string>
+    <string name="target_closeness_status_drifting">Lässt nach</string>
+    <string name="target_closeness_status_behind">Im Rückstand</string>
+    <string name="target_closeness_offer_title">Kontaktrhythmus anlegen?</string>
+    <string name="target_closeness_offer_body">Mit %1$s alle %2$d Tage in Kontakt bleiben?</string>
+    <string name="target_closeness_offer_accept">Rhythmus anlegen</string>
+    <string name="target_closeness_offer_dismiss">Jetzt nicht</string>
+    <string name="reach_out_kind_target_behind">Ziel verfehlt</string>
+    <string name="reach_out_behind_target">Hinter deinem Ziel „%1$s“ · letzter Kontakt %2$s</string>
 </resources>

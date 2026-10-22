@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -79,6 +80,7 @@ import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import java.time.Instant
 import java.time.LocalDate
@@ -254,6 +256,7 @@ internal fun DashboardContent(
             items(state.reachOutSuggestions, key = { dashboardKey("reach-out", it.id) }) { suggestion ->
                 ReachOutRow(
                     suggestion = suggestion,
+                    dateFormat = dateFormat,
                     onClick = { if (suggestion.contactId > 0) onOpenContact(suggestion.contactId.toInt()) },
                     onDismiss = { onDismissReachOutSuggestion(suggestion.id) },
                 )
@@ -531,23 +534,40 @@ private fun DataDecayRow(
 // avatar+name card, plus a dismiss action since these are propose-then-
 // approve suggestions, not facts (unlike the overdue-cadence trigger).
 @Composable
-private fun ReachOutRow(suggestion: ReachOutSuggestion, onClick: () -> Unit, onDismiss: () -> Unit) {
+private fun ReachOutRow(
+    suggestion: ReachOutSuggestion,
+    dateFormat: String,
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val name = suggestion.contactName.ifBlank { stringResource(R.string.dashboard_unknown_contact) }
     val kindIcon = when (suggestion.kind) {
         ReachOutKind.TITLE -> Icons.Outlined.Badge
         ReachOutKind.ADDRESS -> Icons.Outlined.Home
+        ReachOutKind.TARGET_BEHIND -> Icons.Outlined.TrackChanges
         else -> Icons.Outlined.Business
     }
     val kindLabel = when (suggestion.kind) {
         ReachOutKind.ORGANIZATION -> stringResource(R.string.reach_out_kind_organization)
         ReachOutKind.TITLE -> stringResource(R.string.reach_out_kind_title)
         ReachOutKind.ADDRESS -> stringResource(R.string.reach_out_kind_address)
+        ReachOutKind.TARGET_BEHIND -> stringResource(R.string.reach_out_kind_target_behind)
         else -> suggestion.kind
     }
-    val changeText = if (suggestion.oldValue.isNotBlank()) {
-        stringResource(R.string.reach_out_changed_from_to, suggestion.oldValue, suggestion.newValue)
-    } else {
-        stringResource(R.string.reach_out_changed_to, suggestion.newValue)
+    val changeText = when (suggestion.kind) {
+        // Issue #1798: old_value is the tier token, new_value the last
+        // qualifying interaction (RFC3339 UTC), so the caption localizes the
+        // tier and formats the date like every other dashboard timestamp.
+        ReachOutKind.TARGET_BEHIND -> stringResource(
+            R.string.reach_out_behind_target,
+            targetTierLabel(suggestion.oldValue),
+            DateFormat.formatTimestamp(suggestion.newValue, dateFormat),
+        )
+        else -> if (suggestion.oldValue.isNotBlank()) {
+            stringResource(R.string.reach_out_changed_from_to, suggestion.oldValue, suggestion.newValue)
+        } else {
+            stringResource(R.string.reach_out_changed_to, suggestion.newValue)
+        }
     }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
