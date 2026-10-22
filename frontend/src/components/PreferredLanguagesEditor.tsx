@@ -63,7 +63,7 @@ export default function PreferredLanguagesEditor({
                   label={t('contacts.preferredLanguages.language')}
                   size="small"
                   fullWidth
-                  placeholder="en / fr-CA"
+                  placeholder={t('contacts.formatExamples.languages')}
                   value={row.language}
                   onChange={(e) => updateRow(index, { language: e.target.value })}
                 />

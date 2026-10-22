@@ -43,6 +43,19 @@ export default function MultiValueField({
   const { t } = useTranslation();
   const rowKeys = useRowKeys(value.length);
 
+  // Concrete examples for the value types whose format is easy to get wrong.
+  // The placeholder stays literal across locales; only the surrounding hint is
+  // translated (issue #1725).
+  const valuePlaceholder =
+    valueType === 'tel'
+      ? t('contacts.formatExamples.phone')
+      : valueType === 'email'
+        ? t('contacts.formatExamples.email')
+        : valueType === 'url'
+          ? t('contacts.formatExamples.url')
+          : undefined;
+  const valueHelperText = valueType === 'tel' ? t('contacts.formatExamples.phoneHint') : undefined;
+
   const updateRow = (index: number, patch: Partial<ContactValue>) => {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -74,6 +87,11 @@ export default function MultiValueField({
       <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
+      {valueHelperText && (
+        <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+          {valueHelperText}
+        </Typography>
+      )}
       <Stack spacing={1}>
         {value.map((row, index) => (
           <Stack
@@ -117,6 +135,7 @@ export default function MultiValueField({
               size="small"
               type={valueType}
               fullWidth
+              placeholder={valuePlaceholder}
               value={row.value}
               onChange={(e) => updateRow(index, { value: e.target.value })}
             />

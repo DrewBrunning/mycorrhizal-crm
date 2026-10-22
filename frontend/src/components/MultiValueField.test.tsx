@@ -88,6 +88,39 @@ test('typing in the type autocomplete updates the row type', () => {
   expect(onChange).toHaveBeenCalledWith([{ type: 'work', value: 'alice@example.com' }]);
 });
 
+// Issue #1725: fields whose value has a specific format must show a concrete
+// example instead of leaving the user to guess.
+test('phone fields show an international example and a format hint', () => {
+  renderEditor({
+    label: 'Phone',
+    valueType: 'tel',
+    defaultType: 'cell',
+    value: [{ type: 'cell', value: '', pref: 1 }],
+  });
+
+  expect(screen.getByLabelText('Phone')).toHaveAttribute('placeholder', '+1 555 123 4567');
+  expect(screen.getByText('International format recommended.')).toBeInTheDocument();
+});
+
+test('email fields show an example address as the placeholder', () => {
+  renderEditor({ label: 'Email', valueType: 'email', value: [value({ value: '' })] });
+
+  expect(screen.getByLabelText('Email')).toHaveAttribute('placeholder', 'name@example.com');
+});
+
+test('URL fields show an example link as the placeholder', () => {
+  renderEditor({ label: 'Website', valueType: 'url', value: [value({ value: '' })] });
+
+  expect(screen.getByLabelText('Website')).toHaveAttribute('placeholder', 'https://example.com');
+});
+
+test('plain text fields do not invent a format example', () => {
+  renderEditor({ label: 'Note', value: [value({ value: '' })] });
+
+  expect(screen.getByLabelText('Note')).not.toHaveAttribute('placeholder');
+  expect(screen.queryByText('International format recommended.')).not.toBeInTheDocument();
+});
+
 test('free-text type mode renders a plain input and accepts custom tokens', () => {
   const onChange = vi.fn();
 

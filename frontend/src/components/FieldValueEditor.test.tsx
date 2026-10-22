@@ -136,11 +136,12 @@ test('number scalar renders a numeric value field and reports input', () => {
   expect(onChange).toHaveBeenCalledWith('7');
 });
 
-test('date scalar shows the birthday-format helper text', () => {
+test('date scalar shows the birthday-format helper text with literal examples', () => {
   renderEditor(def({ type: 'date' }), '');
 
   expect(screen.getByLabelText('Value')).toBeInTheDocument();
-  expect(screen.getByText('Year is optional. Check Settings for date format.')).toBeInTheDocument();
+  expect(screen.getByText(/1990-06-15/)).toBeInTheDocument();
+  expect(screen.getByText(/--12-25 \(year unknown\)/)).toBeInTheDocument();
 });
 
 test('datetime scalar shows the datetime-format helper text', () => {

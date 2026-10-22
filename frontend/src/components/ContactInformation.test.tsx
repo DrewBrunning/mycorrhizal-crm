@@ -60,6 +60,8 @@ function renderInformation(
     onUpdateCard?: (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => Promise<void>;
     enabledFields?: Set<ContactFieldKey>;
     contactId?: number;
+    editingField?: string | null;
+    editValue?: string;
   } = {},
 ) {
   const onUpdateCard = opts.onUpdateCard ?? vi.fn(async () => {});
@@ -70,8 +72,8 @@ function renderInformation(
           <ContactInformation
             card={card}
             crm={crm}
-            editingField={null}
-            editValue=""
+            editingField={opts.editingField ?? null}
+            editValue={opts.editValue ?? ''}
             validationError=""
             onEditStart={vi.fn()}
             onEditCancel={vi.fn()}
@@ -116,6 +118,15 @@ test('shows no tab or dropdown navigation on mobile viewports either (T31)', () 
 });
 
 // --- T30: hide section subtitles when the section has nothing to show ---
+
+// Issue #1725: the birthday editor must show the accepted date shapes, with a
+// year-less example alongside the full one.
+test('birthday editor shows literal date-format examples', () => {
+  renderInformation({}, {}, { editingField: 'birthday' });
+
+  expect(within(fieldRow('Birthday')).getByText(/1990-06-15/)).toBeInTheDocument();
+  expect(within(fieldRow('Birthday')).getByText(/--12-25/)).toBeInTheDocument();
+});
 
 test('hides the About subtitle when every About field is disabled', () => {
   renderInformation({}, {}, { enabledFields: new Set<ContactFieldKey>(['emails']) });

@@ -30,6 +30,17 @@ test('create mode defaults to a wedding anniversary with no date', () => {
   expect(screen.getByLabelText('Date *')).toHaveValue('');
 });
 
+// Issue #1725: the accepted date shapes are easier to copy than to infer.
+test('shows the accepted date shapes with literal examples', () => {
+  renderDialog();
+
+  expect(
+    screen.getByText(
+      'Use YYYY-MM-DD for a full date (e.g. 1990-06-15) or --MM-DD when the year is unknown (e.g. --12-25).',
+    ),
+  ).toBeInTheDocument();
+});
+
 test('requires a date', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onSave });

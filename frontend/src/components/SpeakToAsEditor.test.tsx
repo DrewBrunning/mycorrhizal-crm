@@ -17,6 +17,25 @@ test('renders existing pronouns and grammatical genders', () => {
   expect(screen.getByDisplayValue('fr')).toBeInTheDocument();
 });
 
+// Issue #1725: pronouns and the grammatical-gender language tag both have a
+// specific expected format, so each input carries a concrete example.
+test('shows format examples for pronouns and grammatical-gender language', () => {
+  render(
+    <SpeakToAsEditor
+      value={{ pronouns: [{ pronouns: '' }], grammaticalGenders: [{ value: '' }] }}
+      onChange={vi.fn()}
+    />,
+  );
+
+  const pronouns = screen.getByLabelText('Pronouns');
+  expect(pronouns).toHaveAttribute('placeholder', 'they/them');
+  expect(screen.getByText('e.g. they/them, she/her')).toBeInTheDocument();
+
+  const language = screen.getByLabelText('Language');
+  expect(language).toHaveAttribute('placeholder', 'de-AT');
+  expect(screen.getByText('BCP-47 tag, e.g. de, en-US, de-AT.')).toBeInTheDocument();
+});
+
 test('adds a new pronoun row and reports it upward', () => {
   const onChange = vi.fn();
   const value: CardSpeakToAs = { pronouns: [], grammaticalGenders: [] };
