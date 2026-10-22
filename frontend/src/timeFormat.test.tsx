@@ -1,8 +1,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { setDateFormatPreference } from './DateFormatProvider';
 import {
   formatDateTime,
   formatDateTimeWith,
+  formatLocalDate,
+  formatPreferredDateTime,
   formatTime,
   formatTimeWith,
   getTimeFormat,
@@ -11,6 +14,7 @@ import {
   setTimeFormat,
   TIME_FORMATS,
   timeFormatOptions,
+  useFormatDateTime,
   useTimeFormat,
 } from './timeFormat';
 
@@ -19,6 +23,7 @@ afterEach(cleanup);
 beforeEach(() => {
   window.localStorage.clear();
   setTimeFormat('auto');
+  setDateFormatPreference('eu');
 });
 
 // 15:30 UTC on 4 July 2026, rendered in UTC so the test is zone-independent.
@@ -159,5 +164,71 @@ describe('the current preference', () => {
     const { result } = renderHook(() => useTimeFormat());
     act(() => result.current.setTimeFormat('auto'));
     expect(result.current.timeFormat).toBe('auto');
+  });
+});
+
+describe('formatPreferredDateTime', () => {
+  // Built from local parts so the test does not depend on the process zone.
+  const local = new Date(2026, 9, 26, 18, 6, 42);
+
+  test('uses the date-format preference plus a locale time with no seconds', () => {
+    expect(formatPreferredDateTime(local, 'eu', '24h', 'en-US')).toBe('26.10.2026 18:06');
+    expect(formatPreferredDateTime(local, 'us', '24h', 'en-US')).toBe('10/26/2026 18:06');
+    expect(formatPreferredDateTime(local, 'iso', '24h', 'en-US')).toBe('2026-10-26 18:06');
+    expect(formatPreferredDateTime(local, 'us-mmmm', '24h', 'en-US')).toBe(
+      'October 26, 2026 18:06',
+    );
+  });
+
+  test('honours the 12-hour preference', () => {
+    const out = norm(formatPreferredDateTime(local, 'eu', '12h', 'en-US'));
+    expect(out).toBe('26.10.2026 6:06 PM');
+  });
+
+  test('never renders seconds', () => {
+    const out = formatPreferredDateTime(local, 'eu', '24h', 'en-US');
+    expect(out).not.toMatch(/\d{2}:\d{2}:\d{2}/);
+    expect(out.match(/\d{2}:\d{2}$/)?.[0]).toBe('18:06');
+  });
+
+  test('returns an unparseable value as-is', () => {
+    expect(formatPreferredDateTime('not a date', 'eu', '24h', 'en-US')).toBe('not a date');
+  });
+});
+
+describe('formatLocalDate', () => {
+  test('renders a timestamp as a date in the preference, with no time', () => {
+    const local = new Date(2026, 9, 26, 18, 6, 42);
+    expect(formatLocalDate(local, 'eu')).toBe('26.10.2026');
+    expect(formatLocalDate(local, 'us')).toBe('10/26/2026');
+    expect(formatLocalDate(local, 'iso')).toBe('2026-10-26');
+    expect(formatLocalDate('not a date', 'eu')).toBe('not a date');
+  });
+});
+
+describe('the module-level timestamp formatter', () => {
+  test('reads both preferences, so no caller can leak a US date or seconds', () => {
+    const local = new Date(2026, 9, 26, 18, 6, 42);
+    setDateFormatPreference('us');
+    setTimeFormat('24h');
+    expect(formatDateTime(local)).toBe('10/26/2026 18:06');
+    setDateFormatPreference('eu');
+    setTimeFormat('12h');
+    expect(norm(formatDateTime(local))).toBe('26.10.2026 6:06 PM');
+  });
+});
+
+describe('useFormatDateTime', () => {
+  test('re-renders when the date or time preference changes', () => {
+    const local = new Date(2026, 9, 26, 18, 6, 42);
+    setTimeFormat('24h');
+    const { result } = renderHook(() => useFormatDateTime());
+    expect(result.current(local)).toBe('26.10.2026 18:06');
+
+    act(() => setDateFormatPreference('us'));
+    expect(result.current(local)).toBe('10/26/2026 18:06');
+
+    act(() => setTimeFormat('12h'));
+    expect(norm(result.current(local))).toBe('10/26/2026 6:06 PM');
   });
 });

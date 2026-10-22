@@ -126,3 +126,20 @@ test('the header Refresh button refetches job health', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
   await waitFor(() => expect(getJobRunHealth).toHaveBeenCalledTimes(2));
 });
+
+// Issue #1789: previous raw snake_case keys had no label. Every job the API can
+// return now has one, and operators can still see the raw key in a tooltip.
+test('translates a previously raw job key and exposes the raw key in a tooltip', async () => {
+  vi.mocked(getJobRunHealth).mockResolvedValue({
+    jobs: [health({ job_name: 'session_purge' })],
+  });
+
+  render(<BackgroundJobsPanel />);
+
+  expect(await screen.findByText('Session purge')).toBeInTheDocument();
+  expect(screen.queryByText('session_purge')).toBeNull();
+
+  fireEvent.mouseOver(screen.getByText('Session purge'));
+
+  expect(await screen.findByText('session_purge')).toBeInTheDocument();
+});

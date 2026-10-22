@@ -30,6 +30,7 @@ import {
 } from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useWebAuthn } from '../hooks/useWebAuthn';
+import { formatLocalDate } from '../timeFormat';
 import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
 import LoadError from './LoadError';
@@ -43,7 +44,7 @@ import SecondFactorProofDialog from './SecondFactorProofDialog';
 // to an account that already holds a second factor needs the same proof
 // (issue #1337); the very first factor does not.
 export default function PasskeySettings() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
   const { passkeys, loading, error: loadError, register, remove, refresh } = useWebAuthn();
   const supported = isWebAuthnSupported();
@@ -76,8 +77,7 @@ export default function PasskeySettings() {
       });
   }, []);
 
-  const formatDate = (iso?: string | null) =>
-    iso ? new Date(iso).toLocaleDateString(i18n.language) : '';
+  const formatDate = (iso?: string | null) => (iso ? formatLocalDate(iso) : '');
 
   // runAdd is the enrollment itself; failures propagate so the caller decides
   // where the message lands (the page alert, or the proof dialog).

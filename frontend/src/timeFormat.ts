@@ -1,4 +1,10 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import {
+  type DateFormat,
+  formatDateWithFormat,
+  getDateFormat,
+  subscribeDateFormat,
+} from './DateFormatProvider';
 
 // The user's 12/24-hour preference (issue #1830). Persisted backend-side as
 // users.time_format, a stable contract shared with backend/models/user.go
@@ -45,6 +51,14 @@ const DATE_TIME_FIELDS: Intl.DateTimeFormatOptions = {
 
 const TIME_FIELDS: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: 'numeric' };
 
+// A timestamp has no seconds: they add noise to an audit/event list and the
+// user cannot act on them. The date half follows the user's Date format
+// preference; the time half follows their 12/24-hour preference.
+const PREFERRED_TIME_FIELDS: Intl.DateTimeFormatOptions = {
+  hour: 'numeric',
+  minute: '2-digit',
+};
+
 function toDate(value: string | number | Date): Date | null {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -86,6 +100,26 @@ export function formatTimeWith(
     ...(options ?? TIME_FIELDS),
     ...timeFormatOptions(timeFormat),
   });
+}
+
+/**
+ * A timestamp in the user's preferred date format plus a locale time with no
+ * seconds (e.g. `26.10.2026 13:06` or `10/26/2026 1:06 PM`). The instant is
+ * rendered in the local zone — these are real instants, not calendar days
+ * (see #962/#1778 for the distinction). An unparseable value is returned
+ * as-is.
+ */
+export function formatPreferredDateTime(
+  value: string | number | Date,
+  dateFormat: DateFormat,
+  timeFormat: TimeFormat,
+  locale?: string | string[],
+): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  const datePart = formatDateWithFormat(date.toISOString(), dateFormat);
+  const timePart = formatTimeWith(date, timeFormat, locale, PREFERRED_TIME_FIELDS);
+  return `${datePart} ${timePart}`;
 }
 
 // --- the current preference ---------------------------------------------------
@@ -139,12 +173,31 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** The current preference, as a module-level read (use outside components). */
+/**
+ * A date rendered in the user's Date format preference (the local calendar
+ * date of a timestamp). Use this instead of `toLocaleDateString()` for a
+ * displayed calendar day — the browser locale ignores the app preference.
+ */
+export function formatLocalDate(
+  value: string | number | Date,
+  dateFormat: DateFormat = getDateFormat(),
+): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return formatDateWithFormat(date.toISOString(), dateFormat);
+}
+
+/**
+ * The current preference, as a module-level read (use outside components).
+ * With no explicit field options this is the preferred date format + `HH:mm`
+ * (no seconds); pass `options` to override the field set entirely.
+ */
 export function formatDateTime(
   value: string | number | Date,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return formatDateTimeWith(value, current, undefined, options);
+  if (options) return formatDateTimeWith(value, current, undefined, options);
+  return formatPreferredDateTime(value, getDateFormat(), current);
 }
 
 /** Time of day in the current preference (use outside components). */
@@ -163,10 +216,13 @@ export function useTimeFormat(): {
   formatTime: typeof formatTime;
 } {
   const timeFormat = useSyncExternalStore(subscribe, getTimeFormat, getTimeFormat);
+  const dateFormat = useSyncExternalStore(subscribeDateFormat, getDateFormat, getDateFormat);
   const dateTime = useCallback(
     (value: string | number | Date, options?: Intl.DateTimeFormatOptions) =>
-      formatDateTimeWith(value, timeFormat, undefined, options),
-    [timeFormat],
+      options
+        ? formatDateTimeWith(value, timeFormat, undefined, options)
+        : formatPreferredDateTime(value, dateFormat, timeFormat),
+    [dateFormat, timeFormat],
   );
   const time = useCallback(
     (value: string | number | Date, options?: Intl.DateTimeFormatOptions) =>
@@ -174,4 +230,18 @@ export function useTimeFormat(): {
     [timeFormat],
   );
   return { timeFormat, setTimeFormat, formatDateTime: dateTime, formatTime: time };
+}
+
+/**
+ * The timestamp formatter bound to both the date-format and 12/24-hour
+ * preferences, re-rendering the calling component when either changes. Use it
+ * instead of the module-level `formatDateTime` in components.
+ */
+export function useFormatDateTime(): (value: string | number | Date) => string {
+  const dateFormat = useSyncExternalStore(subscribeDateFormat, getDateFormat, getDateFormat);
+  const timeFormat = useSyncExternalStore(subscribe, getTimeFormat, getTimeFormat);
+  return useCallback(
+    (value: string | number | Date) => formatPreferredDateTime(value, dateFormat, timeFormat),
+    [dateFormat, timeFormat],
+  );
 }

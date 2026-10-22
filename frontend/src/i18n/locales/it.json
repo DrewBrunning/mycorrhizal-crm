@@ -940,6 +940,9 @@
     "loadMore": "Carica altri",
     "tryAgain": "Riprova",
     "none": "Nessuno",
+    "previousMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "clear": "Cancella",
     "copy": "Copia",
     "copied": "Copiato negli appunti",
     "copyFailed": "Impossibile copiare negli appunti",
@@ -3093,7 +3096,13 @@
       "db_integrity_check": "Controllo integrità database",
       "restore_drill": "Prova di ripristino del backup",
       "alert_eval": "Valutazione degli avvisi",
-      "job_run_purge": "Pulizia cronologia esecuzioni"
+      "job_run_purge": "Pulizia cronologia esecuzioni",
+      "webhook_delivery_purge": "Pulizia delle consegne webhook",
+      "idempotency_key_purge": "Pulizia delle chiavi di idempotenza",
+      "session_purge": "Pulizia delle sessioni",
+      "storage_sample": "Campionamento dello spazio",
+      "search_index_rebuild": "Ricostruzione dell'indice di ricerca",
+      "derived_columns_rebuild": "Ricostruzione delle colonne derivate"
     }
   },
   "errorAggregation": {

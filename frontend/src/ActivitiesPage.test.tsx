@@ -5,6 +5,7 @@ import './i18n/config';
 import ActivitiesPage from './ActivitiesPage';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import { pickDate } from './testSupport/dateField';
 
 beforeEach(() => {
   localStorage.setItem(
@@ -157,8 +158,8 @@ test('from/to date filters are sent as fromDate/toDate query params', async () =
   renderPage();
   await waitFor(() => expect(screen.getByText('No activities found')).toBeDefined());
 
-  fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-01-01' } });
-  fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-01-31' } });
+  await pickDate('From', '2026-01-01');
+  await pickDate('To', '2026-01-31');
 
   await waitFor(() => {
     expect(
