@@ -151,3 +151,16 @@ test('unchecking the email checkbox saves by_mail as false', async () => {
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
   expect(onSave.mock.calls[0][0]).toMatchObject({ by_mail: false });
 });
+
+// Issue #1780: the recurrence-reschedule toggle is an edit too.
+test('changing the reschedule-from-completion toggle marks the form dirty', () => {
+  const { onClose } = renderDialog();
+
+  fireEvent.mouseDown(screen.getByLabelText('Recurrence *'));
+  fireEvent.click(screen.getByRole('option', { name: 'Weekly' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Reschedule from completion date' }));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});

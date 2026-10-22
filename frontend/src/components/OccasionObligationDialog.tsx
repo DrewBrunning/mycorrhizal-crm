@@ -19,6 +19,7 @@ import {
   type OccasionObligationInput,
   type OccasionSensitivity,
 } from '../api/occasionObligations';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface OccasionObligationFormData {
@@ -59,6 +60,7 @@ export default function OccasionObligationDialog({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -112,7 +114,7 @@ export default function OccasionObligationDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {obligation ? t('occasions.obligation.editTitle') : t('occasions.obligation.createTitle')}
       </DialogTitle>
@@ -123,6 +125,7 @@ export default function OccasionObligationDialog({
             options={[...OCCASION_OBLIGATION_KINDS]}
             value={kind}
             onInputChange={(_e, value) => {
+              markDirty();
               setKind(value);
               setError('');
             }}
@@ -139,6 +142,7 @@ export default function OccasionObligationDialog({
             label={t('occasions.obligation.label')}
             value={label}
             onChange={(e) => {
+              markDirty();
               setLabel(e.target.value);
               setError('');
             }}
@@ -153,6 +157,7 @@ export default function OccasionObligationDialog({
               label={t('occasions.obligation.anchorMonth')}
               value={anchorMonth}
               onChange={(e) => {
+                markDirty();
                 setAnchorMonth(e.target.value === '' ? '' : Number(e.target.value));
                 setError('');
               }}
@@ -170,6 +175,7 @@ export default function OccasionObligationDialog({
               label={t('occasions.obligation.anchorDay')}
               value={anchorDay}
               onChange={(e) => {
+                markDirty();
                 setAnchorDay(e.target.value === '' ? '' : Number(e.target.value));
                 setError('');
               }}
@@ -188,14 +194,25 @@ export default function OccasionObligationDialog({
             label={t('occasions.obligation.leadTimeDays')}
             type="number"
             value={leadTimeDays}
-            onChange={(e) => setLeadTimeDays(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setLeadTimeDays(e.target.value);
+            }}
             fullWidth
             helperText={t('occasions.obligation.leadTimeDaysHint')}
             slotProps={{ htmlInput: { min: 0, max: 365 } }}
           />
 
           <FormControlLabel
-            control={<Switch checked={active} onChange={(e) => setActive(e.target.checked)} />}
+            control={
+              <Switch
+                checked={active}
+                onChange={(e) => {
+                  markDirty();
+                  setActive(e.target.checked);
+                }}
+              />
+            }
             label={t('occasions.obligation.active')}
           />
 
@@ -203,7 +220,10 @@ export default function OccasionObligationDialog({
             select
             label={t('occasions.obligation.sensitivity')}
             value={sensitivity}
-            onChange={(e) => setSensitivity(e.target.value as OccasionSensitivity)}
+            onChange={(e) => {
+              markDirty();
+              setSensitivity(e.target.value as OccasionSensitivity);
+            }}
             fullWidth
           >
             <MenuItem value="normal">{t('occasions.obligation.sensitivities.normal')}</MenuItem>
@@ -214,7 +234,10 @@ export default function OccasionObligationDialog({
           <TextField
             label={t('occasions.obligation.notes')}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setNotes(e.target.value);
+            }}
             fullWidth
             multiline
             minRows={2}
@@ -228,13 +251,14 @@ export default function OccasionObligationDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

@@ -222,3 +222,32 @@ test('clearing all end-date fields omits endDate from the save payload', async (
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ endDate: undefined }));
 });
+
+// Issue #1780: the partial dates, end dates, related-contact picker, and the
+// yearly reminder toggle are all user edits, so each arms the discard guard.
+test('editing the date parts, end date, related contact and reminder all work', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [{ ID: 9, uid: 'uid-9', firstname: 'Ada', lastname: 'Lovelace' }],
+    next_cursor: '',
+  } as never);
+  renderDialog({
+    initial: {
+      type: 'married',
+      category: 'family_relationships',
+      date: { year: 2020, month: 6, day: 15 },
+    },
+  });
+
+  fireEvent.change(screen.getByLabelText('Year'), { target: { value: '2021' } });
+  fireEvent.change(screen.getByLabelText('Month'), { target: { value: '7' } });
+  fireEvent.change(screen.getByLabelText('Day'), { target: { value: '4' } });
+  fireEvent.change(screen.getByLabelText('End month'), { target: { value: '8' } });
+  fireEvent.change(screen.getByLabelText('End day'), { target: { value: '9' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Remind yearly' }));
+
+  fireEvent.mouseDown(screen.getByLabelText('Related to'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Ada Lovelace' }));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+});

@@ -17,6 +17,7 @@ import {
   type UserDirectoryEntry,
 } from '../api/contactShares';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
@@ -55,6 +56,7 @@ export default function ShareContactDialog({
   const [sensitiveRevealed, setSensitiveRevealed] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   const defaultSelection = useMemo(
     () => new Set(EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive).map((s) => s.token)),
@@ -73,6 +75,7 @@ export default function ShareContactDialog({
   }, [open, defaultSelection]);
 
   const toggle = (token: string, checked: boolean) => {
+    markDirty();
     setSelected((prev) => {
       const next = new Set(prev);
       if (checked) {
@@ -107,13 +110,8 @@ export default function ShareContactDialog({
     }
   };
 
-  const handleClose = () => {
-    if (sharing) return;
-    onClose();
-  };
-
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('contactShares.shareDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -134,7 +132,10 @@ export default function ShareContactDialog({
             select
             label={t('contactShares.shareDialog.recipient')}
             value={toUserID}
-            onChange={(e) => setToUserID(e.target.value === '' ? '' : Number(e.target.value))}
+            onChange={(e) => {
+              markDirty();
+              setToUserID(e.target.value === '' ? '' : Number(e.target.value));
+            }}
             fullWidth
           >
             <MenuItem value="">
@@ -151,7 +152,10 @@ export default function ShareContactDialog({
             selected={selected}
             onToggle={toggle}
             sensitiveRevealed={sensitiveRevealed}
-            onReveal={() => setSensitiveRevealed(true)}
+            onReveal={() => {
+              markDirty();
+              setSensitiveRevealed(true);
+            }}
           />
 
           {error && (
@@ -162,7 +166,7 @@ export default function ShareContactDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={sharing}>
+        <Button onClick={requestClose} disabled={sharing}>
           {t('common.cancel')}
         </Button>
         <Button
@@ -175,6 +179,7 @@ export default function ShareContactDialog({
             : t('contactShares.shareDialog.shareButton')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

@@ -459,3 +459,32 @@ test('a server VALIDATION_ERROR on card.name lands on the first-name field, keep
   fireEvent.change(field, { target: { value: 'Rejected again' } });
   expect(field).not.toHaveAttribute('aria-invalid', 'true');
 });
+
+// Issue #1780: opening the dialog should put the caret in the first field, so
+// a new contact can be typed immediately.
+test('focuses the First Name field on open', () => {
+  renderDialog();
+  expect(screen.getByLabelText('First Name *')).toHaveFocus();
+});
+
+// Issue #1780: every editable field/shortcut arms the discard guard -- not
+// just the first-name input the parameterised guard suite types into.
+test('phone, email, and Enter-to-add circle/tag edits all arm the discard guard', () => {
+  renderDialog();
+
+  // Add a phone row and an email row, then type into them.
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1]);
+  fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '555-0100' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+
+  // Enter in either "Or create new..." field adds the chip.
+  const newFields = screen.getAllByLabelText('Or create new...');
+  fireEvent.change(newFields[0], { target: { value: 'Book Club' } });
+  fireEvent.keyDown(newFields[0], { key: 'Enter' });
+  fireEvent.change(newFields[1], { target: { value: 'VIP' } });
+  fireEvent.keyDown(newFields[1], { key: 'Enter' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+});

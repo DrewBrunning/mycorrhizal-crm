@@ -262,3 +262,39 @@ test('clearing the assigned contact removes the assignment', () => {
     expect.objectContaining({ noteContactId: undefined, noteContactName: undefined }),
   );
 });
+
+// Issue #1780: every activity field change propagates (and thus arms the
+// discard guard) -- description, location, date, and the contact picker.
+test('editing each activity field calls onChange', async () => {
+  const onChange = vi.fn();
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EditTimelineItemDialog
+          open
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          onDelete={vi.fn()}
+          type="activity"
+          values={{
+            activityTitle: 'Coffee',
+            activityDescription: '',
+            activityLocation: '',
+            activityDate: '2026-01-01',
+            activityContacts: [],
+          }}
+          onChange={onChange}
+          allContacts={[{ ID: 7, firstname: 'Ada', lastname: 'Lovelace' }]}
+        />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Long chat' } });
+  fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Cafe' } });
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-02-02' } });
+  fireEvent.mouseDown(screen.getByRole('combobox'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Ada Lovelace' }));
+
+  expect(onChange).toHaveBeenCalledTimes(4);
+});

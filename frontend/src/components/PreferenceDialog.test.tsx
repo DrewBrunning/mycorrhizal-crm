@@ -216,3 +216,21 @@ test('edit mode pre-fills an existing hobby level', async () => {
     'Intermediate',
   );
 });
+
+// Issue #1780: the free-solo key's typed and picked values, and the
+// sensitivity select, all arm the discard guard.
+test('editing the key and sensitivity marks the form dirty', async () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+
+  fireEvent.mouseDown(screen.getByLabelText('Key'));
+  fireEvent.click((await screen.findAllByRole('option'))[0]);
+  fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'custom-key' } });
+
+  fireEvent.mouseDown(screen.getByLabelText('Sensitivity'));
+  fireEvent.click(screen.getByRole('option', { name: 'Private' }));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});
