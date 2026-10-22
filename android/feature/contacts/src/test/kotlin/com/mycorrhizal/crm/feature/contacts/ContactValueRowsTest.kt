@@ -92,7 +92,7 @@ class ContactValueRowsTest {
     fun `value and type are separate lines at font scale 2`() = assertSeparateLines(2f)
 
     @Test
-    fun `unknown custom type is humanized and personal info kind is translated`() {
+    fun `unknown custom type is humanized and the skills drill-down shows the personal info count`() {
         show(
             card.copy(
                 phones = listOf(Phone(number = "+1 555 0100", contexts = listOf("beach_house"))),
@@ -100,7 +100,10 @@ class ContactValueRowsTest {
             ),
         )
         scrollTo("Beach house").assertIsDisplayed()
-        scrollTo("Hobby: pottery").assertIsDisplayed()
+        // Issue #1728: the inline "Hobby: pottery" row moved behind the
+        // Skills & interests drill-down, which now carries the count.
+        scrollTo("Skills & interests · 1").assertIsDisplayed()
+        assertEquals(0, composeTestRule.onAllNodesWithTextCount("Hobby: pottery"))
     }
 }
 

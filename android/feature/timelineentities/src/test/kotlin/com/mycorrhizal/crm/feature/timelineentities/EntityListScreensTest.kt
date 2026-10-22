@@ -668,44 +668,64 @@ class PreferenceFormTest {
         composeTestRule.onNodeWithText("Private").performScrollTo().assertIsDisplayed()
     }
 
-    // Issue #246: the proficiency picker is gated to hobby/skill categories.
+    // Issue #1738: hobbies are created from the contact's Skills & interests
+    // drill-down now, so the add-preference dialog no longer offers the
+    // deprecated category. Dislikes is offered instead on the Overview tab.
     @Test
-    fun `level picker is gated to hobby and round-trips the selected level`() {
-        var confirmed: PreferenceFormData? = null
-        setContent(onConfirm = { confirmed = it })
-
-        // Default category is food — no level field.
-        composeTestRule.onNodeWithTag("preference-level").assertDoesNotExist()
+    fun `add form hides the deprecated hobby category but offers Dislikes`() {
+        setContent(sections = PreferenceSection.OVERVIEW_TAB)
 
         composeTestRule.onNodeWithTag("preference-category").performClick()
-        // The category menu is scrollable and hobby sits below the fold.
-        composeTestRule.onNodeWithText("Activity/hobby").performScrollTo().performClick()
-        composeTestRule.onNodeWithTag("preference-level").performScrollTo().assertIsDisplayed()
+        // The menu is scrollable; hobby used to sit below the fold.
+        composeTestRule.onNodeWithText("Activity/hobby").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Dislikes").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Activity dislike").performScrollTo().assertIsDisplayed()
+    }
 
-        composeTestRule.onNodeWithText("Value").performScrollTo().performTextReplacement("Piano")
+    // Issue #246: the proficiency picker is gated to hobby/skill categories.
+    // Issue #1738: an existing hobby row stays editable (and level-editable)
+    // even though the category is no longer offered when adding a new one.
+    @Test
+    fun `editing an existing hobby still offers and round-trips the selected level`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(
+            initial = Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "hobby",
+                value = "Piano",
+                sensitivity = "normal",
+            ),
+            onConfirm = { confirmed = it },
+        )
+
+        composeTestRule.onNodeWithTag("preference-level").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithTag("preference-level").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Advanced").performClick()
-        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("hobby", confirmed?.category)
         assertEquals("high", confirmed?.level)
     }
 
     @Test
-    fun `switching away from hobby clears a selected level`() {
+    fun `switching from an existing hobby to food clears the selected level`() {
         var confirmed: PreferenceFormData? = null
-        setContent(onConfirm = { confirmed = it })
+        setContent(
+            initial = Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "hobby",
+                value = "Piano",
+                level = "high",
+                sensitivity = "normal",
+            ),
+            onConfirm = { confirmed = it },
+        )
 
-        composeTestRule.onNodeWithTag("preference-category").performClick()
-        composeTestRule.onNodeWithText("Activity/hobby").performScrollTo().performClick()
-        composeTestRule.onNodeWithTag("preference-level").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Advanced").performClick()
-        composeTestRule.onNodeWithText("Value").performScrollTo().performTextReplacement("Piano")
-
-        // Back to a category with no level concept.
         composeTestRule.onNodeWithTag("preference-category").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Food").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("food", confirmed?.category)
         assertNull(confirmed?.level)
@@ -1103,6 +1123,31 @@ class EntityListScreensTopLevelTest {
         }
 
         composeTestRule.onNodeWithText("peanuts").assertIsDisplayed()
+    }
+
+    // Issue #1738: an existing hobby preference keeps rendering (until #1739
+    // removes the rows), while dislike_activity gets its own Dislikes section.
+    @Test
+    fun `preferences screen keeps existing hobby rows and shows the Dislikes section`() {
+        val repo = mockk<PreferenceRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.success(
+            listOf(
+                Preference(id = "p1", entityId = uid, category = "hobby", value = "Piano", level = "high"),
+                Preference(id = "p2", entityId = uid, category = "dislike_activity", value = "Crowds"),
+            ),
+        )
+        val vm = PreferencesViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithText("Piano").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Advanced").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dislikes").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Crowds").performScrollTo().assertIsDisplayed()
     }
 
     // ConversationAgendaScreen wires `onRefresh = viewModel::load` (line 1684);

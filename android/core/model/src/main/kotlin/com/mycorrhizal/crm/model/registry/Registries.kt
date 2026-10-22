@@ -143,6 +143,8 @@ object PreferenceCategory {
     const val FOOD = "food"
     const val DRINK = "drink"
     const val CLOTHING_SIZE = "clothing_size"
+    /** Deprecated for new preferences (issue #1738): hobbies are created from the skills drill-down. */
+    const val HOBBY = "hobby"
 
     // Legacy/deprecated — superseded by the media_* categories below. Not in
     // CONFIG (not offered in the dialog); a stray row (pre-backfill, or a

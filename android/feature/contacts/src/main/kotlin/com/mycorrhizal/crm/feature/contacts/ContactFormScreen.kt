@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -49,7 +48,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,9 +66,7 @@ import com.mycorrhizal.crm.ui.components.EmailSpec
 import com.mycorrhizal.crm.ui.components.LinkSpec
 import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
-import com.mycorrhizal.crm.ui.components.PersonalInfoSpec
 import com.mycorrhizal.crm.ui.components.PhoneSpec
-import com.mycorrhizal.crm.ui.components.TitleSpec
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
@@ -123,21 +119,12 @@ fun ContactFormScreen(
                 onPhonesChange = viewModel::onPhonesChange,
                 onAddressesChange = viewModel::onAddressesChange,
                 onFindCoordinates = viewModel::onFindCoordinates,
-                onTitlesChange = viewModel::onTitlesChange,
                 onImppChange = viewModel::onImppChange,
                 onSocialChange = viewModel::onSocialChange,
                 onOtherServicesChange = viewModel::onOtherServicesChange,
                 onLinksChange = viewModel::onLinksChange,
-                onPersonalInfoChange = viewModel::onPersonalInfoChange,
-                onOrganizationNameChange = viewModel::onOrganizationNameChange,
-                onDepartmentChange = viewModel::onDepartmentChange,
                 onPeriodsChange = viewModel::onPeriodsChange,
-                onOrganizationPeriodStartChange = viewModel::onOrganizationPeriodStartChange,
-                onOrganizationPeriodEndChange = viewModel::onOrganizationPeriodEndChange,
-                onJobTitlePeriodStartChange = viewModel::onJobTitlePeriodStartChange,
-                onJobTitlePeriodEndChange = viewModel::onJobTitlePeriodEndChange,
                 onHowWeMetChange = viewModel::onHowWeMetChange,
-                onWorkInformationChange = viewModel::onWorkInformationChange,
                 onContactInformationChange = viewModel::onContactInformationChange,
                 onBirthdayChange = viewModel::onBirthdayChange,
                 onCardNotesChange = viewModel::onCardNotesChange,
@@ -146,7 +133,6 @@ fun ContactFormScreen(
                 onPronounsChange = viewModel::onPronounsChange,
                 onGrammaticalGendersChange = viewModel::onGrammaticalGendersChange,
                 onKeywordsChange = viewModel::onKeywordsChange,
-                onAnniversariesChange = viewModel::onAnniversariesChange,
                 onCircleToggle = viewModel::onCircleToggle,
                 onTagToggle = viewModel::onTagToggle,
             )
@@ -188,22 +174,13 @@ fun ContactFormContent(
     onAddressesChange: (List<com.mycorrhizal.crm.model.network.Address>) -> Unit,
     // ADR 0031: the explicit geocode lookup for one address row, by row key (null = unavailable).
     onFindCoordinates: ((rowKey: String) -> Unit)? = null,
-    onTitlesChange: (List<com.mycorrhizal.crm.model.network.Title>) -> Unit,
     onImppChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onSocialChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onOtherServicesChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onLinksChange: (List<com.mycorrhizal.crm.model.network.Resource>) -> Unit,
-    onPersonalInfoChange: (List<com.mycorrhizal.crm.model.network.PersonalInfo>) -> Unit,
-    onOrganizationNameChange: (String) -> Unit = {},
-    onDepartmentChange: (String) -> Unit = {},
-    // ADR 0025 (#1233): period editing for addresses and the professional section.
+    // ADR 0025 (#1233): address periods ride with the address editor.
     onPeriodsChange: (List<com.mycorrhizal.crm.model.network.EntryPeriod>) -> Unit = {},
-    onOrganizationPeriodStartChange: (String) -> Unit = {},
-    onOrganizationPeriodEndChange: (String) -> Unit = {},
-    onJobTitlePeriodStartChange: (String) -> Unit = {},
-    onJobTitlePeriodEndChange: (String) -> Unit = {},
     onHowWeMetChange: (String) -> Unit = {},
-    onWorkInformationChange: (String) -> Unit = {},
     onContactInformationChange: (String) -> Unit = {},
     onBirthdayChange: (String) -> Unit,
     onCardNotesChange: (List<com.mycorrhizal.crm.model.network.CardNote>) -> Unit = {},
@@ -213,7 +190,6 @@ fun ContactFormContent(
     onPronounsChange: (List<com.mycorrhizal.crm.model.network.Pronouns>) -> Unit = {},
     onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
     onKeywordsChange: (List<String>) -> Unit = {},
-    onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
     onCircleToggle: (String) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -415,55 +391,8 @@ fun ContactFormContent(
             )
         }
 
-        // M7 Tier 1: organization + department are plain fields (web parity — only the
-        // first organization is surfaced), edited onto organizations[0] on save.
-        if (ContactFieldKey.ORGANIZATIONS in enabled) {
-            SectionLabel(stringResource(R.string.contact_organization))
-            OutlinedTextField(
-                value = state.organizationName,
-                onValueChange = onOrganizationNameChange,
-                label = { Text(stringResource(R.string.contact_organization)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.department,
-                onValueChange = onDepartmentChange,
-                label = { Text(stringResource(R.string.contact_department)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            // ADR 0025 (#1233): the period for organizations[0]. Only offered
-            // once there is an organization to attach it to.
-            if (state.organizationName.isNotBlank()) {
-                SectionLabel(stringResource(R.string.contact_period))
-                PeriodYearFields(
-                    start = state.organizationPeriodStart,
-                    end = state.organizationPeriodEnd,
-                    onStartChange = onOrganizationPeriodStartChange,
-                    onEndChange = onOrganizationPeriodEndChange,
-                )
-            }
-        }
-
-        if (ContactFieldKey.TITLES in enabled) {
-            MultiValueEditor(
-                items = state.titles,
-                spec = TitleSpec,
-                onChange = onTitlesChange,
-                label = stringResource(R.string.contact_job_titles),
-            )
-            // ADR 0025 (#1233): the period for the job-title entry.
-            if (state.titles.isNotEmpty()) {
-                SectionLabel(stringResource(R.string.contact_period))
-                PeriodYearFields(
-                    start = state.jobTitlePeriodStart,
-                    end = state.jobTitlePeriodEnd,
-                    onStartChange = onJobTitlePeriodStartChange,
-                    onEndChange = onJobTitlePeriodEndChange,
-                )
-            }
-        }
+        // Issue #1728: organizations, titles and work_information moved to the
+        // Work drill-down; the hidden form state still round-trips them on save.
 
         // M7 Tier 1: online services. The detail screen resolves handles via `service`
         // (MobileLinkRegistry) — the editor's spec edits the uri and label only, so a
@@ -526,14 +455,7 @@ fun ContactFormContent(
             )
         }
 
-        if (ContactFieldKey.PERSONAL_INFO in enabled) {
-            MultiValueEditor(
-                items = state.personalInfo,
-                spec = PersonalInfoSpec,
-                onChange = onPersonalInfoChange,
-                label = stringResource(R.string.contact_personal_info),
-            )
-        }
+        // Issue #1728: personal info moved to the Skills & interests drill-down.
 
         // Issue #832: bare string list — chips, not MultiValueEditor (no type/pref concept).
         if (ContactFieldKey.KEYWORDS in enabled) {
@@ -565,17 +487,8 @@ fun ContactFormContent(
             )
         }
 
-        // Issue #832: every anniversary beyond the quick birth entry above
-        // (wedding/death/extra births) — mergeAnniversaries reassembles both
-        // into one array on save.
-        if (ContactFieldKey.ANNIVERSARIES in enabled) {
-            MultiValueEditor(
-                items = state.anniversaries,
-                spec = com.mycorrhizal.crm.ui.components.AnniversarySpec,
-                onChange = onAnniversariesChange,
-                label = stringResource(R.string.contact_anniversaries),
-            )
-        }
+        // Issue #1728: non-birth anniversaries moved to their own drill-down;
+        // the birthday picker above stays in the identity form.
 
         // M7 Tier 3: CRM-envelope strings that appeared in neither the old form nor detail.
         if (ContactFieldKey.HOW_WE_MET in enabled) {
@@ -587,15 +500,7 @@ fun ContactFormContent(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (ContactFieldKey.WORK_INFORMATION in enabled) {
-            OutlinedTextField(
-                value = state.workInformation,
-                onValueChange = onWorkInformationChange,
-                label = { Text(stringResource(R.string.contact_work_information)) },
-                minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        // Issue #1728: work_information moved to the Work drill-down.
         if (ContactFieldKey.CONTACT_INFORMATION in enabled) {
             OutlinedTextField(
                 value = state.contactInformation,
@@ -724,37 +629,5 @@ private fun SelectorChipEditor(
                 }
             }
         }
-    }
-}
-
-/**
- * ADR 0025 (#1233): a pair of whole-year period inputs, shared by the address
- * editor's professional counterpart (organization / job title). Either side
- * may be blank (open-ended); both blank clears the period on save.
- */
-@Composable
-private fun PeriodYearFields(
-    start: String,
-    end: String,
-    onStartChange: (String) -> Unit,
-    onEndChange: (String) -> Unit,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = start,
-            onValueChange = onStartChange,
-            label = { Text(stringResource(R.string.contact_period_from)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-        )
-        OutlinedTextField(
-            value = end,
-            onValueChange = onEndChange,
-            label = { Text(stringResource(R.string.contact_period_to)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-        )
     }
 }

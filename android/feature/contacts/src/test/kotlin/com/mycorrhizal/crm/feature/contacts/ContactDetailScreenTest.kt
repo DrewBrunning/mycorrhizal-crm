@@ -714,7 +714,7 @@ class ContactDetailScreenTest {
     }
 
     @Test
-    fun `anniversaries beyond birth render in their own section, separate from the header birthday`() {
+    fun `non-birth anniversaries become a drill-down row while the header birthday stays`() {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(
@@ -731,18 +731,23 @@ class ContactDetailScreenTest {
             }
         }
         composeTestRule.onNodeWithText("Birthday: 15.06.1990").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Wedding: 01.06.2020").performScrollTo().assertIsDisplayed()
+        // Issue #1728: the inline "Wedding: …" block is gone; the entry is
+        // behind the drill-down row (count = non-birth entries only).
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-anniversaries"))
+        composeTestRule.onNodeWithTag("drill-down-anniversaries").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Anniversaries · 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Wedding: 01.06.2020").assertDoesNotExist()
     }
 
     @Test
-    fun `anniversaries section is absent when only the birth entry exists`() {
+    fun `anniversaries drill-down is hidden when its field is disabled`() {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                    Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 6, day = 1))),
                 ),
             ),
         )
@@ -751,13 +756,13 @@ class ContactDetailScreenTest {
                 ContactDetailContent(contact = contact)
             }
         }
-        composeTestRule.onNodeWithText("Anniversaries").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("drill-down-anniversaries").assertDoesNotExist()
     }
 
     // --- Issue #832: detail-screen sections for fields that only ever had a form editor ---
 
     @Test
-    fun `titles section renders each title's name`() {
+    fun `titles become a work drill-down row with a combined count`() {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(
@@ -773,12 +778,15 @@ class ContactDetailScreenTest {
                 )
             }
         }
-        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Reporter").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithTag("drill-down-work").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reporter").assertDoesNotExist()
     }
 
     @Test
-    fun `titles section is absent when the key is disabled, even with data present`() {
+    fun `work drill-down is absent when every work field is disabled`() {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(
@@ -788,14 +796,17 @@ class ContactDetailScreenTest {
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS)
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION,
+                )
             }
         }
-        composeTestRule.onNodeWithText("Job titles").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("drill-down-work").assertDoesNotExist()
     }
 
     @Test
-    fun `how we met, work information and contact information each render in their own section`() {
+    fun `how we met and contact information stay inline while work information moves to the drill-down`() {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
@@ -812,28 +823,43 @@ class ContactDetailScreenTest {
         }
         composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("At the climbing gym").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Full-stack at Acme").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Prefers email").performScrollTo().assertIsDisplayed()
+        // Issue #1728: work_information moved behind the Work drill-down.
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Full-stack at Acme").assertDoesNotExist()
     }
 
     @Test
-    fun `work information section is absent when its key is disabled`() {
+    fun `skills drill-down row shows the personal info count and opens the screen`() {
+        var opened: Int? = null
         val contact = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(workInformation = "Full-stack at Acme"),
+            card = Card(
+                name = Name(full = "Dana White"),
+                personalInfo = listOf(
+                    com.mycorrhizal.crm.model.network.PersonalInfo(id = "pi-1", kind = "expertise", value = "Go", level = "expert"),
+                    com.mycorrhizal.crm.model.network.PersonalInfo(id = "pi-2", kind = "hobby", value = "Climbing"),
+                ),
+            ),
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION,
+                    onViewSkills = { opened = it },
                 )
             }
         }
-        composeTestRule.onNodeWithText("Full-stack at Acme").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-skills"))
+        composeTestRule.onNodeWithText("Skills & interests · 2").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("drill-down-skills").performClick()
+        assertEquals(5, opened)
+        // Issue #1728: the inline "Expertise: Go" block is gone.
+        composeTestRule.onNodeWithText("Expertise: Go").assertDoesNotExist()
     }
 
     @Test

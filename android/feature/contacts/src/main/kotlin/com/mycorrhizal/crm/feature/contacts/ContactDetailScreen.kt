@@ -65,6 +65,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
@@ -223,6 +224,11 @@ fun ContactDetailScreen(
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
+    // Issue #1728: skills/interests, work and anniversaries moved out of the
+    // edit form into their own contact-page drill-downs.
+    onViewSkills: (Int) -> Unit = {},
+    onViewWork: (Int) -> Unit = {},
+    onViewAnniversaries: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
     onViewTimeline: (Int) -> Unit = {},
     // M11: the N2 prep-view briefing (replaces the "coming soon" stub).
@@ -727,6 +733,9 @@ fun ContactDetailScreen(
                     onViewLifeEvents = onViewLifeEvents,
                     onViewGifts = onViewGifts,
                     onViewPreferences = onViewPreferences,
+                    onViewSkills = onViewSkills,
+                    onViewWork = onViewWork,
+                    onViewAnniversaries = onViewAnniversaries,
                     onViewAgenda = onViewAgenda,
                     onViewTimeline = onViewTimeline,
                     onEditActivity = onEditActivity,
@@ -1108,6 +1117,11 @@ fun ContactDetailContent(
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
+    // Issue #1728: skills/interests, work and anniversaries moved out of the
+    // edit form into their own contact-page drill-downs.
+    onViewSkills: (Int) -> Unit = {},
+    onViewWork: (Int) -> Unit = {},
+    onViewAnniversaries: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
     onViewTimeline: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
@@ -1168,6 +1182,11 @@ fun ContactDetailContent(
     val activityCount = contact.activities.orEmpty().count { !it.deleted }
     val noteCount = contact.notes.orEmpty().count { !it.deleted }
     val reminderCount = contact.reminders.orEmpty().size
+    // Issue #1728: the three moved-out groups are also preloaded on the record.
+    val personalInfoCount = card?.personalInfo.orEmpty().size
+    val workCount = card?.organizations.orEmpty().size +
+        card?.titles.orEmpty().size +
+        (if (!contact.crm?.workInformation.isNullOrBlank()) 1 else 0)
     // Issue #383: local dialog visibility only — the data itself lives in
     // ContactDetailUiState.score, loaded once by the ViewModel and passed in
     // as [score]. Kept local (rather than hoisted to ContactDetailScreen like
@@ -1312,19 +1331,10 @@ fun ContactDetailContent(
                 }
             }
         }
-        // Issue #832: every anniversary beyond the header's quick birth entry
-        // (wedding/death/extra births) — see ContactFormViewModel.mergeAnniversaries.
+        // Issue #1728: non-birth anniversaries moved to their own drill-down
+        // (the header's birthday entry stays above). Kept here only for the
+        // drill-down row's count.
         val otherAnniversaries = card?.anniversaries.orEmpty().filter { it.kind != "birth" }
-        if (otherAnniversaries.isNotEmpty() && ContactFieldKey.ANNIVERSARIES in enabledFields) {
-            item {
-                SectionCard(stringResource(R.string.contact_anniversaries)) {
-                    otherAnniversaries.forEach { anniversary ->
-                        val date = anniversary.date?.partial?.display(dateFormat ?: DateFormat.EU).orEmpty()
-                        InfoRow("${typeOptionLabel(anniversary.kind.orEmpty())}: $date")
-                    }
-                }
-            }
-        }
         val pronouns = card?.speakToAs?.pronouns.orEmpty()
         val grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty()
         if ((pronouns.isNotEmpty() || grammaticalGenders.isNotEmpty()) && ContactFieldKey.SPEAK_TO_AS in enabledFields) {
@@ -1335,15 +1345,7 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.personalInfo.isNullOrEmpty() && ContactFieldKey.PERSONAL_INFO in enabledFields) {
-            item {
-                SectionCard(stringResource(R.string.contact_personal_info)) {
-                    card?.personalInfo?.forEach { info ->
-                        InfoRow("${typeOptionLabel(info.kind.orEmpty())}: ${info.value.orEmpty()}")
-                    }
-                }
-            }
-        }
+        // Issue #1728: personal info (skills & interests) moved to its own drill-down.
         if (!card?.keywords.isNullOrEmpty() && ContactFieldKey.KEYWORDS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_keywords)) {
@@ -1408,33 +1410,8 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.organizations.isNullOrEmpty() && ContactFieldKey.ORGANIZATIONS in enabledFields) {
-            item {
-                SectionCard(stringResource(R.string.contact_organization)) {
-                    card?.organizations?.forEach { org ->
-                        org.name?.let { InfoRow(it) }
-                    }
-                }
-            }
-        }
-        // Issue #832: titles/how_we_met/work_information/contact_information had form
-        // editors but no detail display at all before this — a pre-existing Android/web
-        // gap, now closed alongside the toggle mechanism.
-        if (!card?.titles.isNullOrEmpty() && ContactFieldKey.TITLES in enabledFields) {
-            item {
-                SectionCard(stringResource(R.string.contact_job_titles)) {
-                    card?.titles?.forEach { title -> title.name?.let { InfoRow(it) } }
-                }
-            }
-        }
-        val workInformation = contact.crm?.workInformation
-        if (!workInformation.isNullOrBlank() && ContactFieldKey.WORK_INFORMATION in enabledFields) {
-            item {
-                SectionCard(stringResource(R.string.contact_work_information)) {
-                    InfoRow(workInformation)
-                }
-            }
-        }
+        // Issue #1728: organizations, titles and work_information moved to the
+        // Work drill-down; how_we_met/contact_information stay inline.
         val howWeMet = contact.crm?.howWeMet
         if (!howWeMet.isNullOrBlank() && ContactFieldKey.HOW_WE_MET in enabledFields) {
             item {
@@ -1647,6 +1624,43 @@ fun ContactDetailContent(
             )
         }
         item { DrillDownGroupHeader(stringResource(R.string.contact_section_about)) }
+        // Issue #1728: the groups that left the edit form each get a row here.
+        if (ContactFieldKey.PERSONAL_INFO in enabledFields) {
+            item {
+                DrillDownRow(
+                    label = stringResource(R.string.contact_skills_interests),
+                    icon = Icons.Outlined.Lightbulb,
+                    count = personalInfoCount,
+                    onClick = { onViewSkills(contact.id) },
+                    tag = "drill-down-skills",
+                )
+            }
+        }
+        if (ContactFieldKey.ORGANIZATIONS in enabledFields ||
+            ContactFieldKey.TITLES in enabledFields ||
+            ContactFieldKey.WORK_INFORMATION in enabledFields
+        ) {
+            item {
+                DrillDownRow(
+                    label = stringResource(R.string.contact_work),
+                    icon = Icons.Outlined.Work,
+                    count = workCount,
+                    onClick = { onViewWork(contact.id) },
+                    tag = "drill-down-work",
+                )
+            }
+        }
+        if (ContactFieldKey.ANNIVERSARIES in enabledFields) {
+            item {
+                DrillDownRow(
+                    label = stringResource(R.string.contact_anniversaries),
+                    icon = Icons.Outlined.Celebration,
+                    count = otherAnniversaries.size,
+                    onClick = { onViewAnniversaries(contact.id) },
+                    tag = "drill-down-anniversaries",
+                )
+            }
+        }
         item {
             DrillDownRow(
                 label = stringResource(R.string.contact_preferences),
@@ -1763,6 +1777,7 @@ private fun DrillDownRow(
     icon: ImageVector,
     count: Int?,
     onClick: () -> Unit,
+    tag: String? = null,
 ) {
     androidx.compose.material3.ListItem(
         headlineContent = {
@@ -1788,7 +1803,10 @@ private fun DrillDownRow(
                 contentDescription = null,
             )
         },
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+            .clickable(onClick = onClick),
     )
 }
 

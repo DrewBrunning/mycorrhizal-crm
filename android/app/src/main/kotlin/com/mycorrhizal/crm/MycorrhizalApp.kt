@@ -109,7 +109,10 @@ import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
 import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
+import com.mycorrhizal.crm.feature.contacts.ContactAnniversariesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
+import com.mycorrhizal.crm.feature.contacts.ContactSkillsScreen
+import com.mycorrhizal.crm.feature.contacts.ContactWorkScreen
 import com.mycorrhizal.crm.feature.contacts.AttachmentsScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
@@ -1205,6 +1208,9 @@ private fun AppNavGraph(
                 onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
                 onViewTimeline = { id -> navController.navigate("contacts/$id/timeline") },
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
+                onViewSkills = { id -> navController.navigate("contacts/$id/skills") },
+                onViewWork = { id -> navController.navigate("contacts/$id/work") },
+                onViewAnniversaries = { id -> navController.navigate("contacts/$id/anniversaries") },
                 onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                 onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
                 onExploreConnections = { id -> navController.navigate("contacts/$id/network") },
@@ -1463,6 +1469,25 @@ private fun AppNavGraph(
             arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
         ) {
             PreferencesScreen(onBack = { navController.popBackStack() })
+        }
+        // Issue #1728: the three drill-downs moved out of the contact edit form.
+        composable(
+            route = "contacts/{contactId}/skills",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+        ) {
+            ContactSkillsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = "contacts/{contactId}/work",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+        ) {
+            ContactWorkScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = "contacts/{contactId}/anniversaries",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+        ) {
+            ContactAnniversariesScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/agenda",
