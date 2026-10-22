@@ -48,7 +48,11 @@ style:
     active: false
   ExplicitItLambdaParameter:
     active: false
-  MayBeConst:
+  # detekt 2.0 split the 1.x rule in two; both stay off to preserve the
+  # pre-upgrade style posture (see the file header).
+  ExplicitItLambdaMultipleParameters:
+    active: false
+  MayBeConstant:
     active: false
   LoopWithTooManyJumpStatements:
     active: false

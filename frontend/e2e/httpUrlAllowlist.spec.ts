@@ -3,6 +3,7 @@ import {
   createTestContact,
   deleteTestContact,
   expect,
+  stableClick,
   authTest as test,
   waitForLoading,
 } from './fixtures';
@@ -176,7 +177,12 @@ test.describe('Web-link http(s) allowlist', () => {
       const panel = agendaPanel(page);
       const row = panel.locator('.MuiPaper-root').filter({ hasText: 'Ask about the article' });
       await expect(row).toBeVisible({ timeout: 15000 });
-      await row.getByRole('button', { name: 'Edit', exact: true }).click();
+      // stableClick: the contact page's sections load in asynchronously, so a
+      // late layout shift can move this button between mousedown and mouseup
+      // and swallow the click (the documented ContactDetailPage dialog-opener
+      // race in fixtures.ts). A plain .click() intermittently left the edit
+      // dialog unopened (nightly failure #1859).
+      await stableClick(row.getByRole('button', { name: 'Edit', exact: true }));
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Edit Agenda Item' })).toBeVisible();

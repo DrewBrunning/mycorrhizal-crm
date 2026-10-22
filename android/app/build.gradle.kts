@@ -97,24 +97,24 @@ android {
         // and both obtainium and play need to keep their own flavor manifest
         // (play's is the issue #1200 permission carve-out). The FCM service is
         // declared in the main manifest and removed by `src/foss` instead.
-        getByName("obtainium").kotlin.srcDir("src/fcm/kotlin")
-        getByName("play").kotlin.srcDir("src/fcm/kotlin")
+        getByName("obtainium").kotlin.directories += "src/fcm/kotlin"
+        getByName("play").kotlin.directories += "src/fcm/kotlin"
         // The FCM service test compiles against RemoteMessage, so it exists
         // only for the two FCM flavors.
-        getByName("testObtainium").kotlin.srcDir("src/fcmTest/kotlin")
-        getByName("testPlay").kotlin.srcDir("src/fcmTest/kotlin")
+        getByName("testObtainium").kotlin.directories += "src/fcmTest/kotlin"
+        getByName("testPlay").kotlin.directories += "src/fcmTest/kotlin"
 
         // Issue #1268 / ADR 0029 §5: the shared deep-link route vectors at
         // /testdata/deep-links (repo root) — one hand-authored file every
         // parser (Android, web, backend emitter) is tested against.
-        getByName("test").resources.srcDir("../../testdata/deep-links")
+        getByName("test").resources.directories += "../../testdata/deep-links"
 
         // ADR 0028 Decision 2: the generated arm64-v8a server binary (see the
         // buildEmbeddedServer task below) is merged into the APK's jniLibs
         // exactly like a checked-in native library. The directory is empty (and
         // the file optional) until the task runs, so an ordinary build without
         // the Go toolchain still succeeds — it just ships without local mode.
-        getByName("main").jniLibs.srcDir(embeddedServerJniLibs.get().asFile)
+        getByName("main").jniLibs.directories.add(embeddedServerJniLibs.get().asFile.absolutePath)
     }
 
     // ADR 0028 Decision 2: the embedded Go server ships as an executable in

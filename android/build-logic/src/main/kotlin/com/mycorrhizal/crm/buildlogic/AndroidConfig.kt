@@ -21,8 +21,6 @@ import org.jacoco.core.instr.Instrumenter
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
 import java.io.File
 import org.gradle.testretry.TestRetryTaskExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 /**
@@ -69,12 +67,6 @@ internal fun Project.configureAndroidCommon(
         testOptions.unitTests.isIncludeAndroidResources = true
     }
 
-    extensions.configure<KotlinAndroidProjectExtension>("kotlin") {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-
     configureAccessibilityLint(extension.lint)
     configureAndroidTestCommon()
     configureJacoco()
@@ -91,24 +83,19 @@ internal fun Project.configureAndroidCommon(
  * this repo's tweaks from config/detekt/detekt.yml on top.
  */
 internal fun Project.configureDetekt() {
-    pluginManager.apply("io.gitlab.arturbosch.detekt")
-    extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension>("detekt") {
+    pluginManager.apply("dev.detekt")
+    extensions.configure<dev.detekt.gradle.extensions.DetektExtension>("detekt") {
         config.setFrom(rootProject.file("config/detekt/detekt.yml"))
-        buildUponDefaultConfig = true
-        parallel = true
+        buildUponDefaultConfig.set(true)
+        parallel.set(true)
     }
-    // detekt's embedded Kotlin compiler derives --jvm-target from the toolchain
-    // running the build (e.g. JDK 25 -> target 25), but its CLI only accepts
-    // up to 22 and fails. The compile targets 17 (see configureAndroidCommon);
-    // pin detekt to the same value so it parses the same bytecode target.
-    //
-    // Note: detekt 1.23.x also reads the daemon JVM's java.version to build its
-    // compiler environment and rejects JDK > 22 outright ("IllegalArgumentException:
-    // 25.0.3"), so `./gradlew detekt` must run on a JDK <= 22. CI satisfies this
-    // with setup-java 17 (see android-tests.yml); a local dev machine on a newer
-    // default JDK needs to point the Android build at JDK 17/21.
-    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-        jvmTarget = "17"
+    // detekt's embedded Kotlin compiler derives its JVM target from the build
+    // JVM, which on JDK 25 would default to target 25. The Android modules
+    // compile to 17 (see configureAndroidCommon); pin detekt to the same value
+    // so it analyses the same bytecode target. detekt 2.0 no longer rejects a
+    // JDK 25 build JVM, so this is a consistency pin, not a compatibility workaround.
+    tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+        jvmTarget.set("17")
     }
 }
 
@@ -300,15 +287,18 @@ internal fun Project.configureJacoco() {
         // (`performEnroll$app_fossDebug`), so the flavor trees are NOT
         // interchangeable and must not be flattened together.
         val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac")) {
-            include("**/obtainiumDebug/**", "**/debug/**")
+            include(*COVERAGE_VARIANT_GLOBS)
         }
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
-            include("**/obtainiumDebug/**", "**/debug/**")
+        // AGP 9's built-in Kotlin writes compiled classes under
+        // `intermediates/built_in_kotlinc/<variant>/compile<Variant>Kotlin/classes`
+        // instead of the old `tmp/kotlin-classes` root. Both roots are listed
+        // through the same variant globs so the flavor split is unchanged.
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
+            include(*COVERAGE_VARIANT_GLOBS)
         }
-        // Depend on every debug variant's compiler: the tree roots are shared
-        // (`tmp/kotlin-classes`, `intermediates/javac`), so even though the
-        // includes select only obtainiumDebug/debug, Gradle requires the
-        // producer edge for every flavor it can see under that root.
+        // Depend on every debug variant's compiler: the tree roots are shared,
+        // so even though the includes select only obtainiumDebug/debug, Gradle
+        // requires the producer edge for every flavor it can see under that root.
         dependsOn(tasks.matching { it.name.matches(Regex("compile.*Debug.*(Kotlin|JavaWithJavac)")) })
         inputs.files(javaClasses, kotlinClasses)
         outputs.dir(instrumentedDir)
@@ -322,18 +312,23 @@ internal fun Project.configureJacoco() {
                 override fun visitDir(dirDetails: FileVisitDetails) {}
                 override fun visitFile(fileDetails: FileVisitDetails) {
                     // Keep the leading `<variant>` segment as a subtree and
-                    // strip it only from the path written inside that subtree:
-                    // `obtainiumDebug/com/...` -> `instrumented/obtainiumDebug/
-                    // com/...`. Each variant's test task prepends its own
-                    // subtree, so the mangled internal names never cross
-                    // flavors. The `slash > 0` guard skips a class sitting
-                    // directly at the tree root (no real one is, but writing
-                    // to the dest dir itself would fail loudly).
+                    // write only the package path inside it:
+                    //   `obtainiumDebug/compile…Kotlin/classes/com/...` ->
+                    //   `instrumented/obtainiumDebug/com/...`
+                    // (the old `tmp/kotlin-classes` layout had no intermediate
+                    // compiler directory, so the class root is located by its
+                    // `/classes/` marker rather than by stripping one segment).
+                    // Each variant's test task prepends its own subtree, so the
+                    // mangled internal names never cross flavors. Requiring a
+                    // non-empty variant + marker skips a class sitting directly
+                    // at the tree root (no real one is, but writing to the dest
+                    // dir itself would fail loudly).
                     val rel = fileDetails.relativePath.pathString
-                    val slash = rel.indexOf('/')
-                    if (fileDetails.name.endsWith(".class") && slash > 0) {
-                        val variant = rel.substring(0, slash)
-                        val inner = rel.substring(slash + 1)
+                    val classesMarker = "/classes/"
+                    val marker = rel.indexOf(classesMarker)
+                    val variant = rel.substringBefore('/')
+                    if (fileDetails.name.endsWith(".class") && marker > 0 && variant.isNotEmpty()) {
+                        val inner = rel.substring(marker + classesMarker.length)
                         val target = File(File(dest, variant), inner)
                         target.parentFile.mkdirs()
                         target.writeBytes(
@@ -396,7 +391,7 @@ internal fun Project.configureJacoco() {
             include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
             include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
@@ -551,7 +546,7 @@ private fun Project.configureCrossModuleCoverage() {
                             include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
-                        mod.fileTree(mod.layout.buildDirectory.dir("tmp/kotlin-classes")) {
+                        mod.fileTree(mod.layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
                             include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
