@@ -1954,7 +1954,13 @@
     "truncated_other": "Showing the first {{count}} addresses only; the map is limited to this many points.",
     "listHeading": "Contacts on the map",
     "unnamed": "Unnamed contact",
-    "styleFailed": "The map background could not be loaded; the contacts are listed below."
+    "styleFailed": "The map background could not be loaded; the contacts are listed below.",
+    "controls": {
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "resetBearing": "Drag to rotate map, click to reset north",
+      "closePopup": "Close popup"
+    }
   },
   "contactScore": {
     "badge": {

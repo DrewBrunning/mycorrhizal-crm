@@ -1977,7 +1977,13 @@
     "truncated_many": "Seules les {{count}} premières adresses sont affichées ; la carte est limitée à ce nombre de points.",
     "listHeading": "Contacts sur la carte",
     "unnamed": "Contact sans nom",
-    "styleFailed": "Le fond de carte n'a pas pu être chargé ; les contacts sont listés ci-dessous."
+    "styleFailed": "Le fond de carte n'a pas pu être chargé ; les contacts sont listés ci-dessous.",
+    "controls": {
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "resetBearing": "Faites glisser pour faire pivoter la carte, cliquez pour réinitialiser le nord",
+      "closePopup": "Fermer la fenêtre contextuelle"
+    }
   },
   "contactScore": {
     "badge": {

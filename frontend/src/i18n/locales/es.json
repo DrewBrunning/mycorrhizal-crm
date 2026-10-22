@@ -1977,7 +1977,13 @@
     "truncated_many": "Se muestran solo las primeras {{count}} direcciones; el mapa está limitado a esta cantidad de puntos.",
     "listHeading": "Contactos en el mapa",
     "unnamed": "Contacto sin nombre",
-    "styleFailed": "No se pudo cargar el fondo del mapa; los contactos se enumeran a continuación."
+    "styleFailed": "No se pudo cargar el fondo del mapa; los contactos se enumeran a continuación.",
+    "controls": {
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "resetBearing": "Arrastra para girar el mapa, haz clic para restablecer el norte",
+      "closePopup": "Cerrar ventana emergente"
+    }
   },
   "contactScore": {
     "badge": {

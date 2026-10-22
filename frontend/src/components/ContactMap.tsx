@@ -45,7 +45,22 @@ export default function ContactMap({ styleUrl, points, onOpenContact }: ContactM
     if (!container) return;
     let map: MapLibreMap;
     try {
-      map = new MapLibreMap({ container, style: styleUrl, center: [0, 20], zoom: 1 });
+      map = new MapLibreMap({
+        container,
+        style: styleUrl,
+        center: [0, 20],
+        zoom: 1,
+        // MapLibre's own controls and popup close button have hardcoded
+        // English defaults (issue #1787); its locale option is the supported
+        // replacement. The effect depends on `t`, so a language change also
+        // rebuilds the map with the new labels.
+        locale: {
+          'NavigationControl.ZoomIn': t('map.controls.zoomIn'),
+          'NavigationControl.ZoomOut': t('map.controls.zoomOut'),
+          'NavigationControl.ResetBearing': t('map.controls.resetBearing'),
+          'Popup.Close': t('map.controls.closePopup'),
+        },
+      });
     } catch {
       // No WebGL (or a broken style) throws synchronously at construction.
       setFailed(true);
