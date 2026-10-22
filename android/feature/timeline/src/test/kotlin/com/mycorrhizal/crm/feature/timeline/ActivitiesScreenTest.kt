@@ -45,6 +45,7 @@ class ActivitiesScreenTest {
         onFromDateChange: (String) -> Unit = {},
         onToDateChange: (String) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        onErrorShown: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -57,6 +58,7 @@ class ActivitiesScreenTest {
                     onToDateChange = onToDateChange,
                     onLoadMore = onLoadMore,
                     onDelete = onDelete,
+                    onErrorShown = onErrorShown,
                 )
             }
         }
@@ -133,6 +135,71 @@ class ActivitiesScreenTest {
         composeTestRule.onNodeWithText("Dana").assertDoesNotExist()
         composeTestRule.onNodeWithText("Coffee with Dana").performClick()
         assertEquals(1, editedId)
+    }
+
+    @Test
+    fun `ActivityListItem renders its type, location and date subtitle`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ActivityListItem(
+                    activity = Activity(
+                        id = 1,
+                        title = "Lunch",
+                        type = "visit",
+                        location = "Cafe",
+                        date = "2026-08-01T12:00:00Z",
+                    ),
+                    onClick = {},
+                    onContactClick = {},
+                    onDelete = {},
+                    showContactChips = false,
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Cafe", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a list error over populated content shows a snackbar and clears it`() {
+        // The empty-list error is body content (EmptyState), but a failure that
+        // leaves stale rows on screen must surface as a snackbar instead.
+        setContent(
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch")),
+                error = "Offline",
+            ),
+        )
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Offline").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Lunch").assertIsDisplayed()
+    }
+
+    @Test
+    fun `ActivityListItem still shows participant chips when not scoped to the contact`() {
+        // The scaffold-level default (and any other caller) keeps the chip
+        // behavior; only the per-contact list opts out. Issue #1763.
+        var contactedId: Int? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ActivityListItem(
+                    activity = Activity(
+                        id = 1,
+                        title = "Coffee with Dana",
+                        contacts = listOf(ContactFlat(id = 5, firstname = "Dana")),
+                    ),
+                    onClick = {},
+                    onContactClick = { contactedId = it },
+                    onDelete = {},
+                    showContactChips = true,
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Dana").performClick()
+        assertEquals(5, contactedId)
     }
 
     @Test
