@@ -314,6 +314,11 @@ jobs:
           LOADSMOKE_USERS: "10"
           LOADSMOKE_WORKERS: "40"
           LOADSMOKE_DURATION: "12s"
+          # A writer can genuinely wait out the 5s busy_timeout on a shared,
+          # contended runner at this concurrency (same reason internal/soak's
+          # per-PR smoke allows a 5% shed fraction). A deferred-transaction
+          # regression sheds a large share, far past this 0.5% allowance.
+          LOADSMOKE_MAX_BUSY_FRACTION: "0.005"
 
       # Issue #498: runs against a *quiesced* snapshot -- stopping the
       # stack first checkpoints the WAL and closes the DB cleanly. Copying
