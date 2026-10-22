@@ -49,6 +49,8 @@ import com.mycorrhizal.crm.model.network.ChangePasswordRequest
 import com.mycorrhizal.crm.model.network.CheckPasswordStrengthRequest
 import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
+import com.mycorrhizal.crm.model.network.TargetClosenessInput
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
@@ -1122,6 +1124,22 @@ class ApiClient(
     /** POST /api/v1/contacts/{id}/unfavorite — clears the favorite flag. */
     suspend fun unfavoriteContact(id: Int): Result<Unit> =
         executePostEmpty("$CONTACTS_PATH/$id/unfavorite") { _, _ -> Unit }
+
+    // Issue #1798 (ADR 0023 amendment): target closeness is set and cleared
+    // through its own routes, like favorite. They are toggle-shaped actions
+    // exempt from If-Match (`reasonToggle`), so neither sends the header.
+
+    /** PUT /api/v1/contacts/{id}/target-closeness — sets the relationship goal tier. */
+    suspend fun setTargetCloseness(id: Int, tier: String): Result<ContactTargetClosenessResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id/target-closeness", TargetClosenessInput(tier)) { _, body ->
+            moshi.adapter(ContactTargetClosenessResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/contacts/{id}/target-closeness — clears the target (idempotent). */
+    suspend fun clearTargetCloseness(id: Int): Result<ContactTargetClosenessResponse> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id/target-closeness") { _, body ->
+            moshi.adapter(ContactTargetClosenessResponse::class.java).fromJson(body)
+        }
 
     /**
      * GET /api/v1/export/vcf?vcard_uid=… — exports a single contact as vCard

@@ -3,6 +3,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import { Autocomplete, Box, IconButton, TextField, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { EMPTY_VALUE } from '../utils/emptyValue';
 import CopyButton from './CopyButton';
 
 interface EditableFieldProps {
@@ -55,7 +56,7 @@ export default function EditableField({
     ? displaySuffix
       ? `${baseDisplayValue} ${displaySuffix}`
       : baseDisplayValue
-    : '-';
+    : EMPTY_VALUE;
   const showError = isEditing && validationError;
 
   return (

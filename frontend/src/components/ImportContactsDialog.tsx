@@ -58,6 +58,7 @@ import {
 import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
+import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -540,7 +541,7 @@ export default function ImportContactsDialog({
                           maxWidth: 150,
                         }}
                       >
-                        {uploadResponse.sample_data[0]?.[index] || '-'}
+                        {uploadResponse.sample_data[0]?.[index] || EMPTY_VALUE}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -640,7 +641,7 @@ export default function ImportContactsDialog({
                           maxWidth: 160,
                         }}
                       >
-                        {candidate.value || '-'}
+                        {candidate.value || EMPTY_VALUE}
                       </Typography>
                     </TableCell>
                     <TableCell>

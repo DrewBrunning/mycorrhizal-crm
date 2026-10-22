@@ -44,7 +44,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useAudit } from './hooks/useAudit';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
-import { formatDateTime as formatLocalDateTime } from './timeFormat';
+import { useFormatDateTime } from './timeFormat';
 import { getErrorMessage } from './utils/errorHandler';
 
 const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'error'> = {
@@ -75,6 +75,7 @@ export default function AuditPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.audit'));
   const { showSuccess, showError } = useSnackbar();
+  const formatDateTime = useFormatDateTime();
   const theme = useTheme();
   // #1788: below `sm` the 5-column table clipped to 2 columns with no scroll
   // cue, so phones get a card list instead (as Contacts does). Gated with a JS
@@ -490,12 +491,4 @@ function EntityIdCell({
       {event.entity_id}
     </Typography>
   );
-}
-
-// Audit timestamps need date + time (multiple events can share a day), so this
-// uses the user's locale rather than the date-only DateFormat preference.
-function formatDateTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return formatLocalDateTime(date);
 }

@@ -152,6 +152,15 @@ data class CRMEnvelope(
      */
     val ambient: Boolean? = null,
     /**
+     * Issue #1798 (ADR 0023 amendment): the user's relationship goal for this
+     * contact ("immediate"/"close"/"casual"/"distant"), or null for no target.
+     * Read-only through the contact PUT — the server ignores it there; it is set
+     * via the target-closeness endpoints. Modelled so it displays and so
+     * `copy`-based form saves keep it (the same data-loss class [periods] warns
+     * about).
+     */
+    @Json(name = "target_closeness") val targetCloseness: String? = null,
+    /**
      * Issue #1738: per-[PersonalInfo] metadata (sensitivity/favorite/notes/
      * provenance), keyed by the entry's stable Card ID. Kept on the envelope so
      * the form's full-record PUT round-trips it unchanged — this is the same

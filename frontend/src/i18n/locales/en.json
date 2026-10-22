@@ -966,6 +966,9 @@
     "continue": "Continue",
     "add": "Add",
     "none": "None",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "clear": "Clear",
     "loadMore": "Load more",
     "tryAgain": "Try again",
     "copy": "Copy",
@@ -3093,7 +3096,13 @@
       "db_integrity_check": "Database integrity check",
       "restore_drill": "Backup restore drill",
       "alert_eval": "Alert evaluation",
-      "job_run_purge": "Job history purge"
+      "job_run_purge": "Job history purge",
+      "webhook_delivery_purge": "Webhook delivery purge",
+      "idempotency_key_purge": "Idempotency key purge",
+      "session_purge": "Session purge",
+      "storage_sample": "Storage sampling",
+      "search_index_rebuild": "Search index rebuild",
+      "derived_columns_rebuild": "Derived columns rebuild"
     }
   },
   "errorAggregation": {

@@ -5,6 +5,7 @@ import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import NotesPage from './NotesPage';
+import { pickDate } from './testSupport/dateField';
 
 beforeEach(() => {
   localStorage.setItem(
@@ -402,19 +403,21 @@ test('the info button opens the explanation popover', async () => {
   expect(await screen.findByText(/Filed notes leave the inbox/i)).toBeDefined();
 });
 
-// The From/To date filters each wire an onChange handler into notesParams;
-// changing them must not crash and must keep the field controlled.
+// The From/To date filters wire a picked day into notesParams; the field shows
+// the date-format preference and stays controlled.
 test('the from/to date filters accept input', async () => {
   mockFetchByUrl({ '/notes?': emptyNotesResponse });
   renderPage();
 
   await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
 
-  fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-01-01' } });
-  fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-02-01' } });
+  await pickDate('From', '2026-01-01');
+  await pickDate('To', '2026-02-01');
 
-  expect(screen.getByLabelText('From')).toHaveValue('2026-01-01');
-  expect(screen.getByLabelText('To')).toHaveValue('2026-02-01');
+  // The field shows the picked day in the preferred format (EU by default),
+  // not the browser-native mm/dd/yyyy.
+  expect(screen.getByRole('textbox', { name: 'From' })).toHaveValue('01.01.2026');
+  expect(screen.getByRole('textbox', { name: 'To' })).toHaveValue('01.02.2026');
 });
 
 // --- ADR 0008: If-Match + 412 conflict dialog ---------------------------------

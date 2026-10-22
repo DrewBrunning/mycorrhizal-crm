@@ -26,10 +26,12 @@ import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
+import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreFacet
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.ContactScoreTarget
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
@@ -58,6 +60,7 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -342,6 +345,173 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Close").performClick()
 
         composeTestRule.onNodeWithText("Relationship health").assertDoesNotExist()
+    }
+
+    // --- Issue #1798 (ADR 0023 amendment): target chip, picker, offer dialog ---
+
+    private fun targetOf(tier: String = "close", status: String = "drifting") = ContactScoreTarget(
+        tier = tier,
+        status = status,
+        value = 65.9,
+        intervalDays = 30,
+        intervalSource = "target_tier",
+        reason = "Recency and frequency score 66 against a 30-day interval from the close target",
+    )
+
+    @Test
+    fun `a score with a target shows the localized chip next to the badge`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        crm = CRMEnvelope(targetCloseness = "close"),
+                    ),
+                    score = scoreOf("moss").copy(target = targetOf()),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("target-closeness-chip").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Target: Close · Drifting").assertIsDisplayed()
+
+        // The chip is a shortcut into the same score breakdown as the badge.
+        composeTestRule.onNodeWithTag("target-closeness-chip").performClick()
+        composeTestRule.onNodeWithText("Relationship health").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a score without a target shows no chip`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("moss").copy(target = null),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("target-closeness-chip").assertDoesNotExist()
+    }
+
+    @Test
+    fun `choosing a tier in the score dialog invokes the target callback`() {
+        var picked: String? = "unset"
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        crm = CRMEnvelope(targetCloseness = "close"),
+                    ),
+                    score = scoreOf("moss").copy(target = targetOf()),
+                    onSetTargetCloseness = { picked = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+        // The label ("Target closeness") appears on both the section heading and
+        // the field, so pin the picker itself rather than a duplicated text node.
+        composeTestRule.onNodeWithTag("target-closeness-picker").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("target-closeness-picker").performClick()
+        composeTestRule.onNodeWithText("Casual").performClick()
+
+        assertEquals("casual", picked)
+    }
+
+    @Test
+    fun `choosing no target in the picker invokes the callback with null`() {
+        var picked: String? = "unset"
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        crm = CRMEnvelope(targetCloseness = "close"),
+                    ),
+                    score = scoreOf("moss").copy(target = targetOf()),
+                    onSetTargetCloseness = { picked = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+        composeTestRule.onNodeWithTag("target-closeness-picker").performClick()
+        composeTestRule.onNodeWithText("No target").performClick()
+
+        assertNull(picked)
+    }
+
+    @Test
+    fun `the score dialog shows the target reason when one is set`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("moss").copy(target = targetOf()),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+
+        // The dialog's text column can clip below the facets; the reason must
+        // still be composed and rendered into the dialog.
+        composeTestRule
+            .onNodeWithText("Recency and frequency score 66 against a 30-day interval from the close target")
+            .assertExists()
+    }
+
+    @Test
+    fun `a pending offer shows the dialog and accepting invokes its callback`() {
+        var accepted = 0
+        var dismissed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    cadencePolicyOffer = CadencePolicyInput(entityId = "u5", targetIntervalDays = 30),
+                    onAcceptCadenceOffer = { accepted++ },
+                    onDismissCadenceOffer = { dismissed++ },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("target-closeness-offer").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create a cadence?").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText("Stay in touch with Dana White every 30 days?")
+            .assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Create cadence").performClick()
+
+        assertEquals(1, accepted)
+        assertEquals(0, dismissed)
+    }
+
+    @Test
+    fun `dismissing the offer invokes the dismiss callback`() {
+        var accepted = 0
+        var dismissed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    cadencePolicyOffer = CadencePolicyInput(entityId = "u5", targetIntervalDays = 30),
+                    onAcceptCadenceOffer = { accepted++ },
+                    onDismissCadenceOffer = { dismissed++ },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Not now").performClick()
+
+        assertEquals(0, accepted)
+        assertEquals(1, dismissed)
     }
 
     @Test

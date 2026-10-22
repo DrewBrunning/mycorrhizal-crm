@@ -28,6 +28,7 @@ import { Link as RouterLink } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
 import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
+import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import LoadError from './components/LoadError';
@@ -43,10 +44,10 @@ import { useRecordConflict } from './hooks/useRecordConflict';
 import { calendarDateOnly } from './utils/localDate';
 
 const ActivitiesPage: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   useDocumentTitle(t('nav.activities'));
   const { announce } = useAnnouncer();
-  const { formatDate, getDatePlaceholder } = useDateFormat();
+  const { formatDate } = useDateFormat();
   // #1783: one formatter for both the sm+ date column and the phone caption.
   const activityDateLabel = (activity: Activity) => formatDate(calendarDateOnly(activity.date));
 
@@ -292,30 +293,16 @@ const ActivitiesPage: React.FC = () => {
             variant="outlined"
             sx={{ flex: 1, minWidth: 200 }}
           />
-          <TextField
-            size="small"
+          <DateField
             label={t('activities.fromDate')}
-            type="date"
             value={fromDate}
-            onChange={(e) => handleFromDateChange(e.target.value)}
-            variant="outlined"
-            slotProps={{
-              inputLabel: { shrink: true },
-              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
-            }}
+            onChange={handleFromDateChange}
             sx={{ width: 160 }}
           />
-          <TextField
-            size="small"
+          <DateField
             label={t('activities.toDate')}
-            type="date"
             value={toDate}
-            onChange={(e) => handleToDateChange(e.target.value)}
-            variant="outlined"
-            slotProps={{
-              inputLabel: { shrink: true },
-              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
-            }}
+            onChange={handleToDateChange}
             sx={{ width: 160 }}
           />
         </Box>

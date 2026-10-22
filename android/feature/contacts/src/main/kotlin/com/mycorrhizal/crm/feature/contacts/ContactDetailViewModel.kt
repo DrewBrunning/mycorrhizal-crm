@@ -24,7 +24,9 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
@@ -170,6 +172,13 @@ data class ContactDetailUiState(
      * panel here).
      */
     val score: ContactScoreResponse? = null,
+    /**
+     * Issue #1798 (ADR 0023 amendment): the cadence-policy offer returned by a
+     * successful target-closeness write, when the contact had no live policy.
+     * Non-null drives the offer dialog; accepting creates the policy, dismissing
+     * (or a failed/cleared response) leaves the target set with no policy.
+     */
+    val cadencePolicyOffer: CadencePolicyInput? = null,
     /**
      * Issue #1763: the drill-down rows show a trailing count so the user can
      * tell which sections have content without opening each one. Each is null
@@ -991,6 +1000,71 @@ class ContactDetailViewModel @Inject constructor(
             )
         }
     }
+
+    // --- Issue #1798 (ADR 0023 amendment): target closeness -----------------
+
+    /**
+     * Set the contact's target closeness ([tier] non-null) or clear it (null),
+     * mirroring web's `handleSetTargetCloseness`. The write bumps the contact's
+     * revision exactly like a favorite toggle, so re-read it afterwards; the
+     * score is refetched because Recency/Frequency now normalize against the
+     * target's interval. The response may carry a cadence-policy offer, which
+     * the offer dialog surfaces. On failure the contact is left untouched and
+     * the error surfaces through the snackbar path.
+     */
+    fun setTargetCloseness(tier: String?) {
+        if (contactId == 0) return
+        viewModelScope.launch {
+            val result = if (tier == null) {
+                contactRepository.clearTargetCloseness(contactId)
+            } else {
+                contactRepository.setTargetCloseness(contactId, tier)
+            }
+            result.foldApiError(
+                onSuccess = { response ->
+                    _uiState.update { state ->
+                        val crm = (state.contact?.crm ?: CRMEnvelope())
+                            .copy(targetCloseness = response.targetCloseness)
+                        state.copy(
+                            contact = state.contact?.copy(crm = crm),
+                            cadencePolicyOffer = response.cadencePolicyOffer,
+                        )
+                    }
+                    loadScore()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(error = error.displayMessage) }
+                },
+            )
+            // The write bumps the revision exactly like a favorite toggle; re-read
+            // it in this coroutine so a later delete doesn't send a stale If-Match.
+            if (result.isSuccess) refreshRevision()
+        }
+    }
+
+    /**
+     * Accept the pending cadence-policy offer: create it from the exact body the
+     * server returned, clear the dialog, and refetch the score so the resolved
+     * interval source flips from `target_tier` to `cadence_policy`. A failure
+     * keeps the offer so the user can retry, surfacing through [error].
+     */
+    fun acceptCadenceOffer() {
+        val offer = _uiState.value.cadencePolicyOffer ?: return
+        viewModelScope.launch {
+            cadencePolicyRepository.create(offer).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(cadencePolicyOffer = null) }
+                    loadScore()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Dismiss the offer. Makes no request: the target stays set with no policy. */
+    fun dismissCadenceOffer() = _uiState.update { it.copy(cadencePolicyOffer = null) }
 
     // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
 

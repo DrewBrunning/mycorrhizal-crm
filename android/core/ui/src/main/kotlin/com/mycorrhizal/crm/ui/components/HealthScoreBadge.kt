@@ -23,6 +23,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.mycorrhizal.crm.model.network.TargetClosenessTier
+import com.mycorrhizal.crm.model.network.TargetStatus
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 
@@ -59,6 +61,45 @@ fun healthBandLabel(band: String): String = when (band) {
     "chanterelle" -> stringResource(R.string.health_score_band_chanterelle)
     "russula" -> stringResource(R.string.health_score_band_russula)
     else -> band
+}
+
+/**
+ * Issue #1798 (ADR 0023 amendment): the target-closeness status band, so a
+ * target chip can reuse the same health-band colors as the score badge.
+ * on_track maps to moss, drifting to chanterelle, behind to russula; anything
+ * else falls through to [healthBandColor]'s muted unknown-band role.
+ */
+fun targetStatusBand(status: String): String = when (status) {
+    TargetStatus.ON_TRACK -> "moss"
+    TargetStatus.DRIFTING -> "chanterelle"
+    TargetStatus.BEHIND -> "russula"
+    else -> ""
+}
+
+/**
+ * Issue #1798: the localized label for a target-closeness tier, falling back to
+ * the raw backend token for one this client doesn't recognize yet (the same
+ * forward-compatible rule [healthBandLabel] follows).
+ */
+@Composable
+fun targetTierLabel(tier: String): String = when (tier) {
+    TargetClosenessTier.IMMEDIATE -> stringResource(R.string.target_closeness_tier_immediate)
+    TargetClosenessTier.CLOSE -> stringResource(R.string.target_closeness_tier_close)
+    TargetClosenessTier.CASUAL -> stringResource(R.string.target_closeness_tier_casual)
+    TargetClosenessTier.DISTANT -> stringResource(R.string.target_closeness_tier_distant)
+    else -> tier
+}
+
+/**
+ * Issue #1798: the localized label for a target status
+ * (on_track/drifting/behind), falling back to the raw token.
+ */
+@Composable
+fun targetStatusLabel(status: String): String = when (status) {
+    TargetStatus.ON_TRACK -> stringResource(R.string.target_closeness_status_on_track)
+    TargetStatus.DRIFTING -> stringResource(R.string.target_closeness_status_drifting)
+    TargetStatus.BEHIND -> stringResource(R.string.target_closeness_status_behind)
+    else -> status
 }
 
 /**

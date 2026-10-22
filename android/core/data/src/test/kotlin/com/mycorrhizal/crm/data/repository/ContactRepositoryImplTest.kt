@@ -227,6 +227,38 @@ class ContactRepositoryImplTest {
         assertEquals(false, db.cachedContactDao().getById(5)?.isFavorite)
     }
 
+    // --- Issue #1798: target closeness (no cache write, delegates to the client) ---
+
+    @Test
+    fun `setTargetCloseness delegates to the client and does not touch the cache`() = runTest {
+        val response = com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse(
+            contactId = 5,
+            targetCloseness = "close",
+            defaultIntervalDays = 30,
+        )
+        coEvery { apiClient.setTargetCloseness(5, "close") } returns Result.success(response)
+
+        val result = repository.setTargetCloseness(5, "close")
+
+        assertEquals(response, result.getOrThrow())
+        io.mockk.coVerify(exactly = 1) { apiClient.setTargetCloseness(5, "close") }
+        // The detail screen reloads the record; there is deliberately no
+        // target-closeness cache write here.
+        assertEquals(0, db.cachedContactDao().getAll().size)
+    }
+
+    @Test
+    fun `clearTargetCloseness delegates to the client and does not touch the cache`() = runTest {
+        val response = com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse(contactId = 5)
+        coEvery { apiClient.clearTargetCloseness(5) } returns Result.success(response)
+
+        val result = repository.clearTargetCloseness(5)
+
+        assertEquals(response, result.getOrThrow())
+        io.mockk.coVerify(exactly = 1) { apiClient.clearTargetCloseness(5) }
+        assertEquals(0, db.cachedContactDao().getAll().size)
+    }
+
     // --- Issue #959: the T17 ?since= tombstone feed (offline mirror deletes) ---
 
     @Test
