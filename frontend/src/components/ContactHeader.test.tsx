@@ -2,7 +2,7 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import type { ContactScoreResponse } from '../api/contactScore';
+import type { ContactScoreResponse, ContactScoreTarget } from '../api/contactScore';
 import type { ContactRecordResponse } from '../api/contacts';
 import { DateFormatProvider } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
@@ -27,17 +27,35 @@ function scoreFixture(band: string): ContactScoreResponse {
     closeness: { value: 85, weight: 20, reason: 'Marked as a close relationship' },
     reach_out: { value: 100, weight: 15, reason: 'No reach-out currently overdue' },
     last_updated: { value: 90, weight: 10, reason: 'Profile updated within the last month' },
+    target: null,
   };
 }
 
+let refreshScoreMock = vi.fn(async () => {});
+
 function mockScore(score: ContactScoreResponse | null) {
+  refreshScoreMock = vi.fn(async () => {});
   vi.mocked(useContactScore).mockReturnValue({
     score,
     loading: false,
     error: null,
-    refreshScore: vi.fn(),
+    refreshScore: refreshScoreMock,
   });
 }
+
+function targetFixture(overrides: Partial<ContactScoreTarget> = {}): ContactScoreTarget {
+  return {
+    tier: 'close',
+    status: 'drifting',
+    value: 30,
+    interval_days: 14,
+    interval_source: 'target_tier',
+    reason: 'Last contact 21 days ago, target is every 14 days',
+    ...overrides,
+  };
+}
+
+const offer = { entity_id: 'uid-1', target_interval_days: 14 };
 
 beforeEach(() => {
   // Default: no score loaded, matching a fresh contact with no computed
@@ -788,6 +806,168 @@ test('score popover has no ambient note for a non-ambient contact', async () => 
 
   await screen.findByText('Relationship health breakdown');
   expect(screen.queryByTestId('ambient-explanation')).not.toBeInTheDocument();
+});
+
+// --- Issue #1797: target closeness chip, picker, cadence offer -----------
+
+test('views a score with a target as a "Target: Close · Drifting" chip', () => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: targetFixture() });
+  renderHeader();
+
+  expect(screen.getByText('Target: Close · Drifting')).toBeInTheDocument();
+});
+
+test('renders no target chip when score.target is null', () => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader();
+
+  expect(screen.queryByText(/^Target:/)).not.toBeInTheDocument();
+});
+
+test('compact layout also shows the target chip', () => {
+  mockMatchMedia(true);
+  mockScore({
+    ...scoreFixture('moss'),
+    target: targetFixture({ tier: 'distant', status: 'behind' }),
+  });
+  renderHeader();
+
+  expect(screen.getByText('Target: Distant · Behind')).toBeInTheDocument();
+});
+
+test('the target chip opens the same score popover', async () => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: targetFixture() });
+  renderHeader({ onSetTargetCloseness: vi.fn() });
+
+  fireEvent.click(screen.getByText('Target: Close · Drifting'));
+
+  expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
+  expect(screen.getByText(targetFixture().reason)).toBeInTheDocument();
+});
+
+test('renders no target picker when onSetTargetCloseness is not provided', async () => {
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: targetFixture() });
+  renderHeader();
+
+  fireEvent.click(screen.getByText('Healthy'));
+
+  await screen.findByText('Relationship health breakdown');
+  expect(screen.queryByLabelText('Target closeness')).not.toBeInTheDocument();
+});
+
+test('choosing "Casual" calls onSetTargetCloseness with casual and refreshes the score', async () => {
+  const onSetTargetCloseness = vi.fn().mockResolvedValue({
+    contact_id: 1,
+    target_closeness: 'casual',
+    default_interval_days: 30,
+    cadence_policy_offer: null,
+  });
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader({ onSetTargetCloseness });
+  fireEvent.click(screen.getByText('Healthy'));
+  await screen.findByText('Relationship health breakdown');
+
+  fireEvent.mouseDown(screen.getByLabelText('Target closeness'));
+  fireEvent.click(await screen.findByText('Casual'));
+
+  await waitFor(() => expect(onSetTargetCloseness).toHaveBeenCalledWith('casual'));
+  await waitFor(() => expect(refreshScoreMock).toHaveBeenCalledTimes(1));
+  expect(screen.queryByText('Create a cadence?')).not.toBeInTheDocument();
+});
+
+test('choosing "No target" calls onSetTargetCloseness with null', async () => {
+  const onSetTargetCloseness = vi.fn().mockResolvedValue({
+    contact_id: 1,
+    target_closeness: null,
+    default_interval_days: null,
+    cadence_policy_offer: null,
+  });
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader({
+    record: { ...baseRecord(), crm: { kind: 'human', target_closeness: 'close' } },
+    onSetTargetCloseness,
+  });
+  fireEvent.click(screen.getByText('Healthy'));
+  await screen.findByText('Relationship health breakdown');
+
+  fireEvent.mouseDown(screen.getByLabelText('Target closeness'));
+  fireEvent.click(await screen.findByText('No target'));
+
+  await waitFor(() => expect(onSetTargetCloseness).toHaveBeenCalledWith(null));
+});
+
+test('an offer in the response opens the cadence dialog with the name and interval', async () => {
+  const onSetTargetCloseness = vi.fn().mockResolvedValue({
+    contact_id: 1,
+    target_closeness: 'close',
+    default_interval_days: 14,
+    cadence_policy_offer: offer,
+  });
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader({ onSetTargetCloseness });
+  fireEvent.click(screen.getByText('Healthy'));
+  await screen.findByText('Relationship health breakdown');
+
+  fireEvent.mouseDown(screen.getByLabelText('Target closeness'));
+  fireEvent.click(await screen.findByText('Close'));
+
+  expect(await screen.findByText('Create a cadence?')).toBeInTheDocument();
+  expect(screen.getByText('Stay in touch with Fluffy every 14 days?')).toBeInTheDocument();
+});
+
+test('"Create cadence" calls onAcceptCadenceOffer with the offer and closes', async () => {
+  const onSetTargetCloseness = vi.fn().mockResolvedValue({
+    contact_id: 1,
+    target_closeness: 'close',
+    default_interval_days: 14,
+    cadence_policy_offer: offer,
+  });
+  const onAcceptCadenceOffer = vi.fn().mockResolvedValue(undefined);
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader({ onSetTargetCloseness, onAcceptCadenceOffer });
+  fireEvent.click(screen.getByText('Healthy'));
+  await screen.findByText('Relationship health breakdown');
+
+  fireEvent.mouseDown(screen.getByLabelText('Target closeness'));
+  fireEvent.click(await screen.findByText('Close'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Create cadence' }));
+
+  await waitFor(() => expect(onAcceptCadenceOffer).toHaveBeenCalledWith(offer));
+  await waitFor(() => expect(screen.queryByText('Create a cadence?')).not.toBeInTheDocument());
+  // Once after the picker write, once after the accepted cadence.
+  expect(refreshScoreMock).toHaveBeenCalledTimes(2);
+});
+
+test('"Not now" closes the cadence offer without calling onAcceptCadenceOffer', async () => {
+  const onSetTargetCloseness = vi.fn().mockResolvedValue({
+    contact_id: 1,
+    target_closeness: 'close',
+    default_interval_days: 14,
+    cadence_policy_offer: offer,
+  });
+  const onAcceptCadenceOffer = vi.fn().mockResolvedValue(undefined);
+  mockMatchMedia(false);
+  mockScore({ ...scoreFixture('moss'), target: null });
+  renderHeader({ onSetTargetCloseness, onAcceptCadenceOffer });
+  fireEvent.click(screen.getByText('Healthy'));
+  await screen.findByText('Relationship health breakdown');
+
+  fireEvent.mouseDown(screen.getByLabelText('Target closeness'));
+  fireEvent.click(await screen.findByText('Close'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+  await waitFor(() => expect(screen.queryByText('Create a cadence?')).not.toBeInTheDocument());
+  expect(onAcceptCadenceOffer).not.toHaveBeenCalled();
+  // Only the picker write refreshed the score; dismissing makes no request.
+  expect(refreshScoreMock).toHaveBeenCalledTimes(1);
 });
 
 test('the score is refetched when crm.ambient changes', () => {

@@ -31,6 +31,7 @@ const score: ContactScoreResponse = {
   closeness: { value: 85, weight: 20, reason: 'Marked as close' },
   reach_out: { value: 100, weight: 15, reason: 'No reach-out overdue' },
   last_updated: { value: 90, weight: 10, reason: 'Profile recently updated' },
+  target: null,
 };
 
 test('loads the score on mount', async () => {

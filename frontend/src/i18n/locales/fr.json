@@ -2380,6 +2380,28 @@
     "unknownContact": "Contact inconnu",
     "dueOn": "Échéance le {{date}}"
   },
+  "targetCloseness": {
+    "label": "Proximité visée",
+    "none": "Aucun objectif",
+    "chip": "Objectif : {{tier}} · {{status}}",
+    "tier": {
+      "immediate": "Immédiate",
+      "close": "Proche",
+      "casual": "Occasionnelle",
+      "distant": "Lointaine"
+    },
+    "status": {
+      "on_track": "En bonne voie",
+      "drifting": "En train de s'éloigner",
+      "behind": "En retard"
+    },
+    "offer": {
+      "title": "Créer une cadence ?",
+      "body": "Rester en contact avec {{name}} tous les {{days}} jours ?",
+      "accept": "Créer la cadence",
+      "dismiss": "Plus tard"
+    }
+  },
   "reachOut": {
     "title": "Raisons de reprendre contact",
     "empty": "Aucune suggestion de reprise de contact pour le moment.",
@@ -2391,7 +2413,8 @@
       "title": "Nouveau poste",
       "address": "A déménagé",
       "target_behind": "En retard sur l'objectif"
-    }
+    },
+    "behindTarget": "En retard sur votre objectif {{tier}} · dernier contact {{date}}"
   },
   "syncConflicts": {
     "title": "Conflits de synchronisation",

@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ReachOutSuggestion } from '../api/reachOutSuggestions';
+import { DateFormatProvider } from '../DateFormatProvider';
 import ReachOutSuggestionsList from './ReachOutSuggestionsList';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
@@ -34,9 +35,11 @@ function renderList(props: Partial<React.ComponentProps<typeof ReachOutSuggestio
     ...props,
   };
   return render(
-    <MemoryRouter>
-      <ReachOutSuggestionsList {...defaults} />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <ReachOutSuggestionsList {...defaults} />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
 }
 
@@ -63,6 +66,24 @@ test('calls onDismiss with the suggestion id and does not navigate', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
   expect(onDismiss).toHaveBeenCalledWith('suggestion-42');
+});
+
+test('target_behind renders the behind-target caption with the formatted date', () => {
+  window.localStorage.setItem('dateFormat', 'eu');
+  renderList({
+    suggestions: [
+      suggestion({
+        kind: 'target_behind',
+        old_value: 'close',
+        new_value: '2026-08-01T10:00:00Z',
+      }),
+    ],
+  });
+
+  expect(
+    screen.getByText('Behind your Close target · last contact 01.08.2026'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Behind target')).toBeInTheDocument();
 });
 
 test('renders a kind chip labeled per the suggestion kind', () => {

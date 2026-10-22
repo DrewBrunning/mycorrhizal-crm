@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // ADR 0008 / issue #1656: notes and reminders on the contact page send their
@@ -41,7 +48,11 @@ test.describe('Concurrent note / reminder edit conflict', () => {
 
       // B edits the stale note: save is rejected.
       const row = pageB.getByRole('listitem').filter({ hasText: 'Original note' });
-      await row.getByRole('button', { name: 'Edit' }).click();
+      // stableClick: the contact page's sections load in asynchronously, so a
+      // late layout shift can move this button between mousedown and mouseup
+      // and swallow the click (the documented ContactDetailPage dialog-opener
+      // race in fixtures.ts).
+      await stableClick(row.getByRole('button', { name: 'Edit' }));
       const editDialog = pageB.getByRole('dialog');
       await editDialog.getByLabel('Content').fill('From tab B');
       await editDialog.getByRole('button', { name: 'Save' }).click();
@@ -106,7 +117,7 @@ test.describe('Concurrent note / reminder edit conflict', () => {
       expect(edited.ok(), await edited.text()).toBeTruthy();
 
       const row = pageB.locator('.MuiCard-root').filter({ hasText: 'Original reminder' });
-      await row.getByRole('button', { name: 'Edit', exact: true }).click();
+      await stableClick(row.getByRole('button', { name: 'Edit', exact: true }));
       await pageB.getByRole('textbox', { name: /message/i }).fill('From tab B');
       await pageB.getByRole('button', { name: /save|create/i }).click();
       await expect(conflictDialog(pageB)).toBeVisible();
@@ -131,7 +142,7 @@ test.describe('Concurrent note / reminder edit conflict', () => {
       await expect(page.getByRole('button', { name: 'Unmark as favorite' })).toBeVisible();
 
       // The favorite write bumped the revision; the next save must carry it.
-      await page.locator('.edit-icon').first().click();
+      await stableClick(page.locator('.edit-icon').first());
       await page.getByLabel('Last Name', { exact: true }).fill('AfterFavorite');
       await page.getByRole('button', { name: 'Save' }).click();
       await expect(

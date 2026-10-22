@@ -50,6 +50,25 @@ export function healthBandChipColor(band: string | undefined): HealthBandChipCol
   }
 }
 
+// Issue #1797: maps a target-closeness status (ContactScoreTarget.status) onto
+// the existing health-band vocabulary, so the "Target: close · drifting" chip
+// reuses the same colors as the health badge. Unknown/undefined values render
+// no band (the chip then falls back to MUI's default color).
+export function targetStatusBand(
+  status: string | undefined,
+): 'moss' | 'chanterelle' | 'russula' | undefined {
+  switch (status) {
+    case 'on_track':
+      return 'moss';
+    case 'drifting':
+      return 'chanterelle';
+    case 'behind':
+      return 'russula';
+    default:
+      return undefined;
+  }
+}
+
 // A distinct icon SHAPE per band, not just a color -- matches
 // CadencePanel.tsx's existing convention (CheckCircleIcon/WarningIcon for
 // its own on-track/overdue readout) for exactly the same reason NetworkListView
