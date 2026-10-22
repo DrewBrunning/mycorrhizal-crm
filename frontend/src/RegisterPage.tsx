@@ -2,12 +2,20 @@ import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/ma
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
-import { API_BASE_URL } from './auth';
+import { API_BASE_URL, isAuthenticated, loginUser } from './auth';
+import BrandLogo from './components/BrandLogo';
+import { initializeDateFormatFromBackend } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
+import i18n from './i18n/config';
+import { initializeTimeFormatFromBackend } from './timeFormat';
 
-export default function RegisterPage() {
+type RegisterPageProps = {
+  setToken?: (token: string | null) => void;
+};
+
+export default function RegisterPage({ setToken }: RegisterPageProps) {
   const { t } = useTranslation();
   useDocumentTitle(t('register.title'));
   const [email, setEmail] = useState('');
@@ -56,8 +64,23 @@ export default function RegisterPage() {
 
         throw new Error(t('register.registrationFailed'));
       }
-      setSuccess(t('register.registrationSuccess'));
-      setTimeout(() => void navigate('/login'), 1500);
+      // Issue #1793: registration used to dump the user back on the Login
+      // form to retype the credentials they had just chosen. Sign them in
+      // with the same credentials instead, and only fall back to the success
+      // message + Login page if that follow-up call fails.
+      try {
+        const result = await loginUser(username, password);
+        if (setToken) setToken(isAuthenticated() ? 'authenticated' : null);
+        if (result.language && result.language !== i18n.language) {
+          void i18n.changeLanguage(result.language);
+        }
+        initializeDateFormatFromBackend(result.date_format);
+        initializeTimeFormatFromBackend(result.time_format);
+        void navigate('/');
+      } catch {
+        setSuccess(t('register.registrationSuccess'));
+        setTimeout(() => void navigate('/login'), 1500);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('register.registrationFailed');
       setError(errorMessage);
@@ -74,6 +97,9 @@ export default function RegisterPage() {
     return (
       <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
         <Paper sx={{ p: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <BrandLogo height={150} />
+          </Box>
           <Typography
             variant="h5"
             component="h1"
@@ -95,6 +121,9 @@ export default function RegisterPage() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <Paper sx={{ p: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <BrandLogo height={150} />
+        </Box>
         <Typography
           variant="h5"
           component="h1"
@@ -137,6 +166,7 @@ export default function RegisterPage() {
               required
               fullWidth
               error={Boolean(error)}
+              helperText={t('register.passwordHelp')}
               slotProps={{
                 htmlInput: { 'aria-describedby': error ? 'register-error' : undefined },
               }}
@@ -149,6 +179,9 @@ export default function RegisterPage() {
             {success && <Alert severity="success">{success}</Alert>}
             <Button type="submit" variant="contained" color="primary" disabled={loading}>
               {loading ? t('register.registering') : t('register.registerButton')}
+            </Button>
+            <Button component={Link} to="/login" color="primary" variant="text">
+              {t('register.alreadyHaveAccount')}
             </Button>
           </Stack>
         </form>

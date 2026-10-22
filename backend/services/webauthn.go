@@ -247,7 +247,79 @@ func (s *CeremonyStore) Take(purpose string, userID uint) (session webauthn.Sess
 	return e.session, e.name, true
 }
 
-// RandomCredentialLabel is a fallback label when the client supplies none.
+// RandomCredentialLabel is the last-resort label when the client supplies
+// none and its User-Agent names no recognisable browser or platform.
 func RandomCredentialLabel() string {
 	return "Passkey " + strings.ReplaceAll(uuid.NewString(), "-", "")[:4]
+}
+
+// DefaultCredentialLabel names an unnamed passkey after the browser and
+// platform that enrolled it, e.g. "Chrome 153 on Linux" (issue #1793). A
+// random "Passkey a419" told the user nothing about which device held the
+// credential. RandomCredentialLabel is the fallback when the UA is unknown.
+func DefaultCredentialLabel(userAgent string) string {
+	browser, token := "", ""
+	switch {
+	case strings.Contains(userAgent, "Edg/"):
+		browser, token = "Edge", "Edg/"
+	case strings.Contains(userAgent, "OPR/"):
+		browser, token = "Opera", "OPR/"
+	case strings.Contains(userAgent, "SamsungBrowser/"):
+		browser, token = "Samsung Internet", "SamsungBrowser/"
+	case strings.Contains(userAgent, "Firefox/"):
+		browser, token = "Firefox", "Firefox/"
+	case strings.Contains(userAgent, "Chrome/"):
+		browser, token = "Chrome", "Chrome/"
+	case strings.Contains(userAgent, "Safari/"):
+		browser, token = "Safari", "Version/"
+	}
+	platform := ""
+	switch {
+	case strings.Contains(userAgent, "Windows"):
+		platform = "Windows"
+	case strings.Contains(userAgent, "iPhone"):
+		platform = "iPhone"
+	case strings.Contains(userAgent, "iPad"):
+		platform = "iPad"
+	case strings.Contains(userAgent, "Android"):
+		platform = "Android"
+	case strings.Contains(userAgent, "CrOS"):
+		platform = "Chrome OS"
+	case strings.Contains(userAgent, "Mac OS X"), strings.Contains(userAgent, "Macintosh"):
+		platform = "macOS"
+	case strings.Contains(userAgent, "Linux"):
+		platform = "Linux"
+	}
+
+	label := browser
+	if browser != "" && token != "" {
+		if version := majorVersionAfter(userAgent, token); version != "" {
+			label += " " + version
+		}
+	}
+	switch {
+	case label != "" && platform != "":
+		return label + " on " + platform
+	case label != "":
+		return label
+	case platform != "":
+		return platform
+	default:
+		return RandomCredentialLabel()
+	}
+}
+
+// majorVersionAfter returns the leading integer of the version token (e.g.
+// "153" from "Chrome/153.0.0.0"), or "" when the token is absent.
+func majorVersionAfter(s, token string) string {
+	i := strings.Index(s, token)
+	if i < 0 {
+		return ""
+	}
+	rest := s[i+len(token):]
+	end := 0
+	for end < len(rest) && rest[end] >= '0' && rest[end] <= '9' {
+		end++
+	}
+	return rest[:end]
 }

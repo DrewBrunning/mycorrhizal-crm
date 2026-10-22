@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"mycorrhizal/config"
@@ -335,4 +336,41 @@ func TestDetectReachOutSuggestions_JobLockSkipsRapidRerun(t *testing.T) {
 
 	require.NoError(t, db.Model(&models.ReachOutSuggestion{}).Count(&count).Error)
 	assert.EqualValues(t, 1, count, "the job-lock must prevent a rapid rerun from processing the new change")
+}
+
+// TestDetectReachOutSuggestions_SelfContactSkipped pins issue #1793 at the
+// source: editing your own contact (e.g. correcting your own job title) must
+// not mint a "reach out to yourself" suggestion or companion reminder.
+func TestDetectReachOutSuggestions_SelfContactSkipped(t *testing.T) {
+	db := setupReachOutTestDB(t)
+	cfg := config.Config{}
+	user, contact := createTestUserAndContact(t, db, "OldCo", "")
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", contact.VCardUID).Error)
+
+	contact.Organization = "NewCo"
+	require.NoError(t, db.Save(&contact).Error)
+
+	n, err := DetectReachOutSuggestions(db, cfg)
+	require.NoError(t, err)
+	assert.Zero(t, n, "the self contact must not trigger a reach-out suggestion")
+
+	var count int64
+	require.NoError(t, db.Model(&models.ReachOutSuggestion{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Zero(t, count)
+}
+
+// Issue #1793: if the self-contact lookup itself fails, the detection helper
+// must return the error rather than guessing and minting a suggestion for the
+// user's own contact.
+func TestDetectReachOutSuggestionsForUser_SelfContactLookupFailure(t *testing.T) {
+	db := setupReachOutTestDB(t)
+	user, contact := createTestUserAndContact(t, db, "OldCo", "")
+	contact.Organization = "NewCo"
+	require.NoError(t, db.Save(&contact).Error)
+
+	dbtest.HideTable(t, db, "users")
+	n, err := detectReachOutSuggestionsForUser(context.Background(), db, config.Config{}, user.ID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "loading self contact")
+	assert.Zero(t, n)
 }

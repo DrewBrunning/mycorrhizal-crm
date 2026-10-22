@@ -34,6 +34,8 @@
     <string name="nav_group_people">Persone</string>
     <string name="nav_group_interactions">Interazioni</string>
     <string name="nav_group_data_admin">Dati e amministrazione</string>
+    <!-- Issue #1776: the rail's overflow entry, which opens the full drawer. -->
+    <string name="nav_more">Altro</string>
     <string name="nav_notes_unassigned">Note non assegnate</string>
     <string name="nav_header_description">Accesso come %1$s su %2$s</string>
     <string name="nav_header_action">Apri i server</string>

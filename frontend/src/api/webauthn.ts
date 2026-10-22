@@ -71,6 +71,19 @@ export async function registerPasskey(
 export type SecondFactorProof = { code: string } | { assertion: Record<string, unknown> };
 export type PasskeyRemovalProof = SecondFactorProof;
 
+/** Relabel one of the caller's passkeys (issue #1793). */
+export async function renamePasskey(id: string, name: string): Promise<Passkey> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/webauthn/credentials/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    },
+  );
+  return (await handleResponse(response, 'Unable to rename passkey.')) as Passkey;
+}
+
 // proveWithAnyPasskey begins a proof ceremony over ALL of the caller's passkeys
 // (nothing is being removed) and returns the assertion the enrollment
 // endpoints accept in place of a TOTP/recovery code (issue #1337).

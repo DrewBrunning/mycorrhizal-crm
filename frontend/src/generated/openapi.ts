@@ -2669,6 +2669,10 @@ export type WebAuthnRegisterResponse = {
   recovery_codes: string[];
 };
 
+export type WebAuthnRenameInput = {
+  name: string;
+};
+
 export type WebDAVConfigInput = {
   app_password?: string;
   base_url: string;

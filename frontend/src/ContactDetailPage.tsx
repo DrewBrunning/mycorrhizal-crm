@@ -87,6 +87,7 @@ import LifeEventSuggestions from './components/LifeEventSuggestions';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import MergeContactsDialog from './components/MergeContactsDialog';
+import NotFoundState from './components/NotFoundState';
 import OccasionObligationDialog, {
   type OccasionObligationFormData,
   toOccasionObligationInput,
@@ -1155,11 +1156,10 @@ export default function ContactDetailPage() {
 
   if (!record) {
     return (
-      <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, p: 2 }}>
-        <Typography variant="h6" component="h1">
-          {t('contactDetail.notFound')}
-        </Typography>
-      </Box>
+      <NotFoundState
+        title={t('contactDetail.notFound')}
+        description={t('contactDetail.notFoundDescription')}
+      />
     );
   }
 

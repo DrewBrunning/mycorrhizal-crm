@@ -1,7 +1,10 @@
 package com.mycorrhizal.crm
 
 import android.app.Application
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
@@ -11,8 +14,11 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -49,10 +55,17 @@ class AdaptiveLayoutTest {
     /** 400dp wide — a phone. */
     private val compactSize = WindowSizeClass.calculateFromSize(DpSize(400.dp, 700.dp))
 
+    /** 700dp wide — the Medium width class (600-839dp). */
+    private val mediumSize = WindowSizeClass.calculateFromSize(DpSize(700.dp, 900.dp))
+
+    /** 914x411dp — a phone in landscape: Expanded wide but Compact tall. */
+    private val landscapePhoneSize = WindowSizeClass.calculateFromSize(DpSize(914.dp, 411.dp))
+
     private fun setMainNavScaffold(
         windowSizeClass: WindowSizeClass,
         currentRoute: String? = "home",
         onDestinationClick: (String) -> Unit = {},
+        railInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -61,6 +74,7 @@ class AdaptiveLayoutTest {
                     windowSizeClass = windowSizeClass,
                     drawerState = rememberDrawerState(initialValue = DrawerValue.Closed),
                     onDestinationClick = onDestinationClick,
+                    railInsets = railInsets,
                 ) {
                     Text("CONTENT", modifier = Modifier.fillMaxSize().testTag("main-content"))
                 }
@@ -71,13 +85,15 @@ class AdaptiveLayoutTest {
     private fun setAdaptiveContent(
         isTwoPane: Boolean,
         currentRoute: String?,
+        constrainWidth: Boolean = false,
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 AdaptiveMainContent(
                     isTwoPane = isTwoPane,
                     currentRoute = currentRoute,
-                    content = { Text("DETAIL", modifier = Modifier.testTag("fake-detail")) },
+                    constrainWidth = constrainWidth,
+                    content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("fake-detail")) },
                     listPane = { Text("LIST", modifier = Modifier.testTag("fake-list")) },
                 )
             }
@@ -94,6 +110,79 @@ class AdaptiveLayoutTest {
         composeTestRule.onNodeWithTag("rail-home").assertIsDisplayed()
         composeTestRule.onNodeWithTag("rail-contacts").assertExists()
         composeTestRule.onNodeWithTag("main-content").assertIsDisplayed()
+    }
+
+    @Test
+    fun `medium width shows the navigation rail instead of the drawer`() {
+        // Issue #1776: M3 recommends the rail from Medium (600-839dp), not only Expanded.
+        setMainNavScaffold(mediumSize)
+
+        composeTestRule.onNodeWithTag("navigation-rail").assertExists()
+        composeTestRule.onNodeWithTag("rail-home").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("main-content").assertIsDisplayed()
+    }
+
+    @Test
+    fun `landscape phone keeps the drawer despite its expanded width`() {
+        // Issue #1419: Expanded wide but Compact tall has no vertical room for the rail.
+        setMainNavScaffold(landscapePhoneSize)
+
+        composeTestRule.onNodeWithTag("navigation-rail").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("main-content").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the rail shows only the primary destinations plus More`() {
+        setMainNavScaffold(expandedSize)
+
+        assertTrue("the rail primary set is 5-7 destinations", railDestinations.size in 5..7)
+        railDestinations.forEach { destination ->
+            composeTestRule.onNodeWithTag("rail-${destination.route}").assertExists()
+        }
+        composeTestRule.onNodeWithTag("rail-more").assertExists()
+        // Secondary destinations live behind More, so their labels cannot truncate the rail.
+        listOf("activities", "notes", "occasions", "data", "import", "audit", "settings").forEach { route ->
+            composeTestRule.onNodeWithTag("rail-$route").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun `rail content starts below the status bar inset`() {
+        // Issue #1776: the rail used to draw its scrolling content under the status bar.
+        setMainNavScaffold(expandedSize, railInsets = WindowInsets(0, 48, 0, 0))
+
+        val top = composeTestRule.onNodeWithTag("rail-home").getUnclippedBoundsInRoot().top
+        assertTrue("rail item top was $top, expected below the 48dp status-bar inset", top >= 48.dp)
+    }
+
+    @Test
+    fun `More opens the full grouped drawer`() {
+        setMainNavScaffold(expandedSize)
+        composeTestRule.onNodeWithTag("drawer-settings").assertIsNotDisplayed()
+
+        composeTestRule.onNodeWithTag("rail-more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("drawer-home").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("drawer-settings").assertIsDisplayed()
+    }
+
+    @Test
+    fun `More is selected when the current route lives behind it`() {
+        setMainNavScaffold(expandedSize, currentRoute = "settings")
+
+        composeTestRule.onNodeWithTag("rail-more").assertIsSelected()
+        railDestinations.forEach { destination ->
+            composeTestRule.onNodeWithTag("rail-${destination.route}").assertIsNotSelected()
+        }
+    }
+
+    @Test
+    fun `a primary rail destination is selected instead of More`() {
+        setMainNavScaffold(expandedSize, currentRoute = "contacts/5")
+
+        composeTestRule.onNodeWithTag("rail-contacts").assertIsSelected()
+        composeTestRule.onNodeWithTag("rail-more").assertIsNotSelected()
     }
 
     @Test
@@ -179,10 +268,67 @@ class AdaptiveLayoutTest {
         composeTestRule.onNodeWithText("LIST").assertDoesNotExist()
     }
 
+    // --- Issue #1776: single-pane content max width ---------------------------
+
+    @Test
+    fun `a wide single pane is capped at the content max width and centred`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                Box(Modifier.requiredWidth(1000.dp)) {
+                    AdaptiveMainContent(
+                        isTwoPane = false,
+                        currentRoute = "home",
+                        constrainWidth = true,
+                        content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("capped-detail")) },
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithTag("content-width-frame").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("capped-detail").assertWidthIsEqualTo(ContentMaxWidth)
+    }
+
+    @Test
+    fun `a compact single pane is not width-capped`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                Box(Modifier.requiredWidth(400.dp)) {
+                    AdaptiveMainContent(
+                        isTwoPane = false,
+                        currentRoute = "home",
+                        constrainWidth = false,
+                        content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("full-detail")) },
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithTag("content-width-frame").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("full-detail").assertWidthIsEqualTo(400.dp)
+    }
+
+    @Test
+    fun `only the single-pane frame is capped, not the two-pane split`() {
+        setAdaptiveContent(isTwoPane = true, currentRoute = "contacts/5", constrainWidth = true)
+
+        composeTestRule.onNodeWithTag("content-width-frame").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("two-pane-list").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("two-pane-detail").assertIsDisplayed()
+    }
+
     @Test
     fun `the width class at expanded size is expanded`() {
         assertTrue(expandedSize.widthSizeClass == WindowWidthSizeClass.Expanded)
         assertTrue(compactSize.widthSizeClass == WindowWidthSizeClass.Compact)
+        assertTrue(mediumSize.widthSizeClass == WindowWidthSizeClass.Medium)
+    }
+
+    @Test
+    fun `medium and expanded widths constrain a single pane, compact does not`() {
+        assertFalse(constrainsSinglePane(WindowWidthSizeClass.Compact))
+        assertTrue(constrainsSinglePane(WindowWidthSizeClass.Medium))
+        assertTrue(constrainsSinglePane(WindowWidthSizeClass.Expanded))
     }
 }
 

@@ -252,14 +252,24 @@ unaffected. **Copy build details** puts all of this on the clipboard as plain te
 
 ## Tablets and landscape phones
 
-On a tablet-sized window the app shows a permanent navigation rail and a two-pane contacts list and detail. A phone held
-in landscape is wide but short, so the rail would not leave room to scroll its own destinations. The permanent rail and
-two-pane layout therefore apply only when the window is both wide (the Expanded width class) and at least medium in
-height; a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination stays reachable.
+The permanent navigation rail starts at the **Medium** width class (600–839dp), as Material 3 recommends, and continues at
+Expanded; the two-pane contacts list and detail use the same window. A phone held in landscape is wide but short, so the
+rail would not leave vertical room for its items: the permanent rail and two-pane layout therefore still require at least
+Medium height, and a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination
+stays reachable.
+
+The rail shows the seven **People** destinations (Dashboard, Contacts, Circles, Tags, Households, Network, Map) and a
+**More** item; More opens the full grouped drawer, so Interactions, Data & admin and Settings stay one tap away without
+making the rail scroll or truncate its labels. The rail is painted clear of the status bar (its top inset is filled with
+the primary bar colour, matching the status icons) and the selected item uses the Material 3 indicator pill.
+
+At Medium and Expanded a **single-pane screen** — everything except the two-pane contacts split — is capped at 840dp and
+centred instead of stretching across the window. At Expanded the Dashboard additionally lays its sections out in two
+columns.
 
 ## Navigation and Settings
 
-The navigation drawer (and, at expanded widths, the rail) is built from one destination registry,
+The navigation drawer (and, at Medium/Expanded widths, the rail) is built from one destination registry,
 `android/app/src/main/kotlin/com/mycorrhizal/crm/NavDestinations.kt` (issues #1758, #1759, #1757):
 
 - **People**: Dashboard, Contacts, Circles, Tags, Households, Network, Map. **Interactions**: Activities,
@@ -268,6 +278,8 @@ The navigation drawer (and, at expanded widths, the rail) is built from one dest
 - The current destination is the `selected` item (announced by TalkBack); the header shows the signed-in user and
   the server host and opens **Servers**. Every destination opens with the Menu icon, and back from one returns to the
   Dashboard. A drawer label is always the destination's screen title (pinned in every locale by `NavDestinationsTest`).
+  At Medium/Expanded the rail renders the People group plus **More** (issue #1776); More is selected while the current
+  route lives in one of the groups behind it.
 - **Unassigned notes** lists only notes that have no contact, so it is named for that set; **New note** creates one.
 - **Settings** is a short index of groups, each a sub-screen: **Account** (session, Servers, Change password,
   Two-factor authentication, Passkeys, API tokens), **Appearance** (language, date format, theme), **Privacy &

@@ -593,7 +593,10 @@ func GetContactsRandom(c *gin.Context) {
 	var selectedFields = []string{"ID", "firstname", "lastname", "nickname", "circles", "photo_thumbnail"}
 
 	var contacts []models.Contact
-	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).Where("archived = ?", false)
+	query := services.ExcludeSelfContact(
+		db.Model(&models.Contact{}).Where("user_id = ?", userID).Where("archived = ?", false),
+		userID,
+	)
 
 	if len(selectedFields) > 0 {
 		query = query.Select(selectedFields)
