@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DateRange
@@ -51,15 +52,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.BriefingRelationship
 import com.mycorrhizal.crm.model.network.BriefingUpcomingDate
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.humanizeToken
 import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
+import java.time.LocalDate
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -123,6 +128,8 @@ fun PrepViewScreen(
                         // for its birthday rows; "eu" is the app-wide default.
                         dateFormat = state.dateFormat ?: DateFormat.EU,
                         onOpenContact = onOpenContact,
+                        preferences = state.preferences,
+                        giftIdeas = state.giftIdeas,
                     )
                 }
             }
@@ -153,6 +160,13 @@ internal fun PrepViewContent(
     briefing: ContactBriefing,
     dateFormat: String,
     onOpenContact: (Int) -> Unit,
+    // Issue #1774: loaded separately from the briefing (see PrepViewModel);
+    // each section stays hidden when its list is empty.
+    preferences: List<Preference> = emptyList(),
+    giftIdeas: List<Gift> = emptyList(),
+    // Issue #1774: anchors "turns N" to the next occurrence. Optional so the
+    // screen can default to today while tests pin a date.
+    today: LocalDate = LocalDate.now(),
 ) {
     LazyColumn(
         modifier = Modifier
@@ -169,11 +183,40 @@ internal fun PrepViewContent(
             }
         }
 
+        if (preferences.isNotEmpty()) {
+            item {
+                PrepCard(stringResource(R.string.prep_preferences_title), icon = Icons.Outlined.Favorite) {
+                    preferences.forEach { preference ->
+                        val value = preference.value.takeIf { it.isNotBlank() } ?: return@forEach
+                        Bullet(
+                            stringResource(
+                                R.string.prep_preference_line,
+                                humanizeToken(preference.category),
+                                value,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
         if (briefing.openAgendaItems.isNotEmpty()) {
             item {
                 PrepCard(stringResource(R.string.prep_agenda_title), icon = Icons.Outlined.ChatBubbleOutline) {
                     briefing.openAgendaItems.forEach { item ->
                         Bullet(item.content)
+                    }
+                }
+            }
+        }
+
+        if (giftIdeas.isNotEmpty()) {
+            item {
+                PrepCard(stringResource(R.string.prep_gift_ideas_title), icon = Icons.Outlined.CardGiftcard) {
+                    giftIdeas.forEach { gift ->
+                        val description = gift.description.takeIf { it.isNotBlank() } ?: return@forEach
+                        val occasion = gift.occasion?.takeIf { it.isNotBlank() }
+                        Bullet(if (occasion != null) "$description ($occasion)" else description)
                     }
                 }
             }
@@ -233,7 +276,7 @@ internal fun PrepViewContent(
             item {
                 PrepCard(stringResource(R.string.prep_upcoming_dates_title), icon = Icons.Outlined.Cake) {
                     briefing.upcomingDates.forEach { d ->
-                        UpcomingDateRow(d, dateFormat)
+                        UpcomingDateRow(d, dateFormat, today)
                     }
                 }
             }
@@ -312,14 +355,6 @@ private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCaden
         if (nextDue.isNotBlank()) {
             Text(
                 text = stringResource(R.string.prep_cadence_next_due, nextDue),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        val lastInteraction = formatTimestamp(health.lastInteraction, dateFormat)
-        if (lastInteraction.isNotBlank()) {
-            Text(
-                text = stringResource(R.string.prep_cadence_last_interaction, lastInteraction),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -426,7 +461,7 @@ private fun RelationshipRow(rel: BriefingRelationship, onOpenContact: (Int) -> U
 }
 
 @Composable
-private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String) {
+private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String, today: LocalDate) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -438,13 +473,20 @@ private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
-        val labelRes = if (d.label == "birthday") {
-            R.string.prep_upcoming_dates_birthday
+        val dateText = formatNextOccurrence(d.date, dateFormat)
+        val age = if (d.label == "birthday") upcomingAge(d, today) else null
+        val text = if (age != null) {
+            stringResource(R.string.prep_upcoming_dates_turns, age, dateText)
         } else {
-            R.string.prep_upcoming_dates_anniversary
+            val labelRes = if (d.label == "birthday") {
+                R.string.prep_upcoming_dates_birthday
+            } else {
+                R.string.prep_upcoming_dates_anniversary
+            }
+            "${stringResource(labelRes)} $dateText"
         }
         Text(
-            text = "${stringResource(labelRes)} ${formatUpcomingDate(d.date, dateFormat)}",
+            text = text,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
@@ -453,6 +495,19 @@ private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String) {
             label = { Text(pluralStringResource(R.plurals.prep_upcoming_dates_in_days, d.daysUntil, d.daysUntil)) },
         )
     }
+}
+
+/**
+ * Issue #1774: the age the contact turns at their NEXT birthday — the next
+ * occurrence's year minus the birth year. Yearless birthdays have no age to
+ * show, and a future/absurd birth year is ignored rather than rendered as a
+ * negative age.
+ */
+private fun upcomingAge(d: BriefingUpcomingDate, today: LocalDate): Int? {
+    if (d.date.length != 10 || d.date[4] != '-' || d.date[7] != '-') return null
+    val birthYear = d.date.substring(0, 4).toIntOrNull() ?: return null
+    val nextYear = today.plusDays(d.daysUntil.toLong()).year
+    return (nextYear - birthYear).takeIf { it >= 0 }
 }
 
 @Composable
@@ -521,7 +576,7 @@ private fun formatTimestamp(iso: String?, format: String): String =
  * ("25 December", not the raw "--12-25"). Falls back to the raw value when
  * the shape is unexpected.
  */
-private fun formatUpcomingDate(value: String, format: String): String {
+private fun formatNextOccurrence(value: String, format: String): String {
     return runCatching {
         when {
             value.startsWith("--") && value.length == 7 -> {
@@ -531,8 +586,10 @@ private fun formatUpcomingDate(value: String, format: String): String {
                 ).display(format)
             }
             value.length == 10 && value[4] == '-' && value[7] == '-' -> {
+                // The upcoming date is the next occurrence, so its year is the
+                // birth year only on the very first one — render month/day and
+                // let the "Turns N" / "in N days" text carry the rest.
                 PartialDate(
-                    year = value.substring(0, 4).toInt(),
                     month = value.substring(5, 7).toInt(),
                     day = value.substring(8, 10).toInt(),
                 ).display(format)

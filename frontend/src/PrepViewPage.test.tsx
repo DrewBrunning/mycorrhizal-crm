@@ -11,12 +11,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function mockBriefingFetch(data: unknown) {
+function mockBriefingFetch(
+  data: unknown,
+  preferences: unknown[] = [],
+  gifts: unknown[] = [],
+  failAuxiliary = false,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       if (url.includes('/briefing')) {
         return { ok: true, json: async () => data };
+      }
+      if (url.includes('/preferences') || url.includes('/gifts')) {
+        if (failAuxiliary) {
+          return { ok: false, status: 500, json: async () => ({ message: 'boom' }) };
+        }
+      }
+      if (url.includes('/preferences')) {
+        return { ok: true, json: async () => ({ preferences, total: preferences.length }) };
+      }
+      if (url.includes('/gifts')) {
+        return { ok: true, json: async () => ({ gifts, next_cursor: '', limit: 100 }) };
       }
       throw new Error(`unexpected fetch: ${url}`);
     }),
@@ -103,6 +119,100 @@ test('renders every briefing block from the composition endpoint', async () => {
   expect(screen.getByText(/Send card/)).toBeInTheDocument();
 
   expect(screen.getByText('Upcoming dates')).toBeInTheDocument();
+});
+
+test('renders preferences and unbought gift ideas from their own endpoints', async () => {
+  mockBriefingFetch(
+    fullBriefing,
+    [
+      {
+        id: 'p1',
+        entity_id: 'alice-uid',
+        category: 'food',
+        value: 'Ramen',
+        sensitivity: 'normal',
+      },
+    ],
+    [
+      {
+        id: 'g1',
+        entity_id: 'alice-uid',
+        status: 'idea',
+        description: 'Pottery wheel',
+        occasion: 'birthday',
+      },
+      {
+        id: 'g2',
+        entity_id: 'alice-uid',
+        status: 'given',
+        description: 'Mug',
+      },
+    ],
+  );
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Preferences')).toBeInTheDocument());
+
+  expect(screen.getByText(/Food: Ramen/)).toBeInTheDocument();
+  expect(screen.getByText('Ideas')).toBeInTheDocument();
+  expect(screen.getByText(/Pottery wheel \(birthday\)/)).toBeInTheDocument();
+  // A given gift is a record, not an idea.
+  expect(screen.queryByText(/Mug/)).toBeNull();
+});
+
+test('renders preference notes and an occasion-less gift idea', async () => {
+  mockBriefingFetch(
+    fullBriefing,
+    [
+      {
+        id: 'p1',
+        entity_id: 'alice-uid',
+        category: 'food',
+        value: 'Ramen',
+        notes: 'No pork',
+        sensitivity: 'normal',
+      },
+    ],
+    [
+      {
+        id: 'g1',
+        entity_id: 'alice-uid',
+        status: 'idea',
+        description: 'Pottery wheel',
+      },
+    ],
+  );
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Preferences')).toBeInTheDocument());
+
+  expect(screen.getByText(/Ramen \(No pork\)/)).toBeInTheDocument();
+  expect(screen.getByText(/Pottery wheel/)).toBeInTheDocument();
+  expect(screen.queryByText(/\(birthday\)/)).toBeNull();
+});
+
+test('auxiliary preferences/gift failures leave the briefing visible', async () => {
+  mockBriefingFetch(fullBriefing, [], [], true);
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  expect(screen.getByText('Things to bring up')).toBeInTheDocument();
+  expect(screen.queryByText('Preferences')).toBeNull();
+  expect(screen.queryByText('Ideas')).toBeNull();
+});
+
+test('a briefing without a uid does not fetch preferences or gifts', async () => {
+  mockBriefingFetch({ ...fullBriefing, uid: '' });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  const fetchMock = vi.mocked(fetch);
+  const urls = fetchMock.mock.calls.map(([url]) => String(url));
+  expect(urls.some((url) => url.includes('/preferences'))).toBe(false);
+  expect(urls.some((url) => url.includes('/gifts'))).toBe(false);
 });
 
 test('degrades gracefully when every block is empty', async () => {

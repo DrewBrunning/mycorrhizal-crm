@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,12 +15,17 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.model.network.BriefingActivity
 import com.mycorrhizal.crm.model.network.BriefingCadence
 import com.mycorrhizal.crm.model.network.BriefingCadenceHealth
 import com.mycorrhizal.crm.model.network.BriefingRelationship
 import com.mycorrhizal.crm.model.network.BriefingUpcomingDate
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftStatuses
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Note
@@ -29,6 +35,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.time.LocalDate
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -65,6 +72,9 @@ class PrepViewScreenTest {
         briefing: ContactBriefing,
         dateFormat: String = DateFormat.EU,
         onOpenContact: (Int) -> Unit = {},
+        preferences: List<Preference> = emptyList(),
+        giftIdeas: List<Gift> = emptyList(),
+        today: LocalDate = LocalDate.of(2026, 10, 22),
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -72,6 +82,9 @@ class PrepViewScreenTest {
                     briefing = briefing,
                     dateFormat = dateFormat,
                     onOpenContact = onOpenContact,
+                    preferences = preferences,
+                    giftIdeas = giftIdeas,
+                    today = today,
                 )
             }
         }
@@ -136,6 +149,77 @@ class PrepViewScreenTest {
         composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
     }
 
+
+    // --- Issue #1774: next birthday, one last-interaction line ---------------
+
+    @Test
+    fun `an upcoming birthday shows the age they will turn and the next date`() {
+        setContent(
+            ContactBriefing(
+                contactId = 7,
+                uid = "u7",
+                name = "Nadia Okonkwo",
+                upcomingDatesRaw = listOf(
+                    // 1990-09-14; today is 2026-10-22, so the next occurrence is
+                    // 2027-09-14 and they turn 37. The stored birth date must not
+                    // be shown as if it were the upcoming date.
+                    BriefingUpcomingDate(label = "birthday", date = "1990-09-14", daysUntil = 327),
+                ),
+            ),
+            dateFormat = DateFormat.EU_MMMM,
+        )
+
+        assertSection("Turns 37 · 14 September")
+        composeTestRule.onNodeWithText("14 September 1990", substring = true).assertDoesNotExist()
+        assertSection("in 327 days")
+    }
+
+    @Test
+    fun `a yearless birthday has no age to show`() {
+        setContent(
+            ContactBriefing(
+                contactId = 7,
+                uid = "u7",
+                name = "Nadia Okonkwo",
+                upcomingDatesRaw = listOf(
+                    BriefingUpcomingDate(label = "birthday", date = "--09-14", daysUntil = 327),
+                ),
+            ),
+            dateFormat = DateFormat.EU_MMMM,
+        )
+
+        assertSection("Birthday 14 September")
+        composeTestRule.onNodeWithText("Turns", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `last interaction renders once, from the activity section`() {
+        setContent(
+            ContactBriefing(
+                contactId = 7,
+                uid = "u7",
+                name = "Nadia Okonkwo",
+                lastActivity = BriefingActivity(
+                    id = 41,
+                    title = "Dinner",
+                    type = "meal",
+                    date = "2026-10-13T19:00:00Z",
+                ),
+                cadence = BriefingCadence(
+                    health = BriefingCadenceHealth(
+                        hasQualifyingInteraction = true,
+                        lastInteraction = "2026-10-13T19:00:00Z",
+                        nextDue = "2026-11-12T19:00:00Z",
+                    ),
+                ),
+            ),
+        )
+
+        scrollTo("Dinner (meal)")
+        val occurrences = composeTestRule.onAllNodesWithText("Last interaction").fetchSemanticsNodes().size
+        assertEquals("the health card must not repeat the last-interaction line", 1, occurrences)
+    }
+
     @Test
     fun `a fully populated briefing renders every section`() {
         val briefing = ContactBriefing(
@@ -179,7 +263,27 @@ class PrepViewScreenTest {
             upcomingDatesRaw = listOf(BriefingUpcomingDate(label = "birthday", date = "--12-25", daysUntil = 5)),
         )
 
-        setContent(briefing)
+        setContent(
+            briefing,
+            preferences = listOf(
+                Preference(
+                    id = "pref-1",
+                    entityId = "u7",
+                    category = "food",
+                    key = "favorite",
+                    value = "Ramen",
+                ),
+            ),
+            giftIdeas = listOf(
+                Gift(
+                    id = "gift-1",
+                    entityId = "u7",
+                    status = GiftStatuses.IDEA,
+                    description = "Pottery wheel",
+                    occasion = "birthday",
+                ),
+            ),
+        )
 
         // Header.
         composeTestRule.onNodeWithText("Alice Wonder").assertIsDisplayed()
@@ -190,9 +294,17 @@ class PrepViewScreenTest {
         assertSection("On track")
         assertSection("Next due: 09.09.2026")
 
+        // Preferences (issue #1774).
+        assertSection("Preferences")
+        assertSection("Food: Ramen", substring = true)
+
         // Agenda.
         assertSection("Things to bring up")
         assertSection("Ask about the surgery", substring = true)
+
+        // Gift ideas (issue #1774).
+        assertSection("Gift ideas")
+        assertSection("Pottery wheel (birthday)", substring = true)
 
         // Last interaction + recent notes.
         assertSection("Coffee (visit)")
@@ -226,6 +338,8 @@ class PrepViewScreenTest {
         // Sections with no data stay hidden rather than rendering empty shells.
         composeTestRule.onNodeWithText("Relationship health").assertDoesNotExist()
         composeTestRule.onNodeWithText("Things to bring up").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Preferences").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Gift ideas").assertDoesNotExist()
         composeTestRule.onNodeWithText("People around them").assertDoesNotExist()
         composeTestRule.onNodeWithText("Life events").assertDoesNotExist()
         composeTestRule.onNodeWithText("Upcoming reminders").assertDoesNotExist()
@@ -324,7 +438,17 @@ class PrepViewScreenStateTest {
     private fun newViewModel(apiClient: ApiClient, contactId: Int = 7): PrepViewModel {
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns emptyFlow()
-        return PrepViewModel(apiClient, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+        val preferenceRepository = mockk<PreferenceRepository>()
+        coEvery { preferenceRepository.listForContact(any()) } returns Result.success(emptyList())
+        val giftRepository = mockk<GiftRepository>()
+        coEvery { giftRepository.listForContact(any()) } returns Result.success(emptyList())
+        return PrepViewModel(
+            apiClient,
+            authRepository,
+            preferenceRepository,
+            giftRepository,
+            SavedStateHandle(mapOf("contactId" to contactId)),
+        )
     }
 
     private fun setScreen(viewModel: PrepViewModel) {

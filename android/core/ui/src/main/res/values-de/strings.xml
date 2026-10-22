@@ -393,9 +393,11 @@
     <string name="prep_cadence_overdue">%1$d Tage überfällig</string>
     <string name="prep_cadence_on_track">Im Zeitplan</string>
     <string name="prep_cadence_next_due">Nächster Termin: %1$s</string>
-    <string name="prep_cadence_last_interaction">Letzte Interaktion: %1$s</string>
     <string name="prep_cadence_no_interactions_yet">Noch keine qualifizierenden Interaktionen – die Kadenz beginnt mit der ersten.</string>
     <string name="prep_agenda_title">Gesprächsthemen</string>
+    <string name="prep_preferences_title">Vorlieben</string>
+    <string name="prep_gift_ideas_title">Geschenkideen</string>
+    <string name="prep_preference_line">%1$s: %2$s</string>
     <string name="prep_last_interaction_title">Letzte Interaktion</string>
     <string name="prep_last_interaction_none">Noch keine Interaktionen erfasst</string>
     <string name="prep_recent_notes_title">Letzte Notizen</string>
@@ -404,6 +406,7 @@
     <string name="prep_reminders_title">Anstehende Erinnerungen</string>
     <string name="prep_upcoming_dates_title">Anstehende Daten</string>
     <string name="prep_upcoming_dates_birthday">Geburtstag</string>
+    <string name="prep_upcoming_dates_turns">Wird %1$d · %2$s</string>
     <string name="prep_upcoming_dates_anniversary">Jahrestag</string>
     <plurals name="prep_upcoming_dates_in_days">
         <item quantity="one">in %1$d Tag</item>
