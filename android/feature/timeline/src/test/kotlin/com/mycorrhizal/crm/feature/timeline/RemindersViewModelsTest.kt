@@ -377,15 +377,20 @@ class ReminderFormViewModelTest {
         }
 
     @Test
-    fun `invalid date format blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-only reminder is normalised to the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { reminderRepository.create(5, any()) } returns Result.success(
+            Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.ONCE, remindAt = "2026-08-10T00:00:00Z"),
+        )
+
         val vm = createViewModel()
         vm.onMessageChange("Call Dana")
         vm.onRemindAtChange("2026-08-10")
         vm.save()
         advanceUntilIdle()
 
-        assertEquals(R.string.reminder_error_remind_at, vm.uiState.value.errorRes)
-        coVerify(exactly = 0) { reminderRepository.create(any(), any()) }
+        coVerify {
+            reminderRepository.create(5, match { it.remindAt == "2026-08-10T00:00:00Z" })
+        }
     }
 
     @Test

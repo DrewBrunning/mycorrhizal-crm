@@ -297,7 +297,6 @@
     <string name="contact_circles_select">Select circle…</string>
     <string name="contact_tags_select">Select tag…</string>
     <string name="contact_birthday">Birthday</string>
-    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
     <string name="contact_value_n">Value %1$d</string>
     <string name="contact_remove">Remove</string>
     <string name="contact_add">Add</string>
@@ -903,8 +902,7 @@
     <string name="activity_title">Title</string>
     <string name="activity_type">Type</string>
     <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
-    <string name="activity_date">Date (ISO 8601)</string>
-    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_date">Date</string>
     <string name="activity_location">Location</string>
     <string name="activity_description">Description</string>
     <string name="activity_create">Create activity</string>
@@ -913,7 +911,7 @@
     <string name="activity_search_contact">Add participants</string>
     <string name="activity_remove_participant">Remove participant</string>
     <string name="activity_error_title">Title is required</string>
-    <string name="activity_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
+    <string name="activity_error_date_required">Date is required</string>
     <string name="activity_error_missing_id">Missing contact id</string>
     <string name="cd_new_activity">New activity</string>
 
@@ -934,8 +932,7 @@
     <string name="note_new">New note</string>
     <string name="note_edit">Edit note</string>
     <string name="note_content">Note</string>
-    <string name="note_date">Date (ISO 8601)</string>
-    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_date">Date</string>
     <string name="note_create">Create note</string>
     <string name="note_save">Save changes</string>
     <string name="note_assign_contact">Assigned contact</string>
@@ -943,7 +940,6 @@
     <string name="note_search_contact">Search contacts</string>
     <string name="note_error_content">Note content is required</string>
     <string name="note_error_date_required">Date is required</string>
-    <string name="note_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
     <string name="note_error_missing_id">Missing contact id</string>
     <string name="cd_new_note">New note</string>
 
@@ -961,14 +957,12 @@
     <string name="reminder_edit">Edit reminder</string>
     <string name="reminder_message">Message</string>
     <string name="reminder_remind_at">Remind at</string>
-    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Recurrence</string>
     <string name="reminder_email">Email reminder</string>
     <string name="reminder_create">Create reminder</string>
     <string name="reminder_save">Save changes</string>
     <string name="reminder_error_message">Message is required</string>
     <string name="reminder_error_remind_at_required">Remind date is required</string>
-    <string name="reminder_error_remind_at">Remind date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Unknown recurrence</string>
     <string name="reminder_error_missing_id">Missing contact id</string>
     <string name="reminder_title_fallback">Reminder</string>
@@ -989,7 +983,12 @@
     <string name="cd_delete_reminder">Delete reminder</string>
     <string name="reminder_overdue">Overdue</string>
     <string name="reminder_flexible">Flexible</string>
-    <string name="reminder_pick_date">Pick a date</string>
+    <string name="date_field_pick_date">Pick a date</string>
+    <string name="date_field_clear_date">Clear date</string>
+    <string name="date_field_add_time">Add time</string>
+    <string name="date_field_remove_time">Remove time</string>
+    <string name="date_field_time">Time</string>
+    <string name="date_field_year_unknown">Year unknown</string>
     <string name="reminder_reoccur_from_completion">Reschedule from completion date</string>
     <string name="reminder_reoccur_from_completion_hint">When completed, the next reminder is scheduled from the completion date instead of the original date.</string>
     <string name="reminder_completed">Reminder completed</string>
@@ -1395,9 +1394,7 @@
     <string name="life_events_select_category_first">Select a category first</string>
     <string name="life_events_custom_type">Add a new life event type</string>
     <string name="life_events_custom_type_label">Custom event name</string>
-    <string name="life_events_year">Year</string>
-    <string name="life_events_month">Month</string>
-    <string name="life_events_day">Day</string>
+    <string name="life_events_date">Date</string>
     <string name="life_events_related">Related to</string>
     <string name="life_events_search_related">Search contacts</string>
     <string name="life_events_remove_related">Remove %1$s</string>
@@ -1416,8 +1413,7 @@
     <string name="gifts_url_invalid">Enter a valid http(s) URL</string>
     <string name="gifts_notes">Notes</string>
     <string name="gifts_occasion">Occasion</string>
-    <string name="gifts_date">Date (YYYY-MM-DD)</string>
-    <string name="gifts_date_invalid">Enter a date in YYYY-MM-DD format</string>
+    <string name="gifts_date">Date</string>
     <string name="gifts_amount">Amount</string>
     <string name="gifts_currency">Currency</string>
     <string name="gifts_life_event">Life event</string>

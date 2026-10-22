@@ -4,6 +4,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import { Box, Button, Chip, IconButton, Paper, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { OccasionEvent } from '../api/occasionEvents';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 interface OccasionEventListProps {
   events: OccasionEvent[];
@@ -17,11 +18,11 @@ interface OccasionEventListProps {
 export function formatEventWhen(event: OccasionEvent): string {
   const start = new Date(event.starts_at);
   if (Number.isNaN(start.getTime())) return event.starts_at;
-  const startText = start.toLocaleString();
+  const startText = formatLocalDateTime(start);
   if (!event.ends_at) return startText;
   const end = new Date(event.ends_at);
   if (Number.isNaN(end.getTime())) return startText;
-  return `${startText} – ${end.toLocaleString()}`;
+  return `${startText} – ${formatLocalDateTime(end)}`;
 }
 
 // The Occasions page's event list (docs/adrs/0026-occasions-events.md, issue

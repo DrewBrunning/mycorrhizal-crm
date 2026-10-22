@@ -28,14 +28,15 @@ const JWT_SHAPE = /\bey[\w-]+\.[\w-]+\.[\w-]+\b/;
 // login, confirmed by grepping frontend/src for each: `user_info` (auth.ts,
 // non-sensitive cached user info -- the one under test below), `i18nextLng`
 // (i18next's standard language-detector plugin), `themePreference`
-// (AppThemeProvider.tsx), `dateFormat` (DateFormatProvider.tsx). None hold a
-// credential. A key outside this set must be deliberately added here rather
-// than slipping in unnoticed.
+// (AppThemeProvider.tsx), `dateFormat` (DateFormatProvider.tsx), `timeFormat`
+// (timeFormat.ts). None hold a credential. A key outside this set must be
+// deliberately added here rather than slipping in unnoticed.
 const KNOWN_BENIGN_LOCAL_STORAGE_KEYS = [
   'user_info',
   'i18nextLng',
   'themePreference',
   'dateFormat',
+  'timeFormat',
 ];
 
 // IndexedDB databases the app is *allowed* to create: `workbox-expiration`

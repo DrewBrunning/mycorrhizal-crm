@@ -11,8 +11,12 @@ import (
 // Note struct to represent notes attached to a contact
 type Note struct {
 	gorm.Model
-	UserID    uint      `gorm:"not null;index" json:"-"`
-	Content   string    `json:"content" validate:"required,min=1,max=5000"`
+	UserID  uint   `gorm:"not null;index" json:"-"`
+	Content string `json:"content" validate:"required,min=1,max=5000"`
+	// Date is the note's calendar day, not an instant: clients write the picked
+	// day at 00:00:00Z and any calendar-day derivation reads its UTC date with
+	// no zone conversion (ADR 0015 category 2, issue #1823). The wire shape
+	// stays an RFC 3339 timestamp.
 	Date      time.Time `json:"date" validate:"required"`
 	ContactID *uint     `json:"contact_id"`
 	Contact   Contact   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty"`

@@ -92,6 +92,7 @@ func ExchangeDeviceGrant(c *gin.Context, cfg *config.Config) {
 	c.JSON(http.StatusOK, gin.H{
 		"language":    user.Language,
 		"date_format": user.DateFormat,
+		"time_format": user.TimeFormat,
 	})
 }
 

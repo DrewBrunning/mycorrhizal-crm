@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { OccasionEvent } from '../api/occasionEvents';
+import { setTimeFormat } from '../timeFormat';
 import OccasionEventList, { formatEventWhen } from './OccasionEventList';
 
 afterEach(cleanup);
@@ -52,6 +53,31 @@ test('renders an end time when present', () => {
   const withEnd = { ...baseEvent, ends_at: '2026-07-04T20:00:00Z' };
   renderList({ events: [withEnd] });
   expect(screen.getByText(formatEventWhen(withEnd))).toHaveTextContent('–');
+});
+
+// Issue #1830: the occasion range follows the user's 12/24-hour preference.
+test('the event range renders 24-hour times when the preference is 24h', () => {
+  const withEnd = { ...baseEvent, ends_at: '2026-07-04T20:00:00Z' };
+  try {
+    setTimeFormat('24h');
+    const text = formatEventWhen(withEnd);
+    expect(text).not.toMatch(/AM|PM/i);
+    expect(text.match(/\d{2}:\d{2}/g)).toHaveLength(2);
+    renderList({ events: [withEnd] });
+    expect(screen.getByText(text)).toBeInTheDocument();
+  } finally {
+    setTimeFormat('auto');
+  }
+});
+
+test('the event range renders 12-hour times when the preference is 12h', () => {
+  const withEnd = { ...baseEvent, ends_at: '2026-07-04T20:00:00Z' };
+  try {
+    setTimeFormat('12h');
+    expect(formatEventWhen(withEnd).match(/AM|PM/gi)).toHaveLength(2);
+  } finally {
+    setTimeFormat('auto');
+  }
 });
 
 test('shows a sensitivity chip for a non-normal event', () => {

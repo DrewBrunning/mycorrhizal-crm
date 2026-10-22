@@ -27,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 // M19: the per-contact notes list's search/date filters, load-more, and
 // delete-confirmation (M17's rule), driving the real NotesScreenContent.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w480dp-h1200dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class NotesScreenTest {
 
@@ -148,24 +148,26 @@ class NotesScreenTest {
     }
 
     @Test
-    fun `typing in the from date field invokes the callback`() {
+    fun `picking a from date invokes the callback`() {
         var from = ""
         setContent(
-            NotesUiState(contactId = 5, notes = emptyList()),
+            NotesUiState(contactId = 5, notes = emptyList(), fromDate = "2026-08-01"),
             onFromDateChange = { from = it },
         )
-        composeTestRule.onNodeWithTag("timeline-from-date").performTextInput("2026-08-01")
+        composeTestRule.onNodeWithTag("timeline-from-date").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-01", from)
     }
 
     @Test
-    fun `typing in the to date field invokes the callback`() {
+    fun `picking a to date invokes the callback`() {
         var to = ""
         setContent(
-            NotesUiState(contactId = 5, notes = emptyList()),
+            NotesUiState(contactId = 5, notes = emptyList(), toDate = "2026-08-10"),
             onToDateChange = { to = it },
         )
-        composeTestRule.onNodeWithTag("timeline-to-date").performTextInput("2026-08-10")
+        composeTestRule.onNodeWithTag("timeline-to-date").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-10", to)
     }
 

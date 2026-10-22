@@ -14,11 +14,12 @@ import {
 } from './api/apiTokens';
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
-import { updateSelfContact } from './api/users';
+import { updateSelfContact, updateTimeFormat } from './api/users';
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SettingsPage from './SettingsPage';
+import { getTimeFormat, setTimeFormat } from './timeFormat';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -62,7 +63,7 @@ vi.mock('./api/contacts', async (importOriginal) => {
 });
 vi.mock('./api/users', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/users')>();
-  return { ...actual, updateSelfContact: vi.fn() };
+  return { ...actual, updateSelfContact: vi.fn(), updateTimeFormat: vi.fn() };
 });
 vi.mock('./api/admin', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/admin')>();
@@ -145,6 +146,54 @@ function renderPage() {
     </AppThemeProvider>,
   );
 }
+
+// --- Time format (issue #1830) ------------------------------------------
+
+test('the Time format control offers Automatic / 12-hour / 24-hour and persists the choice', async () => {
+  vi.mocked(updateTimeFormat).mockReset();
+  vi.mocked(updateTimeFormat).mockResolvedValue('ok');
+  setTimeFormat('auto');
+  try {
+    renderPage();
+
+    const select = screen.getByRole('combobox', { name: 'Time Format' });
+    expect(select).toHaveTextContent('Automatic (follows your language)');
+
+    fireEvent.mouseDown(select);
+    const listbox = within(screen.getByRole('listbox'));
+    expect(listbox.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Automatic (follows your language)',
+      '12-hour (3:30 PM)',
+      '24-hour (15:30)',
+    ]);
+    fireEvent.click(listbox.getByRole('option', { name: '24-hour (15:30)' }));
+
+    await waitFor(() => expect(updateTimeFormat).toHaveBeenCalledWith('24h'));
+    expect(getTimeFormat()).toBe('24h');
+    expect(window.localStorage.getItem('timeFormat')).toBe('24h');
+    expect(screen.getByRole('combobox', { name: 'Time Format' })).toHaveTextContent('24-hour');
+  } finally {
+    setTimeFormat('auto');
+  }
+});
+
+test('a failed backend sync keeps the local time-format choice', async () => {
+  vi.mocked(updateTimeFormat).mockReset();
+  vi.mocked(updateTimeFormat).mockRejectedValue(new Error('offline'));
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  setTimeFormat('auto');
+  try {
+    renderPage();
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Time Format' }));
+    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /^12-hour/ }));
+
+    await waitFor(() => expect(errorSpy).toHaveBeenCalled());
+    expect(getTimeFormat()).toBe('12h');
+  } finally {
+    errorSpy.mockRestore();
+    setTimeFormat('auto');
+  }
+});
 
 // --- Password change ---------------------------------------------------
 

@@ -8281,6 +8281,22 @@
       ]
     },
     {
+      "method": "PATCH",
+      "path": "/users/time-format",
+      "parameters": null,
+      "request_body": "ref:UpdateTimeFormatInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/webauthn/assert/begin",
       "parameters": null,
@@ -8693,6 +8709,16 @@
           "name": "self_contact_uid",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "time_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
+          ]
         },
         {
           "name": "version",
@@ -9165,6 +9191,16 @@
           "name": "language",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "time_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
+          ]
         },
         {
           "name": "updated_at",
@@ -12513,6 +12549,16 @@
           "name": "self_contact_vcard_uid",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "time_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
+          ]
         },
         {
           "name": "updated_at",
@@ -16040,6 +16086,16 @@
           "required": false
         },
         {
+          "name": "time_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
+          ]
+        },
+        {
           "name": "two_factor_required",
           "type": "boolean",
           "required": false
@@ -17180,6 +17236,16 @@
           "name": "language",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "time_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
+          ]
         },
         {
           "name": "token",
@@ -19737,6 +19803,21 @@
             "it",
             "es",
             "fr"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "UpdateTimeFormatInput",
+      "properties": [
+        {
+          "name": "time_format",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "auto",
+            "12h",
+            "24h"
           ]
         }
       ]

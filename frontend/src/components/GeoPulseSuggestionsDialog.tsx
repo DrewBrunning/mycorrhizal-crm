@@ -19,6 +19,7 @@ import { Link as RouterLink } from 'react-router';
 import { createActivity } from '../api/activities';
 import type { GeoPulseStaySuggestion } from '../api/geopulse';
 import { useGeoPulse } from '../hooks/useGeoPulse';
+import { formatTime } from '../timeFormat';
 import AddActivityDialog from './AddActivityDialog';
 import AppDialog from './AppDialog';
 
@@ -71,16 +72,9 @@ function stayLocalDate(timestamp: string, timeZone: string | undefined, fallback
 
 function formatStayTime(timestamp: string, timeZone: string | undefined): string {
   try {
-    return new Date(timestamp).toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone,
-    });
+    return formatTime(timestamp, { hour: '2-digit', minute: '2-digit', timeZone });
   } catch {
-    return new Date(timestamp).toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTime(timestamp, { hour: '2-digit', minute: '2-digit' });
   }
 }
 

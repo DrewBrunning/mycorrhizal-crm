@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -70,7 +72,25 @@ class ReminderFormScreenTest {
     fun `shows the prefilled date`() {
         val today = LocalDate.now().toString()
         setContent(ReminderFormState(contactId = 5, remindAt = "${today}T00:00:00Z"))
-        composeTestRule.onNodeWithText(today).assertIsDisplayed()
+        // #1726: the date is rendered through the user's date-format
+        // preference (EU by default), not as the raw stored ISO prefix.
+        composeTestRule.onNodeWithText(DateFormat.formatTimestamp("${today}T00:00:00Z", DateFormat.EU))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `picking a reminder date emits UTC midnight`() {
+        val today = LocalDate.now()
+        var picked: String? = null
+        setContent(
+            ReminderFormState(contactId = 5, remindAt = "${today}T00:00:00Z"),
+            onRemindAtChange = { picked = it },
+        )
+
+        composeTestRule.onNodeWithTag("reminder-date").performClick()
+        composeTestRule.onNodeWithTag("date-picker-confirm").performClick()
+
+        assertEquals("${today}T00:00:00Z", picked)
     }
 
     @Test

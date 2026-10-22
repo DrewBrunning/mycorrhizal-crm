@@ -11,6 +11,7 @@ import {
   updateEnabledContactFields,
   updateLanguage,
   updateSelfContact,
+  updateTimeFormat,
 } from './users';
 
 setupMswServer();
@@ -45,6 +46,21 @@ describe('users API', () => {
     expect(await updateDateFormat('x')).toBe('Date format updated successfully.');
     mockApi('patch', '/users/date-format', fail());
     await expect(updateDateFormat('x')).rejects.toThrow('server said no');
+  });
+
+  test('updateTimeFormat PATCHes /users/time-format with time_format', async () => {
+    const calls = mockApi('patch', '/users/time-format', { message: 'ok' });
+    expect(await updateTimeFormat('24h')).toBe('ok');
+    expect(calls[0].method).toBe('PATCH');
+    expect(calls[0].url).toBe('/api/v1/users/time-format');
+    expect(calls[0].body).toEqual({ time_format: '24h' });
+  });
+
+  test('updateTimeFormat default message and error', async () => {
+    mockApi('patch', '/users/time-format', {});
+    expect(await updateTimeFormat('auto')).toBe('Time format updated successfully.');
+    mockApi('patch', '/users/time-format', fail());
+    await expect(updateTimeFormat('auto')).rejects.toThrow('server said no');
   });
 
   test('getEnabledContactFields GETs and returns the list, or null when never configured', async () => {

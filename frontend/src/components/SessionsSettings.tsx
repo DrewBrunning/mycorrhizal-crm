@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSessions, revokeOtherSessions, revokeSession, type Session } from '../api/sessions';
 import { useSnackbar } from '../context/SnackbarContext';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 
 // SessionsSettings is the settings-page card for issue #866 (ASVS 3.3.4): the
 // list of this account's active server-side sessions, each revocable, plus a
@@ -78,7 +79,7 @@ export default function SessionsSettings() {
     }
   };
 
-  const formatWhen = (iso: string) => new Date(iso).toLocaleString();
+  const formatWhen = (iso: string) => formatLocalDateTime(new Date(iso));
 
   const otherCount = (sessions ?? []).filter((s) => !s.current).length;
 
