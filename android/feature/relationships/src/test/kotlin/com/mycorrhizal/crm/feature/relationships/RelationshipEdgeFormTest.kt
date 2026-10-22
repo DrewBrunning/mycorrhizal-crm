@@ -228,4 +228,26 @@ class RelationshipEdgeFormTest {
         composeTestRule.onNodeWithText("Person30").assertIsDisplayed()
         composeTestRule.onNodeWithText("Person0").assertDoesNotExist()
     }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `a dirty relationship form asks before discarding and keep editing keeps the name`() {
+        show(viewModel())
+        composeTestRule.onNodeWithContentDescription("New relationship").performClick()
+        composeTestRule.onNodeWithText("Other contact name", substring = true).performTextReplacement("Casey")
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your edits to this relationship haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("relationship-type").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        composeTestRule.onNodeWithText("Casey").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithText("Discard").performClick()
+        composeTestRule.onNodeWithTag("relationship-type").assertDoesNotExist()
+    }
 }

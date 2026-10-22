@@ -53,9 +53,28 @@ data class NoteFormState(
     val revision: Int? = null,
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
     val conflict: Boolean = false,
+    /** Issue #1751: the editable state the form opened with, for [isDirty]. */
+    val baseline: NoteFormState? = null,
 ) {
     val isEdit: Boolean get() = noteId != null
     val hasContent: Boolean get() = content.isNotBlank()
+
+    val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
+
+    private fun editableSnapshot(): NoteFormState = copy(
+        targetContactName = null,
+        contactSearchQuery = "",
+        contactSearchResults = emptyList(),
+        contactSearchLoading = false,
+        isLoading = false,
+        isSaving = false,
+        errorRes = null,
+        error = null,
+        conflict = false,
+        baseline = null,
+    )
+
+    fun snapshotForBaseline(): NoteFormState = editableSnapshot()
 
     fun toInput(): NoteInput = NoteInput(
         content = content.trim(),
@@ -109,7 +128,7 @@ class NoteFormViewModel @Inject constructor(
             noteId = noteId,
             content = prefill.orEmpty(),
             targetContactId = contactId.takeIf { it != 0 },
-        ),
+        ).let { it.copy(baseline = it.snapshotForBaseline()) },
     )
     val uiState: StateFlow<NoteFormState> = _uiState.asStateFlow()
 
@@ -163,7 +182,10 @@ class NoteFormViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             noteRepository.get(id).foldApiError(
                 onSuccess = { note ->
-                    _uiState.update { it.toFormState(note).copy(isLoading = false) }
+                    _uiState.update { state ->
+                        val loaded = state.toFormState(note).copy(isLoading = false)
+                        loaded.copy(baseline = loaded.snapshotForBaseline())
+                    }
                     note.contactId?.let { contactId -> resolveContactName(contactId) }
                 },
                 onError = { error ->

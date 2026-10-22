@@ -2,7 +2,10 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -18,8 +21,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -34,6 +38,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import androidx.activity.ComponentActivity
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -44,11 +49,12 @@ import org.robolectric.annotation.GraphicsMode
 class ContactFormScreenTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     private fun setContent(
         state: ContactFormState = ContactFormState(),
         onSave: () -> Unit = {},
+        onBack: () -> Unit = {},
         onGivenNameChange: (String) -> Unit = {},
         onCircleToggle: (String) -> Unit = {},
         onTagToggle: (String) -> Unit = {},
@@ -65,11 +71,13 @@ class ContactFormScreenTest {
             MycorrhizalTheme {
                 FormScaffold(
                     title = "Form",
-                    onBack = {},
+                    onBack = onBack,
                     saveLabel = if (state.isEdit) "Save changes" else "Create contact",
                     isSaving = state.isSaving,
                     onSave = onSave,
                     snackbarHostState = remember { SnackbarHostState() },
+                    isDirty = state.isDirty,
+                    entityLabel = "contact",
                 ) { padding ->
                     ContactFormContent(
                         state = state,
@@ -455,5 +463,119 @@ class ContactFormScreenTest {
         }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
+    }
+
+    // --- Issue #1751: unsaved-changes guard ---
+
+    private fun pristineState(): ContactFormState =
+        ContactFormState().let { it.copy(baseline = it.snapshotForBaseline()) }
+
+    @Test
+    fun `an untouched contact form leaves from the up arrow without asking`() {
+        var back = false
+        setContent(state = pristineState(), onBack = { back = true })
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        assertTrue(back)
+        composeTestRule.onNodeWithText("Discard changes?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `typing then system back asks before discarding, and keep editing keeps the input`() {
+        var back = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                var state by remember { mutableStateOf(pristineState()) }
+                FormScaffold(
+                    title = "Edit contact",
+                    onBack = { back = true },
+                    saveLabel = "Save changes",
+                    isSaving = false,
+                    onSave = {},
+                    snackbarHostState = remember { SnackbarHostState() },
+                    isDirty = state.isDirty,
+                    entityLabel = "contact",
+                ) { padding ->
+                    ContactFormContent(
+                        state = state,
+                        onGivenNameChange = { state = state.copy(givenName = it) },
+                        onSurnameChange = {},
+                        onNicknameChange = { state = state.copy(nickname = it) },
+                        onEmailsChange = {},
+                        onPhonesChange = {},
+                        onAddressesChange = {},
+                        onImppChange = {},
+                        onSocialChange = {},
+                        onOtherServicesChange = {},
+                        onLinksChange = {},
+                        onBirthdayChange = {},
+                        modifier = Modifier.padding(padding),
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Given name").performTextInput("Caz")
+        composeTestRule.onNodeWithText("Caz").assertIsDisplayed()
+        composeTestRule.waitForIdle()
+        composeTestRule.runOnUiThread {
+            composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your edits to this contact haven't been saved.").assertIsDisplayed()
+        assertEquals(false, back)
+
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+
+        composeTestRule.onNodeWithText("Caz").assertIsDisplayed()
+        assertEquals(false, back)
+    }
+
+    @Test
+    fun `discard leaves the contact form`() {
+        var back = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                var state by remember { mutableStateOf(pristineState()) }
+                FormScaffold(
+                    title = "Edit contact",
+                    onBack = { back = true },
+                    saveLabel = "Save changes",
+                    isSaving = false,
+                    onSave = {},
+                    snackbarHostState = remember { SnackbarHostState() },
+                    isDirty = state.isDirty,
+                    entityLabel = "contact",
+                ) { padding ->
+                    ContactFormContent(
+                        state = state,
+                        onGivenNameChange = { state = state.copy(givenName = it) },
+                        onSurnameChange = {},
+                        onNicknameChange = { state = state.copy(nickname = it) },
+                        onEmailsChange = {},
+                        onPhonesChange = {},
+                        onAddressesChange = {},
+                        onImppChange = {},
+                        onSocialChange = {},
+                        onOtherServicesChange = {},
+                        onLinksChange = {},
+                        onBirthdayChange = {},
+                        modifier = Modifier.padding(padding),
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Given name").performTextInput("Caz")
+        composeTestRule.onNodeWithText("Caz").assertIsDisplayed()
+        composeTestRule.waitForIdle()
+        composeTestRule.runOnUiThread {
+            composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeTestRule.onNodeWithText("Discard").performClick()
+
+        assertTrue(back)
     }
 }

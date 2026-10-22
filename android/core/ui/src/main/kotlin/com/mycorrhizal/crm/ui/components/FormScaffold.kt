@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -115,14 +120,24 @@ fun FormScaffold(
     showSaveBar: Boolean = true,
     saveEnabled: Boolean = true,
     saveDisabledHint: String? = null,
+    isDirty: Boolean = false,
+    entityLabel: String = "",
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    val requestBack = {
+        if (isDirty) showDiscardDialog = true else onBack()
+    }
+    // Issue #1751: system back, predictive back and the top-bar Up arrow all take the same
+    // path, so a form with unsaved input asks before discarding it.
+    BackHandler(enabled = isDirty) { showDiscardDialog = true }
+
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    AccessibleIconButton(onClick = onBack) {
+                    AccessibleIconButton(onClick = requestBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
@@ -149,4 +164,15 @@ fun FormScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         content = content,
     )
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            entityLabel = entityLabel,
+            onKeepEditing = { showDiscardDialog = false },
+            onDiscard = {
+                showDiscardDialog = false
+                onBack()
+            },
+        )
+    }
 }

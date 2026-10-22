@@ -26,7 +26,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
-import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
@@ -91,6 +90,7 @@ import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DateField
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -356,11 +356,12 @@ internal fun EntityFormScreen(
     saveDisabledHint: String?,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    isDirty: Boolean = false,
+    entityLabel: String = "",
     errorMessage: String? = null,
     onErrorShown: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
     // A form that stays open on a failed save (mark discussed, #1723) replaces the list,
     // so the list's snackbar is not composed: the form shows the error itself.
@@ -379,6 +380,8 @@ internal fun EntityFormScreen(
         snackbarHostState = snackbarHostState,
         saveEnabled = saveEnabled,
         saveDisabledHint = saveDisabledHint,
+        isDirty = isDirty,
+        entityLabel = entityLabel,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -502,6 +505,18 @@ internal fun LifeEventForm(
         )
     }
 
+    val initialCategory = initial?.category
+        ?.takeIf { it in LifeEventCategory.ALL }
+        ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else "")
+    val isDirty = category != initialCategory ||
+        type != (initial?.type ?: "") ||
+        description != (initial?.description ?: "") ||
+        year != (initial?.date?.year?.toString() ?: "") ||
+        month != (initial?.date?.month?.toString() ?: "") ||
+        day != (initial?.date?.day?.toString() ?: "") ||
+        remind != (initial?.remind == true) ||
+        relatedContacts.mapNotNull { it.uid }.toSet() != initial?.relatedEntityIds.orEmpty().toSet()
+
     EntityFormScreen(
         title = stringResource(if (isEditing) R.string.life_events_edit else R.string.life_events_new),
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
@@ -509,6 +524,8 @@ internal fun LifeEventForm(
         saveDisabledHint = stringResource(R.string.life_events_save_hint),
         onSave = onSave,
         onBack = onDismiss,
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_life_event),
     ) {
         // Category select. Issue #1773: a labelled dropdown, not a bare value button.
         val categoryOptions = buildList {
@@ -826,6 +843,16 @@ internal fun GiftForm(
     val saveHint = stringResource(
         if (description.isBlank()) R.string.gifts_save_hint_description else R.string.form_save_hint_fix_fields,
     )
+    val isDirty = status != (initial?.status ?: GiftStatuses.IDEA) ||
+        description != (initial?.description ?: "") ||
+        url != (initial?.url ?: "") ||
+        notes != (initial?.notes ?: "") ||
+        occasion != (initial?.occasion ?: "") ||
+        date != giftDateFromIso(initial?.date) ||
+        amount != (initial?.valueCents?.let(::centsToAmountText) ?: "") ||
+        currency != (initial?.currency ?: "") ||
+        lifeEventId != initial?.lifeEventId ||
+        activityId != initial?.activityId
 
     EntityFormScreen(
         title = stringResource(if (isEditing) R.string.gifts_edit else R.string.gifts_new),
@@ -834,6 +861,8 @@ internal fun GiftForm(
         saveDisabledHint = saveHint,
         onSave = onSave,
         onBack = onDismiss,
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_gift),
     ) {
         StatusField(status = status, onStatusChange = { status = it })
         OutlinedTextField(
@@ -1145,12 +1174,20 @@ internal fun PreferenceForm(
     var sensitivity by rememberSaveable(initial?.id) {
         mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL)
     }
+    val isDirty = category != (initial?.category ?: defaultCategory) ||
+        key != (initial?.key ?: "") ||
+        value != (initial?.value ?: "") ||
+        level != initial?.level ||
+        notes != (initial?.notes ?: "") ||
+        sensitivity != (initial?.sensitivity ?: PreferenceSensitivities.NORMAL)
 
     EntityFormScreen(
         title = stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new),
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
         saveEnabled = category.isNotBlank() && value.isNotBlank(),
         saveDisabledHint = stringResource(R.string.preferences_save_hint),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_preference),
         onSave = {
             onConfirm(
                 PreferenceFormData(
@@ -1759,12 +1796,15 @@ internal fun AgendaDialog(
 ) {
     var content by remember(initial) { mutableStateOf(initial?.content ?: "") }
     var referenceUrl by remember(initial) { mutableStateOf(initial?.referenceUrl ?: "") }
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     val isEditing = initial != null
     val normalizedUrl = normalizeHttpUrl(referenceUrl)
     val urlValid = referenceUrl.isBlank() || normalizedUrl != null
+    val isDirty = content != (initial?.content ?: "") || referenceUrl != (initial?.referenceUrl ?: "")
+    val requestDismiss = { if (isDirty) showDiscardDialog = true else onDismiss() }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestDismiss,
         title = { Text(stringResource(if (isEditing) R.string.agenda_edit else R.string.agenda_new)) },
         text = {
             Column(
@@ -1790,9 +1830,20 @@ internal fun AgendaDialog(
             ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = requestDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            entityLabel = stringResource(R.string.entity_agenda),
+            onKeepEditing = { showDiscardDialog = false },
+            onDiscard = {
+                showDiscardDialog = false
+                onDismiss()
+            },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1897,6 +1948,8 @@ internal fun MarkDiscussedForm(
     var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
     EntityFormScreen(
         title = stringResource(R.string.agenda_mark_discussed),
+        isDirty = activityId != null,
+        entityLabel = stringResource(R.string.entity_agenda),
         saveLabel = stringResource(R.string.agenda_discussed_button),
         saveEnabled = !confirming,
         saveDisabledHint = null,

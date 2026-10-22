@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -46,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -248,9 +250,17 @@ internal fun OccasionEventDialog(
     var sensitivity by remember(event) { mutableStateOf(event?.sensitivity ?: OccasionSensitivity.NORMAL) }
     var notes by remember(event) { mutableStateOf(event?.notes ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    val isDirty = title != (event?.title ?: "") ||
+        startsAt != (event?.startsAt ?: "") ||
+        endsAt != (event?.endsAt ?: "") ||
+        location != (event?.location ?: "") ||
+        sensitivity != (event?.sensitivity ?: OccasionSensitivity.NORMAL) ||
+        notes != (event?.notes ?: "")
+    val requestDismiss = { if (isDirty) showDiscardDialog = true else onDismiss() }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestDismiss,
         title = {
             Text(
                 text = stringResource(if (event == null) R.string.occasions_create_title else R.string.occasions_edit_title),
@@ -309,8 +319,19 @@ internal fun OccasionEventDialog(
                 }
             }) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = requestDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            entityLabel = stringResource(R.string.entity_occasion),
+            onKeepEditing = { showDiscardDialog = false },
+            onDiscard = {
+                showDiscardDialog = false
+                onDismiss()
+            },
+        )
+    }
 }
 
 @Composable

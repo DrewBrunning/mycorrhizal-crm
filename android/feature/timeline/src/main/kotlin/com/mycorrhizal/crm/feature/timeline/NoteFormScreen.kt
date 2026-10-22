@@ -71,6 +71,8 @@ fun NoteFormScreen(
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
+        isDirty = state.isDirty,
+        entityLabel = stringResource(R.string.entity_note),
         showSaveBar = !state.isLoading,
     ) { padding ->
         when {

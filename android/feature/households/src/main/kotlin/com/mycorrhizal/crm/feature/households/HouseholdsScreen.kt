@@ -29,6 +29,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.RowAction
 import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -366,9 +368,12 @@ fun HouseholdFormDialog(
     var name by remember { mutableStateOf(initialName) }
     var type by remember { mutableStateOf(initialType) }
     var expanded by remember { mutableStateOf(false) }
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    val isDirty = name != initialName || type != initialType
+    val requestDismiss = { if (isDirty) showDiscardDialog = true else onDismiss() }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestDismiss,
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -415,9 +420,20 @@ fun HouseholdFormDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = requestDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
         },
     )
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            entityLabel = stringResource(R.string.entity_household),
+            onKeepEditing = { showDiscardDialog = false },
+            onDiscard = {
+                showDiscardDialog = false
+                onDismiss()
+            },
+        )
+    }
 }

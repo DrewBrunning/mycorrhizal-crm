@@ -99,6 +99,8 @@ fun ContactFormScreen(
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         showSaveBar = !state.isLoading,
+        isDirty = state.isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton()

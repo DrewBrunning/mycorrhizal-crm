@@ -40,9 +40,24 @@ data class ReminderFormState(
     val revision: Int? = null,
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
     val conflict: Boolean = false,
+    /** Issue #1751: the editable state the form opened with, for [isDirty]. */
+    val baseline: ReminderFormState? = null,
 ) {
     val isEdit: Boolean get() = reminderId != null
     val hasMessage: Boolean get() = message.isNotBlank()
+
+    val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
+
+    private fun editableSnapshot(): ReminderFormState = copy(
+        isLoading = false,
+        isSaving = false,
+        errorRes = null,
+        error = null,
+        conflict = false,
+        baseline = null,
+    )
+
+    fun snapshotForBaseline(): ReminderFormState = editableSnapshot()
 
     fun toReminder(): Reminder = Reminder(
         id = reminderId ?: 0,
@@ -128,7 +143,7 @@ class ReminderFormViewModel @Inject constructor(
             } else {
                 ""
             },
-        ),
+        ).let { it.copy(baseline = it.snapshotForBaseline()) },
     )
     val uiState: StateFlow<ReminderFormState> = _uiState.asStateFlow()
 
@@ -145,7 +160,10 @@ class ReminderFormViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             reminderRepository.get(id).foldApiError(
                 onSuccess = { reminder ->
-                    _uiState.update { it.toFormState(reminder).copy(isLoading = false) }
+                    _uiState.update { state ->
+                        val loaded = state.toFormState(reminder).copy(isLoading = false)
+                        loaded.copy(baseline = loaded.snapshotForBaseline())
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }

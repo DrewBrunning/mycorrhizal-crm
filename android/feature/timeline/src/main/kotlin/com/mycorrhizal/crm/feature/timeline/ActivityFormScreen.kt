@@ -71,6 +71,8 @@ fun ActivityFormScreen(
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
+        isDirty = state.isDirty,
+        entityLabel = stringResource(R.string.entity_activity),
         showSaveBar = true,
     ) { padding ->
         ActivityFormContent(

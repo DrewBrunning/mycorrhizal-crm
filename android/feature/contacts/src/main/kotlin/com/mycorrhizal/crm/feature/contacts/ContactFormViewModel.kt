@@ -170,8 +170,33 @@ data class ContactFormState(
     val error: String? = null,
     /** ADR 0008: the save was rejected with 412 — the contact changed elsewhere since it loaded. */
     val conflict: Boolean = false,
+    /** Issue #1751: the editable state the form opened with, for [isDirty]. */
+    val baseline: ContactFormState? = null,
 ) {
     val isEdit: Boolean get() = contactId != null
+
+    /** True once the user has changed anything that a save would persist. Transient
+     *  loading/error/geocode and reference-data fields are excluded so an async load
+     *  can never make an untouched form look dirty. */
+    val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
+
+    private fun editableSnapshot(): ContactFormState = copy(
+        isLoading = false,
+        isSaving = false,
+        errorRes = null,
+        error = null,
+        conflict = false,
+        geocodeInFlight = emptySet(),
+        geocodeErrors = emptyMap(),
+        allCircles = emptyList(),
+        allTags = emptyList(),
+        enabledFields = emptySet(),
+        localProfile = false,
+        baseline = null,
+    )
+
+    /** Snapshot for the ViewModel to store as [baseline] after the form is fully loaded. */
+    fun snapshotForBaseline(): ContactFormState = editableSnapshot()
 
     /** True when the form has at least one given name — the backend's
      *  invariant (controller checks firstname != ""). */
@@ -527,6 +552,8 @@ class ContactFormViewModel @Inject constructor(
             // M24: default the language to the device locale on create, mirroring web's
             // AddContactDialog (defaultLanguage = i18n.language).
             _uiState.update { it.copy(language = defaultLanguage()) }
+            // Issue #1751: the device-locale default is the untouched create state.
+            markBaseline()
         }
         loadOptions()
         viewModelScope.launch {
@@ -564,7 +591,10 @@ class ContactFormViewModel @Inject constructor(
             contactRepository.getContact(id).foldApiError(
                 onSuccess = { record ->
                     baseRecord = record
-                    _uiState.update { it.toFormState(record).copy(isLoading = false) }
+                    _uiState.update { state ->
+                        val loaded = state.toFormState(record).copy(isLoading = false)
+                        loaded.copy(baseline = loaded.snapshotForBaseline())
+                    }
                     loadMemberships(record)
                 },
                 onError = { error ->
@@ -583,7 +613,10 @@ class ContactFormViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.circlesForContact(uid).foldApiError(
                 onSuccess = { circles ->
-                    _uiState.update { it.copy(circles = circles.map { c -> c.name }) }
+                    _uiState.update {
+                        val names = circles.map { c -> c.name }
+                        it.copy(circles = names, baseline = it.baseline?.copy(circles = names))
+                    }
                 },
                 onError = {},
             )
@@ -591,7 +624,10 @@ class ContactFormViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.tagsForContact(uid).foldApiError(
                 onSuccess = { tags ->
-                    _uiState.update { it.copy(tags = tags.map { t -> t.name }) }
+                    _uiState.update {
+                        val names = tags.map { t -> t.name }
+                        it.copy(tags = names, baseline = it.baseline?.copy(tags = names))
+                    }
                 },
                 onError = {},
             )
@@ -783,6 +819,10 @@ class ContactFormViewModel @Inject constructor(
 
     fun onSaveShown() {
         _events.value = null
+    }
+
+    private fun markBaseline() {
+        _uiState.update { it.copy(baseline = it.snapshotForBaseline()) }
     }
 
     /** Map a fetched record back into editable form fields. */
