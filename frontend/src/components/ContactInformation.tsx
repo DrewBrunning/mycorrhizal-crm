@@ -750,6 +750,7 @@ export default function ContactInformation({
               value={birthday}
               formattedDisplayValue={birthday ? formatBirthday(birthday) : undefined}
               placeholder={getBirthdayPlaceholder()}
+              helperText={t('contacts.birthdayFormat')}
               displaySuffix={birthdayAgeSuffix}
               isEditing={editingField === 'birthday'}
               editValue={editValue}

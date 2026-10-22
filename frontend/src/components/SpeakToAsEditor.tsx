@@ -77,6 +77,8 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
                   label={t('contacts.speakToAs.pronouns')}
                   size="small"
                   fullWidth
+                  placeholder={t('contacts.formatExamples.pronouns')}
+                  helperText={t('contacts.formatExamples.pronounsHint')}
                   value={p.pronouns}
                   onChange={(e) => updatePronoun(index, { pronouns: e.target.value })}
                 />
@@ -141,6 +143,8 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
               <TextField
                 label={t('contacts.speakToAs.language')}
                 size="small"
+                placeholder={t('contacts.formatExamples.language')}
+                helperText={t('contacts.formatExamples.languageHint')}
                 value={g.language || ''}
                 onChange={(e) => updateGender(index, { language: e.target.value })}
               />

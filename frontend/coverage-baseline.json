@@ -3,8 +3,8 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 92.55,
-      "linesTotal": 94,
+      "lines": 92.39,
+      "linesTotal": 92,
       "branches": 92.1,
       "branchesTotal": 76
     },
@@ -21,10 +21,10 @@
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
-      "lines": 88.46,
-      "linesTotal": 78,
-      "branches": 86.53,
-      "branchesTotal": 52
+      "lines": 88.15,
+      "linesTotal": 76,
+      "branches": 88,
+      "branchesTotal": 50
     },
     "src/CircleTagTriagePage.tsx": {
       "lines": 79.86,
@@ -69,10 +69,10 @@
       "branchesTotal": 52
     },
     "src/DateFormatProvider.tsx": {
-      "lines": 92.48,
-      "linesTotal": 266,
-      "branches": 84.86,
-      "branchesTotal": 218
+      "lines": 93.66,
+      "linesTotal": 284,
+      "branches": 85.26,
+      "branchesTotal": 224
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -99,8 +99,8 @@
       "branchesTotal": 91
     },
     "src/NotesPage.tsx": {
-      "lines": 88.88,
-      "linesTotal": 81,
+      "lines": 88.6,
+      "linesTotal": 79,
       "branches": 93.44,
       "branchesTotal": 61
     },
@@ -135,10 +135,10 @@
       "branchesTotal": 10
     },
     "src/SystemEventsPage.tsx": {
-      "lines": 75.6,
-      "linesTotal": 41,
-      "branches": 75.86,
-      "branchesTotal": 58
+      "lines": 74.35,
+      "linesTotal": 39,
+      "branches": 76.78,
+      "branchesTotal": 56
     },
     "src/SystemStatusPage.tsx": {
       "lines": 98.91,
@@ -147,8 +147,8 @@
       "branchesTotal": 122
     },
     "src/UsersPage.tsx": {
-      "lines": 92,
-      "linesTotal": 175,
+      "lines": 91.95,
+      "linesTotal": 174,
       "branches": 76.92,
       "branchesTotal": 78
     },
@@ -263,7 +263,7 @@
     "src/api/contacts.ts": {
       "lines": 98.73,
       "linesTotal": 238,
-      "branches": 94.37,
+      "branches": 94.62,
       "branchesTotal": 409
     },
     "src/api/contractConformance.ts": {
@@ -665,8 +665,8 @@
     "src/components/BackgroundJobsPanel.tsx": {
       "lines": 100,
       "linesTotal": 37,
-      "branches": 73.77,
-      "branchesTotal": 61
+      "branches": 74.57,
+      "branchesTotal": 59
     },
     "src/components/BrandLogo.tsx": {
       "lines": 100,
@@ -835,6 +835,12 @@
       "linesTotal": 11,
       "branches": 100,
       "branchesTotal": 14
+    },
+    "src/components/DateField.tsx": {
+      "lines": 95.08,
+      "linesTotal": 61,
+      "branches": 81.57,
+      "branchesTotal": 38
     },
     "src/components/DeleteAccountSettings.tsx": {
       "lines": 100,
@@ -1025,7 +1031,7 @@
     "src/components/LanguageField.tsx": {
       "lines": 100,
       "linesTotal": 9,
-      "branches": 61.53,
+      "branches": 69.23,
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
@@ -1095,10 +1101,10 @@
       "branchesTotal": 13
     },
     "src/components/MultiValueField.tsx": {
-      "lines": 96.15,
-      "linesTotal": 26,
-      "branches": 83.33,
-      "branchesTotal": 24
+      "lines": 96.42,
+      "linesTotal": 28,
+      "branches": 88.23,
+      "branchesTotal": 34
     },
     "src/components/MycorrhizalImportDialog.tsx": {
       "lines": 91.89,
@@ -1162,9 +1168,9 @@
     },
     "src/components/OccasionEventList.tsx": {
       "lines": 100,
-      "linesTotal": 18,
-      "branches": 85.71,
-      "branchesTotal": 14
+      "linesTotal": 24,
+      "branches": 95,
+      "branchesTotal": 20
     },
     "src/components/OccasionObligationDialog.tsx": {
       "lines": 100,
@@ -1181,8 +1187,8 @@
     "src/components/OnlineServiceEditor.tsx": {
       "lines": 71.42,
       "linesTotal": 28,
-      "branches": 85,
-      "branchesTotal": 20
+      "branches": 86.36,
+      "branchesTotal": 22
     },
     "src/components/OrganizationDialog.tsx": {
       "lines": 95.55,
@@ -1215,8 +1221,8 @@
       "branchesTotal": 44
     },
     "src/components/PasskeySettings.tsx": {
-      "lines": 98.98,
-      "linesTotal": 99,
+      "lines": 98.97,
+      "linesTotal": 98,
       "branches": 87.67,
       "branchesTotal": 73
     },
@@ -2006,6 +2012,12 @@
       "branches": 100,
       "branchesTotal": 13
     },
+    "src/testSupport/dateField.ts": {
+      "lines": 100,
+      "linesTotal": 12,
+      "branches": 50,
+      "branchesTotal": 4
+    },
     "src/testSupport/timeZone.ts": {
       "lines": 100,
       "linesTotal": 32,
@@ -2019,10 +2031,10 @@
       "branchesTotal": 0
     },
     "src/timeFormat.ts": {
-      "lines": 97.61,
-      "linesTotal": 42,
-      "branches": 92.59,
-      "branchesTotal": 27
+      "lines": 98.24,
+      "linesTotal": 57,
+      "branches": 91.66,
+      "branchesTotal": 36
     },
     "src/types/graph.ts": {
       "lines": 0,
@@ -2071,6 +2083,12 @@
       "linesTotal": 6,
       "branches": 100,
       "branchesTotal": 4
+    },
+    "src/utils/emptyValue.ts": {
+      "lines": 100,
+      "linesTotal": 1,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/utils/errorHandler.ts": {
       "lines": 82.6,

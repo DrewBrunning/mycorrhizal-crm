@@ -13,6 +13,7 @@ interface EditableFieldProps {
   value: string;
   multiline?: boolean;
   placeholder?: string;
+  helperText?: string;
   displaySuffix?: string;
   formattedDisplayValue?: string; // Optional formatted value for display (raw value used for editing)
   isEditing: boolean;
@@ -38,6 +39,7 @@ export default function EditableField({
   value,
   multiline = false,
   placeholder = '',
+  helperText,
   displaySuffix,
   formattedDisplayValue,
   isEditing,
@@ -135,6 +137,7 @@ export default function EditableField({
                         autoFocus
                         error={!!showError}
                         placeholder={placeholder}
+                        helperText={helperText}
                       />
                     )}
                   />
@@ -149,6 +152,7 @@ export default function EditableField({
                     autoFocus
                     error={!!showError}
                     placeholder={placeholder}
+                    helperText={helperText}
                   />
                 )}
                 <IconButton

@@ -35,6 +35,14 @@ test('renders one row per existing language preference', () => {
   expect(inputs[1].value).toBe('fr-CA');
 });
 
+// Issue #1725: a preferred language is a BCP-47 tag, so a new row shows a
+// concrete example instead of an unlabelled blank box.
+test('shows a BCP-47 example in the language placeholder', () => {
+  renderEditor({ value: [{ language: '' }] });
+
+  expect(screen.getByLabelText('Language')).toHaveAttribute('placeholder', 'de, en-US, de-AT');
+});
+
 test('adding a row appends a new blank language preference', () => {
   const { onChange } = renderEditor({ value: [{ language: 'en' }] });
 

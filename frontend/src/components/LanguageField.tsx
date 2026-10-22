@@ -47,7 +47,8 @@ export default function LanguageField({
         <TextField
           {...params}
           label={t('contacts.language')}
-          placeholder="de-AT"
+          placeholder={t('contacts.formatExamples.language')}
+          helperText={t('contacts.formatExamples.languageHint')}
           slotProps={{
             ...params.slotProps,
 

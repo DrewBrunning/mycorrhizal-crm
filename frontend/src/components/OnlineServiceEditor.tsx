@@ -131,6 +131,9 @@ export default function OnlineServiceEditor({
                 size="small"
                 fullWidth
                 type="url"
+                placeholder={
+                  uriOnly ? t('contacts.formatExamples.handle') : t('contacts.formatExamples.url')
+                }
                 value={row.uri}
                 onChange={(e) => updateRow(index, { uri: e.target.value })}
               />
@@ -139,6 +142,7 @@ export default function OnlineServiceEditor({
                   label={t('contacts.onlineServices.user')}
                   size="small"
                   fullWidth
+                  placeholder={t('contacts.formatExamples.handle')}
                   value={row.user}
                   onChange={(e) => updateRow(index, { user: e.target.value })}
                 />

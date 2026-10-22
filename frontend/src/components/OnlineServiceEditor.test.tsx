@@ -116,6 +116,21 @@ test('uriOnly renders service and address without the user field', () => {
   expect(screen.queryByLabelText('Username')).toBeNull();
 });
 
+// Issue #1725: online-service rows accept either a URL or an address/handle,
+// and each input shows which shape it expects.
+test('shows a URL example in the URI input and a handle example in the user input', () => {
+  renderEditor({ value: [{ uri: '', user: '' }] });
+
+  expect(screen.getByLabelText('URI')).toHaveAttribute('placeholder', 'https://example.com');
+  expect(screen.getByLabelText('Username')).toHaveAttribute('placeholder', 'user@server');
+});
+
+test('uriOnly shows a handle example in the address input', () => {
+  renderEditor({ uriOnly: true, value: [{ uri: '' }] });
+
+  expect(screen.getByLabelText('Address')).toHaveAttribute('placeholder', 'user@server');
+});
+
 // Round-trip safety: editing one field of an existing entry preserves every
 // other field (id, user, label, contexts, pref) through the adapter pair.
 test('editing preserves the rest of the row (id/user/label/contexts/pref)', () => {

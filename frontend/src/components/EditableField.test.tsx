@@ -106,6 +106,15 @@ describe('EditableField edit mode', () => {
     expect(screen.getByPlaceholderText('Type here')).toBeInTheDocument();
   });
 
+  test('shows helper text while editing and hides it in display mode', () => {
+    setup({ isEditing: true, editValue: '1990-06-15', helperText: 'e.g. 1990-06-15' });
+    expect(screen.getByText('e.g. 1990-06-15')).toBeInTheDocument();
+
+    cleanup();
+    setup({ isEditing: false, helperText: 'e.g. 1990-06-15' });
+    expect(screen.queryByText('e.g. 1990-06-15')).not.toBeInTheDocument();
+  });
+
   test('shows the validation error only while editing', () => {
     setup({ isEditing: true, editValue: 'x', validationError: 'Too short' });
     expect(screen.getByText('Too short')).toBeInTheDocument();
@@ -121,7 +130,9 @@ describe('EditableField edit mode', () => {
       options: ['alpha', 'beta'],
       getOptionLabel: (o) => o.toUpperCase(),
       placeholder: 'pick',
+      helperText: 'e.g. ALPHA',
     });
+    expect(screen.getByText('e.g. ALPHA')).toBeInTheDocument();
     const input = screen.getByPlaceholderText('pick');
     fireEvent.mouseDown(input);
     fireEvent.click(await screen.findByRole('option', { name: 'BETA' }));
