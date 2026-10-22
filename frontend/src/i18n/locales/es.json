@@ -222,7 +222,9 @@
     "registrationFailed": "Error en el registro",
     "registrationSuccess": "¡Registro completado! Ahora puedes iniciar sesión.",
     "registrationDisabled": "El registro está actualmente desactivado en este servidor. Contacta con tu administrador si necesitas una cuenta.",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta? Inicia sesión",
+    "passwordHelp": "Usa al menos 8 caracteres. Es más seguro usar 15+ caracteres o una frase de contraseña de 20+ caracteres. Evita las contraseñas comunes."
   },
   "contacts": {
     "title": "Contactos",
@@ -2326,7 +2328,7 @@
     "hiddenMatchesHidden_many": "{{count}} coincidentes en otros campos"
   },
   "triage": {
-    "title": "Migración de círculos y etiquetas",
+    "title": "Clasificación de círculos y etiquetas",
     "description": "Clasifique sus círculos antiguos como Círculos (grupos sociales) o Etiquetas (atributos), u omítalos. Ejecute esto una sola vez para migrar desde el antiguo sistema de texto plano.",
     "stepClassify": "Clasificar",
     "stepPreview": "Vista previa",

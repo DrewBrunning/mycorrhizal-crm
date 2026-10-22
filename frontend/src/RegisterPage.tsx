@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { API_BASE_URL } from './auth';
+import BrandLogo from './components/BrandLogo';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
@@ -74,6 +75,9 @@ export default function RegisterPage() {
     return (
       <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
         <Paper sx={{ p: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <BrandLogo height={150} />
+          </Box>
           <Typography
             variant="h5"
             component="h1"
@@ -95,6 +99,9 @@ export default function RegisterPage() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <Paper sx={{ p: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <BrandLogo height={150} />
+        </Box>
         <Typography
           variant="h5"
           component="h1"
@@ -137,6 +144,7 @@ export default function RegisterPage() {
               required
               fullWidth
               error={Boolean(error)}
+              helperText={t('register.passwordHelp')}
               slotProps={{
                 htmlInput: { 'aria-describedby': error ? 'register-error' : undefined },
               }}
@@ -149,6 +157,9 @@ export default function RegisterPage() {
             {success && <Alert severity="success">{success}</Alert>}
             <Button type="submit" variant="contained" color="primary" disabled={loading}>
               {loading ? t('register.registering') : t('register.registerButton')}
+            </Button>
+            <Button component={Link} to="/login" color="primary" variant="text">
+              {t('register.alreadyHaveAccount')}
             </Button>
           </Stack>
         </form>

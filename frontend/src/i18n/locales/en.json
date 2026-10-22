@@ -218,7 +218,9 @@
     "registrationFailed": "Registration failed",
     "registrationSuccess": "Registration successful! You can now log in.",
     "registrationDisabled": "Registration is currently disabled on this server. Contact your administrator if you need an account.",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "alreadyHaveAccount": "Already have an account? Log in",
+    "passwordHelp": "Use at least 8 characters. 15+ characters or a 20+ character passphrase is stronger. Avoid common passwords."
   },
   "contacts": {
     "title": "Contacts",
@@ -907,7 +909,7 @@
     }
   },
   "triage": {
-    "title": "Circle/Tag Migration",
+    "title": "Circle & tag triage",
     "description": "Classify your legacy circles into Circles (social groups) and Tags (attributes), or skip them. Run this once to migrate from the old flat-string system.",
     "stepClassify": "Classify",
     "stepPreview": "Preview",
@@ -921,10 +923,10 @@
     "summary": "{{items}} — {{circles}}, {{tags}}, {{skipped}}",
     "summaryItems_one": "{{count}} item",
     "summaryItems_other": "{{count}} items",
-    "summaryCircles_one": "{{count}} Circle",
-    "summaryCircles_other": "{{count}} Circles",
-    "summaryTags_one": "{{count}} Tag",
-    "summaryTags_other": "{{count}} Tags",
+    "summaryCircles_one": "{{count}} circle",
+    "summaryCircles_other": "{{count}} circles",
+    "summaryTags_one": "{{count}} tag",
+    "summaryTags_other": "{{count}} tags",
     "summarySkipped_one": "{{count}} skipped",
     "summarySkipped_other": "{{count}} skipped",
     "next": "Next",

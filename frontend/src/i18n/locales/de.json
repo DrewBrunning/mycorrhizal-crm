@@ -218,7 +218,9 @@
     "registrationFailed": "Registrierung fehlgeschlagen",
     "registrationSuccess": "Registrierung erfolgreich! Sie können sich jetzt anmelden.",
     "registrationDisabled": "Die Registrierung ist auf diesem Server derzeit deaktiviert. Wenden Sie sich an Ihren Administrator, wenn Sie ein Konto benötigen.",
-    "backToLogin": "Zurück zur Anmeldung"
+    "backToLogin": "Zurück zur Anmeldung",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto? Anmelden",
+    "passwordHelp": "Mindestens 8 Zeichen. Sicherer sind 15+ Zeichen oder eine Passphrase mit 20+ Zeichen. Vermeiden Sie gängige Passwörter."
   },
   "contacts": {
     "title": "Kontakte",
@@ -2251,7 +2253,7 @@
     "hiddenMatchesHidden_other": "{{count}} über andere Felder gefunden"
   },
   "triage": {
-    "title": "Kreis-/Tag-Migration",
+    "title": "Kreis- & Tag-Bereinigung",
     "description": "Ordnen Sie Ihre bisherigen Kreise als Kreise (soziale Gruppen) oder Tags (Eigenschaften) ein oder überspringen Sie sie. Führen Sie dies einmalig aus, um vom alten Freitext-System zu migrieren.",
     "stepClassify": "Einordnen",
     "stepPreview": "Vorschau",

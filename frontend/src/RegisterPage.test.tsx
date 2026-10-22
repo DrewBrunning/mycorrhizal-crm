@@ -87,3 +87,35 @@ describe('RegisterPage registration gate', () => {
     expect(screen.getByRole('link', { name: /back to login/i })).toBeInTheDocument();
   });
 });
+
+// Issue #1790: the registration form was a dead end -- no logo, no way back
+// to Login, and no password-requirement hint until the server rejected the
+// submission.
+describe('RegisterPage navigation and password guidance', () => {
+  test('shows the brand logo and a link back to Login', () => {
+    renderRegister();
+
+    expect(screen.getByRole('img', { name: 'Mycorrhizal CRM' })).toBeInTheDocument();
+    const loginLink = screen.getByRole('link', { name: /already have an account\? log in/i });
+    expect(loginLink).toHaveAttribute('href', '/login');
+  });
+
+  test('shows the password requirement as helper text before submit', () => {
+    renderRegister();
+
+    expect(screen.getByText(/use at least 8 characters/i)).toBeInTheDocument();
+    expect(screen.getByText(/15\+ characters or a 20\+ character passphrase/i)).toBeInTheDocument();
+  });
+
+  test('the registration-disabled state still offers the logo and a way back', () => {
+    useOIDCConfigMock.mockReturnValue({
+      enabled: false,
+      provider_name: 'SSO',
+      registration_disabled: true,
+    });
+    renderRegister();
+
+    expect(screen.getByRole('img', { name: 'Mycorrhizal CRM' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to login/i })).toHaveAttribute('href', '/login');
+  });
+});

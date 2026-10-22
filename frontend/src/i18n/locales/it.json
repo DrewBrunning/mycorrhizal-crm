@@ -222,7 +222,9 @@
     "registrationFailed": "Registrazione fallita",
     "registrationSuccess": "Registrazione completata! Ora puoi accedere.",
     "registrationDisabled": "La registrazione è attualmente disabilitata su questo server. Contatta il tuo amministratore se hai bisogno di un account.",
-    "backToLogin": "Torna al login"
+    "backToLogin": "Torna al login",
+    "alreadyHaveAccount": "Hai già un account? Accedi",
+    "passwordHelp": "Usa almeno 8 caratteri. Una password di 15+ caratteri o una passphrase di 20+ caratteri è più sicura. Evita le password comuni."
   },
   "contacts": {
     "title": "Contatti",
@@ -2326,7 +2328,7 @@
     "hiddenMatchesHidden_many": "{{count}} trovati su altri campi"
   },
   "triage": {
-    "title": "Migrazione di cerchie ed etichette",
+    "title": "Classificazione cerchi ed etichette",
     "description": "Classifica le tue vecchie cerchie come Cerchie (gruppi sociali) o Etichette (attributi), oppure ignorale. Esegui questa operazione una sola volta per migrare dal vecchio sistema a testo semplice.",
     "stepClassify": "Classifica",
     "stepPreview": "Anteprima",

@@ -222,7 +222,9 @@
     "registrationFailed": "Échec de l'inscription",
     "registrationSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
     "registrationDisabled": "L'inscription est actuellement désactivée sur ce serveur. Contactez votre administrateur si vous avez besoin d'un compte.",
-    "backToLogin": "Retour à la connexion"
+    "backToLogin": "Retour à la connexion",
+    "alreadyHaveAccount": "Vous avez déjà un compte ? Se connecter",
+    "passwordHelp": "Utilisez au moins 8 caractères. Un mot de passe de 15 caractères ou plus, ou une phrase secrète de 20 caractères ou plus, est plus sûr. Évitez les mots de passe courants."
   },
   "contacts": {
     "title": "Contacts",
@@ -2326,7 +2328,7 @@
     "hiddenMatchesHidden_many": "{{count}} correspondants sur d’autres champs"
   },
   "triage": {
-    "title": "Migration des cercles et étiquettes",
+    "title": "Tri des cercles et étiquettes",
     "description": "Classez vos anciens cercles en Cercles (groupes sociaux) ou Étiquettes (attributs), ou ignorez-les. À exécuter une seule fois pour migrer depuis l'ancien système de texte libre.",
     "stepClassify": "Classer",
     "stepPreview": "Aperçu",
