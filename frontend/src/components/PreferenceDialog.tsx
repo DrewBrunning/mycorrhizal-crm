@@ -23,6 +23,7 @@ import {
   type PreferenceSection,
   type PreferenceSensitivity,
 } from '../api/preferences';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface PreferenceFormData {
@@ -90,6 +91,7 @@ export default function PreferenceDialog({
   const [sensitivity, setSensitivity] = useState<PreferenceSensitivity>('normal');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   const showLevel = categorySupportsLevel(category);
 
@@ -133,7 +135,7 @@ export default function PreferenceDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {isEditing ? t('preference.editTitle') : t('preference.createTitle')}
       </DialogTitle>
@@ -144,6 +146,7 @@ export default function PreferenceDialog({
             label={t('preference.category')}
             value={category}
             onChange={(e) => {
+              markDirty();
               const next = e.target.value;
               setCategory(next);
               if (!categorySupportsLevel(next)) setLevel('');
@@ -171,6 +174,7 @@ export default function PreferenceDialog({
             label={t('preference.value')}
             value={value}
             onChange={(e) => {
+              markDirty();
               setValue(e.target.value);
               setError('');
             }}
@@ -182,8 +186,14 @@ export default function PreferenceDialog({
             options={PREFERENCE_DEFAULT_KEYS[category] ?? []}
             getOptionLabel={(opt) => t(`preference.keys.${opt}`, opt)}
             value={key || null}
-            onChange={(_, v) => setKey(v || '')}
-            onInputChange={(_, v) => setKey(v)}
+            onChange={(_, v) => {
+              markDirty();
+              setKey(v || '');
+            }}
+            onInputChange={(_, v) => {
+              markDirty();
+              setKey(v);
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -197,7 +207,10 @@ export default function PreferenceDialog({
               select
               label={t('preference.level')}
               value={level}
-              onChange={(e) => setLevel(e.target.value as PreferenceLevel | '')}
+              onChange={(e) => {
+                markDirty();
+                setLevel(e.target.value as PreferenceLevel | '');
+              }}
               helperText={t('preference.levelHint')}
               fullWidth
             >
@@ -212,7 +225,10 @@ export default function PreferenceDialog({
           <TextField
             label={t('preference.notes')}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setNotes(e.target.value);
+            }}
             helperText={t('preference.notesHint')}
             fullWidth
             multiline
@@ -222,7 +238,10 @@ export default function PreferenceDialog({
             select
             label={t('preference.sensitivity')}
             value={sensitivity}
-            onChange={(e) => setSensitivity(e.target.value as PreferenceSensitivity)}
+            onChange={(e) => {
+              markDirty();
+              setSensitivity(e.target.value as PreferenceSensitivity);
+            }}
             fullWidth
           >
             <MenuItem value="normal">{t('preference.sensitivities.normal')}</MenuItem>
@@ -237,13 +256,14 @@ export default function PreferenceDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('preference.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('preference.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

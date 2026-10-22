@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConversationAgenda } from '../api/conversationAgenda';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 import AppDialog from './AppDialog';
 
@@ -39,6 +40,7 @@ export default function ConversationAgendaDialog({
   const [referenceUrl, setReferenceUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -84,7 +86,7 @@ export default function ConversationAgendaDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('conversationAgenda.editTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -92,6 +94,7 @@ export default function ConversationAgendaDialog({
             label={t('conversationAgenda.content')}
             value={content}
             onChange={(e) => {
+              markDirty();
               setContent(e.target.value);
               setError('');
             }}
@@ -103,7 +106,10 @@ export default function ConversationAgendaDialog({
           <TextField
             label={t('conversationAgenda.referenceUrl')}
             value={referenceUrl}
-            onChange={(e) => setReferenceUrl(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setReferenceUrl(e.target.value);
+            }}
             fullWidth
             helperText={t('conversationAgenda.referenceUrlHint')}
           />
@@ -115,13 +121,14 @@ export default function ConversationAgendaDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('conversationAgenda.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('conversationAgenda.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

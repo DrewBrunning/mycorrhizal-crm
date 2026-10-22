@@ -160,3 +160,30 @@ test('a rejected save surfaces the error inside the dialog', async () => {
   // The message appears both as the inline error and the snackbar.
   expect(await screen.findAllByText('backend exploded')).not.toHaveLength(0);
 });
+
+// Issue #1780: the manual-entry gender/birthday/sensitivity fields and the
+// linked-mode contact picker are all edits, so each arms the discard guard.
+test('gender, birthday, sensitivity, and linked-contact selection mark the form dirty', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [bobContact()],
+    next_cursor: '',
+    limit: 100,
+  } as ContactsResponse);
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+
+  fireEvent.mouseDown(screen.getByLabelText('Gender'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Female' }));
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'Other' } });
+  fireEvent.change(screen.getByLabelText('Birthday'), { target: { value: '1990-05-04' } });
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[2]);
+  fireEvent.click(screen.getByRole('option', { name: 'Private' }));
+
+  fireEvent.click(screen.getByLabelText('Link to existing contact'));
+  fireEvent.mouseDown(screen.getByLabelText(/select contact/i));
+  fireEvent.click(await screen.findByRole('option', { name: 'Bob Brown' }));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});

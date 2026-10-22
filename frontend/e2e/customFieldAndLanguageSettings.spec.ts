@@ -130,7 +130,7 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
     await waitForLoading(page);
 
     await customFieldsCard(page).getByRole('button', { name: 'Add' }).click();
-    const dialog = page.getByRole('dialog');
+    const dialog = page.getByRole('dialog', { name: 'Add Custom Field' });
     await expect(dialog).toBeVisible();
 
     // Leave the label blank, only fill the key, and try to save.
@@ -141,7 +141,11 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('Label is required.')).toBeVisible();
 
+    // The typed key arms the discard guard, so Cancel asks first.
     await dialog.getByRole('button', { name: /cancel/i }).click();
+    const discard = page.getByRole('dialog', { name: 'Discard unsaved changes?' });
+    await expect(discard).toBeVisible();
+    await discard.getByRole('button', { name: /^discard$/i }).click();
     await expect(dialog).toBeHidden();
   });
 

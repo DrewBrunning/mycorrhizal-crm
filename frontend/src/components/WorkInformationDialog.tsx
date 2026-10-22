@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 interface WorkInformationDialogProps {
@@ -28,6 +29,7 @@ export default function WorkInformationDialog({
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -49,7 +51,7 @@ export default function WorkInformationDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {value
           ? t('contactDetail.work.editWorkInformation')
@@ -60,7 +62,10 @@ export default function WorkInformationDialog({
           <TextField
             label={t('contactDetail.workInfo')}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setDraft(e.target.value);
+            }}
             fullWidth
             multiline
             minRows={3}
@@ -73,13 +78,14 @@ export default function WorkInformationDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

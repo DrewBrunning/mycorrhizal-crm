@@ -2166,4 +2166,23 @@
     <string name="contact_anniversary_edit">Jahrestag bearbeiten</string>
     <string name="contact_anniversary_date">Datum</string>
     <string name="contact_anniversary_kind">Art</string>
+    <!-- Issue #1751: unsaved-changes guard -->
+    <string name="unsaved_changes_title">Änderungen verwerfen?</string>
+    <string name="unsaved_changes_body">Die Änderungen an „%1$s“ wurden nicht gespeichert.</string>
+    <string name="unsaved_changes_keep_editing">Weiter bearbeiten</string>
+    <string name="unsaved_changes_discard">Verwerfen</string>
+    <string name="entity_contact">Kontakt</string>
+    <string name="entity_note">Notiz</string>
+    <string name="entity_activity">Interaktion</string>
+    <string name="entity_reminder">Erinnerung</string>
+    <string name="entity_custom_field">benutzerdefiniertes Feld</string>
+    <string name="entity_life_event">Lebensereignis</string>
+    <string name="entity_gift">Geschenk</string>
+    <string name="entity_preference">Präferenz</string>
+    <string name="entity_agenda">Agendaeintrag</string>
+    <string name="entity_occasion">Anlass</string>
+    <string name="entity_household">Haushalt</string>
+    <string name="entity_circle">Kreis</string>
+    <string name="entity_tag">Tag</string>
+    <string name="entity_relationship">Beziehung</string>
 </resources>

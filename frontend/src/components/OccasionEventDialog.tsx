@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OccasionEvent, OccasionEventInput } from '../api/occasionEvents';
 import type { OccasionSensitivity } from '../api/occasionObligations';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 interface OccasionEventDialogProps {
@@ -57,6 +58,7 @@ export default function OccasionEventDialog({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -106,7 +108,7 @@ export default function OccasionEventDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {event ? t('occasions.events.editTitle') : t('occasions.events.createTitle')}
       </DialogTitle>
@@ -116,6 +118,7 @@ export default function OccasionEventDialog({
             label={t('occasions.events.titleLabel')}
             value={title}
             onChange={(e) => {
+              markDirty();
               setTitle(e.target.value);
               setError('');
             }}
@@ -128,6 +131,7 @@ export default function OccasionEventDialog({
             type="datetime-local"
             value={startsAt}
             onChange={(e) => {
+              markDirty();
               setStartsAt(e.target.value);
               setError('');
             }}
@@ -141,6 +145,7 @@ export default function OccasionEventDialog({
             type="datetime-local"
             value={endsAt}
             onChange={(e) => {
+              markDirty();
               setEndsAt(e.target.value);
               setError('');
             }}
@@ -151,7 +156,10 @@ export default function OccasionEventDialog({
           <TextField
             label={t('occasions.events.location')}
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setLocation(e.target.value);
+            }}
             fullWidth
           />
 
@@ -159,7 +167,10 @@ export default function OccasionEventDialog({
             select
             label={t('occasions.events.sensitivity')}
             value={sensitivity}
-            onChange={(e) => setSensitivity(e.target.value as OccasionSensitivity)}
+            onChange={(e) => {
+              markDirty();
+              setSensitivity(e.target.value as OccasionSensitivity);
+            }}
             fullWidth
           >
             <MenuItem value="normal">{t('occasions.obligation.sensitivities.normal')}</MenuItem>
@@ -170,7 +181,10 @@ export default function OccasionEventDialog({
           <TextField
             label={t('occasions.events.notes')}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setNotes(e.target.value);
+            }}
             fullWidth
             multiline
             minRows={2}
@@ -184,13 +198,14 @@ export default function OccasionEventDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

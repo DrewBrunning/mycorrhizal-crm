@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Reminder, ReminderFormData } from '../api/reminders';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage } from '../utils/errorHandler';
 import { localISODate, todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
@@ -47,6 +48,7 @@ export default function ReminderDialog({
   const [reoccurFromCompletion, setReoccurFromCompletion] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   const getDateForRecurrence = (rec: ReminderFormData['recurrence']): string => {
     const d = new Date();
@@ -90,6 +92,7 @@ export default function ReminderDialog({
   }, [reminder, open, initialValues]);
 
   const handleRecurrenceChange = (newRecurrence: ReminderFormData['recurrence']) => {
+    markDirty();
     setRecurrence(newRecurrence);
     if (!reminder) {
       setRemindAt(getDateForRecurrence(newRecurrence));
@@ -139,7 +142,7 @@ export default function ReminderDialog({
   ];
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {reminder ? t('reminders.editReminder') : t('reminders.addReminder')}
       </DialogTitle>
@@ -150,7 +153,10 @@ export default function ReminderDialog({
           <TextField
             label={t('reminders.message')}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setMessage(e.target.value);
+            }}
             multiline
             rows={3}
             required
@@ -183,7 +189,10 @@ export default function ReminderDialog({
             label={t('reminders.date')}
             type="date"
             value={remindAt}
-            onChange={(e) => setRemindAt(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setRemindAt(e.target.value);
+            }}
             required
             fullWidth
             slotProps={{
@@ -197,7 +206,10 @@ export default function ReminderDialog({
               control={
                 <Checkbox
                   checked={reoccurFromCompletion}
-                  onChange={(e) => setReoccurFromCompletion(e.target.checked)}
+                  onChange={(e) => {
+                    markDirty();
+                    setReoccurFromCompletion(e.target.checked);
+                  }}
                 />
               }
               label={t('reminders.reoccurFromCompletion')}
@@ -205,19 +217,28 @@ export default function ReminderDialog({
           )}
 
           <FormControlLabel
-            control={<Checkbox checked={byMail} onChange={(e) => setByMail(e.target.checked)} />}
+            control={
+              <Checkbox
+                checked={byMail}
+                onChange={(e) => {
+                  markDirty();
+                  setByMail(e.target.checked);
+                }}
+              />
+            }
             label={t('reminders.sendEmail')}
           />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={requestClose} disabled={loading}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={loading}>
           {loading ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

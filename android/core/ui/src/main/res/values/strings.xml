@@ -2182,4 +2182,23 @@
     <string name="contact_anniversary_edit">Edit anniversary</string>
     <string name="contact_anniversary_date">Date</string>
     <string name="contact_anniversary_kind">Kind</string>
+    <!-- Issue #1751: unsaved-changes guard -->
+    <string name="unsaved_changes_title">Discard changes?</string>
+    <string name="unsaved_changes_body">Your edits to this %1$s haven\'t been saved.</string>
+    <string name="unsaved_changes_keep_editing">Keep editing</string>
+    <string name="unsaved_changes_discard">Discard</string>
+    <string name="entity_contact">contact</string>
+    <string name="entity_note">note</string>
+    <string name="entity_activity">interaction</string>
+    <string name="entity_reminder">reminder</string>
+    <string name="entity_custom_field">custom field</string>
+    <string name="entity_life_event">life event</string>
+    <string name="entity_gift">gift</string>
+    <string name="entity_preference">preference</string>
+    <string name="entity_agenda">agenda item</string>
+    <string name="entity_occasion">occasion</string>
+    <string name="entity_household">household</string>
+    <string name="entity_circle">circle</string>
+    <string name="entity_tag">tag</string>
+    <string name="entity_relationship">relationship</string>
 </resources>

@@ -34,6 +34,7 @@ import {
 import { GENDER_OPTIONS } from '../contactFields';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useDateFormat } from '../DateFormatProvider';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage, handleError, handleFetchError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -142,8 +143,10 @@ export default function RelationshipEdgeDialog({
     resetForm();
     onClose();
   };
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
 
   const handleModeChange = (mode: EntryMode) => {
+    markDirty();
     setEntryMode(mode);
     if (mode === 'linked') {
       void loadContacts('');
@@ -151,6 +154,7 @@ export default function RelationshipEdgeDialog({
   };
 
   const handleContactSelect = (contact: Contact | null) => {
+    markDirty();
     setSelectedContact(contact);
     // Don't copy name/gender/birthday - not stored on the edge, only used to
     // resolve source_id/target_id.
@@ -228,7 +232,7 @@ export default function RelationshipEdgeDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {isEditing ? t('relationships.editRelationship') : t('relationships.addRelationship')}
       </DialogTitle>
@@ -327,6 +331,7 @@ export default function RelationshipEdgeDialog({
               label={t('relationships.name')}
               value={name}
               onChange={(e) => {
+                markDirty();
                 setName(e.target.value);
                 setError('');
               }}
@@ -342,6 +347,7 @@ export default function RelationshipEdgeDialog({
               value={type}
               label={t('relationships.type')}
               onChange={(e) => {
+                markDirty();
                 setType(e.target.value as RelationshipEdgeType);
                 setError('');
               }}
@@ -364,8 +370,14 @@ export default function RelationshipEdgeDialog({
                   : v || ''
               }
               value={gender || null}
-              onChange={(_, v) => setGender(v || '')}
-              onInputChange={(_, v) => setGender(v)}
+              onChange={(_, v) => {
+                markDirty();
+                setGender(v || '');
+              }}
+              onInputChange={(_, v) => {
+                markDirty();
+                setGender(v);
+              }}
               renderInput={(params) => (
                 <TextField {...params} label={t('contacts.gender')} fullWidth />
               )}
@@ -376,7 +388,10 @@ export default function RelationshipEdgeDialog({
             <TextField
               label={t('contacts.birthday')}
               value={birthday}
-              onChange={(e) => setBirthday(autoFormatBirthdayInput(e.target.value, birthday))}
+              onChange={(e) => {
+                markDirty();
+                setBirthday(autoFormatBirthdayInput(e.target.value, birthday));
+              }}
               placeholder={getBirthdayPlaceholder()}
               fullWidth
               helperText={t('contacts.birthdayFormat')}
@@ -388,7 +403,10 @@ export default function RelationshipEdgeDialog({
             <Select
               value={sensitivity}
               label={t('relationships.sensitivity')}
-              onChange={(e) => setSensitivity(e.target.value as RelationshipEdgeSensitivity)}
+              onChange={(e) => {
+                markDirty();
+                setSensitivity(e.target.value as RelationshipEdgeSensitivity);
+              }}
             >
               <MenuItem value="normal">{t('relationships.sensitivityNormal')}</MenuItem>
               <MenuItem value="private">{t('relationships.sensitivityPrivate')}</MenuItem>
@@ -400,13 +418,14 @@ export default function RelationshipEdgeDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

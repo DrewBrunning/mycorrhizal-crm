@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CardAnniversary, formatAnniversaryDate, parseAnniversaryDate } from '../api/contacts';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface AnniversaryFormData {
@@ -43,6 +44,7 @@ export default function AnniversaryDialog({
   const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -75,7 +77,7 @@ export default function AnniversaryDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {anniversary
           ? t('contactDetail.anniversaries.editTitle')
@@ -87,7 +89,10 @@ export default function AnniversaryDialog({
             select
             label={t('contacts.anniversaryFields.kindLabel')}
             value={kind}
-            onChange={(e) => setKind(e.target.value as 'death' | 'wedding')}
+            onChange={(e) => {
+              markDirty();
+              setKind(e.target.value as 'death' | 'wedding');
+            }}
             fullWidth
           >
             <MenuItem value="wedding">
@@ -99,6 +104,7 @@ export default function AnniversaryDialog({
             label={t('contacts.anniversaryFields.date')}
             value={date}
             onChange={(e) => {
+              markDirty();
               setDate(e.target.value);
               setError('');
             }}
@@ -115,13 +121,14 @@ export default function AnniversaryDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

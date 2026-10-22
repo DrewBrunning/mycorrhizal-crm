@@ -15,9 +15,9 @@
       "branchesTotal": 50
     },
     "src/AppThemeProvider.tsx": {
-      "lines": 86.66,
-      "linesTotal": 45,
-      "branches": 70.96,
+      "lines": 87.5,
+      "linesTotal": 48,
+      "branches": 77.41,
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
@@ -597,9 +597,9 @@
       "branchesTotal": 47
     },
     "src/components/AddContactDialog.tsx": {
-      "lines": 88.88,
-      "linesTotal": 126,
-      "branches": 68.26,
+      "lines": 94.36,
+      "linesTotal": 142,
+      "branches": 70.19,
       "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
@@ -634,7 +634,7 @@
     },
     "src/components/AnniversaryDialog.tsx": {
       "lines": 100,
-      "linesTotal": 31,
+      "linesTotal": 34,
       "branches": 90,
       "branchesTotal": 20
     },
@@ -687,8 +687,8 @@
       "branchesTotal": 22
     },
     "src/components/CadenceDialog.tsx": {
-      "lines": 94.44,
-      "linesTotal": 36,
+      "lines": 94.87,
+      "linesTotal": 39,
       "branches": 90.9,
       "branchesTotal": 22
     },
@@ -705,9 +705,9 @@
       "branchesTotal": 26
     },
     "src/components/CalendarSyncSettings.tsx": {
-      "lines": 88.61,
+      "lines": 89.43,
       "linesTotal": 123,
-      "branches": 77.01,
+      "branches": 78.16,
       "branchesTotal": 87
     },
     "src/components/CardNotesEditor.tsx": {
@@ -771,9 +771,9 @@
       "branchesTotal": 22
     },
     "src/components/ContactSyncSettings.tsx": {
-      "lines": 75.92,
+      "lines": 76.85,
       "linesTotal": 108,
-      "branches": 55.4,
+      "branches": 56.75,
       "branchesTotal": 74
     },
     "src/components/ContactTimeline.tsx": {
@@ -783,8 +783,8 @@
       "branchesTotal": 84
     },
     "src/components/ConversationAgendaDialog.tsx": {
-      "lines": 96.77,
-      "linesTotal": 31,
+      "lines": 97.05,
+      "linesTotal": 34,
       "branches": 100,
       "branchesTotal": 20
     },
@@ -819,8 +819,8 @@
       "branchesTotal": 24
     },
     "src/components/DataDecayDialog.tsx": {
-      "lines": 93.75,
-      "linesTotal": 32,
+      "lines": 94.28,
+      "linesTotal": 35,
       "branches": 95,
       "branchesTotal": 20
     },
@@ -855,9 +855,9 @@
       "branchesTotal": 8
     },
     "src/components/EditTimelineItemDialog.tsx": {
-      "lines": 78.12,
-      "linesTotal": 64,
-      "branches": 78.87,
+      "lines": 86.76,
+      "linesTotal": 68,
+      "branches": 80.28,
       "branchesTotal": 71
     },
     "src/components/EditableArrayField.tsx": {
@@ -904,7 +904,7 @@
     },
     "src/components/FeedCreateDialog.tsx": {
       "lines": 100,
-      "linesTotal": 73,
+      "linesTotal": 79,
       "branches": 94,
       "branchesTotal": 50
     },
@@ -927,8 +927,8 @@
       "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
-      "lines": 93.9,
-      "linesTotal": 82,
+      "lines": 94.11,
+      "linesTotal": 85,
       "branches": 89.15,
       "branchesTotal": 83
     },
@@ -969,9 +969,9 @@
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
-      "lines": 85.88,
-      "linesTotal": 85,
-      "branches": 87.01,
+      "lines": 94.79,
+      "linesTotal": 96,
+      "branches": 88.31,
       "branchesTotal": 77
     },
     "src/components/GiftList.tsx": {
@@ -981,8 +981,8 @@
       "branchesTotal": 54
     },
     "src/components/HouseholdDialog.tsx": {
-      "lines": 96.42,
-      "linesTotal": 28,
+      "lines": 96.77,
+      "linesTotal": 31,
       "branches": 100,
       "branchesTotal": 12
     },
@@ -1035,9 +1035,9 @@
       "branchesTotal": 13
     },
     "src/components/LifeEventDialog.tsx": {
-      "lines": 83.33,
-      "linesTotal": 150,
-      "branches": 85.08,
+      "lines": 93.9,
+      "linesTotal": 164,
+      "branches": 87.71,
       "branchesTotal": 114
     },
     "src/components/LifeEventList.tsx": {
@@ -1161,8 +1161,8 @@
       "branchesTotal": 30
     },
     "src/components/OccasionEventDialog.tsx": {
-      "lines": 96.49,
-      "linesTotal": 57,
+      "lines": 100,
+      "linesTotal": 64,
       "branches": 100,
       "branchesTotal": 34
     },
@@ -1174,7 +1174,7 @@
     },
     "src/components/OccasionObligationDialog.tsx": {
       "lines": 100,
-      "linesTotal": 60,
+      "linesTotal": 69,
       "branches": 90.9,
       "branchesTotal": 44
     },
@@ -1191,8 +1191,8 @@
       "branchesTotal": 22
     },
     "src/components/OrganizationDialog.tsx": {
-      "lines": 95.55,
-      "linesTotal": 45,
+      "lines": 96,
+      "linesTotal": 50,
       "branches": 93.54,
       "branchesTotal": 31
     },
@@ -1228,7 +1228,7 @@
     },
     "src/components/PersonalInfoDialog.tsx": {
       "lines": 100,
-      "linesTotal": 44,
+      "linesTotal": 52,
       "branches": 100,
       "branchesTotal": 26
     },
@@ -1239,9 +1239,9 @@
       "branchesTotal": 24
     },
     "src/components/PreferenceDialog.tsx": {
-      "lines": 92.98,
-      "linesTotal": 57,
-      "branches": 85.41,
+      "lines": 98.46,
+      "linesTotal": 65,
+      "branches": 87.5,
       "branchesTotal": 48
     },
     "src/components/PreferenceList.tsx": {
@@ -1281,9 +1281,9 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 83.33,
-      "linesTotal": 114,
-      "branches": 79.77,
+      "lines": 93.49,
+      "linesTotal": 123,
+      "branches": 85.39,
       "branchesTotal": 89
     },
     "src/components/RelationshipEdgeList.tsx": {
@@ -1299,8 +1299,8 @@
       "branchesTotal": 23
     },
     "src/components/ReminderDialog.tsx": {
-      "lines": 89.06,
-      "linesTotal": 64,
+      "lines": 91.42,
+      "linesTotal": 70,
       "branches": 79.31,
       "branchesTotal": 29
     },
@@ -1371,10 +1371,10 @@
       "branchesTotal": 28
     },
     "src/components/ShareContactDialog.tsx": {
-      "lines": 93.02,
-      "linesTotal": 43,
-      "branches": 76.19,
-      "branchesTotal": 21
+      "lines": 93.18,
+      "linesTotal": 44,
+      "branches": 78.94,
+      "branchesTotal": 19
     },
     "src/components/SpeakToAsEditor.tsx": {
       "lines": 100,
@@ -1408,7 +1408,7 @@
     },
     "src/components/TitleDialog.tsx": {
       "lines": 100,
-      "linesTotal": 42,
+      "linesTotal": 47,
       "branches": 92.59,
       "branchesTotal": 27
     },
@@ -1432,7 +1432,7 @@
     },
     "src/components/WorkInformationDialog.tsx": {
       "lines": 100,
-      "linesTotal": 18,
+      "linesTotal": 20,
       "branches": 100,
       "branchesTotal": 8
     },
@@ -1645,6 +1645,12 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 6
+    },
+    "src/hooks/useDirtyDialog.tsx": {
+      "lines": 100,
+      "linesTotal": 8,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/hooks/useDiscardGuard.ts": {
       "lines": 100,
@@ -1903,6 +1909,12 @@
       "linesTotal": 0,
       "branches": 0,
       "branchesTotal": 0
+    },
+    "src/i18n/muiLocale.ts": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 100,
+      "branchesTotal": 4
     },
     "src/index.tsx": {
       "lines": 0,

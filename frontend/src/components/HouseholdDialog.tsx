@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HOUSEHOLD_TYPES, type Household, type HouseholdType } from '../api/households';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface HouseholdFormData {
@@ -38,6 +39,7 @@ export default function HouseholdDialog({
   const [type, setType] = useState<HouseholdType>('family_unit');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -64,7 +66,7 @@ export default function HouseholdDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {isEditing ? t('household.editHousehold') : t('household.createHousehold')}
       </DialogTitle>
@@ -74,6 +76,7 @@ export default function HouseholdDialog({
             label={t('household.name')}
             value={name}
             onChange={(e) => {
+              markDirty();
               setName(e.target.value);
               setError('');
             }}
@@ -86,6 +89,7 @@ export default function HouseholdDialog({
             label={t('household.type')}
             value={type}
             onChange={(e) => {
+              markDirty();
               setType(e.target.value as HouseholdType);
               setError('');
             }}
@@ -106,13 +110,14 @@ export default function HouseholdDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('household.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('household.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

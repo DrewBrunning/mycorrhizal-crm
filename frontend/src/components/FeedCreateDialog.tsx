@@ -27,6 +27,7 @@ import {
   type FeedDetail,
   type FeedKind,
 } from '../api/feeds';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { feedContactName } from '../hooks/useFeeds';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
@@ -131,6 +132,9 @@ export default function FeedCreateDialog({
         ...(effectiveKind === 'contact' ? { entity_id: entityUid } : {}),
       });
       setResult(created);
+      // The feed exists now: dismissing the one-time URL must not warn about
+      // losing the form that produced it.
+      clearDirty();
       onCreated?.(created);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -143,6 +147,7 @@ export default function FeedCreateDialog({
     if (saving) return;
     onClose();
   };
+  const { markDirty, clearDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
 
   if (result) {
     return (
@@ -161,7 +166,7 @@ export default function FeedCreateDialog({
   }
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('feeds.createDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -175,6 +180,7 @@ export default function FeedCreateDialog({
             label={t('feeds.createDialog.nameLabel')}
             value={name}
             onChange={(e) => {
+              markDirty();
               setName(e.target.value);
               setNameTouched(true);
             }}
@@ -191,7 +197,10 @@ export default function FeedCreateDialog({
                 row
                 aria-labelledby="feed-kind-label"
                 value={kind}
-                onChange={(e) => setKind(e.target.value as FeedKind)}
+                onChange={(e) => {
+                  markDirty();
+                  setKind(e.target.value as FeedKind);
+                }}
               >
                 {FEED_KINDS.map((k) => (
                   <FormControlLabel
@@ -212,7 +221,10 @@ export default function FeedCreateDialog({
               getOptionLabel={feedContactName}
               isOptionEqualToValue={(a, b) => a.ID === b.ID}
               value={picked}
-              onChange={(_, value) => setPicked(value)}
+              onChange={(_, value) => {
+                markDirty();
+                setPicked(value);
+              }}
               onInputChange={(_, value) => setSearch(value)}
               filterOptions={(x) => x}
               loading={searching}
@@ -244,7 +256,10 @@ export default function FeedCreateDialog({
             <RadioGroup
               aria-labelledby="feed-detail-label"
               value={detail}
-              onChange={(e) => setDetail(e.target.value as FeedDetail)}
+              onChange={(e) => {
+                markDirty();
+                setDetail(e.target.value as FeedDetail);
+              }}
             >
               {FEED_DETAILS.map((d) => (
                 <FormControlLabel
@@ -272,13 +287,14 @@ export default function FeedCreateDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button variant="contained" onClick={() => void handleCreate()} disabled={!canSubmit}>
           {t('feeds.createDialog.createButton')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DataDecayPolicy, DataDecayPolicyInput } from '../api/dataDecayPolicies';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage, handleError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -52,6 +53,7 @@ export default function DataDecayDialog({
     setError('');
     onClose();
   };
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
 
   const handleSave = async () => {
     if (!Number.isFinite(intervalDays) || intervalDays < 1) {
@@ -75,7 +77,7 @@ export default function DataDecayDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEditing ? t('dataDecay.editTitle') : t('dataDecay.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -84,6 +86,7 @@ export default function DataDecayDialog({
             type="number"
             value={intervalDays}
             onChange={(e) => {
+              markDirty();
               setIntervalDays(Number(e.target.value));
               setError('');
             }}
@@ -96,20 +99,29 @@ export default function DataDecayDialog({
             }}
           />
           <FormControlLabel
-            control={<Switch checked={active} onChange={(e) => setActive(e.target.checked)} />}
+            control={
+              <Switch
+                checked={active}
+                onChange={(e) => {
+                  markDirty();
+                  setActive(e.target.checked);
+                }}
+              />
+            }
             label={t('dataDecay.activeLabel')}
           />
           {error && <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>}
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { handleFetchError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -74,6 +75,14 @@ export default function EditTimelineItemDialog({
   const [noteContactsLoading, setNoteContactsLoading] = useState(false);
   const [noteSearchInput, setNoteSearchInput] = useState('');
   const [noteSelectedContact, setNoteSelectedContact] = useState<ContactBrief | null>(null);
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
+  const updateValues = useCallback(
+    (next: TimelineItemValues) => {
+      markDirty();
+      onChange(next);
+    },
+    [markDirty, onChange],
+  );
 
   const loadNoteContacts = useCallback(async (search: string = '') => {
     setNoteContactsLoading(true);
@@ -165,7 +174,7 @@ export default function EditTimelineItemDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth>
       <DialogTitle>
         {type === 'note' ? t('contactDetail.editNote') : t('contactDetail.editActivity')}
       </DialogTitle>
@@ -185,7 +194,11 @@ export default function EditTimelineItemDialog({
                   label={`${t('notes.assignedTo')} ${values.noteContactName}`}
                   onDelete={() => {
                     setNoteSelectedContact(null);
-                    onChange({ ...values, noteContactId: undefined, noteContactName: undefined });
+                    updateValues({
+                      ...values,
+                      noteContactId: undefined,
+                      noteContactName: undefined,
+                    });
                   }}
                   size="small"
                 />
@@ -198,7 +211,7 @@ export default function EditTimelineItemDialog({
               onChange={(_, value) => {
                 setNoteSelectedContact(value);
                 if (value) {
-                  onChange({
+                  updateValues({
                     ...values,
                     noteContactId: value.ID,
                     noteContactName: contactLabel(value),
@@ -240,7 +253,7 @@ export default function EditTimelineItemDialog({
               multiline
               rows={6}
               value={values.noteContent || ''}
-              onChange={(e) => onChange({ ...values, noteContent: e.target.value })}
+              onChange={(e) => updateValues({ ...values, noteContent: e.target.value })}
               label={t('noteDialog.content')}
               placeholder={t('noteDialog.contentPlaceholder')}
               autoFocus
@@ -249,7 +262,7 @@ export default function EditTimelineItemDialog({
               fullWidth
               type="date"
               value={values.noteDate || ''}
-              onChange={(e) => onChange({ ...values, noteDate: e.target.value })}
+              onChange={(e) => updateValues({ ...values, noteDate: e.target.value })}
               label={t('noteDialog.date')}
               slotProps={{
                 inputLabel: { shrink: true },
@@ -262,7 +275,7 @@ export default function EditTimelineItemDialog({
             <TextField
               fullWidth
               value={values.activityTitle || ''}
-              onChange={(e) => onChange({ ...values, activityTitle: e.target.value })}
+              onChange={(e) => updateValues({ ...values, activityTitle: e.target.value })}
               label={t('activityDialog.activityTitle')}
               autoFocus
             />
@@ -271,20 +284,20 @@ export default function EditTimelineItemDialog({
               multiline
               rows={3}
               value={values.activityDescription || ''}
-              onChange={(e) => onChange({ ...values, activityDescription: e.target.value })}
+              onChange={(e) => updateValues({ ...values, activityDescription: e.target.value })}
               label={t('activityDialog.description')}
             />
             <TextField
               fullWidth
               value={values.activityLocation || ''}
-              onChange={(e) => onChange({ ...values, activityLocation: e.target.value })}
+              onChange={(e) => updateValues({ ...values, activityLocation: e.target.value })}
               label={t('activityDialog.location')}
             />
             <TextField
               fullWidth
               type="date"
               value={values.activityDate || ''}
-              onChange={(e) => onChange({ ...values, activityDate: e.target.value })}
+              onChange={(e) => updateValues({ ...values, activityDate: e.target.value })}
               label={t('activityDialog.date')}
               slotProps={{
                 inputLabel: { shrink: true },
@@ -297,7 +310,7 @@ export default function EditTimelineItemDialog({
                 `${contact.firstname}${contact.nickname ? ` "${contact.nickname}"` : ''} ${contact.lastname}`
               }
               value={values.activityContacts || []}
-              onChange={(_, newValue) => onChange({ ...values, activityContacts: newValue })}
+              onChange={(_, newValue) => updateValues({ ...values, activityContacts: newValue })}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -329,7 +342,7 @@ export default function EditTimelineItemDialog({
           <DeleteIcon />
         </IconButton>
         <Box>
-          <Button onClick={onClose} sx={{ mr: 1 }}>
+          <Button onClick={requestClose} sx={{ mr: 1 }}>
             {t('contactDetail.cancel')}
           </Button>
           <Button onClick={handleSave} variant="contained">
@@ -337,6 +350,7 @@ export default function EditTimelineItemDialog({
           </Button>
         </Box>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

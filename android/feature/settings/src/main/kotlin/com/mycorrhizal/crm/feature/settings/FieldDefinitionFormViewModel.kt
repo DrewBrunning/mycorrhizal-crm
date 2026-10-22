@@ -53,8 +53,23 @@ data class FieldDefinitionFormState(
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** Issue #1751: the editable state the form opened with, for [isDirty]. */
+    val baseline: FieldDefinitionFormState? = null,
 ) {
     val isEdit: Boolean get() = fieldDefinitionId != null
+
+    val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
+
+    private fun editableSnapshot(): FieldDefinitionFormState = copy(
+        groupSuggestions = emptyList(),
+        isLoading = false,
+        isSaving = false,
+        errorRes = null,
+        error = null,
+        baseline = null,
+    )
+
+    fun snapshotForBaseline(): FieldDefinitionFormState = editableSnapshot()
 
     /** Validation order/messages mirror `FieldDefinitionDialog.tsx:122-138` exactly. */
     fun validate(): Int? = when {
@@ -144,7 +159,10 @@ class FieldDefinitionFormViewModel @Inject constructor(
         (raw as? String)?.takeIf { it.isNotBlank() }
     }
 
-    private val _uiState = MutableStateFlow(FieldDefinitionFormState(fieldDefinitionId = fieldDefinitionId))
+    private val _uiState = MutableStateFlow(
+        FieldDefinitionFormState(fieldDefinitionId = fieldDefinitionId)
+            .let { it.copy(baseline = it.snapshotForBaseline()) },
+    )
     val uiState: StateFlow<FieldDefinitionFormState> = _uiState.asStateFlow()
 
     private val _events = MutableStateFlow<FieldDefinitionFormEvent?>(null)
@@ -172,7 +190,10 @@ class FieldDefinitionFormViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             repository.get(id).foldApiError(
                 onSuccess = { definition ->
-                    _uiState.update { it.fromDefinition(definition).copy(isLoading = false) }
+                    _uiState.update { state ->
+                        val loaded = state.fromDefinition(definition).copy(isLoading = false)
+                        loaded.copy(baseline = loaded.snapshotForBaseline())
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }

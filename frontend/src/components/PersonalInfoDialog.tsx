@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardPersonalInfo, PersonalInfoMeta } from '../api/contacts';
 import { PERSONAL_INFO_KIND_OPTIONS, PERSONAL_INFO_LEVEL_OPTIONS } from '../contactFields';
+import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import AppDialog from './AppDialog';
 
 export interface PersonalInfoFormData {
@@ -57,6 +58,7 @@ export default function PersonalInfoDialog({
   const [favorite, setFavorite] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
     if (open) {
@@ -97,7 +99,7 @@ export default function PersonalInfoDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {entry ? t('contactDetail.skills.editTitle') : t('contactDetail.skills.createTitle')}
       </DialogTitle>
@@ -108,6 +110,7 @@ export default function PersonalInfoDialog({
             label={t('contacts.personalInfo.kind')}
             value={kind}
             onChange={(e) => {
+              markDirty();
               setKind(e.target.value);
               setError('');
             }}
@@ -124,6 +127,7 @@ export default function PersonalInfoDialog({
             label={t('contacts.personalInfo.value')}
             value={value}
             onChange={(e) => {
+              markDirty();
               setValue(e.target.value);
               setError('');
             }}
@@ -134,7 +138,10 @@ export default function PersonalInfoDialog({
             select
             label={t('contacts.personalInfo.level')}
             value={level}
-            onChange={(e) => setLevel(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setLevel(e.target.value);
+            }}
             fullWidth
           >
             <MenuItem value="">{t('contacts.personalInfo.levelNone')}</MenuItem>
@@ -147,13 +154,19 @@ export default function PersonalInfoDialog({
           <TextField
             label={t('contacts.personalInfo.label')}
             value={label}
-            onChange={(e) => setLabel(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setLabel(e.target.value);
+            }}
             fullWidth
           />
           <TextField
             label={t('preference.notes')}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              markDirty();
+              setNotes(e.target.value);
+            }}
             helperText={t('preference.notesHint')}
             fullWidth
             multiline
@@ -163,9 +176,10 @@ export default function PersonalInfoDialog({
             select
             label={t('preference.sensitivity')}
             value={sensitivity}
-            onChange={(e) =>
-              setSensitivity(e.target.value as NonNullable<PersonalInfoMeta['sensitivity']>)
-            }
+            onChange={(e) => {
+              markDirty();
+              setSensitivity(e.target.value as NonNullable<PersonalInfoMeta['sensitivity']>);
+            }}
             fullWidth
           >
             <MenuItem value="normal">{t('preference.sensitivities.normal')}</MenuItem>
@@ -173,7 +187,15 @@ export default function PersonalInfoDialog({
             <MenuItem value="secret">{t('preference.sensitivities.secret')}</MenuItem>
           </TextField>
           <FormControlLabel
-            control={<Switch checked={favorite} onChange={(e) => setFavorite(e.target.checked)} />}
+            control={
+              <Switch
+                checked={favorite}
+                onChange={(e) => {
+                  markDirty();
+                  setFavorite(e.target.checked);
+                }}
+              />
+            }
             label={t('contactDetail.skills.favorite')}
           />
           {error && (
@@ -184,13 +206,14 @@ export default function PersonalInfoDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
         <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>
+      {guardElement}
     </AppDialog>
   );
 }

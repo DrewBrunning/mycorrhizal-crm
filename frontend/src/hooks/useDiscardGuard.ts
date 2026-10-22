@@ -29,6 +29,10 @@ interface DiscardGuard {
   // dialog that means while it is open, which is exactly the window a dirty
   // surface can lose work to an in-app navigation.
   navigationGuardElement: ReactElement | null;
+  // Lets a successful save leave the surface through an in-app navigation
+  // without tripping the blocker it just armed. One-shot: it resets as soon
+  // as the surface is clean again (a reopened dialog starts unblocked).
+  allowNavigation: () => void;
 }
 
 // Issue #557: pairs a beforeunload guard (tab close / reload / external nav)
@@ -45,7 +49,21 @@ export function useDiscardGuard(isDirty: boolean, options: DiscardGuardOptions =
   useBeforeUnloadGuard(isDirty);
 
   const [pendingClose, setPendingClose] = useState<(() => void) | null>(null);
-  const navigation = useNavigationGuard(isDirty);
+  // Read at navigation time by the blocker function, so setting it in the
+  // same handler as navigate() works without waiting for a re-render.
+  const bypassNavigationRef = useRef(false);
+  const shouldBlockNavigation = useCallback(
+    () => isDirty && !bypassNavigationRef.current,
+    [isDirty],
+  );
+  const navigation = useNavigationGuard(shouldBlockNavigation);
+  const allowNavigation = useCallback(() => {
+    bypassNavigationRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!isDirty) bypassNavigationRef.current = false;
+  }, [isDirty]);
 
   // Keep the latest option without re-creating the handlers below on every
   // render (the callback identity is irrelevant -- it is only read at discard
@@ -98,5 +116,6 @@ export function useDiscardGuard(isDirty: boolean, options: DiscardGuardOptions =
       onDiscard,
     },
     navigationGuardElement: navigation.guardElement,
+    allowNavigation,
   };
 }
