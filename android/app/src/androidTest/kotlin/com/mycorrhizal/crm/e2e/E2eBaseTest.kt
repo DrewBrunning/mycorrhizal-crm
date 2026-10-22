@@ -10,9 +10,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -125,6 +127,26 @@ abstract class E2eBaseTest {
         waitForText(text, timeoutMs)
         compose.waitUntil(timeoutMs) {
             runCatching { compose.onNodeWithText(text).performClick() }.isSuccess
+        }
+    }
+
+    /** Scrolls the lazy list tagged [listTag] to the descendant matching [matcher],
+     *  retrying while the screen is not ready yet.
+     *
+     *  A detail screen reloads on ON_RESUME, and during that reload its body is
+     *  swapped for a loading skeleton (the retained record keeps the top bar's
+     *  title visible, so waiting on the title can pass before the list exists).
+     *  Retrying here covers both the pre-reload and post-reload frames, and the
+     *  node's brief absence while the list is being replaced. */
+    protected fun scrollToNodeWhenStable(
+        listTag: String,
+        matcher: SemanticsMatcher,
+        timeoutMs: Long = DEFAULT_TIMEOUT_MS,
+    ) {
+        compose.waitUntil(timeoutMs) {
+            runCatching {
+                compose.onNodeWithTag(listTag).performScrollToNode(matcher)
+            }.isSuccess
         }
     }
 
