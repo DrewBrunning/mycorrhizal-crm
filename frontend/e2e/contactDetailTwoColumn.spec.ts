@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
+import { DEFAULT_ENABLED_CONTACT_FIELDS } from '../src/contactFields';
 import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // T74: field action buttons (edit/call/copy) sit too far from their field on
 // wide desktop screens. The fix is two levels, both gated to lg (1200px)+:
@@ -65,22 +67,25 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
   });
 
   test('two enabled fields share a grid row in separate columns at lg+', async ({ page }) => {
-    const contact = await createTestContact(page.request, { birthday: '1990-03-15' });
+    const contact = await createTestContact(page.request, {
+      phones: [{ type: 'mobile', value: '+1 555-0101' }],
+      emails: [{ type: 'home', value: 'alice@example.com' }],
+    });
 
     try {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      // Birthday and Personal Info are the first two non-heading field rows in
-      // the grid (both default-enabled), so at lg+ they sit side by side.
-      const birthday = fieldRow(page, 'Birthday');
-      const personalInfo = fieldRow(page, /^Personal Info/);
-      const [bBox, pBox] = await Promise.all([birthday.boundingBox(), personalInfo.boundingBox()]);
-      expect(bBox && pBox).toBeTruthy();
-      expect(pBox?.x).toBeGreaterThan(bBox?.x + bBox?.width);
+      // Phone and Address are the first two Contact-group rows in the grid,
+      // so at lg+ they sit side by side in the same row.
+      const phone = fieldRow(page, 'Phone');
+      const address = fieldRow(page, 'Address');
+      const [pBox, aBox] = await Promise.all([phone.boundingBox(), address.boundingBox()]);
+      expect(pBox && aBox).toBeTruthy();
+      expect(aBox?.x).toBeGreaterThan(pBox?.x + pBox?.width);
       // Same grid row: tops align (alignItems: 'start').
-      expect(pBox?.y).toBeCloseTo(bBox?.y, 0);
+      expect(aBox?.y).toBeCloseTo(pBox?.y, 0);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -89,6 +94,7 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
   test('stays a single column at 1280px and 1024px', async ({ page }) => {
     const contact = await createTestContact(page.request, {
       phones: [{ type: 'mobile', value: '+1 555-0101' }],
+      emails: [{ type: 'home', value: 'alice@example.com' }],
     });
 
     try {
@@ -97,21 +103,18 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
         await page.goto(`/contacts/${contact.ID}`);
         await waitForLoading(page);
 
-        const birthday = fieldRow(page, 'Birthday');
-        const personalInfo = fieldRow(page, /^Personal Info/);
-        const [bBox, pBox] = await Promise.all([
-          birthday.boundingBox(),
-          personalInfo.boundingBox(),
-        ]);
-        expect(bBox && pBox).toBeTruthy();
+        const phone = fieldRow(page, 'Phone');
+        const address = fieldRow(page, 'Address');
+        const [pBox, aBox] = await Promise.all([phone.boundingBox(), address.boundingBox()]);
+        expect(pBox && aBox).toBeTruthy();
 
         if (width === 1280) {
           // lg (1200) is crossed at 1280 — two columns, same as 1440.
-          expect(pBox?.x).toBeGreaterThan(bBox?.x + bBox?.width);
+          expect(aBox?.x).toBeGreaterThan(pBox?.x + pBox?.width);
         } else {
           // 1024 is below lg — single column, rows stacked at the same left edge.
-          expect(pBox?.x).toBeCloseTo(bBox?.x, 0);
-          expect(pBox?.y).toBeGreaterThan(bBox?.y);
+          expect(aBox?.x).toBeCloseTo(pBox?.x, 0);
+          expect(aBox?.y).toBeGreaterThan(pBox?.y);
 
           // Below lg the field grid is a single column, so a field row spans
           // the full card width. T109 moved the edit pencil next to the field
@@ -120,8 +123,7 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
           // that the grid doesn't leak below lg. Numbers at 1024: the 256px
           // drawer leaves a 768px content column, so a full row is ~672px while
           // a half-column row would be ~330px — 500 sits cleanly between.
-          const row = fieldRow(page, 'Phone');
-          const rowBox = await row.boundingBox();
+          const rowBox = await phone.boundingBox();
           expect(rowBox, 'phone field row must be present').toBeTruthy();
           expect(rowBox?.width).toBeGreaterThan(500);
         }
@@ -134,24 +136,54 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
   test('multi-line / wide fields still span the full card width (not half a column)', async ({
     page,
   }) => {
+    // Card notes is the remaining full-span editor in ContactInformation
+    // (work_information moved to its own Work section in #1729). It is
+    // opt-in, so enable it for this worker's user and restore the defaults.
+    const enableResp = await page.request.patch(`${API_BASE_URL}/users/enabled-contact-fields`, {
+      data: { fields: [...DEFAULT_ENABLED_CONTACT_FIELDS, 'cardNotes'] },
+    });
+    expect(enableResp.ok()).toBeTruthy();
+
     const contact = await createTestContact(page.request, {
-      crm: { work_information: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+      phones: [{ type: 'mobile', value: '+1 555-0101' }],
     });
 
     try {
+      // createTestContact takes the flat form shape, which has no card-notes
+      // input; persist one directly through the record PUT instead.
+      const read = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
+      const readBody = await read.json();
+      const record = readBody.contact ?? readBody;
+      const save = await page.request.put(`${API_BASE_URL}/contacts/${contact.ID}`, {
+        data: {
+          gender: record.gender ?? '',
+          card: {
+            ...(record.card ?? {}),
+            notes: [{ note: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' }],
+          },
+          crm: record.crm ?? {},
+        },
+      });
+      expect(save.ok(), await save.text()).toBeTruthy();
+
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      // Work Information is a fullWidth EditableField (T74): it must span the
+      // Card notes is a fullWidth EditableArrayField (T74): it must span the
       // whole card, wider than a half-column field in the same grid.
-      const workInfo = fieldRow(page, 'Work Information');
-      const personalInfo = fieldRow(page, /^Personal Info/);
-      const [wBox, pBox] = await Promise.all([workInfo.boundingBox(), personalInfo.boundingBox()]);
-      expect(wBox && pBox).toBeTruthy();
-      expect(wBox?.width).toBeGreaterThan(pBox?.width * 1.5);
+      const cardNotes = fieldRow(page, 'Notes (vCard)');
+      const phone = fieldRow(page, 'Phone');
+      const [nBox, pBox] = await Promise.all([cardNotes.boundingBox(), phone.boundingBox()]);
+      expect(nBox && pBox).toBeTruthy();
+      expect(nBox?.width).toBeGreaterThan(pBox?.width * 1.5);
     } finally {
       await deleteTestContact(page.request, contact.ID);
+      await page.request
+        .patch(`${API_BASE_URL}/users/enabled-contact-fields`, {
+          data: { fields: DEFAULT_ENABLED_CONTACT_FIELDS },
+        })
+        .catch(() => {});
     }
   });
 });
@@ -301,8 +333,8 @@ test.describe('T74 regression guards', () => {
 
         // The field row must be single column (one caption left-aligned at the
         // card edge, no second column to its right).
-        const personalInfo = fieldRow(page, /^Personal Info/);
-        const pBox = await personalInfo.boundingBox();
+        const phone = fieldRow(page, 'Phone');
+        const pBox = await phone.boundingBox();
         expect(pBox).toBeTruthy();
         expect(pBox?.x).toBeLessThan(60);
       } finally {

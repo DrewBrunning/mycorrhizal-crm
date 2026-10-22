@@ -64,19 +64,20 @@ test.describe('Date format selection (v0.4.1)', () => {
         )
         .toBe('ca');
 
-      // The contact page renders birthday + wedding anniversary in DD/MM/YYYY.
+      // The contact page renders birthday in the identity form and the
+      // non-birth anniversaries in their own section, both in DD/MM/YYYY.
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      // The birthday EditableField shows the date + age; the anniversary row
-      // shows the date + kind label. Assert on the row forms rather than the
-      // bare date text, which legitimately appears in both.
-      await expect(page.getByText('15/03/1990 (Birthday)')).toBeVisible();
-      await expect(page.getByText(/01\/06\/2015 \(Wedding anniversary\)/)).toBeVisible();
+      // The birthday EditableField shows the date plus the age suffix.
+      await expect(page.getByText(/15\/03\/1990/).first()).toBeVisible();
+      const anniversaries = page.locator('#anniversaries');
+      await expect(anniversaries.getByText('01/06/2015')).toBeVisible();
+      await expect(anniversaries.getByText('Wedding anniversary')).toBeVisible();
       // The anniversary row itself must not fall back to raw ISO (the bug).
       // (The backend mirrors a wedding anniversary into a "Married" LifeEvent
       // whose timeline row legitimately renders ISO via partialDateDisplay, so
-      // scope the negative check to the anniversary row, not the whole page.)
-      await expect(page.getByText('2015-06-01 (Wedding anniversary)')).not.toBeAttached();
+      // scope the negative check to the anniversary section, not the page.)
+      await expect(anniversaries.getByText('2015-06-01')).not.toBeAttached();
 
       // Switching format re-renders: pick the full-month US format and confirm
       // the dates follow.
@@ -86,8 +87,10 @@ test.describe('Date format selection (v0.4.1)', () => {
 
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await expect(page.getByText('March 15, 1990 (Birthday)')).toBeVisible();
-      await expect(page.getByText(/June 1, 2015 \(Wedding anniversary\)/)).toBeVisible();
+      await expect(page.getByText(/March 15, 1990/).first()).toBeVisible();
+      const usAnniversaries = page.locator('#anniversaries');
+      await expect(usAnniversaries.getByText('June 1, 2015')).toBeVisible();
+      await expect(usAnniversaries.getByText('Wedding anniversary')).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
       // Restore the shared test user's defaults so other specs aren't affected.
