@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"mycorrhizal/config"
@@ -356,4 +357,20 @@ func TestDetectReachOutSuggestions_SelfContactSkipped(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.ReachOutSuggestion{}).Where("user_id = ?", user.ID).Count(&count).Error)
 	assert.Zero(t, count)
+}
+
+// Issue #1793: if the self-contact lookup itself fails, the detection helper
+// must return the error rather than guessing and minting a suggestion for the
+// user's own contact.
+func TestDetectReachOutSuggestionsForUser_SelfContactLookupFailure(t *testing.T) {
+	db := setupReachOutTestDB(t)
+	user, contact := createTestUserAndContact(t, db, "OldCo", "")
+	contact.Organization = "NewCo"
+	require.NoError(t, db.Save(&contact).Error)
+
+	dbtest.HideTable(t, db, "users")
+	n, err := detectReachOutSuggestionsForUser(context.Background(), db, config.Config{}, user.ID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "loading self contact")
+	assert.Zero(t, n)
 }

@@ -787,6 +787,7 @@ func TestWebAuthn_StoreFailuresSurfaceAs500(t *testing.T) {
 		{"POST", "/webauthn/register/finish", att, nil},
 		{"POST", "/webauthn/assert/begin", nil, nil},
 		{"GET", "/webauthn/credentials", nil, nil},
+		{"PATCH", "/webauthn/credentials/" + id, map[string]string{"name": "Renamed"}, nil},
 		{"DELETE", "/webauthn/credentials/" + id, map[string]string{"code": codes[0]}, nil},
 		{"POST", "/webauthn/login/begin", nil, pending},
 		{"POST", "/webauthn/login/finish", va.assertion("eA"), pending},
@@ -944,4 +945,22 @@ func TestWebAuthn_RenameScopedToOwner(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "Theirs")
 	assert.NotContains(t, w.Body.String(), "Hijacked")
+}
+
+// Issue #1793: the rename's second DB write (the UPDATE itself) failing must
+// surface as a 500, not a silent success with the old label still stored.
+func TestWebAuthn_RenameUpdateFailureSurfacesAs500(t *testing.T) {
+	e := newWAEnv(t)
+	id, _, session := e.enroll(e.auth(), "Keep me", e.session())
+	require.NoError(t, e.db.Exec(
+		`CREATE TRIGGER block_passkey_rename BEFORE UPDATE ON webauthn_credentials BEGIN SELECT RAISE(ABORT, 'blocked'); END`,
+	).Error)
+
+	w, _ := e.do("PATCH", "/webauthn/credentials/"+id, map[string]string{"name": "New name"}, session)
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Equal(t, "DATABASE_ERROR", mzDecode(t, w).Error.Code)
+
+	var row models.WebAuthnCredential
+	require.NoError(t, e.db.Where("id = ?", id).First(&row).Error)
+	assert.Equal(t, "Keep me", row.Name)
 }

@@ -207,6 +207,36 @@ func TestDefaultCredentialLabel(t *testing.T) {
 			want: "Safari 17 on iPhone",
 		},
 		{
+			name: "safari on ipad",
+			ua:   "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+			want: "Safari 17 on iPad",
+		},
+		{
+			name: "opera on linux",
+			ua:   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 OPR/105.0.0.0",
+			want: "Opera 105 on Linux",
+		},
+		{
+			name: "samsung internet on android",
+			ua:   "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36",
+			want: "Samsung Internet 23 on Android",
+		},
+		{
+			name: "chrome on chrome os",
+			ua:   "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+			want: "Chrome 120 on Chrome OS",
+		},
+		{
+			name: "browser only",
+			ua:   "Firefox/120.0",
+			want: "Firefox 120",
+		},
+		{
+			name: "platform only",
+			ua:   "Mozilla/5.0 (X11; Linux x86_64) SomeEngine/1.0",
+			want: "Linux",
+		},
+		{
 			name: "unknown falls back to a random label",
 			ua:   "Some Completely Unknown Agent/1.0",
 			want: "^Passkey [0-9a-f]{4}$",
@@ -227,4 +257,10 @@ func TestDefaultCredentialLabel(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestMajorVersionAfter(t *testing.T) {
+	assert.Equal(t, "153", majorVersionAfter("HeadlessChrome/153.0.0.0", "Chrome/"))
+	assert.Equal(t, "", majorVersionAfter("Firefox/", "Firefox/"))
+	assert.Equal(t, "", majorVersionAfter("Chrome/120", "Firefox/"))
 }
