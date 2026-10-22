@@ -40,6 +40,7 @@ import type {
   ContactDetailUser,
   ImmichPersonSummary,
 } from './contactDetail';
+import type { ContactScoreTarget } from './contactScore';
 import type { ContactSyncConflict } from './contactSyncConflicts';
 import type {
   Birthday,
@@ -92,6 +93,7 @@ import type {
 } from './relationshipEdges';
 import type { Reminder, ReminderCompletion } from './reminders';
 import type { ContactTag, Tag } from './tags';
+import type { ContactTargetClosenessResponse } from './targetCloseness';
 import type { TIMELINE_TYPES } from './timeline';
 import type { Passkey, PasskeyEnrollment } from './webauthn';
 
@@ -183,6 +185,8 @@ export type Conformance = [
   NoDrift<ResponseDrift<DataDecayHealth, S.DataDecayHealth>>,
   NoDrift<ResponseDrift<OverdueDataDecayPolicy, S.OverdueDataDecayPolicy>>,
   NoDrift<ResponseDrift<ReachOutSuggestion, S.ReachOutSuggestion>>,
+  NoDrift<ResponseDrift<ContactTargetClosenessResponse, S.ContactTargetClosenessResponse>>,
+  NoDrift<ResponseDrift<ContactScoreTarget, S.ContactScoreTarget>>,
   NoDrift<ResponseDrift<ExternalIdentity, S.ExternalIdentity>>,
   NoDrift<ResponseDrift<ExternalActivity, S.ExternalActivity>>,
   NoDrift<ResponseDrift<FieldDefinition, S.FieldDefinition>>,

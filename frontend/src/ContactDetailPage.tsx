@@ -913,6 +913,7 @@ export default function ContactDetailPage() {
     handleArchiveContact,
     handleUnarchiveContact,
     handleToggleFavorite,
+    handleSetTargetCloseness,
     handleToggleMe,
   } = useContactLifecycleActions({
     id,
@@ -1224,6 +1225,8 @@ export default function ContactDetailPage() {
           record.archived ? (...args) => void handleUnarchiveContact(...args) : undefined
         }
         onToggleFavorite={(...args) => void handleToggleFavorite(...args)}
+        onSetTargetCloseness={handleSetTargetCloseness}
+        onAcceptCadenceOffer={handleSaveCadence}
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => void navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}

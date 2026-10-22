@@ -2380,6 +2380,28 @@
     "unknownContact": "Unbekannter Kontakt",
     "dueOn": "Fällig am {{date}}"
   },
+  "targetCloseness": {
+    "label": "Ziel-Nähe",
+    "none": "Kein Ziel",
+    "chip": "Ziel: {{tier}} · {{status}}",
+    "tier": {
+      "immediate": "Unmittelbar",
+      "close": "Eng",
+      "casual": "Locker",
+      "distant": "Entfernt"
+    },
+    "status": {
+      "on_track": "Im Plan",
+      "drifting": "Lässt nach",
+      "behind": "Im Rückstand"
+    },
+    "offer": {
+      "title": "Kontaktrhythmus anlegen?",
+      "body": "Mit {{name}} alle {{days}} Tage in Kontakt bleiben?",
+      "accept": "Rhythmus anlegen",
+      "dismiss": "Jetzt nicht"
+    }
+  },
   "reachOut": {
     "title": "Gründe, sich zu melden",
     "empty": "Derzeit keine Vorschläge, um Kontakt aufzunehmen.",
@@ -2391,7 +2413,8 @@
       "title": "Neue Berufsbezeichnung",
       "address": "Umgezogen",
       "target_behind": "Ziel verfehlt"
-    }
+    },
+    "behindTarget": "Hinter deinem Ziel „{{tier}}“ · letzter Kontakt {{date}}"
   },
   "syncConflicts": {
     "title": "Sync-Konflikte",

@@ -41,6 +41,7 @@ import {
 } from '@mui/material';
 import { type MouseEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { CadencePolicyInput } from '../api/cadencePolicies';
 import type { Circle } from '../api/circles';
 import type { ContactScoreFacet } from '../api/contactScore';
 import {
@@ -50,11 +51,17 @@ import {
   nameComponentValue,
 } from '../api/contacts';
 import type { Tag } from '../api/tags';
+import {
+  type ContactTargetClosenessResponse,
+  TARGET_CLOSENESS_TIERS,
+  type TargetClosenessTier,
+} from '../api/targetCloseness';
 import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useDateFormat } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
-import { healthBandChipColor, healthBandIcon } from '../utils/healthBand';
+import { healthBandChipColor, healthBandIcon, targetStatusBand } from '../utils/healthBand';
 import AmbientExplanation from './AmbientExplanation';
+import CadenceOfferDialog from './CadenceOfferDialog';
 import LanguageField from './LanguageField';
 
 export interface ProfileValues {
@@ -97,6 +104,13 @@ interface ContactHeaderProps {
   onUnarchiveContact?: () => void;
   // Issue #173: favorite toggle, rendered as a star beside the name.
   onToggleFavorite?: () => void;
+  // Issue #1797: set/clear the contact's target closeness. Renders the picker
+  // in the score popover only when this is provided.
+  onSetTargetCloseness?: (
+    tier: TargetClosenessTier | null,
+  ) => Promise<ContactTargetClosenessResponse | null>;
+  // Issue #1797: creates the cadence offered after setting a target.
+  onAcceptCadenceOffer?: (offer: CadencePolicyInput) => Promise<void>;
   onMergeContact?: () => void;
   onPrepView?: () => void;
   onShareContact?: () => void;
@@ -133,6 +147,8 @@ export default function ContactHeader({
   onArchiveContact,
   onUnarchiveContact,
   onToggleFavorite,
+  onSetTargetCloseness,
+  onAcceptCadenceOffer,
   onMergeContact,
   onPrepView,
   onShareContact,
@@ -347,12 +363,33 @@ export default function ContactHeader({
   // both the compact and wide layouts below (only one of the two layouts is
   // ever mounted at a time), following the same anchorEl pattern as the
   // export/actions menus above and ActivitiesPage.tsx's info popover.
-  const { score, loading: scoreLoading } = useContactScore(record.id, record.crm?.ambient);
+  const {
+    score,
+    loading: scoreLoading,
+    refreshScore,
+  } = useContactScore(record.id, record.crm?.ambient);
   const [scoreAnchorEl, setScoreAnchorEl] = useState<HTMLElement | null>(null);
+  // Issue #1797: non-null while the cadence-policy offer dialog is open.
+  const [cadenceOffer, setCadenceOffer] = useState<CadencePolicyInput | null>(null);
   const scoreOpen = Boolean(scoreAnchorEl);
   const scorePopoverId = scoreOpen ? 'contact-score-popover' : undefined;
   const handleScoreBadgeClick = (e: MouseEvent<HTMLElement>) => setScoreAnchorEl(e.currentTarget);
   const handleScorePopoverClose = () => setScoreAnchorEl(null);
+  // Issue #1797: persist the picker value, then refresh the score so the chip
+  // and reason reflect the post-write server state. The server offers a
+  // cadence policy when the contact had none.
+  const handleTargetClosenessChange = async (value: string) => {
+    if (!onSetTargetCloseness) return;
+    const res = await onSetTargetCloseness(value === '' ? null : (value as TargetClosenessTier));
+    if (!res) return;
+    await refreshScore();
+    if (res.cadence_policy_offer) setCadenceOffer(res.cadence_policy_offer);
+  };
+  const handleAcceptCadenceOffer = async (offer: CadencePolicyInput) => {
+    if (!onAcceptCadenceOffer) return;
+    await onAcceptCadenceOffer(offer);
+    await refreshScore();
+  };
   // Issue #383: the compact (narrow-layout) badge below is icon-only, not a
   // text Chip -- see that JSX's comment for why.
   const ScoreIcon = score ? healthBandIcon(score.band) : undefined;
@@ -720,6 +757,24 @@ export default function ContactHeader({
                           <ScoreIcon fontSize="small" color={healthBandChipColor(score.band)} />
                         </IconButton>
                       )}
+                      {score?.target && (
+                        // Issue #1797: target-closeness chip, immediately after
+                        // the health badge. A sibling in this flex Box, never
+                        // nested in a Typography (frontend trap #3). Clicking
+                        // it opens the same score popover.
+                        <Chip
+                          label={t('targetCloseness.chip', {
+                            tier: t(`targetCloseness.tier.${score.target.tier}`),
+                            status: t(`targetCloseness.status.${score.target.status}`),
+                          })}
+                          color={healthBandChipColor(targetStatusBand(score.target.status))}
+                          size="small"
+                          variant="outlined"
+                          onClick={handleScoreBadgeClick}
+                          aria-describedby={scorePopoverId}
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
                       {onToggleFavorite && (
                         // Issue #173: always-visible star toggle.
                         <IconButton
@@ -858,6 +913,21 @@ export default function ContactHeader({
                           label={t(`contactScore.badge.${score.band}`, score.band)}
                           color={healthBandChipColor(score.band)}
                           size="small"
+                          onClick={handleScoreBadgeClick}
+                          aria-describedby={scorePopoverId}
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
+                      {score?.target && (
+                        // Issue #1797: see the compact-layout target chip above.
+                        <Chip
+                          label={t('targetCloseness.chip', {
+                            tier: t(`targetCloseness.tier.${score.target.tier}`),
+                            status: t(`targetCloseness.status.${score.target.status}`),
+                          })}
+                          color={healthBandChipColor(targetStatusBand(score.target.status))}
+                          size="small"
+                          variant="outlined"
                           onClick={handleScoreBadgeClick}
                           aria-describedby={scorePopoverId}
                           sx={{ ml: 1, flexShrink: 0 }}
@@ -1032,8 +1102,46 @@ export default function ContactHeader({
                     </Box>
                   ))}
                 </Stack>
+                {onSetTargetCloseness && (
+                  // Issue #1797: target-closeness picker at the bottom of the
+                  // existing score breakdown popover.
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      label={t('targetCloseness.label')}
+                      value={record.crm?.target_closeness ?? ''}
+                      onChange={(e) => void handleTargetClosenessChange(e.target.value)}
+                    >
+                      <MenuItem value="">{t('targetCloseness.none')}</MenuItem>
+                      {TARGET_CLOSENESS_TIERS.map((tier) => (
+                        <MenuItem key={tier} value={tier}>
+                          {t(`targetCloseness.tier.${tier}`)}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    {score?.target && (
+                      <Typography
+                        variant="caption"
+                        sx={{ color: 'text.secondary', display: 'block', mt: 1 }}
+                      >
+                        {score.target.reason}
+                      </Typography>
+                    )}
+                  </>
+                )}
               </Box>
             </Popover>
+
+            <CadenceOfferDialog
+              open={cadenceOffer !== null}
+              contactName={displayName}
+              offer={cadenceOffer}
+              onAccept={handleAcceptCadenceOffer}
+              onClose={() => setCadenceOffer(null)}
+            />
 
             {/* Circles Section */}
             {/* #188: see the camera-badge focus-within comment above. */}

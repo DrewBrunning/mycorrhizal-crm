@@ -2380,6 +2380,28 @@
     "unknownContact": "Contatto sconosciuto",
     "dueOn": "Scadenza il {{date}}"
   },
+  "targetCloseness": {
+    "label": "Vicinanza desiderata",
+    "none": "Nessun obiettivo",
+    "chip": "Obiettivo: {{tier}} · {{status}}",
+    "tier": {
+      "immediate": "Immediata",
+      "close": "Stretta",
+      "casual": "Occasionale",
+      "distant": "Distante"
+    },
+    "status": {
+      "on_track": "In linea",
+      "drifting": "In calo",
+      "behind": "In ritardo"
+    },
+    "offer": {
+      "title": "Creare una cadenza?",
+      "body": "Restare in contatto con {{name}} ogni {{days}} giorni?",
+      "accept": "Crea cadenza",
+      "dismiss": "Non ora"
+    }
+  },
   "reachOut": {
     "title": "Motivi per farsi sentire",
     "empty": "Al momento nessun suggerimento per farsi sentire.",
@@ -2391,7 +2413,8 @@
       "title": "Nuovo titolo professionale",
       "address": "Si è trasferito",
       "target_behind": "Sotto l'obiettivo"
-    }
+    },
+    "behindTarget": "In ritardo sul tuo obiettivo {{tier}} · ultimo contatto {{date}}"
   },
   "syncConflicts": {
     "title": "Conflitti di sincronizzazione",
