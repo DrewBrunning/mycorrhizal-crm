@@ -37,6 +37,12 @@ describe('DateField display', () => {
     expect(input()).toHaveAttribute('placeholder', 'DD.MM.YYYY');
   });
 
+  test('advertises the dialog without an unsupported aria-expanded on the textbox', () => {
+    renderField();
+    expect(input()).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(input()).not.toHaveAttribute('aria-expanded');
+  });
+
   test('renders the selected day in the Date format preference, not mm/dd/yyyy', () => {
     renderField({ value: '2026-01-15' });
     expect(input()).toHaveValue('15.01.2026');

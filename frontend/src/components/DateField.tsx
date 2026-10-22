@@ -171,7 +171,6 @@ export default function DateField({
           },
           htmlInput: {
             'aria-haspopup': 'dialog',
-            'aria-expanded': open,
             'aria-label': label,
           },
         }}
