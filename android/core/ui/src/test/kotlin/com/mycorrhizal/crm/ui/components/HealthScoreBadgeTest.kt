@@ -96,6 +96,45 @@ class HealthScoreBadgeTest {
     }
 
     @Test
+    fun `target status maps onto the matching health band`() {
+        // Issue #1798: on_track/drifting/behind reuse the score bands so the
+        // target chip never invents a fourth status color.
+        assertEquals("moss", targetStatusBand("on_track"))
+        assertEquals("chanterelle", targetStatusBand("drifting"))
+        assertEquals("russula", targetStatusBand("behind"))
+        // An unknown token falls through to healthBandColor's muted role.
+        assertEquals("", targetStatusBand("unknown"))
+    }
+
+    @Test
+    fun `target tier and status labels are localized and fall back to the raw token`() {
+        val labels = mutableMapOf<String, String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                labels["immediate"] = targetTierLabel("immediate")
+                labels["close"] = targetTierLabel("close")
+                labels["casual"] = targetTierLabel("casual")
+                labels["distant"] = targetTierLabel("distant")
+                labels["unknown-tier"] = targetTierLabel("unknown-tier")
+                labels["on_track"] = targetStatusLabel("on_track")
+                labels["drifting"] = targetStatusLabel("drifting")
+                labels["behind"] = targetStatusLabel("behind")
+                labels["unknown-status"] = targetStatusLabel("unknown-status")
+            }
+        }
+
+        assertEquals("Immediate", labels["immediate"])
+        assertEquals("Close", labels["close"])
+        assertEquals("Casual", labels["casual"])
+        assertEquals("Distant", labels["distant"])
+        assertEquals("unknown-tier", labels["unknown-tier"])
+        assertEquals("On track", labels["on_track"])
+        assertEquals("Drifting", labels["drifting"])
+        assertEquals("Behind", labels["behind"])
+        assertEquals("unknown-status", labels["unknown-status"])
+    }
+
+    @Test
     fun `the deceased dot uses the muted deceased color, never a band color`() {
         var deceased: Color? = null
         val bandColors = mutableListOf<Color>()

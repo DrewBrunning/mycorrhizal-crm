@@ -2101,6 +2101,23 @@
     <string name="form_save_hint_fix_fields">Correggi i campi evidenziati per continuare</string>
     <string name="preferences_key_suggestions">Suggerimenti</string>
     <string name="note_change_contact">Cambia</string>
+    <!-- Issue #1798 (ADR 0023 amendment): per-contact target closeness. -->
+    <string name="target_closeness_label">Vicinanza desiderata</string>
+    <string name="target_closeness_none">Nessun obiettivo</string>
+    <string name="target_closeness_chip">Obiettivo: %1$s · %2$s</string>
+    <string name="target_closeness_tier_immediate">Immediata</string>
+    <string name="target_closeness_tier_close">Stretta</string>
+    <string name="target_closeness_tier_casual">Occasionale</string>
+    <string name="target_closeness_tier_distant">Distante</string>
+    <string name="target_closeness_status_on_track">In linea</string>
+    <string name="target_closeness_status_drifting">In calo</string>
+    <string name="target_closeness_status_behind">In ritardo</string>
+    <string name="target_closeness_offer_title">Creare una cadenza?</string>
+    <string name="target_closeness_offer_body">Restare in contatto con %1$s ogni %2$d giorni?</string>
+    <string name="target_closeness_offer_accept">Crea cadenza</string>
+    <string name="target_closeness_offer_dismiss">Non ora</string>
+    <string name="reach_out_kind_target_behind">Sotto l\'obiettivo</string>
+    <string name="reach_out_behind_target">In ritardo sul tuo obiettivo %1$s · ultimo contatto %2$s</string>
     <!-- Issue #1728: contact-page drill-downs moved out of the edit form. -->
     <string name="contact_skills_interests">Competenze e interessi</string>
     <string name="contact_work">Lavoro</string>

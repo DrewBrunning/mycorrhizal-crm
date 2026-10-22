@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
 import com.mycorrhizal.crm.model.network.SyncInfo
 import kotlinx.coroutines.flow.Flow
 
@@ -115,6 +116,20 @@ interface ContactRepository {
 
     /** Clear a contact's favorite flag; flips the cached `isFavorite` flag back. */
     suspend fun unfavoriteContact(id: Int): Result<Unit>
+
+    /**
+     * Issue #1798 (ADR 0023 amendment): set the contact's target closeness tier
+     * through its own route (the contact PUT ignores the field). Returns the
+     * server response, which may carry a cadence-policy offer. The detail screen
+     * reloads the record afterwards; there is no cache write here.
+     */
+    suspend fun setTargetCloseness(
+        id: Int,
+        tier: String,
+    ): Result<ContactTargetClosenessResponse>
+
+    /** Clear the contact's target closeness (idempotent). See [setTargetCloseness]. */
+    suspend fun clearTargetCloseness(id: Int): Result<ContactTargetClosenessResponse>
 
     /**
      * Export a single contact as vCard 4.0 (or 3.0 when [version] == 3) — the raw file bytes

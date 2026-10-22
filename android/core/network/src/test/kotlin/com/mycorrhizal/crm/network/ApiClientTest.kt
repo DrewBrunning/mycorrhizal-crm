@@ -2800,6 +2800,85 @@ class ApiClientTest {
         assertEquals(404, (error as ApiError.Client).code)
     }
 
+    // --- Issue #1798: target closeness (ADR 0023 amendment) ---
+
+    @Test
+    fun `set target closeness puts the tier and parses the offer`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_id": 5,
+                      "target_closeness": "close",
+                      "default_interval_days": 30,
+                      "cadence_policy_offer": {"entity_id": "u5", "target_interval_days": 30}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.setTargetCloseness(5, "close")
+
+        assertTrue("expected success, got $result", result.isSuccess)
+        val response = result.getOrThrow()
+        assertEquals(5, response.contactId)
+        assertEquals("close", response.targetCloseness)
+        assertEquals(30, response.defaultIntervalDays)
+        assertEquals("u5", response.cadencePolicyOffer?.entityId)
+        assertEquals(30, response.cadencePolicyOffer?.targetIntervalDays)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/contacts/5/target-closeness", request.path)
+        // Toggle-shaped like favorite: exempt from If-Match, so no stale-write header.
+        assertNull(request.getHeader("If-Match"))
+        assertTrue(request.body.readUtf8().contains("\"tier\":\"close\""))
+    }
+
+    @Test
+    fun `clear target closeness deletes and parses the all-null response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"contact_id":5,"target_closeness":null,"default_interval_days":null,"cadence_policy_offer":null}""",
+                ),
+        )
+
+        val result = client.clearTargetCloseness(5)
+
+        assertTrue("expected success, got $result", result.isSuccess)
+        val response = result.getOrThrow()
+        assertEquals(5, response.contactId)
+        assertNull(response.targetCloseness)
+        assertNull(response.defaultIntervalDays)
+        assertNull(response.cadencePolicyOffer)
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/contacts/5/target-closeness", request.path)
+        assertNull(request.getHeader("If-Match"))
+    }
+
+    @Test
+    fun `set target closeness failure maps to the backend error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody("""{"error":{"code":"validation_failed","message":"Invalid tier"}}"""),
+        )
+
+        val result = client.setTargetCloseness(5, "acquaintance")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+        assertEquals("Invalid tier", error.body)
+    }
+
     @Test
     fun `export single contact vcard 4 returns the raw file bytes`() = runBlocking {
         val vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Dana White\r\nUID:u1\r\nEND:VCARD\r\n"
