@@ -1655,6 +1655,11 @@ private fun AppNavGraph(
                 onOpenContact = { id -> navController.navigate("contacts/$id") },
                 onMenuClick = menu,
                 onBackUp = { navController.navigateToRoot("data") },
+                // Issue #1761: quick capture's note/reminder entries open the
+                // existing unassigned forms (contact id 0), matching the
+                // Activities/Notes/Reminders inbox screens.
+                onCreateNote = { navController.navigate("contacts/0/notes/new") },
+                onCreateReminder = { navController.navigate("contacts/0/reminders/new") },
             )
         }
 

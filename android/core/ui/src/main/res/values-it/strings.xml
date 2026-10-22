@@ -28,6 +28,25 @@
     </plurals>
     <string name="dashboard_years_old">(%1$d anni)</string>
     <string name="dashboard_unknown_contact">Contatto sconosciuto</string>
+    <!-- Issue #1761: the Stay in Touch card's reason subtitle and the dashboard quick-capture entry. -->
+    <string name="dashboard_stay_in_touch_due_today">In scadenza oggi</string>
+    <plurals name="dashboard_stay_in_touch_due_in">
+        <item quantity="one">In scadenza tra %1$d giorno</item>
+        <item quantity="other">In scadenza tra %1$d giorni</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_last_today">Ultimo contatto oggi</string>
+    <plurals name="dashboard_stay_in_touch_last_days">
+        <item quantity="one">Ultimo contatto %1$d giorno fa</item>
+        <item quantity="other">Ultimo contatto %1$d giorni fa</item>
+    </plurals>
+    <plurals name="dashboard_stay_in_touch_overdue">
+        <item quantity="one">%1$d giorno di ritardo</item>
+        <item quantity="other">%1$d giorni di ritardo</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_no_interactions">Nessuna interazione per ora</string>
+    <string name="dashboard_stay_in_touch_keep">Resta in contatto</string>
+    <string name="dashboard_add_reminder">Aggiungi promemoria</string>
+    <string name="cd_quick_capture">Acquisizione rapida</string>
     <string name="nav_home">Home</string>
     <string name="nav_settings">Impostazioni</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
@@ -846,6 +865,8 @@
     <string name="quick_capture_resolving">Ricerca contatto…</string>
     <string name="quick_capture_with_contact">Con %1$s</string>
     <string name="quick_capture_unknown">Numero sconosciuto</string>
+    <!-- Issue #1761: in-app manual quick capture, where no caller is resolved. -->
+    <string name="quick_capture_no_contact">Nessun contatto</string>
     <string name="quick_capture_title_label">Titolo</string>
     <string name="quick_capture_type_label">Tipo</string>
     <string name="quick_capture_note_label">Nota</string>

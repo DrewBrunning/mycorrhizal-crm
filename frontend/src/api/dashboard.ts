@@ -17,9 +17,29 @@ export interface DashboardReminder extends Reminder {
   contact_name: string;
 }
 
+// Issue #1761: the compact "why is this contact here" signal on a random
+// contact, derived server-side from the same cadence computation as the
+// cadence view. Day counts (not timestamps) so every client renders the same
+// reminder-zone calendar-day line (ADR 0015).
+export interface DashboardContactRelationship {
+  has_cadence: boolean;
+  // 0 = today; absent when no qualifying interaction has been recorded.
+  days_since_last_interaction?: number | null;
+  // Negative when overdue, 0 = due today; absent when there is no policy or
+  // no interaction to anchor the due date.
+  days_until_due?: number | null;
+}
+
+// The wire's random_contacts entry is ContactResponse (legacy gorm
+// serialization), which the dashboard adapts to the flat Contact shape plus
+// the new relationship block.
+export interface DashboardRandomContact extends Contact {
+  relationship?: DashboardContactRelationship | null;
+}
+
 export interface DashboardResponse {
   birthdays: Birthday[];
-  random_contacts: Contact[];
+  random_contacts: DashboardRandomContact[];
   upcoming_reminders: DashboardReminder[];
   overdue: OverdueCadence[];
   favorites: Contact[];

@@ -27,6 +27,25 @@
     </plurals>
     <string name="dashboard_years_old">(%1$d Jahre alt)</string>
     <string name="dashboard_unknown_contact">Unbekannter Kontakt</string>
+    <!-- Issue #1761: the Stay in Touch card's reason subtitle and the dashboard quick-capture entry. -->
+    <string name="dashboard_stay_in_touch_due_today">Heute fällig</string>
+    <plurals name="dashboard_stay_in_touch_due_in">
+        <item quantity="one">In %1$d Tag fällig</item>
+        <item quantity="other">In %1$d Tagen fällig</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_last_today">Heute zuletzt gesprochen</string>
+    <plurals name="dashboard_stay_in_touch_last_days">
+        <item quantity="one">Zuletzt vor %1$d Tag gesprochen</item>
+        <item quantity="other">Zuletzt vor %1$d Tagen gesprochen</item>
+    </plurals>
+    <plurals name="dashboard_stay_in_touch_overdue">
+        <item quantity="one">%1$d Tag überfällig</item>
+        <item quantity="other">%1$d Tage überfällig</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_no_interactions">Noch keine Interaktionen</string>
+    <string name="dashboard_stay_in_touch_keep">Bleib in Kontakt</string>
+    <string name="dashboard_add_reminder">Erinnerung hinzufügen</string>
+    <string name="cd_quick_capture">Schnellerfassung</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
@@ -845,6 +864,8 @@
     <string name="quick_capture_resolving">Kontakt wird aufgelöst…</string>
     <string name="quick_capture_with_contact">Mit %1$s</string>
     <string name="quick_capture_unknown">Unbekannte Nummer</string>
+    <!-- Issue #1761: in-app manual quick capture, where no caller is resolved. -->
+    <string name="quick_capture_no_contact">Kein Kontakt</string>
     <string name="quick_capture_title_label">Titel</string>
     <string name="quick_capture_type_label">Typ</string>
     <string name="quick_capture_note_label">Notiz</string>

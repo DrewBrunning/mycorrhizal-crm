@@ -149,7 +149,15 @@
     "birthdaysInfo": "Zeigt Geburtstage für mindestens die nächsten zwei Wochen.",
     "remindersInfo": "Zeigt mindestens alle Erinnerungen, die bis einschließlich heute fällig sind. Erinnerungen bleiben sichtbar, bis sie als erledigt markiert werden.",
     "stayInTouchInfo": "Zeigt fünf zufällige Kontakte, um in Verbindung zu bleiben. Die Liste wird bei jedem Neuladen der Seite aktualisiert.",
-    "showingOf": "{{shown}} von {{total}} werden angezeigt"
+    "showingOf": "{{shown}} von {{total}} werden angezeigt",
+    "dueToday": "Heute fällig",
+    "dueIn_one": "In {{count}} Tag fällig",
+    "dueIn_other": "In {{count}} Tagen fällig",
+    "lastTalkedToday": "Heute zuletzt gesprochen",
+    "lastTalkedAgo_one": "Zuletzt vor {{count}} Tag gesprochen",
+    "lastTalkedAgo_other": "Zuletzt vor {{count}} Tagen gesprochen",
+    "noInteractionsYet": "Noch keine Interaktionen",
+    "keepInTouch": "Bleib in Kontakt"
   },
   "login": {
     "title": "Anmelden",

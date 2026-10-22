@@ -153,7 +153,17 @@
     "birthdaysInfo": "Affiche les anniversaires pour au moins les deux prochaines semaines.",
     "remindersInfo": "Affiche tous les rappels échéants jusqu'à aujourd'hui inclus. Les rappels restent visibles jusqu'à ce qu'ils soient marqués comme terminés.",
     "stayInTouchInfo": "Affiche cinq contacts au hasard pour vous aider à rester en contact. La liste est actualisée à chaque rechargement de page.",
-    "showingOf": "{{shown}} affichés sur {{total}}"
+    "showingOf": "{{shown}} affichés sur {{total}}",
+    "dueToday": "À faire aujourd'hui",
+    "dueIn_one": "À faire dans {{count}} jour",
+    "dueIn_other": "À faire dans {{count}} jours",
+    "dueIn_many": "À faire dans {{count}} jours",
+    "lastTalkedToday": "Dernier contact aujourd'hui",
+    "lastTalkedAgo_one": "Dernier contact il y a {{count}} jour",
+    "lastTalkedAgo_other": "Dernier contact il y a {{count}} jours",
+    "lastTalkedAgo_many": "Dernier contact il y a {{count}} jours",
+    "noInteractionsYet": "Aucune interaction pour l'instant",
+    "keepInTouch": "Restez en contact"
   },
   "login": {
     "title": "Connexion",

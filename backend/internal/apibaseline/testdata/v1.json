@@ -12573,6 +12573,216 @@
       ]
     },
     {
+      "name": "DashboardContactRelationship",
+      "properties": [
+        {
+          "name": "days_since_last_interaction",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "days_until_due",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "has_cadence",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DashboardRandomContact",
+      "properties": [
+        {
+          "name": "CreatedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "DeletedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ID",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "UpdatedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "activities",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "addresses",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "anniversary",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "birthday",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "circles",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "contact_information",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "department",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "emails",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "firstname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "gender",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "how_we_met",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "impps",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "is_favorite",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "job_title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "lastname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "middle_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "nickname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "notes",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "phones",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "photo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "photo_thumbnail",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "prefix",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "relationship",
+          "type": "ref:DashboardContactRelationship",
+          "required": true
+        },
+        {
+          "name": "reminders",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "suffix",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "urls",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "work_information",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "DashboardReminder",
       "properties": [
         {
@@ -12725,7 +12935,7 @@
         },
         {
           "name": "random_contacts",
-          "type": "array\u003ccomposed[object,object]\u003e",
+          "type": "array\u003ccomposed[composed[object,object],object]\u003e",
           "required": true
         },
         {

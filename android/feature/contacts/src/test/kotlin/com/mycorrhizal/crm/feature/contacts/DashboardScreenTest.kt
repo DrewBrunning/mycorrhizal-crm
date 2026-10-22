@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -8,6 +10,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,11 +18,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.CadenceHealth
 import com.mycorrhizal.crm.model.network.CadencePolicy
+import com.mycorrhizal.crm.model.network.DashboardContactRelationship
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
@@ -83,7 +89,19 @@ class DashboardScreenTest {
                 contactName = "Bobby Smith",
             ),
         ),
-        randomContacts = listOf(DashboardRandomContact(id = 4, firstname = "Rex", lastname = "Jones", nickname = "Rex")),
+        randomContacts = listOf(
+            DashboardRandomContact(
+                id = 4,
+                firstname = "Rex",
+                lastname = "Jones",
+                nickname = "Rex",
+                relationship = DashboardContactRelationship(
+                    hasCadence = true,
+                    daysUntilDue = 4,
+                    daysSinceLastInteraction = 10,
+                ),
+            ),
+        ),
         overdueCadences = listOf(
             OverdueCadence(
                 policy = CadencePolicy(id = "c1", entityId = "u3"),
@@ -119,20 +137,26 @@ class DashboardScreenTest {
         onVerifyDataDecay: (id: String) -> Unit = {},
         onBackUpNow: () -> Unit = {},
         onDismissBackupReminder: () -> Unit = {},
+        onCreateReminder: () -> Unit = {},
         darkTheme: Boolean = false,
+        fontScale: Float = 1f,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme(darkTheme = darkTheme) {
-                DashboardContent(
-                    state = state,
-                    dateFormat = dateFormat,
-                    onOpenContact = onOpenContact,
-                    onCompleteReminder = onCompleteReminder,
-                    onDismissReachOutSuggestion = onDismissReachOutSuggestion,
-                    onVerifyDataDecay = onVerifyDataDecay,
-                    onBackUpNow = onBackUpNow,
-                    onDismissBackupReminder = onDismissBackupReminder,
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                MycorrhizalTheme(darkTheme = darkTheme) {
+                    DashboardContent(
+                        state = state,
+                        dateFormat = dateFormat,
+                        onOpenContact = onOpenContact,
+                        onCompleteReminder = onCompleteReminder,
+                        onDismissReachOutSuggestion = onDismissReachOutSuggestion,
+                        onVerifyDataDecay = onVerifyDataDecay,
+                        onBackUpNow = onBackUpNow,
+                        onDismissBackupReminder = onDismissBackupReminder,
+                        onCreateReminder = onCreateReminder,
+                    )
+                }
             }
         }
     }
@@ -188,9 +212,11 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithContentDescription("Complete reminder").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Skip reminder").assertIsDisplayed()
 
-        // Stay in touch: nickname-preferred name.
+        // Stay in touch: nickname-preferred name, plus the issue #1761 reason
+        // subtitle from the server's cadence-derived day counts.
         scrollTo("Rex Jones")
         composeTestRule.onNodeWithText("Rex Jones").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Due in 4 days").assertIsDisplayed()
     }
 
     // Issue #1776: at Expanded width the dashboard is two columns, not one 840dp stack.
@@ -242,6 +268,7 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("No favorites yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("No upcoming birthdays").assertIsDisplayed()
         composeTestRule.onNodeWithText("No upcoming reminders").assertIsDisplayed()
+        scrollTo("No contacts available")
         composeTestRule.onNodeWithText("No contacts available").assertIsDisplayed()
         // Web parity: an all-clear dashboard hides the overdue section entirely.
         composeTestRule.onNodeWithText("Overdue relationships").assertDoesNotExist()
@@ -436,7 +463,11 @@ class DashboardScreenTest {
         )
     }
 
-    private fun setScreenContent(darkTheme: Boolean) {
+    private fun setScreenContent(
+        darkTheme: Boolean,
+        onCreateNote: () -> Unit = {},
+        onCreateReminder: () -> Unit = {},
+    ) {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
@@ -447,11 +478,18 @@ class DashboardScreenTest {
             mockk<com.mycorrhizal.crm.domain.repository.BundleBackupRepository> {
                 every { observeStatus() } returns flowOf(com.mycorrhizal.crm.domain.backup.BundleBackupStatus())
             },
+            mockk<com.mycorrhizal.crm.domain.repository.ActivityRepository>(relaxed = true),
         )
 
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
-                DashboardScreen(onOpenContact = {}, onMenuClick = {}, viewModel = viewModel)
+                DashboardScreen(
+                    onOpenContact = {},
+                    onMenuClick = {},
+                    onCreateNote = onCreateNote,
+                    onCreateReminder = onCreateReminder,
+                    viewModel = viewModel,
+                )
             }
         }
     }
@@ -582,5 +620,187 @@ class DashboardScreenTest {
         assertTrue(isDashboardTruncated(shown = 25, total = 60))
         assertFalse(isDashboardTruncated(shown = 25, total = 25))
         assertFalse(isDashboardTruncated(shown = 24, total = null))
+    }
+
+    // --- Issue #1761: dashboard polish ------------------------------------------
+
+    @Test
+    fun `stay in touch rows explain why each contact is listed`() {
+        val contacts = listOf(
+            DashboardRandomContact(
+                id = 11, firstname = "Overdue", lastname = "Olive",
+                relationship = DashboardContactRelationship(
+                    hasCadence = true, daysUntilDue = -5, daysSinceLastInteraction = 20,
+                ),
+            ),
+            DashboardRandomContact(
+                id = 12, firstname = "Due", lastname = "Dana",
+                relationship = DashboardContactRelationship(
+                    hasCadence = true, daysUntilDue = 4, daysSinceLastInteraction = 10,
+                ),
+            ),
+            DashboardRandomContact(
+                id = 13, firstname = "Today", lastname = "Tara",
+                relationship = DashboardContactRelationship(
+                    hasCadence = true, daysUntilDue = 0, daysSinceLastInteraction = 30,
+                ),
+            ),
+            DashboardRandomContact(
+                id = 14, firstname = "Recent", lastname = "Rui",
+                relationship = DashboardContactRelationship(daysSinceLastInteraction = 0),
+            ),
+            DashboardRandomContact(
+                id = 15, firstname = "Ago", lastname = "Ada",
+                relationship = DashboardContactRelationship(daysSinceLastInteraction = 3),
+            ),
+            DashboardRandomContact(
+                id = 16, firstname = "Quiet", lastname = "Quinn",
+                relationship = DashboardContactRelationship(),
+            ),
+            DashboardRandomContact(id = 17, firstname = "Legacy", lastname = "Lee"),
+        )
+        setContent(DashboardUiState(randomContacts = contacts))
+
+        scrollTo("Overdue Olive")
+        composeTestRule.onNodeWithText("5 days overdue").assertIsDisplayed()
+        scrollTo("Due Dana")
+        composeTestRule.onNodeWithText("Due in 4 days").assertIsDisplayed()
+        scrollTo("Today Tara")
+        composeTestRule.onNodeWithText("Due today").assertIsDisplayed()
+        scrollTo("Recent Rui")
+        composeTestRule.onNodeWithText("Last talked today").assertIsDisplayed()
+        scrollTo("Ago Ada")
+        composeTestRule.onNodeWithText("Last talked 3 days ago").assertIsDisplayed()
+        scrollTo("Quiet Quinn")
+        composeTestRule.onNodeWithText("No interactions yet").assertIsDisplayed()
+        scrollTo("Legacy Lee")
+        composeTestRule.onNodeWithText("Keep in touch").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the empty reminders card offers an Add reminder action`() {
+        var added = false
+        setContent(DashboardUiState(), onCreateReminder = { added = true })
+
+        scrollTo("No upcoming reminders")
+        composeTestRule.onNodeWithText("Add reminder").assertIsDisplayed().performClick()
+
+        assertTrue(added)
+    }
+
+    @Test
+    fun `the overdue status chip sits below the contact name`() {
+        setContent(populatedState())
+
+        scrollTo("Overdue relationships")
+        val name = composeTestRule.onNodeWithText("Carol Davis", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val chip = composeTestRule.onNodeWithText("3 days overdue", useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue(
+            "the chip must be below the name, not share the row with it",
+            chip.top >= name.bottom,
+        )
+    }
+
+    @Test
+    fun `the reach-out kind chip sits below its text`() {
+        setContent(populatedState())
+
+        scrollTo("Reasons to reach out")
+        val name = composeTestRule.onNodeWithText("Dana Prince", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val chip = composeTestRule.onNodeWithText("New employer", useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("the chip must be below the name/change text", chip.top >= name.bottom)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun `the overdue date fits on one line at 360dp`() {
+        val cadence = OverdueCadence(
+            policy = CadencePolicy(id = "c-line", entityId = "u-line"),
+            health = CadenceHealth(overdueBy = 25, nextDue = "2026-09-21T00:00:00Z"),
+            contactId = 21L,
+            contactName = "Line Test",
+        )
+        setContent(
+            DashboardUiState(overdueCadences = listOf(cadence)),
+            dateFormat = DateFormat.EU,
+        )
+
+        scrollTo("Overdue relationships")
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        composeTestRule.onNodeWithText("Next due: 21.09.2026")
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action
+            ?.invoke(layouts)
+
+        assertEquals(
+            "the date must not wrap at the acceptance width",
+            1,
+            layouts.single().lineCount,
+        )
+    }
+
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun `the overdue date keeps a readable width at font scale 2`() {
+        // Issue #1761's follow-up: at font scale 2.0 the status chip used to
+        // hold a fixed share of the row and squeeze the date column to a few
+        // characters. With the chip under the name, the date keeps most of the
+        // card width (it may wrap at word boundaries, but not mid-word).
+        val cadence = OverdueCadence(
+            policy = CadencePolicy(id = "c-scale", entityId = "u-scale"),
+            health = CadenceHealth(overdueBy = 25, nextDue = "2026-09-21T00:00:00Z"),
+            contactId = 31L,
+            contactName = "Björk Guðmundsdóttir",
+        )
+        setContent(
+            DashboardUiState(overdueCadences = listOf(cadence)),
+            dateFormat = DateFormat.EU_MMMM,
+            fontScale = 2f,
+        )
+
+        scrollTo("Overdue relationships")
+        val expectedDate = DateFormat.formatTimestamp("2026-09-21T00:00:00Z", DateFormat.EU_MMMM)
+        val dateBounds = composeTestRule
+            .onNodeWithText("Next due: $expectedDate", useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+
+        assertTrue(
+            "the date column must keep a readable width at font scale 2.0, not be squeezed by the chip",
+            dateBounds.right - dateBounds.left > 200.dp,
+        )
+    }
+
+    @Test
+    fun `the quick capture note and reminder entries invoke their callbacks`() {
+        var note = false
+        var reminder = false
+        setScreenContent(
+            darkTheme = false,
+            onCreateNote = { note = true },
+            onCreateReminder = { reminder = true },
+        )
+
+        composeTestRule.onNodeWithTag("dashboard-quick-capture").performClick()
+        composeTestRule.onNodeWithText("New note").performClick()
+        assertTrue(note)
+
+        composeTestRule.onNodeWithTag("dashboard-quick-capture").performClick()
+        composeTestRule.onNodeWithText("New reminder").performClick()
+        assertTrue(reminder)
+    }
+
+    @Test
+    fun `the quick capture FAB opens the sheet with note and reminder entries`() {
+        setScreenContent(darkTheme = false)
+
+        composeTestRule.onNodeWithTag("dashboard-quick-capture").performClick()
+
+        composeTestRule.onNodeWithText("Log interaction").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New note").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New reminder").assertIsDisplayed()
     }
 }

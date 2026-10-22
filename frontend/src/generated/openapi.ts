@@ -843,6 +843,16 @@ export type CurrentUserResponse = AdminUserResponse & {
   self_contact_vcard_uid?: string | null;
 };
 
+export type DashboardContactRelationship = {
+  days_since_last_interaction?: number | null;
+  days_until_due?: number | null;
+  has_cadence: boolean;
+};
+
+export type DashboardRandomContact = ContactResponse & {
+  relationship: DashboardContactRelationship;
+};
+
 export type DashboardReminder = Reminder & {
   contact_name: string;
 };
@@ -857,7 +867,7 @@ export type DashboardResponse = {
   favorites: ContactResponse[];
   overdue: OverdueCadence[];
   overdue_total: number;
-  random_contacts: ContactResponse[];
+  random_contacts: DashboardRandomContact[];
   reach_out_suggestions: ReachOutSuggestion[];
   reach_out_suggestions_total: number;
   upcoming_reminders: DashboardReminder[];

@@ -499,6 +499,77 @@ func sortOverdueByMostOverdue(overdue []OverdueCadence) {
 	})
 }
 
+// ContactRelationship is the compact "why is this contact here" signal for a
+// dashboard card (issue #1761). It uses the same qualifying-interaction and
+// cadence-health derivation the cadence view already exposes, but carries
+// day counts so clients do not repeat the reminder-zone calendar-day rule.
+type ContactRelationship struct {
+	// LastInteraction is the most recent qualifying interaction, nil when none.
+	LastInteraction *time.Time
+	// DaysSinceLastInteraction is whole calendar days from LastInteraction to
+	// now (0 = today); nil when there is no qualifying interaction.
+	DaysSinceLastInteraction *int
+	// HasCadence is true when the contact has a CadencePolicy.
+	HasCadence bool
+	// NextDue is the policy-derived next due date; nil when there is no policy
+	// or no qualifying interaction to anchor it.
+	NextDue *time.Time
+	// DaysUntilDue is calendar days from now to NextDue; negative when overdue,
+	// 0 = due today, nil when NextDue is nil.
+	DaysUntilDue *int
+}
+
+// ContactRelationships derives the dashboard card signal for a batch of
+// contacts (the random "stay in touch" block, issue #1761) in the same fixed
+// number of bulk queries ComputeAllContactScores uses — never one query per
+// contact. It is keyed by Contact.VCardUID; a contact with no policy and no
+// interaction gets a zero-value entry rather than being absent, so callers
+// can rely on every requested contact being present.
+func ContactRelationships(db *gorm.DB, userID uint, contacts []models.Contact, now time.Time) (map[string]ContactRelationship, error) {
+	result := make(map[string]ContactRelationship, len(contacts))
+	if len(contacts) == 0 {
+		return result, nil
+	}
+
+	uids := make([]string, len(contacts))
+	for i, c := range contacts {
+		uids[i] = c.VCardUID
+	}
+
+	policies, err := cadencePoliciesByEntityID(db, userID, uids)
+	if err != nil {
+		return nil, fmt.Errorf("loading cadence policies: %w", err)
+	}
+	lastByUID, err := lastQualifyingInteractionByEntityID(db, userID, uids, policies)
+	if err != nil {
+		return nil, fmt.Errorf("loading last qualifying interactions: %w", err)
+	}
+
+	for _, uid := range uids {
+		var rel ContactRelationship
+		last := lastByUID[uid]
+		if last != nil {
+			daysSince := interactionDaysSince(*last, now)
+			rel.LastInteraction = last
+			rel.DaysSinceLastInteraction = &daysSince
+		}
+
+		if policy, ok := policies[uid]; ok {
+			rel.HasCadence = true
+			health := deriveHealth(last, policy.TargetIntervalDays, now)
+			if health.NextDue != nil {
+				nextDue := health.NextDue.Time
+				daysUntil := -calendarDaysBetween(nextDue, now)
+				rel.NextDue = &nextDue
+				rel.DaysUntilDue = &daysUntil
+			}
+		}
+
+		result[uid] = rel
+	}
+	return result, nil
+}
+
 // cadenceOverdueMinInterval is slightly less than the daily cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run — the same
 // margin purge_service uses.

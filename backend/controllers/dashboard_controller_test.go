@@ -268,3 +268,106 @@ func TestCapDashboardSection(t *testing.T) {
 	assert.Len(t, capDashboardSection(make([]int, DashboardSectionLimit+1)), DashboardSectionLimit)
 	assert.Empty(t, capDashboardSection([]int(nil)))
 }
+
+// TestGetDashboard_RandomContactsCarryRelationshipReason pins issue #1761's
+// wire contract for the Stay in Touch cards: each random contact carries the
+// day-count signal the client renders as its reason subtitle, derived from
+// the same cadence computation as the cadence view. The day counts are
+// computed against the injected clock, and an absent value (no policy / no
+// interaction) is omitted rather than serialized as a misleading 0.
+func TestGetDashboard_RandomContactsCarryRelationshipReason(t *testing.T) {
+	instant := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+	setTimeNow(t, instant)
+
+	db, _ := setupRouter(t)
+	userID := seedUserID(t, db)
+
+	// Overdue: last interaction Dec 15, 30-day interval -> due Jan 14 (17 days ago).
+	due := models.Contact{UserID: userID, Firstname: "Due", Lastname: "Cadence"}
+	require.NoError(t, db.Create(&due).Error)
+	require.NoError(t, db.Create(&models.Activity{
+		UserID: userID, Title: "Last call", Date: time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC),
+		Type: models.InteractionTypeCall, Contacts: []models.Contact{due},
+	}).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: userID, EntityID: due.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	// No policy, but a qualifying interaction 10 days ago.
+	recent := models.Contact{UserID: userID, Firstname: "Recent", Lastname: "Talk"}
+	require.NoError(t, db.Create(&recent).Error)
+	require.NoError(t, db.Create(&models.Activity{
+		UserID: userID, Title: "Dinner", Date: time.Date(2026, 1, 21, 10, 0, 0, 0, time.UTC),
+		Type: models.InteractionTypeMeal, Contacts: []models.Contact{recent},
+	}).Error)
+
+	router := zoneRouter(t, db, "UTC")
+	router.GET("/dashboard", GetDashboard)
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.DashboardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.RandomContacts, 2)
+
+	byName := map[string]models.DashboardRandomContact{}
+	for _, c := range resp.RandomContacts {
+		byName[c.Firstname] = c
+	}
+
+	dueRel := byName["Due"].Relationship
+	assert.True(t, dueRel.HasCadence)
+	require.NotNil(t, dueRel.DaysSinceLastInteraction)
+	assert.Equal(t, 47, *dueRel.DaysSinceLastInteraction)
+	require.NotNil(t, dueRel.DaysUntilDue)
+	assert.Equal(t, -17, *dueRel.DaysUntilDue, "overdue is a negative days-until-due")
+
+	recentRel := byName["Recent"].Relationship
+	assert.False(t, recentRel.HasCadence)
+	require.NotNil(t, recentRel.DaysSinceLastInteraction)
+	assert.Equal(t, 10, *recentRel.DaysSinceLastInteraction)
+	assert.Nil(t, recentRel.DaysUntilDue)
+
+	// Raw-JSON pin for the optional field's shape: absent, not null, when no
+	// policy anchors a due date. Decoding into the struct cannot tell them apart.
+	var raw struct {
+		RandomContacts []struct {
+			Firstname    string         `json:"firstname"`
+			Relationship map[string]any `json:"relationship"`
+		} `json:"random_contacts"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	for _, c := range raw.RandomContacts {
+		if c.Firstname != "Recent" {
+			continue
+		}
+		require.NotNil(t, c.Relationship, "relationship must be present on every random contact")
+		_, present := c.Relationship["days_until_due"]
+		assert.False(t, present, "days_until_due must be omitted when absent, not serialized as 0/null")
+	}
+}
+
+// TestGetDashboard_RandomContactReasonQueryFails pins that a failure deriving
+// the random contacts' relationship reason aborts the composite instead of
+// rendering cards with a fabricated "no interactions" subtitle.
+func TestGetDashboard_RandomContactReasonQueryFails(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs the missing-table query error")
+	db, router := setupRouter(t)
+	router.GET("/dashboard", GetDashboard)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Reason"}).Error)
+
+	dbtest.HideTable(t, db, "cadence_policies")
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "Failed to retrieve contacts")
+}

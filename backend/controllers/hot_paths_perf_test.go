@@ -104,10 +104,12 @@ func seedDashboardCorpus(tb testing.TB, db *gorm.DB, userID uint) {
 
 // TestGetDashboard_QueryCountIsBounded pins issue #261's guarantee that the
 // /dashboard composite stays a small constant number of queries regardless of
-// data volume. Seeded with every block populated, the expected tally is 10
-// (birthdays + random + favorites + reminders + reminder names + cadence
-// policies + last-interaction + cadence contacts + suggestions + suggestion
-// contacts); the ≤ 14 bound leaves room for a constant addition while a
+// data volume. Seeded with every block populated, the expected tally is 13
+// (birthdays + random + random relationship policies + random last
+// interactions + random gifts + favorites + reminders + reminder names +
+// cadence policies + last-interaction + cadence contacts + suggestions +
+// suggestion contacts — issue #1761 added the three bounded relationship
+// reads); the ≤ 17 bound leaves room for a constant addition while a
 // per-item fetch (e.g. one query per reminder's contact) blows past it.
 func TestGetDashboard_QueryCountIsBounded(t *testing.T) {
 	db, router, counter, userID := setupCountingRouter(t)
@@ -121,7 +123,7 @@ func TestGetDashboard_QueryCountIsBounded(t *testing.T) {
 
 	count := counter.Count()
 	t.Logf("dashboard composite issued %d queries", count)
-	assert.LessOrEqual(t, int(count), 14,
+	assert.LessOrEqual(t, int(count), 17,
 		"dashboard composite must stay a small constant number of queries regardless of data volume")
 }
 

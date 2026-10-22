@@ -426,3 +426,128 @@ func TestListOverdueCadences_NextDueIgnoresReminderZoneConversion(t *testing.T) 
 	assert.Equal(t, "2026-10-29", overdue[0].Health.NextDue.Format("2006-01-02"))
 	assert.Equal(t, 1, overdue[0].Health.OverdueBy)
 }
+
+// TestContactRelationships_DerivesDashboardReason pins the "why is this
+// contact here" signal behind the dashboard's Stay in Touch cards (issue
+// #1761): a contact with a cadence policy reports its due-in/overdue days, a
+// policy-less contact still reports how long ago the last qualifying
+// interaction was, and a contact with neither gets a zero-value entry rather
+// than being absent from the map.
+func TestContactRelationships_DerivesDashboardReason(t *testing.T) {
+	db, user, _ := setupCadenceServiceTestDB(t)
+	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+
+	// Alice: 30-day policy, last interaction Jan 1 -> due today.
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&alice).Error)
+	seedActivity(t, db, user, alice, models.InteractionTypeCall,
+		time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: alice.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	// Bob: no policy, but a qualifying interaction 10 days ago.
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	require.NoError(t, db.Create(&bob).Error)
+	seedActivity(t, db, user, bob, models.InteractionTypeMeal,
+		time.Date(2026, 1, 21, 10, 0, 0, 0, time.UTC))
+
+	// Carol: nothing recorded at all.
+	carol := models.Contact{UserID: user.ID, Firstname: "Carol"}
+	require.NoError(t, db.Create(&carol).Error)
+
+	// Dave: 30-day policy, last interaction Dec 15 -> 17 days overdue.
+	dave := models.Contact{UserID: user.ID, Firstname: "Dave"}
+	require.NoError(t, db.Create(&dave).Error)
+	seedActivity(t, db, user, dave, models.InteractionTypeCall,
+		time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: dave.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	got, err := ContactRelationships(db, user.ID, []models.Contact{alice, bob, carol, dave}, now)
+	require.NoError(t, err)
+	require.Len(t, got, 4, "every requested contact must have an entry")
+
+	aliceRel := got[alice.VCardUID]
+	assert.True(t, aliceRel.HasCadence)
+	require.NotNil(t, aliceRel.DaysSinceLastInteraction)
+	assert.Equal(t, 30, *aliceRel.DaysSinceLastInteraction)
+	require.NotNil(t, aliceRel.NextDue)
+	assert.Equal(t, "2026-01-31", aliceRel.NextDue.Format("2006-01-02"))
+	require.NotNil(t, aliceRel.DaysUntilDue)
+	assert.Equal(t, 0, *aliceRel.DaysUntilDue, "due today is 0, not overdue")
+
+	bobRel := got[bob.VCardUID]
+	assert.False(t, bobRel.HasCadence)
+	require.NotNil(t, bobRel.DaysSinceLastInteraction)
+	assert.Equal(t, 10, *bobRel.DaysSinceLastInteraction)
+	assert.Nil(t, bobRel.NextDue)
+	assert.Nil(t, bobRel.DaysUntilDue)
+
+	carolRel := got[carol.VCardUID]
+	assert.False(t, carolRel.HasCadence)
+	assert.Nil(t, carolRel.LastInteraction)
+	assert.Nil(t, carolRel.DaysSinceLastInteraction)
+	assert.Nil(t, carolRel.DaysUntilDue)
+
+	daveRel := got[dave.VCardUID]
+	assert.True(t, daveRel.HasCadence)
+	require.NotNil(t, daveRel.DaysUntilDue)
+	assert.Equal(t, -17, *daveRel.DaysUntilDue, "overdue is a negative days-until-due")
+}
+
+// TestContactRelationships_ScopesToUser pins that another user's activities
+// and policies never feed the caller's relationship signal (CLAUDE.md trap 5).
+func TestContactRelationships_ScopesToUser(t *testing.T) {
+	db, user, contact := setupCadenceServiceTestDB(t)
+	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+
+	other := models.User{Username: "other-cadence", Password: "x", Email: "other-cadence@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+
+	// The other user's activity is linked (via the join table) to the caller's
+	// contact; ownership scoping must still refuse to read it.
+	foreignActivity := models.Activity{
+		UserID: other.ID, Title: "not yours", Date: now.AddDate(0, 0, -5),
+		Type: models.InteractionTypeCall, Contacts: []models.Contact{contact},
+	}
+	require.NoError(t, db.Create(&foreignActivity).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: other.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	got, err := ContactRelationships(db, user.ID, []models.Contact{contact}, now)
+	require.NoError(t, err)
+	rel := got[contact.VCardUID]
+	assert.False(t, rel.HasCadence, "another user's policy must not count")
+	assert.Nil(t, rel.DaysSinceLastInteraction, "another user's activity must not count")
+}
+
+// TestContactRelationships_PropagatesQueryFailures pins that both bulk reads
+// behind the dashboard reason are hard errors, not silently-empty signals: a
+// missing policy table or activity table must surface, so the dashboard can
+// abort the composite rather than render a wrong "no interactions" subtitle.
+func TestContactRelationships_PropagatesQueryFailures(t *testing.T) {
+	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+
+	t.Run("cadence policies", func(t *testing.T) {
+		logtest.AllowWarnings(t, "the path under test logs the missing-table query error")
+		db, user, contact := setupCadenceServiceTestDB(t)
+		dbtest.HideTable(t, db, "cadence_policies")
+
+		_, err := ContactRelationships(db, user.ID, []models.Contact{contact}, now)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "loading cadence policies")
+	})
+
+	t.Run("qualifying interactions", func(t *testing.T) {
+		logtest.AllowWarnings(t, "the path under test logs the missing-table query error")
+		db, user, contact := setupCadenceServiceTestDB(t)
+		dbtest.HideTable(t, db, "activities")
+
+		_, err := ContactRelationships(db, user.ID, []models.Contact{contact}, now)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "loading last qualifying interactions")
+	})
+}

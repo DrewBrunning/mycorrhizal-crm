@@ -153,7 +153,17 @@
     "birthdaysInfo": "Muestra los cumpleaños de al menos las próximas dos semanas.",
     "remindersInfo": "Muestra todos los recordatorios pendientes hasta hoy incluido. Los recordatorios permanecerán visibles hasta que se marquen como completados.",
     "stayInTouchInfo": "Muestra cinco contactos aleatorios para ayudarte a mantenerte conectado. La lista se actualiza en cada recarga de página.",
-    "showingOf": "Mostrando {{shown}} de {{total}}"
+    "showingOf": "Mostrando {{shown}} de {{total}}",
+    "dueToday": "Vence hoy",
+    "dueIn_one": "Vence en {{count}} día",
+    "dueIn_other": "Vence en {{count}} días",
+    "dueIn_many": "Vence en {{count}} días",
+    "lastTalkedToday": "Última conversación hoy",
+    "lastTalkedAgo_one": "Última conversación hace {{count}} día",
+    "lastTalkedAgo_other": "Última conversación hace {{count}} días",
+    "lastTalkedAgo_many": "Última conversación hace {{count}} días",
+    "noInteractionsYet": "Aún no hay interacciones",
+    "keepInTouch": "Mantente en contacto"
   },
   "login": {
     "title": "Iniciar sesión",

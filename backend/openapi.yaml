@@ -1522,6 +1522,10 @@ paths:
                     archived: false
                     is_favorite: false
                     photo_thumbnail: ""
+                    relationship:
+                      has_cadence: true
+                      days_since_last_interaction: 12
+                      days_until_due: 18
                   - ID: 6
                     CreatedAt: "0001-01-01T00:00:00Z"
                     UpdatedAt: "0001-01-01T00:00:00Z"
@@ -1555,6 +1559,9 @@ paths:
                     archived: false
                     is_favorite: false
                     photo_thumbnail: ""
+                    relationship:
+                      has_cadence: false
+                      days_since_last_interaction: 3
                 upcoming_reminders:
                   - ID: 2
                     CreatedAt: "2026-08-21T00:08:44Z"
@@ -13106,7 +13113,7 @@ components:
           items: { $ref: "#/components/schemas/Birthday" }
         random_contacts:
           type: array
-          items: { $ref: "#/components/schemas/ContactResponse" }
+          items: { $ref: "#/components/schemas/DashboardRandomContact" }
         favorites:
           type: array
           description: >
@@ -13131,6 +13138,39 @@ components:
           type: array
           description: "Issue #352: contacts whose info is due for re-verification."
           items: { $ref: "#/components/schemas/OverdueDataDecayPolicy" }
+    DashboardRandomContact:
+      description: >
+        One random_contacts entry: a ContactResponse plus the relationship
+        signal the "Stay in Touch" card renders as its reason subtitle (issue
+        #1761). `relationship` is always present.
+      allOf:
+        - $ref: "#/components/schemas/ContactResponse"
+        - type: object
+          required: [relationship]
+          properties:
+            relationship:
+              $ref: "#/components/schemas/DashboardContactRelationship"
+    DashboardContactRelationship:
+      type: object
+      description: >
+        The compact "why is this contact here" read-model on a dashboard
+        random contact (issue #1761), derived from the same cadence
+        computation as the cadence view. Day counts rather than timestamps so
+        every client renders "due in N days" / "last talked N days ago"
+        against the same reminder-zone calendar day (ADR 0015).
+      required: [has_cadence]
+      properties:
+        has_cadence:
+          type: boolean
+          description: True when the contact has a CadencePolicy.
+        days_since_last_interaction:
+          type: integer
+          nullable: true
+          description: Whole calendar days since the last qualifying interaction; 0 = today. Absent when none has been recorded.
+        days_until_due:
+          type: integer
+          nullable: true
+          description: Whole calendar days until the cadence's next due date; negative when overdue, 0 = due today. Absent when there is no policy or no qualifying interaction to anchor it.
     DashboardReminder:
       description: >
         A Reminder enriched with its contact's display name (nickname-

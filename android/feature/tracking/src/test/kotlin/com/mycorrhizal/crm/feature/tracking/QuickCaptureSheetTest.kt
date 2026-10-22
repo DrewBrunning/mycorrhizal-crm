@@ -126,4 +126,24 @@ class QuickCaptureSheetTest {
 
         assertEquals(1, interactions)
     }
+
+    @Test
+    fun `a manual capture labels itself as having no contact, not an unknown number`() = runTest {
+        val repo = mockk<ActivityRepository>(relaxed = true)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+        val state = QuickCaptureFormState(
+            activityRepository = repo,
+            scope = scope,
+            prefill = QuickCapturePrefillFactory.forManual("2026-08-18T12:00:00Z"),
+            blankTitleMessage = "Title is required",
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                QuickCaptureSheet(state = state, onDismiss = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("No contact").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Unknown number").assertDoesNotExist()
+    }
 }

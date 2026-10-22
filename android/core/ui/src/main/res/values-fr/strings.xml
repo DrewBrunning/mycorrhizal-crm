@@ -28,6 +28,25 @@
     </plurals>
     <string name="dashboard_years_old">(%1$d ans)</string>
     <string name="dashboard_unknown_contact">Contact inconnu</string>
+    <!-- Issue #1761: the Stay in Touch card's reason subtitle and the dashboard quick-capture entry. -->
+    <string name="dashboard_stay_in_touch_due_today">À faire aujourd\'hui</string>
+    <plurals name="dashboard_stay_in_touch_due_in">
+        <item quantity="one">À faire dans %1$d jour</item>
+        <item quantity="other">À faire dans %1$d jours</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_last_today">Dernier contact aujourd\'hui</string>
+    <plurals name="dashboard_stay_in_touch_last_days">
+        <item quantity="one">Dernier contact il y a %1$d jour</item>
+        <item quantity="other">Dernier contact il y a %1$d jours</item>
+    </plurals>
+    <plurals name="dashboard_stay_in_touch_overdue">
+        <item quantity="one">%1$d jour de retard</item>
+        <item quantity="other">%1$d jours de retard</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_no_interactions">Aucune interaction pour l\'instant</string>
+    <string name="dashboard_stay_in_touch_keep">Restez en contact</string>
+    <string name="dashboard_add_reminder">Ajouter un rappel</string>
+    <string name="cd_quick_capture">Capture rapide</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
@@ -846,6 +865,8 @@
     <string name="quick_capture_resolving">Recherche du contact…</string>
     <string name="quick_capture_with_contact">Avec %1$s</string>
     <string name="quick_capture_unknown">Numéro inconnu</string>
+    <!-- Issue #1761: in-app manual quick capture, where no caller is resolved. -->
+    <string name="quick_capture_no_contact">Aucun contact</string>
     <string name="quick_capture_title_label">Titre</string>
     <string name="quick_capture_type_label">Type</string>
     <string name="quick_capture_note_label">Note</string>

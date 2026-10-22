@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.backup.BundleBackupReminder
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
+import com.mycorrhizal.crm.feature.tracking.QuickCaptureFormState
+import com.mycorrhizal.crm.feature.tracking.QuickCapturePrefillFactory
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
@@ -14,6 +17,8 @@ import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.OffsetDateTime
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -104,6 +109,7 @@ class DashboardViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val authRepository: AuthRepository,
     private val bundleBackupRepository: BundleBackupRepository,
+    private val activityRepository: ActivityRepository,
 ) : ViewModel() {
 
     /** Epoch-millis clock; overridable so tests can pin "now" for the 30-day rule. */
@@ -281,6 +287,23 @@ class DashboardViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * Issue #1761: the dashboard's quick-capture FAB logs an interaction
+     * through the existing [QuickCaptureSheet]. The sheet needs a scope that
+     * outlives recomposition, so use the caller's [scope] (the screen's
+     * rememberCoroutineScope) and share the injected ActivityRepository.
+     */
+    fun newQuickCaptureState(
+        scope: CoroutineScope,
+        blankTitleMessage: String,
+        now: OffsetDateTime = OffsetDateTime.now(),
+    ): QuickCaptureFormState = QuickCaptureFormState(
+        activityRepository = activityRepository,
+        scope = scope,
+        prefill = QuickCapturePrefillFactory.forManual(now.toString()),
+        blankTitleMessage = blankTitleMessage,
+    )
 
     /** Clears the transient complete/skip error once its snackbar has been shown. */
     /** Snooze the backup banner (it may return after [BundleBackupReminder.SNOOZE_MILLIS]). */
