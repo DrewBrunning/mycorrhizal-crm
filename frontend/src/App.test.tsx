@@ -18,6 +18,9 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   window.history.replaceState({}, '', '/');
+  // Keep the module-scope data router in sync with the reset URL, so this
+  // file's not-found test cannot leak its location into later App tests.
+  window.dispatchEvent(new PopStateEvent('popstate'));
   vi.clearAllMocks();
 });
 

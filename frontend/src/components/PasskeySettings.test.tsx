@@ -409,3 +409,75 @@ test('renames an existing passkey without a second-factor proof', async () => {
   // No TOTP/recovery-code proof dialog appeared.
   expect(screen.queryByText('Verify it\u2019s you')).not.toBeInTheDocument();
 });
+
+test('cancelling a rename closes the dialog without sending a request', async () => {
+  stubWebAuthn();
+  const fetchMock = mockFetch({ 'GET /webauthn/credentials': () => ({ credentials: [laptop] }) });
+  renderCard();
+
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Rename passkey Laptop' }));
+  const dialog = await screen.findByRole('dialog');
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+});
+
+test('an empty rename is disabled, and a backend failure keeps the dialog open with its message', async () => {
+  stubWebAuthn();
+  const fetchMock = mockFetch({
+    'GET /webauthn/credentials': () => ({ credentials: [laptop] }),
+    'PATCH /webauthn/credentials/p1': () => ({
+      ok: false,
+      body: { error: { message: 'Rename rejected' } },
+    }),
+  });
+  renderCard();
+
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Rename passkey Laptop' }));
+  const dialog = await screen.findByRole('dialog');
+  const nameInput = within(dialog).getByLabelText(/passkey name/i);
+
+  fireEvent.change(nameInput, { target: { value: '   ' } });
+  expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled();
+
+  fireEvent.change(nameInput, { target: { value: 'Kitchen tablet' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  expect(await within(dialog).findByText('Rename rejected')).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(nameInput).toHaveValue('Kitchen tablet');
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1);
+});
+
+test('Escape closes the rename dialog without renaming', async () => {
+  stubWebAuthn();
+  mockFetch({ 'GET /webauthn/credentials': () => ({ credentials: [laptop] }) });
+  renderCard();
+
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Rename passkey Laptop' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+test('Escape closes the removal dialog without removing', async () => {
+  stubWebAuthn();
+  mockFetch({ 'GET /webauthn/credentials': () => ({ credentials: [laptop] }) });
+  renderCard();
+
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove passkey Laptop' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(screen.getByText('Laptop')).toBeInTheDocument();
+});
