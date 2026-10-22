@@ -68,6 +68,11 @@
   ```
 - **Visual regression (issue #258):** `frontend/e2e/visual.spec.ts` snapshots the dashboard, contacts list, contact detail and the add-reminder dialog at desktop + phone widths and fails CI on any pixel diff. Baselines are committed under `frontend/e2e/visual.spec.ts-snapshots/`. Regenerate after an intentional visual change with `cd frontend && npx playwright test visual.spec.ts --update-snapshots`, then review the diff in the HTML report before committing. See the spec's header comment for why the shots are made deterministic (frozen clock, committed webfont, intercepted list/dashboard payloads).
 
+**Android static analysis (detekt)**
+
+- Run the Kotlin correctness/smell analyzer locally with `cd android && ./gradlew detekt` (shared config: [android/config/detekt/detekt.yml](android/config/detekt/detekt.yml)). detekt 2.x supports the JDK 25 build JVM the rest of the Android build uses, so no JDK downgrade is needed. Run it on any Android change before pushing — CI runs the same task in the `Android (Gradle)` job.
+- It is not part of `.githooks/pre-commit` because launching a Gradle build on every commit is too slow; that makes running it locally a deliberate step, not something the hook will catch for you.
+
 **Android E2E (instrumented, issue #238)**
 - The instrumented suite in [android/app/src/androidTest](android/app/src/androidTest) drives the *real* app (MainActivity + Hilt graph) against the *real* `docker-compose.test.yml` backend, on an emulator or a physical device — the Android counterpart to the web Playwright suite. It covers login → list → detail → edit → list refresh, the favorites flow (issue #212), archive/delete + the audit-undo round-trip, the FCM device-registration lifecycle (issue #481), and — `OfflineSyncE2eTest` (issue #479) — the offline outbox lifecycle: queue-while-offline → reconnect → exactly-one-server-record-per-entry, ambiguous-failure retry not duplicating (via the per-row `Idempotency-Key`), a stale contact link being dropped on reconnect (ADR-0009), cold-reopen durability of the encrypted mirror, a long offline period draining cleanly, and server-side deletions not leaving cache ghosts.
 - Start the test stack: `docker compose -f docker-compose.test.yml up -d --build`

@@ -331,6 +331,10 @@ needs running per worktree, not just once per clone.
   `cd backend && go run ./cmd/genmutationscope`, issue #1552).
 - **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
+- **Staged `android/` files:** no Gradle step in the hook (launching a build per commit is too
+  slow), but run `cd android && ./gradlew detekt` locally on any Kotlin change. detekt 2.x
+  supports the JDK 25 build JVM, so no JDK downgrade is needed; CI runs the same task in
+  `android-tests.yml`'s `Android (Gradle)` job.
 - **Always:** the docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
   `docscheck`, `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`) — CI runs these unconditionally too, since
   `docs/**` maps to nothing in `.github/filters.yaml`.
