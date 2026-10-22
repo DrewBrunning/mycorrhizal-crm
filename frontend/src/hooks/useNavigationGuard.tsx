@@ -37,8 +37,13 @@ export interface NavigationGuard {
   cancel: () => void;
 }
 
+// A function lets the decision be re-evaluated at navigation time (react-router
+// calls a BlockerFunction then), which is how a successful save can bypass the
+// guard it armed without waiting for a re-render.
+export type ShouldBlockNavigation = boolean | (() => boolean);
+
 interface NavigationGuardBridgeProps {
-  shouldBlock: boolean;
+  shouldBlock: ShouldBlockNavigation;
   onHandle: (handle: NavigationGuardHandle) => void;
   onBlockedChange: (blocked: boolean) => void;
 }
@@ -75,7 +80,7 @@ function NavigationGuardBridge({
   return null;
 }
 
-export function useNavigationGuard(shouldBlock: boolean): NavigationGuard {
+export function useNavigationGuard(shouldBlock: ShouldBlockNavigation): NavigationGuard {
   const isDataRouter = useContext(DataRouterContext) != null;
   const [blocked, setBlocked] = useState(false);
   const handleRef = useRef<NavigationGuardHandle | null>(null);

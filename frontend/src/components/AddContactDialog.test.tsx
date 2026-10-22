@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider, useNavigate } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
 import '../i18n/config';
@@ -531,4 +532,54 @@ test('phone, email, and Enter-to-add circle/tag edits all arm the discard guard'
 
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+});
+
+// Issue #1780 regression: the form is dirty with the first name that was just
+// submitted, and the parent navigates to the new contact. The discard guard
+// must not intercept that navigation -- otherwise the contact is created but
+// the user is left on /contacts with a "Discard unsaved changes?" dialog.
+test('navigates to the created contact even though the form was dirty', async () => {
+  vi.mocked(createContactRecord).mockResolvedValue({
+    id: 42,
+    uid: 'uid-42',
+    etag: '',
+    revision: 1,
+    card: {},
+    crm: {},
+  });
+
+  function AddContactRoute() {
+    const navigate = useNavigate();
+    return (
+      <AddContactDialog
+        open
+        onClose={vi.fn()}
+        onContactAdded={(contactId) => void navigate(`/contacts/${contactId}`)}
+        availableCircles={[]}
+        availableTags={[]}
+      />
+    );
+  }
+
+  const router = createMemoryRouter(
+    [
+      { path: '/contacts', element: <AddContactRoute /> },
+      { path: '/contacts/:id', element: <div>contact detail</div> },
+    ],
+    { initialEntries: ['/contacts'] },
+  );
+
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <RouterProvider router={router} />
+      </SnackbarProvider>
+    </DateFormatProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Grace' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(router.state.location.pathname).toBe('/contacts/42'));
+  expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
 });

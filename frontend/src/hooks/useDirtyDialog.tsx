@@ -17,6 +17,9 @@ export interface DirtyDialog {
   markDirty: () => void;
   // Call when the user has saved, so closing the success view doesn't prompt.
   clearDirty: () => void;
+  // Call immediately before an in-app navigation triggered by a successful
+  // save, so the just-armed navigation blocker does not intercept it.
+  allowNavigation: () => void;
   // Use as <AppDialog onClose> and as the Cancel button's onClick. Shows the
   // discard confirmation when dirty, otherwise closes immediately.
   requestClose: () => void;
@@ -44,9 +47,10 @@ export function useDirtyDialog(
   const markDirty = useCallback(() => setIsDirty(true), []);
   const clearDirty = useCallback(() => setIsDirty(false), []);
 
-  const { guardedClose, confirmDialogProps, navigationGuardElement } = useDiscardGuard(isDirty, {
-    onNavigationDiscard: options.onNavigationDiscard ?? onClose,
-  });
+  const { guardedClose, confirmDialogProps, navigationGuardElement, allowNavigation } =
+    useDiscardGuard(isDirty, {
+      onNavigationDiscard: options.onNavigationDiscard ?? onClose,
+    });
 
   const requestClose = useCallback(() => guardedClose(onClose), [guardedClose, onClose]);
 
@@ -54,6 +58,7 @@ export function useDirtyDialog(
     isDirty,
     markDirty,
     clearDirty,
+    allowNavigation,
     requestClose,
     guardElement: (
       <>

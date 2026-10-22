@@ -128,7 +128,10 @@ export default function AddContactDialog({
   // Issue #1780: Cancel/Escape, tab close, and in-app navigation all go
   // through the discard guard -- a half-typed contact is never dropped
   // silently.
-  const { markDirty, requestClose, guardElement } = useDirtyDialog(open, handleClose);
+  const { markDirty, clearDirty, allowNavigation, requestClose, guardElement } = useDirtyDialog(
+    open,
+    handleClose,
+  );
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     markDirty();
@@ -234,6 +237,11 @@ export default function AddContactDialog({
         }
       }
 
+      // The parent navigates to the new contact's detail page. That is an
+      // in-app navigation, and the form is dirty from the input that created
+      // it -- let it through instead of showing "Discard unsaved changes?".
+      clearDirty();
+      allowNavigation();
       onContactAdded(newRecord.id);
       showSuccess(t('contacts.add.success'));
       handleClose();
