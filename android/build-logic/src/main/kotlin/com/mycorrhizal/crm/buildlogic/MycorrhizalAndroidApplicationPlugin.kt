@@ -7,13 +7,13 @@ import org.gradle.kotlin.dsl.configure
 
 /**
  * Convention plugin for the Android application module (:app): applies the
- * android-application + kotlin-android + Compose compiler plugins and the
- * shared Android/JVM/test baseline, plus the Compose build feature flag.
+ * android-application + Compose compiler plugins and the shared Android/JVM/
+ * test baseline, plus the Compose build feature flag. Kotlin compilation comes
+ * from AGP 9 built-in Kotlin.
  */
 class MycorrhizalAndroidApplicationPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.apply("com.android.application")
-        target.pluginManager.apply("org.jetbrains.kotlin.android")
         target.pluginManager.apply("org.jetbrains.kotlin.plugin.compose")
 
         // Release CI (docker-publish.yml's build-android-apk job) stamps the real

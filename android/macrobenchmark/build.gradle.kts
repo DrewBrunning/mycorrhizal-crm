@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 /**
  * Issue #263: `:macrobenchmark` — an `androidx.benchmark.macro` module measuring
  * app cold/warm/hot startup ([StartupBenchmark]) and dashboard render/scroll
@@ -29,11 +27,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  */
 plugins {
     // No version: the Android Gradle Plugin (which carries `com.android.test`)
-    // and the Kotlin plugin are already on the build classpath via the
-    // `build-logic` included build, exactly as the `mycorrhizal.android.*`
-    // convention plugins apply `com.android.application` / kotlin unversioned.
+    // is already on the build classpath via the `build-logic` included build,
+    // exactly as the `mycorrhizal.android.*` convention plugins apply
+    // `com.android.application` unversioned. AGP 9's built-in Kotlin compiles
+    // this module's Kotlin sources; no separate kotlin-android plugin (and no
+    // explicit jvmTarget — it defaults to compileOptions.targetCompatibility).
     id("com.android.test")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -93,12 +92,6 @@ android {
 androidComponents {
     beforeVariants(selector().all()) {
         it.enable = it.buildType == "benchmark"
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

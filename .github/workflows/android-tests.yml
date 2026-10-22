@@ -121,7 +121,7 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 25
 
       # Issue #1262: the embedded server binary is built from backend/ at the
       # same commit. This MUST precede Set up Gradle / the first `./gradlew`
@@ -263,8 +263,9 @@ jobs:
 
       # Issue #358: detekt, the Kotlin correctness/smell analyzer
       # complementing CodeQL + mobsfscan + Android Lint (shared config:
-      # android/config/detekt/detekt.yml, style rules disabled). Requires
-      # JDK 17: detekt 1.23.x's JVM-version parser can't handle JDK 25.
+      # android/config/detekt/detekt.yml, style rules disabled). detekt 2.x
+      # supports the JDK 25 build JVM (issue #1858), so no JDK downgrade is
+      # needed anymore.
       - name: detekt
         working-directory: android
         run: ./gradlew detekt
@@ -390,7 +391,7 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 25
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -596,7 +597,7 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 25
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -757,7 +758,7 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 25
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -832,7 +833,7 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 25
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
