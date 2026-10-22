@@ -955,6 +955,11 @@ class ApiClient(
         // Issue #212: `?favorites=true` narrows to the caller's favorite
         // contacts only — the wire contract web #173 shipped.
         favorites: Boolean? = null,
+        // Issue #1762: the contact list's sort key ("updated_at" default,
+        // "name", or "created_at") and direction. Omitted leaves the server
+        // default.
+        sort: String? = null,
+        order: String? = null,
         vcardUids: List<String>? = null,
         // T17 change feed (issue #959): `?since=<opaque cursor>` returns every
         // row changed after the cursor — created, updated, AND soft-deleted
@@ -986,6 +991,8 @@ class ApiClient(
             circle?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle", it) }
             circleLegacy?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle_legacy", it) }
             favorites?.let { urlBuilder.addQueryParameter("favorites", it.toString()) }
+            sort?.let { urlBuilder.addQueryParameter("sort", it) }
+            order?.let { urlBuilder.addQueryParameter("order", it) }
         }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactsPage::class.java).fromJson(body)

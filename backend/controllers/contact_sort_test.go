@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -265,4 +266,121 @@ func TestGetContacts_NameSortRealMigratedSchema(t *testing.T) {
 	require.Len(t, items, 3)
 	assert.Equal(t, []string{"Eve", "Zoe", "Ada"}, firstnames(items),
 		"real-migrated-schema name sort must use the migrated sort_name column")
+}
+
+// TestGetContacts_CreatedAtSortOrdersByCreationTime pins issue #1762's
+// "recently added" order: created_at is a real sort key, newest-first under
+// order=desc, independent of later edits (which move updated_at but never
+// created_at).
+func TestGetContacts_CreatedAtSortOrdersByCreationTime(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	contacts := []models.Contact{
+		{UserID: user.ID, Firstname: "Oldest"},
+		{UserID: user.ID, Firstname: "Middle"},
+		{UserID: user.ID, Firstname: "Newest"},
+	}
+	for i := range contacts {
+		require.NoError(t, db.Create(&contacts[i]).Error)
+		require.NoError(t, db.Model(&contacts[i]).UpdateColumn("created_at", base.Add(time.Duration(i)*time.Hour)).Error)
+	}
+	// An edit moves updated_at but must not move created_at in this order.
+	require.NoError(t, db.Model(&contacts[0]).Update("firstname", "Oldest edited").Error)
+
+	desc, _ := sortPage(t, router, "sort=created_at&order=desc&limit=10")
+	require.Len(t, desc, 3)
+	assert.Equal(t, []string{"Newest", "Middle", "Oldest edited"}, firstnames(desc),
+		"recently-added order must follow created_at, not updated_at")
+
+	asc, _ := sortPage(t, router, "sort=created_at&order=asc&limit=10")
+	require.Len(t, asc, 3)
+	assert.Equal(t, []string{"Oldest edited", "Middle", "Newest"}, firstnames(asc))
+}
+
+// TestGetContacts_CreatedAtSortPagingIsTotal walks every page of a
+// created_at-sorted list, including a tie on the timestamp, and asserts each
+// row appears exactly once in (created_at, id) order.
+func TestGetContacts_CreatedAtSortPagingIsTotal(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+
+	base := time.Date(2026, 2, 1, 8, 0, 0, 0, time.UTC)
+	for i, name := range []string{"One", "Two", "Three", "Four"} {
+		c := models.Contact{UserID: user.ID, Firstname: name}
+		require.NoError(t, db.Create(&c).Error)
+		require.NoError(t, db.Model(&c).UpdateColumn("created_at", base.Add(time.Duration(i/2)*time.Hour)).Error) // pairs share a timestamp
+	}
+
+	var all []map[string]any
+	next := ""
+	for page := 0; ; page++ {
+		query := "sort=created_at&order=asc&limit=2"
+		if next != "" {
+			query += "&cursor=" + next
+		}
+		items, n := sortPage(t, router, query)
+		all = append(all, items...)
+		if n == "" {
+			break
+		}
+		next = n
+		require.Less(t, page, 10, "created_at pagination did not terminate")
+	}
+	require.Len(t, all, 4, "a created_at walk must return every row exactly once")
+	assert.Equal(t, []string{"One", "Two", "Three", "Four"}, firstnames(all))
+}
+
+// TestGetContacts_CreatedAtSortRejectsSince: ?since= is the updated_at feed,
+// so a created_at-ordered feed is rejected rather than silently reordered.
+func TestGetContacts_CreatedAtSortRejectsSince(t *testing.T) {
+	db, router := setupRouterWithRetention(t, 30)
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+
+	c := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&c).Error)
+	since := EncodeCursor(c.UpdatedAt, c.ID)
+
+	req, _ := http.NewRequest("GET", "/contacts?sort=created_at&since="+since, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+// TestGetContacts_CreatedAtSortRejectsCrossShapedCursor pins the same
+// opaque-cursor rule for the created_at sort: an updated_at cursor cannot be
+// used under it, and its own cursor cannot be used under the default or name
+// sort.
+func TestGetContacts_CreatedAtSortRejectsCrossShapedCursor(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+
+	c := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&c).Error)
+
+	timeCursor := EncodeCursor(c.UpdatedAt, c.ID)
+	req, _ := http.NewRequest("GET", "/contacts?sort=created_at&cursor="+timeCursor, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusBadRequest, w.Code, "an updated_at cursor must not be accepted under sort=created_at")
+
+	createdCursor := EncodeCreatedCursor(c.CreatedAt, c.ID)
+	req2, _ := http.NewRequest("GET", "/contacts?cursor="+createdCursor, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusBadRequest, w2.Code, "a created_at cursor must not be accepted under the default sort")
+
+	req3, _ := http.NewRequest("GET", "/contacts?sort=name&cursor="+createdCursor, nil)
+	w3 := httptest.NewRecorder()
+	router.ServeHTTP(w3, req3)
+	require.Equal(t, http.StatusBadRequest, w3.Code, "a created_at cursor must not be accepted under sort=name")
 }

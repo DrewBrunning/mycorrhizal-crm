@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
@@ -51,6 +52,7 @@ class ContactListViewModelTest {
         val contactRepository: ContactRepository,
         val apiClient: ApiClient,
         val authRepository: AuthRepository,
+        val appSettingsRepository: AppSettingsRepository,
     )
 
     /** Fresh repository + ApiClient mocks and ViewModel; stubs the cache stream the VM collects
@@ -67,6 +69,7 @@ class ContactListViewModelTest {
         val bulkRepository = mockk<BulkOperationRepository>()
         val tagRepository = mockk<TagRepository>()
         val authRepository = mockk<AuthRepository>()
+        val appSettingsRepository = mockk<AppSettingsRepository>()
         coEvery { repo.observeContacts() } returns emptyFlow()
         coEvery { repo.searchLocal(any()) } returns emptyList()
         coEvery { repo.syncContacts() } returns Result.success(Unit)
@@ -74,14 +77,135 @@ class ContactListViewModelTest {
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         coEvery { tagRepository.list() } returns Result.success(emptyList())
         every { authRepository.observeSession() } returns flowOf(SessionState(selfContactVCardUid = selfContactVCardUid))
-        val viewModel = ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository, authRepository, savedState)
-        return ListVmFixture(viewModel, repo, apiClient, authRepository)
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(AppSettingsRepository.CONTACT_SORT_NAME)
+        val viewModel = ContactListViewModel(
+            repo,
+            apiClient,
+            circleRepository,
+            bulkRepository,
+            tagRepository,
+            authRepository,
+            appSettingsRepository,
+            savedState,
+        )
+        return ListVmFixture(viewModel, repo, apiClient, authRepository, appSettingsRepository)
     }
+
+
+    // --- Issue #1762: sort control + persistence -----------------------------
+
+    @Test
+    fun `the list defaults to name-ascending and asks the server for it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val fixture = newViewModel()
+            val viewModel = fixture.viewModel
+            val contactRepository = fixture.contactRepository
+            coEvery {
+                contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc")
+            } returns Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+
+            advanceUntilIdle()
+
+            assertEquals(ContactSort.NAME, viewModel.uiState.value.sort)
+            coVerify {
+                contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc")
+            }
+        }
+
+    @Test
+    fun `a persisted sort is applied before the first page is fetched`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val contactRepository = mockk<ContactRepository>()
+            val apiClient = mockk<ApiClient>()
+            val circleRepository = mockk<CircleRepository>()
+            val bulkRepository = mockk<BulkOperationRepository>()
+            val tagRepository = mockk<TagRepository>()
+            val authRepository = mockk<AuthRepository>()
+            val appSettingsRepository = mockk<AppSettingsRepository>()
+            coEvery { contactRepository.observeContacts() } returns emptyFlow()
+            coEvery { contactRepository.searchLocal(any()) } returns emptyList()
+            coEvery { contactRepository.syncContacts() } returns Result.success(Unit)
+            coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+            coEvery { circleRepository.list() } returns Result.success(emptyList())
+            coEvery { tagRepository.list() } returns Result.success(emptyList())
+            every { authRepository.observeSession() } returns flowOf(SessionState())
+            every { appSettingsRepository.contactSortPreference() } returns
+                flowOf(AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED)
+            coEvery {
+                contactRepository.listContacts(
+                    cursor = null,
+                    limit = 50,
+                    search = null,
+                    sort = "created_at",
+                    order = "desc",
+                )
+            } returns Result.success(page(ContactSummary(id = 9, fn = "Newest")))
+            val viewModel = ContactListViewModel(
+                contactRepository,
+                apiClient,
+                circleRepository,
+                bulkRepository,
+                tagRepository,
+                authRepository,
+                appSettingsRepository,
+            )
+
+            advanceUntilIdle()
+
+            assertEquals(ContactSort.RECENTLY_ADDED, viewModel.uiState.value.sort)
+            coVerify {
+                contactRepository.listContacts(
+                    cursor = null,
+                    limit = 50,
+                    search = null,
+                    sort = "created_at",
+                    order = "desc",
+                )
+            }
+        }
+
+    @Test
+    fun `changing the sort reloads from the first page and persists the choice`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val fixture = newViewModel()
+            val viewModel = fixture.viewModel
+            val contactRepository = fixture.contactRepository
+            val appSettingsRepository = fixture.appSettingsRepository
+            coEvery { appSettingsRepository.setContactSortPreference(any()) } returns Unit
+            coEvery {
+                contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc")
+            } returns Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+            coEvery {
+                contactRepository.listContacts(
+                    cursor = null,
+                    limit = 50,
+                    search = null,
+                    sort = "created_at",
+                    order = "desc",
+                )
+            } returns Result.success(page(ContactSummary(id = 2, fn = "Newest")))
+
+            advanceUntilIdle()
+            viewModel.onSortChange(ContactSort.RECENTLY_ADDED)
+            advanceUntilIdle()
+
+            assertEquals(ContactSort.RECENTLY_ADDED, viewModel.uiState.value.sort)
+            coVerify { appSettingsRepository.setContactSortPreference(AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED) }
+            coVerify {
+                contactRepository.listContacts(
+                    cursor = null,
+                    limit = 50,
+                    search = null,
+                    sort = "created_at",
+                    order = "desc",
+                )
+            }
+        }
 
     @Test
     fun `initial load fetches the first page`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
 
         advanceUntilIdle()
@@ -95,12 +219,12 @@ class ContactListViewModelTest {
     @Test
     fun `refresh keeps the current rows visible while reloading`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
         advanceUntilIdle()
 
         // Suspend the reload so the in-flight state is observable.
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } coAnswers {
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } coAnswers {
             delay(1_000)
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
         }
@@ -121,7 +245,7 @@ class ContactListViewModelTest {
         // with the server's tombstones. A future refactor that drops this call
         // would silently reintroduce "deleted contacts linger offline".
         val (_, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
 
         advanceUntilIdle()
@@ -132,7 +256,7 @@ class ContactListViewModelTest {
     @Test
     fun `error state sets the display message`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.failure(ApiError.Server(500, "boom"))
 
         advanceUntilIdle()
@@ -145,7 +269,7 @@ class ContactListViewModelTest {
     @Test
     fun `401 error emits ForceLogout`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.failure(ApiError.Client(401, "Invalid token"))
 
         viewModel.events.test {
@@ -158,9 +282,9 @@ class ContactListViewModelTest {
     @Test
     fun `cursor pagination appends to the existing list`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
-        coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob"), nextCursor = null))
 
         advanceUntilIdle()
@@ -177,9 +301,9 @@ class ContactListViewModelTest {
     @Test
     fun `loadNextPage is a no-op while already loading`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
-        coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob"), nextCursor = null))
 
         advanceUntilIdle()
@@ -201,13 +325,13 @@ class ContactListViewModelTest {
             // cancellation, so it appended old-query rows onto the search results — and where
             // they overlapped, a duplicate id crashed the list.
             val (viewModel, contactRepository, _) = newViewModel()
-            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
                 Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
-            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } coAnswers {
+            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null, sort = "name", order = "asc") } coAnswers {
                 delay(5_000) // resolves after the search below has already replaced the list
                 Result.success(page(ContactSummary(id = 23, fn = "Zed"), nextCursor = null))
             }
-            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zed") } returns
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zed", sort = "name", order = "asc") } returns
                 Result.success(page(ContactSummary(id = 23, fn = "Zed")))
             advanceUntilIdle()
 
@@ -229,9 +353,9 @@ class ContactListViewModelTest {
             // Keyset pagination can re-serve a row whose sort key changed between page fetches
             // (renamed mid-scroll). The list is keyed by id, so a repeat would crash it.
             val (viewModel, contactRepository, _) = newViewModel()
-            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
                 Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
-            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
+            coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null, sort = "name", order = "asc") } returns
                 Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
             advanceUntilIdle()
 
@@ -253,11 +377,11 @@ class ContactListViewModelTest {
             // in-flight call and let the newer one win, the same way onSearchQueryChange already
             // does for searchJob.
             val (viewModel, contactRepository, _) = newViewModel()
-            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } coAnswers {
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } coAnswers {
                 delay(1_000) // still in flight when the search below arrives
                 Result.success(page(ContactSummary(id = 1, fn = "Stale")))
             }
-            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali", sort = "name", order = "asc") } returns
                 Result.success(page(ContactSummary(id = 2, fn = "Alicia")))
 
             // Let the ViewModel's init-time loadContacts() start and suspend mid-flight.
@@ -276,9 +400,9 @@ class ContactListViewModelTest {
     @Test
     fun `search query is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page())
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali", sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 3, fn = "Alicia")))
 
         advanceUntilIdle()
@@ -295,9 +419,9 @@ class ContactListViewModelTest {
     @Test
     fun `clearing the search reloads the full list`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "bob") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "bob", sort = "name", order = "asc") } returns
             Result.success(page())
 
         advanceUntilIdle()
@@ -313,7 +437,7 @@ class ContactListViewModelTest {
     @Test
     fun `clicking a contact emits navigation event`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 42, fn = "Alice")))
 
         viewModel.events.test {
@@ -328,7 +452,7 @@ class ContactListViewModelTest {
     @Test
     fun `network failure falls back to the local FTS cache for the query`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav", sort = "name", order = "asc") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { contactRepository.searchLocal("dav") } returns
             listOf(ContactSummary(id = 1, fn = "David Smith"))
@@ -343,7 +467,7 @@ class ContactListViewModelTest {
     @Test
     fun `network failure with no local matches leaves the list empty`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, _) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz", sort = "name", order = "asc") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { contactRepository.searchLocal("zzz") } returns emptyList()
 
@@ -356,7 +480,7 @@ class ContactListViewModelTest {
     @Test
     fun `a note match populates the cross-entity search result`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom", sort = "name", order = "asc") } returns
             Result.success(page())
         coEvery { apiClient.search("mom", null, null) } returns Result.success(
             SearchResult(
@@ -377,7 +501,7 @@ class ContactListViewModelTest {
     @Test
     fun `a one-character query fires no cross-entity search request`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "a") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "a", sort = "name", order = "asc") } returns
             Result.success(page())
 
         viewModel.onSearchQueryChange("a")
@@ -396,7 +520,7 @@ class ContactListViewModelTest {
         // cache, and the section is absent (SearchNotesActivitiesSection's `if (searchResult ==
         // null) return` renders nothing, never an error) rather than double-erroring.
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav", sort = "name", order = "asc") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { contactRepository.searchLocal("dav") } returns
             listOf(ContactSummary(id = 1, fn = "David Smith"))
@@ -414,7 +538,7 @@ class ContactListViewModelTest {
     @Test
     fun `an empty cross-entity result is not treated as an error`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz", sort = "name", order = "asc") } returns
             Result.success(page())
         coEvery { apiClient.search("zzz", null, null) } returns Result.success(SearchResult())
 
@@ -430,7 +554,7 @@ class ContactListViewModelTest {
     @Test
     fun `rapid typing debounces to one cross-entity search request`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = any()) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = any(), sort = "name", order = "asc") } returns
             Result.success(page())
 
         viewModel.onSearchQueryChange("d")
@@ -447,9 +571,9 @@ class ContactListViewModelTest {
     @Test
     fun `clearing the search also clears the cross-entity result`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom", sort = "name", order = "asc") } returns
             Result.success(page())
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page())
         coEvery { apiClient.search("mom", null, null) } returns
             Result.success(SearchResult(notes = listOf(SearchNoteHit(id = 1, content = "called mom"))))
@@ -469,9 +593,9 @@ class ContactListViewModelTest {
     fun `circle filter is forwarded to the repository and resets pagination`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         // First unfiltered page pages forward; the filtered request must start fresh (cursor null).
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends", sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob")))
 
         advanceUntilIdle()
@@ -486,15 +610,15 @@ class ContactListViewModelTest {
         assertEquals("Bob", state.contacts[0].fn)
         // A filter change is a fresh query, not a filtered page appended onto the previous list.
         assertNull(state.pagination.nextCursor)
-        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") }
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends", sort = "name", order = "asc") }
     }
 
     @Test
     fun `clearing the circle filter reloads the full list`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends", sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
 
         viewModel.onCircleFilterChange("Friends")
@@ -514,7 +638,7 @@ class ContactListViewModelTest {
     @Test
     fun `archived toggle is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice", archived = true)))
 
         viewModel.onIncludeArchivedChange(true)
@@ -523,7 +647,7 @@ class ContactListViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state.includeArchived)
         assertEquals(1, state.contacts.size)
-        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) }
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true, sort = "name", order = "asc") }
     }
 
     // --- Issue #212: favorites filter + star toggle (web #173) --------------
@@ -531,7 +655,7 @@ class ContactListViewModelTest {
     @Test
     fun `favorites toggle is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice", isFavorite = true)))
 
         viewModel.onIncludeFavoritesChange(true)
@@ -540,15 +664,15 @@ class ContactListViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state.includeFavorites)
         assertEquals(1, state.contacts.size)
-        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) }
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true, sort = "name", order = "asc") }
     }
 
     @Test
     fun `changing the favorites toggle clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true, sort = "name", order = "asc") } returns
             Result.success(page())
 
         advanceUntilIdle()
@@ -565,7 +689,7 @@ class ContactListViewModelTest {
     fun `toggleFavorite flips the star optimistically and calls the repository`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = false)
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(alice))
         coEvery { contactRepository.favoriteContact(1) } returns Result.success(Unit)
 
@@ -581,7 +705,7 @@ class ContactListViewModelTest {
     fun `toggleFavorite on a favorite calls unfavorite and keeps the flip`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = true)
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(alice))
         coEvery { contactRepository.unfavoriteContact(1) } returns Result.success(Unit)
 
@@ -597,7 +721,7 @@ class ContactListViewModelTest {
     fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = false)
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(alice))
         coEvery { contactRepository.favoriteContact(1) } returns Result.failure(ApiError.Server(500, "boom"))
 
@@ -614,7 +738,7 @@ class ContactListViewModelTest {
     @Test
     fun `state exposes the self contact vcard uid from the session`() = runTest(mainDispatcherRule.testDispatcher) {
         val fixture = newViewModel(selfContactVCardUid = "u1")
-        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
 
         advanceUntilIdle()
@@ -625,7 +749,7 @@ class ContactListViewModelTest {
     @Test
     fun `state has no self contact vcard uid when none is marked`() = runTest(mainDispatcherRule.testDispatcher) {
         val fixture = newViewModel(selfContactVCardUid = null)
-        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
 
         advanceUntilIdle()
@@ -637,7 +761,7 @@ class ContactListViewModelTest {
     fun `unfavoriting under the favorites filter removes the row`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = true)
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true, sort = "name", order = "asc") } returns
             Result.success(page(alice))
         coEvery { contactRepository.unfavoriteContact(1) } returns Result.success(Unit)
 
@@ -657,9 +781,9 @@ class ContactListViewModelTest {
     @Test
     fun `changing the circle filter clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice"), ContactSummary(id = 2, uid = "u2", fn = "Bob")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends", sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 3, uid = "u3", fn = "Carol")))
 
         advanceUntilIdle()
@@ -675,9 +799,9 @@ class ContactListViewModelTest {
     @Test
     fun `changing the archived toggle clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true, sort = "name", order = "asc") } returns
             Result.success(page())
 
         advanceUntilIdle()
@@ -693,9 +817,9 @@ class ContactListViewModelTest {
     @Test
     fun `changing the search query clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali", sort = "name", order = "asc") } returns
             Result.success(page())
 
         advanceUntilIdle()
@@ -713,7 +837,7 @@ class ContactListViewModelTest {
     @Test
     fun `select all selects every loaded contact`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
 
         advanceUntilIdle()
@@ -725,7 +849,7 @@ class ContactListViewModelTest {
     @Test
     fun `select all toggles off when every loaded contact is selected`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
 
         advanceUntilIdle()
@@ -738,7 +862,7 @@ class ContactListViewModelTest {
     @Test
     fun `select all preserves out-of-page selections while adding the loaded page`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
 
         advanceUntilIdle()
@@ -755,7 +879,7 @@ class ContactListViewModelTest {
     fun `a bulk action runs with the selected uids and clears the selection on success`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val bulkRepository = mockk<BulkOperationRepository>()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice"), ContactSummary(id = 2, uid = "u2", fn = "Bob")))
         coEvery {
             bulkRepository.run(match { it.action == "archive" && it.vcardUids.toSet() == setOf("u1", "u2") })
@@ -771,7 +895,17 @@ class ContactListViewModelTest {
         coEvery { tagRepository.list() } returns Result.success(emptyList())
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(AppSettingsRepository.CONTACT_SORT_NAME)
+        val vm = ContactListViewModel(
+            contactRepository,
+            apiClient,
+            circleRepository,
+            bulkRepository,
+            tagRepository,
+            authRepository,
+            appSettingsRepository,
+        )
 
         advanceUntilIdle()
         vm.toggleSelection(1)
@@ -787,7 +921,7 @@ class ContactListViewModelTest {
     fun `a failed bulk action leaves the selection untouched and surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
         val bulkRepository = mockk<BulkOperationRepository>()
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
         coEvery {
             bulkRepository.run(match { it.action == "archive" })
@@ -800,7 +934,17 @@ class ContactListViewModelTest {
         coEvery { tagRepository.list() } returns Result.success(emptyList())
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(AppSettingsRepository.CONTACT_SORT_NAME)
+        val vm = ContactListViewModel(
+            contactRepository,
+            apiClient,
+            circleRepository,
+            bulkRepository,
+            tagRepository,
+            authRepository,
+            appSettingsRepository,
+        )
 
         advanceUntilIdle()
         vm.toggleSelection(1)
@@ -816,7 +960,7 @@ class ContactListViewModelTest {
     fun `a search saved-state arg prefills the query and runs the scoped search`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository, apiClient) =
             newViewModel(savedState = SavedStateHandle(mapOf(ContactListViewModel.SEARCH_ARG to "ann")))
-        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ann") } returns
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ann", sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Ann")))
 
         advanceUntilIdle()
@@ -824,7 +968,7 @@ class ContactListViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("ann", state.searchQuery)
         assertEquals(listOf("Ann"), state.contacts.map { it.fn })
-        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = "ann") }
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = "ann", sort = "name", order = "asc") }
         coVerify { apiClient.search(any(), any(), any()) }
         // It filters the list; it never opens a result or selects anything.
         assertTrue(state.selected.isEmpty())
@@ -834,10 +978,10 @@ class ContactListViewModelTest {
     fun `an absent or blank search saved-state arg leaves the list unfiltered`() = runTest(mainDispatcherRule.testDispatcher) {
         val (blank, blankRepo, _) =
             newViewModel(savedState = SavedStateHandle(mapOf(ContactListViewModel.SEARCH_ARG to "  ")))
-        coEvery { blankRepo.listContacts(cursor = null, limit = 50, search = null) } returns
+        coEvery { blankRepo.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
         advanceUntilIdle()
         assertEquals("", blank.uiState.value.searchQuery)
-        coVerify { blankRepo.listContacts(cursor = null, limit = 50, search = null) }
+        coVerify { blankRepo.listContacts(cursor = null, limit = 50, search = null, sort = "name", order = "asc") }
     }
 }

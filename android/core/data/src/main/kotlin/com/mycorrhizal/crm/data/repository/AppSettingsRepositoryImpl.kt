@@ -36,6 +36,7 @@ class AppSettingsRepositoryImpl @Inject constructor(
 
     private val themeKey = stringPreferencesKey("theme_preference")
     private val languageKey = stringPreferencesKey("language_override")
+    private val contactSortKey = stringPreferencesKey("contact_sort_preference")
 
     @Volatile
     private var cachedTheme: String = AppSettingsRepository.THEME_SYSTEM
@@ -66,4 +67,13 @@ class AppSettingsRepositoryImpl @Inject constructor(
     }
 
     override fun currentThemePreference(): String = cachedTheme
+
+    override fun contactSortPreference(): Flow<String> =
+        context.appSettingsDataStore.data.map {
+            it[contactSortKey] ?: AppSettingsRepository.CONTACT_SORT_NAME
+        }
+
+    override suspend fun setContactSortPreference(preference: String) {
+        context.appSettingsDataStore.edit { it[contactSortKey] = preference }
+    }
 }

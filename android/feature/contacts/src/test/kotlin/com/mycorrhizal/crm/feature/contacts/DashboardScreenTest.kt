@@ -151,9 +151,10 @@ class DashboardScreenTest {
     fun `a populated dashboard renders all widget sections`() {
         setContent(populatedState())
 
-        // Favorites (issue #212): first section, nickname-preferred name.
+        // Favorites (issue #212): first section, the shared components-first
+        // display name (issue #1762) — not the old nickname-only variant.
         composeTestRule.onNodeWithText("Favorites").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Z Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Zebra \"Z\" Smith").assertIsDisplayed()
 
         // Overdue cadences.
         scrollTo("Overdue relationships")
@@ -188,9 +189,9 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithContentDescription("Complete reminder").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Skip reminder").assertIsDisplayed()
 
-        // Stay in touch: nickname-preferred name.
-        scrollTo("Rex Jones")
-        composeTestRule.onNodeWithText("Rex Jones").assertIsDisplayed()
+        // Stay in touch: the same display-name rule as the contact list.
+        scrollTo("Rex \"Rex\" Jones")
+        composeTestRule.onNodeWithText("Rex \"Rex\" Jones").assertIsDisplayed()
     }
 
     @Test
@@ -208,7 +209,7 @@ class DashboardScreenTest {
 
         setContent(state)
 
-        composeTestRule.onNodeWithText("Z Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Zebra \"Z\" Smith").assertIsDisplayed()
     }
 
     @Test
@@ -243,7 +244,7 @@ class DashboardScreenTest {
         var opened: Int? = null
         setContent(populatedState(), onOpenContact = { opened = it })
 
-        composeTestRule.onNodeWithText("Z Smith").performClick()
+        composeTestRule.onNodeWithText("Zebra \"Z\" Smith").performClick()
 
         assertEquals(9, opened)
     }
@@ -335,8 +336,8 @@ class DashboardScreenTest {
         var opened: Int? = null
         setContent(populatedState(), onOpenContact = { opened = it })
 
-        scrollTo("Rex Jones")
-        composeTestRule.onNodeWithText("Rex Jones").performClick()
+        scrollTo("Rex \"Rex\" Jones")
+        composeTestRule.onNodeWithText("Rex \"Rex\" Jones").performClick()
 
         assertEquals(4, opened)
     }

@@ -1060,9 +1060,10 @@ export interface GetContactsParams {
   limit?: number;
   search?: string;
   circle?: string;
-  // Sort key (T73): "updated_at" (default, the (updated_at, id) cursor) or
-  // "name" (the denormalized sort_name key, (sort_name, id) cursor).
-  sort?: 'updated_at' | 'name';
+  // Sort key (T73 / #1762): "updated_at" (default, the (updated_at, id)
+  // cursor), "name" (the denormalized sort_name key, (sort_name, id) cursor),
+  // or "created_at" (the (created_at, id) "recently added" cursor).
+  sort?: 'updated_at' | 'name' | 'created_at';
   // Direction for the chosen sort's cursor order ("desc" default server-side).
   order?: 'asc' | 'desc';
   includeArchived?: boolean;

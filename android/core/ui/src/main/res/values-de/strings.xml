@@ -114,6 +114,10 @@
 
     <!-- Kontaktliste -->
     <string name="contacts_search_hint">Kontakte suchen</string>
+    <string name="contacts_sort_label">Sortierung: %1$s</string>
+    <string name="contacts_sort_name">Name</string>
+    <string name="contacts_sort_recently_contacted">Zuletzt kontaktiert</string>
+    <string name="contacts_sort_recently_added">Zuletzt hinzugefügt</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_empty_body">Füge jemanden hinzu, um zu starten, oder importiere deine Kontakte.</string>
     <string name="contacts_new">Neuer Kontakt</string>

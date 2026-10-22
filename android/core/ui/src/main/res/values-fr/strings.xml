@@ -115,6 +115,10 @@
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Rechercher des contacts</string>
+    <string name="contacts_sort_label">Tri : %1$s</string>
+    <string name="contacts_sort_name">Nom</string>
+    <string name="contacts_sort_recently_contacted">Contactés récemment</string>
+    <string name="contacts_sort_recently_added">Ajoutés récemment</string>
     <string name="contacts_empty">Aucun contact pour le moment</string>
     <string name="contacts_empty_body">Ajoutez quelqu\'un pour commencer, ou importez vos contacts.</string>
     <string name="contacts_new">Nouveau contact</string>

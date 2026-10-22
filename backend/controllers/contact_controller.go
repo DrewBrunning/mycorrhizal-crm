@@ -30,6 +30,11 @@ var contactListColumns = append(append([]string{}, models.ContactSummaryColumns.
 // cursor (sort_name, id) needs it to build the response's next_cursor.
 var contactNameSortedColumns = append(append([]string{}, contactListColumns...), "sort_name")
 
+// contactCreatedSortedColumns additionally selects created_at — the
+// issue-#1762 "recently added" cursor (created_at, id) needs it to build the
+// response's next_cursor.
+var contactCreatedSortedColumns = append(append([]string{}, contactListColumns...), "created_at")
+
 // contactFeedColumns additionally selects deleted_at so the ?since= change
 // feed can mark tombstones (Unscoped rows whose deleted_at is set).
 var contactFeedColumns = append(append([]string{}, contactListColumns...), "deleted_at")
@@ -265,6 +270,7 @@ func GetContacts(c *gin.Context) {
 		return
 	}
 	nameSorted := sort == "name"
+	createdSorted := sort == "created_at"
 
 	// T103: ?has_contact_info=true|false narrows the list to contacts with at
 	// least one non-empty email, phone or URL (the contactInfoClause
@@ -300,8 +306,8 @@ func GetContacts(c *gin.Context) {
 	// Decided: sort=name combined with ?since= is a 400, NOT a silent
 	// fallback to (updated_at, id) — a sync client would believe it held a
 	// name-ordered feed and quietly diverge.
-	if params.Since && nameSorted {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "sort=name cannot be combined with since="))
+	if params.Since && (nameSorted || createdSorted) {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "sort=name and sort=created_at cannot be combined with since="))
 		return
 	}
 	if err := CheckFeedCursorAge(c, params); err != nil {
@@ -386,6 +392,8 @@ func GetContacts(c *gin.Context) {
 	columns := contactListColumns
 	if nameSorted {
 		columns = contactNameSortedColumns
+	} else if createdSorted {
+		columns = contactCreatedSortedColumns
 	}
 	var contacts []models.Contact
 	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).
@@ -476,6 +484,14 @@ func GetContacts(c *gin.Context) {
 		}
 		pred, t, idv := nameCursorPredicate("contacts", params.NameCursor, id, desc)
 		query = query.Where(pred, t, idv)
+	} else if params.CreatedCursor != nil {
+		id, ok := parseCursorID(params.CreatedCursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := createdAtCursorPredicate("contacts", params.CreatedCursor, id, desc)
+		query = query.Where(pred, t, idv)
 	} else if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
@@ -505,6 +521,8 @@ func GetContacts(c *gin.Context) {
 	// more.
 	if nameSorted {
 		query = nameCursorOrderBy(query, "contacts", desc)
+	} else if createdSorted {
+		query = createdAtCursorOrderBy(query, "contacts", desc)
 	} else {
 		query = cursorOrderBy(query, "contacts", desc)
 	}
@@ -519,6 +537,8 @@ func GetContacts(c *gin.Context) {
 		last := contacts[len(contacts)-1]
 		if nameSorted {
 			nextCursor = EncodeNameCursor(last.SortName, last.ID)
+		} else if createdSorted {
+			nextCursor = EncodeCreatedCursor(last.CreatedAt, last.ID)
 		} else {
 			nextCursor = EncodeCursor(last.UpdatedAt, last.ID)
 		}

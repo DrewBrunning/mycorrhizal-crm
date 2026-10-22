@@ -115,6 +115,10 @@
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Cerca contatti</string>
+    <string name="contacts_sort_label">Ordina: %1$s</string>
+    <string name="contacts_sort_name">Nome</string>
+    <string name="contacts_sort_recently_contacted">Contattati di recente</string>
+    <string name="contacts_sort_recently_added">Aggiunti di recente</string>
     <string name="contacts_empty">Ancora nessun contatto</string>
     <string name="contacts_empty_body">Aggiungi qualcuno per iniziare oppure importa i tuoi contatti.</string>
     <string name="contacts_new">Nuovo contatto</string>

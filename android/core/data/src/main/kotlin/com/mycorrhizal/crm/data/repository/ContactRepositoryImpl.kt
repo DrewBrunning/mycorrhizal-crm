@@ -53,6 +53,8 @@ class ContactRepositoryImpl @Inject constructor(
         circleLegacy: String?,
         includeArchived: Boolean?,
         favorites: Boolean?,
+        sort: String?,
+        order: String?,
     ): Result<ContactsPage> {
         val result = apiClient.listContacts(
             cursor = cursor,
@@ -62,6 +64,8 @@ class ContactRepositoryImpl @Inject constructor(
             circle = circle,
             circleLegacy = circleLegacy,
             favorites = favorites,
+            sort = sort,
+            order = order,
         )
         val page = result.getOrElse { error ->
             // Network failure: serve whatever is cached for this search term.

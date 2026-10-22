@@ -1632,10 +1632,11 @@ paths:
         deleted:true — for incremental sync. An exact `total` count is
         deliberately gone. The fields= partial-projection param is gone (Gap
         3) and has no effect if sent. A `sort` query (T73) selects the
-        cursor order: the default (updated_at, id) feed key, or a
-        name-ordered (sort_name, id) key — sort=name never combines with
-        ?since=, which is sync state (400), and any other sort value is a
-        400, not a silent fallback.
+        cursor order: the default (updated_at, id) feed key, a name-ordered
+        (sort_name, id) key, or a created_at-ordered (created_at, id) key for
+        "recently added" (issue #1762). sort=name and sort=created_at never
+        combine with ?since=, which is sync state (400), and any other sort
+        value is a 400, not a silent fallback.
       parameters:
         - name: sort
           in: query
@@ -1645,11 +1646,13 @@ paths:
             combined with the default order=desc. name orders by the
             denormalized sort_name key (lower(trim(lastname)) else
             lower(trim(firstname))), resume cursors taking the
-            (sort_name, id) shape. Valid only on ?cursor= browsing: ?since=
-            combined with sort=name is a 400, and an unrecognized value is a
-            400. Changing the default is the web control's call (T77), not
-            the server's.
-          schema: { type: string, enum: [updated_at, name], default: updated_at }
+            (sort_name, id) shape. created_at orders by the row's creation
+            time (newest first under order=desc), resume cursors taking the
+            time-based shape. Valid only on ?cursor= browsing: ?since=
+            combined with sort=name or sort=created_at is a 400, and an
+            unrecognized value is a 400. Changing the default is the web
+            control's call (T77), not the server's.
+          schema: { type: string, enum: [updated_at, name, created_at], default: updated_at }
         - name: cursor
           in: query
           description: >
@@ -1753,7 +1756,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "400":
-          description: Malformed cursor or since value, an unrecognized sort value, or sort=name combined with since.
+          description: Malformed cursor or since value, an unrecognized sort value, or sort=name/sort=created_at combined with since.
           content:
             application/json:
               schema:

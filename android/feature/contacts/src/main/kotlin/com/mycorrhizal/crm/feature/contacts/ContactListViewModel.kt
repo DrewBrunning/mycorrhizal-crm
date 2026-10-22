@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
@@ -29,6 +30,34 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** Issue #1762: the list's sort control. [apiSort]/[apiOrder] are the server's
+ * cursor-order keys; [preferenceValue] is what survives a restart. */
+enum class ContactSort(val preferenceValue: String, val apiSort: String, val apiOrder: String) {
+    NAME(
+        AppSettingsRepository.CONTACT_SORT_NAME,
+        apiSort = "name",
+        apiOrder = "asc",
+    ),
+    // The list contract has no last-interaction key; its most-recent-change
+    // order (updated_at) is the closest available "recently contacted" order.
+    RECENTLY_CONTACTED(
+        AppSettingsRepository.CONTACT_SORT_RECENTLY_CONTACTED,
+        apiSort = "updated_at",
+        apiOrder = "desc",
+    ),
+    RECENTLY_ADDED(
+        AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED,
+        apiSort = "created_at",
+        apiOrder = "desc",
+    ),
+    ;
+
+    companion object {
+        fun fromPreference(value: String?): ContactSort =
+            entries.firstOrNull { it.preferenceValue == value } ?: NAME
+    }
+}
 
 data class PaginationState(
     val nextCursor: String? = null,
@@ -72,6 +101,8 @@ data class ContactListUiState(
     val selected: Set<Int> = emptySet(),
     val isBulkRunning: Boolean = false,
     val bulkResult: BulkOperationResult? = null,
+    /** Issue #1762: name (default), recently contacted, or recently added. */
+    val sort: ContactSort = ContactSort.NAME,
 )
 
 sealed interface ContactListEvent {
@@ -93,6 +124,8 @@ class ContactListViewModel @Inject constructor(
     private val tagRepository: TagRepository,
     // T90 / issue #831: web parity for the "You" badge on the marked contact's row.
     private val authRepository: AuthRepository,
+    // Issue #1762: the sort choice persists across launches.
+    private val appSettingsRepository: AppSettingsRepository,
     // ADR 0029 §4 / issue #1269: `mycorrhizal://search?q=…` navigates to `contacts?search=…`.
     // Default so callers/tests that don't deep-link need not supply one.
     savedStateHandle: SavedStateHandle = SavedStateHandle(),
@@ -125,6 +158,15 @@ class ContactListViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
                 _uiState.update { it.copy(selfContactVCardUid = session.selfContactVCardUid) }
+            }
+        }
+        viewModelScope.launch {
+            appSettingsRepository.contactSortPreference().collect { saved ->
+                val next = ContactSort.fromPreference(saved)
+                if (next != _uiState.value.sort) {
+                    _uiState.update { it.copy(sort = next, selected = emptySet()) }
+                    loadContacts()
+                }
             }
         }
         loadCircles()
@@ -191,6 +233,8 @@ class ContactListViewModel @Inject constructor(
                 circle = _uiState.value.circleFilter,
                 includeArchived = _uiState.value.includeArchived.takeIf { it },
                 favorites = _uiState.value.includeFavorites.takeIf { it },
+                sort = _uiState.value.sort.apiSort,
+                order = _uiState.value.sort.apiOrder,
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -250,6 +294,8 @@ class ContactListViewModel @Inject constructor(
                 circle = state.circleFilter,
                 includeArchived = state.includeArchived.takeIf { it },
                 favorites = state.includeFavorites.takeIf { it },
+                sort = state.sort.apiSort,
+                order = state.sort.apiOrder,
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -294,6 +340,18 @@ class ContactListViewModel @Inject constructor(
                 onError = { /* The picker just shows empty; the list's own error already surfaces. */ },
             )
         }
+    }
+
+    // --- Issue #1762: sort ---------------------------------------------------
+
+    /** Changes the sort, clears the current selection (the visible set changes), and persists it. */
+    fun onSortChange(sort: ContactSort) {
+        if (sort == _uiState.value.sort) return
+        _uiState.update { it.copy(sort = sort, selected = emptySet()) }
+        viewModelScope.launch {
+            appSettingsRepository.setContactSortPreference(sort.preferenceValue)
+        }
+        loadContacts()
     }
 
     // --- M23: filters -------------------------------------------------------

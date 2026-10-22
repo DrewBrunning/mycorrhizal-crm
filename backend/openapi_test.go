@@ -159,13 +159,13 @@ func TestOpenAPISpecValidates(t *testing.T) {
 			t.Errorf("GET /contacts still documents %q, which T17 removed", gone)
 		}
 	}
-	// T73: sort= is documented with exactly the two accepted tokens.
+	// T73 / #1762: sort= is documented with exactly the three accepted tokens.
 	if sortParam := contactsGet.Parameters.GetByInAndName("query", "sort"); sortParam == nil {
 		t.Error("GET /contacts must document the T73 sort query param")
 	} else {
-		if enum := sortParam.Schema.Value.Enum; len(enum) != 2 ||
-			enum[0] != "updated_at" || enum[1] != "name" {
-			t.Errorf("sort param enum = %v, want [updated_at name]", enum)
+		if enum := sortParam.Schema.Value.Enum; len(enum) != 3 ||
+			enum[0] != "updated_at" || enum[1] != "name" || enum[2] != "created_at" {
+			t.Errorf("sort param enum = %v, want [updated_at name created_at]", enum)
 		}
 	}
 
