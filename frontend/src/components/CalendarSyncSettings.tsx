@@ -38,7 +38,7 @@ import {
   syncCalendarSubscription,
   updateCalendarSubscription,
 } from '../api/calendars';
-import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import { formatLocalDate, formatDateTime as formatLocalDateTime } from '../timeFormat';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 import LoadError from './LoadError';
 
@@ -227,7 +227,7 @@ export default function CalendarSyncSettings() {
     if (days === null) return t('settings.syncHealth.neverSucceeded');
     if (days >= 2) return t('settings.syncHealth.staleDays', { days });
     return t('settings.syncHealth.staleRecent', {
-      date: new Date(lastSuccessAt as string).toLocaleDateString(),
+      date: formatLocalDate(lastSuccessAt as string),
     });
   };
 

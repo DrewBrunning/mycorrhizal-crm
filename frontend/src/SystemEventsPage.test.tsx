@@ -9,8 +9,10 @@ import { getJobRunHealth, listJobRuns } from './api/jobRuns';
 import { getNotificationChannelHealth } from './api/notificationHealth';
 import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
+import { setDateFormatPreference } from './DateFormatProvider';
 import SystemEventsPage from './SystemEventsPage';
 import { lightTheme } from './theme';
+import { setTimeFormat } from './timeFormat';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
@@ -123,6 +125,26 @@ test('renders rows from the API newest-first as returned', async () => {
 
   await waitFor(() => expect(screen.getByText('Sync failed')).toBeInTheDocument());
   expect(screen.getByText('Job completed')).toBeInTheDocument();
+});
+
+// Issue #1789: System events timestamps use the Date format preference and no
+// seconds, matching the audit log.
+test('renders the timestamp in the preferred date format without seconds', async () => {
+  getMock.mockResolvedValue({
+    system_events: [ev({ id: 1, occurred_at: '2026-08-27T12:00:00' })],
+    total: 1,
+  });
+  setDateFormatPreference('us');
+  setTimeFormat('24h');
+  try {
+    renderPage();
+    const row = (await screen.findByText('Sync completed')).closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText('08/27/2026 12:00')).toBeInTheDocument();
+  } finally {
+    setDateFormatPreference('eu');
+    setTimeFormat('auto');
+  }
 });
 
 test('component filter is sent to the API', async () => {

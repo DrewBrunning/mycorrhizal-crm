@@ -13,13 +13,14 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { JobRunHealth, JobRunResult, JobRunStatus } from '../api/jobRuns';
 import { useJobRunHealth, useJobRunHistory } from '../hooks/useJobRuns';
-import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import { useFormatDateTime } from '../timeFormat';
 import PageHeader from './PageHeader';
 
 const STATUS_COLORS: Record<JobRunStatus, 'success' | 'error' | 'default'> = {
@@ -33,13 +34,6 @@ const RESULT_COLORS: Record<JobRunResult, 'success' | 'error' | 'warning'> = {
   failure: 'error',
   skipped: 'warning',
 };
-
-function formatDateTime(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return formatLocalDateTime(date);
-}
 
 function formatDuration(ms: number | null | undefined): string {
   if (ms == null) return '—';
@@ -117,8 +111,14 @@ export default function BackgroundJobsPanel() {
 
 function JobRow({ job }: { job: JobRunHealth }) {
   const { t, i18n } = useTranslation();
+  const formatDateTimeValue = useFormatDateTime();
   const [open, setOpen] = useState(false);
   const history = useJobRunHistory();
+
+  const formatDateTime = (iso: string | null): string | null => {
+    if (!iso) return null;
+    return formatDateTimeValue(iso);
+  };
 
   const failing = job.status === 'failing';
   const lastRunAbs = formatDateTime(job.last_run_at);
@@ -162,9 +162,11 @@ function JobRow({ job }: { job: JobRunHealth }) {
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <Typography variant="body2" sx={{ fontWeight: 600, flexGrow: 1 }}>
-          {t(`backgroundJobs.jobs.${job.job_name}`, job.job_name)}
-        </Typography>
+        <Tooltip title={job.job_name}>
+          <Typography variant="body2" component="span" sx={{ fontWeight: 600, flexGrow: 1 }}>
+            {t(`backgroundJobs.jobs.${job.job_name}`, job.job_name)}
+          </Typography>
+        </Tooltip>
 
         <Chip
           size="small"

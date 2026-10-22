@@ -7,7 +7,7 @@ import { type AuditEvent, getAuditEvents, undoAuditEvent } from './api/audit';
 import { ApiError } from './api/client';
 import { type Contact, getContactsByUid } from './api/contacts';
 import { SnackbarProvider } from './context/SnackbarContext';
-import { DateFormatProvider } from './DateFormatProvider';
+import { DateFormatProvider, setDateFormatPreference } from './DateFormatProvider';
 import { setTimeFormat } from './timeFormat';
 
 // T60. This codebase's vitest
@@ -308,4 +308,25 @@ test('below sm the audit log is a card list, not a 5-column table (#1788)', asyn
   expect(await screen.findByRole('dialog')).toBeInTheDocument();
   // A delete event has no Undo.
   expect(within(items[1]).queryByRole('button', { name: /undo/i })).not.toBeInTheDocument();
+});
+
+// Issue #1789: the date half follows the Date format preference (a European
+// user must not see mm/dd/yyyy), and seconds are never shown.
+test('audit timestamps follow the date preference and omit seconds', async () => {
+  auditGetMock.mockResolvedValue({
+    audit_events: [ev({ id: 7, created_at: '2026-08-02T15:30:00' })],
+    total: 1,
+  });
+  setDateFormatPreference('eu');
+  setTimeFormat('24h');
+  try {
+    const { container } = renderPage();
+    await screen.findAllByRole('button', { name: 'Undo' });
+    const stamp = container.querySelector('tbody tr td p')?.textContent ?? '';
+    expect(stamp).toBe('02.08.2026 15:30');
+    expect(stamp).not.toMatch(/\d{2}:\d{2}:\d{2}/);
+  } finally {
+    setDateFormatPreference('eu');
+    setTimeFormat('auto');
+  }
 });
