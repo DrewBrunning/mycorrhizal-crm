@@ -11,6 +11,8 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,6 +65,10 @@ export default function AddContactDialog({
 }: AddContactDialogProps) {
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnackbar();
+  const theme = useTheme();
+  // Issue #1781: this is a long form; a phone-sized modal leaves too little
+  // horizontal room for the circle/tag pickers.
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
@@ -248,7 +254,7 @@ export default function AddContactDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth fullScreen={fullScreen}>
       <DialogTitle>{t('contacts.add.title')}</DialogTitle>
       <DialogContent
         // 1.4.12 Text Spacing: the Circles section is the last form section
@@ -383,7 +389,14 @@ export default function AddContactDialog({
                 />
               ))}
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.selectCircle')}
@@ -402,6 +415,7 @@ export default function AddContactDialog({
                     }
                   }
                 }}
+                sx={{ minWidth: { xs: 0, sm: 200 } }}
               >
                 <MenuItem value="">{t('contacts.selectCircle')}</MenuItem>
                 {availableCircles
@@ -414,25 +428,27 @@ export default function AddContactDialog({
                     </MenuItem>
                   ))}
               </TextField>
-              <TextField
-                label={t('contacts.newCircle')}
-                value={newCircle}
-                onChange={(e) => {
-                  markDirty();
-                  setNewCircle(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCircle();
-                  }
-                }}
-                sx={{ minWidth: 150 }}
-              />
-              <Button onClick={handleAddCircle} variant="outlined">
-                {t('contacts.add.addCircle')}
-              </Button>
-            </Stack>
+              <Box sx={{ display: 'flex', gap: 1, minWidth: 0 }}>
+                <TextField
+                  label={t('contacts.newCircle')}
+                  value={newCircle}
+                  onChange={(e) => {
+                    markDirty();
+                    setNewCircle(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCircle();
+                    }
+                  }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+                <Button onClick={handleAddCircle} variant="outlined" sx={{ flexShrink: 0 }}>
+                  {t('contacts.add.addCircle')}
+                </Button>
+              </Box>
+            </Box>
           </Box>
           <Box>
             <Typography variant="subtitle2" gutterBottom>
@@ -448,7 +464,14 @@ export default function AddContactDialog({
                 />
               ))}
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.selectTag')}
@@ -467,6 +490,7 @@ export default function AddContactDialog({
                     }
                   }
                 }}
+                sx={{ minWidth: { xs: 0, sm: 200 } }}
               >
                 <MenuItem value="">{t('contacts.selectTag')}</MenuItem>
                 {availableTags
@@ -477,25 +501,27 @@ export default function AddContactDialog({
                     </MenuItem>
                   ))}
               </TextField>
-              <TextField
-                label={t('contacts.newTag')}
-                value={newTag}
-                onChange={(e) => {
-                  markDirty();
-                  setNewTag(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                sx={{ minWidth: 150 }}
-              />
-              <Button onClick={handleAddTag} variant="outlined">
-                {t('common.add')}
-              </Button>
-            </Stack>
+              <Box sx={{ display: 'flex', gap: 1, minWidth: 0 }}>
+                <TextField
+                  label={t('contacts.newTag')}
+                  value={newTag}
+                  onChange={(e) => {
+                    markDirty();
+                    setNewTag(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+                <Button onClick={handleAddTag} variant="outlined" sx={{ flexShrink: 0 }}>
+                  {t('common.add')}
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </Stack>
       </DialogContent>

@@ -467,6 +467,50 @@ test('focuses the First Name field on open', () => {
   expect(screen.getByLabelText('First Name *')).toHaveFocus();
 });
 
+// Issue #1781: below the `sm` breakpoint the long create-contact form takes the
+// whole screen instead of staying a cramped centred modal.
+test('renders full-screen below the sm breakpoint', () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width:599.95px'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+
+  try {
+    renderDialog();
+    expect(document.querySelector('.MuiDialog-paperFullScreen')).not.toBeNull();
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
+});
+
+test('stays a centred dialog at sm and above', () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+
+  try {
+    renderDialog();
+    expect(document.querySelector('.MuiDialog-paperFullScreen')).toBeNull();
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
+});
+
 // Issue #1780: every editable field/shortcut arms the discard guard -- not
 // just the first-name input the parameterised guard suite types into.
 test('phone, email, and Enter-to-add circle/tag edits all arm the discard guard', () => {
