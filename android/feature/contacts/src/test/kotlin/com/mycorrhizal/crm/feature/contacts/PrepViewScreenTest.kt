@@ -210,7 +210,7 @@ class PrepViewScreenTest {
 
         // Upcoming dates: yearless --12-25 renders as "25 December" in eu format.
         assertSection("Birthday 25.12.")
-        assertSection("in 5 day(s)")
+        assertSection("in 5 days")
     }
 
     @Test

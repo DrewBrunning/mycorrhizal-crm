@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.households
 
+import androidx.annotation.AnyRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -41,7 +42,7 @@ data class HouseholdsUiState(
     val error: String? = null,
     val isSaving: Boolean = false,
     val deletingId: String? = null,
-    @StringRes val infoRes: Int? = null,
+    @AnyRes val infoRes: Int? = null,
     val infoCount: Int? = null,
 )
 
@@ -392,7 +393,7 @@ class HouseholdDetailViewModel @Inject constructor(
                         it.copy(
                             isSuggestingRelationships = false,
                             infoRes = if (count > 0) {
-                                R.string.households_suggestions_generated
+                                R.plurals.households_suggestions_generated
                             } else {
                                 R.string.households_no_new_suggestions
                             },

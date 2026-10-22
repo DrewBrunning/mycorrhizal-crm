@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
@@ -449,7 +450,7 @@ private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String) {
         )
         AssistChip(
             onClick = {},
-            label = { Text(stringResource(R.string.prep_upcoming_dates_in_days, d.daysUntil)) },
+            label = { Text(pluralStringResource(R.plurals.prep_upcoming_dates_in_days, d.daysUntil, d.daysUntil)) },
         )
     }
 }

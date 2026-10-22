@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -164,7 +165,7 @@ fun DuplicatePairsScreenContent(
                     ) {
                         item(key = "count") {
                             Text(
-                                text = stringResource(R.string.duplicates_count, uiState.total),
+                                text = pluralStringResource(R.plurals.duplicates_count, uiState.total, uiState.total),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

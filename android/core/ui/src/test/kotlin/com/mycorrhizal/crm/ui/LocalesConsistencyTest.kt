@@ -43,6 +43,70 @@ class LocalesConsistencyTest {
         }
     }
 
+
+    /** Plural resource names in one values dir — the `<plurals>` half of the key set. */
+    private fun pluralKeysFor(valuesDir: String): Set<String> {
+        val text = contentFor(valuesDir)
+        return Regex("""<plurals name="([^"]+)""")
+            .findAll(text)
+            .map { it.groupValues[1] }
+            .toSet()
+    }
+
+    /** quantity name -> value for one plural resource, in one values dir. */
+    private fun pluralQuantitiesFor(valuesDir: String, name: String): Map<String, String> {
+        val text = contentFor(valuesDir)
+        val block = Regex("""<plurals name="${Regex.escape(name)}">([\s\S]*?)</plurals>""")
+            .find(text)
+            ?.groupValues
+            ?.get(1)
+            ?: error("Missing plural '$name' in $valuesDir")
+        return Regex("""<item quantity="([^"]+)">([\s\S]*?)</item>""")
+            .findAll(block)
+            .associate { it.groupValues[1] to it.groupValues[2] }
+    }
+
+    @Test
+    fun `all locale files carry the exact English plural key set`() {
+        val english = pluralKeysFor("values")
+        for (locale in locales) {
+            assertEquals(
+                "Locale $locale must have the same plural keys as English",
+                english,
+                pluralKeysFor(locale),
+            )
+        }
+    }
+
+    @Test
+    fun `every plural resource defines one and other in every locale`() {
+        for (locale in locales) {
+            for (name in pluralKeysFor(locale)) {
+                val quantities = pluralQuantitiesFor(locale, name)
+                assertTrue(
+                    "Locale $locale plural '$name' is missing the 'one' quantity",
+                    quantities.containsKey("one"),
+                )
+                assertTrue(
+                    "Locale $locale plural '$name' is missing the 'other' quantity",
+                    quantities.containsKey("other"),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `no locale file uses hand-rolled (s) pluralization`() {
+        for (locale in locales) {
+            val matches = Regex("""\(s\)""").findAll(contentFor(locale)).toList()
+            assertTrue(
+                "Locale $locale still contains hand-rolled '(s)' pluralization at " +
+                    matches.joinToString { it.range.toString() },
+                matches.isEmpty(),
+            )
+        }
+    }
+
     @Test
     fun `non-English locales are not byte-identical to English`() {
         val english = contentFor("values")

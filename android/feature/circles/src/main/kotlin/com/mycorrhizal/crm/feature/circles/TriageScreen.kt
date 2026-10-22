@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -139,7 +140,11 @@ internal fun ClassifyContent(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            text = stringResource(R.string.triage_contacts_count, item.contactCount),
+                            text = pluralStringResource(
+                                R.plurals.triage_contacts_count,
+                                item.contactCount,
+                                item.contactCount,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -166,12 +171,14 @@ internal fun ClassifyContent(
         }
         // Preview summary + Apply.
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val circleCount = state.circleItems.size
+            val tagCount = state.tagItems.size
             Text(
                 text = stringResource(
-                    R.string.triage_summary,
-                    state.circleItems.size,
-                    state.tagItems.size,
-                    state.skippedCount,
+                    R.string.triage_summary_format,
+                    pluralStringResource(R.plurals.triage_summary_circles, circleCount, circleCount),
+                    pluralStringResource(R.plurals.triage_summary_tags, tagCount, tagCount),
+                    stringResource(R.string.triage_summary_skipped, state.skippedCount),
                 ),
                 style = MaterialTheme.typography.bodyLarge,
             )
@@ -198,12 +205,36 @@ internal fun DoneContent(state: TriageUiState, onBack: () -> Unit) {
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
-            text = stringResource(R.string.triage_done_message, state.appliedCircles, state.appliedTags),
+            text = stringResource(
+                R.string.triage_done_message_format,
+                pluralStringResource(
+                    R.plurals.triage_done_circles,
+                    state.appliedCircles,
+                    state.appliedCircles,
+                ),
+                pluralStringResource(
+                    R.plurals.triage_done_tags,
+                    state.appliedTags,
+                    state.appliedTags,
+                ),
+            ),
             style = MaterialTheme.typography.bodyLarge,
         )
         if (state.failedItems > 0 || state.memberAddFailures > 0) {
             Text(
-                text = stringResource(R.string.triage_done_partial, state.failedItems, state.memberAddFailures),
+                text = stringResource(
+                    R.string.triage_done_partial_format,
+                    pluralStringResource(
+                        R.plurals.triage_done_partial_items,
+                        state.failedItems,
+                        state.failedItems,
+                    ),
+                    pluralStringResource(
+                        R.plurals.triage_done_partial_members,
+                        state.memberAddFailures,
+                        state.memberAddFailures,
+                    ),
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
             )

@@ -593,7 +593,7 @@ class HouseholdDetailViewModelTest {
         vm.suggestRelationships()
         advanceUntilIdle()
 
-        assertEquals(R.string.households_suggestions_generated, vm.uiState.value.infoRes)
+        assertEquals(R.plurals.households_suggestions_generated, vm.uiState.value.infoRes)
         assertEquals(1, vm.uiState.value.infoCount)
     }
 
@@ -844,7 +844,7 @@ class HouseholdDetailViewModelTest {
 
         vm.suggestRelationships()
         advanceUntilIdle()
-        assertEquals(R.string.households_suggestions_generated, vm.uiState.value.infoRes)
+        assertEquals(R.plurals.households_suggestions_generated, vm.uiState.value.infoRes)
 
         vm.onInfoShown()
         assertNull(vm.uiState.value.infoRes)

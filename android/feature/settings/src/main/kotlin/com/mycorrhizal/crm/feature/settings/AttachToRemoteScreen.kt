@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -135,7 +136,7 @@ fun AttachToRemoteScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissDiscard,
             title = { Text(stringResource(R.string.attach_discard_title)) },
-            text = { Text(stringResource(R.string.attach_discard_body, count)) },
+            text = { Text(pluralStringResource(R.plurals.attach_discard_body, count, count)) },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmDiscardAndFinish) {
                     Text(stringResource(R.string.attach_discard_confirm))
@@ -388,7 +389,7 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
         val lossCount = attachPreview.preview.lossReport.size
         if (lossCount > 0) {
             Text(
-                text = stringResource(R.string.attach_review_loss, lossCount),
+                text = pluralStringResource(R.plurals.attach_review_loss, lossCount, lossCount),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp).testTag("attach-loss"),
