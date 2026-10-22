@@ -27,6 +27,7 @@ import com.mycorrhizal.crm.model.network.DataDecayHealth
 import com.mycorrhizal.crm.model.network.DataDecayPolicy
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
+import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
@@ -280,6 +281,29 @@ class DashboardScreenTest {
 
         assertEquals("s1", dismissed)
         assertEquals(null, opened)
+    }
+
+    // Issue #1798: a target_behind suggestion localizes the tier and formats the
+    // last qualifying interaction instead of the org/title/address from→to text.
+    @Test
+    fun `a target_behind suggestion renders its label and formatted last-contact date`() {
+        val suggestion = ReachOutSuggestion(
+            id = "s2",
+            kind = ReachOutKind.TARGET_BEHIND,
+            oldValue = "close",
+            newValue = "2026-08-01T10:00:00Z",
+            contactId = 5L,
+            contactName = "Dana Prince",
+        )
+        setContent(populatedState().copy(reachOutSuggestions = listOf(suggestion)))
+
+        scrollTo("Reasons to reach out")
+
+        composeTestRule.onNodeWithText("Behind target").assertIsDisplayed()
+        val lastContact = DateFormat.formatTimestamp("2026-08-01T10:00:00Z", DateFormat.EU)
+        composeTestRule
+            .onNodeWithText("Behind your Close target · last contact $lastContact")
+            .assertIsDisplayed()
     }
 
     @Test

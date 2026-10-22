@@ -961,6 +961,9 @@
     "loadMore": "Mehr laden",
     "tryAgain": "Erneut versuchen",
     "none": "Keine",
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "clear": "Leeren",
     "copy": "Kopieren",
     "copied": "In die Zwischenablage kopiert",
     "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
@@ -3207,7 +3210,13 @@
       "db_integrity_check": "Datenbank-Integritätsprüfung",
       "restore_drill": "Backup-Wiederherstellungstest",
       "alert_eval": "Alarmauswertung",
-      "job_run_purge": "Laufverlauf bereinigen"
+      "job_run_purge": "Laufverlauf bereinigen",
+      "webhook_delivery_purge": "Webhook-Zustellungen bereinigen",
+      "idempotency_key_purge": "Idempotenzschlüssel bereinigen",
+      "session_purge": "Sitzungen bereinigen",
+      "storage_sample": "Speicherstand erfassen",
+      "search_index_rebuild": "Suchindex neu aufbauen",
+      "derived_columns_rebuild": "Abgeleitete Spalten neu aufbauen"
     }
   },
   "errorAggregation": {

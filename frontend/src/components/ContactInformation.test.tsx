@@ -133,6 +133,16 @@ test('hides the Contact subtitle when its fields are present but disabled', () =
   expect(screen.queryByText('Contact')).toBeNull();
 });
 
+// Issue #1789: a contact page must use one empty-value placeholder, not "-" for
+// Gender and "—" for Address.
+test('uses the same em-dash placeholder for empty Gender and Address', () => {
+  renderInformation();
+  expect(within(fieldRow('Gender')).getByText('—')).toBeInTheDocument();
+  expect(within(fieldRow('Address')).getByText('—')).toBeInTheDocument();
+  expect(within(fieldRow('Gender')).queryByText('-')).toBeNull();
+  expect(within(fieldRow('Address')).queryByText('-')).toBeNull();
+});
+
 test('hides the About subtitle when its fields are enabled but empty', () => {
   // The reverse trap: enabled in settings but nothing on the contact.
   renderInformation(

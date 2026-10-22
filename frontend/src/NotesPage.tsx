@@ -25,6 +25,7 @@ import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
+import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
@@ -39,10 +40,10 @@ import { handleError } from './utils/errorHandler';
 import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   useDocumentTitle(t('nav.notes'));
   const { announce } = useAnnouncer();
-  const { formatDate, getDatePlaceholder } = useDateFormat();
+  const { formatDate } = useDateFormat();
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
@@ -266,30 +267,16 @@ const NotesPage: React.FC = () => {
             variant="outlined"
             sx={{ flex: 1, minWidth: 200 }}
           />
-          <TextField
-            size="small"
+          <DateField
             label={t('notes.fromDate')}
-            type="date"
             value={fromDate}
-            onChange={(e) => handleFromDateChange(e.target.value)}
-            variant="outlined"
-            slotProps={{
-              inputLabel: { shrink: true },
-              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
-            }}
+            onChange={handleFromDateChange}
             sx={{ width: 160 }}
           />
-          <TextField
-            size="small"
+          <DateField
             label={t('notes.toDate')}
-            type="date"
             value={toDate}
-            onChange={(e) => handleToDateChange(e.target.value)}
-            variant="outlined"
-            slotProps={{
-              inputLabel: { shrink: true },
-              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
-            }}
+            onChange={handleToDateChange}
             sx={{ width: 160 }}
           />
         </Box>

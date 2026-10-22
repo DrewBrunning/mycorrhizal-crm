@@ -1,11 +1,18 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   autoFormatBirthdayInputWithFormat,
   calculateAgeFromBirthday,
+  DateFormatProvider,
   formatBirthdayForInputWithFormat,
   formatBirthdayWithFormat,
   formatDateWithFormat,
+  getDateFormat,
+  initializeDateFormatFromBackend,
   parseBirthdayInputWithFormat,
+  setDateFormatPreference,
+  subscribeDateFormat,
+  useDateFormat,
 } from './DateFormatProvider';
 import { useTimeZone } from './testSupport/timeZone';
 
@@ -309,5 +316,71 @@ describe('autoFormatBirthdayInputWithFormat', () => {
 
   test('strips a trailing ISO separator after deleting a digit', () => {
     expect(autoFormatBirthdayInputWithFormat('1990-', '1990-0', 'iso')).toBe('1990');
+  });
+});
+
+describe('the module-level date preference', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    setDateFormatPreference('eu');
+  });
+
+  test('persists a valid value and notifies subscribers', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeDateFormat(listener);
+    setDateFormatPreference('us');
+    expect(getDateFormat()).toBe('us');
+    expect(window.localStorage.getItem('dateFormat')).toBe('us');
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    setDateFormatPreference('us');
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
+    setDateFormatPreference('iso');
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  test('ignores a value outside the enum', () => {
+    setDateFormatPreference('us');
+    setDateFormatPreference('bogus' as never);
+    expect(getDateFormat()).toBe('us');
+  });
+
+  test('initializes from a backend value only when it is supported', () => {
+    initializeDateFormatFromBackend('ca');
+    expect(getDateFormat()).toBe('ca');
+    initializeDateFormatFromBackend('bogus');
+    initializeDateFormatFromBackend(undefined);
+    expect(getDateFormat()).toBe('ca');
+  });
+
+  test('reads storage, defaults to eu when absent, and survives a storage read failure', () => {
+    window.localStorage.setItem('dateFormat', 'ca');
+    expect(getDateFormat()).toBe('ca');
+
+    window.localStorage.removeItem('dateFormat');
+    expect(getDateFormat()).toBe('eu');
+
+    setDateFormatPreference('iso');
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    try {
+      expect(getDateFormat()).toBe('iso');
+    } finally {
+      getItem.mockRestore();
+    }
+  });
+
+  test('the provider follows a module-level change and exposes its setter', () => {
+    const { result } = renderHook(() => useDateFormat(), { wrapper: DateFormatProvider });
+    act(() => setDateFormatPreference('us'));
+    expect(result.current.dateFormat).toBe('us');
+    expect(result.current.formatDate('2026-01-15')).toBe('01/15/2026');
+
+    act(() => result.current.setDateFormat('iso'));
+    expect(getDateFormat()).toBe('iso');
+    expect(result.current.formatDate('2026-01-15')).toBe('2026-01-15');
   });
 });
