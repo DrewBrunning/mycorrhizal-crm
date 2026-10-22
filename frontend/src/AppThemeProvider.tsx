@@ -76,7 +76,9 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   const mode: 'light' | 'dark' =
     preference === 'system' ? (systemPrefersDark ? 'dark' : 'light') : preference;
-  const language = i18n.resolvedLanguage ?? i18n.language;
+  // `i18n.language` may carry a region (`de-DE`); muiLocaleFor reduces it to
+  // the base language and falls back to English for anything unsupported.
+  const language = i18n.language;
   // createTheme(base, locale) merges MUI's locale fragment into the base
   // theme. Recomputing when the language changes is what re-renders MUI's
   // built-in labels (issue #1787) instead of leaving them English.

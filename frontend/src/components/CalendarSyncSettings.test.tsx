@@ -272,3 +272,21 @@ test('terminal notice shows a staleness age when a past success exists', async (
   expect(screen.getByText(/no longer exists/i)).toBeInTheDocument();
   expect(screen.getByText(/Last successful sync: 40 days ago/)).toBeInTheDocument();
 });
+
+test('terminal notice shows a recent success as a date rather than "0 days ago"', async () => {
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Just synced',
+      last_success_at: oneHourAgo,
+      terminal_failure_at: '2026-07-01T00:00:00Z',
+      terminal_reason: 'remote-resource-deleted',
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Just synced')).toBeInTheDocument());
+  expect(
+    screen.getByText(`Last successful sync: ${new Date(oneHourAgo).toLocaleDateString()}`),
+  ).toBeInTheDocument();
+});

@@ -156,6 +156,24 @@ test('surfaces a terminal-failure notice (INT-04) with the actionable message an
   expect(screen.queryByText('Sync failed')).not.toBeInTheDocument();
 });
 
+test('terminal notice shows a recent success as a date rather than "0 days ago"', async () => {
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  vi.mocked(getContactSubscriptions).mockResolvedValue([
+    sub({
+      name: 'Just synced',
+      last_success_at: oneHourAgo,
+      terminal_failure_at: '2026-07-20T00:00:00Z',
+      terminal_reason: 'remote-resource-deleted',
+    }),
+  ]);
+  render(<ContactSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Just synced')).toBeInTheDocument());
+  expect(
+    screen.getByText(`Last successful sync: ${new Date(oneHourAgo).toLocaleDateString()}`),
+  ).toBeInTheDocument();
+});
+
 test('a never-succeeded terminal subscription says so', async () => {
   vi.mocked(getContactSubscriptions).mockResolvedValue([
     sub({

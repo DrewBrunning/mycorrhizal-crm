@@ -11,6 +11,7 @@ import i18n from './i18n/config';
 // fails on the visible label, not on an internal object shape.
 afterEach(async () => {
   cleanup();
+  window.localStorage.removeItem('themePreference');
   await i18n.changeLanguage('en');
 });
 
@@ -78,6 +79,23 @@ test('recreates the theme and MUI labels when the language changes', async () =>
 
   expect(await screen.findByText('Lignes par page :')).toBeInTheDocument();
   expect(screen.queryByText('Rows per page:')).not.toBeInTheDocument();
+});
+
+test('uses the dark theme when the stored preference is dark', async () => {
+  window.localStorage.setItem('themePreference', 'dark');
+
+  function ModeProbe() {
+    const theme = useTheme();
+    return <span data-testid="palette-mode">{theme.palette.mode}</span>;
+  }
+
+  render(
+    <AppThemeProvider>
+      <ModeProbe />
+    </AppThemeProvider>,
+  );
+
+  expect(await screen.findByTestId('palette-mode')).toHaveTextContent('dark');
 });
 
 test('an unsupported language falls back to English MUI labels', async () => {
