@@ -38,6 +38,7 @@ import {
   syncContactSubscription,
   updateContactSubscription,
 } from '../api/contactSubscriptions';
+import { formatDateTime as formatLocalDateTime } from '../timeFormat';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 
 // CardDAV address-book subscriptions. The CalDAV analog is CalendarSyncSettings;
@@ -193,7 +194,7 @@ export default function ContactSyncSettings() {
   const formatLastSync = (sub: ContactSubscription) => {
     if (!sub.last_synced_at) return t('settings.contactSync.neverSynced');
     return t('settings.contactSync.lastSynced', {
-      date: new Date(sub.last_synced_at).toLocaleString(),
+      date: formatLocalDateTime(new Date(sub.last_synced_at)),
     });
   };
 

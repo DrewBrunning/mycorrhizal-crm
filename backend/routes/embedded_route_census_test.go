@@ -190,6 +190,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"PATCH /api/v1/users/enabled-contact-fields",
 		"PATCH /api/v1/users/language",
 		"PATCH /api/v1/users/me/self-contact",
+		"PATCH /api/v1/users/time-format",
 		"POST /api/v1/activities",
 		"POST /api/v1/audit/:id/undo",
 		"POST /api/v1/cadence-policies",

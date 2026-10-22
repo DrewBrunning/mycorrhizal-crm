@@ -39,6 +39,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
@@ -125,12 +127,12 @@ fun NoteFormContent(
             minLines = 6,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        DateField(
             value = state.date,
             onValueChange = onDateChange,
-            label = { Text(stringResource(R.string.activity_date)) },
-            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
-            singleLine = true,
+            label = stringResource(R.string.note_date),
+            mode = DateFieldMode.DATE_TIME,
+            testTag = "note-date",
             modifier = Modifier.fillMaxWidth(),
         )
 

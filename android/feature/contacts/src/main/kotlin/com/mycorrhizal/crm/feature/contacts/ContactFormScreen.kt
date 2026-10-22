@@ -59,8 +59,10 @@ import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.components.AddressEditor
 import com.mycorrhizal.crm.ui.components.AddressGeocodeState
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 import com.mycorrhizal.crm.ui.components.EmailSpec
 import com.mycorrhizal.crm.ui.components.LinkSpec
@@ -552,12 +554,13 @@ fun ContactFormContent(
         }
 
         if (ContactFieldKey.BIRTHDAY in enabled) {
-            OutlinedTextField(
+            DateField(
                 value = state.birthday,
                 onValueChange = onBirthdayChange,
-                label = { Text(stringResource(R.string.contact_birthday)) },
-                placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
-                singleLine = true,
+                label = stringResource(R.string.contact_birthday),
+                mode = DateFieldMode.PARTIAL,
+                allowClear = true,
+                testTag = "contact-birthday",
                 modifier = Modifier.fillMaxWidth(),
             )
         }

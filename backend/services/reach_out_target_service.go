@@ -139,7 +139,6 @@ func detectTargetBehindForUser(ctx context.Context, db *gorm.DB, cfg config.Conf
 	}
 
 	created := 0
-	loc := cfg.GetReminderLocation()
 	for _, cand := range candidates {
 		if have[cand.contact.VCardUID][cand.key] {
 			continue
@@ -148,8 +147,11 @@ func detectTargetBehindForUser(ctx context.Context, db *gorm.DB, cfg config.Conf
 			Kind:     models.ReachOutKindTargetBehind,
 			OldValue: cand.key.tier,
 			NewValue: cand.key.last,
+			// The last-interaction date is a calendar day (ADR 0015 category
+			// 2): use its UTC date, never the reminder-zone conversion that
+			// pulls a west-of-UTC activity a day early (issue #1823).
 			ReminderMessage: fmt.Sprintf("Reach out — behind your %s target: %s (last interaction %s)",
-				cand.key.tier, displayContactName(cand.contact), cand.last.In(loc).Format("2006-01-02")),
+				cand.key.tier, displayContactName(cand.contact), interactionCalendarDay(cand.last).Format("2006-01-02")),
 		}
 		if err := createReachOutSuggestion(ctx, db, cfg, userID, cand.contact, 0, ch); err != nil {
 			return created, err

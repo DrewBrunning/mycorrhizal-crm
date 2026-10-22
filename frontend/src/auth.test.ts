@@ -6,6 +6,7 @@ import {
   loginUser,
   loginWithPasskey,
 } from './auth';
+import { getTimeFormat, setTimeFormat } from './timeFormat';
 import { requestOptionsWire, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 afterEach(() => {
@@ -154,6 +155,38 @@ describe('two-factor login', () => {
     expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').username).toBe('alice');
   });
 
+  // Issue #1830: the time-format preference rides the login response and is
+  // kept in step with /users/me, so a change made on another device lands here.
+  test('login returns time_format and /users/me syncs it into the local preference', async () => {
+    setTimeFormat('auto');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ language: 'en', date_format: 'eu', time_format: '24h' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, username: 'alice', is_admin: false, time_format: '24h' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const result = await loginUser('alice', 'correct-password');
+      expect(result.time_format).toBe('24h');
+      expect(getTimeFormat()).toBe('24h');
+
+      // An already-signed-in session re-reads it on the next /users/me.
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, username: 'alice', is_admin: false, time_format: '12h' }),
+      });
+      await fetchAndCacheUserInfo();
+      expect(getTimeFormat()).toBe('12h');
+    } finally {
+      setTimeFormat('auto');
+    }
+  });
+
   test('login2FA posts the code and caches user info on success', async () => {
     localStorage.removeItem(USER_INFO_KEY);
     const fetchMock = vi
@@ -246,7 +279,7 @@ describe('passkey login', () => {
     expect(fetchMock.mock.calls[1][0]).toContain('/webauthn/login/finish');
     expect(fetchMock.mock.calls[1][1].credentials).toBe('include');
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ id: 'cred-id' });
-    expect(result).toEqual({ language: 'de', date_format: 'eu' });
+    expect(result).toEqual({ language: 'de', date_format: 'eu', time_format: undefined });
     expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').user_id).toBe(5);
   });
 

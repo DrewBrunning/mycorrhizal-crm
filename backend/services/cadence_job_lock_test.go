@@ -204,3 +204,77 @@ func TestProcessOverdueCadencesSkipsDeceasedContact(t *testing.T) {
 	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)
 	assert.Zero(t, deliveries)
 }
+
+// TestProcessOverdueCadences_NextDueUsesActivityUTCDateAcrossZones covers
+// issue #1823 at the webhook boundary: a cadence.overdue payload for an
+// activity dated D carries next_due = D + interval and the same overdue_by in
+// a reminder zone west of UTC (where the old local conversion pulled D back a
+// day) and east of it.
+func TestProcessOverdueCadences_NextDueUsesActivityUTCDateAcrossZones(t *testing.T) {
+	cases := []struct {
+		name   string
+		zone   string
+		nowUTC time.Time
+	}{
+		// 09:00 CDT on 2026-10-31 == 14:00Z.
+		{"west of UTC", "America/Chicago", time.Date(2026, 10, 31, 14, 0, 0, 0, time.UTC)},
+		// 09:00 NZDT on 2026-10-31 == 2026-10-30 20:00Z.
+		{"east of UTC", "Pacific/Auckland", time.Date(2026, 10, 30, 20, 0, 0, 0, time.UTC)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			useFakeClock(t, tc.nowUTC)
+			db := setupCadenceJobTestDB(t)
+			cfg := config.Config{ReminderTimezone: tc.zone}
+
+			user := models.User{Username: "tz-tester", Password: "x", Email: "tz@example.com"}
+			require.NoError(t, db.Create(&user).Error)
+			contact := models.Contact{UserID: user.ID, Firstname: "Timezoned"}
+			require.NoError(t, db.Create(&contact).Error)
+			require.NoError(t, db.Create(&models.Activity{
+				UserID: user.ID, Title: "Last call",
+				Date:     time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC),
+				Type:     models.InteractionTypeCall,
+				Contacts: []models.Contact{contact},
+			}).Error)
+			require.NoError(t, db.Create(&models.CadencePolicy{
+				UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 7,
+			}).Error)
+
+			received := make(chan []byte, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, _ := io.ReadAll(r.Body)
+				received <- body
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+			require.NoError(t, db.Create(&models.Webhook{
+				UserID: user.ID, Name: "vikunja", URL: server.URL,
+				Events: []string{"cadence.overdue"}, Secret: "s", IsActive: true,
+			}).Error)
+
+			require.NotPanics(t, func() { ProcessOverdueCadences(db, cfg) })
+
+			var body []byte
+			select {
+			case body = <-received:
+			case <-time.After(3 * time.Second):
+				require.FailNow(t, "overdue cadence must trigger a cadence.overdue webhook")
+			}
+
+			var envelope struct {
+				Event string `json:"event"`
+				Data  struct {
+					OverdueBy int             `json:"overdue_by"`
+					NextDue   json.RawMessage `json:"next_due"`
+				} `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(body, &envelope))
+			assert.Equal(t, "cadence.overdue", envelope.Event)
+			assert.JSONEq(t, `"2026-10-29"`, string(envelope.Data.NextDue),
+				"activity 2026-10-22 + 7 days, regardless of %s", tc.zone)
+			assert.Equal(t, 2, envelope.Data.OverdueBy)
+		})
+	}
+}

@@ -1158,6 +1158,16 @@
         "eu-mmmm": "Européen complet (JJ MMMM, AAAA)"
       }
     },
+    "timeFormat": {
+      "title": "Format de l'heure",
+      "label": "Format de l'heure",
+      "description": "Choisissez si les heures s'affichent au format 12 heures ou 24 heures. « Automatique » utilise le style habituel de la langue de votre navigateur.",
+      "options": {
+        "auto": "Automatique (selon la langue)",
+        "12h": "12 heures (3:30 PM)",
+        "24h": "24 heures (15:30)"
+      }
+    },
     "theme": {
       "title": "Apparence",
       "label": "Thème",

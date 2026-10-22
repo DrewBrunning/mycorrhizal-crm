@@ -93,7 +93,6 @@ truncates to microseconds for deterministic chain hashing (`audit.go`).
 
 | Field | Where | Notes |
 |---|---|---|
-| `Activity.Date`, `Note.Date` | `backend/models/activity.go`, `note.go` | When the interaction / note happened. Full instant on the wire; the UI treats it as a date-time of the interaction |
 | `Gift.Date` | `backend/models/gift.go` | Nullable — an idea has no date |
 | `Reminder.RemindAt`, `.LastSent`; `ReminderCompletion.CompletedAt` | `backend/models/reminder.go` | Day-granular in intent: the write path zeroes the time-of-day (`reminder_controller.go:49-58`) and the daily job compares against a day boundary |
 | `ExternalActivity.OccurredAt` | `backend/models/external_activity.go` | Timeline sort key for an external system's event |
@@ -112,6 +111,7 @@ fields are instants of the same kind (pre-`SyncHealthFields` pass/fail clocks).
 
 | Field | Where | Precision |
 |---|---|---|
+| `Activity.Date`, `Note.Date` | `backend/models/activity.go`, `note.go` | `YYYY-MM-DD`, transported as RFC 3339 midnight UTC (`YYYY-MM-DDT00:00:00Z`) for wire compatibility. Only the UTC date is meaningful; calendar-day derivations never convert it into another zone. Reclassified from Category 1 by the 2026-10-21 amendment (issue #1823) |
 | `Contact.Birthday`, `Contact.Anniversary` | `backend/models/contact.go:90-96,137-139` | `YYYY-MM-DD` **or** year-less `--MM-DD` (partial). String by design (vCard BDAY grammar); validated by the `birthday` validator |
 | `ContactSummary.Birthday`, `Birthday` DTO, `BriefingUpcomingDate.Date` | `backend/models/contact_summary.go`, `dtos.go`, `briefing.go` | Mirrors of the flat columns; same forms |
 | `LifeEvent.Date` | `backend/models/life_event.go:141` | `contactmodel.PartialDate` (any of year/month/day). The neutral model's calendar-date type; no zone, only `calendarScale` |
@@ -268,6 +268,39 @@ A timestamp without an offset or zone on the import plane is read as **UTC** (`p
 `backend/services/import_source.go:699-721`). This is an assumption about the source, applied and
 written down here; if a source system ever turns out to have written wall time in its own zone, the fix
 is per-source metadata, not a global reinterpretation.
+
+## Amendment, 2026-10-21 (activity/note date is a calendar day, issue #1823)
+
+The original classification listed `Activity.Date` and `Note.Date` as instants. In practice every
+client writes the user's picked day as `00:00:00Z`, so treating it as an instant made the backend's
+calendar-day derivations depend on `REMINDER_TIMEZONE`: an activity dated the 22nd became
+`2026-10-21 19:00` in `America/Chicago`, pulling `next_due` and `overdue_by` a day early. The same
+day-shift reached the score's recency facet and the reach-out target reminder's displayed date.
+
+**Decision (option 1 from the issue): `Activity.Date` and `Note.Date` are Category 2 calendar
+days.** The wire format is unchanged — an RFC 3339 timestamp, still written at midnight UTC — but a
+calendar-day derivation takes the **UTC date of the stored value with no zone conversion**. Rule 4
+still decides which calendar day is "today"; it never reinterprets an interaction's stored day.
+Option 2 (clients send a real local-midnight instant) was rejected: it changes every client's write
+path, leaves existing rows ambiguous, and would need a migration. This decision needs none.
+
+Concretely, `interactionCalendarDay` (`backend/services/cadence_service.go`) is the one helper for
+the "which day does this interaction denote" question. It applies to:
+
+- cadence `next_due` / `overdue_by` (`deriveHealth`, both the single and batch paths, and therefore
+  `ListOverdueCadences` and the dashboard);
+- the score's recency facet (`DaysSinceLastInteraction`, `interactionDaysSince` in
+  `backend/services/contact_score_service.go`);
+- reach-out target suggestions (the same recency input, plus the companion reminder's displayed
+  "last interaction" date in `backend/services/reach_out_target_service.go`);
+- the `cadence.overdue` webhook payload, which carries `deriveHealth`'s `next_due` / `overdue_by`.
+
+**Data decay is deliberately not part of this rule.** Its baseline is `LastVerifiedAt` (the verify
+action's click time) or `CreatedAt` — real instants, not an interaction's date-only value — so it
+keeps the reminder-zone calendar day: verifying at 20:00 in Chicago is the 22nd even when UTC has
+already rolled over to the 23rd. The issue's decision text named data decay alongside the
+interaction-derived surfaces; this amendment records the correction. Pinned by
+`TestComputeDataDecayHealth_InstantBaselineUsesReminderZoneDay`.
 
 ## Code ↔ document citations
 

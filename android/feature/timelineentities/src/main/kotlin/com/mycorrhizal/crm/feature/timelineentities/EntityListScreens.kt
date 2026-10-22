@@ -85,8 +85,12 @@ import com.mycorrhizal.crm.model.registry.LifeEventTypes
 import com.mycorrhizal.crm.model.registry.PreferenceCategory
 import com.mycorrhizal.crm.model.registry.PreferenceCategoryConfig
 import com.mycorrhizal.crm.model.registry.PreferenceSection
+import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.model.util.Validators
+import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -470,6 +474,15 @@ internal fun LifeEventForm(
     val canRemind = month.toIntOrNull() != null && day.toIntOrNull() != null
     val typeEnabled = category.isNotEmpty()
     val canSave = type.isNotBlank()
+    // Keep year-only legacy values visible/round-trippable (partialFieldValue),
+    // rather than PartialDate.formatForEdit's blank-for-year-only contract.
+    val dateValue = DateFieldValue.partialFieldValue(
+        PartialDate(
+            year = year.toIntOrNull(),
+            month = month.toIntOrNull(),
+            day = day.toIntOrNull(),
+        ),
+    )
 
     val onSave: () -> Unit = {
         val date = PartialDate(
@@ -554,26 +567,20 @@ internal fun LifeEventForm(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = year, onValueChange = { year = it.filter { c -> c.isDigit() }.take(4) },
-                label = { Text(stringResource(R.string.life_events_year)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = month, onValueChange = { month = it.filter { c -> c.isDigit() }.take(2) },
-                label = { Text(stringResource(R.string.life_events_month)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = day, onValueChange = { day = it.filter { c -> c.isDigit() }.take(2) },
-                label = { Text(stringResource(R.string.life_events_day)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-            )
-        }
+        DateField(
+            value = dateValue,
+            onValueChange = { wire ->
+                val parsed = parsePartialDateForEdit(wire)
+                year = parsed.year?.toString() ?: ""
+                month = parsed.month?.toString() ?: ""
+                day = parsed.day?.toString() ?: ""
+            },
+            label = stringResource(R.string.life_events_date),
+            mode = DateFieldMode.PARTIAL,
+            allowClear = true,
+            testTag = "life-event-date",
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         OutlinedTextField(
             value = description, onValueChange = { description = it },
@@ -795,8 +802,7 @@ internal fun GiftForm(
     val currencyLengthValid = currency.isBlank() || currency.length == 3
     val normalizedUrl = normalizeHttpUrl(url)
     val urlValid = url.isBlank() || normalizedUrl != null
-    val dateValid = date.isBlank() || giftDateToIso(date) != null
-    val canSave = description.isNotBlank() && pairValid && currencyLengthValid && urlValid && dateValid
+    val canSave = description.isNotBlank() && pairValid && currencyLengthValid && urlValid
 
     val onSave: () -> Unit = {
             onConfirm(
@@ -852,12 +858,13 @@ internal fun GiftForm(
             label = { Text(stringResource(R.string.gifts_occasion)) }, singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            value = date, onValueChange = { date = it },
-            label = { Text(stringResource(R.string.gifts_date)) }, singleLine = true,
-            placeholder = { Text("2026-08-10") },
-            isError = !dateValid,
-            supportingText = if (dateValid) null else { { Text(stringResource(R.string.gifts_date_invalid)) } },
+        DateField(
+            value = date,
+            onValueChange = { date = it },
+            label = stringResource(R.string.gifts_date),
+            mode = DateFieldMode.DATE_ONLY,
+            allowClear = true,
+            testTag = "gift-date",
             modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

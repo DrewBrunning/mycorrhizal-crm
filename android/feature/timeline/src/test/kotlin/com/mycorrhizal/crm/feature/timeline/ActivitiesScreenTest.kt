@@ -29,7 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 // delete-confirmation (M17's rule), and participant chips, driving the real
 // ActivitiesScreenContent.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w480dp-h1200dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ActivitiesScreenTest {
 
@@ -159,25 +159,38 @@ class ActivitiesScreenTest {
     }
 
     @Test
-    fun `typing in the from date field invokes the callback`() {
+    fun `picking a from date invokes the callback`() {
         var from = ""
         setContent(
-            ActivitiesUiState(contactId = 5, activities = emptyList()),
+            ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"),
             onFromDateChange = { from = it },
         )
-        composeTestRule.onNodeWithTag("timeline-from-date").performTextInput("2026-08-01")
+        composeTestRule.onNodeWithTag("timeline-from-date").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-01", from)
     }
 
     @Test
-    fun `typing in the to date field invokes the callback`() {
+    fun `picking a to date invokes the callback`() {
         var to = ""
         setContent(
-            ActivitiesUiState(contactId = 5, activities = emptyList()),
+            ActivitiesUiState(contactId = 5, activities = emptyList(), toDate = "2026-08-10"),
             onToDateChange = { to = it },
         )
-        composeTestRule.onNodeWithTag("timeline-to-date").performTextInput("2026-08-10")
+        composeTestRule.onNodeWithTag("timeline-to-date").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-10", to)
+    }
+
+    @Test
+    fun `clearing the from date invokes the callback with an empty value`() {
+        var from: String? = null
+        setContent(
+            ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"),
+            onFromDateChange = { from = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Clear date").performClick()
+        assertEquals("", from)
     }
 
     @Test

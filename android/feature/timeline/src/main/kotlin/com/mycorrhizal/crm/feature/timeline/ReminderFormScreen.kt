@@ -8,55 +8,36 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +108,6 @@ fun ReminderFormContent(
     modifier: Modifier = Modifier,
 ) {
     var recurrenceExpanded by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -143,19 +123,13 @@ fun ReminderFormContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            // Editable ISO input value (YYYY-MM-DD), not a display string: kept as the stored calendar day.
-            value = state.remindAt.take(10),
+        DateField(
+            value = state.remindAt,
             onValueChange = onRemindAtChange,
-            label = { Text(stringResource(R.string.reminder_remind_at)) },
-            placeholder = { Text(stringResource(R.string.reminder_remind_at_hint)) },
-            singleLine = true,
-            readOnly = true,
-            trailingIcon = {
-                IconButton(onClick = { showDatePicker = true }) {
-                    Icon(Icons.Outlined.CalendarToday, contentDescription = stringResource(R.string.reminder_pick_date))
-                }
-            },
+            label = stringResource(R.string.reminder_remind_at),
+            mode = DateFieldMode.DATE_UTC_MIDNIGHT,
+            selectableFrom = LocalDate.now(),
+            testTag = "reminder-date",
             modifier = Modifier.fillMaxWidth(),
         )
         ExposedDropdownMenuBox(
@@ -219,14 +193,6 @@ fun ReminderFormContent(
             },
         )
     }
-
-    if (showDatePicker) {
-        ReminderDatePickerDialog(
-            initial = state.remindAt,
-            onCreate = { date -> onRemindAtChange(date); showDatePicker = false },
-            onDismiss = { showDatePicker = false },
-        )
-    }
 }
 
 /** Localized recurrence label resource, mirroring the web `reminders.recurrence.*` keys. */
@@ -238,56 +204,4 @@ private fun recurrenceLabelRes(token: String): Int = when (token) {
     ReminderRecurrence.SIX_MONTHS -> R.string.reminder_recurrence_six_months
     ReminderRecurrence.YEARLY -> R.string.reminder_recurrence_yearly
     else -> R.string.reminder_recurrence_once
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReminderDatePickerDialog(
-    initial: String,
-    onCreate: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val today = LocalDate.now()
-    // The calendar-day digits of the stored value, read as a UTC day for the picker (ADR 0015 rule 2).
-    val initialMillis = initial.take(10).let { part ->
-        if (part.length == 10) {
-            runCatching { LocalDate.parse(part).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()
-        } else {
-            null
-        }
-    }
-    val pickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialMillis,
-        // Web's `min: today` attribute lets an existing past date (an overdue
-        // reminder being edited) stay in the field but blocks *picking* a new
-        // date before today. Mirror that: the initial date is always selectable,
-        // anything else must be today or later.
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                if (utcTimeMillis == initialMillis) return true
-                return Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() >= today
-            }
-        },
-    )
-
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                pickerState.selectedDateMillis?.let { millis ->
-                    val date = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-                    onCreate("${date}T00:00:00Z")
-                }
-            }) {
-                Text(stringResource(R.string.action_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    ) {
-        DatePicker(state = pickerState, showModeToggle = false)
-    }
 }

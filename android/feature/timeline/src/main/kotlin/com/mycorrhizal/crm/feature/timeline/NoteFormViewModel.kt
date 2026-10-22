@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -58,21 +59,15 @@ data class NoteFormState(
 
     fun toInput(): NoteInput = NoteInput(
         content = content.trim(),
-        date = date.trim().ifBlank { null },
+        date = DateFieldValue.normalizeCalendarDayInstant(date),
         contactId = targetContactId,
     )
 
     fun validate(): Int? = when {
         !hasContent -> R.string.note_error_content
         date.isBlank() -> R.string.note_error_date_required
-        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) -> R.string.note_error_date
+        // DateField only emits a backend-accepted shape, so no format check.
         else -> null
-    }
-
-    companion object {
-        val ISO_DATETIME_REGEX = Regex(
-            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
-        )
     }
 }
 
