@@ -155,10 +155,14 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # published 20261020-r0 and pruned the old one from alpine/v3.24/main, so the
 # old pin became unsatisfiable (`apk add`: "breaks: world[...]") -- the same
 # pruned-pin class as libssl3 above.
+# 2026-10-22: bumped nginx 1.30.4-r1 -> 1.30.6-r0 for the same reason: Alpine
+# published 1.30.6-r0 and pruned 1.30.4-r1, so the old pin made the runtime
+# stage fail ("nginx-1.30.6-r0: breaks: world[nginx=1.30.4-r1]") and the
+# reproducibility job could not build the image at all (#1867).
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
     tzdata=2026e-r0 \
-    nginx=1.30.4-r1 \
+    nginx=1.30.6-r0 \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
     libc6-compat=1.1.0-r4 \
