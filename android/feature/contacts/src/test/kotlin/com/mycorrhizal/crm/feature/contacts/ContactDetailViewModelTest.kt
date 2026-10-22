@@ -23,10 +23,13 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.AttachmentListResponse
 import com.mycorrhizal.crm.model.network.CadencePolicy
+import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
@@ -746,6 +749,191 @@ class ContactDetailViewModelTest {
 
         assertFalse(vm.uiState.value.contact?.isFavorite!!)
         assertEquals("Server error (500)", vm.uiState.value.error)
+    }
+
+    // --- Issue #1798 (ADR 0023 amendment): target closeness + cadence offer ---
+
+    private fun closenessOffer() = CadencePolicyInput(entityId = "u5", targetIntervalDays = 30)
+
+    @Test
+    fun `setTargetCloseness sets the tier, surfaces the offer, and refreshes revision and score`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                revision = 3,
+                card = Card(name = Name(full = "Dana White")),
+                crm = CRMEnvelope(),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
+                ContactTargetClosenessResponse(
+                    contactId = 5,
+                    targetCloseness = "close",
+                    defaultIntervalDays = 30,
+                    cadencePolicyOffer = closenessOffer(),
+                ),
+            )
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.contact?.crm?.targetCloseness)
+
+            vm.setTargetCloseness("close")
+            advanceUntilIdle()
+
+            assertEquals("close", vm.uiState.value.contact?.crm?.targetCloseness)
+            assertEquals(closenessOffer(), vm.uiState.value.cadencePolicyOffer)
+            assertEquals(null, vm.uiState.value.error)
+            coVerify(exactly = 1) { contactRepository.setTargetCloseness(5, "close") }
+            coVerify(exactly = 0) { contactRepository.clearTargetCloseness(any()) }
+            // The write bumps the revision, so it is re-read (initial load + refresh).
+            coVerify(atLeast = 2) { contactRepository.getContact(5) }
+            // Target changes the interval Recency/Frequency normalize against.
+            coVerify(atLeast = 2) { contactScoreRepository.getScore(5) }
+        }
+
+    @Test
+    fun `setTargetCloseness null clears the target and the offer`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(targetCloseness = "close"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.clearTargetCloseness(5) } returns Result.success(
+            ContactTargetClosenessResponse(contactId = 5),
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.setTargetCloseness(null)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.contact?.crm?.targetCloseness)
+        assertNull(vm.uiState.value.cadencePolicyOffer)
+        coVerify(exactly = 1) { contactRepository.clearTargetCloseness(5) }
+        coVerify(exactly = 0) { contactRepository.setTargetCloseness(any(), any()) }
+    }
+
+    @Test
+    fun `a failed target write surfaces the error and leaves the contact untouched`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White")),
+                crm = CRMEnvelope(targetCloseness = "close"),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.setTargetCloseness(5, "casual") } returns
+                Result.failure(ApiError.Server(500, "boom"))
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.setTargetCloseness("casual")
+            advanceUntilIdle()
+
+            assertEquals("close", vm.uiState.value.contact?.crm?.targetCloseness)
+            assertNull(vm.uiState.value.cadencePolicyOffer)
+            assertEquals("Server error (500)", vm.uiState.value.error)
+            // Neither the revision re-read nor the score refetch happened.
+            coVerify(exactly = 1) { contactRepository.getContact(5) }
+            coVerify(exactly = 1) { contactScoreRepository.getScore(5) }
+        }
+
+    @Test
+    fun `acceptCadenceOffer creates the offered policy, clears it, and refetches the score`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White")),
+                crm = CRMEnvelope(targetCloseness = "close"),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
+                ContactTargetClosenessResponse(
+                    contactId = 5,
+                    targetCloseness = "close",
+                    defaultIntervalDays = 30,
+                    cadencePolicyOffer = closenessOffer(),
+                ),
+            )
+            coEvery { cadencePolicyRepository.create(closenessOffer()) } returns Result.success(
+                CadencePolicy(id = "c1", entityId = "u5", targetIntervalDays = 30),
+            )
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            vm.setTargetCloseness("close")
+            advanceUntilIdle()
+            assertEquals(closenessOffer(), vm.uiState.value.cadencePolicyOffer)
+
+            vm.acceptCadenceOffer()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { cadencePolicyRepository.create(closenessOffer()) }
+            assertNull(vm.uiState.value.cadencePolicyOffer)
+            assertEquals(null, vm.uiState.value.error)
+            // The resolved interval source flips, so the score is re-read.
+            coVerify(atLeast = 2) { contactScoreRepository.getScore(5) }
+        }
+
+    @Test
+    fun `a failed cadence offer keeps it so the user can retry`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(targetCloseness = "close"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
+            ContactTargetClosenessResponse(contactId = 5, targetCloseness = "close", cadencePolicyOffer = closenessOffer()),
+        )
+        coEvery { cadencePolicyRepository.create(any()) } returns
+            Result.failure(ApiError.Server(500, "boom"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.setTargetCloseness("close")
+        advanceUntilIdle()
+
+        vm.acceptCadenceOffer()
+        advanceUntilIdle()
+
+        assertEquals(closenessOffer(), vm.uiState.value.cadencePolicyOffer)
+        assertEquals("Server error (500)", vm.uiState.value.error)
+    }
+
+    @Test
+    fun `dismissCadenceOffer clears it without any request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(targetCloseness = "close"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
+            ContactTargetClosenessResponse(contactId = 5, targetCloseness = "close", cadencePolicyOffer = closenessOffer()),
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.setTargetCloseness("close")
+        advanceUntilIdle()
+        assertEquals(closenessOffer(), vm.uiState.value.cadencePolicyOffer)
+
+        vm.dismissCadenceOffer()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.cadencePolicyOffer)
+        coVerify(exactly = 0) { cadencePolicyRepository.create(any()) }
     }
 
     // --- Issue #832: Contact field settings (web parity) ---

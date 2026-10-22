@@ -41,9 +41,9 @@ describe('EditableField display mode', () => {
     expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
   });
 
-  test('shows a dash and no copy button when empty', () => {
+  test('shows the shared em-dash empty placeholder and no copy button when empty', () => {
     setup({ value: '' });
-    expect(screen.getByText('-')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument();
   });
 
@@ -54,13 +54,13 @@ describe('EditableField display mode', () => {
     expect(h.onEditStart).toHaveBeenCalledWith('nickname', '1990-05-04');
   });
 
-  test('appends the suffix to a non-empty value but not to the empty dash', () => {
+  test('appends the suffix to a non-empty value but not to the empty placeholder', () => {
     cleanup();
     setup({ value: '30', displaySuffix: 'years' });
     expect(screen.getByText('30 years')).toBeInTheDocument();
     cleanup();
     setup({ value: '', displaySuffix: 'years' });
-    expect(screen.getByText('-')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 
   test('the Edit pencil starts editing with the field name and the raw value', () => {

@@ -89,16 +89,6 @@ const DateFormatContext = createContext<DateFormatContextValue | undefined>(unde
 
 const DATE_FORMAT_STORAGE_KEY = 'dateFormat';
 
-// Initialize date format from backend value (called on login)
-export function initializeDateFormatFromBackend(dateFormat: string | undefined): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  if (dateFormat && SUPPORTED_DATE_FORMATS.includes(dateFormat as DateFormat)) {
-    window.localStorage.setItem(DATE_FORMAT_STORAGE_KEY, dateFormat as DateFormat);
-  }
-}
-
 const getStoredFormat = (): DateFormat => {
   if (typeof window === 'undefined') {
     return 'eu';
@@ -111,6 +101,60 @@ const getStoredFormat = (): DateFormat => {
 
   return 'eu';
 };
+
+// The date preference is mirrored into a module-level store (like timeFormat)
+// so the plain, non-component formatters (`formatEventWhen`, `formatDateTime`)
+// can read it without threading React context through every helper. The
+// provider subscribes, so a component that shows the preference still
+// re-renders when it changes.
+let currentDateFormat: DateFormat = getStoredFormat();
+const dateFormatListeners = new Set<() => void>();
+
+/**
+ * The current date-format preference (module-level read). Reads storage so a
+ * value set by a login/tests is visible without a provider; an unavailable
+ * storage falls back to the in-memory value (private mode).
+ */
+export function getDateFormat(): DateFormat {
+  if (typeof window === 'undefined') return currentDateFormat;
+  try {
+    const stored = window.localStorage.getItem(DATE_FORMAT_STORAGE_KEY);
+    if (stored && SUPPORTED_DATE_FORMATS.includes(stored as DateFormat)) {
+      return stored as DateFormat;
+    }
+    return 'eu';
+  } catch {
+    return currentDateFormat;
+  }
+}
+
+export function subscribeDateFormat(listener: () => void): () => void {
+  dateFormatListeners.add(listener);
+  return () => {
+    dateFormatListeners.delete(listener);
+  };
+}
+
+/** Apply a preference, persist it, and notify subscribers. */
+export function setDateFormatPreference(dateFormat: DateFormat): void {
+  if (!SUPPORTED_DATE_FORMATS.includes(dateFormat)) return;
+  currentDateFormat = dateFormat;
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(DATE_FORMAT_STORAGE_KEY, dateFormat);
+    } catch {
+      // Storage unavailable (private mode): the in-memory value still applies.
+    }
+  }
+  for (const listener of dateFormatListeners) listener();
+}
+
+// Initialize date format from backend value (called on login)
+export function initializeDateFormatFromBackend(dateFormat: string | undefined): void {
+  if (dateFormat && SUPPORTED_DATE_FORMATS.includes(dateFormat as DateFormat)) {
+    setDateFormatPreference(dateFormat as DateFormat);
+  }
+}
 
 /**
  * Calculate age from a birthday string (YYYY-MM-DD or --MM-DD)
@@ -527,15 +571,22 @@ export function autoFormatBirthdayInputWithFormat(
 }
 
 export function DateFormatProvider({ children }: { children: ReactNode }) {
-  const [dateFormat, setDateFormat] = useState<DateFormat>(() => getStoredFormat());
+  const [dateFormat, setDateFormatState] = useState<DateFormat>(() => getDateFormat());
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
+  // Keep the provider in sync with a change made outside it (initialize on
+  // login, a test setting the module value directly).
+  useEffect(
+    () =>
+      subscribeDateFormat(() => {
+        setDateFormatState(getDateFormat());
+      }),
+    [],
+  );
 
-    window.localStorage.setItem(DATE_FORMAT_STORAGE_KEY, dateFormat);
-  }, [dateFormat]);
+  const setDateFormat = useCallback((format: DateFormat) => {
+    setDateFormatPreference(format);
+    setDateFormatState(getDateFormat());
+  }, []);
 
   const formatDate = useCallback(
     (dateString: string) => formatDateWithFormat(dateString, dateFormat),
@@ -633,6 +684,7 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
     }),
     [
       dateFormat,
+      setDateFormat,
       formatDate,
       formatBirthday,
       formatBirthdayForInput,

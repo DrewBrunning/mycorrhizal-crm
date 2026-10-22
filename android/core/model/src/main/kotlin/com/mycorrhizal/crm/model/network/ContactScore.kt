@@ -33,6 +33,29 @@ data class ContactScoreResponse(
     val ambient: Boolean = false,
     /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
     @Json(name = "ambient_reason") val ambientReason: String? = null,
+    /**
+     * Issue #1798 (ADR 0023 amendment): how the contact is doing against its
+     * user-set target closeness. Always present on current servers and null
+     * when the contact has no target.
+     */
+    val target: ContactScoreTarget? = null,
+)
+
+/**
+ * The target-closeness status of a contact, mirroring backend
+ * `models.ContactScoreTarget` (issue #1796). [status] is one of
+ * [TargetStatus.ON_TRACK]/[TargetStatus.DRIFTING]/[TargetStatus.BEHIND];
+ * [intervalSource] is "cadence_policy" or "target_tier". [reason] is the
+ * server's plain-language explanation, rendered verbatim.
+ */
+@JsonClass(generateAdapter = true)
+data class ContactScoreTarget(
+    val tier: String = "",
+    val status: String = "",
+    val value: Double = 0.0,
+    @Json(name = "interval_days") val intervalDays: Int = 0,
+    @Json(name = "interval_source") val intervalSource: String = "",
+    val reason: String = "",
 )
 
 /** `ambient_reason`: a current member of a household the user's self-contact is also in. */

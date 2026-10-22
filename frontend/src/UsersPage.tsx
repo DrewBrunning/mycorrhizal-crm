@@ -48,6 +48,7 @@ import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { formatLocalDate } from './timeFormat';
 import type { User, UserCreateInput, UserUpdateInput } from './types';
 
 export default function UsersPage() {
@@ -140,9 +141,7 @@ export default function UsersPage() {
     setPage(0);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  const formatDate = (dateString: string) => formatLocalDate(dateString);
 
   // Create handlers
   const handleCreateClick = () => {

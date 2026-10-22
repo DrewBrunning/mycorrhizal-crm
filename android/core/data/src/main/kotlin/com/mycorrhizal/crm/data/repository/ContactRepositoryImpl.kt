@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
 import com.mycorrhizal.crm.model.network.ContactsPage as NetworkContactsPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -272,6 +273,17 @@ class ContactRepositoryImpl @Inject constructor(
         if (result.isSuccess) dao.setFavorite(id, false)
         return result
     }
+
+    // Issue #1798: target closeness goes through its own routes; no cache
+    // write — the detail screen reloads the record after a successful write.
+
+    override suspend fun setTargetCloseness(
+        id: Int,
+        tier: String,
+    ): Result<ContactTargetClosenessResponse> = apiClient.setTargetCloseness(id, tier)
+
+    override suspend fun clearTargetCloseness(id: Int): Result<ContactTargetClosenessResponse> =
+        apiClient.clearTargetCloseness(id)
 
     override suspend fun exportContactVcf(vcardUid: String, version: Int?): Result<ByteArray> =
         apiClient.exportContactVcf(vcardUid, version)
