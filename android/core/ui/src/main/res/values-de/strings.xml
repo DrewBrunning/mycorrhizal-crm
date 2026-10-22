@@ -33,6 +33,8 @@
     <string name="nav_group_people">Personen</string>
     <string name="nav_group_interactions">Interaktionen</string>
     <string name="nav_group_data_admin">Daten &amp; Verwaltung</string>
+    <!-- Issue #1776: the rail's overflow entry, which opens the full drawer. -->
+    <string name="nav_more">Mehr</string>
     <string name="nav_notes_unassigned">Nicht zugeordnete Notizen</string>
     <string name="nav_header_description">Angemeldet als %1$s auf %2$s</string>
     <string name="nav_header_action">Server öffnen</string>

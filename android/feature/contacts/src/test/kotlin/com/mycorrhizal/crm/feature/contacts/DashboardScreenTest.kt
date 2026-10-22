@@ -193,6 +193,30 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Rex Jones").assertIsDisplayed()
     }
 
+    // Issue #1776: at Expanded width the dashboard is two columns, not one 840dp stack.
+    @Test
+    @Config(qualifiers = "w1000dp-h800dp")
+    fun `expanded width splits the dashboard into two populated columns`() {
+        setContent(populatedState())
+
+        composeTestRule.onNodeWithTag("dashboard-column-one").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dashboard-column-two").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dashboard-list").assertDoesNotExist()
+        // Column one carries favorites/overdue/reach-out; column two birthdays/reminders/stay-in-touch.
+        composeTestRule.onNodeWithText("Favorites").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice Wonder").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w700dp-h900dp")
+    fun `medium width keeps the dashboard in one column`() {
+        setContent(populatedState())
+
+        composeTestRule.onNodeWithTag("dashboard-list").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dashboard-column-one").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("dashboard-column-two").assertDoesNotExist()
+    }
+
     @Test
     fun `a favorite that also shows up in random contacts does not crash on a duplicate lazy key`() {
         // All five widget sections share one LazyColumn (DashboardContent),

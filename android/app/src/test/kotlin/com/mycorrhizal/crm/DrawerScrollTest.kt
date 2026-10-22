@@ -113,11 +113,11 @@ class DrawerScrollTest {
         assertEquals("every drawer route is tappable in order", allRoutes, clicked)
     }
 
-    // The expanded-width rail pins the primary set and scrolls the secondary set;
-    // pin that it stays reachable (and un-squeezed) at a short height.
+    // Issue #1776: the rail carries only the primary set + More, so every one of
+    // them must stay reachable (and un-squeezed) even on a short window.
     @Test
     @Config(qualifiers = "w1000dp-h480dp")
-    fun `the navigation rail keeps the last destination reachable on a short window`() {
+    fun `the navigation rail keeps every primary destination and More visible on a short window`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 androidx.compose.foundation.layout.Box {
@@ -133,7 +133,9 @@ class DrawerScrollTest {
                 }
             }
         }
-        composeTestRule.onNodeWithTag("rail-settings").performScrollTo()
-        composeTestRule.onNodeWithTag("rail-settings").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        (railDestinations.map { it.route } + "more").forEach { route ->
+            composeTestRule.onNodeWithTag("rail-$route")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        }
     }
 }

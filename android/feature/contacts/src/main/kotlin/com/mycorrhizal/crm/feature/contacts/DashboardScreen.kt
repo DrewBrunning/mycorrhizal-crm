@@ -4,9 +4,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -175,6 +177,14 @@ fun DashboardScreen(
 }
 
 /**
+ * Issue #1776: at an Expanded-width single pane the dashboard splits into two
+ * columns (matching the web dashboard's columns) instead of one 840dp-wide
+ * stack. Medium width keeps one column; the split threshold is the content
+ * max-width the host applies to a single pane.
+ */
+internal val DashboardTwoColumnMinWidth = 840.dp
+
+/**
  * The dashboard's widget sections, extracted from [DashboardScreen] so the
  * widget rendering (favorites block included — issue #212) can be tested
  * without Hilt. Pure render of a
@@ -193,12 +203,11 @@ internal fun DashboardContent(
     onDismissBackupReminder: () -> Unit = {},
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
+    val onSkipRequested: (DashboardReminder) -> Unit = { pendingSkip = it }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().testTag("dashboard-list"),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    // The top block is column one at Expanded and the first half of the single
+    // column otherwise. Extracted so both layouts render the identical widgets.
+    fun LazyListScope.topSections() {
         if (state.showBackupReminder) {
             item(key = dashboardKey("backup", "reminder")) {
                 BackupReminderBanner(onBackUpNow = onBackUpNow, onDismiss = onDismissBackupReminder)
@@ -263,6 +272,9 @@ internal fun DashboardContent(
             }
             dashboardTruncationCaption("reach-out", state.reachOutSuggestions.size, state.totals.reachOutSuggestions)
         }
+    }
+
+    fun LazyListScope.bottomSections() {
         item { DashboardSectionHeader(stringResource(R.string.dashboard_birthdays), Icons.Outlined.Cake) }
         if (state.birthdays.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_birthdays)) }
@@ -284,7 +296,7 @@ internal fun DashboardContent(
                     dateFormat = dateFormat,
                     isCompleting = state.completingId == reminder.id,
                     onComplete = { onCompleteReminder(reminder.id, false) },
-                    onSkip = { pendingSkip = reminder },
+                    onSkip = { onSkipRequested(reminder) },
                     onClick = { reminder.contactId?.takeIf { it > 0 }?.let(onOpenContact) },
                 )
             }
@@ -296,6 +308,36 @@ internal fun DashboardContent(
         } else {
             items(state.randomContacts, key = { dashboardKey("random", it.id) }) { contact ->
                 RandomContactRow(contact, onClick = { onOpenContact(contact.id) })
+            }
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (maxWidth >= DashboardTwoColumnMinWidth) {
+            Row(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-one"),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    topSections()
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-two"),
+                    contentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    bottomSections()
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().testTag("dashboard-list"),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                topSections()
+                bottomSections()
             }
         }
     }
