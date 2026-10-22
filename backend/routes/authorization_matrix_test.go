@@ -308,6 +308,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/webauthn/register/finish":            {class: classProtected},
 		"POST /api/v1/webauthn/assert/begin":               {class: classProtected},
 		"GET /api/v1/webauthn/credentials":                 {class: classProtected},
+		"PATCH /api/v1/webauthn/credentials/:id":           {class: classProtected},
 		"DELETE /api/v1/webauthn/credentials/:id":          {class: classProtected},
 		"GET /api/v1/users/directory":                      {class: classProtected},
 		"GET /api/v1/dashboard":                            {class: classProtected},

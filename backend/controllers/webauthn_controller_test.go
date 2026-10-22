@@ -85,6 +85,7 @@ func newWAEnv(t *testing.T) *waEnv {
 	p.POST("/webauthn/register/finish", WebAuthnRegisterFinish)
 	p.POST("/webauthn/assert/begin", WebAuthnProofBegin)
 	p.GET("/webauthn/credentials", ListWebAuthnCredentials)
+	p.PATCH("/webauthn/credentials/:id", RenameWebAuthnCredential)
 	p.DELETE("/webauthn/credentials/:id", DeleteWebAuthnCredential)
 	p.DELETE("/account", func(c *gin.Context) { DeleteOwnAccount(c, cfg) })
 
@@ -857,4 +858,90 @@ func TestWebAuthn_DeleteRejectsMalformedBody(t *testing.T) {
 	w, _ := doRequest(e.router, req)
 	mzErrorField(t, w, http.StatusBadRequest, "MISSING_FIELD", "code")
 	assert.Equal(t, int64(1), e.credentialCount(), "a malformed delete must not remove the passkey")
+}
+
+// Issue #1793: an unnamed passkey enrolled from a browser should be named
+// after the browser/platform rather than getting a meaningless random suffix.
+func TestWebAuthn_RegisterBeginNamesAnUnnamedPasskeyAfterTheBrowser(t *testing.T) {
+	e := newWAEnv(t)
+	va := e.auth()
+	tok := e.session()
+
+	w, _ := e.do("POST", "/webauthn/register/begin", map[string]any{}, tok)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	// httptest's default UA has no recognisable browser, so drive the fallback
+	// through the label function directly; the ceremony wiring is covered here.
+	assert.Regexp(t, `^Passkey [0-9a-f]{4}$`, services.DefaultCredentialLabel(""))
+
+	// With a real browser UA the stored name is the recognisable label.
+	req := sessionRequest("POST", "/webauthn/register/begin", map[string]any{}, tok)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36")
+	w, _ = doRequest(e.router, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	w, _ = e.do("POST", "/webauthn/register/finish", va.attestation(challengeFrom(t, w.Body.Bytes())), tok)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var enrolled struct {
+		Name string `json:"name"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &enrolled))
+	assert.Equal(t, "Chrome 153 on Linux", enrolled.Name)
+}
+
+func TestWebAuthn_RenameCredential(t *testing.T) {
+	e := newWAEnv(t)
+	id, _, session := e.enroll(e.auth(), "Old name", e.session())
+	path := "/webauthn/credentials/" + id
+
+	w, _ := e.do("PATCH", path, map[string]string{"name": "  Kitchen tablet  "}, session)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var updated struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &updated))
+	assert.Equal(t, id, updated.ID)
+	assert.Equal(t, "Kitchen tablet", updated.Name, "the label is trimmed")
+
+	var row models.WebAuthnCredential
+	require.NoError(t, e.db.Where("id = ?", id).First(&row).Error)
+	assert.Equal(t, "Kitchen tablet", row.Name)
+
+	w, _ = e.do("GET", "/webauthn/credentials", nil, session)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Kitchen tablet")
+}
+
+func TestWebAuthn_RenameRejectsEmptyOrOverlongNames(t *testing.T) {
+	e := newWAEnv(t)
+	id, _, session := e.enroll(e.auth(), "Keep me", e.session())
+	path := "/webauthn/credentials/" + id
+
+	for _, body := range []any{
+		nil,
+		map[string]string{},
+		map[string]string{"name": "   "},
+		map[string]string{"name": strings.Repeat("x", 101)},
+	} {
+		w, _ := e.do("PATCH", path, body, session)
+		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	}
+
+	var row models.WebAuthnCredential
+	require.NoError(t, e.db.Where("id = ?", id).First(&row).Error)
+	assert.Equal(t, "Keep me", row.Name, "a rejected rename must leave the label untouched")
+}
+
+func TestWebAuthn_RenameScopedToOwner(t *testing.T) {
+	e := newWAEnv(t)
+	other := newWAEnv(t)
+	otherID, _, otherSession := other.enroll(other.auth(), "Theirs", other.session())
+	_, _, session := e.enroll(e.auth(), "Mine", e.session())
+
+	w, _ := e.do("PATCH", "/webauthn/credentials/"+otherID, map[string]string{"name": "Hijacked"}, session)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	w, _ = other.do("GET", "/webauthn/credentials", nil, otherSession)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Theirs")
+	assert.NotContains(t, w.Body.String(), "Hijacked")
 }

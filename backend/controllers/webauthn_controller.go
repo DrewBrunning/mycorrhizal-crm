@@ -128,7 +128,7 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 		return
 	}
 	if name == "" {
-		name = services.RandomCredentialLabel()
+		name = services.DefaultCredentialLabel(c.Request.UserAgent())
 	}
 	if !requireEnrollmentProof(c, db, &cfg, waUser, input.secondFactorProofInput) {
 		return
@@ -393,6 +393,46 @@ func ListWebAuthnCredentials(c *gin.Context) {
 	out := make([]models.WebAuthnCredential, 0, len(rows))
 	out = append(out, rows...)
 	c.JSON(http.StatusOK, gin.H{"credentials": out})
+}
+
+// RenameWebAuthnCredential lets the user relabel one of their own passkeys
+// (issue #1793). It is ownership-scoped and deliberately proof-free: a label
+// is not a security posture change, unlike adding or removing a factor.
+func RenameWebAuthnCredential(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var input struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Invalid JSON"))
+		return
+	}
+	name := strings.TrimSpace(input.Name)
+	if name == "" || len(name) > 100 {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be between 1 and 100 characters"))
+		return
+	}
+
+	var credential models.WebAuthnCredential
+	if err := db.Where("id = ? AND user_id = ?", c.Param("id"), userID).First(&credential).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Passkey"))
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query passkey").WithError(err))
+		return
+	}
+	if err := db.Model(&credential).Update("name", name).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("update passkey").WithError(err))
+		return
+	}
+	credential.Name = name
+	c.JSON(http.StatusOK, credential)
 }
 
 // WebAuthnProofBegin starts a re-authentication assertion the caller can

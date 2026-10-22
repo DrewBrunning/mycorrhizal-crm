@@ -8336,6 +8336,36 @@
       ]
     },
     {
+      "method": "PATCH",
+      "path": "/webauthn/credentials/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:WebAuthnRenameInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:WebAuthnCredential"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/webauthn/credentials/{id}",
       "parameters": [
@@ -19955,6 +19985,16 @@
         {
           "name": "recovery_codes",
           "type": "array\u003cstring\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnRenameInput",
+      "properties": [
+        {
+          "name": "name",
+          "type": "string",
           "required": true
         }
       ]

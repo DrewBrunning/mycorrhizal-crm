@@ -6,14 +6,18 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  Snackbar,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { onSessionExpired, type SessionExpiryMode } from '../api/sessionExpiry';
+import {
+  notifySessionRestored,
+  onSessionExpired,
+  onSessionSignInRequest,
+  type SessionExpiryMode,
+} from '../api/sessionExpiry';
 import { API_BASE_URL, login2FA, loginUser, logoutAndRedirect } from '../auth';
 import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
 import { useOIDCConfig } from '../hooks/useOIDCConfig';
@@ -28,17 +32,17 @@ type ReauthStep = 'credentials' | 'twoFactor';
 // away from -- the two other cases #557 calls out as losing work the same
 // way a hard redirect does.
 //
-// notifySessionExpired's 'passive' mode (a background GET 401'd) surfaces as
-// a dismissible, non-modal banner that never steals focus from whatever the
-// user is doing. 'blocking' mode (a mutation 401'd -- the user is actively
-// waiting on a Save/Delete/Confirm that did not go through) opens a modal
-// re-authentication prompt immediately. Either can be resolved in place by
-// signing back in, which only refreshes the httpOnly auth cookie -- nothing
-// in the React tree remounts, so whatever the user had open survives.
+// notifySessionExpired's 'passive' mode (a background GET 401'd) shows the
+// non-modal <SessionExpiredNotice> at the top of the app content (issue
+// #1793), so it never steals focus from whatever the user is doing.
+// 'blocking' mode (a mutation 401'd -- the user is actively waiting on a
+// Save/Delete/Confirm that did not go through) opens this modal immediately.
+// Either can be resolved in place by signing back in, which only refreshes the
+// httpOnly auth cookie -- nothing in the React tree remounts, so whatever the
+// user had open survives.
 export default function SessionExpiredGate() {
   const { t } = useTranslation();
   const oidcConfig = useOIDCConfig();
-  const [visible, setVisible] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [step, setStep] = useState<ReauthStep>('credentials');
   const [identifier, setIdentifier] = useState('');
@@ -47,16 +51,18 @@ export default function SessionExpiredGate() {
   const [loading, setLoading] = useState(false);
   const { error, setError, errorRef } = useErrorAlertFocus();
 
-  useEffect(
-    () =>
-      onSessionExpired(({ mode }: { mode: SessionExpiryMode }) => {
-        setVisible(true);
-        if (mode === 'blocking') {
-          setDialogOpen(true);
-        }
-      }),
-    [],
-  );
+  useEffect(() => {
+    const offExpired = onSessionExpired(({ mode }: { mode: SessionExpiryMode }) => {
+      if (mode === 'blocking') {
+        setDialogOpen(true);
+      }
+    });
+    const offSignIn = onSessionSignInRequest(() => setDialogOpen(true));
+    return () => {
+      offExpired();
+      offSignIn();
+    };
+  }, []);
 
   const resetForm = () => {
     setStep('credentials');
@@ -69,8 +75,8 @@ export default function SessionExpiredGate() {
 
   const handleAuthenticated = () => {
     setDialogOpen(false);
-    setVisible(false);
     resetForm();
+    notifySessionRestored();
   };
 
   // "Not now": close the modal without signing in. The 401 that triggered it
@@ -81,10 +87,6 @@ export default function SessionExpiredGate() {
   const handleNotNow = () => {
     setDialogOpen(false);
     resetForm();
-  };
-
-  const handleDismissBanner = () => {
-    setVisible(false);
   };
 
   const handleCredentialsSubmit = async (event: FormEvent) => {
@@ -123,28 +125,6 @@ export default function SessionExpiredGate() {
 
   return (
     <>
-      <Snackbar
-        // No autoHideDuration: this is not a routine toast -- it must stay
-        // up until the user acts on it or explicitly dismisses it, the same
-        // reasoning as ServiceWorkerUpdatePrompt.
-        open={visible && !dialogOpen}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          severity="warning"
-          variant="filled"
-          sx={{ width: '100%' }}
-          onClose={handleDismissBanner}
-          action={
-            <Button color="inherit" size="small" onClick={() => setDialogOpen(true)}>
-              {t('sessionExpired.signIn')}
-            </Button>
-          }
-        >
-          {t('sessionExpired.bannerMessage')}
-        </Alert>
-      </Snackbar>
-
       <AppDialog open={dialogOpen} onClose={handleNotNow} maxWidth="xs" fullWidth>
         <DialogTitle>{t('sessionExpired.title')}</DialogTitle>
         <DialogContent>

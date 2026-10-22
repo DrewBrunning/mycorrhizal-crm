@@ -222,6 +222,12 @@
     "alreadyHaveAccount": "Sie haben bereits ein Konto? Anmelden",
     "passwordHelp": "Mindestens 8 Zeichen. Sicherer sind 15+ Zeichen oder eine Passphrase mit 20+ Zeichen. Vermeiden Sie gängige Passwörter."
   },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "description": "Diese Seite existiert nicht. Sie wurde möglicherweise verschoben, oder der Link ist falsch.",
+    "goToContacts": "Zu den Kontakten",
+    "goToDashboard": "Zum Dashboard"
+  },
   "contacts": {
     "title": "Kontakte",
     "search": "Kontakte suchen",
@@ -611,6 +617,7 @@
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
+    "notFoundDescription": "Dieser Kontakt wurde möglicherweise gelöscht, oder der Link ist falsch.",
     "loadError": "Dieser Kontakt konnte nicht geladen werden.",
     "timelineLoadError": "Einige Zeitachsendaten konnten nicht geladen werden. Bitte lade die Seite neu.",
     "section": {
@@ -1358,10 +1365,18 @@
       "unsupported": "Dieser Browser unterstützt keine Passkeys.",
       "removeButton": "Entfernen",
       "removeAria": "Passkey {{name}} entfernen",
+      "renameButton": "Umbenennen",
+      "renameAria": "Passkey {{name}} umbenennen",
+      "renameSuccess": "Passkey umbenannt.",
+      "renameError": "Der Passkey konnte nicht umbenannt werden. Bitte versuchen Sie es erneut.",
       "removeSuccess": "Passkey entfernt.",
       "invalidProof": "Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
       "createdLastUsed": "Hinzugefügt am {{created}} · zuletzt verwendet am {{lastUsed}}",
       "createdNeverUsed": "Hinzugefügt am {{created}} · nie verwendet",
+      "rename": {
+        "title": "Passkey umbenennen",
+        "label": "Name des Passkeys"
+      },
       "remove": {
         "title": "Passkey entfernen",
         "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App oder einen Wiederherstellungscode ein, um „{{name}}“ zu entfernen.",

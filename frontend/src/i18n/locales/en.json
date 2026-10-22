@@ -222,6 +222,12 @@
     "alreadyHaveAccount": "Already have an account? Log in",
     "passwordHelp": "Use at least 8 characters. 15+ characters or a 20+ character passphrase is stronger. Avoid common passwords."
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This page doesn't exist. It may have moved, or the link may be wrong.",
+    "goToContacts": "Go to Contacts",
+    "goToDashboard": "Go to Dashboard"
+  },
   "contacts": {
     "title": "Contacts",
     "search": "Search Contacts",
@@ -611,6 +617,7 @@
   },
   "contactDetail": {
     "notFound": "Contact not found",
+    "notFoundDescription": "This contact may have been deleted, or the link may be wrong.",
     "loadError": "Couldn't load this contact.",
     "timelineLoadError": "Some timeline data failed to load. Try refreshing the page.",
     "section": {
@@ -1398,10 +1405,18 @@
       "unsupported": "This browser doesn't support passkeys.",
       "removeButton": "Remove",
       "removeAria": "Remove passkey {{name}}",
+      "renameButton": "Rename",
+      "renameAria": "Rename passkey {{name}}",
+      "renameSuccess": "Passkey renamed.",
+      "renameError": "We couldn't rename the passkey. Please try again.",
       "removeSuccess": "Passkey removed.",
       "invalidProof": "Verification failed. Please try again.",
       "createdLastUsed": "Added {{created}} · last used {{lastUsed}}",
       "createdNeverUsed": "Added {{created}} · never used",
+      "rename": {
+        "title": "Rename passkey",
+        "label": "Passkey name"
+      },
       "remove": {
         "title": "Remove passkey",
         "description": "Enter a current code from your authenticator app, or a recovery code, to remove \"{{name}}\".",

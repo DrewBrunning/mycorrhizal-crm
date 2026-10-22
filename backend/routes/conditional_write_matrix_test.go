@@ -349,6 +349,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/webauthn/register/begin":             exempt(reasonAuth),
 		"POST /api/v1/webauthn/register/finish":            exempt(reasonAuth),
 		"POST /api/v1/webauthn/assert/begin":               exempt(reasonAuth),
+		"PATCH /api/v1/webauthn/credentials/:id":           exempt(reasonAuth),
 		"DELETE /api/v1/webauthn/credentials/:id":          exempt(reasonAuth),
 
 		// === Admin ===

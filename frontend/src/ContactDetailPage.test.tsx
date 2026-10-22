@@ -720,11 +720,15 @@ test('a failed /users/me still renders the contact without a timeline warning', 
   ).not.toBeInTheDocument();
 });
 
-test('a failed contact record renders "not found"', async () => {
+test('a failed contact record renders a not-found state with routes back', async () => {
   consoleError.mockImplementation(() => {});
   mockFetch({ failGet: ['record'] });
   renderPage();
   expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+  expect(screen.getByText(/this contact may have been deleted/i)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Go to Contacts' })).toHaveAttribute('href', '/contacts');
+  expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/');
+  expect(document.title).toBe('Contact not found · Mycorrhizal CRM');
 });
 
 test('a 5xx on the contact record shows a retryable error, not "not found" (issue #1478)', async () => {

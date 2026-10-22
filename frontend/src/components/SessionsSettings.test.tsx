@@ -48,7 +48,8 @@ const twoSessions = {
       created_at: '2026-09-01T10:00:00Z',
       last_seen_at: '2026-09-09T09:00:00Z',
       expires_at: '2026-09-13T10:00:00Z',
-      user_agent: 'Firefox on Linux',
+      user_agent:
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36',
       ip: '203.0.113.4',
       current: true,
     },
@@ -57,12 +58,48 @@ const twoSessions = {
       created_at: '2026-09-05T08:00:00Z',
       last_seen_at: '2026-09-08T20:00:00Z',
       expires_at: '2026-09-17T08:00:00Z',
-      user_agent: 'Safari on iPhone',
+      user_agent:
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
       ip: '198.51.100.9',
       current: false,
     },
   ],
 };
+
+test('shows a human-readable device name with the raw user-agent in a tooltip', async () => {
+  mockFetchByUrl({ 'GET /sessions': () => twoSessions });
+
+  render(
+    <SnackbarProvider>
+      <SessionsSettings />
+    </SnackbarProvider>,
+  );
+
+  const label = await screen.findByText('Chrome 153 on Linux');
+  expect(screen.queryByText(/Mozilla\/5\.0/)).not.toBeInTheDocument();
+  fireEvent.mouseOver(label);
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent(/Mozilla\/5\.0 .*HeadlessChrome\/153/);
+});
+
+test('an unparseable user-agent falls back to Unknown device but keeps the raw string in a tooltip', async () => {
+  mockFetchByUrl({
+    'GET /sessions': () => ({
+      sessions: [{ ...twoSessions.sessions[0], user_agent: 'Some Completely Unknown Agent/1.0' }],
+    }),
+  });
+
+  render(
+    <SnackbarProvider>
+      <SessionsSettings />
+    </SnackbarProvider>,
+  );
+
+  const label = await screen.findByText('Unknown device');
+  fireEvent.mouseOver(label);
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent('Some Completely Unknown Agent/1.0');
+});
 
 test('lists sessions and marks the current one', async () => {
   mockFetchByUrl({ 'GET /sessions': () => twoSessions });
@@ -74,8 +111,8 @@ test('lists sessions and marks the current one', async () => {
   );
 
   await waitFor(() => expect(screen.getByText('Active sessions')).toBeInTheDocument());
-  expect(screen.getByText('Firefox on Linux')).toBeInTheDocument();
-  expect(screen.getByText('Safari on iPhone')).toBeInTheDocument();
+  expect(screen.getByText('Chrome 153 on Linux')).toBeInTheDocument();
+  expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument();
   expect(screen.getByText('This device')).toBeInTheDocument();
 });
 
@@ -110,9 +147,9 @@ test('revoking a session calls the API and refetches', async () => {
     </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByText('Safari on iPhone')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument());
 
-  const phoneRow = screen.getByText('Safari on iPhone').closest('tr') as HTMLElement;
+  const phoneRow = screen.getByText('Safari 17 on iPhone').closest('tr') as HTMLElement;
   fireEvent.click(within(phoneRow).getByRole('button', { name: 'Revoke' }));
 
   await waitFor(() => expect(delHandler).toHaveBeenCalledTimes(1));
@@ -134,7 +171,7 @@ test('"log out all other devices" revokes the rest and refetches', async () => {
     </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByText('Safari on iPhone')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Log out all other devices' }));
 
   await waitFor(() => expect(delAllHandler).toHaveBeenCalledTimes(1));
@@ -201,13 +238,13 @@ test('surfaces a snackbar error when revoking fails', async () => {
     </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByText('Safari on iPhone')).toBeInTheDocument());
-  const phoneRow = screen.getByText('Safari on iPhone').closest('tr') as HTMLElement;
+  await waitFor(() => expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument());
+  const phoneRow = screen.getByText('Safari 17 on iPhone').closest('tr') as HTMLElement;
   fireEvent.click(within(phoneRow).getByRole('button', { name: 'Revoke' }));
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   // the row is still there — the failure didn't wipe the list
-  expect(screen.getByText('Safari on iPhone')).toBeInTheDocument();
+  expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument();
 });
 
 test('surfaces a snackbar error when "log out others" fails', async () => {
@@ -222,7 +259,7 @@ test('surfaces a snackbar error when "log out others" fails', async () => {
     </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByText('Safari on iPhone')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Safari 17 on iPhone')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Log out all other devices' }));
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();

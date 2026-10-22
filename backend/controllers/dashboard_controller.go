@@ -143,7 +143,10 @@ func fetchRandomContacts(db *gorm.DB, userID uint) ([]models.ContactResponse, er
 	selectedFields := []string{"ID", "firstname", "lastname", "nickname", "circles", "photo_thumbnail"}
 
 	var contacts []models.Contact
-	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).Where("archived = ?", false).
+	query := services.ExcludeSelfContact(
+		db.Model(&models.Contact{}).Where("user_id = ?", userID).Where("archived = ?", false),
+		userID,
+	).
 		Select(selectedFields).
 		Order("RANDOM()").
 		Limit(5)

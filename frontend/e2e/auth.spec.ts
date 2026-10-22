@@ -72,6 +72,12 @@ test.describe('Authentication', { tag: '@prod-defaults' }, () => {
       await expect(page.getByRole('heading', { name: /register/i })).toBeVisible();
       await expect(page.getByLabel(/username/i)).toBeVisible();
       await expect(page.getByLabel(/email/i)).toBeVisible();
+      // Issue #1790: logo, a way back to Login, and the password rule.
+      await expect(page.getByRole('img', { name: 'Mycorrhizal CRM' })).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: /already have an account\? log in/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/use at least 8 characters/i)).toBeVisible();
     });
 
     test('should register a new account end-to-end', async ({ page }) => {
@@ -87,16 +93,12 @@ test.describe('Authentication', { tag: '@prod-defaults' }, () => {
       await page.getByLabel(/password/i).fill('RegPassword123!');
       await page.getByRole('button', { name: /register/i }).click();
 
-      // Success alert appears, then the app redirects to the login page.
-      await expect(page.getByRole('heading', { name: /login/i })).toBeVisible({ timeout: 10000 });
-
-      // The freshly registered account can actually log in.
-      await page.getByLabel(/username or email/i).fill(username);
-      await page.getByLabel(/password/i).fill('RegPassword123!');
-      await page.getByRole('button', { name: /login/i }).click();
+      // Issue #1793: registration signs the new account in directly instead
+      // of dropping the user back on the Login form.
       await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({
         timeout: 10000,
       });
+      await expect(page).not.toHaveURL(/\/login$/);
     });
   });
 

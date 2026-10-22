@@ -131,6 +131,16 @@ func detectReachOutSuggestionsForUser(ctx context.Context, db *gorm.DB, cfg conf
 		}
 	}
 
+	// The self contact is not a relationship to reach out to (issue #1793).
+	// Loaded once per user here rather than filtering every audit event.
+	selfUID, err := selfContactVCardUID(db, userID)
+	if err != nil {
+		return 0, fmt.Errorf("loading self contact: %w", err)
+	}
+	if selfUID != "" {
+		delete(baselineByContact, selfUID)
+	}
+
 	created := 0
 	anyFailed := false
 	// Deterministic order so tests and logs are stable across runs.
@@ -460,7 +470,10 @@ func ListReachOutSuggestions(db *gorm.DB, userID uint) ([]models.ReachOutSuggest
 	// racing this read, since a hard-vanished contact has no display
 	// identity to show anyway.
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND vcard_uid IN ? AND archived = ?", userID, uids, false).Find(&contacts).Error; err != nil {
+	if err := ExcludeSelfContact(
+		db.Where("user_id = ? AND vcard_uid IN ? AND archived = ?", userID, uids, false),
+		userID,
+	).Find(&contacts).Error; err != nil {
 		return nil, fmt.Errorf("loading contacts for reach-out suggestions: %w", err)
 	}
 	contactByUID := make(map[string]models.Contact, len(contacts))

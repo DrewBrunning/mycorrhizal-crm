@@ -374,3 +374,38 @@ test('Cancel closes the proof dialog without deleting', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'DELETE')).toBe(false);
 });
+
+// Issue #1793: a passkey label is editable after enrollment, and renaming is
+// proof-free (unlike adding/removing a factor).
+test('renames an existing passkey without a second-factor proof', async () => {
+  stubWebAuthn();
+  let listed = [laptop];
+  const fetchMock = mockFetch({
+    'GET /webauthn/credentials': () => ({ credentials: listed }),
+    'PATCH /webauthn/credentials/p1': (init) => {
+      const body = JSON.parse(String(init?.body));
+      listed = [{ ...laptop, name: body.name }];
+      return listed[0];
+    },
+  });
+  renderCard();
+
+  expect(await screen.findByText('Laptop')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Rename passkey Laptop' }));
+
+  const dialog = await screen.findByRole('dialog');
+  const nameInput = within(dialog).getByLabelText(/passkey name/i);
+  expect(nameInput).toHaveValue('Laptop');
+  fireEvent.change(nameInput, { target: { value: 'Kitchen tablet' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Passkey renamed.')).toBeInTheDocument();
+  expect(await screen.findByText('Kitchen tablet')).toBeInTheDocument();
+  const patch = fetchMock.mock.calls.find(
+    ([url, init]) => String(url).includes('/webauthn/credentials/p1') && init?.method === 'PATCH',
+  );
+  expect(patch).toBeDefined();
+  expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ name: 'Kitchen tablet' });
+  // No TOTP/recovery-code proof dialog appeared.
+  expect(screen.queryByText('Verify it\u2019s you')).not.toBeInTheDocument();
+});

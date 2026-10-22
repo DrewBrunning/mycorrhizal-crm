@@ -72,6 +72,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PATCH /users/language":    bindingFor(controllers.UpdateLanguageInput{}),
 	"PATCH /users/date-format": bindingFor(controllers.UpdateDateFormatInput{}),
 	"PATCH /users/time-format": bindingFor(controllers.UpdateTimeFormatInput{}),
+	// Issue #1793: the handler binds a tiny inline {"name": ...} struct.
+	"PATCH /webauthn/credentials/{id}": {boundFieldsOverride: []string{"name"}},
 	"POST /check-password-strength": {
 		boundFieldsOverride: []string{"password"}, // user_controller.go CheckPasswordStrength
 	},
