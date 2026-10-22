@@ -217,7 +217,7 @@ class ContactFormScreenTest {
     // Issue #1404: Save/Create is pinned in the Scaffold's bottomBar, not the last
     // child of the scroll column, so it never needs scrolling to.
     @Test
-    @Config(qualifiers = "w360dp-h400dp")
+    @Config(qualifiers = "w360dp-h800dp")
     fun `save button is displayed without scrolling and stays displayed at the top and bottom of the form`() {
         setContent()
         val form = composeTestRule.onNode(hasScrollAction())
@@ -577,5 +577,19 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Discard").performClick()
 
         assertTrue(back)
+    }
+
+    // --- Issue #1772: landscape / half-height compact window ---
+
+    @Test
+    @Config(qualifiers = "w640dp-h360dp")
+    fun `landscape puts save in the top bar and keeps the form field on screen`() {
+        var saved = false
+        setContent(onSave = { saved = true })
+
+        composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create contact").assertIsDisplayed().performClick()
+
+        assertTrue(saved)
     }
 }

@@ -129,13 +129,18 @@ class EntityFormsLabelsTest {
     }
 
     @Test
-    fun `the back arrow leaves the gift form without saving what was typed`() {
+    fun `the back arrow asks before discarding a typed gift`() {
         var confirmed = false
         var dismissed = false
         giftForm(onConfirm = { confirmed = true }, onDismiss = { dismissed = true })
         composeTestRule.onNodeWithText("New gift").assertIsDisplayed()
         composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
         composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Issue #1751: the typed description is protected; Discard still leaves.
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        assertEquals(false, dismissed)
+        composeTestRule.onNodeWithText("Discard").performClick()
         assertEquals(true, dismissed)
         assertEquals(false, confirmed)
     }
