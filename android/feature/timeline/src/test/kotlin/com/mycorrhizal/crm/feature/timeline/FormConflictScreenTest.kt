@@ -99,7 +99,7 @@ class FormConflictScreenTest {
     @Test
     fun `activity form shows the prompt`() {
         val activityRepository = mockk<ActivityRepository>()
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", revision = 3))
+        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3))
         coEvery { activityRepository.update(7, any(), 3) } returns stale
         val vm = ActivityFormViewModel(
             activityRepository,

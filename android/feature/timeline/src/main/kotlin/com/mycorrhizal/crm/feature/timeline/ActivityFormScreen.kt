@@ -40,7 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
@@ -136,12 +138,12 @@ fun ActivityFormContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        DateField(
             value = state.date,
             onValueChange = onDateChange,
-            label = { Text(stringResource(R.string.activity_date)) },
-            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
-            singleLine = true,
+            label = stringResource(R.string.activity_date),
+            mode = DateFieldMode.DATE_TIME,
+            testTag = "activity-date",
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(

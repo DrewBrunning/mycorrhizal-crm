@@ -136,10 +136,12 @@ import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.network.isEditorValueEmpty
 import com.mycorrhizal.crm.model.network.isMulti
 import com.mycorrhizal.crm.model.network.wireToEditorValue
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
@@ -1893,6 +1895,24 @@ private fun CustomFieldScalarEditor(
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "date" -> DateField(
+            value = value,
+            onValueChange = { onChange(it) },
+            label = stringResource(R.string.contact_custom_field_value_label),
+            mode = DateFieldMode.DATE_ONLY,
+            allowClear = true,
+            testTag = "custom-field-date-${definition.id}",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "datetime" -> DateField(
+            value = value,
+            onValueChange = { onChange(it) },
+            label = stringResource(R.string.contact_custom_field_value_label),
+            mode = DateFieldMode.DATE_TIME_OPTIONAL,
+            allowClear = true,
+            testTag = "custom-field-datetime-${definition.id}",
             modifier = Modifier.fillMaxWidth(),
         )
         "text" -> OutlinedTextField(

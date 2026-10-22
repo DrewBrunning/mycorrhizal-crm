@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -65,7 +66,7 @@ data class ActivityFormState(
     fun toInput(): ActivityInput = ActivityInput(
         title = title.trim(),
         type = type.trim().ifBlank { null },
-        date = date.trim().ifBlank { null },
+        date = DateFieldValue.normalizeCalendarDayInstant(date),
         description = description.trim().ifBlank { null },
         location = location.trim().ifBlank { null },
         contactIds = participantIds(),
@@ -89,16 +90,11 @@ data class ActivityFormState(
 
     fun validate(): Int? = when {
         !hasTitle -> R.string.activity_error_title
-        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) -> R.string.activity_error_date
+        // The backend requires Activity.Date; the picker makes it explicit.
+        date.isBlank() -> R.string.activity_error_date_required
+        // DateField only emits a backend-accepted shape (RFC 3339, normalised
+        // to the UTC-midnight instant in toInput), so no format re-validation.
         else -> null
-    }
-
-    companion object {
-        /** Loose RFC 3339 / ISO 8601 date-time check matching the backend's
-         *  time.Time unmarshal (which requires a 'T' separator and offset). */
-        val ISO_DATETIME_REGEX = Regex(
-            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
-        )
     }
 }
 

@@ -364,15 +364,18 @@ class NoteFormViewModelTest {
     }
 
     @Test
-    fun `invalid date format blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { noteRepository.create(5, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+
         val vm = createViewModel()
         vm.onContentChange("Loves climbing")
         vm.onDateChange("2026-08-10")
         vm.save()
         advanceUntilIdle()
 
-        assertEquals(R.string.note_error_date, vm.uiState.value.errorRes)
-        coVerify(exactly = 0) { noteRepository.create(any(), any()) }
+        coVerify {
+            noteRepository.create(5, match { it.date == "2026-08-10T00:00:00Z" })
+        }
     }
 
     @Test

@@ -292,7 +292,6 @@
     <string name="contact_circles_select">Seleziona cerchia…</string>
     <string name="contact_tags_select">Seleziona etichetta…</string>
     <string name="contact_birthday">Data di nascita</string>
-    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
     <string name="contact_value_n">Valore %1$d</string>
     <string name="contact_remove">Rimuovi</string>
     <string name="contact_add">Aggiungi</string>
@@ -885,8 +884,7 @@
     <string name="activity_title">Titolo</string>
     <string name="activity_type">Tipo</string>
     <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
-    <string name="activity_date">Data (ISO 8601)</string>
-    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_date">Data</string>
     <string name="activity_location">Posizione</string>
     <string name="activity_description">Descrizione</string>
     <string name="activity_create">Crea attività</string>
@@ -895,7 +893,7 @@
     <string name="activity_search_contact">Aggiungi partecipanti</string>
     <string name="activity_remove_participant">Rimuovi partecipante</string>
     <string name="activity_error_title">Il titolo è obbligatorio</string>
-    <string name="activity_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
+    <string name="activity_error_date_required">La data è obbligatoria</string>
     <string name="cd_new_activity">Nuova attività</string>
 
     <!-- Notes -->
@@ -915,8 +913,7 @@
     <string name="note_new">Nuova nota</string>
     <string name="note_edit">Modifica nota</string>
     <string name="note_content">Nota</string>
-    <string name="note_date">Data (ISO 8601)</string>
-    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_date">Data</string>
     <string name="note_create">Crea nota</string>
     <string name="note_save">Salva modifiche</string>
     <string name="note_assign_contact">Contatto assegnato</string>
@@ -924,7 +921,6 @@
     <string name="note_search_contact">Cerca contatti</string>
     <string name="note_error_content">Il contenuto della nota è obbligatorio</string>
     <string name="note_error_date_required">La data è obbligatoria</string>
-    <string name="note_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
     <string name="contact_error_missing_id">ID contatto mancante</string>
     <string name="activity_error_missing_id">ID contatto mancante</string>
     <string name="note_error_missing_id">ID contatto mancante</string>
@@ -946,14 +942,12 @@
     <string name="reminder_edit">Modifica promemoria</string>
     <string name="reminder_message">Messaggio</string>
     <string name="reminder_remind_at">Promemoria alle</string>
-    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Ricorrenza</string>
     <string name="reminder_email">Promemoria via email</string>
     <string name="reminder_create">Crea promemoria</string>
     <string name="reminder_save">Salva modifiche</string>
     <string name="reminder_error_message">Il messaggio è obbligatorio</string>
     <string name="reminder_error_remind_at_required">La data del promemoria è obbligatoria</string>
-    <string name="reminder_error_remind_at">La data del promemoria deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Ricorrenza sconosciuta</string>
     <string name="cd_complete_reminder">Completa promemoria</string>
     <string name="cd_skip_reminder">Salta promemoria</string>
@@ -972,7 +966,12 @@
     <string name="cd_delete_reminder">Elimina promemoria</string>
     <string name="reminder_overdue">Scaduto</string>
     <string name="reminder_flexible">Flessibile</string>
-    <string name="reminder_pick_date">Scegli una data</string>
+    <string name="date_field_pick_date">Scegli una data</string>
+    <string name="date_field_clear_date">Cancella data</string>
+    <string name="date_field_add_time">Aggiungi ora</string>
+    <string name="date_field_remove_time">Rimuovi ora</string>
+    <string name="date_field_time">Ora</string>
+    <string name="date_field_year_unknown">Anno sconosciuto</string>
     <string name="reminder_reoccur_from_completion">Riprogramma dalla data di completamento</string>
     <string name="reminder_reoccur_from_completion_hint">Al completamento, il prossimo promemoria verrà programmato dalla data di completamento invece che dalla data originale.</string>
     <string name="reminder_completed">Promemoria completato</string>
@@ -1381,9 +1380,7 @@
     <string name="life_events_select_category_first">Seleziona prima una categoria</string>
     <string name="life_events_custom_type">Aggiungi un nuovo tipo di evento di vita</string>
     <string name="life_events_custom_type_label">Nome evento personalizzato</string>
-    <string name="life_events_year">Anno</string>
-    <string name="life_events_month">Mese</string>
-    <string name="life_events_day">Giorno</string>
+    <string name="life_events_date">Data</string>
     <string name="life_events_related">Relativo a</string>
     <string name="life_events_search_related">Cerca contatti</string>
     <string name="life_events_remove_related">Rimuovi %1$s</string>
@@ -1402,8 +1399,7 @@
     <string name="gifts_url_invalid">Inserisci un URL http(s) valido</string>
     <string name="gifts_notes">Note</string>
     <string name="gifts_occasion">Occasione</string>
-    <string name="gifts_date">Data (AAAA-MM-GG)</string>
-    <string name="gifts_date_invalid">Inserisci una data nel formato AAAA-MM-GG</string>
+    <string name="gifts_date">Data</string>
     <string name="gifts_amount">Importo</string>
     <string name="gifts_currency">Valuta</string>
     <string name="gifts_life_event">Evento di vita</string>

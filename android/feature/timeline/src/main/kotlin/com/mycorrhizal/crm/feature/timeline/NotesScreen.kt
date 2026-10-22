@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,11 +43,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 
@@ -258,26 +259,25 @@ fun TimelineFilterRow(
             modifier = Modifier.fillMaxWidth(),
         )
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            OutlinedTextField(
+            DateField(
                 value = fromDate,
                 onValueChange = onFromDateChange,
-                label = { Text(stringResource(R.string.timeline_from_date)) },
-                placeholder = { Text("YYYY-MM-DD") },
-                singleLine = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("timeline-from-date"),
+                label = stringResource(R.string.timeline_from_date),
+                mode = DateFieldMode.DATE_ONLY,
+                allowClear = true,
+                testTag = "timeline-from-date",
+                modifier = Modifier.weight(1f),
             )
-            OutlinedTextField(
+            DateField(
                 value = toDate,
                 onValueChange = onToDateChange,
-                label = { Text(stringResource(R.string.timeline_to_date)) },
-                placeholder = { Text("YYYY-MM-DD") },
-                singleLine = true,
+                label = stringResource(R.string.timeline_to_date),
+                mode = DateFieldMode.DATE_ONLY,
+                allowClear = true,
+                testTag = "timeline-to-date",
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 8.dp)
-                    .testTag("timeline-to-date"),
+                    .padding(start = 8.dp),
             )
         }
     }

@@ -340,7 +340,9 @@ class ContactFormScreenTest {
         )
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("2020-06-01").performScrollTo().assertIsDisplayed()
+        // #1726: the anniversary value is a read-only date picker rendered in
+        // the user's date format (EU by default), not a raw edit mask.
+        composeTestRule.onNodeWithText("01.06.2020").performScrollTo().assertIsDisplayed()
     }
 
     // --- Issue #832: gating by the enabled-fields toggle set ---

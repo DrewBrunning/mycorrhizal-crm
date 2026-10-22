@@ -291,7 +291,6 @@
     <string name="contact_circles_select">Kreis auswählen…</string>
     <string name="contact_tags_select">Tag auswählen…</string>
     <string name="contact_birthday">Geburtstag</string>
-    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
     <string name="contact_value_n">Wert %1$d</string>
     <string name="contact_remove">Entfernen</string>
     <string name="contact_add">Hinzufügen</string>
@@ -884,8 +883,7 @@
     <string name="activity_title">Titel</string>
     <string name="activity_type">Art</string>
     <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
-    <string name="activity_date">Datum (ISO 8601)</string>
-    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_date">Datum</string>
     <string name="activity_location">Ort</string>
     <string name="activity_description">Beschreibung</string>
     <string name="activity_create">Aktivität erstellen</string>
@@ -894,7 +892,7 @@
     <string name="activity_search_contact">Teilnehmer hinzufügen</string>
     <string name="activity_remove_participant">Teilnehmer entfernen</string>
     <string name="activity_error_title">Ein Titel ist erforderlich</string>
-    <string name="activity_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
+    <string name="activity_error_date_required">Ein Datum ist erforderlich</string>
     <string name="cd_new_activity">Neue Aktivität</string>
 
     <!-- Notizen -->
@@ -914,8 +912,7 @@
     <string name="note_new">Neue Notiz</string>
     <string name="note_edit">Notiz bearbeiten</string>
     <string name="note_content">Notiz</string>
-    <string name="note_date">Datum (ISO 8601)</string>
-    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_date">Datum</string>
     <string name="note_create">Notiz erstellen</string>
     <string name="note_save">Änderungen speichern</string>
     <string name="note_assign_contact">Zugeordneter Kontakt</string>
@@ -923,7 +920,6 @@
     <string name="note_search_contact">Kontakte durchsuchen</string>
     <string name="note_error_content">Der Notizinhalt ist erforderlich</string>
     <string name="note_error_date_required">Ein Datum ist erforderlich</string>
-    <string name="note_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
     <string name="contact_error_missing_id">Fehlende Kontakt-ID</string>
     <string name="activity_error_missing_id">Fehlende Kontakt-ID</string>
     <string name="note_error_missing_id">Fehlende Kontakt-ID</string>
@@ -945,14 +941,12 @@
     <string name="reminder_edit">Erinnerung bearbeiten</string>
     <string name="reminder_message">Nachricht</string>
     <string name="reminder_remind_at">Erinnern am</string>
-    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Wiederholung</string>
     <string name="reminder_email">E-Mail-Erinnerung</string>
     <string name="reminder_create">Erinnerung erstellen</string>
     <string name="reminder_save">Änderungen speichern</string>
     <string name="reminder_error_message">Eine Nachricht ist erforderlich</string>
     <string name="reminder_error_remind_at_required">Ein Erinnerungsdatum ist erforderlich</string>
-    <string name="reminder_error_remind_at">Das Erinnerungsdatum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Unbekannte Wiederholung</string>
     <string name="cd_complete_reminder">Erinnerung abschließen</string>
     <string name="cd_skip_reminder">Erinnerung überspringen</string>
@@ -971,7 +965,12 @@
     <string name="cd_delete_reminder">Erinnerung löschen</string>
     <string name="reminder_overdue">Überfällig</string>
     <string name="reminder_flexible">Flexibel</string>
-    <string name="reminder_pick_date">Datum auswählen</string>
+    <string name="date_field_pick_date">Datum auswählen</string>
+    <string name="date_field_clear_date">Datum löschen</string>
+    <string name="date_field_add_time">Uhrzeit hinzufügen</string>
+    <string name="date_field_remove_time">Uhrzeit entfernen</string>
+    <string name="date_field_time">Uhrzeit</string>
+    <string name="date_field_year_unknown">Jahr unbekannt</string>
     <string name="reminder_reoccur_from_completion">Ab Erledigungsdatum neu planen</string>
     <string name="reminder_reoccur_from_completion_hint">Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum statt ab dem ursprünglichen Datum geplant.</string>
     <string name="reminder_completed">Erinnerung erledigt</string>
@@ -1380,9 +1379,7 @@
     <string name="life_events_select_category_first">Zuerst eine Kategorie wählen</string>
     <string name="life_events_custom_type">Neuen Lebensereignis-Typ hinzufügen</string>
     <string name="life_events_custom_type_label">Eigener Ereignisname</string>
-    <string name="life_events_year">Jahr</string>
-    <string name="life_events_month">Monat</string>
-    <string name="life_events_day">Tag</string>
+    <string name="life_events_date">Datum</string>
     <string name="life_events_related">Bezogen auf</string>
     <string name="life_events_search_related">Kontakte suchen</string>
     <string name="life_events_remove_related">%1$s entfernen</string>
@@ -1401,8 +1398,7 @@
     <string name="gifts_url_invalid">Bitte eine gültige http(s)-URL eingeben</string>
     <string name="gifts_notes">Notizen</string>
     <string name="gifts_occasion">Anlass</string>
-    <string name="gifts_date">Datum (JJJJ-MM-TT)</string>
-    <string name="gifts_date_invalid">Bitte ein Datum im Format JJJJ-MM-TT eingeben</string>
+    <string name="gifts_date">Datum</string>
     <string name="gifts_amount">Betrag</string>
     <string name="gifts_currency">Währung</string>
     <string name="gifts_life_event">Lebensereignis</string>

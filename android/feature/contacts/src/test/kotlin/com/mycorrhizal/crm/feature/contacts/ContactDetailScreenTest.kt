@@ -1087,6 +1087,34 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    @Config(sdk = [35], qualifiers = "w480dp-h1200dp")
+    fun `a date custom field uses the shared picker and saves its wire value`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Renewal", type = "date")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "2026-08-10"),
+                    onSaveFieldValue = { _, value -> savedValue = value },
+                )
+            }
+        }
+
+        openGroup()
+        inGroup("Renewal")
+        composeTestRule.onNodeWithContentDescription("Edit Renewal").performClick()
+        // Rendered in the user's date format (EU by default) by the shared field.
+        inGroup("10.08.2026")
+        composeTestRule.onNodeWithTag("custom-field-date-d1").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals("2026-08-10", savedValue)
+    }
+
+    @Test
     fun `editing and saving a string field invokes onSaveFieldValue with the typed wire value`() {
         val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         var savedDefinitionId: String? = null

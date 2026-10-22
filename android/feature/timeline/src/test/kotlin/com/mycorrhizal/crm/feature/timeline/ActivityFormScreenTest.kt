@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -42,6 +43,7 @@ class ActivityFormScreenTest {
         onSearchChange: (String) -> Unit = {},
         onAddParticipant: (ContactSummary) -> Unit = {},
         onRemoveParticipant: (Int) -> Unit = {},
+        onDateChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
     ) {
         composeTestRule.setContent {
@@ -58,7 +60,7 @@ class ActivityFormScreenTest {
                         state = state,
                         onTitleChange = {},
                         onTypeChange = {},
-                        onDateChange = {},
+                        onDateChange = onDateChange,
                         onDescriptionChange = {},
                         onLocationChange = {},
                         onContactSearchChange = onSearchChange,
@@ -140,5 +142,24 @@ class ActivityFormScreenTest {
         composeTestRule.onNodeWithText("Create activity").assertIsDisplayed()
         composeTestRule.onNodeWithText("Create activity").performClick()
         assertEquals(true, saved)
+    }
+
+    // Issue #1726: the activity date is a read-only picker, not an ISO text
+    // field. A date-only pick round-trips as the UTC-midnight calendar day,
+    // and the date dialog offers the optional time action.
+    @Test
+    fun `the activity date is a picker and a date-only pick round-trips`() {
+        var picked: String? = null
+        setContent(
+            ActivityFormState(contactId = 5, title = "Lunch", date = "2026-08-10"),
+            onDateChange = { picked = it },
+        )
+
+        composeTestRule.onNodeWithText("10.08.2026").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("activity-date").performClick()
+        composeTestRule.onNodeWithText("Add time").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Confirm").performClick()
+
+        assertEquals("2026-08-10T00:00:00Z", picked)
     }
 }
