@@ -9,6 +9,7 @@ import {
   syncContactSubscription,
   updateContactSubscription,
 } from '../api/contactSubscriptions';
+import { formatLocalDate } from '../timeFormat';
 import ContactSyncSettings from './ContactSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -154,6 +155,24 @@ test('surfaces a terminal-failure notice (INT-04) with the actionable message an
   expect(screen.getByText(/Last successful sync: 40 days ago/)).toBeInTheDocument();
   // The generic "Sync failed" chip is suppressed while terminal.
   expect(screen.queryByText('Sync failed')).not.toBeInTheDocument();
+});
+
+test('terminal notice shows a recent success as a date rather than "0 days ago"', async () => {
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  vi.mocked(getContactSubscriptions).mockResolvedValue([
+    sub({
+      name: 'Just synced',
+      last_success_at: oneHourAgo,
+      terminal_failure_at: '2026-07-20T00:00:00Z',
+      terminal_reason: 'remote-resource-deleted',
+    }),
+  ]);
+  render(<ContactSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Just synced')).toBeInTheDocument());
+  expect(
+    screen.getByText(`Last successful sync: ${formatLocalDate(oneHourAgo)}`),
+  ).toBeInTheDocument();
 });
 
 test('a never-succeeded terminal subscription says so', async () => {

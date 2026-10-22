@@ -1,6 +1,8 @@
 import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { muiLocaleFor } from './i18n/muiLocale';
 import { darkTheme, lightTheme } from './theme';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -37,6 +39,7 @@ const getSystemPrefersDark = () => {
 };
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
+  const { i18n } = useTranslation();
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredPreference());
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => getSystemPrefersDark());
 
@@ -73,7 +76,16 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   const mode: 'light' | 'dark' =
     preference === 'system' ? (systemPrefersDark ? 'dark' : 'light') : preference;
-  const theme = useMemo(() => (mode === 'dark' ? darkTheme : lightTheme), [mode]);
+  // `i18n.language` may carry a region (`de-DE`); muiLocaleFor reduces it to
+  // the base language and falls back to English for anything unsupported.
+  const language = i18n.language;
+  // createTheme(base, locale) merges MUI's locale fragment into the base
+  // theme. Recomputing when the language changes is what re-renders MUI's
+  // built-in labels (issue #1787) instead of leaving them English.
+  const theme = useMemo(
+    () => createTheme(mode === 'dark' ? darkTheme : lightTheme, muiLocaleFor(language)),
+    [mode, language],
+  );
 
   // Mirrors `mode` onto the document root so colors.css's plain-CSS custom
   // properties (used outside MUI's own styling) can respond to the same

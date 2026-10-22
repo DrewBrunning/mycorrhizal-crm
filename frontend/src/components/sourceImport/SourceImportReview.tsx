@@ -45,9 +45,15 @@ export default function SourceImportReview({ preview, rowActions, onRowAction, o
       >
         <Typography variant="body2" sx={{ color: 'text.secondary', flexGrow: 1 }}>
           {t('settings.sourceImport.review.summary', {
-            total: preview.total_rows,
-            duplicates: preview.duplicate_count,
-            errors: preview.error_count,
+            contacts: t('settings.sourceImport.review.summaryContacts', {
+              count: preview.total_rows,
+            }),
+            duplicates: t('settings.sourceImport.review.summaryDuplicates', {
+              count: preview.duplicate_count,
+            }),
+            errors: t('settings.sourceImport.review.summaryErrors', {
+              count: preview.error_count,
+            }),
           })}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -163,10 +169,14 @@ export default function SourceImportReview({ preview, rowActions, onRowAction, o
 
       <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1.5, mb: 1 }}>
         {t('settings.sourceImport.review.totals', {
-          relationships: totals.relationships,
-          notes: totals.notes,
-          activities: totals.activities,
-          reminders: totals.reminders,
+          relationships: t('settings.sourceImport.brings.relationships', {
+            count: totals.relationships,
+          }),
+          notes: t('settings.sourceImport.brings.notes', { count: totals.notes }),
+          activities: t('settings.sourceImport.brings.activities', {
+            count: totals.activities,
+          }),
+          reminders: t('settings.sourceImport.brings.reminders', { count: totals.reminders }),
         })}
       </Typography>
 

@@ -117,7 +117,7 @@ test('the canvas wrapper is role=img with a data-driven aria-label, and the pan/
   );
 
   const img = screen.getByRole('img');
-  expect(img).toHaveAccessibleName(/2 contacts, 0 activities, 0 circles, 1 connections/);
+  expect(img).toHaveAccessibleName(/2 contacts, 0 activities, 0 circles, 1 connection/);
 
   // Regression guard: WAI-ARIA's own text for the img role says user agents
   // aren't required to expose descendants of a role="img" element -- an

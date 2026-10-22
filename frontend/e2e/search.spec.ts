@@ -64,10 +64,10 @@ test.describe('Search (folded into Contacts)', () => {
       // The notes/activities section is collapsed by default; expand it and
       // assert the note body is reachable — the whole point of the fold is
       // that a note-only match is still findable from the merged page.
-      await expect(page.getByText(/matches in notes and activities/)).toBeVisible({
+      await expect(page.getByText(/match(?:es)? in notes and activities/)).toBeVisible({
         timeout: 15000,
       });
-      await page.getByText(/matches in notes and activities/).click();
+      await page.getByText(/match(?:es)? in notes and activities/).click();
       await expect(page.getByText(new RegExp(token))).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);

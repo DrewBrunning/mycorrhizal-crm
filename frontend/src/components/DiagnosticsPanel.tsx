@@ -100,8 +100,8 @@ export default function DiagnosticsPanel() {
             />
             <Typography variant="body2">
               {t('diagnostics.summary', {
-                warnings: data.summary.warnings,
-                errors: data.summary.errors,
+                warnings: t('diagnostics.summaryWarnings', { count: data.summary.warnings }),
+                errors: t('diagnostics.summaryErrors', { count: data.summary.errors }),
               })}
             </Typography>
           </Box>

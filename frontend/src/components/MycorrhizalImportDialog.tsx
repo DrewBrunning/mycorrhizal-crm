@@ -115,9 +115,15 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
         <Alert severity="info">
           <Typography variant="body2" gutterBottom>
             {t('settings.mycorrhizalImport.connect.found', {
-              contacts: upload.totals.contacts,
-              relationships: upload.totals.relationships,
-              notes: upload.totals.notes,
+              contacts: t('settings.mycorrhizalImport.connect.foundContacts', {
+                count: upload.totals.contacts,
+              }),
+              relationships: t('settings.mycorrhizalImport.connect.foundRelationships', {
+                count: upload.totals.relationships,
+              }),
+              notes: t('settings.mycorrhizalImport.connect.foundNotes', {
+                count: upload.totals.notes,
+              }),
             })}
           </Typography>
           <Box sx={{ mt: 1 }}>

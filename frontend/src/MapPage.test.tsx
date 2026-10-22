@@ -134,7 +134,7 @@ test('warns when the server truncated the point list', async () => {
   h.getMapConfig.mockResolvedValue({ tile_style_url: 's' });
   h.getMapPoints.mockResolvedValue({ points: [pt], truncated: true });
   renderPage();
-  expect(await screen.findByText(/Showing the first 1 addresses only/)).toBeInTheDocument();
+  expect(await screen.findByText(/Showing the first 1 address only/)).toBeInTheDocument();
   expect(screen.getByTestId('map-stub')).toBeInTheDocument();
 });
 

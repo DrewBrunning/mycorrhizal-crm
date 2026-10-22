@@ -90,7 +90,7 @@ test('clicking a note contact chip opens the contact', () => {
     onOpenContact,
   );
 
-  fireEvent.click(screen.getByText('1 matches in notes and activities'));
+  fireEvent.click(screen.getByText('1 match in notes and activities'));
   fireEvent.click(screen.getByText('Wolfgang'));
   expect(onOpenContact).toHaveBeenCalledWith(7);
 });
@@ -101,6 +101,6 @@ test('a note without a contact is labelled unfiled', () => {
     notes: [{ id: 1, content: 'secret note body', date: '2026-08-03T10:00:00Z' }],
   });
 
-  fireEvent.click(screen.getByText('1 matches in notes and activities'));
+  fireEvent.click(screen.getByText('1 match in notes and activities'));
   expect(screen.getByText('Unfiled')).toBeInTheDocument();
 });

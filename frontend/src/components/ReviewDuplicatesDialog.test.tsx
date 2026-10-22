@@ -113,7 +113,7 @@ test('renders candidate pairs with their reasons and confidence', async () => {
   expect(screen.getByText('Bob Brown')).toBeInTheDocument();
   expect(screen.getByText('Same email')).toBeInTheDocument();
   expect(screen.getByText('70% confidence')).toBeInTheDocument();
-  expect(screen.getByText('1 candidate pairs')).toBeInTheDocument();
+  expect(screen.getByText('1 candidate pair')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Not a duplicate' })).toBeInTheDocument();
 });
 

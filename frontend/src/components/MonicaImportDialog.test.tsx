@@ -133,7 +133,7 @@ test('Start import kicks off the fetch for the connected session', async () => {
   fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
   fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
 
-  await screen.findByText('Found 1 contacts, 0 activities and 0 notes.');
+  await screen.findByText('Found 1 contact, 0 activities and 0 notes.');
   fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('sess-9', expect.anything()));

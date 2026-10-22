@@ -9,6 +9,7 @@ import {
   syncCalendarSubscription,
   updateCalendarSubscription,
 } from '../api/calendars';
+import { formatLocalDate } from '../timeFormat';
 import CalendarSyncSettings from './CalendarSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -271,4 +272,22 @@ test('terminal notice shows a staleness age when a past success exists', async (
   await waitFor(() => expect(screen.getByText('Stale')).toBeInTheDocument());
   expect(screen.getByText(/no longer exists/i)).toBeInTheDocument();
   expect(screen.getByText(/Last successful sync: 40 days ago/)).toBeInTheDocument();
+});
+
+test('terminal notice shows a recent success as a date rather than "0 days ago"', async () => {
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Just synced',
+      last_success_at: oneHourAgo,
+      terminal_failure_at: '2026-07-01T00:00:00Z',
+      terminal_reason: 'remote-resource-deleted',
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Just synced')).toBeInTheDocument());
+  expect(
+    screen.getByText(`Last successful sync: ${formatLocalDate(oneHourAgo)}`),
+  ).toBeInTheDocument();
 });

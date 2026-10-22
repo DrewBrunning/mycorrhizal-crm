@@ -201,7 +201,7 @@ export default function ContactSyncSettings() {
   const staleLine = (lastSuccessAt: string | null) => {
     const days = daysSince(lastSuccessAt);
     if (days === null) return t('settings.syncHealth.neverSucceeded');
-    if (days >= 2) return t('settings.syncHealth.staleDays', { days });
+    if (days >= 2) return t('settings.syncHealth.staleDays', { count: days });
     return t('settings.syncHealth.staleRecent', {
       date: formatLocalDate(lastSuccessAt as string),
     });

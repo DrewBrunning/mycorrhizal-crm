@@ -122,7 +122,7 @@ export default function DataDecayOverdueList({
                   </Box>
                   <Chip
                     icon={<WarningIcon fontSize="small" />}
-                    label={t('dataDecay.overdueBy', { days: item.health.overdue_by })}
+                    label={t('dataDecay.overdueBy', { count: item.health.overdue_by })}
                     size="small"
                     color="warning"
                     sx={{ height: 20, fontSize: '0.7rem' }}

@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import type { MapPoint } from '../api/map';
+import i18n from '../i18n/config';
 
 // maplibre-gl needs WebGL, which jsdom lacks. The stub records what
 // ContactMap asks of it.
@@ -77,7 +77,10 @@ vi.mock('maplibre-gl', () => ({
 
 import ContactMap from './ContactMap';
 
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  await i18n.changeLanguage('en');
+});
 beforeEach(() => {
   vi.clearAllMocks();
   h.popups.length = 0;
@@ -109,6 +112,54 @@ test('creates the map with the configured style and a navigation control', () =>
   expect(h.fitBounds).not.toHaveBeenCalled();
   expect(h.setCenter).not.toHaveBeenCalled();
 });
+
+test.each([
+  [
+    'de',
+    'Vergrößern',
+    'Verkleinern',
+    'Ziehen zum Drehen der Karte, klicken zum Zurücksetzen nach Norden',
+    'Popup schließen',
+  ],
+  [
+    'es',
+    'Acercar',
+    'Alejar',
+    'Arrastra para girar el mapa, haz clic para restablecer el norte',
+    'Cerrar ventana emergente',
+  ],
+  [
+    'fr',
+    'Zoom avant',
+    'Zoom arrière',
+    'Faites glisser pour faire pivoter la carte, cliquez pour réinitialiser le nord',
+    'Fermer la fenêtre contextuelle',
+  ],
+  [
+    'it',
+    'Ingrandisci',
+    'Riduci',
+    'Trascina per ruotare la mappa, fai clic per ripristinare il nord',
+    'Chiudi popup',
+  ],
+] as const)(
+  'passes %s MapLibre control labels instead of the English defaults',
+  async (language, zoomIn, zoomOut, resetBearing, closePopup) => {
+    await i18n.changeLanguage(language);
+    render(<ContactMap styleUrl="s" points={[]} onOpenContact={vi.fn()} />);
+
+    expect(h.mapCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: expect.objectContaining({
+          'NavigationControl.ZoomIn': zoomIn,
+          'NavigationControl.ZoomOut': zoomOut,
+          'NavigationControl.ResetBearing': resetBearing,
+          'Popup.Close': closePopup,
+        }),
+      }),
+    );
+  },
+);
 
 test('a single point centers and zooms in instead of fitting bounds', () => {
   render(<ContactMap styleUrl="s" points={[point()]} onOpenContact={vi.fn()} />);

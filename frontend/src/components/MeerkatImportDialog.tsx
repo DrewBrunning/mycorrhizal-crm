@@ -141,9 +141,15 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
         <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" gutterBottom>
             {t('settings.meerkatImport.connect.found', {
-              contacts: upload.totals.contacts,
-              relationships: upload.totals.relationships,
-              notes: upload.totals.notes,
+              contacts: t('settings.meerkatImport.connect.foundContacts', {
+                count: upload.totals.contacts,
+              }),
+              relationships: t('settings.meerkatImport.connect.foundRelationships', {
+                count: upload.totals.relationships,
+              }),
+              notes: t('settings.meerkatImport.connect.foundNotes', {
+                count: upload.totals.notes,
+              }),
             })}
           </Typography>
 

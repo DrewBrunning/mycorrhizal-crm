@@ -367,8 +367,10 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                 }}
               >
                 {t('contactMerge.hiddenMatches', {
-                  shown: filteredContacts.length,
-                  hidden: hiddenMatchCount,
+                  shown: t('contactMerge.hiddenMatchesShown', {
+                    count: filteredContacts.length,
+                  }),
+                  hidden: t('contactMerge.hiddenMatchesHidden', { count: hiddenMatchCount }),
                 })}
               </Typography>
             )}
@@ -470,10 +472,16 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
             {hasAssociations && counts && (
               <Alert severity="info" sx={{ mt: 1 }}>
                 {t('contactMerge.associationSummary', {
-                  notes: counts.notes,
-                  activities: counts.activities,
-                  reminders: counts.reminders,
-                  edges: counts.relationship_edges,
+                  notes: t('contactMerge.associationSummaryNotes', { count: counts.notes }),
+                  activities: t('contactMerge.associationSummaryActivities', {
+                    count: counts.activities,
+                  }),
+                  reminders: t('contactMerge.associationSummaryReminders', {
+                    count: counts.reminders,
+                  }),
+                  edges: t('contactMerge.associationSummaryEdges', {
+                    count: counts.relationship_edges,
+                  }),
                 })}
               </Alert>
             )}
