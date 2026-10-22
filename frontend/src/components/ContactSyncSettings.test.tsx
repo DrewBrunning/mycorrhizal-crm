@@ -9,6 +9,7 @@ import {
   syncContactSubscription,
   updateContactSubscription,
 } from '../api/contactSubscriptions';
+import { formatLocalDate } from '../timeFormat';
 import ContactSyncSettings from './ContactSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -170,7 +171,7 @@ test('terminal notice shows a recent success as a date rather than "0 days ago"'
 
   await waitFor(() => expect(screen.getByText('Just synced')).toBeInTheDocument());
   expect(
-    screen.getByText(`Last successful sync: ${new Date(oneHourAgo).toLocaleDateString()}`),
+    screen.getByText(`Last successful sync: ${formatLocalDate(oneHourAgo)}`),
   ).toBeInTheDocument();
 });
 
