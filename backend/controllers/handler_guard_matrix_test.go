@@ -691,6 +691,7 @@ var guardExpect = map[string][2]string{
 func TestHandlerGuardMatrix(t *testing.T) {
 	logtest.AllowWarnings(t, "guard-matrix requests intentionally trigger handler error logs")
 	gin.SetMode(gin.ReleaseMode)
+	isolateMycorrhizalImportSessions(t)
 	handlers := guardHandlers()
 	require.Len(t, guardExpect, len(handlers), "guardExpect and guardHandlers must list the same handlers")
 

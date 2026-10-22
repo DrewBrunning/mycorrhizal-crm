@@ -80,7 +80,7 @@ func TestExportAccountBundle_SizeCap_Boundary(t *testing.T) {
 func TestMycorrhizalUpload_AtAndOverProductionLimit(t *testing.T) {
 	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Mycorrhizal bundle upload rejected")
 	_, router := setupRouter(t)
-	registerMycorrhizalRoutes(router) // resets the session manager
+	registerMycorrhizalRoutes(router) // setupRouter installs a clean session manager
 	router.POST("/limited/upload", middleware.BodySizeLimitMiddleware(services.MycorrhizalUploadBodyLimit), UploadMycorrhizalBundle)
 
 	pad := func(n int64) []byte {
