@@ -158,10 +158,12 @@ test.describe('Mobile layout: Add Contact (#1780, #1781)', () => {
       await expect(page.getByLabel(/first.*name/i)).toBeFocused();
 
       // Issue #1781: below `sm` the dialog paper fills the viewport instead of
-      // remaining a centred modal with wide margins.
-      const paperBox = await dialog.locator('.MuiDialog-paper').boundingBox();
+      // remaining a centred modal with wide margins. MUI's role="dialog"
+      // element is the paper itself, so measure the dialog locator directly.
+      const paperBox = await dialog.boundingBox();
       expect(paperBox, 'dialog paper is laid out').not.toBeNull();
-      expect(paperBox?.width).toBeGreaterThanOrEqual(width - 1);
+      // Allow for a classic scrollbar the modal may reserve.
+      expect(paperBox?.width).toBeGreaterThanOrEqual(width - 20);
 
       // Both "select existing..." pickers are usable, not collapsed to an arrow.
       for (const label of [/select existing circle/i, /select existing tag/i]) {
