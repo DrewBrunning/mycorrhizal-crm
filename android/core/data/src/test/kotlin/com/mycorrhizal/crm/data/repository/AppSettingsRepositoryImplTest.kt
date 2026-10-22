@@ -46,6 +46,20 @@ class AppSettingsRepositoryImplTest {
         assertEquals("de", AppLocale.languageTag)
     }
 
+
+    @Test
+    fun `contact sort defaults to name and persists a change`() = runTest {
+        val r = repo()
+        assertEquals(AppSettingsRepository.CONTACT_SORT_NAME, r.contactSortPreference().first())
+
+        r.setContactSortPreference(AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED)
+
+        assertEquals(
+            AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED,
+            r.contactSortPreference().first(),
+        )
+    }
+
     @Test
     fun `hydrate populates the sync caches from persisted values`() = runTest {
         val r = repo()

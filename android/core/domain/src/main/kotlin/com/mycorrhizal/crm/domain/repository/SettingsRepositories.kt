@@ -67,6 +67,11 @@ interface AppSettingsRepository {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
+
+        /** Contact-list sort keys (issue #1762), persisted across launches. */
+        const val CONTACT_SORT_NAME = "name"
+        const val CONTACT_SORT_RECENTLY_CONTACTED = "updated_at"
+        const val CONTACT_SORT_RECENTLY_ADDED = "created_at"
     }
 
     /** Theme choice (`system` default) — recomposition-driven, so MainActivity can react live. */
@@ -79,4 +84,11 @@ interface AppSettingsRepository {
 
     /** Synchronous read of the theme for the very first frame (before the Flow emits). */
     fun currentThemePreference(): String
+
+    /**
+     * The contact list's chosen sort (issue #1762), `name` by default. Persisted
+     * so the choice survives a restart; the list screen re-reads it on open.
+     */
+    fun contactSortPreference(): Flow<String>
+    suspend fun setContactSortPreference(preference: String)
 }

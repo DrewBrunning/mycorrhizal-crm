@@ -1,15 +1,14 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,16 +19,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.MergeType
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
@@ -41,19 +40,17 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -69,6 +66,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -77,7 +75,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
@@ -91,6 +88,7 @@ import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -149,6 +147,7 @@ fun ContactListScreen(
         onCircleFilterChange = viewModel::onCircleFilterChange,
         onIncludeArchivedChange = viewModel::onIncludeArchivedChange,
         onIncludeFavoritesChange = viewModel::onIncludeFavoritesChange,
+        onSortChange = viewModel::onSortChange,
         onToggleFavorite = viewModel::toggleFavorite,
         onToggleSelection = viewModel::toggleSelection,
         onToggleSelectAll = viewModel::toggleSelectAll,
@@ -180,6 +179,8 @@ fun ContactListScreenContent(
     onIncludeArchivedChange: (Boolean) -> Unit = {},
     // Issue #212: the favorites-only lens + per-row star toggle (web #173).
     onIncludeFavoritesChange: (Boolean) -> Unit = {},
+    // Issue #1762: name / recently contacted / recently added.
+    onSortChange: (ContactSort) -> Unit = {},
     onToggleFavorite: (ContactSummary) -> Unit = {},
     onToggleSelection: (Int) -> Unit = {},
     onToggleSelectAll: () -> Unit = {},
@@ -258,16 +259,44 @@ fun ContactListScreenContent(
                     }
                 },
                 title = {
-                    Text(
-                        text = if (pickerTitle != null) {
-                            pickerTitle
-                        } else if (selectMode) {
-                            stringResource(R.string.contacts_selected_count, uiState.selected.size)
-                        } else {
-                            stringResource(R.string.nav_contacts)
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
+                    when {
+                        pickerTitle != null -> Text(
+                            text = pickerTitle,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        selectMode -> Text(
+                            text = stringResource(R.string.contacts_selected_count, uiState.selected.size),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        // Issue #1762: the search bar lives in the app bar, not
+                        // in a fixed block that steals a third of the viewport.
+                        else -> OutlinedTextField(
+                            value = search,
+                            onValueChange = {
+                                search = it
+                                onSearchQueryChange(it)
+                            },
+                            label = { Text(stringResource(R.string.contacts_search_hint)) },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Search, contentDescription = null)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("contact-search"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                focusedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                focusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                cursorColor = MaterialTheme.colorScheme.onPrimary,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                            ),
+                        )
+                    }
                 },
                 actions = {
                     if (isPicker) {
@@ -297,7 +326,9 @@ fun ContactListScreenContent(
                             modifier = Modifier.testTag("review-duplicates"),
                         ) {
                             Icon(
-                                Icons.Outlined.ContentCopy,
+                                // Issue #1762: ContentCopy read as "copy"; the
+                                // merge glyph names the action.
+                                Icons.Outlined.MergeType,
                                 contentDescription = stringResource(R.string.duplicates_title),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                             )
@@ -324,7 +355,7 @@ fun ContactListScreenContent(
         },
         floatingActionButton = {
             if (!selectMode && !isPicker) {
-                BrandFab(onClick = onCreateContact) {
+                BrandFab(onClick = onCreateContact, modifier = Modifier.testTag("create-contact-fab")) {
                     Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
                 }
             }
@@ -350,29 +381,6 @@ fun ContactListScreenContent(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = {
-                    search = it
-                    onSearchQueryChange(it)
-                },
-                label = { Text(stringResource(R.string.contacts_search_hint)) },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
-            ContactListFilterRow(
-                circles = uiState.circles,
-                circleFilter = uiState.circleFilter,
-                includeArchived = uiState.includeArchived,
-                includeFavorites = uiState.includeFavorites,
-                onCircleFilterChange = onCircleFilterChange,
-                onIncludeArchivedChange = onIncludeArchivedChange,
-                onIncludeFavoritesChange = onIncludeFavoritesChange,
-            )
-
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
             // whether the contact list itself has rows — the two result sets are independent.
@@ -384,7 +392,42 @@ fun ContactListScreenContent(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("contact-list"),
+                    contentPadding = FabListContentPadding,
                 ) {
+                    // Issue #1762: one compact, horizontally-scrollable chip row
+                    // as the list's first item — it scrolls away with the rows.
+                    item(key = "filters") {
+                        ContactListFilterChips(
+                            circles = uiState.circles,
+                            circleFilter = uiState.circleFilter,
+                            includeArchived = uiState.includeArchived,
+                            includeFavorites = uiState.includeFavorites,
+                            sort = uiState.sort,
+                            onCircleFilterChange = onCircleFilterChange,
+                            onIncludeArchivedChange = onIncludeArchivedChange,
+                            onIncludeFavoritesChange = onIncludeFavoritesChange,
+                            onSortChange = onSortChange,
+                        )
+                    }
+                    val contactRow: @Composable (ContactSummary) -> Unit = { contact ->
+                        ContactListItem(
+                            contact = contact,
+                            selected = contact.id in uiState.selected,
+                            selectMode = selectMode,
+                            isMe = uiState.selfContactVCardUid != null &&
+                                contact.uid == uiState.selfContactVCardUid,
+                            onToggleFavorite = { onToggleFavorite(contact) },
+                            onClick = {
+                                if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
+                            },
+                            onLongClick = {
+                                if (!isPicker) {
+                                    selectMode = true
+                                    onToggleSelection(contact.id)
+                                }
+                            },
+                        )
+                    }
                     when {
                         uiState.isLoading && uiState.contacts.isEmpty() -> item {
                             LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
@@ -417,26 +460,28 @@ fun ContactListScreenContent(
                             }
                         }
                         else -> {
-                            items(uiState.contacts, key = { it.id }) { contact ->
-                                ContactListItem(
-                                    contact = contact,
-                                    selected = contact.id in uiState.selected,
-                                    selectMode = selectMode,
-                                    // T90 / issue #831: web parity — the "You" badge on the
-                                    // row for the caller's self-contact.
-                                    isMe = uiState.selfContactVCardUid != null &&
-                                        contact.uid == uiState.selfContactVCardUid,
-                                    onToggleFavorite = { onToggleFavorite(contact) },
-                                    onClick = {
-                                        if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
-                                    },
-                                    onLongClick = {
-                                        if (!isPicker) {
-                                            selectMode = true
-                                            onToggleSelection(contact.id)
-                                        }
-                                    },
-                                )
+                            if (uiState.sort == ContactSort.NAME) {
+                                // Issue #1762: sticky letter headers for the
+                                // default alphabetical order (grouped by the
+                                // same lastname-else-firstname key the server
+                                // sorts on).
+                                uiState.contacts.groupBy(::contactSectionLetter).forEach { (letter, rows) ->
+                                    stickyHeader(key = "header-$letter") {
+                                        Text(
+                                            text = letter,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(MaterialTheme.colorScheme.surface)
+                                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                                .testTag("contact-header-$letter"),
+                                        )
+                                    }
+                                    items(rows, key = { it.id }) { contact -> contactRow(contact) }
+                                }
+                            } else {
+                                items(uiState.contacts, key = { it.id }) { contact -> contactRow(contact) }
                             }
                             if (uiState.pagination.isLoadingMore) {
                                 item {
@@ -571,152 +616,126 @@ fun ContactListScreenContent(
 private enum class BulkPickerTarget { CIRCLE, TAG }
 
 /**
- * M23: the circle filter + archived toggle row above the list — the two list-breadth
- * controls web's ContactsPage filter row owns, missing on Android until now.
+ * Issue #1762: one compact chip row — favorites, archived, circle filter and
+ * sort — rendered as the list's first item so it scrolls away with the rows.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContactListFilterRow(
+private fun ContactListFilterChips(
     circles: List<Circle>,
     circleFilter: String?,
     includeArchived: Boolean,
     includeFavorites: Boolean,
+    sort: ContactSort,
     onCircleFilterChange: (String?) -> Unit,
     onIncludeArchivedChange: (Boolean) -> Unit,
     onIncludeFavoritesChange: (Boolean) -> Unit,
+    onSortChange: (ContactSort) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Column(
+    var circleExpanded by remember { mutableStateOf(false) }
+    var sortExpanded by remember { mutableStateOf(false) }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
-                modifier = Modifier.weight(1f),
+        FilterChip(
+            selected = includeFavorites,
+            onClick = { onIncludeFavoritesChange(!includeFavorites) },
+            label = { Text(stringResource(R.string.contacts_show_favorites)) },
+            modifier = Modifier
+                .testTag("favorites-toggle")
+                .semantics { toggleableState = ToggleableState(includeFavorites) },
+        )
+        FilterChip(
+            selected = includeArchived,
+            onClick = { onIncludeArchivedChange(!includeArchived) },
+            label = { Text(stringResource(R.string.contacts_show_archived)) },
+            modifier = Modifier
+                .testTag("archived-toggle")
+                .semantics { toggleableState = ToggleableState(includeArchived) },
+        )
+        Box {
+            FilterChip(
+                selected = circleFilter != null,
+                onClick = { circleExpanded = true },
+                label = { Text(circleFilter ?: stringResource(R.string.contacts_all_circles)) },
+                trailingIcon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
+                modifier = Modifier.testTag("circle-filter"),
+            )
+            DropdownMenu(
+                expanded = circleExpanded,
+                onDismissRequest = { circleExpanded = false },
             ) {
-                // #209: a read-only OutlinedTextField hard-clips its single-line
-                // value at the field edge with no ellipsis (Compose 1.7 removed
-                // the TextField overflow control), so a long circle name rendered
-                // "Neighbou" mid-word at 200% font scale. The anchor is therefore
-                // built from OutlinedTextFieldDefaults.DecorationBox with the
-                // value drawn by a plain Text, which *does* support
-                // TextOverflow.Ellipsis — same Material chrome, ellipsising value.
-                val displayValue = circleFilter ?: stringResource(R.string.contacts_all_circles)
-                Box(
-                    // mergeDescendants folds the label + value into the anchor's
-                    // own node (the menuAnchor already marks it Role.DropdownList
-                    // with a click), so TalkBack announces one coherent control.
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                        .testTag("circle-filter")
-                        .semantics(mergeDescendants = true) {},
-                ) {
-                    OutlinedTextFieldDefaults.DecorationBox(
-                        value = displayValue,
-                        innerTextField = {
-                            Text(
-                                text = displayValue,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        enabled = true,
-                        singleLine = true,
-                        visualTransformation = VisualTransformation.None,
-                        interactionSource = remember { MutableInteractionSource() },
-                        label = { Text(stringResource(R.string.contacts_filter_circle)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    )
-                }
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.contacts_all_circles)) },
+                    onClick = {
+                        circleExpanded = false
+                        onCircleFilterChange(null)
+                    },
+                )
+                circles.forEach { circle ->
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.contacts_all_circles)) },
+                        text = { Text(circle.name) },
                         onClick = {
-                            expanded = false
-                            onCircleFilterChange(null)
+                            circleExpanded = false
+                            onCircleFilterChange(circle.name)
                         },
                     )
-                    circles.forEach { circle ->
-                        DropdownMenuItem(
-                            text = { Text(circle.name) },
-                            onClick = {
-                                expanded = false
-                                onCircleFilterChange(circle.name)
-                            },
-                        )
-                    }
                 }
             }
         }
-        // #209: at 200% font scale the two labeled switches no longer fit side
-        // by side; FlowRow lets the favorites toggle drop to its own line (WCAG
-        // 1.4.10) instead of clipping off the row.
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            // #214: see the archived-toggle comment below — the same
-            // labeled-switch pattern, applied to the favorites lens.
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                // Gap between the switch thumb and its label — without it the
-                // text butts straight against the toggle.
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                // #214: a bare Switch has no text/contentDescription of its own — the
-                // adjacent "Show archived" Text was a separate, unassociated node, so
-                // TalkBack announced the switch with no name at all. Modifier.toggleable
-                // on the row merges the label into the switch's accessible name (the
-                // standard Material3 labeled-switch pattern) and gives the whole row a
-                // touch target wider than the switch's own 52x32dp default.
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .toggleable(
-                        value = includeArchived,
-                        onValueChange = onIncludeArchivedChange,
-                        role = Role.Switch,
-                    )
-                    .testTag("archived-toggle"),
+        Box {
+            FilterChip(
+                selected = false,
+                onClick = { sortExpanded = true },
+                label = {
+                    Text(stringResource(R.string.contacts_sort_label, sortLabel(sort)))
+                },
+                trailingIcon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
+                modifier = Modifier.testTag("sort-filter"),
+            )
+            DropdownMenu(
+                expanded = sortExpanded,
+                onDismissRequest = { sortExpanded = false },
             ) {
-                Switch(checked = includeArchived, onCheckedChange = null)
-                Text(
-                    text = stringResource(R.string.contacts_show_archived),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .toggleable(
-                        value = includeFavorites,
-                        onValueChange = onIncludeFavoritesChange,
-                        role = Role.Switch,
+                ContactSort.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(sortLabel(option)) },
+                        onClick = {
+                            sortExpanded = false
+                            onSortChange(option)
+                        },
+                        modifier = Modifier.testTag("sort-option-${option.preferenceValue}"),
                     )
-                    .testTag("favorites-toggle"),
-            ) {
-                Switch(checked = includeFavorites, onCheckedChange = null)
-                Text(
-                    text = stringResource(R.string.contacts_show_favorites),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                }
             }
         }
     }
+}
+
+/** Display label for the sort control. */
+@Composable
+private fun sortLabel(sort: ContactSort): String = when (sort) {
+    ContactSort.NAME -> stringResource(R.string.contacts_sort_name)
+    ContactSort.RECENTLY_CONTACTED -> stringResource(R.string.contacts_sort_recently_contacted)
+    ContactSort.RECENTLY_ADDED -> stringResource(R.string.contacts_sort_recently_added)
+}
+
+/**
+ * Sticky-header letter for the default name order, derived from the same
+ * lastname-else-firstname key the backend's sort_name uses. Non-letter
+ * leading characters (a number, an emoji) group under "#".
+ */
+private fun contactSectionLetter(contact: ContactSummary): String {
+    val key = sequenceOf(contact.lastname, contact.firstname, contact.fn)
+        .mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
+        .firstOrNull()
+        ?: return "#"
+    val first = key.first()
+    return if (first.isLetter()) first.uppercaseChar().toString() else "#"
 }
 
 /**
@@ -860,18 +879,37 @@ fun ContactListItem(
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 if (isMe) {
-                    // T90 / issue #831: being yourself is not a status condition —
-                    // a neutral, non-interactive chip (web ContactHeader parity).
-                    AssistChip(
-                        onClick = {},
-                        enabled = false,
-                        label = { Text(stringResource(R.string.contact_you_badge)) },
-                        modifier = Modifier.testTag("you-badge-${contact.id}"),
-                    )
+                    // T90 / issue #831: being yourself is not a status condition,
+                    // and issue #1754: a disabled AssistChip renders at 38% opacity
+                    // (failing contrast) and is announced as "disabled". A neutral
+                    // outlined label with no click semantics reads as a badge.
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        // mergeDescendants makes the badge its own semantics
+                        // boundary: without it the row's combinedClickable merges
+                        // the label away (and TalkBack reads it as part of the row).
+                        modifier = Modifier
+                            .semantics(mergeDescendants = true) {}
+                            .testTag("you-badge-${contact.id}"),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.contact_you_badge),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
                 }
             }
-            val subtitle = listOfNotNull(contact.primaryEmail, contact.primaryPhone)
-                .joinToString(" · ")
+            // Issue #1754: the list endpoint sends "" (not null) for a missing
+            // email/phone, and listOfNotNull only drops nulls — an email-only
+            // contact rendered a dangling " · ". Filter blanks before joining.
+            val subtitle = listOfNotNull(
+                contact.primaryEmail?.takeIf { it.isNotBlank() },
+                contact.primaryPhone?.takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,

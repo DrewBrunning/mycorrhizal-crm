@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -154,7 +155,7 @@ fun RemindersScreenContent(
                             onAction = onCreateReminder,
                         )
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             items(state.reminders, key = { it.id }) { reminder ->
                                 ReminderListItem(
                                     reminder = reminder,

@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdRoles
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -164,7 +166,7 @@ fun HouseholdDetailScreen(
                         )
                     }
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             items(state.members, key = { it.id }) { member ->
                                 val resolved = state.contactsByUid[member.memberVCardUid]
                                 HouseholdMemberRow(
@@ -215,7 +217,7 @@ fun HouseholdDetailScreen(
 
     val infoMessage = state.infoRes?.let { res ->
         val count = state.infoCount
-        if (count != null) stringResource(res, count) else stringResource(res)
+        if (count != null) pluralStringResource(res, count, count) else stringResource(res)
     }
 
     infoMessage?.let { message ->

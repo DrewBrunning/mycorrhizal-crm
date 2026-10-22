@@ -40,6 +40,8 @@ interface ContactRepository {
         circleLegacy: String? = null,
         includeArchived: Boolean? = null,
         favorites: Boolean? = null,
+        sort: String? = null,
+        order: String? = null,
     ): Result<ContactsPage>
 
     /**

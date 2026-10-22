@@ -77,7 +77,7 @@ class TriageScreenTest {
         composeTestRule.onNodeWithText("Circle").assertIsDisplayed()
         composeTestRule.onNodeWithText("Tag").assertIsDisplayed()
         composeTestRule.onNodeWithText("Skip").assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 circles, 0 tags, 0 skipped").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 circle, 0 tags, 0 skipped").assertIsDisplayed()
     }
 
     @Test
@@ -130,7 +130,7 @@ class TriageScreenTest {
         }
 
         composeTestRule.onNodeWithText("Triage complete").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Created 1 circle(s) and 2 tag(s).").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Created 1 circle and 2 tags.").assertIsDisplayed()
     }
 
     @Test

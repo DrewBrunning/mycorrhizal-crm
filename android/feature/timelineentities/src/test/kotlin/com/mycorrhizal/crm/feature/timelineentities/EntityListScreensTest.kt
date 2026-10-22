@@ -555,7 +555,7 @@ class GiftFormTest {
 
         composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
         composeTestRule.onNodeWithText("URL").performScrollTo().performTextReplacement("javascript:alert(1)")
-        composeTestRule.onNodeWithText("Enter a valid http(s) URL").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Enter a valid HTTP or HTTPS URL").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
     }
 

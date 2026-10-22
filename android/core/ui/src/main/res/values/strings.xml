@@ -117,6 +117,10 @@
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Search contacts</string>
+    <string name="contacts_sort_label">Sort: %1$s</string>
+    <string name="contacts_sort_name">Name</string>
+    <string name="contacts_sort_recently_contacted">Recently contacted</string>
+    <string name="contacts_sort_recently_added">Recently added</string>
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_empty_body">Add someone to get started, or import your contacts.</string>
     <string name="contacts_new">New contact</string>
@@ -435,9 +439,11 @@
     <string name="prep_cadence_overdue">%1$d days overdue</string>
     <string name="prep_cadence_on_track">On track</string>
     <string name="prep_cadence_next_due">Next due: %1$s</string>
-    <string name="prep_cadence_last_interaction">Last interaction: %1$s</string>
     <string name="prep_cadence_no_interactions_yet">No qualifying interactions yet — cadence starts once you record one.</string>
     <string name="prep_agenda_title">Things to bring up</string>
+    <string name="prep_preferences_title">Preferences</string>
+    <string name="prep_gift_ideas_title">Gift ideas</string>
+    <string name="prep_preference_line">%1$s: %2$s</string>
     <string name="prep_last_interaction_title">Last interaction</string>
     <string name="prep_last_interaction_none">No interactions recorded yet</string>
     <string name="prep_recent_notes_title">Recent notes</string>
@@ -446,8 +452,12 @@
     <string name="prep_reminders_title">Upcoming reminders</string>
     <string name="prep_upcoming_dates_title">Upcoming dates</string>
     <string name="prep_upcoming_dates_birthday">Birthday</string>
+    <string name="prep_upcoming_dates_turns">Turns %1$d · %2$s</string>
     <string name="prep_upcoming_dates_anniversary">Anniversary</string>
-    <string name="prep_upcoming_dates_in_days">in %1$d day(s)</string>
+    <plurals name="prep_upcoming_dates_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -1090,13 +1100,41 @@
     <string name="triage_circle">Circle</string>
     <string name="triage_tag">Tag</string>
     <string name="triage_skip">Skip</string>
-    <string name="triage_contacts_count">%1$d contacts</string>
-    <string name="triage_summary">%1$d circles, %2$d tags, %3$d skipped</string>
+    <plurals name="triage_contacts_count">
+        <item quantity="one">%1$d contact</item>
+        <item quantity="other">%1$d contacts</item>
+    </plurals>
+    <string name="triage_summary_format">%1$s, %2$s, %3$s</string>
+    <plurals name="triage_summary_circles">
+        <item quantity="one">%1$d circle</item>
+        <item quantity="other">%1$d circles</item>
+    </plurals>
+    <plurals name="triage_summary_tags">
+        <item quantity="one">%1$d tag</item>
+        <item quantity="other">%1$d tags</item>
+    </plurals>
+    <string name="triage_summary_skipped">%1$d skipped</string>
+    <string name="triage_done_message_format">Created %1$s and %2$s.</string>
+    <plurals name="triage_done_circles">
+        <item quantity="one">%1$d circle</item>
+        <item quantity="other">%1$d circles</item>
+    </plurals>
+    <plurals name="triage_done_tags">
+        <item quantity="one">%1$d tag</item>
+        <item quantity="other">%1$d tags</item>
+    </plurals>
+    <string name="triage_done_partial_format">%1$s and %2$s. Run triage again to retry.</string>
+    <plurals name="triage_done_partial_items">
+        <item quantity="one">%1$d item could not be created</item>
+        <item quantity="other">%1$d items could not be created</item>
+    </plurals>
+    <plurals name="triage_done_partial_members">
+        <item quantity="one">%1$d member add failed</item>
+        <item quantity="other">%1$d member adds failed</item>
+    </plurals>
     <string name="triage_apply">Apply</string>
     <string name="triage_empty">No legacy circle strings to clean up</string>
     <string name="triage_done_title">Triage complete</string>
-    <string name="triage_done_message">Created %1$d circle(s) and %2$d tag(s).</string>
-    <string name="triage_done_partial">%1$d item(s) could not be created and %2$d member add(s) failed. Run triage again to retry.</string>
     <string name="action_done">Done</string>
 
     <!-- Admin user management (issue #348) -->
@@ -1241,7 +1279,10 @@
     <string name="households_suggest_relationships">Suggest relationships</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Text everyone</string>
-    <string name="households_suggestions_generated">Generated %1$d new suggested relationship(s). Review them on the members\' contact pages.</string>
+    <plurals name="households_suggestions_generated">
+        <item quantity="one">Generated %1$d new suggested relationship. Review it on the members\' contact pages.</item>
+        <item quantity="other">Generated %1$d new suggested relationships. Review them on the members\' contact pages.</item>
+    </plurals>
     <string name="households_no_new_suggestions">No new suggestions — the existing relationships already cover this household.</string>
     <string name="households_suggest_addresses">Suggest households from shared address</string>
     <string name="households_address_suggestions">Shared-address suggestions</string>
@@ -1459,7 +1500,7 @@
     <string name="gifts_status_given">Given</string>
     <string name="gifts_status_received">Received</string>
     <string name="gifts_url">URL</string>
-    <string name="gifts_url_invalid">Enter a valid http(s) URL</string>
+    <string name="gifts_url_invalid">Enter a valid HTTP or HTTPS URL</string>
     <string name="gifts_notes">Notes</string>
     <string name="gifts_occasion">Occasion</string>
     <string name="gifts_date">Date</string>
@@ -1593,7 +1634,10 @@
     <!-- T93 duplicate review (issue #710, web parity) -->
     <string name="duplicates_title">Review duplicates</string>
     <string name="duplicates_empty">No duplicate contacts found</string>
-    <string name="duplicates_count">%1$d potential duplicate pair(s)</string>
+    <plurals name="duplicates_count">
+        <item quantity="one">%1$d potential duplicate pair</item>
+        <item quantity="other">%1$d potential duplicate pairs</item>
+    </plurals>
     <string name="duplicates_vs">vs</string>
     <string name="duplicates_reason_email">Same email</string>
     <string name="duplicates_reason_name">Same name</string>
@@ -1959,7 +2003,10 @@
     <string name="settings_delete_local_data_hint">Type %1$s to confirm</string>
     <string name="settings_delete_local_data_confirm">Delete local data</string>
     <string name="settings_servers_switch_title">Unsent activity</string>
-    <string name="settings_servers_switch_body">%1$d captured interaction(s) have not been sent yet. Switching to %2$s will discard them.</string>
+    <plurals name="settings_servers_switch_body">
+        <item quantity="one">%1$d captured interaction has not been sent yet. Switching to %2$s will discard it.</item>
+        <item quantity="other">%1$d captured interactions have not been sent yet. Switching to %2$s will discard them.</item>
+    </plurals>
     <string name="settings_servers_switch_confirm">Discard and switch</string>
     <string name="servers_add_invalid_url">Enter a valid server URL, for example https://crm.example.com.</string>
     <string name="login_use_local_only">Use on this device only</string>
@@ -1981,7 +2028,10 @@
     <string name="attach_stage_importing">Importing on the server…</string>
     <string name="attach_progress">%1$d of %2$d</string>
     <string name="attach_review_totals">Ready to move %1$d contacts, %2$d notes and %3$d activities.</string>
-    <string name="attach_review_loss">%1$d field(s) can\'t be carried over exactly.</string>
+    <plurals name="attach_review_loss">
+        <item quantity="one">%1$d field can\'t be carried over exactly.</item>
+        <item quantity="other">%1$d fields can\'t be carried over exactly.</item>
+    </plurals>
     <string name="attach_prepare_failed">The move could not be prepared. Nothing on this device was changed.</string>
     <string name="attach_retry">Try again</string>
     <string name="attach_done_title">Data moved</string>
@@ -1989,7 +2039,10 @@
     <string name="attach_done_archive_note">This device\'s copy is now a read-only archive. You can browse it, but not change it, until you delete it under Settings → Servers.</string>
     <string name="attach_done_button">Done</string>
     <string name="attach_discard_title">Unsent activity</string>
-    <string name="attach_discard_body">%1$d captured interaction(s) on this device were not sent and are not part of the move. Discard them and finish?</string>
+    <plurals name="attach_discard_body">
+        <item quantity="one">%1$d captured interaction on this device was not sent and is not part of the move. Discard it and finish?</item>
+        <item quantity="other">%1$d captured interactions on this device were not sent and are not part of the move. Discard them and finish?</item>
+    </plurals>
     <string name="attach_discard_confirm">Discard and finish</string>
     <string name="attach_error_not_local">Only the on-device profile can be moved to a server.</string>
     <string name="attach_error_credentials">Enter your username or email and password.</string>

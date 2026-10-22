@@ -3,10 +3,15 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.BriefingCadence
 import com.mycorrhizal.crm.model.network.BriefingCadenceHealth
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftStatuses
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -35,8 +40,20 @@ class PrepViewModelTest {
         authRepository: AuthRepository = mockk<AuthRepository>().also {
             coEvery { it.observeSession() } returns emptyFlow()
         },
+        preferenceRepository: PreferenceRepository = mockk<PreferenceRepository>().also {
+            coEvery { it.listForContact(any()) } returns Result.success(emptyList())
+        },
+        giftRepository: GiftRepository = mockk<GiftRepository>().also {
+            coEvery { it.listForContact(any()) } returns Result.success(emptyList())
+        },
     ): PrepViewModel {
-        return PrepViewModel(apiClient, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+        return PrepViewModel(
+            apiClient,
+            authRepository,
+            preferenceRepository,
+            giftRepository,
+            SavedStateHandle(mapOf("contactId" to contactId)),
+        )
     }
 
     @Test
@@ -92,6 +109,90 @@ class PrepViewModelTest {
         assertNull(state.briefing?.cadence)
     }
 
+
+    @Test
+    fun `preferences and unbought gift ideas are loaded alongside the briefing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.getBriefing(7) } returns Result.success(
+                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia"),
+            )
+            val preferenceRepository = mockk<PreferenceRepository>()
+            coEvery { preferenceRepository.listForContact("u7") } returns Result.success(
+                listOf(Preference(id = "p1", entityId = "u7", category = "hobby", value = "Pottery")),
+            )
+            val giftRepository = mockk<GiftRepository>()
+            coEvery { giftRepository.listForContact("u7") } returns Result.success(
+                listOf(
+                    Gift(id = "g1", entityId = "u7", status = GiftStatuses.IDEA, description = "Pottery wheel"),
+                    Gift(id = "g2", entityId = "u7", status = GiftStatuses.GIVEN, description = "Mug"),
+                    Gift(id = "g3", entityId = "u7", status = GiftStatuses.PURCHASED, description = "Apron"),
+                ),
+            )
+
+            val viewModel = newViewModel(
+                apiClient,
+                preferenceRepository = preferenceRepository,
+                giftRepository = giftRepository,
+            )
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf("Pottery"), state.preferences.map { it.value })
+            // Only status=idea is a "gift idea"; given/purchased records are not.
+            assertEquals(listOf("Pottery wheel"), state.giftIdeas.map { it.description })
+            coVerify(exactly = 1) { preferenceRepository.listForContact("u7") }
+            coVerify(exactly = 1) { giftRepository.listForContact("u7") }
+        }
+
+    @Test
+    fun `an auxiliary preferences or gifts failure still shows the briefing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.getBriefing(7) } returns Result.success(
+                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia"),
+            )
+            val preferenceRepository = mockk<PreferenceRepository>()
+            coEvery { preferenceRepository.listForContact("u7") } returns
+                Result.failure(ApiError.Server(500, "prefs down"))
+            val giftRepository = mockk<GiftRepository>()
+            coEvery { giftRepository.listForContact("u7") } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+            val viewModel = newViewModel(
+                apiClient,
+                preferenceRepository = preferenceRepository,
+                giftRepository = giftRepository,
+            )
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals("Nadia", state.briefing?.name)
+            assertNull(state.error)
+            assertTrue(state.preferences.isEmpty())
+            assertTrue(state.giftIdeas.isEmpty())
+        }
+
+    @Test
+    fun `a briefing with no uid does not call the auxiliary endpoints`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.getBriefing(7) } returns Result.success(
+                ContactBriefing(contactId = 7, uid = "", name = "Nameless"),
+            )
+            val preferenceRepository = mockk<PreferenceRepository>()
+            val giftRepository = mockk<GiftRepository>()
+
+            val viewModel = newViewModel(
+                apiClient,
+                preferenceRepository = preferenceRepository,
+                giftRepository = giftRepository,
+            )
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { preferenceRepository.listForContact(any()) }
+            coVerify(exactly = 0) { giftRepository.listForContact(any()) }
+        }
     @Test
     fun `a network failure yields the error state`() = runTest(mainDispatcherRule.testDispatcher) {
         val apiClient = mockk<ApiClient>()

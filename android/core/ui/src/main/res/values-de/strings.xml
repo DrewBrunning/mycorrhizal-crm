@@ -117,6 +117,10 @@
 
     <!-- Kontaktliste -->
     <string name="contacts_search_hint">Kontakte suchen</string>
+    <string name="contacts_sort_label">Sortierung: %1$s</string>
+    <string name="contacts_sort_name">Name</string>
+    <string name="contacts_sort_recently_contacted">Zuletzt kontaktiert</string>
+    <string name="contacts_sort_recently_added">Zuletzt hinzugefügt</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_empty_body">Füge jemanden hinzu, um zu starten, oder importiere deine Kontakte.</string>
     <string name="contacts_new">Neuer Kontakt</string>
@@ -428,9 +432,11 @@
     <string name="prep_cadence_overdue">%1$d Tage überfällig</string>
     <string name="prep_cadence_on_track">Im Zeitplan</string>
     <string name="prep_cadence_next_due">Nächster Termin: %1$s</string>
-    <string name="prep_cadence_last_interaction">Letzte Interaktion: %1$s</string>
     <string name="prep_cadence_no_interactions_yet">Noch keine qualifizierenden Interaktionen – die Kadenz beginnt mit der ersten.</string>
     <string name="prep_agenda_title">Gesprächsthemen</string>
+    <string name="prep_preferences_title">Vorlieben</string>
+    <string name="prep_gift_ideas_title">Geschenkideen</string>
+    <string name="prep_preference_line">%1$s: %2$s</string>
     <string name="prep_last_interaction_title">Letzte Interaktion</string>
     <string name="prep_last_interaction_none">Noch keine Interaktionen erfasst</string>
     <string name="prep_recent_notes_title">Letzte Notizen</string>
@@ -439,8 +445,13 @@
     <string name="prep_reminders_title">Anstehende Erinnerungen</string>
     <string name="prep_upcoming_dates_title">Anstehende Daten</string>
     <string name="prep_upcoming_dates_birthday">Geburtstag</string>
+    <string name="prep_upcoming_dates_turns">Wird %1$d · %2$s</string>
     <string name="prep_upcoming_dates_anniversary">Jahrestag</string>
-    <string name="prep_upcoming_dates_in_days">in %1$d Tag(en)</string>
+    <plurals name="prep_upcoming_dates_in_days">
+        <item quantity="one">in %1$d Tag</item>
+        <item quantity="many">in %1$d Tagen</item>
+        <item quantity="other">in %1$d Tagen</item>
+    </plurals>
 
     <!-- Einstellungen -->
     <string name="settings_title">Einstellungen</string>
@@ -1073,13 +1084,41 @@
     <string name="triage_circle">Kreis</string>
     <string name="triage_tag">Tag</string>
     <string name="triage_skip">Überspringen</string>
-    <string name="triage_contacts_count">%1$d Kontakte</string>
-    <string name="triage_summary">%1$d Kreise, %2$d Tags, %3$d übersprungen</string>
+    <plurals name="triage_contacts_count">
+        <item quantity="one">%1$d Kontakt</item>
+        <item quantity="other">%1$d Kontakte</item>
+    </plurals>
+    <string name="triage_summary_format">%1$s, %2$s, %3$s</string>
+    <plurals name="triage_summary_circles">
+        <item quantity="one">%1$d Kreis</item>
+        <item quantity="other">%1$d Kreise</item>
+    </plurals>
+    <plurals name="triage_summary_tags">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tags</item>
+    </plurals>
+    <string name="triage_summary_skipped">%1$d übersprungen</string>
+    <string name="triage_done_message_format">%1$s und %2$s erstellt.</string>
+    <plurals name="triage_done_circles">
+        <item quantity="one">%1$d Kreis</item>
+        <item quantity="other">%1$d Kreise</item>
+    </plurals>
+    <plurals name="triage_done_tags">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tags</item>
+    </plurals>
+    <string name="triage_done_partial_format">%1$s und %2$s. Führe die Bereinigung erneut aus, um es zu wiederholen.</string>
+    <plurals name="triage_done_partial_items">
+        <item quantity="one">%1$d Element konnte nicht erstellt werden</item>
+        <item quantity="other">%1$d Elemente konnten nicht erstellt werden</item>
+    </plurals>
+    <plurals name="triage_done_partial_members">
+        <item quantity="one">%1$d Mitglied konnte nicht hinzugefügt werden</item>
+        <item quantity="other">%1$d Mitglieder konnten nicht hinzugefügt werden</item>
+    </plurals>
     <string name="triage_apply">Übernehmen</string>
     <string name="triage_empty">Keine alten Kreisbegriffe zum Bereinigen</string>
     <string name="triage_done_title">Bereinigung abgeschlossen</string>
-    <string name="triage_done_message">%1$d Kreis(e) und %2$d Tag(s) erstellt.</string>
-    <string name="triage_done_partial">%1$d Punkt(e) konnten nicht erstellt und %2$d Mitglieder-Zuweisung(en) schlugen fehl. Führe die Bereinigung erneut aus, um es zu wiederholen.</string>
     <string name="action_done">Fertig</string>
 
     <!-- Admin user management (issue #348) -->
@@ -1223,7 +1262,10 @@
     <string name="households_suggest_relationships">Beziehungen vorschlagen</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Allen schreiben</string>
-    <string name="households_suggestions_generated">%1$d neue Beziehungsvorschläge erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</string>
+    <plurals name="households_suggestions_generated">
+        <item quantity="one">%1$d neue vorgeschlagene Beziehung erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
+        <item quantity="other">%1$d neue vorgeschlagene Beziehungen erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
+    </plurals>
     <string name="households_no_new_suggestions">Keine neuen Vorschläge — die bestehenden Beziehungen decken diesen Haushalt bereits ab.</string>
     <string name="households_suggest_addresses">Haushalte aus gemeinsamer Adresse vorschlagen</string>
     <string name="households_address_suggestions">Vorschläge mit gemeinsamer Adresse</string>
@@ -1444,7 +1486,7 @@
     <string name="gifts_status_given">Verschenkt</string>
     <string name="gifts_status_received">Erhalten</string>
     <string name="gifts_url">URL</string>
-    <string name="gifts_url_invalid">Bitte eine gültige http(s)-URL eingeben</string>
+    <string name="gifts_url_invalid">Bitte eine gültige HTTP- oder HTTPS-URL eingeben</string>
     <string name="gifts_notes">Notizen</string>
     <string name="gifts_occasion">Anlass</string>
     <string name="gifts_date">Datum</string>
@@ -1579,7 +1621,10 @@
     <!-- T93 duplicate review (issue #710, web parity) -->
     <string name="duplicates_title">Doppelte prüfen</string>
     <string name="duplicates_empty">Keine doppelten Kontakte gefunden</string>
-    <string name="duplicates_count">%1$d mögliches Duplikatpaar/e</string>
+    <plurals name="duplicates_count">
+        <item quantity="one">%1$d potenzielles Duplikatpaar</item>
+        <item quantity="other">%1$d potenzielle Duplikatpaare</item>
+    </plurals>
     <string name="duplicates_vs">gegenüber</string>
     <string name="duplicates_reason_email">Gleiche E-Mail</string>
     <string name="duplicates_reason_name">Gleicher Name</string>
@@ -1943,7 +1988,10 @@
     <string name="settings_delete_local_data_hint">%1$s zur Bestätigung eingeben</string>
     <string name="settings_delete_local_data_confirm">Lokale Daten löschen</string>
     <string name="settings_servers_switch_title">Ungesendete Aktivitäten</string>
-    <string name="settings_servers_switch_body">%1$d erfasste Interaktion(en) wurden noch nicht gesendet. Beim Wechsel zu %2$s werden sie verworfen.</string>
+    <plurals name="settings_servers_switch_body">
+        <item quantity="one">%1$d erfasste Interaktion wurde noch nicht gesendet. Beim Wechsel zu %2$s wird sie verworfen.</item>
+        <item quantity="other">%1$d erfasste Interaktionen wurden noch nicht gesendet. Beim Wechsel zu %2$s werden sie verworfen.</item>
+    </plurals>
     <string name="settings_servers_switch_confirm">Verwerfen und wechseln</string>
     <string name="servers_add_invalid_url">Gib eine gültige Server-URL ein, zum Beispiel https://crm.example.com.</string>
     <string name="login_use_local_only">Nur auf diesem Gerät verwenden</string>
@@ -1965,7 +2013,10 @@
     <string name="attach_stage_importing">Import auf dem Server läuft…</string>
     <string name="attach_progress">%1$d von %2$d</string>
     <string name="attach_review_totals">Bereit zum Verschieben: %1$d Kontakte, %2$d Notizen und %3$d Aktivitäten.</string>
-    <string name="attach_review_loss">%1$d Feld(er) können nicht exakt übernommen werden.</string>
+    <plurals name="attach_review_loss">
+        <item quantity="one">%1$d Feld kann nicht exakt übernommen werden.</item>
+        <item quantity="other">%1$d Felder können nicht exakt übernommen werden.</item>
+    </plurals>
     <string name="attach_prepare_failed">Der Umzug konnte nicht vorbereitet werden. Auf diesem Gerät wurde nichts geändert.</string>
     <string name="attach_retry">Erneut versuchen</string>
     <string name="attach_done_title">Daten verschoben</string>
@@ -1973,7 +2024,10 @@
     <string name="attach_done_archive_note">Die Kopie auf diesem Gerät ist jetzt ein schreibgeschütztes Archiv. Sie können sie ansehen, aber nicht ändern, bis Sie sie unter Einstellungen → Server löschen.</string>
     <string name="attach_done_button">Fertig</string>
     <string name="attach_discard_title">Nicht gesendete Aktivität</string>
-    <string name="attach_discard_body">%1$d erfasste Interaktion(en) auf diesem Gerät wurden nicht gesendet und sind nicht Teil des Umzugs. Verwerfen und abschließen?</string>
+    <plurals name="attach_discard_body">
+        <item quantity="one">%1$d erfasste Interaktion auf diesem Gerät wurde nicht gesendet und ist nicht Teil des Umzugs. Verwerfen und abschließen?</item>
+        <item quantity="other">%1$d erfasste Interaktionen auf diesem Gerät wurden nicht gesendet und sind nicht Teil des Umzugs. Verwerfen und abschließen?</item>
+    </plurals>
     <string name="attach_discard_confirm">Verwerfen und abschließen</string>
     <string name="attach_error_not_local">Nur das Profil auf dem Gerät kann auf einen Server verschoben werden.</string>
     <string name="attach_error_credentials">Geben Sie Benutzernamen oder E-Mail und Passwort ein.</string>

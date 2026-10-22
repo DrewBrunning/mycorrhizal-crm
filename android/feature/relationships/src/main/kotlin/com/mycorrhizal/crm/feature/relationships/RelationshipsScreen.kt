@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.DropdownOption
@@ -179,7 +180,7 @@ fun RelationshipsScreen(
                             )
                         }
                         else -> {
-                            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("relationship-list")) {
+                            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("relationship-list"), contentPadding = FabListContentPadding) {
                                 items(state.confirmedEdges, key = { it.id }) { edge ->
                                     RelationshipEdgeRow(
                                         edge = edge,

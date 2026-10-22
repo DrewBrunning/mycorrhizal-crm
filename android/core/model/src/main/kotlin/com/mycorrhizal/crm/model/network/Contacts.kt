@@ -35,21 +35,29 @@ data class ContactSummary(
     @Json(name = "device_lookup_key") val deviceLookupKey: String? = null,
 ) {
     val displayName: String
-        get() {
-            // M5 §3.2: derive from the name components the way web's
-            // ContactsPage does — `firstname "nickname" lastname` — instead of
-            // preferring `fn` verbatim. The backend's `fn` is often a
-            // given-name-only value for CRM contacts, so the list showed just
-            // "Elizabeth" where web showed "Elizabeth Brunning". Falls back to
-            // `fn`, then the id.
-            val parts = listOfNotNull(
-                firstname?.takeIf { it.isNotBlank() },
-                nickname?.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
-                lastname?.takeIf { it.isNotBlank() },
-            )
-            if (parts.isNotEmpty()) return parts.joinToString(" ")
-            return fn?.takeIf { it.isNotBlank() } ?: "#$id"
-        }
+        get() = contactDisplayName(firstname, nickname, lastname, fn, "#$id")
+}
+
+/**
+ * The single display-name rule (M5 §3.2, issue #1762): `firstname "nickname"
+ * lastname`, falling back to `fn` and then [fallbackId]. The dashboard and
+ * the contact list must render the same person identically, so both call
+ * this instead of keeping their own nickname-preferred variants.
+ */
+fun contactDisplayName(
+    firstname: String?,
+    nickname: String?,
+    lastname: String?,
+    fn: String? = null,
+    fallbackId: String? = null,
+): String {
+    val parts = listOfNotNull(
+        firstname?.takeIf { it.isNotBlank() },
+        nickname?.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
+        lastname?.takeIf { it.isNotBlank() },
+    )
+    if (parts.isNotEmpty()) return parts.joinToString(" ")
+    return fn?.takeIf { it.isNotBlank() } ?: fallbackId.orEmpty()
 }
 
 /** GET /contacts response envelope (T17 cursor pagination). */

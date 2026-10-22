@@ -76,6 +76,7 @@ import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
+import com.mycorrhizal.crm.model.network.contactDisplayName
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
@@ -860,15 +861,18 @@ private fun isOverdue(remindAt: String?): Boolean {
     return runCatching { Instant.parse(remindAt).isBefore(Instant.now()) }.getOrDefault(false)
 }
 
-/** Display name for a random contact, matching web's `getContactName` (nickname-preferred). */
-private fun randomContactName(contact: DashboardRandomContact): String {
-    val nickname = contact.nickname
-    return when {
-        !nickname.isNullOrBlank() ->
-            listOf(nickname, contact.lastname.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
-        else -> listOfNotNull(contact.firstname, contact.lastname).joinToString(" ").ifBlank { "#${contact.id}" }
-    }
-}
+/**
+ * Display name for a random contact. Issue #1762: use the contact list's
+ * components-first rule, not a nickname-only variant, so the same person
+ * reads identically on the dashboard and the list.
+ */
+private fun randomContactName(contact: DashboardRandomContact): String =
+    contactDisplayName(
+        firstname = contact.firstname,
+        nickname = contact.nickname,
+        lastname = contact.lastname,
+        fallbackId = "#${contact.id}",
+    )
 
 /** Localized recurrence label, mirroring the web `reminders.recurrence.*` keys; null for unknown. */
 @Composable

@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -135,6 +136,7 @@ fun OccasionsScreen(
                 )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    contentPadding = FabListContentPadding,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(state.events, key = { it.id }) { event ->

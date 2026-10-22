@@ -28,6 +28,8 @@ import {
   type ContactBriefing,
   getContactBriefing,
 } from './api/briefings';
+import { type Gift, getGifts } from './api/gifts';
+import { getPreferences, type Preference } from './api/preferences';
 import AmbientExplanation from './components/AmbientExplanation';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -51,6 +53,11 @@ export default function PrepViewPage() {
   const { showError } = useSnackbar();
   const { formatDate, formatBirthday } = useDateFormat();
   const [briefing, setBriefing] = useState<ContactBriefing | null>(null);
+  // Issue #1774: preferences and unbought gift ideas are not part of the
+  // briefing contract; they load from their own list endpoints and stay
+  // hidden when empty (same sections as the Android prep view).
+  const [preferences, setPreferences] = useState<Preference[]>([]);
+  const [giftIdeas, setGiftIdeas] = useState<Gift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +70,16 @@ export default function PrepViewPage() {
       try {
         const data = await getContactBriefing(id);
         if (!cancelled) setBriefing(data);
+        if (data.uid) {
+          const [prefs, gifts] = await Promise.all([
+            getPreferences({ entityId: data.uid, limit: 200 }).catch(() => null),
+            getGifts({ entityId: data.uid, limit: 100 }).catch(() => null),
+          ]);
+          if (!cancelled) {
+            setPreferences(prefs?.preferences ?? []);
+            setGiftIdeas((gifts?.gifts ?? []).filter((gift) => gift.status === 'idea'));
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           const msg = handleFetchError(err, 'loading prep view');
@@ -250,6 +267,63 @@ export default function PrepViewPage() {
               {briefing.open_agenda_items.map((item) => (
                 <Typography key={item.id} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
                   • {item.content}
+                </Typography>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Preferences — issue #1774, hidden when empty */}
+      {preferences.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ py: 1.5 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
+              <FavoriteIcon fontSize="small" color="action" />
+              <Typography variant="subtitle2" component="h2">
+                {t('preference.title')}
+              </Typography>
+            </Stack>
+            <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+              {preferences.map((preference) => (
+                <Typography key={preference.id} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                  • {t(`preference.categories.${preference.category}`, preference.category)}:{' '}
+                  {preference.value}
+                  {preference.notes ? ` (${preference.notes})` : ''}
+                </Typography>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Gift ideas — issue #1774, hidden when empty */}
+      {giftIdeas.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ py: 1.5 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
+              <EventIcon fontSize="small" color="action" />
+              <Typography variant="subtitle2" component="h2">
+                {t('gifts.ideasSection')}
+              </Typography>
+            </Stack>
+            <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+              {giftIdeas.map((gift) => (
+                <Typography key={gift.id} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                  • {gift.description}
+                  {gift.occasion ? ` (${gift.occasion})` : ''}
                 </Typography>
               ))}
             </Stack>

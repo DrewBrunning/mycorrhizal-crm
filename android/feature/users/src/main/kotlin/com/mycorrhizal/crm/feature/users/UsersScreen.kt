@@ -58,6 +58,7 @@ import com.mycorrhizal.crm.model.network.AdminUserCreateInput
 import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import kotlinx.coroutines.launch
@@ -137,7 +138,7 @@ fun UsersScreen(
                             },
                         )
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             items(state.users, key = { it.id }) { user ->
                                 UserRow(
                                     user = user,
