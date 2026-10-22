@@ -323,7 +323,8 @@ time-based rule.
   backend.
 - **Runs via** `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest`; CI `android-tests.yml` `test` job
   (also runs detekt, flavor-qualified `lintDebug`/debug assembles, and the aggregated JaCoCo
-  report).
+  report). Run the analyzer locally with `cd android && ./gradlew detekt` — detekt 2.x supports
+  the JDK 25 build JVM, so no downgrade is needed; do it for any Kotlin change before pushing.
 - **Known gap, filed:** `SmsReceiver` is untestable under the current Hilt
   whole-app-graph test component — issue #327.
 

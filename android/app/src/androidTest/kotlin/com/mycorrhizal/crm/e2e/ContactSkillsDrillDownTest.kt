@@ -5,7 +5,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Before
@@ -41,8 +40,7 @@ class ContactSkillsDrillDownTest : E2eBaseTest() {
 
         waitForText(displayName)
         // The Skills & interests row is near the bottom of the detail list.
-        compose.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasTestTag("drill-down-skills"))
+        scrollToNodeWhenStable("contact-detail-list", hasTestTag("drill-down-skills"))
         compose.onNodeWithTag("drill-down-skills").performClick()
 
         waitForText("No skills or interests yet")
@@ -61,9 +59,11 @@ class ContactSkillsDrillDownTest : E2eBaseTest() {
         waitForText("Expert")
 
         clickBack()
-        waitForText(displayName)
-        compose.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasTestTag("drill-down-skills"))
+        // Returning reloads the detail (ON_RESUME): its body is briefly a
+        // skeleton while the retained record keeps the top-bar title visible.
+        // The scroll helper waits through that, so retrying on the title alone
+        // would race the list being swapped out.
+        scrollToNodeWhenStable("contact-detail-list", hasTestTag("drill-down-skills"))
         waitForText("Skills & interests · 1")
     }
 }
