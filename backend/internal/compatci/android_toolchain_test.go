@@ -297,3 +297,31 @@ func toString(v any) string {
 		return ""
 	}
 }
+
+// TestAndroidCoverageReadsBuiltInKotlinClasses guards the silent half of the
+// built-in Kotlin migration: AGP writes Kotlin classes under
+// `intermediates/built_in_kotlinc/<variant>/compile<Variant>Kotlin/classes`
+// instead of the old `tmp/kotlin-classes` root. If JaCoCo keeps reading the old
+// root, every test still passes and no .exec file is written -- coverage only
+// collapses later in Codecov. Require all three class-tree sites (offline
+// instrumentation, per-module report, aggregated report) to use the new root,
+// and the instrumenter to find the class root by its `/classes/` marker.
+func TestAndroidCoverageReadsBuiltInKotlinClasses(t *testing.T) {
+	config := readRepoFile(t, androidConfigKtRel)
+
+	if strings.Contains(config, `layout.buildDirectory.dir("tmp/kotlin-classes")`) {
+		t.Errorf("%s still roots a JaCoCo class tree at tmp/kotlin-classes; AGP built-in "+
+			"Kotlin writes to intermediates/built_in_kotlinc and the old root produces no "+
+			"coverage data (issue #1858)", androidConfigKtRel)
+	}
+	const builtInRoot = `layout.buildDirectory.dir("intermediates/built_in_kotlinc")`
+	if got := strings.Count(config, builtInRoot); got < 3 {
+		t.Errorf("%s references %s only %d time(s); the offline-instrumentation task and both "+
+			"JaCoCo reports each need it (issue #1858)", androidConfigKtRel, builtInRoot, got)
+	}
+	if !strings.Contains(config, `val classesMarker = "/classes/"`) {
+		t.Errorf("%s no longer strips the built-in Kotlin compiler directory at its /classes/ "+
+			"marker; instrumented classes would be written under the wrong package path "+
+			"(issue #1858)", androidConfigKtRel)
+	}
+}

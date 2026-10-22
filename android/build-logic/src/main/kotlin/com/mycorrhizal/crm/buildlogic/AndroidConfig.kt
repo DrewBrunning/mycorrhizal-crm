@@ -287,15 +287,18 @@ internal fun Project.configureJacoco() {
         // (`performEnroll$app_fossDebug`), so the flavor trees are NOT
         // interchangeable and must not be flattened together.
         val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac")) {
-            include("**/obtainiumDebug/**", "**/debug/**")
+            include(*COVERAGE_VARIANT_GLOBS)
         }
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
-            include("**/obtainiumDebug/**", "**/debug/**")
+        // AGP 9's built-in Kotlin writes compiled classes under
+        // `intermediates/built_in_kotlinc/<variant>/compile<Variant>Kotlin/classes`
+        // instead of the old `tmp/kotlin-classes` root. Both roots are listed
+        // through the same variant globs so the flavor split is unchanged.
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
+            include(*COVERAGE_VARIANT_GLOBS)
         }
-        // Depend on every debug variant's compiler: the tree roots are shared
-        // (`tmp/kotlin-classes`, `intermediates/javac`), so even though the
-        // includes select only obtainiumDebug/debug, Gradle requires the
-        // producer edge for every flavor it can see under that root.
+        // Depend on every debug variant's compiler: the tree roots are shared,
+        // so even though the includes select only obtainiumDebug/debug, Gradle
+        // requires the producer edge for every flavor it can see under that root.
         dependsOn(tasks.matching { it.name.matches(Regex("compile.*Debug.*(Kotlin|JavaWithJavac)")) })
         inputs.files(javaClasses, kotlinClasses)
         outputs.dir(instrumentedDir)
@@ -309,18 +312,23 @@ internal fun Project.configureJacoco() {
                 override fun visitDir(dirDetails: FileVisitDetails) {}
                 override fun visitFile(fileDetails: FileVisitDetails) {
                     // Keep the leading `<variant>` segment as a subtree and
-                    // strip it only from the path written inside that subtree:
-                    // `obtainiumDebug/com/...` -> `instrumented/obtainiumDebug/
-                    // com/...`. Each variant's test task prepends its own
-                    // subtree, so the mangled internal names never cross
-                    // flavors. The `slash > 0` guard skips a class sitting
-                    // directly at the tree root (no real one is, but writing
-                    // to the dest dir itself would fail loudly).
+                    // write only the package path inside it:
+                    //   `obtainiumDebug/compile…Kotlin/classes/com/...` ->
+                    //   `instrumented/obtainiumDebug/com/...`
+                    // (the old `tmp/kotlin-classes` layout had no intermediate
+                    // compiler directory, so the class root is located by its
+                    // `/classes/` marker rather than by stripping one segment).
+                    // Each variant's test task prepends its own subtree, so the
+                    // mangled internal names never cross flavors. Requiring a
+                    // non-empty variant + marker skips a class sitting directly
+                    // at the tree root (no real one is, but writing to the dest
+                    // dir itself would fail loudly).
                     val rel = fileDetails.relativePath.pathString
-                    val slash = rel.indexOf('/')
-                    if (fileDetails.name.endsWith(".class") && slash > 0) {
-                        val variant = rel.substring(0, slash)
-                        val inner = rel.substring(slash + 1)
+                    val classesMarker = "/classes/"
+                    val marker = rel.indexOf(classesMarker)
+                    val variant = rel.substringBefore('/')
+                    if (fileDetails.name.endsWith(".class") && marker > 0 && variant.isNotEmpty()) {
+                        val inner = rel.substring(marker + classesMarker.length)
                         val target = File(File(dest, variant), inner)
                         target.parentFile.mkdirs()
                         target.writeBytes(
@@ -383,7 +391,7 @@ internal fun Project.configureJacoco() {
             include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
             include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
@@ -538,7 +546,7 @@ private fun Project.configureCrossModuleCoverage() {
                             include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
-                        mod.fileTree(mod.layout.buildDirectory.dir("tmp/kotlin-classes")) {
+                        mod.fileTree(mod.layout.buildDirectory.dir("intermediates/built_in_kotlinc")) {
                             include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
