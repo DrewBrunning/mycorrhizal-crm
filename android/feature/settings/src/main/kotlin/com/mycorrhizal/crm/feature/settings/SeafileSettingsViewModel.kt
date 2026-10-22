@@ -25,8 +25,10 @@ data class SeafileSettingsUiState(
     val hasApiToken: Boolean = false,
     /** Write-only: what the user typed this session. Empty on save keeps the stored token. */
     val apiToken: String = "",
-)
-
+) {
+    /** Issue #1775: the token is required on first connect (there is no stored token to keep). */
+    val tokenRequired: Boolean get() = !hasApiToken
+}
 data class SeafileTestOutcome(val ok: Boolean, val message: String?)
 
 /**

@@ -25,6 +25,7 @@ import com.mycorrhizal.crm.model.network.FieldDefinitionInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -49,6 +50,7 @@ class FieldDefinitionFormScreenTest {
         onTypeChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
         onGroupChange: (String) -> Unit = {},
+        onDelete: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -77,6 +79,7 @@ class FieldDefinitionFormScreenTest {
                         onVcardNameChange = {},
                         onSensitivityChange = {},
                         onGroupChange = onGroupChange,
+                        onDelete = onDelete,
                         modifier = Modifier.padding(padding),
                     )
                 }
@@ -184,12 +187,48 @@ class FieldDefinitionFormScreenTest {
         assertEquals("number", chosen)
     }
 
+    @Test
+    fun `advanced section hides the vCard projection fields until opened`() {
+        setContent(FieldDefinitionFormState(projectionMode = "internal"))
+
+        composeTestRule.onNodeWithText("vCard property name").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Advanced").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("vCard property name").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Standards projection").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `delete is shown in edit mode only`() {
+        setContent(FieldDefinitionFormState(fieldDefinitionId = "d1"))
+        composeTestRule.onNodeWithText("Delete custom field").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `delete is absent in create mode`() {
+        setContent(FieldDefinitionFormState(fieldDefinitionId = null))
+        composeTestRule.onNodeWithText("Delete custom field").assertDoesNotExist()
+    }
+
+    @Test
+    fun `delete asks for confirmation before invoking onDelete`() {
+        var deleted = false
+        setContent(FieldDefinitionFormState(fieldDefinitionId = "d1", label = "Coffee order"), onDelete = { deleted = true })
+
+        composeTestRule.onNodeWithText("Delete custom field").performScrollTo().performClick()
+        assertEquals(false, deleted)
+
+        composeTestRule.onNodeWithText("Delete custom field?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Delete").performClick()
+        assertEquals(true, deleted)
+    }
+
     // --- The real top-level FieldDefinitionFormScreen (ViewModel + nav + snackbar wiring) ---
 
     private fun setScreen(
         fieldDefinitionId: String? = null,
         onBack: () -> Unit = {},
         onSaved: () -> Unit = {},
+        onDeleted: () -> Unit = onSaved,
     ): FieldDefinitionRepository {
         val repository = mockk<FieldDefinitionRepository>()
         coEvery { repository.list(any()) } returns Result.success(emptyList())
@@ -198,6 +237,7 @@ class FieldDefinitionFormScreenTest {
                 FieldDefinition(id = fieldDefinitionId, label = "Coffee order", key = "coffee_order", type = "string"),
             )
         }
+        coEvery { repository.delete(any()) } returns Result.success(Unit)
         val savedStateHandle = if (fieldDefinitionId != null) {
             SavedStateHandle(mapOf("fieldDefinitionId" to fieldDefinitionId))
         } else {
@@ -206,7 +246,12 @@ class FieldDefinitionFormScreenTest {
         val viewModel = FieldDefinitionFormViewModel(repository, savedStateHandle)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                FieldDefinitionFormScreen(onSaved = onSaved, onBack = onBack, viewModel = viewModel)
+                FieldDefinitionFormScreen(
+                    onSaved = onSaved,
+                    onBack = onBack,
+                    onDeleted = onDeleted,
+                    viewModel = viewModel,
+                )
             }
         }
         return repository
@@ -300,5 +345,31 @@ class FieldDefinitionFormScreenTest {
         composeTestRule.onNodeWithText("Travel profile").performClick()
 
         assertEquals("Travel profile", picked)
+    }
+
+    @Test
+    fun `deleting from the edit screen calls the repository and invokes onDeleted`() {
+        var deletedCalled = false
+        val repository = setScreen(fieldDefinitionId = "d1", onDeleted = { deletedCalled = true })
+
+        composeTestRule.onNodeWithText("Delete custom field").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify { repository.delete("d1") }
+        assertEquals(true, deletedCalled)
+    }
+
+    @Test
+    fun `a delete failure surfaces the error and stays on the form`() {
+        var deletedCalled = false
+        val repository = setScreen(fieldDefinitionId = "d1", onDeleted = { deletedCalled = true })
+        coEvery { repository.delete("d1") } returns Result.failure(ApiError.Client(500, "delete failed"))
+
+        composeTestRule.onNodeWithText("Delete custom field").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+
+        composeTestRule.onNodeWithText("delete failed").assertIsDisplayed()
+        assertEquals(false, deletedCalled)
     }
 }

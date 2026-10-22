@@ -117,18 +117,28 @@ export default function ContactFieldSettings() {
                   </Typography>
                   <Stack>
                     {fields.map((f) => (
-                      <FormControlLabel
-                        key={f.key}
-                        control={
-                          <Switch
-                            size="small"
-                            checked={enabled.has(f.key)}
-                            disabled={saving}
-                            onChange={() => void handleToggle(f.key)}
-                          />
-                        }
-                        label={t(f.labelKey)}
-                      />
+                      <Box key={f.key}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              size="small"
+                              checked={enabled.has(f.key)}
+                              disabled={saving}
+                              onChange={() => void handleToggle(f.key)}
+                            />
+                          }
+                          label={t(f.labelKey)}
+                        />
+                        {f.descriptionKey && (
+                          <Typography
+                            variant="caption"
+                            component="p"
+                            sx={{ display: 'block', ml: 4, color: 'text.secondary' }}
+                          >
+                            {t(f.descriptionKey)}
+                          </Typography>
+                        )}
+                      </Box>
                     ))}
                   </Stack>
                 </Box>

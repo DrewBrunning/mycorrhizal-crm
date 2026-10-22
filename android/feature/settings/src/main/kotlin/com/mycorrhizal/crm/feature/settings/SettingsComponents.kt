@@ -18,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,10 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
@@ -220,6 +225,61 @@ internal fun SettingsToggleRow(
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(end = 16.dp))
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+    }
+}
+
+/**
+ * Issue #1775: the same required marker on every integration form's field
+ * ("<label> *"), instead of one screen marking only its token.
+ */
+@Composable
+internal fun requiredFieldLabel(label: String, required: Boolean = true): String =
+    if (required) "$label *" else label
+
+/**
+ * Issue #1775: the integration screens' Save button. A disabled button keeps a
+ * readable container/foreground (the default tonal disabled fill is nearly
+ * invisible on this surface) and shows what is missing, both as visible helper
+ * text and as its TalkBack state description (the #1759/#1760 pattern).
+ */
+@Composable
+internal fun SettingsSaveButton(
+    canSave: Boolean,
+    isSaving: Boolean,
+    onClick: () -> Unit,
+    disabledHint: String,
+    modifier: Modifier = Modifier,
+) {
+    val savingLabel = stringResource(R.string.a11y_state_saving)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Button(
+            onClick = onClick,
+            enabled = canSave && !isSaving,
+            colors = ButtonDefaults.buttonColors(
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    if (isSaving) {
+                        stateDescription = savingLabel
+                    } else if (!canSave) {
+                        stateDescription = disabledHint
+                    }
+                },
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+            }
+            Text(stringResource(R.string.action_save))
+        }
+        if (!canSave && !isSaving) {
+            SettingsHelperText(
+                text = disabledHint,
+                modifier = Modifier.padding(top = 4.dp).testTag("save-disabled-hint"),
+            )
+        }
     }
 }
 

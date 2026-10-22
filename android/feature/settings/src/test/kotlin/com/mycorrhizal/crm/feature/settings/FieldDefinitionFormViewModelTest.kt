@@ -502,4 +502,68 @@ class FieldDefinitionFormViewModelTest {
         vm.onGroupChange("Anything")
         assertEquals("Anything", vm.uiState.value.group)
     }
+
+    // --- Issue #1775: delete moved from the list row into the edit screen ---
+
+    @Test
+    fun `delete on an edit calls the repository and emits Deleted`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.get("d1") } returns Result.success(
+            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+        )
+        coEvery { repository.delete("d1") } returns Result.success(Unit)
+        val vm = editViewModel()
+        advanceUntilIdle()
+
+        vm.delete()
+        advanceUntilIdle()
+
+        coVerify { repository.delete("d1") }
+        assertEquals(FieldDefinitionFormEvent.Deleted, vm.events.value)
+        assertFalse(vm.uiState.value.isDeleting)
+    }
+
+    @Test
+    fun `delete on create is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.delete()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.delete(any()) }
+        assertNull(vm.events.value)
+    }
+
+    @Test
+    fun `delete failure surfaces the error and does not emit Deleted`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.get("d1") } returns Result.success(
+            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+        )
+        coEvery { repository.delete("d1") } returns Result.failure(ApiError.Client(500, "delete failed"))
+        val vm = editViewModel()
+        advanceUntilIdle()
+
+        vm.delete()
+        advanceUntilIdle()
+
+        assertEquals("delete failed", vm.uiState.value.error)
+        assertNull(vm.events.value)
+        assertFalse(vm.uiState.value.isDeleting)
+    }
+
+    @Test
+    fun `delete does not make an untouched edit form dirty`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.get("d1") } returns Result.success(
+            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+        )
+        coEvery { repository.delete("d1") } returns Result.success(Unit)
+        val vm = editViewModel()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isDirty)
+
+        vm.delete()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isDirty)
+    }
 }

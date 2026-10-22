@@ -44,6 +44,19 @@ fun contactFieldLabel(key: ContactFieldKey): String = when (key) {
     ContactFieldKey.LANGUAGE -> stringResource(R.string.contact_language)
 }
 
+/**
+ * Issue #1775: one-line help only where two toggles look alike — the two anniversary
+ * keys and the two language keys. A null result means no description is shown.
+ */
+@Composable
+fun contactFieldDescription(key: ContactFieldKey): String? = when (key) {
+    ContactFieldKey.ANNIVERSARY -> stringResource(R.string.settings_contact_fields_anniversary_description)
+    ContactFieldKey.ANNIVERSARIES -> stringResource(R.string.settings_contact_fields_anniversaries_description)
+    ContactFieldKey.LANGUAGE -> stringResource(R.string.settings_contact_fields_language_description)
+    ContactFieldKey.PREFERRED_LANGUAGES -> stringResource(R.string.settings_contact_fields_preferred_languages_description)
+    else -> null
+}
+
 @Composable
 fun contactFieldGroupLabel(group: ContactFieldGroup): String = when (group) {
     ContactFieldGroup.COMMUNICATION -> stringResource(R.string.settings_contact_fields_group_communication)

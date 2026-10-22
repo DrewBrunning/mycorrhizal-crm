@@ -36,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -168,7 +167,7 @@ fun NextcloudSettingsContent(
             OutlinedTextField(
                 value = state.baseUrl,
                 onValueChange = onBaseUrlChange,
-                label = { Text(stringResource(R.string.nextcloud_settings_base_url)) },
+                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_base_url))) },
                 placeholder = { Text("https://nextcloud.example.com") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -176,14 +175,14 @@ fun NextcloudSettingsContent(
             OutlinedTextField(
                 value = state.username,
                 onValueChange = onUsernameChange,
-                label = { Text(stringResource(R.string.nextcloud_settings_username)) },
+                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_username))) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = state.appPassword,
                 onValueChange = onAppPasswordChange,
-                label = { Text(stringResource(R.string.nextcloud_settings_app_password)) },
+                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_app_password), state.tokenRequired)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -231,19 +230,13 @@ fun NextcloudSettingsContent(
                 )
             }
 
-            val savingLabel = stringResource(R.string.a11y_state_saving)
-            Button(
+            SettingsSaveButton(
+                canSave = state.baseUrl.isNotBlank() && state.username.isNotBlank() &&
+                    (state.hasAppPassword || state.appPassword.isNotBlank()),
+                isSaving = state.isSaving,
                 onClick = onSave,
-                enabled = !state.isSaving && state.baseUrl.isNotBlank() && state.username.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { if (state.isSaving) stateDescription = savingLabel },
-            ) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
-                }
-                Text(stringResource(R.string.action_save))
-            }
+                disabledHint = stringResource(R.string.settings_save_requires_fields),
+            )
 
             if (state.hasAppPassword) {
                 OutlinedButton(

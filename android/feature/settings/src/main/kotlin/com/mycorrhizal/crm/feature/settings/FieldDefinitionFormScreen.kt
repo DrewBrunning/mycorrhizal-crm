@@ -14,7 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +65,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 fun FieldDefinitionFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
+    onDeleted: () -> Unit = onSaved,
     viewModel: FieldDefinitionFormViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,9 +73,16 @@ fun FieldDefinitionFormScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(events) {
-        if (events is FieldDefinitionFormEvent.Saved) {
-            viewModel.onEventShown()
-            onSaved()
+        when (events) {
+            FieldDefinitionFormEvent.Saved -> {
+                viewModel.onEventShown()
+                onSaved()
+            }
+            FieldDefinitionFormEvent.Deleted -> {
+                viewModel.onEventShown()
+                onDeleted()
+            }
+            null -> Unit
         }
     }
 
@@ -104,6 +114,7 @@ fun FieldDefinitionFormScreen(
             onVcardNameChange = viewModel::onVcardNameChange,
             onSensitivityChange = viewModel::onSensitivityChange,
             onGroupChange = viewModel::onGroupChange,
+            onDelete = viewModel::delete,
             modifier = Modifier.padding(padding),
         )
     }
@@ -137,6 +148,7 @@ fun FieldDefinitionFormContent(
     onSensitivityChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     onGroupChange: (String) -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
     if (state.isLoading) {
         LoadingSkeleton(modifier = modifier.fillMaxSize())
@@ -147,6 +159,14 @@ fun FieldDefinitionFormContent(
     var projectionExpanded by remember { mutableStateOf(false) }
     var sensitivityExpanded by remember { mutableStateOf(false) }
     var groupExpanded by remember { mutableStateOf(false) }
+    var advancedExpanded by remember { mutableStateOf(state.projectionMode == "vcard") }
+    var confirmingDelete by remember { mutableStateOf(false) }
+
+    // An existing vCard-projected field opens with Advanced expanded, and choosing vCard
+    // projection later keeps the vCard property name reachable.
+    LaunchedEffect(state.projectionMode) {
+        if (state.projectionMode == "vcard") advancedExpanded = true
+    }
 
     Column(
         modifier = modifier
@@ -270,41 +290,48 @@ fun FieldDefinitionFormContent(
             }
         }
 
-        ExposedDropdownMenuBox(expanded = projectionExpanded, onExpandedChange = { projectionExpanded = it }) {
-            OutlinedTextField(
-                value = if (state.projectionMode == "vcard") {
-                    stringResource(R.string.settings_custom_fields_projection_vcard)
-                } else {
-                    stringResource(R.string.settings_custom_fields_projection_internal)
-                },
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.settings_custom_fields_projection)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectionExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
-            )
-            ExposedDropdownMenu(
-                expanded = projectionExpanded,
-                onDismissRequest = { projectionExpanded = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.settings_custom_fields_projection_internal)) },
-                    onClick = { onProjectionModeChange("internal"); projectionExpanded = false },
+        SettingsNavigationRow(
+            title = stringResource(R.string.settings_custom_fields_advanced),
+            onClick = { advancedExpanded = !advancedExpanded },
+            supporting = stringResource(R.string.settings_custom_fields_advanced_hint),
+        )
+        if (advancedExpanded) {
+            ExposedDropdownMenuBox(expanded = projectionExpanded, onExpandedChange = { projectionExpanded = it }) {
+                OutlinedTextField(
+                    value = if (state.projectionMode == "vcard") {
+                        stringResource(R.string.settings_custom_fields_projection_vcard)
+                    } else {
+                        stringResource(R.string.settings_custom_fields_projection_internal)
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.settings_custom_fields_projection)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectionExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
                 )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.settings_custom_fields_projection_vcard)) },
-                    onClick = { onProjectionModeChange("vcard"); projectionExpanded = false },
+                ExposedDropdownMenu(
+                    expanded = projectionExpanded,
+                    onDismissRequest = { projectionExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_custom_fields_projection_internal)) },
+                        onClick = { onProjectionModeChange("internal"); projectionExpanded = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_custom_fields_projection_vcard)) },
+                        onClick = { onProjectionModeChange("vcard"); projectionExpanded = false },
+                    )
+                }
+            }
+            if (state.projectionMode == "vcard") {
+                OutlinedTextField(
+                    value = state.vcardName,
+                    onValueChange = onVcardNameChange,
+                    label = { Text(stringResource(R.string.settings_custom_fields_vcard_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-        if (state.projectionMode == "vcard") {
-            OutlinedTextField(
-                value = state.vcardName,
-                onValueChange = onVcardNameChange,
-                label = { Text(stringResource(R.string.settings_custom_fields_vcard_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
 
         ExposedDropdownMenuBox(expanded = sensitivityExpanded, onExpandedChange = { sensitivityExpanded = it }) {
@@ -328,6 +355,51 @@ fun FieldDefinitionFormContent(
                 }
             }
         }
+        if (state.isEdit) {
+            OutlinedButton(
+                onClick = { confirmingDelete = true },
+                enabled = !state.isDeleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("delete-field-definition"),
+            ) {
+                if (state.isDeleting) {
+                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                }
+                Text(
+                    stringResource(R.string.settings_custom_fields_delete_button),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text(stringResource(R.string.settings_custom_fields_delete_title)) },
+            text = {
+                Text(stringResource(R.string.settings_custom_fields_delete_confirm, state.label))
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isDeleting,
+                    onClick = {
+                        confirmingDelete = false
+                        onDelete()
+                    },
+                ) {
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 

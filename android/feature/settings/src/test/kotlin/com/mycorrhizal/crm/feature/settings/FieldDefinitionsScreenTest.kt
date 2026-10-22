@@ -2,13 +2,18 @@ package com.mycorrhizal.crm.feature.settings
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.model.network.FieldConstraints
@@ -29,10 +34,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Issue #830. Mounts the real top-level [FieldDefinitionsScreen], mirroring `TagsScreenTest`. */
+/** Issue #830; row interaction reshaped by #1775. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
+@OptIn(ExperimentalTestApi::class)
 class FieldDefinitionsScreenTest {
 
     @get:Rule
@@ -58,7 +64,6 @@ class FieldDefinitionsScreenTest {
     ): FieldDefinitionRepository {
         val repository = mockk<FieldDefinitionRepository>()
         coEvery { repository.list() } returns result
-        coEvery { repository.delete(any()) } returns Result.success(Unit)
         coEvery { repository.reorder(any()) } returns Result.success(emptyList())
         val viewModel = FieldDefinitionsViewModel(repository)
 
@@ -67,8 +72,16 @@ class FieldDefinitionsScreenTest {
                 FieldDefinitionsScreen(onBack = {}, onCreate = {}, onEdit = onEdit, viewModel = viewModel)
             }
         }
+        composeTestRule.waitForIdle()
         return repository
     }
+
+    private fun twoDefinitions() = Result.success(
+        listOf(
+            FieldDefinition(id = "d1", label = "Coffee order", type = "string", sensitivity = "normal", position = 0),
+            FieldDefinition(id = "d2", label = "Tea order", type = "string", sensitivity = "normal", position = 1),
+        ),
+    )
 
     @Test
     fun `field definitions screen has no accessibility violations`() {
@@ -85,15 +98,18 @@ class FieldDefinitionsScreenTest {
     }
 
     @Test
-    fun `a definition row shows its label and type chip`() {
+    fun `a definition row shows its label and readable metadata text`() {
         setScreen()
 
         composeTestRule.onNodeWithText("Coffee order").assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.custom_field_type_string)).assertIsDisplayed()
+        // Readable one-line metadata, not the old low-contrast disabled chips.
+        composeTestRule.onNodeWithText(
+            "${str(R.string.custom_field_type_string)} · ${str(R.string.relationships_sensitivity_normal)}",
+        ).assertIsDisplayed()
     }
 
     @Test
-    fun `the multi chip only appears for a multi-valued definition`() {
+    fun `a multi-valued definition adds the multi metadata`() {
         setScreen(
             Result.success(
                 listOf(
@@ -108,29 +124,104 @@ class FieldDefinitionsScreenTest {
             ),
         )
 
-        composeTestRule.onNodeWithText(str(R.string.settings_custom_fields_multi)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "${str(R.string.custom_field_type_string)} · ${str(R.string.settings_custom_fields_multi)} · " +
+                str(R.string.relationships_sensitivity_normal),
+        ).assertIsDisplayed()
     }
 
     @Test
-    fun `tapping edit invokes the onEdit callback with the definition id`() {
+    fun `the raw vCard property name is not shown in the list`() {
+        setScreen(
+            Result.success(
+                listOf(
+                    FieldDefinition(
+                        id = "d1",
+                        label = "Favourite coffee",
+                        type = "string",
+                        sensitivity = "normal",
+                        projection = "vcard:X-FAVORITE-COFFEE",
+                    ),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("vcard:X-FAVORITE-COFFEE").assertDoesNotExist()
+    }
+
+    @Test
+    fun `tapping the row invokes the onEdit callback with the definition id`() {
         var editedId: String? = null
         setScreen(onEdit = { editedId = it })
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_edit_named, "Coffee order"))
-            .performClick()
+        composeTestRule.onNodeWithText("Coffee order").performClick()
 
         assertEquals("d1", editedId)
     }
 
     @Test
-    fun `tapping delete then confirming calls the repository`() {
-        val repository = setScreen()
+    fun `a row exposes only the drag handle as a visible action`() {
+        setScreen()
 
+        // The old per-row edit/delete/move icon buttons are gone.
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_edit_named, "Coffee order"))
+            .assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_delete_named, "Coffee order"))
-            .performClick()
-        composeTestRule.onNodeWithText(str(R.string.action_delete)).performClick()
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_up_named, "Coffee order"))
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Coffee order"))
+            .assertDoesNotExist()
 
-        coVerify { repository.delete("d1") }
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `the drag handle exposes move up and down as TalkBack custom actions`() {
+        setScreen(twoDefinitions())
+
+        val actions = composeTestRule
+            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .fetchSemanticsNode()
+            .config
+            .getOrNull(SemanticsActions.CustomActions)
+
+        assertEquals(
+            listOf(str(R.string.settings_custom_fields_move_down_named, "Coffee order")),
+            actions?.map { it.label },
+        )
+    }
+
+    @Test
+    fun `performing the TalkBack move-down action persists the swapped order`() {
+        val repository = setScreen(twoDefinitions())
+
+        composeTestRule
+            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .performCustomAccessibilityActionWithLabel(
+                str(R.string.settings_custom_fields_move_down_named, "Coffee order"),
+            )
+
+        coVerify { repository.reorder(listOf("d2", "d1")) }
+    }
+
+    @Test
+    fun `dragging the handle down reorders the definition`() {
+        val repository = setScreen(twoDefinitions())
+
+        composeTestRule
+            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .performTouchInput {
+                down(center)
+                advanceEventTime(700)
+                moveBy(Offset(0f, 200f))
+                advanceEventTime(100)
+                up()
+            }
+        composeTestRule.waitForIdle()
+
+        coVerify { repository.reorder(listOf("d2", "d1")) }
     }
 
     @Test
@@ -140,32 +231,5 @@ class FieldDefinitionsScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node (mirrors TagsScreenTest).
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
-    }
-
-    private fun twoDefinitions() = Result.success(
-        listOf(
-            FieldDefinition(id = "d1", label = "Coffee order", type = "string", sensitivity = "normal", position = 0),
-            FieldDefinition(id = "d2", label = "Tea order", type = "string", sensitivity = "normal", position = 1),
-        ),
-    )
-
-    @Test
-    fun `the first definition cannot move up and the last cannot move down`() {
-        setScreen(twoDefinitions())
-
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_up_named, "Coffee order"))
-            .assertIsNotEnabled()
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Tea order"))
-            .assertIsNotEnabled()
-    }
-
-    @Test
-    fun `tapping move down persists the swapped full order`() {
-        val repository = setScreen(twoDefinitions())
-
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Coffee order"))
-            .performClick()
-
-        coVerify { repository.reorder(listOf("d2", "d1")) }
     }
 }

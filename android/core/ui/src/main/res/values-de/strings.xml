@@ -42,6 +42,7 @@
     <string name="nav_map">Karte</string>
     <string name="cd_menu">Menü</string>
     <string name="row_more_actions_named">Weitere Aktionen für %1$s</string>
+    <string name="cd_more_options">Weitere Optionen</string>
     <string name="cd_back">Zurück</string>
 
     <!-- Anmeldung -->
@@ -333,7 +334,7 @@
     <string name="contact_anniversary_kind_death">Todestag</string>
     <string name="contact_anniversary_kind_wedding">Hochzeit</string>
     <!-- Issue #832: Card.kind enum (RFC 9553 §2.1.4) — distinct from crm.kind (human/animal) -->
-    <string name="contact_card_kind_label">Kartenart</string>
+    <string name="contact_card_kind_label">Art</string>
     <string name="contact_card_kind_individual">Einzelperson</string>
     <string name="contact_card_kind_group">Gruppe</string>
     <string name="contact_card_kind_org">Organisation</string>
@@ -646,6 +647,7 @@
     <string name="settings_webhooks_event_birthday_occurred">Geburtstag</string>
 
     <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_save_requires_fields">Füllen Sie die Pflichtfelder aus, um „Speichern“ zu aktivieren.</string>
     <string name="settings_api_tokens_title">API-Tokens</string>
     <string name="settings_api_tokens_create">Token erstellen</string>
     <string name="settings_api_tokens_revoke_all">Alle widerrufen</string>
@@ -765,7 +767,7 @@
     <string name="settings_immich_title">Immich</string>
     <string name="immich_settings_description">Verbinde Immich, um Fotos und Personen mit deinen Kontakten zu verknüpfen.</string>
     <string name="immich_settings_base_url">Immich-Server-URL</string>
-    <string name="immich_settings_api_key">API-Schlüssel</string>
+    <string name="immich_settings_api_key">API-Token</string>
     <string name="immich_settings_api_key_hint_existing">Es ist bereits ein Schlüssel gespeichert. Lasse das Feld leer, um ihn zu behalten.</string>
     <string name="immich_settings_api_key_hint_new">Erstelle einen API-Schlüssel in deinen Immich-Kontoeinstellungen.</string>
     <string name="immich_settings_sync_enabled">Automatisch synchronisieren</string>
@@ -781,7 +783,7 @@
     <!-- Einstellungen: Paperless-ngx-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_paperless_title">Paperless-ngx</string>
     <string name="paperless_settings_description">Verbinde eine selbst gehostete Paperless-ngx-Instanz, um Kontakte mit Dokumenten (Verträge, Scans, Formulare) zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
-    <string name="paperless_settings_base_url">Basis-URL</string>
+    <string name="paperless_settings_base_url">Paperless-Server-URL</string>
     <string name="paperless_settings_api_token">API-Token</string>
     <string name="paperless_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
     <string name="paperless_settings_api_token_hint_new">Füge das API-Token deiner Paperless-Instanz ein (Einstellungen → API-Token).</string>
@@ -796,7 +798,7 @@
     <!-- Einstellungen: Seafile-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_seafile_title">Seafile</string>
     <string name="seafile_settings_description">Verbinde einen selbst gehosteten Seafile-Server, um Kontakte mit Dateien und Ordnern in deinen Bibliotheken zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
-    <string name="seafile_settings_base_url">Server-URL</string>
+    <string name="seafile_settings_base_url">Seafile-Server-URL</string>
     <string name="seafile_settings_api_token">API-Token</string>
     <string name="seafile_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
     <string name="seafile_settings_api_token_hint_new">Füge das API-Token deines Seafile-Kontos ein (Avatar → Einstellungen → API-Token).</string>
@@ -811,7 +813,7 @@
     <!-- Einstellungen: Nextcloud/ownCloud-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
     <string name="nextcloud_settings_description">Verbinde eine selbst gehostete Nextcloud- oder ownCloud-Instanz (über WebDAV), um Kontakte mit Dateien und Ordnern zu verknüpfen. Das App-Passwort wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet. Es wird nur ein App-Passwort akzeptiert – niemals dein Kontopasswort.</string>
-    <string name="nextcloud_settings_base_url">Server-URL</string>
+    <string name="nextcloud_settings_base_url">Nextcloud-Server-URL</string>
     <string name="nextcloud_settings_username">Benutzername</string>
     <string name="nextcloud_settings_app_password">App-Passwort</string>
     <string name="nextcloud_settings_app_password_hint_existing">Es ist bereits ein App-Passwort gespeichert. Lasse das Feld leer, um es zu behalten.</string>
@@ -1105,9 +1107,17 @@
     <string name="settings_contact_fields_group_name">Name</string>
     <string name="settings_contact_fields_group_work">Arbeit</string>
     <string name="settings_contact_fields_group_personal">Persönlich</string>
-    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Beziehungsnotizen</string>
+    <string name="settings_contact_fields_anniversary_description">Ein einzelnes Datum, etwa eine Hochzeit oder das erste Kennenlernen.</string>
+    <string name="settings_contact_fields_anniversaries_description">Eine Liste von Daten, die Sie sich merken möchten, jeweils mit eigener Art.</string>
+    <string name="settings_contact_fields_language_description">Die Sprache, in der diese Kontaktkarte geschrieben ist – nicht eine Sprache, die die Person spricht.</string>
+    <string name="settings_contact_fields_preferred_languages_description">Die Sprachen, die diese Person spricht.</string>
 
     <string name="settings_custom_fields_title">Benutzerdefinierte Felder</string>
+    <string name="settings_custom_fields_reorder_named">%1$s neu anordnen</string>
+    <string name="settings_custom_fields_delete_button">Benutzerdefiniertes Feld löschen</string>
+    <string name="settings_custom_fields_advanced">Erweitert</string>
+    <string name="settings_custom_fields_advanced_hint">Standards-Projektion und vCard-Eigenschaftsname.</string>
     <string name="settings_custom_fields_empty">Noch keine benutzerdefinierten Felder</string>
     <string name="settings_custom_fields_empty_body">Füge eigene Felder hinzu, um zusätzliche Angaben zu Kontakten zu speichern.</string>
     <string name="settings_custom_fields_new_title">Neues benutzerdefiniertes Feld</string>

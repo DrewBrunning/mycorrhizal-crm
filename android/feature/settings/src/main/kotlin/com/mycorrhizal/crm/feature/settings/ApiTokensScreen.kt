@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,8 +15,11 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -79,6 +83,7 @@ fun ApiTokensScreen(
     var revokingToken by remember { mutableStateOf<ApiToken?>(null) }
     var rotatingToken by remember { mutableStateOf<ApiToken?>(null) }
     var revokeAllOpen by remember { mutableStateOf(false) }
+    var overflowOpen by remember { mutableStateOf(false) }
 
     // Issue #692: create/list/revoke are v0.6.0; rotate + revoke-all need the
     // v0.6.1 endpoints, so those affordances are hidden on a v0.6.0 server.
@@ -97,15 +102,34 @@ fun ApiTokensScreen(
                     Text(stringResource(R.string.settings_api_tokens_title), style = MaterialTheme.typography.titleLarge)
                 },
                 actions = {
+                    // Issue #1775: destructive "Revoke all" belongs in an overflow, not
+                    // as a top-bar icon next to the create action.
                     if (advancedTokensSupported) {
-                        AccessibleIconButton(
-                            onClick = { revokeAllOpen = true },
-                            enabled = state.activeCount > 0 && !state.isRevokingAll,
-                        ) {
-                            Icon(
-                                Icons.Outlined.Block,
-                                contentDescription = stringResource(R.string.settings_api_tokens_revoke_all),
-                            )
+                        Box {
+                            AccessibleIconButton(onClick = { overflowOpen = true }) {
+                                Icon(
+                                    Icons.Outlined.MoreVert,
+                                    contentDescription = stringResource(R.string.cd_more_options),
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = overflowOpen,
+                                onDismissRequest = { overflowOpen = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.settings_api_tokens_revoke_all),
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    },
+                                    enabled = state.activeCount > 0 && !state.isRevokingAll,
+                                    onClick = {
+                                        overflowOpen = false
+                                        revokeAllOpen = true
+                                    },
+                                )
+                            }
                         }
                     }
                 },

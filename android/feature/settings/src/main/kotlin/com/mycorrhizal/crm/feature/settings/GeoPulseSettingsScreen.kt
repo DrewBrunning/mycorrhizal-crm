@@ -36,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -156,7 +155,7 @@ fun GeoPulseSettingsContent(
         OutlinedTextField(
             value = state.baseUrl,
             onValueChange = onBaseUrlChange,
-            label = { Text(stringResource(R.string.geopulse_settings_base_url)) },
+            label = { Text(requiredFieldLabel(stringResource(R.string.geopulse_settings_base_url))) },
             placeholder = { Text("http://geopulse:8080") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -168,7 +167,7 @@ fun GeoPulseSettingsContent(
             label = {
                 // Required marker: first connect or origin change (mirrors MUI's "API Token *").
                 Text(
-                    stringResource(R.string.geopulse_settings_api_key) + if (state.tokenRequired) " *" else "",
+                    requiredFieldLabel(stringResource(R.string.geopulse_settings_api_key), state.tokenRequired),
                 )
             },
             singleLine = true,
@@ -223,19 +222,12 @@ fun GeoPulseSettingsContent(
             )
         }
 
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
+        SettingsSaveButton(
+            canSave = state.baseUrl.isNotBlank() && (!state.tokenRequired || state.apiKey.isNotBlank()),
+            isSaving = state.isSaving,
             onClick = onSave,
-            enabled = !state.isSaving && state.baseUrl.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSaving) stateDescription = savingLabel },
-        ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
-            }
-            Text(stringResource(R.string.action_save))
-        }
+            disabledHint = stringResource(R.string.settings_save_requires_fields),
+        )
 
         if (state.hasApiKey) {
             OutlinedButton(

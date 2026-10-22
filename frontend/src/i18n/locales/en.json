@@ -439,7 +439,7 @@
       }
     },
     "urls": "Websites",
-    "impps": "Instant Messaging",
+    "impps": "Instant messaging",
     "prefix": "Prefix",
     "middleName": "Middle Name",
     "suffix": "Suffix",
@@ -456,8 +456,8 @@
     "personalInfoLabel": "Personal Info (Expertise / Hobbies / Interests)",
     "keywordsLabel": "Keywords",
     "cardNotesLabel": "Notes (vCard)",
-    "preferredLanguagesLabel": "Preferred Languages",
-    "cardKindLabel": "Contact Kind",
+    "preferredLanguagesLabel": "Preferred languages",
+    "cardKindLabel": "Kind",
     "language": "Language",
     "languageInfo": "The language of this vCard as an ISO-639 / BCP-47 tag (e.g. 'de-AT'). This is card metadata — the language the card data is written in — not the languages the contact speaks. Pronouns, grammatical gender, and preferred languages refer to spoken languages.",
     "anniversaryFields": {
@@ -1645,7 +1645,13 @@
         "name": "Name",
         "work": "Work",
         "personal": "Personal",
-        "mycorrhizal": "Notes"
+        "mycorrhizal": "Relationship notes"
+      },
+      "descriptions": {
+        "anniversary": "A single date, such as a wedding or the first time you met.",
+        "anniversaries": "A list of dates you want to remember, each with its own type.",
+        "language": "The language this contact card is written in, not a language the person speaks.",
+        "preferredLanguages": "The languages this person speaks."
       }
     },
     "data": {

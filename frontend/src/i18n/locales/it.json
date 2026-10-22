@@ -459,7 +459,7 @@
       }
     },
     "urls": "Siti web",
-    "impps": "Messaggistica",
+    "impps": "Messaggistica istantanea",
     "prefix": "Prefisso",
     "middleName": "Secondo nome",
     "suffix": "Suffisso",
@@ -598,7 +598,7 @@
       "relatedTo": "Correlato a",
       "members": "Membri"
     },
-    "cardKindLabel": "Tipo di contatto",
+    "cardKindLabel": "Tipo",
     "speakToAsLabel": "Pronomi e genere grammaticale",
     "personalInfoLabel": "Informazioni personali (competenze / hobby / interessi)",
     "keywordsLabel": "Parole chiave",
@@ -1638,7 +1638,13 @@
         "name": "Nome",
         "work": "Lavoro",
         "personal": "Personale",
-        "mycorrhizal": "Note"
+        "mycorrhizal": "Note sulle relazioni"
+      },
+      "descriptions": {
+        "anniversary": "Una singola data, come un matrimonio o il primo incontro.",
+        "anniversaries": "Un elenco di date da ricordare, ciascuna con il proprio tipo.",
+        "language": "La lingua in cui è scritta questa scheda contatto, non una lingua parlata dalla persona.",
+        "preferredLanguages": "Le lingue parlate da questa persona."
       }
     },
     "data": {

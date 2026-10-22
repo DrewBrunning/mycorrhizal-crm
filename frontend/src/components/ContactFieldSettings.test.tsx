@@ -30,6 +30,7 @@ test('shows a loading state, then the group headers and switches once fields loa
 
   await waitFor(() => expect(screen.getByText('Communication')).toBeInTheDocument());
   expect(screen.getByText('Personal')).toBeInTheDocument();
+  expect(screen.getByText('Relationship notes')).toBeInTheDocument();
   expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
 });
 
@@ -108,4 +109,35 @@ test('a save failure shows an error message but the optimistic toggle stays appl
 
   await waitFor(() => expect(screen.getByText('Save failed hard')).toBeInTheDocument());
   expect(screen.getByLabelText('Websites')).toBeChecked();
+});
+test('ambiguous field pairs carry one-line descriptions (issue #1775)', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+
+  render(<ContactFieldSettings />);
+
+  await waitFor(() => expect(screen.getByText('Communication')).toBeInTheDocument());
+  expect(
+    screen.getByText('A single date, such as a wedding or the first time you met.'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText('A list of dates you want to remember, each with its own type.'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      'The language this contact card is written in, not a language the person speaks.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByText('The languages this person speaks.')).toBeInTheDocument();
+});
+
+test('jargon labels match the form wording (issue #1775)', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+
+  render(<ContactFieldSettings />);
+
+  await waitFor(() => expect(screen.getByLabelText('Email')).toBeInTheDocument());
+  expect(screen.getByLabelText('Kind')).toBeInTheDocument();
+  expect(screen.getByLabelText('Instant messaging')).toBeInTheDocument();
+  expect(screen.getByLabelText('Preferred languages')).toBeInTheDocument();
+  expect(screen.queryByText('Mycorrhizal')).not.toBeInTheDocument();
 });
