@@ -301,13 +301,45 @@
     <string name="contact_tags_select">Seleccionar etiqueta…</string>
     <string name="contact_birthday">Cumpleaños</string>
     <string name="contact_value_n">Valor %1$d</string>
+    <!-- Issue #1724: etiquetas por campo, ejemplos de formato y nombres de
+         añadir/eliminar para los editores de varios valores. -->
+    <string name="contact_phone_number">Número de teléfono</string>
+    <string name="contact_online_service_value">Dirección / URL</string>
+    <string name="contact_title_or_role">Título o rol</string>
+    <string name="contact_personal_info_value">Experiencia / afición / interés</string>
+    <string name="contact_url">URL</string>
+    <string name="contact_date">Fecha</string>
+    <string name="contact_item_link">enlace</string>
+    <string name="contact_item_title">título</string>
+    <string name="contact_item_online_service">servicio en línea</string>
+    <string name="contact_item_preferred_language">idioma preferido</string>
+    <string name="contact_item_pronoun">pronombre</string>
+    <string name="contact_item_email">correo electrónico</string>
+    <string name="contact_item_phone">número de teléfono</string>
+    <string name="contact_item_address">dirección</string>
+    <string name="contact_item_personal_info">información personal</string>
+    <string name="contact_item_grammatical_gender">género gramatical</string>
+    <string name="contact_item_anniversary">aniversario</string>
+    <string name="contact_example_email">name@example.com</string>
+    <string name="contact_example_phone">+1 555 123 4567</string>
+    <string name="contact_phone_format_hint">Se recomienda el formato internacional.</string>
+    <string name="contact_example_online_service">https://… o user@server</string>
+    <string name="contact_example_url">https://example.com</string>
+    <string name="contact_example_language_tag">de-AT</string>
+    <string name="contact_example_languages">de, en-US, de-AT</string>
+    <string name="contact_language_hint">Etiqueta BCP-47, p. ej. de, en-US, de-AT.</string>
+    <string name="contact_example_grammatical_gender_language">de, fr, es</string>
+    <string name="contact_grammatical_gender_hint">Etiqueta de idioma BCP-47; el desplegable es el género.</string>
+    <string name="contact_example_pronouns">they/them, she/her</string>
+    <string name="contact_add_named">Añadir %1$s</string>
+    <string name="contact_remove_named">Eliminar %1$s %2$d</string>
+    <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Eliminar</string>
     <string name="contact_add">Añadir</string>
     <!-- M7: editor de valores múltiples -->
     <string name="contact_field_type">Tipo</string>
     <string name="contact_type_none">Ninguno</string>
     <string name="contact_preferred">Preferido</string>
-    <string name="contact_set_preferred">Marcar como preferido</string>
     <string name="contact_type_home">Casa</string>
     <string name="contact_type_work">Trabajo</string>
     <string name="contact_type_cell">Móvil</string>
