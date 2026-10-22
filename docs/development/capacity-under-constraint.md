@@ -129,12 +129,19 @@ more `SQLITE_BUSY` pressure, which **is** reproduced:
 
 | Cell | Pinned by |
 |---|---|
-| Many concurrent writers → no `SQLITE_BUSY`, no spurious 429 | `backend/cmd/loadsmoke` (issue #262), run per the `e2e-tests.yml` "concurrency/load smoke test" step |
+| Many concurrent writers → no systematic `SQLITE_BUSY`, no spurious 429 | `backend/cmd/loadsmoke` (issue #262), run per the `e2e-tests.yml` "concurrency/load smoke test" step (strict: any busy fails) |
 | Many *users* → per-user job fan-out is contention-safe, integrity holds | in-process: `services/scheduler_contention_test.go`; external: `e2e-tests.yml` "many-users concurrency smoke test" (`LOADSMOKE_USERS=10`) + "Assert the database is not corrupt after the load" (`PRAGMA integrity_check`) |
 
 `loadsmoke` gained `LOADSMOKE_USERS` (spread workers round-robin across N
-authenticated sessions) and `LOADSMOKE_DB_PATH` (post-run
-`PRAGMA integrity_check` where the tool can see the database file).
+authenticated sessions), `LOADSMOKE_DB_PATH` (post-run `PRAGMA integrity_check`
+where the tool can see the database file), and `LOADSMOKE_MAX_BUSY_FRACTION`
+(the largest share of requests allowed to return `SQLITE_BUSY`; 0 by default).
+The many-users step sets it to 0.5% because at 40 workers on a shared runner a
+write can genuinely wait out the 5s `busy_timeout` — the same load-shedding
+allowance the per-PR soak smoke makes. A deferred-transaction regression
+(the trap #9 bug `_txlock=immediate` prevents) sheds a large share of the
+concurrent writes, far past this allowance; the single-user step keeps the
+strict default.
 
 ## Minimum viable resources
 

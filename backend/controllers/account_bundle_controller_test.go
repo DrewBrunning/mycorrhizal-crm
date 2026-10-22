@@ -11,7 +11,6 @@ import (
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
-	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,9 +19,8 @@ import (
 )
 
 func registerMycorrhizalRoutes(router *gin.Engine) {
-	// The source-import managers are package globals; reset so a session left
-	// by another test cannot trip the per-user cap.
-	mycorrhizalImportSessions = services.NewMycorrhizalImportManager()
+	// The source-import manager is a package global; setupRouter's
+	// isolateMycorrhizalImportSessions gives this test a clean one.
 	router.POST("/import/mycorrhizal/upload", UploadMycorrhizalBundle)
 	router.POST("/import/mycorrhizal/fetch", middleware.ValidateJSONMiddleware(&models.MycorrhizalFetchRequest{}), StartMycorrhizalFetch)
 	router.GET("/import/mycorrhizal/status", GetMycorrhizalImportStatus)

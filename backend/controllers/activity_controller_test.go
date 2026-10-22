@@ -31,6 +31,7 @@ func setupRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 	isolateAccountLimiter(t)
+	isolateMycorrhizalImportSessions(t)
 
 	// Issue #1474: a happy-path controller test fails on any unexpected
 	// warn/error server log line. Error-path tests opt out with
