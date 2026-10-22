@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 
 /**
@@ -134,7 +135,7 @@ fun ServersScreen(
             } else {
                 // Issue #1398: weight(1f), not fillMaxSize() — a full-height list leaves the
                 // "Use on this device only" button below it with zero height.
-                LazyColumn(modifier = Modifier.weight(1f).testTag("servers-list")) {
+                LazyColumn(modifier = Modifier.weight(1f).testTag("servers-list"), contentPadding = FabListContentPadding) {
                     items(state.profiles, key = { it.id }) { profile ->
                         ServerProfileRow(
                             profile = profile,

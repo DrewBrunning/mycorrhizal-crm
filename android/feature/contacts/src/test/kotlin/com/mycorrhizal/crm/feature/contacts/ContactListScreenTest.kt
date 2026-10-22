@@ -3,10 +3,12 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -120,6 +122,113 @@ class ContactListScreenTest {
         )
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+    }
+
+
+    // --- Issue #1754: subtitle separators and the non-interactive "You" badge ---
+
+    @Test
+    fun `an email-only subtitle has no dangling separator`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "alex.rivera@example.com",
+                        primaryPhone = "",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("alex.rivera@example.com").assertIsDisplayed()
+        composeTestRule.onNodeWithText("alex.rivera@example.com ·").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a phone-only subtitle has no leading separator`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "",
+                        primaryPhone = "+15551230000",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("+15551230000").assertIsDisplayed()
+        composeTestRule.onNodeWithText(" · +15551230000").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a contact with neither email nor phone has no subtitle line`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "",
+                        primaryPhone = "",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Alex Rivera").assertIsDisplayed()
+        assertTrue(
+            "no separator may render when both contact fields are blank",
+            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    @Test
+    fun `the you badge is a non-interactive label, not a disabled chip`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                selfContactVCardUid = "u1",
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("you-badge-1")
+            .assertIsDisplayed()
+            // A disabled AssistChip exposed a click action (and the disabled
+            // state); the badge must be plain text/label semantics.
+            .assertHasNoClickAction()
+        composeTestRule.onNodeWithText("You").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the last row can scroll clear of the create-contact FAB`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = manyContacts(30)),
+        )
+
+        composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
+        composeTestRule.waitForIdle()
+
+        val fabTop = composeTestRule.onNodeWithTag("create-contact-fab").getUnclippedBoundsInRoot().top
+        val lastRowStarBottom = composeTestRule.onNodeWithTag("favorite-30").getUnclippedBoundsInRoot().bottom
+        assertTrue(
+            "the last row's star ($lastRowStarBottom) must sit above the FAB ($fabTop)",
+            lastRowStarBottom <= fabTop,
+        )
     }
 
     // --- T90 / issue #831: "You" badge on the marked contact's row (web parity) ---

@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -170,7 +171,7 @@ fun NotesScreenContent(
                                 onAction = if (hasFilters) null else onCreateNote,
                             )
                         else -> {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                                 items(state.notes, key = { it.id }) { note ->
                                     NoteListItem(
                                         note = note,

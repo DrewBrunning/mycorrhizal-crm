@@ -41,6 +41,7 @@ import com.mycorrhizal.crm.feature.contacts.ContactAvatar
 import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.feature.contacts.memberDisplayName
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -133,7 +134,7 @@ fun CircleDetailScreen(
                         )
                     }
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             items(state.members, key = { it.id }) { member ->
                                 val resolved = state.contactsByUid[member.memberVCardUid]
                                 MemberRow(

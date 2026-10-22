@@ -61,6 +61,7 @@ import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -294,7 +295,7 @@ fun ContactSkillsScreen(
         state = state,
         onErrorShown = viewModel::onErrorShown,
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-skills-list")) {
+        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-skills-list"), contentPadding = FabListContentPadding) {
             if (entries.isEmpty()) {
                 item {
                     EmptyState(
@@ -625,7 +626,7 @@ fun ContactWorkScreen(
         state = state,
         onErrorShown = viewModel::onErrorShown,
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-work-list")) {
+        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-work-list"), contentPadding = FabListContentPadding) {
             if (organizations.isEmpty() && titles.isEmpty() && workInformation.isNullOrBlank()) {
                 item {
                     EmptyState(
@@ -934,7 +935,7 @@ fun ContactAnniversariesScreen(
         state = state,
         onErrorShown = viewModel::onErrorShown,
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-anniversaries-list")) {
+        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-anniversaries-list"), contentPadding = FabListContentPadding) {
             if (entries.isEmpty()) {
                 item {
                     EmptyState(

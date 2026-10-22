@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
@@ -144,7 +145,7 @@ fun ApiTokensScreen(
                     onAction = { createOpen = true },
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                     if (state.error != null) {
                         item {
                             Text(

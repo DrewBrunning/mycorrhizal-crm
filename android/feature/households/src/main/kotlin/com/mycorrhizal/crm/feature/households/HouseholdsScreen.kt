@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.model.network.formatSuggestionAddress
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -150,7 +151,7 @@ fun HouseholdsScreen(
                         )
                     }
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             if (state.suggestionsLoaded) {
                                 item(key = "suggestion-header") {
                                     Text(

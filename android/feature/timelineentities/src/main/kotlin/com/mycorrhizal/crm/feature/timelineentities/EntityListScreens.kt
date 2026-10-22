@@ -89,6 +89,7 @@ import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -201,7 +202,7 @@ internal fun EntityListScaffold(
                 // it. Every state (loading/empty/error/populated) is an item too,
                 // so the header stays reachable regardless of list contents.
                 val uriHandler = LocalUriHandler.current
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("entity-list")) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("entity-list"), contentPadding = FabListContentPadding) {
                     if (header != null) {
                         item(key = "scaffold-header") { header() }
                     }

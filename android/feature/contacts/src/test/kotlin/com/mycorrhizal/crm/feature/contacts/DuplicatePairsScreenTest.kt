@@ -99,6 +99,22 @@ class DuplicatePairsScreenTest {
         composeTestRule.onNodeWithText("Not a duplicate").assertIsDisplayed()
     }
 
+
+    @Test
+    fun `contacts with blank identifier fields render no dangling separator`() {
+        // Issue #1754: the same blank-filtering rule the contact list uses.
+        val blankPair = pair.copy(
+            a = ContactSummary(id = 1, uid = "u-a", firstname = "Dana", lastname = "White", primaryEmail = "", primaryPhone = ""),
+            b = ContactSummary(id = 2, uid = "u-b", firstname = "Dan", lastname = "White", primaryEmail = "", primaryPhone = ""),
+        )
+        setContent(DuplicatePairsUiState(pairs = listOf(blankPair), total = 1, isLoading = false))
+
+        assertTrue(
+            "a pair with no identifier fields must not render a lone separator",
+            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
     @Test
     fun `merge opens the keeper dialog and confirms with the chosen keeper`() {
         setContent(DuplicatePairsUiState(pairs = listOf(pair), total = 1, isLoading = false))

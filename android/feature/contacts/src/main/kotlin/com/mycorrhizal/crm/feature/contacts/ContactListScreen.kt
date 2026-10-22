@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -91,6 +92,7 @@ import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -324,7 +326,7 @@ fun ContactListScreenContent(
         },
         floatingActionButton = {
             if (!selectMode && !isPicker) {
-                BrandFab(onClick = onCreateContact) {
+                BrandFab(onClick = onCreateContact, modifier = Modifier.testTag("create-contact-fab")) {
                     Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
                 }
             }
@@ -384,6 +386,7 @@ fun ContactListScreenContent(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("contact-list"),
+                    contentPadding = FabListContentPadding,
                 ) {
                     when {
                         uiState.isLoading && uiState.contacts.isEmpty() -> item {
@@ -860,18 +863,37 @@ fun ContactListItem(
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 if (isMe) {
-                    // T90 / issue #831: being yourself is not a status condition —
-                    // a neutral, non-interactive chip (web ContactHeader parity).
-                    AssistChip(
-                        onClick = {},
-                        enabled = false,
-                        label = { Text(stringResource(R.string.contact_you_badge)) },
-                        modifier = Modifier.testTag("you-badge-${contact.id}"),
-                    )
+                    // T90 / issue #831: being yourself is not a status condition,
+                    // and issue #1754: a disabled AssistChip renders at 38% opacity
+                    // (failing contrast) and is announced as "disabled". A neutral
+                    // outlined label with no click semantics reads as a badge.
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        // mergeDescendants makes the badge its own semantics
+                        // boundary: without it the row's combinedClickable merges
+                        // the label away (and TalkBack reads it as part of the row).
+                        modifier = Modifier
+                            .semantics(mergeDescendants = true) {}
+                            .testTag("you-badge-${contact.id}"),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.contact_you_badge),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
                 }
             }
-            val subtitle = listOfNotNull(contact.primaryEmail, contact.primaryPhone)
-                .joinToString(" · ")
+            // Issue #1754: the list endpoint sends "" (not null) for a missing
+            // email/phone, and listOfNotNull only drops nulls — an email-only
+            // contact rendered a dangling " · ". Filter blanks before joining.
+            val subtitle = listOfNotNull(
+                contact.primaryEmail?.takeIf { it.isNotBlank() },
+                contact.primaryPhone?.takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,

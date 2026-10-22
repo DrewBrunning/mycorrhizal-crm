@@ -61,6 +61,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactAttachment
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
@@ -229,7 +230,7 @@ fun AttachmentsScreenContent(
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().testTag("attachments-list"),
-                            contentPadding = PaddingValues(vertical = 8.dp),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = FabListBottomPadding),
                         ) {
                             items(uiState.attachments, key = { it.id }) { attachment ->
                                 AttachmentRow(

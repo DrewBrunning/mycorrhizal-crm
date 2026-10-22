@@ -310,17 +310,23 @@ private fun DuplicateContactLine(contact: ContactSummary, modifier: Modifier = M
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = listOfNotNull(
-                    contact.primaryEmail?.takeIf { it.isNotBlank() },
-                    contact.primaryPhone?.takeIf { it.isNotBlank() },
-                    if (contact.archived) stringResource(R.string.contact_archived) else null,
-                ).joinToString(" · ").ifBlank { " " },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Issue #1754: the same blank-filtering rule as the contact list.
+            // Render nothing (not a lone " · " or a blank line) when there is
+            // nothing to say.
+            val subtitle = listOfNotNull(
+                contact.primaryEmail?.takeIf { it.isNotBlank() },
+                contact.primaryPhone?.takeIf { it.isNotBlank() },
+                if (contact.archived) stringResource(R.string.contact_archived) else null,
+            ).joinToString(" · ")
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
