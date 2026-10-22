@@ -4,16 +4,23 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
+import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
+import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
@@ -163,6 +170,23 @@ data class ContactDetailUiState(
      * panel here).
      */
     val score: ContactScoreResponse? = null,
+    /**
+     * Issue #1763: the drill-down rows show a trailing count so the user can
+     * tell which sections have content without opening each one. Each is null
+     * until its (independent, best-effort) fetch succeeds — a failed fetch
+     * simply omits that row's count rather than erroring the screen, matching
+     * the optional-panel treatment used by every other independent load here.
+     * Activities/notes/reminders come preloaded on the contact record and need
+     * no extra field.
+     */
+    val lifeEventCount: Int? = null,
+    val giftCount: Int? = null,
+    val preferenceCount: Int? = null,
+    val agendaCount: Int? = null,
+    val relationshipCount: Int? = null,
+    val attachmentCount: Int? = null,
+    /** 0 or 1 — a contact has at most one cadence policy. */
+    val cadenceCount: Int? = null,
 )
 
 sealed interface ContactDetailEvent {
@@ -203,6 +227,15 @@ class ContactDetailViewModel @Inject constructor(
     private val nextcloudRepository: NextcloudRepository,
     // Issue #383 (ADR-0023): the relationship health score badge/breakdown.
     private val contactScoreRepository: ContactScoreRepository,
+    // Issue #1763: the drill-down counts are derived from these repositories'
+    // existing contact-scoped list calls; no new endpoints.
+    private val lifeEventRepository: LifeEventRepository,
+    private val giftRepository: GiftRepository,
+    private val preferenceRepository: PreferenceRepository,
+    private val conversationAgendaRepository: ConversationAgendaRepository,
+    private val relationshipEdgeRepository: RelationshipEdgeRepository,
+    private val attachmentRepository: AttachmentRepository,
+    private val cadencePolicyRepository: CadencePolicyRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -251,6 +284,7 @@ class ContactDetailViewModel @Inject constructor(
                     }
                     loadCirclesAndTags(contact)
                     loadExternalLinks(contact)
+                    loadCounts(contact)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -451,6 +485,62 @@ class ContactDetailViewModel @Inject constructor(
             )
         }
         loadImmichSummary(uid)
+    }
+
+    /**
+     * Issue #1763: fetch the drill-down row counts. Each load is independent and
+     * best-effort, exactly like the optional panels above — a failure leaves its
+     * count null (the row still renders, just without a number) rather than
+     * surfacing an error. Activities/notes/reminders are already on [contact].
+     */
+    private fun loadCounts(contact: ContactRecordResponse) {
+        val uid = contact.vcardUid
+        if (!uid.isNullOrBlank()) {
+            viewModelScope.launch {
+                lifeEventRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(lifeEventCount = items.size) } },
+                    onError = {},
+                )
+            }
+            viewModelScope.launch {
+                giftRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(giftCount = items.size) } },
+                    onError = {},
+                )
+            }
+            viewModelScope.launch {
+                preferenceRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(preferenceCount = items.size) } },
+                    onError = {},
+                )
+            }
+            viewModelScope.launch {
+                conversationAgendaRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(agendaCount = items.size) } },
+                    onError = {},
+                )
+            }
+            viewModelScope.launch {
+                relationshipEdgeRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(relationshipCount = items.size) } },
+                    onError = {},
+                )
+            }
+            viewModelScope.launch {
+                cadencePolicyRepository.listForContact(uid).foldApiError(
+                    onSuccess = { items -> _uiState.update { it.copy(cadenceCount = items.size) } },
+                    onError = {},
+                )
+            }
+        }
+        if (contact.id != 0) {
+            viewModelScope.launch {
+                attachmentRepository.list(contact.id).foldApiError(
+                    onSuccess = { page -> _uiState.update { it.copy(attachmentCount = page.total) } },
+                    onError = {},
+                )
+            }
+        }
     }
 
     private fun loadImmichSummary(uid: String) {

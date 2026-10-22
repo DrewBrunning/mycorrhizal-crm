@@ -157,10 +157,10 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (Child)")
+            .onNodeWithContentDescription("Carol — Child")
             .assert(hasClickAction())
         composeTestRule
-            .onNodeWithContentDescription("Ghost — Ghost (Spouse)")
+            .onNodeWithContentDescription("Ghost — Spouse")
             .assert(SemanticsMatcher("has no click action") { node -> !node.config.contains(SemanticsActions.OnClick) })
     }
 
@@ -186,7 +186,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (Child) — Healthy")
+            .onNodeWithContentDescription("Carol — Child — Healthy")
             .assertIsDisplayed()
     }
 
@@ -200,7 +200,7 @@ class NetworkScreenTest {
             ),
         )
 
-        composeTestRule.onNodeWithContentDescription("Carol — Carol (Child)").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Carol — Child").assertIsDisplayed()
     }
 
     // --- Issue #1193: a deceased target overrides the health-band indicator ---
@@ -225,7 +225,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (Child) — Deceased")
+            .onNodeWithContentDescription("Carol — Child — Deceased")
             .assertIsDisplayed()
     }
 
@@ -247,7 +247,7 @@ class NetworkScreenTest {
         )
 
         composeTestRule
-            .onNodeWithContentDescription("Carol — Carol (Child) — Deceased")
+            .onNodeWithContentDescription("Carol — Child — Deceased")
             .assertIsDisplayed()
     }
 
@@ -263,7 +263,7 @@ class NetworkScreenTest {
             onOpenContact = { openedId = it },
         )
 
-        composeTestRule.onNodeWithContentDescription("Carol — Carol (Child)").performClick()
+        composeTestRule.onNodeWithContentDescription("Carol — Child").performClick()
 
         assertEquals(10, openedId)
     }

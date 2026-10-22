@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -182,6 +183,9 @@ fun ActivitiesScreenContent(
                                         onContactClick = onContactClick,
                                         onDelete = { pendingDelete = activity },
                                         isDeleting = state.deletingId == activity.id,
+                                        // Issue #1763: this list is already scoped to one
+                                        // contact, so repeating its chip on every row is noise.
+                                        showContactChips = false,
                                     )
                                 }
                                 if (!state.nextCursor.isNullOrEmpty()) {
@@ -251,6 +255,9 @@ fun ActivityListItem(
     onDelete: () -> Unit,
     isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
+    // Issue #1763: hide the participant chips when the list is already scoped to
+    // this contact (the per-contact Activities screen) instead of repeating it.
+    showContactChips: Boolean = true,
 ) {
     val dateFormat = LocalDateFormat.current
     Row(
@@ -279,7 +286,7 @@ fun ActivityListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val contacts = activity.contacts.orEmpty()
+            val contacts = if (showContactChips) activity.contacts.orEmpty() else emptyList()
             if (contacts.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -293,6 +300,14 @@ fun ActivityListItem(
                     }
                 }
             }
+        }
+        // Issue #1763: an explicit pencil, matching preferences/relationships —
+        // tapping the row still opens the same edit form.
+        IconButton(onClick = onClick) {
+            Icon(
+                Icons.Outlined.Edit,
+                contentDescription = stringResource(R.string.activity_edit),
+            )
         }
         IconButton(onClick = onDelete, enabled = !isDeleting) {
             // #205: the row-action label carries the activity's title so TalkBack

@@ -165,6 +165,11 @@
     <string name="contact_gifts">Cadeaux</string>
     <string name="contact_preferences">Préférences</string>
     <string name="contact_agenda">Ordre du jour</string>
+    <string name="contact_section_history">Historique</string>
+    <string name="contact_section_planning">Planification</string>
+    <string name="contact_section_about">À propos</string>
+    <string name="contact_drilldown_count">%1$s · %2$d</string>
+    <string name="contact_export_menu">Exporter</string>
     <string name="contact_reminders">Rappels</string>
     <string name="contact_email">E-mail</string>
     <string name="contact_phone">Téléphone</string>

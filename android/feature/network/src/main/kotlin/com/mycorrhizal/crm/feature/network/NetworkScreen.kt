@@ -425,7 +425,10 @@ private fun NetworkRow(
     // dot below and this description) -- recency-of-interaction health
     // scoring is meaningless once someone has died, so it never competes
     // with the deceased state for the same indicator.
-    val readablePath = chain.readablePath(chain.stepsOrEmpty.map { relationshipRoleLabel(it.relation) })
+    // Issue #1763: omit the target's own name from the subtitle/label — the row
+    // title already shows it, and a direct connection used to read
+    // "Bea Fontaine — Bea Fontaine (related to)".
+    val readablePath = chain.readablePathToTarget(chain.stepsOrEmpty.map { relationshipRoleLabel(it.relation) })
     val band = chain.healthBand
     val statusLabel = if (chain.deceased) {
         stringResource(R.string.contact_deceased_badge)
