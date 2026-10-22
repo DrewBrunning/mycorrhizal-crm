@@ -2380,6 +2380,28 @@
     "unknownContact": "Unknown contact",
     "dueOn": "Due on {{date}}"
   },
+  "targetCloseness": {
+    "label": "Target closeness",
+    "none": "No target",
+    "chip": "Target: {{tier}} · {{status}}",
+    "tier": {
+      "immediate": "Immediate",
+      "close": "Close",
+      "casual": "Casual",
+      "distant": "Distant"
+    },
+    "status": {
+      "on_track": "On track",
+      "drifting": "Drifting",
+      "behind": "Behind"
+    },
+    "offer": {
+      "title": "Create a cadence?",
+      "body": "Stay in touch with {{name}} every {{days}} days?",
+      "accept": "Create cadence",
+      "dismiss": "Not now"
+    }
+  },
   "reachOut": {
     "title": "Reasons to Reach Out",
     "empty": "No reach-out suggestions right now.",
@@ -2391,7 +2413,8 @@
       "title": "New job title",
       "address": "Moved",
       "target_behind": "Behind target"
-    }
+    },
+    "behindTarget": "Behind your {{tier}} target · last contact {{date}}"
   },
   "syncConflicts": {
     "title": "Sync Conflicts",

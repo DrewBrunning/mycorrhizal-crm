@@ -11,6 +11,12 @@ import {
   unarchiveContact,
   unfavoriteContact,
 } from '../api/contacts';
+import {
+  type ContactTargetClosenessResponse,
+  clearTargetCloseness,
+  setTargetCloseness,
+  type TargetClosenessTier,
+} from '../api/targetCloseness';
 import { updateSelfContact } from '../api/users';
 import { fetchAndCacheUserInfo } from '../auth';
 
@@ -134,6 +140,33 @@ export function useContactLifecycleActions({
     }
   };
 
+  // Issue #1796/#1797: set or clear the contact's target closeness. The write
+  // bumps the revision like favorite/archive, so re-read it before the next
+  // full-record save would 412. Returns the response (with the cadence-policy
+  // offer, if any) so the header can open the offer dialog; null on failure.
+  const handleSetTargetCloseness = async (
+    tier: TargetClosenessTier | null,
+  ): Promise<ContactTargetClosenessResponse | null> => {
+    if (!record || !id) return null;
+    try {
+      const response =
+        tier === null ? await clearTargetCloseness(id) : await setTargetCloseness(id, tier);
+      setRecord((prev) =>
+        prev
+          ? {
+              ...prev,
+              crm: { ...prev.crm, target_closeness: response.target_closeness ?? undefined },
+            }
+          : prev,
+      );
+      await syncRevision();
+      return response;
+    } catch (err) {
+      reportError('Error setting target closeness:', err);
+      return null;
+    }
+  };
+
   // T90: set/clear the caller's "Me" pointer. The PATCH commits the exact
   // value computed here, so reflect it immediately (no extra /users/me
   // round-trip), then refresh the localStorage cache so the Settings picker
@@ -162,6 +195,7 @@ export function useContactLifecycleActions({
     handleArchiveContact,
     handleUnarchiveContact,
     handleToggleFavorite,
+    handleSetTargetCloseness,
     handleToggleMe,
   };
 }

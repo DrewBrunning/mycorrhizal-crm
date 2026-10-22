@@ -2,11 +2,25 @@
 // Mirrors backend/models/contact_score.go's ContactScoreResponse exactly --
 // see relationshipEdges.ts for the sibling api-module pattern this follows.
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { TargetClosenessTier } from './targetCloseness';
 
 // Issue #1733: why a contact counts as in regular contact without logged
 // activity. MUST stay in sync with backend/internal/scoring's
 // AmbientReason* constants.
 export type AmbientReason = 'household' | 'flag';
+
+// Mirrors backend/models/contact_score.go's ContactScoreTarget (issue #1796,
+// ADR-0023 amendment). Color mapping is in utils/healthBand.ts
+// (targetStatusBand): on_track -> moss, drifting -> chanterelle, behind ->
+// russula.
+export interface ContactScoreTarget {
+  tier: TargetClosenessTier;
+  status: 'on_track' | 'drifting' | 'behind';
+  value: number;
+  interval_days: number;
+  interval_source: 'cadence_policy' | 'target_tier';
+  reason: string;
+}
 
 // Mirrors backend/models/contact_score.go's ContactScoreFacet.
 export interface ContactScoreFacet {
@@ -36,6 +50,9 @@ export interface ContactScoreResponse {
   // false). ambient_reason is absent when ambient is false.
   ambient?: boolean;
   ambient_reason?: AmbientReason;
+  // Issue #1796: how the contact is doing against its target closeness, or
+  // null (always present) when it has no target.
+  target: ContactScoreTarget | null;
 }
 
 // GET /contacts/:id/score -- the explainable relationship health score for a

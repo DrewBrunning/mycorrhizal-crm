@@ -13,6 +13,7 @@ import {
   unarchiveContact,
   unfavoriteContact,
 } from '../api/contacts';
+import { clearTargetCloseness, setTargetCloseness } from '../api/targetCloseness';
 import { updateSelfContact } from '../api/users';
 import { fetchAndCacheUserInfo } from '../auth';
 import { useContactLifecycleActions } from './useContactLifecycleActions';
@@ -29,6 +30,10 @@ vi.mock('../api/contacts', async (importOriginal) => {
     unfavoriteContact: vi.fn(),
   };
 });
+vi.mock('../api/targetCloseness', () => ({
+  setTargetCloseness: vi.fn(),
+  clearTargetCloseness: vi.fn(),
+}));
 vi.mock('../api/users', () => ({ updateSelfContact: vi.fn() }));
 vi.mock('../auth', () => ({ fetchAndCacheUserInfo: vi.fn() }));
 
@@ -127,6 +132,7 @@ test('every action is a no-op without a record', async () => {
     await result.current.handleArchiveContact();
     await result.current.handleUnarchiveContact();
     await result.current.handleToggleFavorite();
+    await result.current.handleSetTargetCloseness('close');
     await result.current.handleToggleMe();
   });
   expect(confirmSpy).not.toHaveBeenCalled();
@@ -213,9 +219,11 @@ describe('archive / unarchive', () => {
       await result.current.handleArchiveContact();
       await result.current.handleUnarchiveContact();
       await result.current.handleToggleFavorite();
+      await result.current.handleSetTargetCloseness('close');
       await result.current.handleDeleteContact();
     });
     expect(archiveContact).not.toHaveBeenCalled();
+    expect(setTargetCloseness).not.toHaveBeenCalled();
     expect(unarchiveContact).not.toHaveBeenCalled();
     expect(favoriteContact).not.toHaveBeenCalled();
     expect(deleteContact).not.toHaveBeenCalled();
@@ -321,6 +329,102 @@ describe('favorite (#173)', () => {
   });
 });
 
+describe('target closeness (#1797)', () => {
+  const targetResponse = {
+    contact_id: 1,
+    target_closeness: 'close' as const,
+    default_interval_days: 14,
+    cadence_policy_offer: { entity_id: 'alice-uid', target_interval_days: 14 },
+  };
+
+  test('setting a tier updates crm.target_closeness, re-reads the revision, and returns the response', async () => {
+    vi.mocked(setTargetCloseness).mockResolvedValueOnce(targetResponse);
+    vi.mocked(getContactRecord).mockResolvedValueOnce({
+      ...record,
+      revision: record.revision + 1,
+      crm: { target_closeness: 'close' },
+    });
+    const { result } = setup();
+
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.handleSetTargetCloseness('close');
+    });
+
+    expect(setTargetCloseness).toHaveBeenCalledWith('1', 'close');
+    expect(clearTargetCloseness).not.toHaveBeenCalled();
+    const updated = applyUpdates(record);
+    expect(updated.crm.target_closeness).toBe('close');
+    expect(updated.revision).toBe(record.revision + 1);
+    expect(getContactRecord).toHaveBeenCalledWith('1');
+    expect(returned).toEqual(targetResponse);
+  });
+
+  test('clearing sends DELETE and removes the target from the record', async () => {
+    vi.mocked(clearTargetCloseness).mockResolvedValueOnce({
+      contact_id: 1,
+      target_closeness: null,
+      default_interval_days: null,
+      cadence_policy_offer: null,
+    });
+    vi.mocked(getContactRecord).mockResolvedValueOnce({
+      ...record,
+      revision: record.revision + 1,
+      crm: {},
+    });
+    const { result } = setup({ r: { ...record, crm: { target_closeness: 'close' } } });
+
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.handleSetTargetCloseness(null);
+    });
+
+    expect(clearTargetCloseness).toHaveBeenCalledWith('1');
+    expect(setTargetCloseness).not.toHaveBeenCalled();
+    expect(applyUpdates({ ...record, crm: { target_closeness: 'close' } }).crm).toEqual({});
+    expect(returned).toMatchObject({ target_closeness: null, cadence_policy_offer: null });
+  });
+
+  test('a failure returns null, leaves the record unchanged, and reports the ApiError', async () => {
+    vi.mocked(setTargetCloseness).mockRejectedValueOnce(new ApiError('Nope', 'INVALID_INPUT', 400));
+    const { result } = setup();
+
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.handleSetTargetCloseness('casual');
+    });
+
+    expect(returned).toBeNull();
+    expect(setRecord).not.toHaveBeenCalled();
+    expect(getContactRecord).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith('Nope');
+  });
+
+  test('a non-ApiError failure reports the generic update error', async () => {
+    vi.mocked(setTargetCloseness).mockRejectedValueOnce(new Error('offline'));
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.handleSetTargetCloseness('casual');
+    });
+
+    expect(showError).toHaveBeenCalledWith(UPDATE_ERROR);
+  });
+
+  test('is a no-op without an id', async () => {
+    const { result } = setup({ id: undefined });
+
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.handleSetTargetCloseness('close');
+    });
+
+    expect(returned).toBeNull();
+    expect(setTargetCloseness).not.toHaveBeenCalled();
+    expect(clearTargetCloseness).not.toHaveBeenCalled();
+  });
+});
+
 describe('toggle Me (T90)', () => {
   test('sets this contact as Me, refreshes the cache, and confirms', async () => {
     const { result } = setup();
@@ -357,6 +461,7 @@ describe('failure logging', () => {
     vi.mocked(archiveContact).mockRejectedValue(boom);
     vi.mocked(unarchiveContact).mockRejectedValue(boom);
     vi.mocked(favoriteContact).mockRejectedValue(boom);
+    vi.mocked(setTargetCloseness).mockRejectedValue(boom);
     vi.mocked(updateSelfContact).mockRejectedValue(boom);
     const { result } = setup();
     await act(async () => {
@@ -364,6 +469,7 @@ describe('failure logging', () => {
       await result.current.handleArchiveContact();
       await result.current.handleUnarchiveContact();
       await result.current.handleToggleFavorite();
+      await result.current.handleSetTargetCloseness('close');
       await result.current.handleToggleMe();
     });
     for (const label of [
@@ -371,6 +477,7 @@ describe('failure logging', () => {
       'Error archiving contact:',
       'Error unarchiving contact:',
       'Error toggling favorite:',
+      'Error setting target closeness:',
       'Error updating self contact:',
     ]) {
       expect(console.error).toHaveBeenCalledWith(label, boom);
