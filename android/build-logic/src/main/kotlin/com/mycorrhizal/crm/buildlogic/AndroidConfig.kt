@@ -21,8 +21,6 @@ import org.jacoco.core.instr.Instrumenter
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
 import java.io.File
 import org.gradle.testretry.TestRetryTaskExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 /**
@@ -69,12 +67,6 @@ internal fun Project.configureAndroidCommon(
         testOptions.unitTests.isIncludeAndroidResources = true
     }
 
-    extensions.configure<KotlinAndroidProjectExtension>("kotlin") {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-
     configureAccessibilityLint(extension.lint)
     configureAndroidTestCommon()
     configureJacoco()
@@ -91,24 +83,19 @@ internal fun Project.configureAndroidCommon(
  * this repo's tweaks from config/detekt/detekt.yml on top.
  */
 internal fun Project.configureDetekt() {
-    pluginManager.apply("io.gitlab.arturbosch.detekt")
-    extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension>("detekt") {
+    pluginManager.apply("dev.detekt")
+    extensions.configure<dev.detekt.gradle.extensions.DetektExtension>("detekt") {
         config.setFrom(rootProject.file("config/detekt/detekt.yml"))
-        buildUponDefaultConfig = true
-        parallel = true
+        buildUponDefaultConfig.set(true)
+        parallel.set(true)
     }
-    // detekt's embedded Kotlin compiler derives --jvm-target from the toolchain
-    // running the build (e.g. JDK 25 -> target 25), but its CLI only accepts
-    // up to 22 and fails. The compile targets 17 (see configureAndroidCommon);
-    // pin detekt to the same value so it parses the same bytecode target.
-    //
-    // Note: detekt 1.23.x also reads the daemon JVM's java.version to build its
-    // compiler environment and rejects JDK > 22 outright ("IllegalArgumentException:
-    // 25.0.3"), so `./gradlew detekt` must run on a JDK <= 22. CI satisfies this
-    // with setup-java 17 (see android-tests.yml); a local dev machine on a newer
-    // default JDK needs to point the Android build at JDK 17/21.
-    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-        jvmTarget = "17"
+    // detekt's embedded Kotlin compiler derives its JVM target from the build
+    // JVM, which on JDK 25 would default to target 25. The Android modules
+    // compile to 17 (see configureAndroidCommon); pin detekt to the same value
+    // so it analyses the same bytecode target. detekt 2.0 no longer rejects a
+    // JDK 25 build JVM, so this is a consistency pin, not a compatibility workaround.
+    tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+        jvmTarget.set("17")
     }
 }
 

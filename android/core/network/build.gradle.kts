@@ -14,7 +14,7 @@ android {
     // `go run ./cmd/gencontract` — never hand-edited.
     sourceSets {
         getByName("test") {
-            resources.srcDir("../../../testdata/contract-fixtures")
+            resources.directories += "../../../testdata/contract-fixtures"
         }
     }
 }

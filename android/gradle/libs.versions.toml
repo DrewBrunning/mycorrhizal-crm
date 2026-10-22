@@ -58,7 +58,12 @@ zxing = "3.5.3"
 # Issue #358: detekt is the Kotlin smell/correctness analyzer complementing
 # CodeQL (taint) + mobsfscan (manifest/intent/secret rules) for the Android
 # app. Applied to every module via the build-logic convention plugins.
-detekt = "1.23.8"
+# Issue #1858: detekt 2.x is the only line that supports a JDK 25 build JVM
+# (1.23.x rejects it outright), and 2.0.0-alpha.6 is the newest release on the
+# Gradle Plugin Portal as of 2026-10-22 — the major-upgrade policy's
+# deliberate-on-an-alpha call is recorded in the PR that upgraded it. Revisit
+# when a stable 2.0 ships (track https://github.com/detekt/detekt/releases).
+detekt = "2.0.0-alpha.6"
 # Issue #722: Android local auth. androidx.biometric drives the biometric /
 # device-credential prompt (BiometricPrompt); its host requirement is a
 # FragmentActivity, so the app also carries fragment-ktx (MainActivity is
@@ -80,14 +85,13 @@ credentials = "1.6.0"
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
 
 [libraries]
 # Compose BOM
