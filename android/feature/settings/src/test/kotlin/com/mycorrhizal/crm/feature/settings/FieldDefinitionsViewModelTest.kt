@@ -26,12 +26,13 @@ class FieldDefinitionsViewModelTest {
     private val repository = mockk<FieldDefinitionRepository>()
 
     @Test
-    fun `loads definitions on init`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load loads definitions`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list() } returns Result.success(
             listOf(FieldDefinition(id = "d1", label = "Coffee order"), FieldDefinition(id = "d2", label = "T-shirt size")),
         )
 
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
@@ -45,67 +46,10 @@ class FieldDefinitionsViewModelTest {
         coEvery { repository.list() } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         assertEquals("boom", vm.uiState.value.error)
-    }
-
-    @Test
-    fun `delete removes the definition from the list`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.list() } returns Result.success(
-            listOf(FieldDefinition(id = "d1", label = "Coffee order"), FieldDefinition(id = "d2", label = "T-shirt size")),
-        )
-        coEvery { repository.delete("d1") } returns Result.success(Unit)
-
-        val vm = FieldDefinitionsViewModel(repository)
-        advanceUntilIdle()
-
-        vm.delete("d1")
-        advanceUntilIdle()
-
-        assertEquals(listOf("T-shirt size"), vm.uiState.value.definitions.map { it.label })
-    }
-
-    @Test
-    fun `delete failure surfaces the error and keeps the definition`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.list() } returns Result.success(listOf(FieldDefinition(id = "d1", label = "Coffee order")))
-        coEvery { repository.delete("d1") } returns Result.failure(ApiError.Client(500, "boom"))
-
-        val vm = FieldDefinitionsViewModel(repository)
-        advanceUntilIdle()
-
-        vm.delete("d1")
-        advanceUntilIdle()
-
-        assertEquals("boom", vm.uiState.value.error)
-        assertEquals(listOf("d1"), vm.uiState.value.definitions.map { it.id })
-    }
-
-    @Test
-    fun `a second delete call is ignored while one is already in flight`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.list() } returns Result.success(
-            listOf(FieldDefinition(id = "d1", label = "Coffee order"), FieldDefinition(id = "d2", label = "T-shirt size")),
-        )
-        val gate = CompletableDeferred<Unit>()
-        coEvery { repository.delete("d1") } coAnswers {
-            gate.await()
-            Result.success(Unit)
-        }
-
-        val vm = FieldDefinitionsViewModel(repository)
-        advanceUntilIdle()
-
-        vm.delete("d1")
-        advanceUntilIdle() // deletingId flips to "d1" and the coroutine suspends on the gate
-        assertTrue(vm.uiState.value.deletingId == "d1")
-
-        vm.delete("d2") // a second call while the first is still in flight must be a no-op
-
-        gate.complete(Unit)
-        advanceUntilIdle()
-
-        coVerify(exactly = 0) { repository.delete("d2") }
-        assertEquals(listOf("T-shirt size"), vm.uiState.value.definitions.map { it.label })
     }
 
     @Test
@@ -118,6 +62,7 @@ class FieldDefinitionsViewModelTest {
         )
 
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         vm.move("d1", 1)
@@ -132,6 +77,7 @@ class FieldDefinitionsViewModelTest {
     fun `move at a list boundary is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list() } returns Result.success(listOf(FieldDefinition(id = "d1", label = "A")))
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         vm.move("d1", -1)
@@ -149,6 +95,7 @@ class FieldDefinitionsViewModelTest {
         coEvery { repository.reorder(any()) } returns Result.failure(ApiError.Client(400, "boom"))
 
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         vm.move("d1", 1)
@@ -172,6 +119,7 @@ class FieldDefinitionsViewModelTest {
         }
 
         val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
         advanceUntilIdle()
 
         vm.move("d1", 1)
@@ -184,5 +132,66 @@ class FieldDefinitionsViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 1) { repository.reorder(any()) }
+    }
+
+    @Test
+    fun `moveBy moves a definition multiple positions and persists the full order`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(
+            listOf(
+                FieldDefinition(id = "d1", label = "A", position = 0),
+                FieldDefinition(id = "d2", label = "B", position = 1),
+                FieldDefinition(id = "d3", label = "C", position = 2),
+            ),
+        )
+        coEvery { repository.reorder(listOf("d2", "d3", "d1")) } returns Result.success(
+            listOf(
+                FieldDefinition(id = "d2", label = "B", position = 0),
+                FieldDefinition(id = "d3", label = "C", position = 1),
+                FieldDefinition(id = "d1", label = "A", position = 2),
+            ),
+        )
+
+        val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
+        advanceUntilIdle()
+
+        vm.moveBy("d1", 2)
+        advanceUntilIdle()
+
+        assertEquals(listOf("d2", "d3", "d1"), vm.uiState.value.definitions.map { it.id })
+        coVerify { repository.reorder(listOf("d2", "d3", "d1")) }
+    }
+
+    @Test
+    fun `moveBy past the end clamps to the last position`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "A"), FieldDefinition(id = "d2", label = "B")),
+        )
+        coEvery { repository.reorder(listOf("d2", "d1")) } returns Result.success(
+            listOf(FieldDefinition(id = "d2", label = "B"), FieldDefinition(id = "d1", label = "A")),
+        )
+
+        val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
+        advanceUntilIdle()
+
+        vm.moveBy("d1", 9)
+        advanceUntilIdle()
+
+        assertEquals(listOf("d2", "d1"), vm.uiState.value.definitions.map { it.id })
+        coVerify { repository.reorder(listOf("d2", "d1")) }
+    }
+
+    @Test
+    fun `moveBy at a boundary is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(listOf(FieldDefinition(id = "d1", label = "A")))
+        val vm = FieldDefinitionsViewModel(repository)
+        vm.load()
+        advanceUntilIdle()
+
+        vm.moveBy("d1", -3)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.reorder(any()) }
     }
 }

@@ -29,8 +29,10 @@ data class ImmichSettingsUiState(
     val syncEnabled: Boolean = true,
     val lastSyncStatus: String? = null,
     val lastSyncError: String? = null,
-)
-
+) {
+    /** Issue #1775: the token is required on first connect (there is no stored key to keep). */
+    val tokenRequired: Boolean get() = !hasApiKey
+}
 data class ImmichTestOutcome(val ok: Boolean, val message: String?)
 
 /**

@@ -1813,6 +1813,7 @@ private fun AppNavGraph(
             FieldDefinitionFormScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
             )
         }
         composable(
@@ -1822,6 +1823,7 @@ private fun AppNavGraph(
             FieldDefinitionFormScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
             )
         }
         // M26: one-time legacy circle/tag cleanup (reached from Settings).

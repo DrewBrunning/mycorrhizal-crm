@@ -590,7 +590,7 @@
       "relatedTo": "Lié à",
       "members": "Membres"
     },
-    "cardKindLabel": "Type de contact",
+    "cardKindLabel": "Type",
     "speakToAsLabel": "Pronoms et genre grammatical",
     "personalInfoLabel": "Informations personnelles (compétences / loisirs / intérêts)",
     "keywordsLabel": "Mots-clés",
@@ -1621,7 +1621,13 @@
         "name": "Nom",
         "work": "Travail",
         "personal": "Personnel",
-        "mycorrhizal": "Notes"
+        "mycorrhizal": "Notes de relation"
+      },
+      "descriptions": {
+        "anniversary": "Une seule date, comme un mariage ou votre première rencontre.",
+        "anniversaries": "Une liste de dates à retenir, chacune avec son propre type.",
+        "language": "La langue dans laquelle cette fiche de contact est écrite, et non une langue que parle la personne.",
+        "preferredLanguages": "Les langues que parle cette personne."
       }
     },
     "data": {

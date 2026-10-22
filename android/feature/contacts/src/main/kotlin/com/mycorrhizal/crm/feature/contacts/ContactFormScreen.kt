@@ -288,7 +288,7 @@ fun ContactFormContent(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.contact_kind)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("contact-kind-field"),
                     trailingIcon = {
                         IconButton(onClick = { kindMenuExpanded = true }) {
                             Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null)
@@ -340,7 +340,7 @@ fun ContactFormContent(
                 current = state.cardKind.ifBlank { null },
                 options = com.mycorrhizal.crm.ui.components.CARD_KIND_OPTIONS,
                 onTypeChange = { onCardKindChange(it.orEmpty()) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("card-kind-field"),
                 label = stringResource(R.string.contact_card_kind_label),
             )
         }

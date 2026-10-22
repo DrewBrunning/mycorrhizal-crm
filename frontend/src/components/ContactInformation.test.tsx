@@ -417,10 +417,10 @@ test('an IMPP entry with a full URI links directly and is copyable', async () =>
     {},
     { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) },
   );
-  const row = fieldRow('Instant Messaging');
+  const row = fieldRow('Instant messaging');
   const link = within(row).getByText(/xmpp:alice@example\.com/);
   expect(link.closest('a')).toHaveAttribute('href', 'xmpp:alice@example.com');
-  expect(within(row).getByLabelText(/^Copy Instant Messaging /)).toBeInTheDocument();
+  expect(within(row).getByLabelText(/^Copy Instant messaging /)).toBeInTheDocument();
 });
 
 // The IMPP editor is routed through OnlineServiceEditor (uriOnly): service +
@@ -433,7 +433,7 @@ test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-exist
     {},
     { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) },
   );
-  const row = fieldRow('Instant Messaging');
+  const row = fieldRow('Instant messaging');
   fireEvent.click(within(row).getByLabelText('Edit'));
 
   expect(screen.getByRole('combobox', { name: 'Service' })).toBeInTheDocument();

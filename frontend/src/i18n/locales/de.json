@@ -570,7 +570,7 @@
       "relatedTo": "Verwandt mit",
       "members": "Mitglieder"
     },
-    "cardKindLabel": "Kontaktart",
+    "cardKindLabel": "Art",
     "speakToAsLabel": "Pronomen & grammatikalisches Geschlecht",
     "personalInfoLabel": "Persönliche Angaben (Expertise / Hobbys / Interessen)",
     "keywordsLabel": "Schlagwörter",
@@ -1588,7 +1588,13 @@
         "name": "Name",
         "work": "Beruf",
         "personal": "Persönlich",
-        "mycorrhizal": "Notizen"
+        "mycorrhizal": "Beziehungsnotizen"
+      },
+      "descriptions": {
+        "anniversary": "Ein einzelnes Datum, etwa eine Hochzeit oder das erste Kennenlernen.",
+        "anniversaries": "Eine Liste von Daten, die Sie sich merken möchten, jeweils mit eigener Art.",
+        "language": "Die Sprache, in der diese Kontaktkarte geschrieben ist – nicht eine Sprache, die die Person spricht.",
+        "preferredLanguages": "Die Sprachen, die diese Person spricht."
       }
     },
     "data": {

@@ -53,6 +53,8 @@ export interface ContactFieldDef {
   key: ContactFieldKey;
   /** i18n key for the field label */
   labelKey: string;
+  /** i18n key for one-line help, used only where two toggles look alike (issue #1775). */
+  descriptionKey?: string;
   /** group identifier used to render section subheaders in settings */
   group: 'communication' | 'name' | 'work' | 'personal' | 'mycorrhizal';
   /** true if this concept is an array in the nested Card model (vs. a scalar) */
@@ -94,8 +96,20 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
 
   { key: 'gender', labelKey: 'contacts.gender', group: 'personal', multiValue: false },
   { key: 'birthday', labelKey: 'contacts.birthday', group: 'personal', multiValue: false },
-  { key: 'anniversary', labelKey: 'contacts.anniversary', group: 'personal', multiValue: false },
-  { key: 'anniversaries', labelKey: 'contacts.anniversaries', group: 'personal', multiValue: true },
+  {
+    key: 'anniversary',
+    labelKey: 'contacts.anniversary',
+    descriptionKey: 'settings.contactFields.descriptions.anniversary',
+    group: 'personal',
+    multiValue: false,
+  },
+  {
+    key: 'anniversaries',
+    labelKey: 'contacts.anniversaries',
+    descriptionKey: 'settings.contactFields.descriptions.anniversaries',
+    group: 'personal',
+    multiValue: true,
+  },
   { key: 'speakToAs', labelKey: 'contacts.speakToAsLabel', group: 'personal', multiValue: true },
   {
     key: 'personalInfo',
@@ -108,11 +122,18 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
   {
     key: 'preferredLanguages',
     labelKey: 'contacts.preferredLanguagesLabel',
+    descriptionKey: 'settings.contactFields.descriptions.preferredLanguages',
     group: 'personal',
     multiValue: true,
   },
   { key: 'cardKind', labelKey: 'contacts.cardKindLabel', group: 'personal', multiValue: false },
-  { key: 'language', labelKey: 'contacts.language', group: 'personal', multiValue: false },
+  {
+    key: 'language',
+    labelKey: 'contacts.language',
+    descriptionKey: 'settings.contactFields.descriptions.language',
+    group: 'personal',
+    multiValue: false,
+  },
 
   { key: 'how_we_met', labelKey: 'contacts.howWeMet', group: 'mycorrhizal', multiValue: false },
   {

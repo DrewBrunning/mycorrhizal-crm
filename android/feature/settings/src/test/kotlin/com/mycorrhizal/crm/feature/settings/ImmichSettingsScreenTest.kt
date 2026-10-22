@@ -36,8 +36,20 @@ class ImmichSettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Immich server URL").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("API key").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Immich server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a stored key makes the token optional and drops the required marker`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, hasApiKey = true))
+            }
+        }
+
+        composeTestRule.onNodeWithText("API token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("API token *").assertDoesNotExist()
     }
 
     @Test
@@ -156,5 +168,18 @@ class ImmichSettingsScreenTest {
 
         composeTestRule.onNodeWithText("Could not save")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+    }
+
+    @Test
+    fun `a disabled save button explains what is required`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false))
+            }
+        }
+
+        composeTestRule.onNodeWithText("Fill in the required fields to enable Save.")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }
