@@ -323,7 +323,7 @@ test('suggesting relationships reports the number of newly generated suggestions
   await waitFor(() => expect(suggestHouseholdRelationshipsMock).toHaveBeenCalledWith('h1'));
   expect(
     await screen.findByText(
-      "Generated 3 new suggested relationship(s). Review them on the members' contact pages.",
+      "Generated 3 new suggested relationships. Review them on the members' contact pages.",
     ),
   ).toBeInTheDocument();
 });

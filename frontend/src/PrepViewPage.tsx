@@ -178,7 +178,7 @@ export default function PrepViewPage() {
                       color: 'warning.main',
                     }}
                   >
-                    {t('cadence.overdueBy', { days: briefing.cadence.health.overdue_by })}
+                    {t('cadence.overdueBy', { count: briefing.cadence.health.overdue_by })}
                   </Typography>
                 ) : (
                   <Typography
@@ -478,7 +478,7 @@ export default function PrepViewPage() {
                     {t(`prep.upcomingDates.${d.label}`)} {formatBirthday(d.date)}
                   </Typography>
                   <Chip
-                    label={t('prep.upcomingDates.inDays', { days: d.days_until })}
+                    label={t('prep.upcomingDates.inDays', { count: d.days_until })}
                     size="small"
                     variant="outlined"
                   />

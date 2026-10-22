@@ -184,10 +184,10 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
     { csv_column: 'Email', contact_field: 'email', group: 0 },
   ]);
 
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
 
   // Result step: created/updated/skipped counts, and the caller is notified.
-  await waitFor(() => expect(screen.getByText('1 contacts created')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('1 contact created')).toBeInTheDocument());
   expect(confirmImport).toHaveBeenCalledWith('sess-1', [{ row_index: 0, action: 'add' }]);
   expect(onImportComplete).toHaveBeenCalled();
 });
@@ -321,7 +321,7 @@ test('confirm sends the promotion decisions as field_mappings', async () => {
   fireEvent.click(screen.getByRole('button', { name: /continue/i }));
   await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
 
   expect(confirmVCFImport).toHaveBeenCalledWith(
@@ -351,7 +351,7 @@ test('unmatched properties default to keep-as-passthrough on confirm', async () 
 
   fireEvent.click(screen.getByRole('button', { name: /continue/i }));
   await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
 
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
   expect(confirmVCFImport).toHaveBeenCalledWith(
@@ -392,14 +392,14 @@ test('a duplicate row defaults to Merge, shows the match, and renders the diff',
 
   // The match line and the conflict heading.
   expect(screen.getByText(/Matches: Bob Smith/)).toBeInTheDocument();
-  expect(screen.getByText('Resolve Conflicts (1 remaining)')).toBeInTheDocument();
+  expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
 
   // The diff describes exactly what Merge will do.
   expect(screen.getByText(/\+ new phone: \+15559998888/)).toBeInTheDocument();
   expect(screen.getByText('Job Title: Engineer → Staff Engineer')).toBeInTheDocument();
 
   // The row defaults to Merge, and Apply Decisions reports one decision.
-  expect(screen.getByRole('button', { name: /apply decisions \(1\)/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /apply decision \(1\)/i })).toBeInTheDocument();
   expect(screen.getByText('1 to update')).toBeInTheDocument();
 });
 
@@ -416,7 +416,7 @@ test('resolving every conflict zeroes the remaining count', async () => {
       merge_diff: { updated: [], added: [] },
     }),
   ]);
-  expect(screen.getByText('Resolve Conflicts (1 remaining)')).toBeInTheDocument();
+  expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
 
   // Explicitly choose Discard New: the conflict is now resolved.
   fireEvent.click(screen.getByRole('button', { name: /discard new/i }));
@@ -512,7 +512,7 @@ test('a confirm-import failure surfaces the error and stays on the preview step'
   fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 
   await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
 
   await waitFor(() => expect(screen.getByText('confirm blew up')).toBeInTheDocument());
   // Still on the preview step -- the summary chip is still showing, not the
@@ -643,7 +643,7 @@ test('resolve all as merged applies each row suggested action', async () => {
   fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
   expect(screen.getByText('3 to skip')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /resolve all as merged/i }));
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
 
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
   const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];
@@ -679,7 +679,7 @@ test('skip all marks every valid row as skip', async () => {
   await waitFor(() => expect(screen.getByText('2 to create')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
-  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
 
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
   const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];

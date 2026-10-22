@@ -120,7 +120,7 @@ test('loads and renders circles with their member counts on the default tab', as
   renderPage();
 
   expect(await screen.findByText('Book Club')).toBeInTheDocument();
-  expect(screen.getByText('1 contacts')).toBeInTheDocument();
+  expect(screen.getByText('1 contact')).toBeInTheDocument();
   expect(listCirclesMock).toHaveBeenCalledWith({ limit: 200, include_members: true });
 });
 
@@ -149,7 +149,7 @@ test('the tags tab loads and renders tags with member counts, driven by the ?tab
   renderPage(['/circles-tags?tab=tags']);
 
   expect(await screen.findByText('VIP')).toBeInTheDocument();
-  expect(screen.getByText('1 contacts')).toBeInTheDocument();
+  expect(screen.getByText('1 contact')).toBeInTheDocument();
   expect(listTagsMock).toHaveBeenCalledWith({ limit: 200, include_contacts: true });
 });
 

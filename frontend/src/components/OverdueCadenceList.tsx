@@ -127,7 +127,7 @@ export default function OverdueCadenceList({
                   </Box>
                   <Chip
                     icon={<WarningIcon fontSize="small" />}
-                    label={t('cadence.overdueBy', { days: item.health.overdue_by })}
+                    label={t('cadence.overdueBy', { count: item.health.overdue_by })}
                     size="small"
                     color="warning"
                     sx={{ height: 20, fontSize: '0.7rem' }}

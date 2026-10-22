@@ -104,7 +104,7 @@ export default function CadencePanel({
               {t('cadence.interval')}
             </Typography>
             <Chip
-              label={t('cadence.intervalValue', { days: policy.target_interval_days })}
+              label={t('cadence.intervalValue', { count: policy.target_interval_days })}
               size="small"
             />
           </Box>
@@ -133,7 +133,7 @@ export default function CadencePanel({
                       fontWeight: 500,
                     }}
                   >
-                    {t('cadence.overdueBy', { days: health.overdue_by })}
+                    {t('cadence.overdueBy', { count: health.overdue_by })}
                   </Typography>
                 </>
               ) : (

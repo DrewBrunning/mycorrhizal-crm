@@ -872,7 +872,7 @@ export default function SettingsPage() {
           >
             {API_TOKEN_EXPIRY_OPTIONS.map((days) => (
               <MenuItem key={days} value={days}>
-                {t('apiTokens.createDialog.expiryDays', { days })}
+                {t('apiTokens.createDialog.expiryDays', { count: days })}
               </MenuItem>
             ))}
           </TextField>

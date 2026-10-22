@@ -40,7 +40,7 @@ test('summarises counts and lists named partial failures', () => {
   );
   expect(screen.getByText('4 added, 1 merged, 2 skipped')).toBeInTheDocument();
   expect(screen.getByText('3 relationships')).toBeInTheDocument();
-  expect(screen.getByText(/1 records could not be imported/)).toBeInTheDocument();
+  expect(screen.getByText(/1 record could not be imported/)).toBeInTheDocument();
   expect(screen.getByText(/contact has no usable name/)).toBeInTheDocument();
 });
 

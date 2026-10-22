@@ -165,9 +165,15 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
         <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" gutterBottom>
             {t('settings.monicaImport.connect.found', {
-              contacts: connectResp.totals.contacts,
-              activities: connectResp.totals.activities,
-              notes: connectResp.totals.notes,
+              contacts: t('settings.monicaImport.connect.foundContacts', {
+                count: connectResp.totals.contacts,
+              }),
+              activities: t('settings.monicaImport.connect.foundActivities', {
+                count: connectResp.totals.activities,
+              }),
+              notes: t('settings.monicaImport.connect.foundNotes', {
+                count: connectResp.totals.notes,
+              }),
             })}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>

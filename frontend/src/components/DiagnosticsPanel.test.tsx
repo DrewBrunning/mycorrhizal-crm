@@ -35,7 +35,7 @@ test('starts empty and only runs the sweep when the operator clicks the button',
 
   await waitFor(() => expect(runDiagnostics).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(screen.getByTestId('diagnostics-result')).toBeInTheDocument());
-  expect(screen.getByText('0 warning(s), 0 error(s)')).toBeInTheDocument();
+  expect(screen.getByText('0 warnings, 0 errors')).toBeInTheDocument();
   expect(screen.getByTestId('diagnostics-check-config')).toBeInTheDocument();
   expect(screen.getByText('Configuration')).toBeInTheDocument();
   expect(screen.getByText('configuration is valid')).toBeInTheDocument();
@@ -56,7 +56,7 @@ test('renders the summary and per-check statuses when problems are found', async
   fireEvent.click(screen.getByRole('button', { name: 'Run diagnostics' }));
 
   await waitFor(() => expect(screen.getByTestId('diagnostics-result')).toBeInTheDocument());
-  expect(screen.getByText('2 warning(s), 1 error(s)')).toBeInTheDocument();
+  expect(screen.getByText('2 warnings, 1 error')).toBeInTheDocument();
   expect(screen.getByText('attachments directory is missing')).toBeInTheDocument();
   expect(screen.getByText('filesystem is 95% full')).toBeInTheDocument();
   // The status chips render inside each row: the summary chip is "Error"

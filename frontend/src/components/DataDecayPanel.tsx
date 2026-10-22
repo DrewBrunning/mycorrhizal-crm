@@ -101,7 +101,7 @@ export default function DataDecayPanel({
               {t('dataDecay.interval')}
             </Typography>
             <Chip
-              label={t('dataDecay.intervalValue', { days: policy.interval_days })}
+              label={t('dataDecay.intervalValue', { count: policy.interval_days })}
               size="small"
             />
             {!policy.active && (
@@ -132,7 +132,7 @@ export default function DataDecayPanel({
                     fontWeight: 500,
                   }}
                 >
-                  {t('dataDecay.overdueBy', { days: health.overdue_by })}
+                  {t('dataDecay.overdueBy', { count: health.overdue_by })}
                 </Typography>
               </>
             ) : (

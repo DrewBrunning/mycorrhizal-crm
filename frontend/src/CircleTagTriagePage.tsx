@@ -366,10 +366,10 @@ export default function CircleTagTriagePage() {
               }}
             >
               {t('triage.summary', {
-                total: items.length,
-                circles: circles.length,
-                tags: tags.length,
-                skipped: skipped.length,
+                items: t('triage.summaryItems', { count: items.length }),
+                circles: t('triage.summaryCircles', { count: circles.length }),
+                tags: t('triage.summaryTags', { count: tags.length }),
+                skipped: t('triage.summarySkipped', { count: skipped.length }),
               })}
             </Typography>
             <Box

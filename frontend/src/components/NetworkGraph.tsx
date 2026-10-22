@@ -337,10 +337,16 @@ export default function NetworkGraph({
   // nested inside it, or a screen reader user could lose the buttons this
   // ticket exists to add.
   const graphSummary = t('network.graphSummary', {
-    contacts: graphData.nodes.filter((n) => n.type === 'contact').length,
-    activities: graphData.nodes.filter((n) => n.type === 'activity').length,
-    circles: graphData.nodes.filter((n) => n.type === 'circle').length,
-    connections: graphData.links.length,
+    contacts: t('network.graphSummaryContacts', {
+      count: graphData.nodes.filter((n) => n.type === 'contact').length,
+    }),
+    activities: t('network.graphSummaryActivities', {
+      count: graphData.nodes.filter((n) => n.type === 'activity').length,
+    }),
+    circles: t('network.graphSummaryCircles', {
+      count: graphData.nodes.filter((n) => n.type === 'circle').length,
+    }),
+    connections: t('network.graphSummaryConnections', { count: graphData.links.length }),
   });
 
   // Issue #556: past the measured render ceiling, force-directed layout stops
@@ -363,8 +369,8 @@ export default function NetworkGraph({
         >
           <AlertTitle>{t('network.tooLargeToRender.title')}</AlertTitle>
           {t('network.tooLargeToRender.body', {
-            nodes: graphData.nodes.length,
-            edges: graphData.links.length,
+            nodes: t('network.tooLargeToRender.bodyNodes', { count: graphData.nodes.length }),
+            edges: t('network.tooLargeToRender.bodyEdges', { count: graphData.links.length }),
           })}
         </Alert>
       </Box>

@@ -63,7 +63,7 @@ export default function SourceImportResult({ result, photosPending }: Props) {
       {result.photos_queued > 0 && (
         <Alert severity={photosPending ? 'info' : 'success'} sx={{ py: 0, my: 1 }}>
           {photosPending
-            ? t('settings.sourceImport.result.photosPending', { total: result.photos_queued })
+            ? t('settings.sourceImport.result.photosPending', { count: result.photos_queued })
             : t('settings.sourceImport.result.photosDone', {
                 saved: result.photos_saved,
                 failed: result.photos_failed,
