@@ -7,6 +7,7 @@ package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,11 +22,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -667,6 +671,7 @@ private fun MainScaffold(
             AdaptiveMainContent(
                 isTwoPane = isTwoPane,
                 currentRoute = currentRoute,
+                constrainWidth = constrainsSinglePane(windowSizeClass.widthSizeClass),
                 // The NavHost is the content in single-pane mode and the
                 // *detail* pane in two-pane mode — the same graph either way,
                 // only the frame around it changes.
@@ -715,23 +720,23 @@ private fun MainScaffold(
 }
 
 /**
- * Issue #1419: the rail / two-pane frame needs room in both axes. A phone in
- * landscape is Expanded wide (~914dp) but Compact tall (~411dp); giving it the
- * tablet frame left an 80dp rail whose primary block could not scroll. So the
- * permanent navigation applies only at Expanded width *and* at least Medium
- * height; otherwise the modal drawer (one scrolling list) is kept. The two-pane
- * contacts layout shares this predicate so the content is never squeezed beside
- * a drawer-framed screen.
+ * Issue #1776: the permanent frame (rail, plus the two-pane contacts list/detail)
+ * starts at **Medium** width, as M3 recommends, not only at Expanded. A phone in
+ * landscape is Expanded wide (~914dp) but Compact tall (~411dp); issue #1419
+ * showed an 80dp rail has no vertical room there, so the permanent frame still
+ * requires at least Medium height. Otherwise the modal drawer (one scrolling
+ * list) is kept.
  */
 internal fun usesPermanentNavigation(windowSizeClass: WindowSizeClass): Boolean =
-    windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded &&
+    windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact &&
         windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact
 
 /**
- * Issue #150: the app frame. Unless [usesPermanentNavigation] this is the
- * existing modal drawer wrapping [content]; at Expanded the drawer is replaced
- * by a [NavigationRail]. Stateless so host-level width-class tests can drive it
- * with a fake [WindowSizeClass] and slot content.
+ * Issue #150/#1776: the app frame. Unless [usesPermanentNavigation] this is the
+ * existing modal drawer wrapping [content]; at Medium/Expanded the drawer is
+ * replaced by a [NavigationRail] whose "More" item re-opens the full grouped
+ * drawer. Stateless so host-level width-class tests can drive it with a fake
+ * [WindowSizeClass] and slot content.
  */
 @Composable
 internal fun MainNavScaffold(
@@ -742,83 +747,127 @@ internal fun MainNavScaffold(
     username: String? = null,
     serverHost: String? = null,
     onHeaderClick: () -> Unit = {},
+    // Issue #1776: injected so the host-level test can prove the rail's content
+    // is inset below the status bar; production always uses the real insets.
+    railInsets: WindowInsets = WindowInsets.statusBars,
     content: @Composable () -> Unit,
 ) {
-    if (usesPermanentNavigation(windowSizeClass)) {
-        Row(Modifier.fillMaxSize()) {
-            MycorrhizalNavigationRail(
+    val permanent = usesPermanentNavigation(windowSizeClass)
+    val scope = rememberCoroutineScope()
+    // The drawer stays mounted at permanent widths too: the rail's "More" item is
+    // the way to reach the destinations the primary rail set leaves out.
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DrawerContent(
                 currentRoute = currentRoute,
                 onDestinationClick = onDestinationClick,
+                username = username,
+                serverHost = serverHost,
+                onHeaderClick = onHeaderClick,
             )
-            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Box(Modifier.weight(1f).fillMaxHeight()) { content() }
-        }
-    } else {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                DrawerContent(
+        },
+    ) {
+        if (permanent) {
+            Row(Modifier.fillMaxSize()) {
+                MycorrhizalNavigationRail(
                     currentRoute = currentRoute,
                     onDestinationClick = onDestinationClick,
-                    username = username,
-                    serverHost = serverHost,
-                    onHeaderClick = onHeaderClick,
+                    // Issue #1776: the rail shows only the primary destinations; "More"
+                    // opens the full grouped drawer instead of scrolling a 15-item rail.
+                    onMoreClick = { scope.launch { drawerState.open() } },
+                    insets = railInsets,
                 )
-            },
-        ) {
+                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Box(Modifier.weight(1f).fillMaxHeight()) { content() }
+            }
+        } else {
             content()
         }
     }
 }
 
 /**
- * Issue #150: the tablet/desktop-width app navigation — the same destination set
- * as the drawer, as a [NavigationRail]. The whole list scrolls as one column
- * (twelve+ labeled items rarely fit a viewport), which keeps every drawer
- * destination reachable. Labels
- * are always shown: the rail only appears where there is room for them.
- * Issue #1758: it walks the same grouped [navDestinations] registry as the drawer
- * (a divider between groups); the rail's own top-level set and layout are #1776.
- *
- * The width is pinned to M3's [NavigationRail] container width: the rail's inner
- * [Column] only declares `widthIn(min=80.dp)` and the `HorizontalDivider` below
- * applies `fillMaxWidth()`, so without an explicit width the divider would pull
- * the rail out to the whole Row and squeeze the content to nothing (issue #150).
+ * Issue #150: the width of an M3 [NavigationRail]. Issue #1776 widened it from
+ * 80dp so a translated two-word label ("Tableau de bord") fits without an
+ * ellipsis; the rail is only used at Medium+ where the extra 16dp is affordable.
  */
-private val NavigationRailWidth = 80.dp
+private val NavigationRailWidth = 96.dp
 
+/**
+ * Issue #1776: the rail's primary destinations — the People group from the
+ * #1758 registry (seven entries). Everything else (Interactions, Data & admin,
+ * and Settings) is reached through "More", which opens the full grouped drawer.
+ * Keeping the rail to this stable primary set is what stops the labels
+ * truncating and the rail scrolling at font scale 1.0: the longest of these
+ * labels fits the rail's two-line slot in every shipped locale.
+ */
+internal val railDestinations: List<TopLevelDestination> = navDestinationsIn(NavGroup.PEOPLE)
+
+/**
+ * Issue #1776: the permanent-width navigation. It shows [railDestinations] plus
+ * a "More" item, so the rail never scrolls a fifteen-entry list and every label
+ * fits its two-line slot. Issue #1263: entries the connected deployment does not offer
+ * are hidden, exactly as in the drawer.
+ *
+ * The status-bar area is painted `primary` behind the white (on-primary) status
+ * icons, and the rail's own `surfaceContainerLow` starts below it — without the
+ * inset its cream top drew under the launch-time white icons (issue #1776).
+ */
 @Composable
 private fun MycorrhizalNavigationRail(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
+    onMoreClick: () -> Unit,
+    insets: WindowInsets,
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
-    NavigationRail(
-        modifier = Modifier.width(NavigationRailWidth).testTag("navigation-rail"),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    val items = railDestinations.filter { isDestinationAvailable(it, capabilities) }
+    // "More" stands in for every destination outside the primary set, so it is
+    // selected while the current route lives behind it rather than in the rail.
+    val moreSelected = items.none { isSelected(currentRoute, it) }
+    Box(
+        modifier = Modifier
+            .width(NavigationRailWidth)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.primary),
     ) {
-        // Issue #1419: one scroll for the whole rail, the same shape as the drawer's,
-        // so no block is pinned and squeezed.
-        Column(
+        NavigationRail(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .fillMaxHeight()
+                .windowInsetsPadding(insets)
+                .testTag("navigation-rail"),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ) {
-            NavGroup.entries.forEachIndexed { index, group ->
-                val items = navDestinationsIn(group).filter { isDestinationAvailable(it, capabilities) }
-                if (items.isEmpty()) return@forEachIndexed
-                if (index > 0) {
-                    Spacer(Modifier.height(8.dp))
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 items.forEach { item ->
                     RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
                 }
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                NavigationRailItem(
+                    selected = moreSelected,
+                    onClick = onMoreClick,
+                    icon = { Icon(Icons.Outlined.MoreHoriz, contentDescription = null) },
+                    label = {
+                        Text(
+                            stringResource(R.string.nav_more),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    alwaysShowLabel = true,
+                    modifier = Modifier.testTag("rail-more"),
+                )
             }
         }
     }
@@ -837,7 +886,7 @@ private fun RailDestinationItem(
         label = {
             Text(
                 stringResource(item.labelRes),
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
@@ -845,6 +894,17 @@ private fun RailDestinationItem(
         modifier = Modifier.testTag("rail-${item.route}"),
     )
 }
+
+/**
+ * Issue #1776: the widest a single-pane screen may get at Medium/Expanded. Wide
+ * windows centre the content in this column instead of stretching a phone form
+ * (or a 900dp dashboard card) across the whole tablet.
+ */
+internal val ContentMaxWidth = 840.dp
+
+/** Issue #1776: whether [widthSizeClass] is wide enough to cap a single pane. */
+internal fun constrainsSinglePane(widthSizeClass: WindowWidthSizeClass): Boolean =
+    widthSizeClass != WindowWidthSizeClass.Compact
 
 /**
  * The phone/compact-width navigation drawer. Issue #1402: the destinations sit
@@ -1021,22 +1081,41 @@ internal fun ContactTwoPane(
 }
 
 /**
- * Issue #150: picks between the single-pane [content] and the two-pane contacts
- * split. The split applies only at Expanded *and* on a contacts-section route;
- * everywhere else (including all non-contacts routes at Expanded) [content]
- * stays full-width. Stateless so host-level width-class tests drive it directly.
+ * Issue #150/#1776: picks between the single-pane [content] and the two-pane
+ * contacts split. The split applies at Medium/Expanded *and* on a
+ * contacts-section route. Every other route stays single-pane; at Medium/
+ * Expanded that pane is capped at [ContentMaxWidth] and centred, so a phone
+ * form or dashboard does not stretch across the whole window. Stateless so
+ * host-level width-class tests drive it directly.
  */
 @Composable
 internal fun AdaptiveMainContent(
     isTwoPane: Boolean,
     currentRoute: String?,
+    constrainWidth: Boolean = false,
     content: @Composable () -> Unit,
     listPane: @Composable () -> Unit = {},
 ) {
-    if (isTwoPane && isInContactsSection(currentRoute)) {
-        ContactTwoPane(listPane = listPane, detailPane = content)
-    } else {
-        content()
+    when {
+        isTwoPane && isInContactsSection(currentRoute) ->
+            ContactTwoPane(listPane = listPane, detailPane = content)
+
+        constrainWidth -> Box(
+            modifier = Modifier.fillMaxSize().testTag("content-width-frame"),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = ContentMaxWidth)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .testTag("content-width-capped"),
+            ) {
+                content()
+            }
+        }
+
+        else -> content()
     }
 }
 

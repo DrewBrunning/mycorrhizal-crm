@@ -56,12 +56,13 @@ class LandscapeNavigationTest {
     }
 
     @Test
-    fun `permanent navigation needs expanded width and at least medium height`() {
+    fun `permanent navigation starts at medium width and needs at least medium height`() {
         assertFalse("landscape phone", usesPermanentNavigation(size(914, 411)))
         assertTrue("tablet", usesPermanentNavigation(size(1280, 800)))
         assertTrue("medium height boundary", usesPermanentNavigation(size(1000, 480)))
         assertFalse("compact width", usesPermanentNavigation(size(400, 900)))
-        assertFalse("medium width", usesPermanentNavigation(size(700, 900)))
+        assertTrue("medium width", usesPermanentNavigation(size(700, 900)))
+        assertFalse("medium width but compact height", usesPermanentNavigation(size(700, 411)))
     }
 
     @Test
@@ -86,25 +87,30 @@ class LandscapeNavigationTest {
 
     @Test
     @Config(qualifiers = "w1280dp-h800dp")
-    fun `tablet keeps the rail with every destination reachable`() {
+    fun `tablet rail shows the primary destinations and More at standard height`() {
         setScaffold(size(1280, 800))
         composeTestRule.onNodeWithTag("navigation-rail").assertExists()
-        allRoutes.forEach { route ->
-            val node = composeTestRule.onNodeWithTag("rail-$route")
-            node.performScrollTo()
-            node.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        (railDestinations.map { it.route } + "more").forEach { route ->
+            composeTestRule.onNodeWithTag("rail-$route")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         }
     }
 
-    // The whole rail scrolls as one: the top (primary) entry must stay reachable
-    // after the list has been scrolled to the bottom on a short tablet window.
+    @Test
+    @Config(qualifiers = "w700dp-h900dp")
+    fun `medium-width tablet shows the rail`() {
+        setScaffold(size(700, 900))
+        composeTestRule.onNodeWithTag("navigation-rail").assertExists()
+        composeTestRule.onNodeWithTag("rail-home").assertIsDisplayed()
+    }
+
     @Test
     @Config(qualifiers = "w1000dp-h480dp")
-    fun `the short rail scrolls primary and secondary entries together`() {
+    fun `the short rail still shows every primary destination and More`() {
         setScaffold(size(1000, 480))
-        composeTestRule.onNodeWithTag("rail-settings").performScrollTo()
-        composeTestRule.onNodeWithTag("rail-home").performScrollTo()
-        composeTestRule.onNodeWithTag("rail-home").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-        composeTestRule.onNodeWithTag("rail-settings").performScrollTo().assertIsDisplayed()
+        (railDestinations.map { it.route } + "more").forEach { route ->
+            composeTestRule.onNodeWithTag("rail-$route")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        }
     }
 }
