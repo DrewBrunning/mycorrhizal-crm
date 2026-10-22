@@ -277,7 +277,7 @@ class AddressEditorTest {
     fun `adding a row mints a stable id so geocode state is keyed by identity`() {
         val current = setEditor(listOf(Address(id = "a1")))
 
-        composeTestRule.onNodeWithContentDescription("Add")
+        composeTestRule.onNodeWithText("Add address")
             // Off-screen in the unscrolled test host, so invoke the click action directly.
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         composeTestRule.waitForIdle()
@@ -285,6 +285,17 @@ class AddressEditorTest {
         val added = current()[1]
         assertTrue(!added.id.isNullOrBlank())
         assertEquals(listOf("home"), added.contexts)
+    }
+
+    @Test
+    fun `remove is announced with the address field and row number`() {
+        val current = setEditor(listOf(Address(id = "a1"), Address(id = "a2")))
+
+        composeTestRule.onNodeWithContentDescription("Remove address 2")
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        composeTestRule.waitForIdle()
+
+        assertEquals(listOf("a1"), current().map { it.id })
     }
 
     @Test

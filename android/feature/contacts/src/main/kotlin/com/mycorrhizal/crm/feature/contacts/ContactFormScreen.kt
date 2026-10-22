@@ -352,6 +352,8 @@ fun ContactFormContent(
                 value = state.language,
                 onValueChange = onLanguageChange,
                 label = { Text(stringResource(R.string.contact_language)) },
+                placeholder = { Text(stringResource(R.string.contact_example_language_tag)) },
+                supportingText = { Text(stringResource(R.string.contact_language_hint)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

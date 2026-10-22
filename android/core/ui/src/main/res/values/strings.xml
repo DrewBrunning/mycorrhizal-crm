@@ -305,13 +305,45 @@
     <string name="contact_tags_select">Select tag…</string>
     <string name="contact_birthday">Birthday</string>
     <string name="contact_value_n">Value %1$d</string>
+    <!-- Issue #1724: field-specific labels, format examples and add/remove names
+         for the multi-value editors. Example values are literal. -->
+    <string name="contact_phone_number">Phone number</string>
+    <string name="contact_online_service_value">Address / URL</string>
+    <string name="contact_title_or_role">Title or role</string>
+    <string name="contact_personal_info_value">Expertise / hobby / interest</string>
+    <string name="contact_url">URL</string>
+    <string name="contact_date">Date</string>
+    <string name="contact_item_link">link</string>
+    <string name="contact_item_title">title</string>
+    <string name="contact_item_online_service">online service</string>
+    <string name="contact_item_preferred_language">preferred language</string>
+    <string name="contact_item_pronoun">pronoun</string>
+    <string name="contact_item_email">email</string>
+    <string name="contact_item_phone">phone number</string>
+    <string name="contact_item_address">address</string>
+    <string name="contact_item_personal_info">personal information</string>
+    <string name="contact_item_grammatical_gender">grammatical gender</string>
+    <string name="contact_item_anniversary">anniversary</string>
+    <string name="contact_example_email">name@example.com</string>
+    <string name="contact_example_phone">+1 555 123 4567</string>
+    <string name="contact_phone_format_hint">International format recommended.</string>
+    <string name="contact_example_online_service">https://… or user@server</string>
+    <string name="contact_example_url">https://example.com</string>
+    <string name="contact_example_language_tag">de-AT</string>
+    <string name="contact_example_languages">de, en-US, de-AT</string>
+    <string name="contact_language_hint">BCP-47 tag, e.g. de, en-US, de-AT.</string>
+    <string name="contact_example_grammatical_gender_language">de, fr, es</string>
+    <string name="contact_grammatical_gender_hint">BCP-47 language tag; the dropdown is the gender.</string>
+    <string name="contact_example_pronouns">they/them, she/her</string>
+    <string name="contact_add_named">Add %1$s</string>
+    <string name="contact_remove_named">Remove %1$s %2$d</string>
+    <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Remove</string>
     <string name="contact_add">Add</string>
     <!-- M7: generic multi-value editor -->
     <string name="contact_field_type">Type</string>
     <string name="contact_type_none">None</string>
     <string name="contact_preferred">Preferred</string>
-    <string name="contact_set_preferred">Set as preferred</string>
     <string name="contact_type_home">Home</string>
     <string name="contact_type_work">Work</string>
     <string name="contact_type_cell">Mobile</string>

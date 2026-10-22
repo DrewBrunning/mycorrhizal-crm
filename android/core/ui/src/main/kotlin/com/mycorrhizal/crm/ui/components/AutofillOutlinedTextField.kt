@@ -36,11 +36,15 @@ fun AutofillOutlinedTextField(
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    placeholder: String? = null,
+    supportingText: String? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        supportingText = supportingText?.let { { Text(it) } },
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,

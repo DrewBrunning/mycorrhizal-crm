@@ -7,17 +7,23 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.GrammaticalGender
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 import com.mycorrhizal.crm.ui.components.EmailSpec
+import com.mycorrhizal.crm.ui.components.GrammaticalGenderSpec
 import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.PhoneSpec
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -46,8 +52,9 @@ class MultiValueEditorTest {
                 MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
             }
         }
-        // Replace (not append) so the assertion reads the typed value, not "a@b.cx@y.z".
-        composeTestRule.onNodeWithText("Value 1").performTextReplacement("x@y.z")
+        // Issue #1724: the field is labelled with its meaning, not "Value 1".
+        composeTestRule.onNodeWithContentDescription("Email").performTextReplacement("x@y.z")
+        composeTestRule.onAllNodesWithText("Value 1").assertCountEquals(0)
         assertEquals(
             listOf(Email(id = "e1", address = "x@y.z", contexts = listOf("work"), pref = 1, label = "work")),
             items,
@@ -55,7 +62,7 @@ class MultiValueEditorTest {
     }
 
     @Test
-    fun `clicking a star enforces pref exclusivity through the ui`() {
+    fun `the preferred chip enforces pref exclusivity and announces its state`() {
         var items by mutableStateOf(
             listOf(
                 Phone(id = "p1", number = "+1", pref = 1),
@@ -68,12 +75,17 @@ class MultiValueEditorTest {
                 MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
             }
         }
-        // Rows 2 and 3 are not preferred -> their stars say "Set as preferred"; the first
-        // one belongs to row 2 (index 1 in the list). Toggling it must clear row 1.
-        composeTestRule.onAllNodesWithContentDescription("Set as preferred")[0].performClick()
+        // A selected FilterChip is distinct from the favourite-contact star and
+        // exposes selected/not-selected to TalkBack. Toggling row 2 must clear row 1.
+        composeTestRule.onAllNodesWithText("Preferred")[0].assertIsSelected()
+        composeTestRule.onAllNodesWithText("Preferred")[1].assertIsNotSelected()
+
+        composeTestRule.onAllNodesWithText("Preferred")[1].performClick()
         assertNull(items[0].pref)
         assertEquals(1, items[1].pref)
         assertNull(items[2].pref)
+        composeTestRule.onAllNodesWithText("Preferred")[0].assertIsNotSelected()
+        composeTestRule.onAllNodesWithText("Preferred")[1].assertIsSelected()
     }
 
     @Test
@@ -99,7 +111,8 @@ class MultiValueEditorTest {
                 MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
             }
         }
-        composeTestRule.onNodeWithContentDescription("Add").performClick()
+        // Issue #1724: a visible, field-named add action (not a bare "Add" icon).
+        composeTestRule.onNodeWithText("Add phone number").performClick()
         assertEquals(2, items.size)
         // Loaded row untouched, new row has the cell default and no id.
         assertEquals(listOf("work"), items[0].contexts)
@@ -107,9 +120,44 @@ class MultiValueEditorTest {
         assertNull(items[1].id)
 
         // Typing into the new row keeps its cell default (T81: default only for new rows).
-        composeTestRule.onNodeWithText("Value 2").performTextReplacement("+2")
+        // The row number is only in the TalkBack description; the visible label is "Phone number".
+        composeTestRule.onNodeWithContentDescription("Phone number 2").performTextReplacement("+2")
         assertEquals(listOf("cell"), items[1].contexts)
         assertEquals("+2", items[1].number)
+    }
+
+    @Test
+    fun `removing a row is announced with its field and row number`() {
+        var items by mutableStateOf(
+            listOf(
+                Phone(id = "p1", number = "+1"),
+                Phone(id = "p2", number = "+2"),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Remove phone number 2").performClick()
+        assertEquals(listOf("p1"), items.map { it.id })
+    }
+
+    @Test
+    fun `a label-only email pre-selects a known type in the dropdown`() {
+        var items by mutableStateOf(listOf(Email(id = "e1", address = "a@b.c", label = "home")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
+            }
+        }
+        // Legacy flat-Type data stores the type in `label`; the dropdown now
+        // agrees with the detail screen instead of showing blank.
+        composeTestRule.onNodeWithText("Home").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("Work").performClick()
+        assertEquals(listOf("work"), items.single().contexts)
+        // The X-ABLabel fallback is preserve-only, not rewritten by a type edit.
+        assertEquals("home", items.single().label)
     }
 
     @Test
@@ -128,16 +176,43 @@ class MultiValueEditorTest {
     }
 
     @Test
-    fun `renders the editor caption and rows`() {
-        var items by mutableStateOf(listOf(Email(address = "a@b.c")))
+    fun `renders the field label, format example and named add action`() {
+        var items by mutableStateOf(listOf(Email(address = "")))
         composeTestRule.setContent {
             MycorrhizalTheme {
                 MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
             }
         }
-        composeTestRule.onNodeWithText("Email").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Value 1").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Add").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Email").assertIsDisplayed().performClick()
+        // A TextField placeholder appears while the field is focused and empty.
+        composeTestRule.onNodeWithText("name@example.com").assertExists()
+        composeTestRule.onAllNodesWithText("Value 1").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Add email").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the grammatical gender row labels its free text as Language with a BCP-47 example`() {
+        var items by mutableStateOf(listOf(GrammaticalGender(value = "feminine", language = "")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MultiValueEditor(
+                    items = items,
+                    spec = GrammaticalGenderSpec,
+                    onChange = { items = it },
+                    label = "Grammatical gender",
+                )
+            }
+        }
+        // The free-text box is the language tag, not the gender (the dropdown is).
+        composeTestRule.onNodeWithText("Language").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Language").performClick()
+        composeTestRule.onNodeWithText("de, fr, es").assertExists()
+        composeTestRule.onNodeWithText(
+            "BCP-47 language tag; the dropdown is the gender.",
+        ).assertExists()
+        // The dropdown carries the gender value.
+        composeTestRule.onNodeWithText("Feminine").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Value 1").assertCountEquals(0)
     }
 
     // --- T115: Android autofill hints --------------------------------------

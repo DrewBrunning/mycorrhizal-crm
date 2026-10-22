@@ -89,6 +89,7 @@ fun AddressEditor(
                 draft = draft,
                 showAdditional = showAdditional,
                 canRemove = addresses.size > 1,
+                rowNumber = index + 1,
                 periodStart = period?.range?.start?.year?.toString().orEmpty(),
                 periodEnd = period?.range?.end?.year?.toString().orEmpty(),
                 onDraftChange = { newDraft ->
@@ -114,10 +115,14 @@ fun AddressEditor(
         // A new row is minted a stable element id up front so its geocode in-flight
         // state and result are keyed by identity, not by a position that shifts
         // when an earlier row is removed mid-lookup.
-        IconButton(
+        TextButton(
             onClick = { onChange(addresses + Address(id = UUID.randomUUID().toString(), contexts = listOf("home"))) },
         ) {
-            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Text(
+                text = stringResource(R.string.contact_add_named, stringResource(R.string.contact_item_address)),
+                modifier = Modifier.padding(start = 4.dp),
+            )
         }
     }
 }
@@ -219,6 +224,7 @@ private fun AddressRow(
     draft: AddressDraft,
     showAdditional: Boolean,
     canRemove: Boolean,
+    rowNumber: Int,
     periodStart: String,
     periodEnd: String,
     onDraftChange: (AddressDraft) -> Unit,
@@ -242,7 +248,14 @@ private fun AddressRow(
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onRemove, enabled = canRemove) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(
+                        R.string.contact_remove_named,
+                        stringResource(R.string.contact_item_address),
+                        rowNumber,
+                    ),
+                )
             }
         }
         SensitivityDropdown(
