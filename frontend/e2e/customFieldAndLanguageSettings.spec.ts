@@ -12,9 +12,9 @@ import {
 import { API_BASE_URL } from './global-setup';
 
 // Custom field definitions (Settings -> Data -> "Custom Fields", T7) and the
-// Preferred Languages contact field (opt-in, not in
+// Preferred languages contact field (opt-in, not in
 // DEFAULT_ENABLED_CONTACT_FIELDS) had zero Playwright coverage before this
-// file. Preferred Languages toggles the worker user's account-level
+// file. Preferred languages toggles the worker user's account-level
 // field-visibility setting. Every worker authenticates as its own user
 // (issue #1480), so that toggle/restore can't interleave with any other
 // spec's, and no lock or serial mode is needed.
@@ -214,7 +214,7 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
   });
 });
 
-test.describe('Preferred Languages contact field', () => {
+test.describe('Preferred languages contact field', () => {
   test('add, edit, and remove a preferred language on a contact', async ({ page }) => {
     const restore = await withPreferredLanguagesEnabled(page);
     let contact: Awaited<ReturnType<typeof createTestContact>> | undefined;
@@ -227,13 +227,13 @@ test.describe('Preferred Languages contact field', () => {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      const languageRow = fieldRow(page, 'Preferred Languages');
+      const languageRow = fieldRow(page, 'Preferred languages');
       await languageRow.hover();
       await stableClick(languageRow.getByLabel('Edit'));
       await stableClick(page.getByText('Add', { exact: true }));
 
       await page.getByLabel('Language').fill('fr-CA');
-      // Preferred Languages also carries an optional usage-context
+      // Preferred languages also carries an optional usage-context
       // multi-select (work/private/school/...).
       const contextsInput = page.getByRole('combobox', { name: 'Contexts' });
       await contextsInput.click();
