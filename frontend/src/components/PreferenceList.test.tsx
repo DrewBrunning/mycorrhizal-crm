@@ -71,6 +71,21 @@ test('jewelry and gift-preference categories land in their own sections', () => 
   expect(screen.getByText('Candles')).toBeInTheDocument();
 });
 
+test('dislikes render in their own Dislikes section', () => {
+  render(
+    <PreferenceList
+      preferences={[
+        preference({ id: 'p1', category: 'dislike_activity', value: 'Standing in queues' }),
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByText('Dislikes')).toBeInTheDocument();
+  expect(screen.getByText('Standing in queues')).toBeInTheDocument();
+});
+
 test('an unrecognized category falls through to the Other section', () => {
   render(
     <PreferenceList

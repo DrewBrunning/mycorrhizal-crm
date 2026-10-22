@@ -279,6 +279,18 @@ export interface CardPersonalInfo {
   label?: string;
 }
 
+// CRM-side metadata for one Card.PersonalInfo entry (issue #1738), keyed by
+// that entry's stable ID. Mirrors backend contactmodel.PersonalInfoMeta; it
+// has no RFC home and is never projected into a Card.
+export interface PersonalInfoMeta {
+  confidence?: number | null;
+  favorite?: boolean;
+  last_confirmed?: string | null;
+  notes?: string;
+  sensitivity?: AddressSensitivity;
+  source?: string;
+}
+
 export interface CardAuthor {
   name?: string;
   uri?: string;
@@ -366,6 +378,9 @@ export interface CRMEnvelope {
   work_information?: string;
   contact_information?: string;
   periods?: CardEntryPeriod[];
+  // Issue #1738: per-personalInfo-entry metadata (sensitivity, favorite,
+  // notes, provenance), keyed by the entry's stable Card ID.
+  personalInfoMeta?: Record<string, PersonalInfoMeta>;
   // Issue #515: the CRM's free-text gender field moved into the neutral
   // envelope (crm.gender) so it round-trips through the Record; the legacy
   // top-level `gender` sibling on the wire DTO remains for backward compat.

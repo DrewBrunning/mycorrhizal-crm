@@ -594,7 +594,10 @@
       "dataDecay": "Vérification des données",
       "metadataExpand": "Développer les métadonnées de la carte",
       "metadataCollapse": "Replier les métadonnées de la carte",
-      "customFieldsUngrouped": "Champs personnalisés"
+      "customFieldsUngrouped": "Champs personnalisés",
+      "skills": "Compétences et centres d'intérêt",
+      "work": "Travail",
+      "anniversaries": "Anniversaires"
     },
     "email": "E-mail",
     "phone": "Téléphone",
@@ -668,7 +671,57 @@
     "exportAs": "Exporter en {{format}}",
     "jumpNav": "Aller à la section",
     "markAsMe": "C'est moi",
-    "unmarkAsMe": "Ce n'est pas moi"
+    "unmarkAsMe": "Ce n'est pas moi",
+    "skills": {
+      "add": "Ajouter une compétence ou un centre d'intérêt",
+      "createTitle": "Ajouter une compétence ou un centre d'intérêt",
+      "editTitle": "Modifier la compétence ou le centre d'intérêt",
+      "empty": "Pas encore de compétences ni de centres d'intérêt.",
+      "favorite": "Favori",
+      "other": "Autres",
+      "validation": {
+        "valueRequired": "Saisissez une compétence, un loisir ou un centre d'intérêt.",
+        "saveFailed": "Impossible d'enregistrer cette entrée."
+      }
+    },
+    "work": {
+      "organizations": "Organisations",
+      "titles": "Postes et rôles",
+      "addOrganization": "Ajouter une organisation",
+      "createOrganization": "Ajouter une organisation",
+      "editOrganization": "Modifier l'organisation",
+      "addTitle": "Ajouter un poste ou un rôle",
+      "createTitleDialog": "Ajouter un poste ou un rôle",
+      "editTitleDialog": "Modifier le poste ou le rôle",
+      "kind": "Type",
+      "titleName": "Intitulé",
+      "addWorkInformation": "Ajouter des informations professionnelles",
+      "editWorkInformation": "Modifier les informations professionnelles",
+      "noOrganizations": "Pas encore d'organisations.",
+      "noTitles": "Pas encore de postes ni de rôles.",
+      "noWorkInformation": "Pas encore d'informations professionnelles.",
+      "kindOptions": {
+        "title": "Intitulé de poste",
+        "role": "Rôle"
+      },
+      "validation": {
+        "nameRequired": "Saisissez un nom.",
+        "invalidPeriod": "Saisissez une année de début et de fin valides.",
+        "saveFailed": "Impossible d'enregistrer cette entrée."
+      }
+    },
+    "anniversaries": {
+      "add": "Ajouter un anniversaire",
+      "createTitle": "Ajouter un anniversaire",
+      "editTitle": "Modifier l'anniversaire",
+      "empty": "Pas encore d'anniversaires.",
+      "dateHint": "Utilisez AAAA-MM-JJ pour une date complète ou --MM-JJ si l'année est inconnue.",
+      "validation": {
+        "dateRequired": "Saisissez une date.",
+        "invalidDate": "Saisissez une date au format AAAA-MM-JJ ou --MM-JJ.",
+        "saveFailed": "Impossible d'enregistrer l'anniversaire."
+      }
+    }
   },
   "noteDialog": {
     "title": "Ajouter une note",

@@ -216,6 +216,15 @@ interface Call {
   headers?: Record<string, string>;
 }
 
+// A PUT body shaped for assertions. Extracted as an optional value so the
+// assertion can use safe optional chaining rather than casting through a
+// possibly-undefined request.
+type PutBody = { card?: Record<string, unknown>; crm?: Record<string, unknown> };
+
+function lastPutBody(calls: Call[]): PutBody | undefined {
+  return calls.filter((c) => c.method === 'PUT').at(-1)?.body as PutBody | undefined;
+}
+
 type Endpoint =
   | 'notes'
   | 'activities'
@@ -893,35 +902,6 @@ test('an invalid birthday is rejected before any save request', async () => {
   expect(calls.some((c) => c.method === 'PUT')).toBe(false);
 });
 
-test('editing the organization preserves the existing department (the paired half)', async () => {
-  const calls = mockFetch({
-    enabledFields: ['organizations'],
-    record: {
-      ...contactRecord,
-      card: {
-        ...contactRecord.card,
-        organizations: [{ name: 'Acme', units: [{ name: 'Sales' }] }],
-      },
-    },
-  });
-  renderPage();
-  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
-  await waitFor(() => expect(screen.getByText('Organization')).toBeInTheDocument());
-
-  fireEvent.click(within(fieldRow('Organization')).getByLabelText('Edit'));
-  const content = fieldContent('Organization');
-  fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'NewCo' } });
-  fireEvent.click(within(content).getByLabelText('Save'));
-
-  await waitFor(() => {
-    expect(calls.some((c) => c.method === 'PUT')).toBe(true);
-  });
-  const putCall = calls.find((c) => c.method === 'PUT');
-  expect(putCall?.body).toMatchObject({
-    card: { organizations: [{ name: 'NewCo', units: [{ name: 'Sales' }] }] },
-  });
-});
-
 test('editing "how we met" saves it as a plain CRM string field', async () => {
   const calls = mockFetch();
   renderPage();
@@ -1191,6 +1171,298 @@ test.each([
   await renderLoaded();
   const dialog = await openDialog(() => fireEvent.click(button()));
   await dismiss(dialog);
+});
+
+// --- Issue #1729: skills/interests, work and anniversaries sections ---------
+
+test('the skills section adds an entry with its CRM metadata in one PUT', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(section('skills')).getByRole('button', { name: 'Add skill or interest' }),
+    ),
+  );
+  fireEvent.mouseDown(within(dialog).getByLabelText('Type *'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Interest' }));
+  fireEvent.change(within(dialog).getByLabelText('Value *'), {
+    target: { value: 'Typography' },
+  });
+  fireEvent.mouseDown(within(dialog).getByLabelText('Level'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Medium' }));
+  fireEvent.change(within(dialog).getByLabelText('Notes (optional)'), {
+    target: { value: 'Likes Swiss grotesques' },
+  });
+  fireEvent.mouseDown(within(dialog).getByLabelText('Sensitivity'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Secret' }));
+  fireEvent.click(within(dialog).getByRole('switch', { name: 'Favorite' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(within(section('skills')).getByText('Typography')).toBeInTheDocument(),
+  );
+
+  const body = lastPutBody(calls);
+  const entry = (body?.card?.personalInfo as Array<Record<string, unknown>> | undefined)?.[0];
+  expect(entry).toMatchObject({
+    kind: 'interest',
+    value: 'Typography',
+    level: 'medium',
+  });
+  expect(typeof entry?.id).toBe('string');
+  const meta = body?.crm?.personalInfoMeta as Record<string, Record<string, unknown>> | undefined;
+  expect(meta?.[entry?.id as string]).toEqual({
+    notes: 'Likes Swiss grotesques',
+    sensitivity: 'secret',
+    favorite: true,
+  });
+
+  // The list renders the metadata badges the dialog just set.
+  expect(within(section('skills')).getByLabelText('Favorite')).toBeInTheDocument();
+  expect(within(section('skills')).getByLabelText('Secret')).toBeInTheDocument();
+});
+
+test('the work section adds an organization with a period', async () => {
+  const calls = mockFetch({ enabledFields: ['organizations'] });
+  await renderLoaded();
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(section('work')).getByRole('button', { name: 'Add organization' })),
+  );
+  fireEvent.change(within(dialog).getByLabelText('Organization *'), {
+    target: { value: 'NewCo' },
+  });
+  fireEvent.change(within(dialog).getByLabelText('Department'), {
+    target: { value: 'Research' },
+  });
+  fireEvent.change(within(dialog).getByLabelText('From (year)'), { target: { value: '2019' } });
+  fireEvent.change(within(dialog).getByLabelText('To (year)'), { target: { value: '2024' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const work = within(section('work'));
+  await waitFor(() => expect(work.getByText('NewCo')).toBeInTheDocument());
+  expect(work.getByText('Research')).toBeInTheDocument();
+  expect(work.getByText('2019 – 2024')).toBeInTheDocument();
+
+  const body = lastPutBody(calls);
+  const organization = (
+    body?.card?.organizations as Array<Record<string, unknown>> | undefined
+  )?.[0];
+  expect(organization).toMatchObject({ name: 'NewCo', units: [{ name: 'Research' }] });
+  expect(typeof organization?.id).toBe('string');
+  expect(body?.crm?.periods).toEqual([
+    {
+      kind: 'organization',
+      entry_id: organization?.id,
+      range: { start: { year: 2019 }, end: { year: 2024 } },
+    },
+  ]);
+});
+
+test('the anniversaries section adds a non-birth anniversary', async () => {
+  const calls = mockFetch({ enabledFields: ['anniversaries'] });
+  await renderLoaded();
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(section('anniversaries')).getByRole('button', { name: 'Add anniversary' }),
+    ),
+  );
+  fireEvent.mouseDown(within(dialog).getByLabelText('Type'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Date of death' }));
+  fireEvent.change(within(dialog).getByLabelText('Date *'), { target: { value: '--03-14' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(within(section('anniversaries')).getByText('Date of death')).toBeInTheDocument(),
+  );
+
+  const body = lastPutBody(calls);
+  const entry = (body?.card?.anniversaries as Array<Record<string, unknown>> | undefined)?.[0];
+  expect(entry).toMatchObject({ kind: 'death', date: { partial: { month: 3, day: 14 } } });
+  expect(typeof entry?.id).toBe('string');
+});
+
+test.each([
+  ['skills', 'Add skill or interest', 'Value *', 'Gardening'],
+  ['work', 'Add organization', 'Organization *', 'Acme'],
+  ['anniversaries', 'Add anniversary', 'Date *', '2015-06-01'],
+] as const)(
+  'a 412 while saving from the %s section opens the conflict dialog',
+  async (sectionId, openLabel, fieldLabel, value) => {
+    mockFetch({
+      staleOnce: ['PUT /contacts/1'],
+      enabledFields: ['personalInfo', 'organizations', 'anniversaries'],
+    });
+    await renderLoaded();
+
+    const dialog = await openDialog(() =>
+      fireEvent.click(within(section(sectionId)).getByRole('button', { name: openLabel })),
+    );
+    fireEvent.change(within(dialog).getByLabelText(fieldLabel), { target: { value } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+  },
+);
+
+test('editing a skill preserves its stable ID and metadata; deleting removes both', async () => {
+  const calls = mockFetch({
+    record: {
+      ...contactRecord,
+      card: {
+        ...contactRecord.card,
+        personalInfo: [{ id: 'pi-1', kind: 'expertise', value: 'Go', level: 'high' }],
+      },
+      crm: {
+        ...contactRecord.crm,
+        personalInfoMeta: { 'pi-1': { favorite: true, notes: 'core language' } },
+      },
+    },
+  });
+  await renderLoaded();
+
+  const row = rowWith('Go', section('skills'));
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+  );
+  expect(within(dialog).getByLabelText('Value *')).toHaveValue('Go');
+  expect(within(dialog).getByLabelText('Notes (optional)')).toHaveValue('core language');
+  fireEvent.change(within(dialog).getByLabelText('Value *'), { target: { value: 'Rust' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(within(section('skills')).getByText('Rust')).toBeInTheDocument());
+  const editBody = lastPutBody(calls);
+  expect(editBody?.card?.personalInfo).toEqual([
+    { id: 'pi-1', kind: 'expertise', value: 'Rust', level: 'high' },
+  ]);
+  expect(editBody?.crm?.personalInfoMeta).toEqual({
+    'pi-1': { notes: 'core language', favorite: true },
+  });
+
+  // Delete the only entry: both the Card entry and its metadata key go.
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(within(section('skills')).getByLabelText('Delete'));
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
+  const deleteBody = lastPutBody(calls);
+  expect(deleteBody?.card?.personalInfo).toBeUndefined();
+  expect(deleteBody?.crm?.personalInfoMeta).toBeUndefined();
+});
+
+test('editing an organization keeps its ID and period; deleting a title drops its period', async () => {
+  const calls = mockFetch({
+    record: {
+      ...contactRecord,
+      card: {
+        ...contactRecord.card,
+        organizations: [{ id: 'org-1', name: 'Acme', units: [{ name: 'Sales' }] }],
+        titles: [{ id: 'title-1', name: 'Engineer', kind: 'title' }],
+      },
+      crm: {
+        ...contactRecord.crm,
+        periods: [
+          { kind: 'organization', entry_id: 'org-1', range: { start: { year: 2019 } } },
+          { kind: 'title', entry_id: 'title-1', range: { start: { year: 2020 } } },
+        ],
+      },
+    },
+    enabledFields: ['organizations', 'titles'],
+  });
+  await renderLoaded();
+
+  const orgRow = rowWith('Acme', section('work'));
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(orgRow).getByRole('button', { name: 'Edit' })),
+  );
+  fireEvent.change(within(dialog).getByLabelText('Organization *'), {
+    target: { value: 'NewCo' },
+  });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() => expect(within(section('work')).getByText('NewCo')).toBeInTheDocument());
+  const editBody = lastPutBody(calls);
+  expect(editBody?.card?.organizations).toEqual([
+    { id: 'org-1', name: 'NewCo', units: [{ name: 'Sales' }] },
+  ]);
+  const editPeriods = editBody?.crm?.periods as unknown[] | undefined;
+  expect(editPeriods).toHaveLength(2);
+  expect(editPeriods).toEqual(
+    expect.arrayContaining([
+      { kind: 'organization', entry_id: 'org-1', range: { start: { year: 2019 } } },
+      { kind: 'title', entry_id: 'title-1', range: { start: { year: 2020 } } },
+    ]),
+  );
+
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(
+    within(within(section('work')).getByRole('region', { name: 'Titles & roles' })).getByLabelText(
+      'Delete',
+    ),
+  );
+
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
+  const deleteBody = lastPutBody(calls);
+  expect(deleteBody?.card?.titles).toBeUndefined();
+  expect(deleteBody?.crm?.periods).toEqual([
+    { kind: 'organization', entry_id: 'org-1', range: { start: { year: 2019 } } },
+  ]);
+});
+
+test('editing an anniversary updates it in place; deleting it removes the entry', async () => {
+  const calls = mockFetch({
+    record: {
+      ...contactRecord,
+      card: {
+        ...contactRecord.card,
+        anniversaries: [
+          { id: 'ann-1', kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } },
+        ],
+      },
+    },
+    enabledFields: ['anniversaries'],
+  });
+  await renderLoaded();
+
+  const row = rowWith('Wedding anniversary', section('anniversaries'));
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+  );
+  fireEvent.change(within(dialog).getByLabelText('Date *'), {
+    target: { value: '2016-07-02' },
+  });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() =>
+    expect(within(section('anniversaries')).getByText('02.07.2016')).toBeInTheDocument(),
+  );
+  const editBody = lastPutBody(calls);
+  expect(editBody?.card?.anniversaries).toEqual([
+    { id: 'ann-1', kind: 'wedding', date: { partial: { year: 2016, month: 7, day: 2 } } },
+  ]);
+
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(within(section('anniversaries')).getByLabelText('Delete'));
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
+  const deleteBody = lastPutBody(calls);
+  expect(deleteBody?.card?.anniversaries).toBeUndefined();
+});
+
+test('the new sections appear in the jump nav only when their field is enabled', async () => {
+  mockFetch();
+  await renderLoaded();
+
+  const nav = screen.getByRole('navigation', { name: 'Jump to section' });
+  expect(within(nav).getByRole('link', { name: 'Skills & interests' })).toBeInTheDocument();
+  // work_information is enabled by default, so the Work section/nav entry is
+  // present even though its organization/title subsections are not.
+  expect(within(nav).getByRole('link', { name: 'Work' })).toBeInTheDocument();
+  // anniversaries is opt-in.
+  expect(within(nav).queryByRole('link', { name: 'Anniversaries' })).not.toBeInTheDocument();
 });
 
 test('Stay in Touch opens the reminder dialog pre-filled with a catch-up message', async () => {

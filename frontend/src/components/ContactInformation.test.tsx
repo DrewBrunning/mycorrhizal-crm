@@ -115,135 +115,6 @@ test('shows no tab or dropdown navigation on mobile viewports either (T31)', () 
   expect(screen.queryByLabelText('contact information sections')).toBeNull();
 });
 
-// --- ADR 0025 (#1233): employer/title periods ---
-
-test('shows an organization period and saves an edit keyed by the entry ID', async () => {
-  const onUpdateCard = vi.fn(async () => {});
-  renderInformation(
-    { organizations: [{ id: 'org-1', name: 'Acme' }] },
-    {
-      periods: [
-        {
-          kind: 'organization',
-          entry_id: 'org-1',
-          range: { start: { year: 2019 }, end: { year: 2024 } },
-        },
-      ],
-    },
-    { enabledFields: new Set<ContactFieldKey>(['organizations']), onUpdateCard },
-  );
-
-  expect(screen.getByText('2019 – 2024')).toBeInTheDocument();
-
-  fireEvent.click(screen.getByTestId('period-edit'));
-  fireEvent.change(screen.getByLabelText('From (year)'), { target: { value: '2018' } });
-  fireEvent.click(screen.getByTestId('period-save'));
-
-  await waitFor(() => expect(onUpdateCard).toHaveBeenCalledTimes(1));
-  expect(onUpdateCard).toHaveBeenCalledWith(
-    {},
-    {
-      periods: [
-        {
-          kind: 'organization',
-          entry_id: 'org-1',
-          range: { start: { year: 2018 }, end: { year: 2024 } },
-        },
-      ],
-    },
-  );
-});
-
-test('mints an element ID when a period is set on a legacy entry without one', async () => {
-  const calls: Array<[Partial<Card>, Partial<CRMEnvelope> | undefined]> = [];
-  const onUpdateCard = vi.fn(async (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => {
-    calls.push([patch, crmPatch]);
-  });
-  renderInformation(
-    { organizations: [{ name: 'Acme' }] },
-    {},
-    { enabledFields: new Set<ContactFieldKey>(['organizations']), onUpdateCard },
-  );
-
-  fireEvent.click(screen.getByTestId('period-edit'));
-  fireEvent.change(screen.getByLabelText('From (year)'), { target: { value: '2019' } });
-  fireEvent.click(screen.getByTestId('period-save'));
-
-  await waitFor(() => expect(calls).toHaveLength(1));
-  const [cardPatch, crmPatch] = calls[0];
-  expect(cardPatch.organizations).toHaveLength(1);
-  const entryID = (cardPatch.organizations as { id?: string }[])[0].id;
-  expect(entryID).toBeTruthy();
-  expect(crmPatch).toEqual({
-    periods: [{ kind: 'organization', entry_id: entryID, range: { start: { year: 2019 } } }],
-  });
-});
-
-test('shows a job title period and saves an edit keyed by the entry ID', async () => {
-  const onUpdateCard = vi.fn(async () => {});
-  renderInformation(
-    { titles: [{ id: 'title-1', name: 'Engineer', kind: 'title' }] },
-    {
-      periods: [{ kind: 'title', entry_id: 'title-1', range: { start: { year: 2020 } } }],
-    },
-    { enabledFields: new Set<ContactFieldKey>(['titles']), onUpdateCard },
-  );
-
-  expect(screen.getByText('Since 2020')).toBeInTheDocument();
-
-  fireEvent.click(screen.getByTestId('period-edit'));
-  fireEvent.change(screen.getByLabelText('To (year)'), { target: { value: '2023' } });
-  fireEvent.click(screen.getByTestId('period-save'));
-
-  await waitFor(() => expect(onUpdateCard).toHaveBeenCalledTimes(1));
-  expect(onUpdateCard).toHaveBeenCalledWith(
-    {},
-    {
-      periods: [
-        {
-          kind: 'title',
-          entry_id: 'title-1',
-          range: { start: { year: 2020 }, end: { year: 2023 } },
-        },
-      ],
-    },
-  );
-});
-
-test('mints an element ID when a job title period is set on a legacy entry without one', async () => {
-  const calls: Array<[Partial<Card>, Partial<CRMEnvelope> | undefined]> = [];
-  const onUpdateCard = vi.fn(async (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => {
-    calls.push([patch, crmPatch]);
-  });
-  renderInformation(
-    { titles: [{ name: 'Engineer', kind: 'title' }] },
-    {},
-    { enabledFields: new Set<ContactFieldKey>(['titles']), onUpdateCard },
-  );
-
-  fireEvent.click(screen.getByTestId('period-edit'));
-  fireEvent.change(screen.getByLabelText('From (year)'), { target: { value: '2021' } });
-  fireEvent.click(screen.getByTestId('period-save'));
-
-  await waitFor(() => expect(calls).toHaveLength(1));
-  const [cardPatch, crmPatch] = calls[0];
-  expect(cardPatch.titles).toHaveLength(1);
-  const entryID = (cardPatch.titles as { id?: string }[])[0].id;
-  expect(entryID).toBeTruthy();
-  expect(crmPatch).toEqual({
-    periods: [{ kind: 'title', entry_id: entryID, range: { start: { year: 2021 } } }],
-  });
-});
-
-test('shows no period editor when there is no organization or title entry to attach one to', () => {
-  renderInformation(
-    {},
-    {},
-    { enabledFields: new Set<ContactFieldKey>(['organizations', 'titles']) },
-  );
-  expect(screen.queryByTestId('period-edit')).toBeNull();
-});
-
 // --- T30: hide section subtitles when the section has nothing to show ---
 
 test('hides the About subtitle when every About field is disabled', () => {
@@ -272,7 +143,6 @@ test('hides the About subtitle when its fields are enabled but empty', () => {
         'birthday',
         'anniversary',
         'anniversaries',
-        'personalInfo',
         'keywords',
         'preferredLanguages',
       ]),
@@ -611,31 +481,6 @@ test('editing and saving a phone unchanged still round-trips through the same ad
   });
 });
 
-// --- v0.4.1: anniversary rows honor the selected date format, not raw ISO ---
-
-test('anniversary rows render in the selected date format (not YYYY-MM-DD)', () => {
-  // Default provider format is "eu" (DD.MM.YYYY).
-  renderInformation(
-    { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
-    {},
-    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) },
-  );
-  expect(screen.getByText(/01\.06\.2015/)).toBeInTheDocument();
-  expect(screen.queryByText(/2015-06-01/)).toBeNull();
-});
-
-test('anniversary rows honor a US (MM/DD/YYYY) date format', () => {
-  window.localStorage.setItem('dateFormat', 'us');
-  renderInformation(
-    { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
-    {},
-    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) },
-  );
-  expect(screen.getByText(/06\/01\/2015/)).toBeInTheDocument();
-  expect(screen.queryByText(/2015-06-01/)).toBeNull();
-  window.localStorage.removeItem('dateFormat');
-});
-
 // --- T74: two-column field grid at lg+ ---
 //
 // jsdom does no layout and MUI's responsive sx values only become real CSS
@@ -684,10 +529,9 @@ test('section headings span both columns so dividers stay full-width (T74)', () 
 });
 
 test('multi-line / wide fields span both columns at lg+ (T74)', () => {
-  // work_information is one of the fields wrapped in ContactInformation's
-  // FullSpanField span (enabled by default); a plain row like birthday must
-  // stay half-width.
-  renderInformation({}, { work_information: 'some notes' });
+  // Card notes is wrapped in ContactInformation's FullSpanField span; a plain
+  // row like birthday must stay half-width.
+  renderInformation({ notes: [{ note: 'Loves hiking' }] });
   expect(mediaRules(allStyles(), '1200px')).toContain('grid-column:1/-1');
 });
 
@@ -705,7 +549,7 @@ test('EditableField value boxes shrink below content min-width (T74 trap)', () =
 //
 // The coarse "does the document contain grid-column:1/-1 anywhere" checks
 // above can't tell one field's span from another's -- section headings and
-// cardNotes/work_information are unconditionally full-span, so that string
+// cardNotes is unconditionally full-span, so that string
 // is always present regardless of what this ticket changed. These tests
 // instead extract the actual full-span class name(s) from the stylesheet and
 // walk up from a specific field's own text node to see whether one of its
@@ -767,18 +611,17 @@ test('How We Met and Additional Information are not full-span -- they sit side b
   expect(hasFullSpanAncestor(screen.getByText('Additional Information'), classes)).toBe(false);
 });
 
-test('card notes and work information stay full-span (T88)', () => {
+test('card notes stay full-span (T88)', () => {
   // cardNotes is not in DEFAULT_ENABLED_CONTACT_FIELDS, unlike every other
   // field this file exercises -- must opt in explicitly.
   renderInformation(
     { notes: [{ note: 'Loves hiking' }] },
-    { work_information: 'Remote, PST hours' },
-    { enabledFields: new Set<ContactFieldKey>(['cardNotes', 'work_information']) },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['cardNotes']) },
   );
   const classes = fullSpanClassNames(allStyles());
 
   expect(hasFullSpanAncestor(screen.getByText('Notes (vCard)'), classes)).toBe(true);
-  expect(hasFullSpanAncestor(screen.getByText('Work Information'), classes)).toBe(true);
 });
 
 // --- ADR 0031 amendment (issue #1286 follow-up): draft geocoding -----------

@@ -594,7 +594,10 @@
       "dataDecay": "Data verification",
       "metadataExpand": "Expand card metadata",
       "metadataCollapse": "Collapse card metadata",
-      "customFieldsUngrouped": "Custom fields"
+      "customFieldsUngrouped": "Custom fields",
+      "skills": "Skills & interests",
+      "work": "Work",
+      "anniversaries": "Anniversaries"
     },
     "email": "Email",
     "phone": "Phone",
@@ -668,7 +671,57 @@
     "exportAs": "Export as {{format}}",
     "jumpNav": "Jump to section",
     "markAsMe": "This is me",
-    "unmarkAsMe": "This isn't me"
+    "unmarkAsMe": "This isn't me",
+    "skills": {
+      "add": "Add skill or interest",
+      "createTitle": "Add skill or interest",
+      "editTitle": "Edit skill or interest",
+      "empty": "No skills or interests yet.",
+      "favorite": "Favorite",
+      "other": "Other",
+      "validation": {
+        "valueRequired": "Enter a skill, hobby or interest.",
+        "saveFailed": "Couldn't save this entry."
+      }
+    },
+    "work": {
+      "organizations": "Organizations",
+      "titles": "Titles & roles",
+      "addOrganization": "Add organization",
+      "createOrganization": "Add organization",
+      "editOrganization": "Edit organization",
+      "addTitle": "Add title or role",
+      "createTitleDialog": "Add title or role",
+      "editTitleDialog": "Edit title or role",
+      "kind": "Type",
+      "titleName": "Title",
+      "addWorkInformation": "Add work information",
+      "editWorkInformation": "Edit work information",
+      "noOrganizations": "No organizations yet.",
+      "noTitles": "No titles or roles yet.",
+      "noWorkInformation": "No work information yet.",
+      "kindOptions": {
+        "title": "Job title",
+        "role": "Role"
+      },
+      "validation": {
+        "nameRequired": "Enter a name.",
+        "invalidPeriod": "Enter a valid start and end year.",
+        "saveFailed": "Couldn't save this entry."
+      }
+    },
+    "anniversaries": {
+      "add": "Add anniversary",
+      "createTitle": "Add anniversary",
+      "editTitle": "Edit anniversary",
+      "empty": "No anniversaries yet.",
+      "dateHint": "Use YYYY-MM-DD for a full date or --MM-DD when the year is unknown.",
+      "validation": {
+        "dateRequired": "Enter a date.",
+        "invalidDate": "Enter a date as YYYY-MM-DD or --MM-DD.",
+        "saveFailed": "Couldn't save this anniversary."
+      }
+    }
   },
   "noteDialog": {
     "title": "Add Note",
