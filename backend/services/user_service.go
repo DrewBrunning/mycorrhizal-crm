@@ -108,6 +108,21 @@ func SessionIDFromToken(tokenString string, cfg *config.Config) string {
 	return sid
 }
 
+// ExcludeSelfContact narrows a contact query so the caller's auto-created
+// self contact never appears in suggestion/rotation blocks ("Stay in Touch",
+// overdue cadences, reach-out suggestions). Those surfaces are about people to
+// contact, and a brand-new account used to be told to reach out to itself.
+//
+// The self pointer lives on `users`, so this is one NOT IN subquery rather
+// than a second round-trip; callers that already have the UID in hand (the
+// reach-out detection job) skip the row directly instead.
+func ExcludeSelfContact(query *gorm.DB, userID uint) *gorm.DB {
+	return query.Where(
+		"vcard_uid NOT IN (SELECT self_contact_vcard_uid FROM users WHERE id = ? AND self_contact_vcard_uid IS NOT NULL)",
+		userID,
+	)
+}
+
 // EnsureSelfContact creates a self contact for a user if one doesn't already
 // exist, then stores the VCardUID on the user record. Safe to call multiple
 // times — the second call is a no-op (the contact already exists). Called at

@@ -168,3 +168,27 @@ func TestDismissReachOutSuggestionByReminderID(t *testing.T) {
 	require.NoError(t, db.First(&reloadedOther, "id = ?", otherSuggestion.ID).Error)
 	assert.Equal(t, models.ReachOutStatusPending, reloadedOther.Status, "a reminder owned by another user must not dismiss this user's suggestion")
 }
+
+// TestListReachOutSuggestions_ExcludesSelfContact pins issue #1793: the
+// auto-created self contact can never surface as a reach-out suggestion, even
+// if an event-driven suggestion somehow exists for it.
+func TestListReachOutSuggestions_ExcludesSelfContact(t *testing.T) {
+	db := setupReachOutTestDB(t)
+	user := models.User{Username: "reachoutself", Password: "password123!A", Email: "self@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	self := models.Contact{UserID: user.ID, Firstname: "Me"}
+	require.NoError(t, db.Create(&self).Error)
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+	seedReachOutSuggestion(t, db, user.ID, self, models.ReachOutKindOrganization)
+
+	other := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Smith"}
+	require.NoError(t, db.Create(&other).Error)
+	seedReachOutSuggestion(t, db, user.ID, other, models.ReachOutKindTitle)
+
+	suggestions, err := ListReachOutSuggestions(db, user.ID)
+	require.NoError(t, err)
+	require.Len(t, suggestions, 1)
+	assert.Equal(t, other.VCardUID, suggestions[0].ContactVCardUID)
+	assert.Equal(t, "Alice Smith", suggestions[0].ContactName)
+}

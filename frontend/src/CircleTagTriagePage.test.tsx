@@ -366,3 +366,46 @@ test('stacks the stepper vertically on narrow viewports', async () => {
   );
   expect(document.querySelector('.MuiStepper-vertical')).not.toBeNull();
 });
+
+// Issue #1790: the page was titled "Circle/Tag Migration" on web while
+// Android shipped "Circle & tag triage", and its fixed-width table columns
+// squeezed the name field down to "legac" at 320px.
+test('uses the same name as Android and renders the plural summary', async () => {
+  mockFetchRoutes([
+    { pattern: '/contacts/circles?legacy=true', handler: { body: ['legacy'] } },
+    { pattern: 'circle_legacy=legacy', handler: { body: { contacts: [{ uid: 'c1' }], total: 1 } } },
+  ]);
+
+  renderPage();
+
+  expect(await screen.findByRole('heading', { name: 'Circle & tag triage' })).toBeInTheDocument();
+  expect(screen.getByText('1 item — 1 circle, 0 tags, 0 skipped')).toBeInTheDocument();
+});
+
+test('stacks each row with a full-width name field on narrow viewports', async () => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+  mockFetchRoutes([
+    { pattern: '/contacts/circles?legacy=true', handler: { body: ['legacy'] } },
+    { pattern: 'circle_legacy=legacy', handler: { body: { contacts: [], total: 2 } } },
+  ]);
+
+  renderPage();
+
+  const nameField = await screen.findByLabelText('Name');
+  expect(nameField).toHaveValue('legacy');
+  // The table (with its 100px/140px fixed columns) is replaced by stacked
+  // cards, so the name field is not squeezed into the remainder.
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});

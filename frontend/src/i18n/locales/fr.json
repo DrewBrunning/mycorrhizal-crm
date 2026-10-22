@@ -222,7 +222,15 @@
     "registrationFailed": "Échec de l'inscription",
     "registrationSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
     "registrationDisabled": "L'inscription est actuellement désactivée sur ce serveur. Contactez votre administrateur si vous avez besoin d'un compte.",
-    "backToLogin": "Retour à la connexion"
+    "backToLogin": "Retour à la connexion",
+    "alreadyHaveAccount": "Vous avez déjà un compte ? Se connecter",
+    "passwordHelp": "Utilisez au moins 8 caractères. Un mot de passe de 15 caractères ou plus, ou une phrase secrète de 20 caractères ou plus, est plus sûr. Évitez les mots de passe courants."
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "description": "Cette page n'existe pas. Elle a peut-être été déplacée, ou le lien est incorrect.",
+    "goToContacts": "Aller aux contacts",
+    "goToDashboard": "Aller au tableau de bord"
   },
   "contacts": {
     "title": "Contacts",
@@ -629,6 +637,7 @@
   },
   "contactDetail": {
     "notFound": "Contact introuvable",
+    "notFoundDescription": "Ce contact a peut-être été supprimé, ou le lien est incorrect.",
     "loadError": "Impossible de charger ce contact.",
     "timelineLoadError": "Certaines données de la chronologie n'ont pas pu être chargées. Veuillez actualiser la page.",
     "section": {
@@ -1385,10 +1394,18 @@
       "unsupported": "Ce navigateur ne prend pas en charge les clés d'accès.",
       "removeButton": "Supprimer",
       "removeAria": "Supprimer la clé d'accès {{name}}",
+      "renameButton": "Renommer",
+      "renameAria": "Renommer la clé d'accès {{name}}",
+      "renameSuccess": "Clé d’accès renommée.",
+      "renameError": "Impossible de renommer la clé d'accès. Veuillez réessayer.",
       "removeSuccess": "Clé d'accès supprimée.",
       "invalidProof": "La vérification a échoué. Veuillez réessayer.",
       "createdLastUsed": "Ajoutée le {{created}} · dernière utilisation le {{lastUsed}}",
       "createdNeverUsed": "Ajoutée le {{created}} · jamais utilisée",
+      "rename": {
+        "title": "Renommer la clé d'accès",
+        "label": "Nom de la clé d'accès"
+      },
       "remove": {
         "title": "Supprimer la clé d'accès",
         "description": "Saisissez un code actuel de votre application d'authentification, ou un code de récupération, pour supprimer « {{name}} ».",
@@ -2326,7 +2343,7 @@
     "hiddenMatchesHidden_many": "{{count}} correspondants sur d’autres champs"
   },
   "triage": {
-    "title": "Migration des cercles et étiquettes",
+    "title": "Tri des cercles et étiquettes",
     "description": "Classez vos anciens cercles en Cercles (groupes sociaux) ou Étiquettes (attributs), ou ignorez-les. À exécuter une seule fois pour migrer depuis l'ancien système de texte libre.",
     "stepClassify": "Classer",
     "stepPreview": "Aperçu",

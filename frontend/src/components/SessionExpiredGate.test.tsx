@@ -6,6 +6,7 @@ import { notifySessionExpired } from '../api/sessionExpiry';
 import { login2FA, loginUser, logoutAndRedirect } from '../auth';
 import { useOIDCConfig } from '../hooks/useOIDCConfig';
 import SessionExpiredGate from './SessionExpiredGate';
+import SessionExpiredNotice from './SessionExpiredNotice';
 
 vi.mock('../auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../auth')>();
@@ -40,6 +41,7 @@ afterEach(() => {
 function renderGate() {
   return render(
     <AppThemeProvider>
+      <SessionExpiredNotice />
       <SessionExpiredGate />
     </AppThemeProvider>,
   );
@@ -55,12 +57,12 @@ describe('SessionExpiredGate', () => {
     expect(screen.queryByText(/session/i)).not.toBeInTheDocument();
   });
 
-  test('a passive notification shows a dismissible banner, not a modal', async () => {
+  test('a passive notification shows the app-content notice, not a modal', async () => {
     renderGate();
 
     notifySessionExpired('passive');
 
-    await waitFor(() => expect(screen.getByText('Your session has expired.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/your session has expired/i)).toBeInTheDocument());
     // The modal re-auth form must not be open for a passive notification.
     expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument();
   });
@@ -73,10 +75,10 @@ describe('SessionExpiredGate', () => {
     await waitFor(() => expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument());
   });
 
-  test('clicking "Sign in" on the passive banner opens the modal', async () => {
+  test('clicking "Sign in" in the app-content notice opens the modal', async () => {
     renderGate();
     notifySessionExpired('passive');
-    await waitFor(() => expect(screen.getByText('Your session has expired.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/your session has expired/i)).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
@@ -96,7 +98,7 @@ describe('SessionExpiredGate', () => {
     await waitFor(() =>
       expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument(),
     );
-    expect(screen.queryByText('Your session has expired.')).not.toBeInTheDocument();
+    expect(screen.queryByText(/your session has expired/i)).not.toBeInTheDocument();
   });
 
   test('a two-factor account steps to the code prompt, then closes on success', async () => {
@@ -130,7 +132,7 @@ describe('SessionExpiredGate', () => {
     await waitFor(() =>
       expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument(),
     );
-    expect(screen.getByText('Your session has expired.')).toBeInTheDocument();
+    expect(screen.getByText(/your session has expired/i)).toBeInTheDocument();
   });
 
   test('"Log out" falls back to the documented hard-redirect path', async () => {

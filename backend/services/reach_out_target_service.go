@@ -83,8 +83,10 @@ func detectTargetBehindSuggestions(ctx context.Context, db *gorm.DB, cfg config.
 
 func detectTargetBehindForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, now time.Time) (int, error) {
 	var contacts []models.Contact
-	if err := db.Where("user_id = ? AND archived = ? AND target_closeness IS NOT NULL", userID, false).
-		Find(&contacts).Error; err != nil {
+	if err := ExcludeSelfContact(
+		db.Where("user_id = ? AND archived = ? AND target_closeness IS NOT NULL", userID, false),
+		userID,
+	).Find(&contacts).Error; err != nil {
 		return 0, fmt.Errorf("loading targeted contacts: %w", err)
 	}
 

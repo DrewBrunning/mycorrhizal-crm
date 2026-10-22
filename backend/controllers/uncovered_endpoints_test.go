@@ -349,3 +349,26 @@ func TestGetUpcomingBirthdays_ScopedToOwner(t *testing.T) {
 	assert.Contains(t, body, "Mine")
 	assert.NotContains(t, body, "Theirs", "another user's birthday must never surface")
 }
+
+// Issue #1793: the auto-created self contact must never surface in the
+// Stay in Touch rotation.
+func TestGetContactsRandom_ExcludesSelfContact(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/contacts/random", GetContactsRandom)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	self := models.Contact{UserID: user.ID, Firstname: "SelfOnly"}
+	require.NoError(t, db.Create(&self).Error)
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Visible"}).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts/random", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "Visible")
+	assert.NotContains(t, body, "SelfOnly", "the self contact must not surface in Stay in Touch")
+}

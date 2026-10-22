@@ -29,25 +29,51 @@ export interface SessionExpiryEvent {
 
 type Listener = (event: SessionExpiryEvent) => void;
 
-let listener: Listener | null = null;
+const listeners = new Set<Listener>();
+const restoredListeners = new Set<() => void>();
+const signInRequestListeners = new Set<() => void>();
 
 // notifySessionExpired is called from apiFetch on every 401. No replay of a
-// pending event: <SessionExpiredGate> mounts at the very top of the tree
-// before any page can have issued its first authenticated request, so there
-// is nothing to miss in practice, and skipping the replay buffer keeps this
+// pending event: both the app-shell notice and <SessionExpiredGate> mount
+// before any page can have issued its first authenticated request, so there is
+// nothing to miss in practice, and skipping the replay buffer keeps this
 // module's state trivial (nothing to reset between tests either).
 export function notifySessionExpired(mode: SessionExpiryMode): void {
-  listener?.({ mode });
+  for (const listener of listeners) listener({ mode });
 }
 
 // onSessionExpired subscribes to session-expiry notifications. Returns an
-// unsubscribe function. Only one subscriber is expected in practice (the one
-// <SessionExpiredGate>), same as onUpdateAvailable.
+// unsubscribe function. Multiple subscribers are supported: the app-shell
+// notice (issue #1793) and the modal gate both need the event.
 export function onSessionExpired(fn: Listener): () => void {
-  listener = fn;
+  listeners.add(fn);
   return () => {
-    if (listener === fn) {
-      listener = null;
-    }
+    listeners.delete(fn);
+  };
+}
+
+// notifySessionRestored fires after an in-place re-authentication succeeds, so
+// the app-shell notice can disappear without a reload.
+export function notifySessionRestored(): void {
+  for (const listener of restoredListeners) listener();
+}
+
+export function onSessionRestored(fn: () => void): () => void {
+  restoredListeners.add(fn);
+  return () => {
+    restoredListeners.delete(fn);
+  };
+}
+
+// requestSessionSignIn asks the gate to open its sign-in dialog — the action
+// behind the main-content notice's button.
+export function requestSessionSignIn(): void {
+  for (const listener of signInRequestListeners) listener();
+}
+
+export function onSessionSignInRequest(fn: () => void): () => void {
+  signInRequestListeners.add(fn);
+  return () => {
+    signInRequestListeners.delete(fn);
   };
 }

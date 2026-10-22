@@ -278,3 +278,37 @@ func TestProcessOverdueCadences_NextDueUsesActivityUTCDateAcrossZones(t *testing
 		})
 	}
 }
+
+// TestProcessOverdueCadencesSkipsSelfContact pins issue #1793's scheduled-job
+// half: even a cadence policy on the self contact must not emit a
+// cadence.overdue webhook.
+func TestProcessOverdueCadencesSkipsSelfContact(t *testing.T) {
+	db := setupCadenceJobTestDB(t)
+	cfg := config.Config{}
+
+	user := models.User{Username: "selfcadence", Password: "x", Email: "selfcadence@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	self := models.Contact{UserID: user.ID, Firstname: "Me"}
+	require.NoError(t, db.Create(&self).Error)
+	require.NoError(t, db.Model(&user).Update("self_contact_vcard_uid", self.VCardUID).Error)
+	seedOverduePolicy(t, db, user, self)
+
+	var hits int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	wh := models.Webhook{UserID: user.ID, Name: "vikunja", URL: server.URL, Events: []string{"cadence.overdue"}, Secret: "s", IsActive: true}
+	require.NoError(t, db.Create(&wh).Error)
+
+	emitted, err := ProcessOverdueCadences(db, cfg)
+	require.NoError(t, err)
+	assert.Zero(t, emitted)
+
+	time.Sleep(150 * time.Millisecond)
+	assert.Zero(t, atomic.LoadInt32(&hits), "the self contact must not trigger a cadence.overdue webhook")
+	var deliveries int64
+	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)
+	assert.Zero(t, deliveries)
+}

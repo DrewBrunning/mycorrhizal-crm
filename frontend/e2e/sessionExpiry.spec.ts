@@ -90,14 +90,21 @@ test.describe('Session expiry', () => {
 
     await page.goto('/');
 
-    // A dismissible, non-modal notice -- not the re-authentication dialog.
-    await expect(page.getByText(/session has expired/i)).toBeVisible({ timeout: 10000 });
+    // A non-modal notice in the main content -- not the re-authentication
+    // dialog -- and its Sign in action is right there (issue #1793).
+    const notice = page.getByRole('alert').filter({ hasText: /session has expired/i });
+    await expect(notice).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(notice.getByRole('button', { name: /sign in/i })).toBeVisible();
 
     // Never navigated to /login, and the app shell (nav) is still there --
     // this is not the hard-redirect this ticket removed.
     expect(page.url()).not.toContain('/login');
     await expect(page.getByRole('navigation')).toBeVisible();
+
+    // The main-content action opens the working re-authentication dialog.
+    await notice.getByRole('button', { name: /sign in/i }).click();
+    await expect(page.getByRole('dialog').filter({ hasText: /session expired/i })).toBeVisible();
   });
 
   test('cancelling a dirty note asks for confirmation before discarding it', async ({ page }) => {
