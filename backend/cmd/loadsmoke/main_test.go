@@ -51,12 +51,13 @@ func TestLoadConfigFromEnv_Defaults(t *testing.T) {
 
 func TestLoadConfigFromEnv_Overrides(t *testing.T) {
 	env := map[string]string{
-		"LOADSMOKE_BASE_URL":     "http://example.com/",
-		"LOADSMOKE_WORKERS":      "5",
-		"LOADSMOKE_DURATION":     "2s",
-		"LOADSMOKE_MIN_REQUESTS": "10",
-		"LOADSMOKE_USERS":        "7",
-		"LOADSMOKE_DB_PATH":      "/data/mycorrhizal.db",
+		"LOADSMOKE_BASE_URL":          "http://example.com/",
+		"LOADSMOKE_WORKERS":           "5",
+		"LOADSMOKE_DURATION":          "2s",
+		"LOADSMOKE_MIN_REQUESTS":      "10",
+		"LOADSMOKE_USERS":             "7",
+		"LOADSMOKE_DB_PATH":           "/data/mycorrhizal.db",
+		"LOADSMOKE_MAX_BUSY_FRACTION": "0.25",
 	}
 	cfg := loadConfigFromEnv(func(k string) string { return env[k] })
 	if cfg.baseURL != "http://example.com" {
@@ -77,14 +78,18 @@ func TestLoadConfigFromEnv_Overrides(t *testing.T) {
 	if cfg.dbPath != "/data/mycorrhizal.db" {
 		t.Errorf("dbPath = %q, want /data/mycorrhizal.db", cfg.dbPath)
 	}
+	if cfg.maxBusyFraction != 0.25 {
+		t.Errorf("maxBusyFraction = %v, want 0.25", cfg.maxBusyFraction)
+	}
 }
 
 func TestLoadConfigFromEnv_InvalidOverridesFallBackToDefault(t *testing.T) {
 	env := map[string]string{
-		"LOADSMOKE_WORKERS":      "not-a-number",
-		"LOADSMOKE_DURATION":     "not-a-duration",
-		"LOADSMOKE_MIN_REQUESTS": "-5",
-		"LOADSMOKE_USERS":        "0",
+		"LOADSMOKE_WORKERS":           "not-a-number",
+		"LOADSMOKE_DURATION":          "not-a-duration",
+		"LOADSMOKE_MIN_REQUESTS":      "-5",
+		"LOADSMOKE_USERS":             "0",
+		"LOADSMOKE_MAX_BUSY_FRACTION": "1.5",
 	}
 	cfg := loadConfigFromEnv(func(k string) string { return env[k] })
 	if cfg.workers != defaultLoadConfig.workers {
@@ -98,6 +103,33 @@ func TestLoadConfigFromEnv_InvalidOverridesFallBackToDefault(t *testing.T) {
 	}
 	if cfg.users != defaultLoadConfig.users {
 		t.Errorf("non-positive LOADSMOKE_USERS must fall back to default (1), got %d", cfg.users)
+	}
+	if cfg.maxBusyFraction != defaultLoadConfig.maxBusyFraction {
+		t.Errorf("out-of-range LOADSMOKE_MAX_BUSY_FRACTION must fall back to default (0), got %v", cfg.maxBusyFraction)
+	}
+}
+
+func TestBusyBudgetExceeded(t *testing.T) {
+	cases := []struct {
+		name     string
+		busy     int64
+		total    int64
+		max      float64
+		exceeded bool
+	}{
+		{"no busy is always within budget", 0, 100, 0, false},
+		{"a single busy fails the strict default", 1, 4000, 0, true},
+		{"a single busy is within a fractional allowance", 1, 4000, 0.005, false},
+		{"busy past the fractional allowance fails", 30, 4000, 0.005, true},
+		{"busy exactly at the allowance is allowed", 20, 4000, 0.005, false},
+		{"busy with no completed requests fails closed", 1, 0, 1, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := busyBudgetExceeded(c.busy, c.total, c.max); got != c.exceeded {
+				t.Errorf("busyBudgetExceeded(%d, %d, %v) = %v, want %v", c.busy, c.total, c.max, got, c.exceeded)
+			}
+		})
 	}
 }
 
@@ -147,7 +179,15 @@ func stubContactsServer(t *testing.T, failEvery int, failStatus int, failBody st
 // drive run() end to end.
 func stubAppServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	var nextID int64
+	return stubAppServerFailingCreates(t, 0, 0, "")
+}
+
+// stubAppServerFailingCreates is stubAppServer with every failEvery-th create
+// answered by failStatus/failBody, for exercising the busy/rate-limit budget
+// decisions in run() end to end.
+func stubAppServerFailingCreates(t *testing.T, failEvery, failStatus int, failBody string) *httptest.Server {
+	t.Helper()
+	var nextID, createCount int64
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/register", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
@@ -159,6 +199,12 @@ func stubAppServer(t *testing.T) *httptest.Server {
 		w.Write([]byte(`{"message":"ok"}`))
 	})
 	mux.HandleFunc("/api/v1/contacts", func(w http.ResponseWriter, _ *http.Request) {
+		n := atomic.AddInt64(&createCount, 1)
+		if failEvery > 0 && n%int64(failEvery) == 0 {
+			w.WriteHeader(failStatus)
+			w.Write([]byte(failBody))
+			return
+		}
 		id := atomic.AddInt64(&nextID, 1)
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]any{"contact": map[string]any{"id": id}})
@@ -335,5 +381,47 @@ func TestRun_HappyPathIncludingIntegrityCheck(t *testing.T) {
 
 	if err := run(); err != nil {
 		t.Fatalf("run() against a healthy stub = %v, want nil", err)
+	}
+}
+
+// TestRun_ToleratesBusyWithinBudget pins the deflake for the many-users e2e
+// step: a waited-out lock timeout (503 DATABASE_BUSY) is load-shedding on a
+// contended runner, not the deferred-transaction bug, so a run whose busy
+// share is under LOADSMOKE_MAX_BUSY_FRACTION passes.
+func TestRun_ToleratesBusyWithinBudget(t *testing.T) {
+	srv := stubAppServerFailingCreates(t, 2, http.StatusServiceUnavailable,
+		`{"error":{"code":"DATABASE_BUSY","message":"The database is busy; retry the request shortly"}}`)
+
+	t.Setenv("LOADSMOKE_BASE_URL", srv.URL)
+	t.Setenv("LOADSMOKE_USERS", "2")
+	t.Setenv("LOADSMOKE_WORKERS", "6")
+	t.Setenv("LOADSMOKE_DURATION", "300ms")
+	t.Setenv("LOADSMOKE_MIN_REQUESTS", "1")
+	t.Setenv("LOADSMOKE_MAX_BUSY_FRACTION", "1")
+
+	if err := run(); err != nil {
+		t.Fatalf("run() with busy under the allowed fraction = %v, want nil", err)
+	}
+}
+
+// TestRun_RejectsBusyPastBudget is the strict half: the same stub, with the
+// allowance set below the injected busy share, must still fail.
+func TestRun_RejectsBusyPastBudget(t *testing.T) {
+	srv := stubAppServerFailingCreates(t, 2, http.StatusServiceUnavailable,
+		`{"error":{"code":"DATABASE_BUSY","message":"The database is busy; retry the request shortly"}}`)
+
+	t.Setenv("LOADSMOKE_BASE_URL", srv.URL)
+	t.Setenv("LOADSMOKE_USERS", "2")
+	t.Setenv("LOADSMOKE_WORKERS", "6")
+	t.Setenv("LOADSMOKE_DURATION", "300ms")
+	t.Setenv("LOADSMOKE_MIN_REQUESTS", "1")
+	t.Setenv("LOADSMOKE_MAX_BUSY_FRACTION", "0.005")
+
+	err := run()
+	if err == nil {
+		t.Fatal("run() with busy past the allowed fraction should have failed")
+	}
+	if !strings.Contains(err.Error(), "SQLITE_BUSY") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

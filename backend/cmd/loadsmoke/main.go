@@ -19,6 +19,14 @@
 // docker-compose.test.yml backend (see .github/workflows/e2e-tests.yml,
 // which already brings that instance up for the Playwright suite — this
 // reuses it rather than standing up a second workflow).
+//
+// LOADSMOKE_MAX_BUSY_FRACTION relaxes only the lock-timeout half, and only
+// for the many-users profile: on a shared, contended CI runner a writer can
+// genuinely wait out the 5s busy_timeout (the 503 DATABASE_BUSY issue #1720
+// maps it to), which is the runner shedding load rather than the
+// deferred-transaction bug. The same allowance exists for the per-PR soak
+// smoke (internal/soak) — a lock-holding regression sheds a large share,
+// far past any small tolerance. The default is 0: any busy fails.
 package main
 
 import (
@@ -58,6 +66,11 @@ type loadConfig struct {
 	// run, or a CI job with a bind mount) — the docker-compose e2e job checks
 	// integrity via `docker compose exec` instead.
 	dbPath string
+	// maxBusyFraction is the largest share of requests that may return
+	// SQLITE_BUSY before the run fails. It is 0 by default (any busy fails);
+	// the many-users e2e step raises it because a write can wait out the 5s
+	// busy_timeout on a shared runner — see the package comment.
+	maxBusyFraction float64
 }
 
 // defaultLoadConfig mirrors cmd/backup's env-var-with-defaults style.
@@ -102,6 +115,11 @@ func loadConfigFromEnv(getenv func(string) string) loadConfig {
 	if v := getenv("LOADSMOKE_DB_PATH"); v != "" {
 		cfg.dbPath = v
 	}
+	if v := getenv("LOADSMOKE_MAX_BUSY_FRACTION"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
+			cfg.maxBusyFraction = f
+		}
+	}
 	return cfg
 }
 
@@ -128,9 +146,15 @@ func run() error {
 	if result.total < cfg.minRequests {
 		return fmt.Errorf("only %d requests completed in %s — load generation itself may be broken (want >= %d)", result.total, cfg.duration, cfg.minRequests)
 	}
-	if result.busy > 0 {
+	if busyBudgetExceeded(result.busy, result.total, cfg.maxBusyFraction) {
 		return fmt.Errorf("%d/%d requests returned SQLITE_BUSY/\"database is locked\" under concurrent writes — samples:\n%s",
 			result.busy, result.total, strings.Join(result.busySamples, "\n"))
+	}
+	if result.busy > 0 {
+		fmt.Printf("loadsmoke: tolerated %d/%d busy (%.3f%% <= %.3f%% allowed) — samples:\n%s\n",
+			result.busy, result.total,
+			100*float64(result.busy)/float64(result.total), 100*cfg.maxBusyFraction,
+			strings.Join(result.busySamples, "\n"))
 	}
 	if result.rateLimited > 0 {
 		return fmt.Errorf("%d/%d requests were rate-limited (429) against the raised test limit — samples:\n%s",
@@ -351,6 +375,20 @@ func truncate(b []byte, n int) string {
 		return s[:n] + "..."
 	}
 	return s
+}
+
+// busyBudgetExceeded reports whether the run's SQLITE_BUSY count is past the
+// configured allowance. Zero busy never exceeds. A zero total with nonzero
+// busy is unreachable through runLoad but fails closed anyway; run() checks
+// the min-requests floor before this.
+func busyBudgetExceeded(busy, total int64, maxFraction float64) bool {
+	if busy == 0 {
+		return false
+	}
+	if total == 0 {
+		return true
+	}
+	return float64(busy)/float64(total) > maxFraction
 }
 
 type classification int
