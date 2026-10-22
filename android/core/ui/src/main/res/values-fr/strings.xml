@@ -2168,4 +2168,23 @@
     <string name="contact_anniversary_edit">Modifier l’anniversaire</string>
     <string name="contact_anniversary_date">Date</string>
     <string name="contact_anniversary_kind">Type</string>
+    <!-- Issue #1751: unsaved-changes guard -->
+    <string name="unsaved_changes_title">Abandonner les modifications ?</string>
+    <string name="unsaved_changes_body">Les modifications apportées à %1$s n\'ont pas été enregistrées.</string>
+    <string name="unsaved_changes_keep_editing">Continuer la modification</string>
+    <string name="unsaved_changes_discard">Abandonner</string>
+    <string name="entity_contact">ce contact</string>
+    <string name="entity_note">cette note</string>
+    <string name="entity_activity">cette interaction</string>
+    <string name="entity_reminder">ce rappel</string>
+    <string name="entity_custom_field">ce champ personnalisé</string>
+    <string name="entity_life_event">cet événement de vie</string>
+    <string name="entity_gift">ce cadeau</string>
+    <string name="entity_preference">cette préférence</string>
+    <string name="entity_agenda">ce point d\'agenda</string>
+    <string name="entity_occasion">cette occasion</string>
+    <string name="entity_household">ce foyer</string>
+    <string name="entity_circle">ce cercle</string>
+    <string name="entity_tag">cette étiquette</string>
+    <string name="entity_relationship">cette relation</string>
 </resources>

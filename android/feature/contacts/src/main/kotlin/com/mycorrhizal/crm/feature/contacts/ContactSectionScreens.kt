@@ -418,6 +418,13 @@ private fun PersonalInfoFormScreen(
     var sensitivity by rememberSaveable(initial?.id) { mutableStateOf(meta?.sensitivity ?: "normal") }
     var favorite by rememberSaveable(initial?.id) { mutableStateOf(meta?.favorite == true) }
     val snackbar = remember { SnackbarHostState() }
+    val isDirty = kind != (initial?.kind?.takeIf { it in SkillsKinds } ?: "expertise") ||
+        value != initial?.value.orEmpty() ||
+        level != initial?.level ||
+        label != initial?.label.orEmpty() ||
+        notes != meta?.notes.orEmpty() ||
+        sensitivity != (meta?.sensitivity ?: "normal") ||
+        favorite != (meta?.favorite == true)
 
     FormScaffold(
         title = stringResource(if (initial != null) R.string.contact_skills_edit else R.string.contact_skills_add),
@@ -440,6 +447,8 @@ private fun PersonalInfoFormScreen(
         snackbarHostState = snackbar,
         saveEnabled = value.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         Column(
             modifier = Modifier
@@ -755,6 +764,10 @@ private fun OrganizationFormScreen(
     var start by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
     var end by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
     val snackbar = remember { SnackbarHostState() }
+    val isDirty = name != initial?.name.orEmpty() ||
+        department != initial?.units?.firstOrNull()?.name.orEmpty() ||
+        start != period?.range?.start?.year?.toString().orEmpty() ||
+        end != period?.range?.end?.year?.toString().orEmpty()
     FormScaffold(
         title = stringResource(if (initial != null) R.string.contact_work_edit_organization else R.string.contact_work_add_organization),
         onBack = onBack,
@@ -764,6 +777,8 @@ private fun OrganizationFormScreen(
         snackbarHostState = snackbar,
         saveEnabled = name.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -801,6 +816,10 @@ private fun TitleFormScreen(
     var start by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
     var end by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
     val snackbar = remember { SnackbarHostState() }
+    val isDirty = name != initial?.name.orEmpty() ||
+        kind != (initial?.kind?.takeIf { it == "role" } ?: "title") ||
+        start != period?.range?.start?.year?.toString().orEmpty() ||
+        end != period?.range?.end?.year?.toString().orEmpty()
     FormScaffold(
         title = stringResource(if (initial != null) R.string.contact_work_edit_title else R.string.contact_work_add_title),
         onBack = onBack,
@@ -810,6 +829,8 @@ private fun TitleFormScreen(
         snackbarHostState = snackbar,
         saveEnabled = name.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -848,6 +869,7 @@ private fun WorkInformationFormScreen(
 ) {
     var value by rememberSaveable { mutableStateOf(initial) }
     val snackbar = remember { SnackbarHostState() }
+    val isDirty = value != initial
     FormScaffold(
         title = stringResource(R.string.contact_work_edit_information),
         onBack = onBack,
@@ -855,6 +877,8 @@ private fun WorkInformationFormScreen(
         isSaving = isSaving,
         onSave = { onSave(value) },
         snackbarHostState = snackbar,
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -957,6 +981,8 @@ private fun AnniversaryFormScreen(
         mutableStateOf(DateFieldValue.partialFieldValue(initial?.date?.partial))
     }
     val snackbar = remember { SnackbarHostState() }
+    val isDirty = kind != (initial?.kind?.takeIf { it in AnniversaryKinds } ?: "wedding") ||
+        date != DateFieldValue.partialFieldValue(initial?.date?.partial)
     FormScaffold(
         title = stringResource(if (initial != null) R.string.contact_anniversary_edit else R.string.contact_anniversary_add),
         onBack = onBack,
@@ -966,6 +992,8 @@ private fun AnniversaryFormScreen(
         snackbarHostState = snackbar,
         saveEnabled = date.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_date_required),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_contact),
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),

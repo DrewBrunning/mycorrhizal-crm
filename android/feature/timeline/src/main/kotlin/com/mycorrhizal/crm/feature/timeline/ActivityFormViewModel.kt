@@ -59,9 +59,33 @@ data class ActivityFormState(
     /** Carried from the loaded activity so an edit doesn't wipe an external
      *  ref the form doesn't render (e.g. a calendar/ExternalActivity link). */
     val externalRef: String? = null,
+    /** Issue #1751: the editable state the form opened with, for [isDirty]. */
+    val baseline: ActivityFormState? = null,
 ) {
     val isEdit: Boolean get() = activityId != null
     val hasTitle: Boolean get() = title.isNotBlank()
+
+    val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
+
+    private fun editableSnapshot(): ActivityFormState = copy(
+        // Search/loading state is transient; participant display names resolve
+        // asynchronously, so compare the ids that a save would actually send.
+        participants = effectiveParticipants().map { ContactFlat(id = it.id) },
+        contactSearchQuery = "",
+        contactSearchResults = emptyList(),
+        contactSearchLoading = false,
+        isLoading = false,
+        isSaving = false,
+        errorRes = null,
+        error = null,
+        conflict = false,
+        baseline = null,
+    )
+
+    fun snapshotForBaseline(): ActivityFormState = editableSnapshot()
+
+    private fun effectiveParticipants(): List<ContactFlat> =
+        if (isEdit) participants else participants.ifEmpty { listOf(ContactFlat(id = contactId)).filter { it.id != 0 } }
 
     fun toInput(): ActivityInput = ActivityInput(
         title = title.trim(),
@@ -127,7 +151,7 @@ class ActivityFormViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(
         ActivityFormState(contactId = contactId, activityId = activityId).let { base ->
-            if (activityId != null) {
+            val initial = if (activityId != null) {
                 base
             } else {
                 base.copy(
@@ -136,6 +160,7 @@ class ActivityFormViewModel @Inject constructor(
                     externalRef = prefillArg(PREFILL_EXTERNAL_REF),
                 )
             }
+            initial.copy(baseline = initial.snapshotForBaseline())
         },
     )
     val uiState: StateFlow<ActivityFormState> = _uiState.asStateFlow()
@@ -160,7 +185,10 @@ class ActivityFormViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             activityRepository.get(id).foldApiError(
                 onSuccess = { activity ->
-                    _uiState.update { it.toFormState(activity).copy(isLoading = false) }
+                    _uiState.update { state ->
+                        val loaded = state.toFormState(activity).copy(isLoading = false)
+                        loaded.copy(baseline = loaded.snapshotForBaseline())
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }

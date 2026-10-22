@@ -64,6 +64,8 @@ fun ReminderFormScreen(
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
+        isDirty = state.isDirty,
+        entityLabel = stringResource(R.string.entity_reminder),
         showSaveBar = !state.isLoading,
     ) { padding ->
         when {

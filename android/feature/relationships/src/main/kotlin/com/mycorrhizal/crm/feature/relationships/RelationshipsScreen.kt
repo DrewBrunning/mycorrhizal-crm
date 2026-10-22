@@ -49,7 +49,6 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -420,7 +419,6 @@ fun RelationshipEdgeForm(
     ) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BackHandler(onBack = onDismiss)
     val isEditing = edge != null
     var linkedMode by rememberSaveable(edge?.id) { mutableStateOf(false) }
     var type by rememberSaveable(edge?.id) {
@@ -444,6 +442,16 @@ fun RelationshipEdgeForm(
     val canConfirm = isEditing ||
         (!linkedMode && name.isNotBlank()) ||
         (linkedMode && selectedContact != null)
+    // Issue #1751: anything the user has changed from the form's opening state.
+    val initialType = edge?.let { effectiveType(it, state.contactVCardUid) } ?: RelationshipEdgeTypes.FRIEND_OF
+    val initialSensitivity = edge?.sensitivity ?: RelationshipEdgeSensitivities.NORMAL
+    val isDirty = linkedMode ||
+        type != initialType ||
+        sensitivity != initialSensitivity ||
+        name.isNotBlank() ||
+        gender.isNotBlank() ||
+        birthday.isNotBlank() ||
+        selectedContact != null
 
     FormScaffold(
         title = stringResource(if (isEditing) R.string.relationships_edit_title else R.string.relationships_new),
@@ -458,6 +466,8 @@ fun RelationshipEdgeForm(
         saveDisabledHint = stringResource(
             if (linkedMode) R.string.relationships_save_hint_contact else R.string.relationships_save_hint_name,
         ),
+        isDirty = isDirty,
+        entityLabel = stringResource(R.string.entity_relationship),
     ) { padding ->
         Column(
             modifier = Modifier

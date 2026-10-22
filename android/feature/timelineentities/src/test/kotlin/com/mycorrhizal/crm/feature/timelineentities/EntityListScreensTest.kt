@@ -278,6 +278,7 @@ class LifeEventFormTest {
     private fun setContent(
         initial: LifeEvent? = null,
         onConfirm: (LifeEventFormData) -> Unit = {},
+        onDismiss: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -291,7 +292,7 @@ class LifeEventFormTest {
                     onAddRelated = {},
                     onRemoveRelated = {},
                     onConfirm = onConfirm,
-                    onDismiss = {},
+                    onDismiss = onDismiss,
                 )
             }
         }
@@ -449,6 +450,39 @@ class LifeEventFormTest {
 
         assertEquals("u1", removed)
     }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `an untouched life event form leaves immediately`() {
+        var dismissed = false
+        setContent(onDismiss = { dismissed = true })
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        assertTrue(dismissed)
+        composeTestRule.onNodeWithText("Discard changes?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a dirty life event form asks before leaving and keep editing keeps the input`() {
+        var dismissed = false
+        setContent(onDismiss = { dismissed = true })
+
+        composeTestRule.onNodeWithText("Description").performTextReplacement("We got married")
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        assertEquals(false, dismissed)
+
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        composeTestRule.onNodeWithText("We got married").assertIsDisplayed()
+        assertEquals(false, dismissed)
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithText("Discard").performClick()
+        assertTrue(dismissed)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -461,6 +495,7 @@ class GiftFormTest {
     private fun setContent(
         initial: Gift? = null,
         onConfirm: (GiftFormData) -> Unit = {},
+        onDismiss: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -469,7 +504,7 @@ class GiftFormTest {
                     lifeEvents = emptyList(),
                     activities = emptyList(),
                     onConfirm = onConfirm,
-                    onDismiss = {},
+                    onDismiss = onDismiss,
                 )
             }
         }
@@ -549,6 +584,23 @@ class GiftFormTest {
         assertEquals("25.5", centsToAmountText(2550))
         assertEquals("0.05", centsToAmountText(5))
     }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `a dirty gift form asks before leaving, and discard leaves`() {
+        var dismissed = false
+        setContent(onDismiss = { dismissed = true })
+
+        composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        assertEquals(false, dismissed)
+
+        composeTestRule.onNodeWithText("Discard").performClick()
+        assertTrue(dismissed)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -562,6 +614,7 @@ class PreferenceFormTest {
         initial: Preference? = null,
         sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
         onConfirm: (PreferenceFormData) -> Unit = {},
+        onDismiss: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -569,7 +622,7 @@ class PreferenceFormTest {
                     initial = initial,
                     sections = sections,
                     onConfirm = onConfirm,
-                    onDismiss = {},
+                    onDismiss = onDismiss,
                 )
             }
         }
@@ -751,6 +804,22 @@ class PreferenceFormTest {
         }
         composeTestRule.onNodeWithText("Intermediate").performScrollTo().assertIsDisplayed()
     }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `a dirty preference form asks before leaving and keep editing keeps the value`() {
+        var dismissed = false
+        setContent(onDismiss = { dismissed = true })
+
+        composeTestRule.onNodeWithText("Value").performTextReplacement("Severance")
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        composeTestRule.onNodeWithText("Severance").assertIsDisplayed()
+        assertEquals(false, dismissed)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -916,6 +985,37 @@ class AgendaDialogTest {
 
         assertEquals("https://example.com/article", confirmedUrl)
     }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `a dirty agenda item asks before cancel discards it`() {
+        var dismissed = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AgendaDialog(
+                    initial = null,
+                    onConfirm = { _, _ -> },
+                    onDismiss = { dismissed = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Content").performTextReplacement("Ask about the move")
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your edits to this agenda item haven't been saved.").assertIsDisplayed()
+        assertEquals(false, dismissed)
+
+        composeTestRule.onNodeWithText("Keep editing").performClick()
+        composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
+        assertEquals(false, dismissed)
+
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.onNodeWithText("Discard").performClick()
+        assertTrue(dismissed)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -972,6 +1072,36 @@ class MarkDiscussedFormTest {
         composeTestRule.onNodeWithText("Discuss").performClick()
 
         assertEquals(8, confirmed)
+    }
+
+    // Issue #1751: unsaved-changes guard.
+
+    @Test
+    fun `picking an activity marks the mark-discussed form dirty`() {
+        var dismissed = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MarkDiscussedForm(
+                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
+                    activities = listOf(com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat")),
+                    confirming = false,
+                    onConfirm = {},
+                    onDismiss = { dismissed = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        assertTrue(dismissed)
+        dismissed = false
+
+        composeTestRule.onNodeWithText("None").performClick()
+        composeTestRule.onNodeWithText("Coffee chat").performClick()
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Discard").performClick()
+        assertTrue(dismissed)
     }
 }
 
