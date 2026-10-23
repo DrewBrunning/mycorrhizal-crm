@@ -149,7 +149,15 @@
     "birthdaysInfo": "Shows birthdays for at least the next two weeks.",
     "remindersInfo": "Shows at least all reminders due up to and including today. Reminders will stay visible until they are marked as completed.",
     "stayInTouchInfo": "Shows five random contacts to help you stay connected. The list is refreshed on every page reload.",
-    "showingOf": "Showing {{shown}} of {{total}}"
+    "showingOf": "Showing {{shown}} of {{total}}",
+    "dueToday": "Due today",
+    "dueIn_one": "Due in {{count}} day",
+    "dueIn_other": "Due in {{count}} days",
+    "lastTalkedToday": "Last talked today",
+    "lastTalkedAgo_one": "Last talked {{count}} day ago",
+    "lastTalkedAgo_other": "Last talked {{count}} days ago",
+    "noInteractionsYet": "No interactions yet",
+    "keepInTouch": "Keep in touch"
   },
   "login": {
     "title": "Login",

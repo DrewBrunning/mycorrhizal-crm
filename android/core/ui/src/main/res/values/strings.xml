@@ -28,6 +28,25 @@
     </plurals>
     <string name="dashboard_years_old">(%1$d years old)</string>
     <string name="dashboard_unknown_contact">Unknown contact</string>
+    <!-- Issue #1761: the Stay in Touch card's reason subtitle and the dashboard quick-capture entry. -->
+    <string name="dashboard_stay_in_touch_due_today">Due today</string>
+    <plurals name="dashboard_stay_in_touch_due_in">
+        <item quantity="one">Due in %1$d day</item>
+        <item quantity="other">Due in %1$d days</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_last_today">Last talked today</string>
+    <plurals name="dashboard_stay_in_touch_last_days">
+        <item quantity="one">Last talked %1$d day ago</item>
+        <item quantity="other">Last talked %1$d days ago</item>
+    </plurals>
+    <plurals name="dashboard_stay_in_touch_overdue">
+        <item quantity="one">%1$d day overdue</item>
+        <item quantity="other">%1$d days overdue</item>
+    </plurals>
+    <string name="dashboard_stay_in_touch_no_interactions">No interactions yet</string>
+    <string name="dashboard_stay_in_touch_keep">Keep in touch</string>
+    <string name="dashboard_add_reminder">Add reminder</string>
+    <string name="cd_quick_capture">Quick capture</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_map">Map</string>
@@ -934,6 +953,8 @@
     <string name="quick_capture_resolving">Resolving contact…</string>
     <string name="quick_capture_with_contact">With %1$s</string>
     <string name="quick_capture_unknown">Unknown number</string>
+    <!-- Issue #1761: in-app manual quick capture, where no caller is resolved. -->
+    <string name="quick_capture_no_contact">No contact</string>
     <string name="quick_capture_title_label">Title</string>
     <string name="quick_capture_type_label">Type</string>
     <string name="quick_capture_note_label">Note</string>

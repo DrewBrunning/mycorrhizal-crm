@@ -162,7 +162,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
   // all wrap an <Avatar> inside `component={Link}`.
   expect(screen.getByRole('link', { name: 'Fay Vorite' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /^Bea Birthday/ })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Randy Contact' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /^Randy Contact/ })).toBeInTheDocument();
   expect(screen.getByText('Call Nicky')).toBeInTheDocument();
   // The reminder's contact_name is embedded server-side (M3 design decision
   // 2) -- no separate per-reminder contact fetch happens.
@@ -438,4 +438,92 @@ test('dismissing a sync conflict decrements its block total', async () => {
   await waitFor(() => expect(screen.getByText('Showing 2 of 30')).toBeInTheDocument());
   fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
   await waitFor(() => expect(screen.getByText('Showing 1 of 29')).toBeInTheDocument());
+});
+
+// Issue #1761: every Stay in Touch card explains why the contact is there,
+// from the server's relationship day counts (the same cadence computation the
+// cadence view uses).
+test('Stay in Touch cards render a reason subtitle for each relationship shape', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    random_contacts: [
+      {
+        ID: 1,
+        firstname: 'Overdue',
+        lastname: 'Olive',
+        relationship: { has_cadence: true, days_until_due: -5, days_since_last_interaction: 20 },
+      },
+      {
+        ID: 2,
+        firstname: 'Due',
+        lastname: 'Dana',
+        relationship: { has_cadence: true, days_until_due: 4, days_since_last_interaction: 10 },
+      },
+      {
+        ID: 3,
+        firstname: 'Today',
+        lastname: 'Tara',
+        relationship: { has_cadence: true, days_until_due: 0, days_since_last_interaction: 30 },
+      },
+      {
+        ID: 4,
+        firstname: 'Recent',
+        lastname: 'Rui',
+        relationship: { has_cadence: false, days_since_last_interaction: 0 },
+      },
+      {
+        ID: 5,
+        firstname: 'Quiet',
+        lastname: 'Quinn',
+        relationship: { has_cadence: false },
+      },
+      {
+        ID: 6,
+        firstname: 'Ago',
+        lastname: 'Ada',
+        relationship: { has_cadence: false, days_since_last_interaction: 3 },
+      },
+    ],
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Overdue Olive')).toBeInTheDocument());
+  expect(screen.getByText('5 days overdue')).toBeInTheDocument();
+  expect(screen.getByText('Due in 4 days')).toBeInTheDocument();
+  expect(screen.getByText('Due today')).toBeInTheDocument();
+  expect(screen.getByText('Last talked today')).toBeInTheDocument();
+  expect(screen.getByText('No interactions yet')).toBeInTheDocument();
+  expect(screen.getByText('Last talked 3 days ago')).toBeInTheDocument();
+});
+
+test('Stay in Touch pluralizes the last-talked and due-in lines', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    random_contacts: [
+      {
+        ID: 1,
+        firstname: 'One',
+        lastname: 'Day',
+        relationship: { has_cadence: true, days_until_due: 1, days_since_last_interaction: 1 },
+      },
+    ],
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('One Day')).toBeInTheDocument());
+  expect(screen.getByText('Due in 1 day')).toBeInTheDocument();
+});
+
+test('Stay in Touch falls back to a generic reason on an older server', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    random_contacts: [{ ID: 1, firstname: 'Legacy', lastname: 'Lena' }],
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Legacy Lena')).toBeInTheDocument());
+  expect(screen.getByText('Keep in touch')).toBeInTheDocument();
 });

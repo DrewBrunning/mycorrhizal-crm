@@ -47,6 +47,21 @@ data class DashboardResponse(
 )
 
 /**
+ * Issue #1761: the compact "why is this contact here" signal behind a Stay in
+ * Touch card, derived server-side from the same cadence computation as the
+ * cadence view. Day counts (not timestamps) so this client renders the same
+ * reminder-zone calendar-day line (ADR 0015) without recomputing dates.
+ */
+@JsonClass(generateAdapter = true)
+data class DashboardContactRelationship(
+    @Json(name = "has_cadence") val hasCadence: Boolean = false,
+    /** 0 = today; null when no qualifying interaction has been recorded. */
+    @Json(name = "days_since_last_interaction") val daysSinceLastInteraction: Int? = null,
+    /** Negative when overdue, 0 = due today; null when no policy anchors a due date. */
+    @Json(name = "days_until_due") val daysUntilDue: Int? = null,
+)
+
+/**
  * One `random_contacts` — and, since issue #212, one `favorites` — entry.
  * Deliberately NOT [ContactSummary]: the
  * dashboard composite serializes these blocks as `ContactResponse`, which
@@ -66,6 +81,12 @@ data class DashboardRandomContact(
     val lastname: String? = null,
     val nickname: String? = null,
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+    /**
+     * Issue #1761: the "why is this contact here" signal used as the Stay in
+     * Touch card's subtitle. Absent (null) on an older server, which the UI
+     * falls back to a generic reason for.
+     */
+    val relationship: DashboardContactRelationship? = null,
 )
 
 /** One `upcoming_reminders` entry: a reminder with its contact's display name embedded. */

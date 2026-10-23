@@ -32,7 +32,12 @@ import {
   restoreContactSyncConflict,
 } from './api/contactSyncConflicts';
 import type { Birthday, Contact } from './api/contacts';
-import { type DashboardReminder, getDashboard } from './api/dashboard';
+import {
+  type DashboardContactRelationship,
+  type DashboardRandomContact,
+  type DashboardReminder,
+  getDashboard,
+} from './api/dashboard';
 import type { OverdueDataDecayPolicy } from './api/dataDecayPolicies';
 import { getUpcomingOccasions, type UpcomingOccasion } from './api/occasionObligations';
 import { dismissReachOutSuggestion, type ReachOutSuggestion } from './api/reachOutSuggestions';
@@ -67,13 +72,49 @@ function TruncationNote({ shown, total }: { shown: number; total: number }) {
   );
 }
 
+// Issue #1761: the one-line "why is this contact here" subtitle on a Stay in
+// Touch card. The server already reduced the cadence to calendar-day counts,
+// so this only chooses the sentence (and its plural) — no client date math.
+function StayInTouchReason({
+  relationship,
+}: {
+  relationship?: DashboardContactRelationship | null;
+}) {
+  const { t } = useTranslation();
+  let reason: string;
+  if (relationship?.has_cadence && relationship.days_until_due != null) {
+    const days = relationship.days_until_due;
+    reason =
+      days < 0
+        ? t('cadence.overdueBy', { count: Math.abs(days) })
+        : days === 0
+          ? t('dashboard.dueToday')
+          : t('dashboard.dueIn', { count: days });
+  } else if (relationship?.days_since_last_interaction != null) {
+    const days = relationship.days_since_last_interaction;
+    reason =
+      days === 0 ? t('dashboard.lastTalkedToday') : t('dashboard.lastTalkedAgo', { count: days });
+  } else if (relationship) {
+    reason = t('dashboard.noInteractionsYet');
+  } else {
+    // Older server: the relationship block is absent, so we cannot claim
+    // anything about the last interaction.
+    reason = t('dashboard.keepInTouch');
+  }
+  return (
+    <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: 'text.secondary' }}>
+      {reason}
+    </Typography>
+  );
+}
+
 function DashboardPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.dashboard'));
   const navigate = useNavigate();
   const { formatBirthday: formatBirthdayDate, formatDate } = useDateFormat();
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
-  const [randomContacts, setRandomContacts] = useState<Contact[]>([]);
+  const [randomContacts, setRandomContacts] = useState<DashboardRandomContact[]>([]);
   // Issue #173: the favorites quick-access block.
   const [favoriteContacts, setFavoriteContacts] = useState<Contact[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<DashboardReminder[]>([]);
@@ -868,6 +909,7 @@ function DashboardPage() {
                         >
                           {getContactName(contact)}
                         </Typography>
+                        <StayInTouchReason relationship={contact.relationship} />
                         {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (
                           <Box sx={{ mt: 0.5 }}>
                             {(circleNamesByUid.get(contact.uid || '') || [])

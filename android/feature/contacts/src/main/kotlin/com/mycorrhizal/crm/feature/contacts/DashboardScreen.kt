@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,7 +18,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Cake
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
@@ -41,10 +45,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -54,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Birthday
+import com.mycorrhizal.crm.model.network.DashboardContactRelationship
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
@@ -81,6 +89,9 @@ import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.feature.tracking.QuickCaptureSheet
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.targetTierLabel
@@ -108,10 +119,17 @@ fun DashboardScreen(
     onMenuClick: (() -> Unit)? = {},
     // Issue #1264: opens Settings → Data, where the account bundle is exported.
     onBackUp: () -> Unit = {},
+    // Issue #1761: the quick-capture sheet's secondary entries (the activity
+    // form itself is the existing QuickCaptureSheet).
+    onCreateNote: () -> Unit = {},
+    onCreateReminder: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val quickCaptureScope = rememberCoroutineScope()
+    var showQuickCapture by remember { mutableStateOf(false) }
+    val quickCaptureSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // A failed complete/skip is a transient toast on top of the intact
     // dashboard — it must NOT blank the widgets the way a failed load does.
@@ -151,6 +169,17 @@ fun DashboardScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Issue #1761: the home screen is no longer read-only. The FAB opens
+        // QuickCaptureSheet (and the note/reminder entries beside it) rather
+        // than navigating away from the dashboard.
+        floatingActionButton = {
+            BrandFab(
+                onClick = { showQuickCapture = true },
+                modifier = Modifier.testTag("dashboard-quick-capture"),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_quick_capture))
+            }
+        },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
@@ -170,8 +199,54 @@ fun DashboardScreen(
                         onVerifyDataDecay = viewModel::verifyDataDecay,
                         onBackUpNow = onBackUp,
                         onDismissBackupReminder = viewModel::dismissBackupReminder,
+                        onCreateReminder = onCreateReminder,
                     )
                 }
+            }
+        }
+    }
+
+    if (showQuickCapture) {
+        // Issue #1761: reuse the call-overlay quick-capture form in-app. The
+        // note/reminder entries live beside it so the one FAB covers all
+        // three capture types the audit asked for.
+        val blankTitleMessage = stringResource(R.string.quick_capture_title_required)
+        val quickCaptureState = remember {
+            viewModel.newQuickCaptureState(quickCaptureScope, blankTitleMessage)
+        }
+        ModalBottomSheet(
+            onDismissRequest = { showQuickCapture = false },
+            sheetState = quickCaptureSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp),
+            ) {
+                // The secondary capture types sit above the form so all three
+                // are reachable without scrolling past the activity fields.
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = {
+                            showQuickCapture = false
+                            onCreateNote()
+                        },
+                    ) { Text(stringResource(R.string.cd_new_note)) }
+                    TextButton(
+                        onClick = {
+                            showQuickCapture = false
+                            onCreateReminder()
+                        },
+                    ) { Text(stringResource(R.string.cd_new_reminder)) }
+                }
+                QuickCaptureSheet(
+                    state = quickCaptureState,
+                    onDismiss = { showQuickCapture = false },
+                )
             }
         }
     }
@@ -184,6 +259,12 @@ fun DashboardScreen(
  * max-width the host applies to a single pane.
  */
 internal val DashboardTwoColumnMinWidth = 840.dp
+
+/**
+ * Issue #1761: the list reserves room below its last card for the
+ * quick-capture FAB, so the FAB never covers the final row.
+ */
+internal val DashboardListBottomPadding = 88.dp
 
 /**
  * The dashboard's widget sections, extracted from [DashboardScreen] so the
@@ -202,6 +283,7 @@ internal fun DashboardContent(
     onVerifyDataDecay: (id: String) -> Unit = {},
     onBackUpNow: () -> Unit = {},
     onDismissBackupReminder: () -> Unit = {},
+    onCreateReminder: () -> Unit = {},
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
     val onSkipRequested: (DashboardReminder) -> Unit = { pendingSkip = it }
@@ -262,7 +344,7 @@ internal fun DashboardContent(
         // clear" treatment (web's OverdueCadenceList/ReachOutSuggestionsList
         // both skip rendering an empty-state card for this section).
         if (state.reachOutSuggestions.isNotEmpty()) {
-            item { DashboardSectionHeader(stringResource(R.string.dashboard_reach_out), Icons.Outlined.Business) }
+            item { DashboardSectionHeader(stringResource(R.string.dashboard_reach_out), Icons.Outlined.Lightbulb) }
             items(state.reachOutSuggestions, key = { dashboardKey("reach-out", it.id) }) { suggestion ->
                 ReachOutRow(
                     suggestion = suggestion,
@@ -289,7 +371,16 @@ internal fun DashboardContent(
         }
         item { DashboardSectionHeader(stringResource(R.string.dashboard_reminders), Icons.Outlined.Notifications) }
         if (state.upcomingReminders.isEmpty()) {
-            item { DashboardEmptyRow(stringResource(R.string.dashboard_no_reminders)) }
+            // Issue #1761: the empty reminders card is an action, not a dead
+            // end — the shared EmptyState (#1760) carries the create button.
+            item {
+                EmptyState(
+                    title = stringResource(R.string.dashboard_no_reminders),
+                    icon = Icons.Outlined.Notifications,
+                    actionLabel = stringResource(R.string.dashboard_add_reminder),
+                    onAction = onCreateReminder,
+                )
+            }
         } else {
             items(state.upcomingReminders, key = { dashboardKey("reminder", it.id) }) { reminder ->
                 ReminderRow(
@@ -318,14 +409,14 @@ internal fun DashboardContent(
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-one"),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 8.dp, bottom = DashboardListBottomPadding),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     topSections()
                 }
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-two"),
-                    contentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 16.dp, bottom = DashboardListBottomPadding),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     bottomSections()
@@ -334,7 +425,7 @@ internal fun DashboardContent(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().testTag("dashboard-list"),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = DashboardListBottomPadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 topSections()
@@ -501,7 +592,10 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ContactAvatar(photoUri = cadence.photoThumbnail, contentDescription = null, size = 40.dp)
-            Column(modifier = Modifier.weight(1f)) {
+            // Issue #1761: the status chip lives under the name, not beside it.
+            // Sharing the width with a fixed chip squeezed the name/date column
+            // to a few characters at font scale 2.0, breaking words mid-word.
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(name, style = MaterialTheme.typography.bodyLarge)
                 if (nextDue.isNotBlank()) {
                     Text(
@@ -510,14 +604,14 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // #200: white-on-amber was 2.25:1; bark on the amber container is 6.5:1.
+                DashboardChip(
+                    text = stringResource(R.string.cadence_overdue_by, cadence.health?.overdueBy ?: 0),
+                    leadingIcon = Icons.Outlined.Warning,
+                    containerColor = LocalWarningColors.current.container,
+                    contentColor = LocalWarningColors.current.onContainer,
+                )
             }
-            // #200: white-on-amber was 2.25:1; bark on the amber container is 6.5:1.
-            DashboardChip(
-                text = stringResource(R.string.cadence_overdue_by, cadence.health?.overdueBy ?: 0),
-                leadingIcon = Icons.Outlined.Warning,
-                containerColor = LocalWarningColors.current.container,
-                contentColor = LocalWarningColors.current.onContainer,
-            )
         }
     }
 }
@@ -622,20 +716,22 @@ private fun ReachOutRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ContactAvatar(photoUri = suggestion.photoThumbnail, contentDescription = null, size = 40.dp)
-            Column(modifier = Modifier.weight(1f)) {
+            // Issue #1761: same reflow as OverdueRow — the chip under the text
+            // keeps the name/change column wide enough at font scale 2.0.
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = changeText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                DashboardChip(
+                    text = kindLabel,
+                    leadingIcon = kindIcon,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
-            DashboardChip(
-                text = kindLabel,
-                leadingIcon = kindIcon,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
             AccessibleIconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Outlined.Close,
@@ -763,9 +859,55 @@ private fun RandomContactRow(contact: DashboardRandomContact, onClick: () -> Uni
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ContactAvatar(photoUri = contact.photoThumbnail, contentDescription = null, size = 40.dp)
-            Text(randomContactName(contact), style = MaterialTheme.typography.bodyLarge)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(randomContactName(contact), style = MaterialTheme.typography.bodyLarge)
+                // Issue #1761: a one-line reason the person is listed, from
+                // the server's cadence-derived day counts.
+                Text(
+                    text = stayInTouchReason(contact.relationship),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
+}
+
+/**
+ * Issue #1761: the Stay in Touch subtitle. The server already reduced the
+ * cadence to calendar-day counts, so this only picks the sentence and plural —
+ * no client-side date math (ADR 0015's reminder-zone day rule stays server-side).
+ */
+@Composable
+private fun stayInTouchReason(relationship: DashboardContactRelationship?): String {
+    if (relationship == null) return stringResource(R.string.dashboard_stay_in_touch_keep)
+
+    val daysUntilDue = relationship.daysUntilDue
+    if (relationship.hasCadence && daysUntilDue != null) {
+        return when {
+            daysUntilDue < 0 -> {
+                val overdue = -daysUntilDue
+                pluralStringResource(R.plurals.dashboard_stay_in_touch_overdue, overdue, overdue)
+            }
+            daysUntilDue == 0 -> stringResource(R.string.dashboard_stay_in_touch_due_today)
+            else -> pluralStringResource(
+                R.plurals.dashboard_stay_in_touch_due_in,
+                daysUntilDue,
+                daysUntilDue,
+            )
+        }
+    }
+
+    val daysSince = relationship.daysSinceLastInteraction
+    if (daysSince != null) {
+        return if (daysSince == 0) {
+            stringResource(R.string.dashboard_stay_in_touch_last_today)
+        } else {
+            pluralStringResource(R.plurals.dashboard_stay_in_touch_last_days, daysSince, daysSince)
+        }
+    }
+
+    return stringResource(R.string.dashboard_stay_in_touch_no_interactions)
 }
 
 // Issue #212: the favorites quick-access row. Same wire shape and tap-to-open
