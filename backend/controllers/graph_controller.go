@@ -14,13 +14,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// defaultGraphDepth is the hop radius of GET /graph's default ego-network.
+// defaultGraphDepth is the hop radius of GET /graph's ego-network view.
 const defaultGraphDepth = 2
 
 // graphScope is the resolved shape of one GET /graph request.
 type graphScope struct {
-	// full: return every non-archived contact (the explicit "entire network"
-	// view). Otherwise the graph is the ego-network of fromUID.
+	// full: return every non-archived contact (the default, and what the
+	// pre-v1.5 endpoint promised). Otherwise the graph is the ego-network of
+	// fromUID.
 	full    bool
 	fromUID string
 	depth   int
@@ -36,13 +37,14 @@ type graphActivityRow struct {
 
 // GetGraph returns the network graph data for visualization.
 //
-// Issue #1791: by default this is the ego-network (depth 2) of the caller's
-// self contact -- or of ?from=<Contact.VCardUID>, with ?depth=1..5 -- not the
-// whole account. The whole-account graph is an explicit opt-in
-// (?full=true) and is what the web client's "show entire network" action
-// asks for; an account with no self contact and no ?from= has no anchor, so
-// it also gets the full graph. Every read is bound to the request context, so
-// a client that disconnects stops the work.
+// The default is the whole account, the behavior every pre-v1.5 client was
+// documented to get. Issue #1791's ego-network (depth 2) of the caller's self
+// contact -- or of ?from=<Contact.VCardUID>, with ?depth=1..5 -- is the
+// explicit ?full=false view, which the bundled web client asks for and its
+// "show entire network" action opts out of. ?from implies the ego view; an
+// account with no self contact and no ?from= has no anchor, so ?full=false
+// falls back to the full graph rather than returning nothing. Every read is
+// bound to the request context, so a client that disconnects stops the work.
 func GetGraph(c *gin.Context) {
 	db := requestDB(c)
 
@@ -238,7 +240,9 @@ func GetGraph(c *gin.Context) {
 // the anchor of an ego-network. It aborts the request (and returns false) on
 // a malformed parameter or an unknown ?from=.
 func resolveGraphScope(c *gin.Context, db *gorm.DB, userID uint) (graphScope, bool) {
+	fullParamSeen := false
 	if raw := c.Query("full"); raw != "" {
+		fullParamSeen = true
 		full, err := strconv.ParseBool(raw)
 		if err != nil {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("full", "full must be true or false"))
@@ -276,9 +280,16 @@ func resolveGraphScope(c *gin.Context, db *gorm.DB, userID uint) (graphScope, bo
 		return graphScope{fromUID: from, depth: depth}, true
 	}
 
-	// No explicit anchor: the caller's self contact. An account without one
-	// (never logged in since T90, or admin-created) has nothing to centre on,
-	// so it falls back to the full graph rather than an empty one.
+	// No scope parameter and no explicit anchor: the documented, pre-v1.5
+	// default is the full graph. Callers that want the ego-network ask for it
+	// explicitly with ?full=false (or ?from=, handled above).
+	if !fullParamSeen {
+		return graphScope{full: true}, true
+	}
+
+	// ?full=false without an anchor: the caller's self contact. An account
+	// without one (never logged in since T90, or admin-created) has nothing to
+	// centre on, so it falls back to the full graph rather than an empty one.
 	var user models.User
 	if err := db.Select("self_contact_vcard_uid").Where("id = ?", userID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
