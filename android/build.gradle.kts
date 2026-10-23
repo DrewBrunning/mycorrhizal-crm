@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.about.libraries) apply false
 }
 
 // Issue #942: Gradle dependency locking, so Trivy's license scanner

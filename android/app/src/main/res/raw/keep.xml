@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Issue #1880: AGP 9 enables optimized resource shrinking by default, which
+     drops the AboutLibraries JSON unless it is explicitly kept. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/aboutlibraries" />

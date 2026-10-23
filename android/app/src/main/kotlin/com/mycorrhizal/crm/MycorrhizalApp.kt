@@ -153,6 +153,7 @@ import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
 import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
 import com.mycorrhizal.crm.feature.settings.ServersScreen
 import com.mycorrhizal.crm.feature.settings.AboutSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ThirdPartyLicensesScreen
 import com.mycorrhizal.crm.feature.settings.AccountSettingsScreen
 import com.mycorrhizal.crm.feature.settings.AdministrationSettingsScreen
 import com.mycorrhizal.crm.feature.settings.AppearanceSettingsScreen
@@ -1784,7 +1785,15 @@ private fun AppNavGraph(
             )
         }
         composable(SettingsRoutes.ABOUT) {
-            AboutSettingsScreen(onBack = { navController.popBackStack() })
+            AboutSettingsScreen(
+                onBack = { navController.popBackStack() },
+                // Issue #1880: the attribution surface required by the licenses
+                // of the dependencies the APK/AAB distributes.
+                onLicenses = { navController.navigate(SettingsRoutes.ABOUT_LICENSES) },
+            )
+        }
+        composable(SettingsRoutes.ABOUT_LICENSES) {
+            ThirdPartyLicensesScreen(onBack = { navController.popBackStack() })
         }
         // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
         // screen. The "Use on this device only" entry is behind the

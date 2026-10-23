@@ -79,6 +79,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-security": "^4.2.0",
     "jsdom": "^30",
+    "license-checker-rseidelsohn": "4.4.2",
     "msw": "^3.0.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",

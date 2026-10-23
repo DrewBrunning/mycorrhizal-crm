@@ -3,6 +3,24 @@ import org.gradle.api.tasks.Exec
 plugins {
     id("mycorrhizal.android.application")
     id("mycorrhizal.android.hilt")
+    // Issue #1880: generates res/raw/aboutlibraries.json from the release
+    // dependency graph for the in-app third-party licenses screen. GMS-free,
+    // so the `foss` flavor keeps its zero-GMS guarantee.
+    alias(libs.plugins.about.libraries)
+}
+
+// Issue #1880: attribution is required for the distributed APK/AAB, and the
+// generated data must describe the release graph. Offline mode keeps the build
+// reproducible (no remote license lookups); the plugin ships the SPDX texts it
+// needs. Resource shrinking is handled by res/raw/keep.xml.
+aboutLibraries {
+    offlineMode = true
+    collect {
+        // License texts the plugin cannot obtain offline (Apache-2.0,
+        // BSD-2-Clause, and SQLCipher's BSD-style license) live here.
+        configPath = file("../config")
+        filterVariants.addAll("release", "debug")
+    }
 }
 
 // M5 §5a (issue #152): the Google Services Gradle plugin is applied ONLY when
@@ -249,6 +267,9 @@ dependencies {
     // Issue #679: back-stack / route-table assertions against a real
     // TestNavHostController in Robolectric.
     testImplementation(libs.androidx.navigation.testing)
+    // Issue #1880: assert the generated license metadata is really embedded and
+    // parseable, not merely produced as a Gradle output.
+    testImplementation(libs.aboutlibraries.core)
 
     // Issue #238: instrumented E2E tests (app/src/androidTest) — Compose UI
     // test + the AndroidJUnitRunner against the real docker-compose.test.yml

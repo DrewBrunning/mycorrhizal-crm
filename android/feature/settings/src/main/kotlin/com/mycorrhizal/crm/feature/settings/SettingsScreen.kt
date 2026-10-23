@@ -59,6 +59,7 @@ object SettingsRoutes {
     const val INTEGRATIONS = "settings/integrations"
     const val ADMINISTRATION = "settings/administration"
     const val ABOUT = "settings/about"
+    const val ABOUT_LICENSES = "settings/about/licenses"
 }
 
 /**
