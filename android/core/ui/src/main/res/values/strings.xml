@@ -607,9 +607,12 @@
     <string name="settings_permission_rationale_title">Permission needed</string>
     <string name="settings_call_permission_rationale">Call tracking logs calls as activities, which needs access to your call log and phone state. Grant the permission to turn it on.</string>
     <string name="settings_sms_permission_rationale">Message tracking logs texts as activities, which needs access to your messages. Grant the permission to turn it on.</string>
+    <!-- Issue #1919: the notifications toggle now requests POST_NOTIFICATIONS on API 33+. -->
+    <string name="settings_notification_permission_rationale">Notifications need permission to be shown. Allow notifications to receive reminders and alerts.</string>
     <string name="settings_permission_settings_title">Permission blocked</string>
     <string name="settings_call_permission_settings">Call tracking needs the Call log and Phone permissions. They are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on.</string>
     <string name="settings_sms_permission_settings">Message tracking needs the SMS permissions. They are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on.</string>
+    <string name="settings_notification_permission_settings">Notifications are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on.</string>
     <string name="settings_permission_try_again">Try again</string>
     <string name="settings_permission_open_settings">Open settings</string>
     <string name="settings_permission_not_now">Not now</string>

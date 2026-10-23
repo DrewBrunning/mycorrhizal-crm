@@ -925,9 +925,11 @@
     <string name="settings_permission_rationale_title">Autorisation requise</string>
     <string name="settings_call_permission_rationale">Le suivi des appels enregistre les appels comme activités, ce qui nécessite l\'accès à votre journal d\'appels et à l\'état du téléphone. Accordez l\'autorisation pour l\'activer.</string>
     <string name="settings_sms_permission_rationale">Le suivi des messages enregistre les SMS comme activités, ce qui nécessite l\'accès à vos messages. Accordez l\'autorisation pour l\'activer.</string>
+    <string name="settings_notification_permission_rationale">Les notifications ont besoin d\'une autorisation pour s\'afficher. Autorisez les notifications pour recevoir des rappels et des alertes.</string>
     <string name="settings_permission_settings_title">Autorisation bloquée</string>
     <string name="settings_call_permission_settings">Le suivi des appels nécessite les autorisations Journal d\'appels et Téléphone. Elles sont bloquées — activez-les pour Mycorrhizal dans les paramètres système, puis réactivez l\'interrupteur.</string>
     <string name="settings_sms_permission_settings">Le suivi des messages nécessite les autorisations SMS. Elles sont bloquées — activez-les pour Mycorrhizal dans les paramètres système, puis réactivez l\'interrupteur.</string>
+    <string name="settings_notification_permission_settings">Les notifications sont bloquées — activez-les pour Mycorrhizal dans les paramètres système, puis réactivez l\'interrupteur.</string>
     <string name="settings_permission_try_again">Réessayer</string>
     <string name="settings_permission_open_settings">Ouvrir les paramètres</string>
     <string name="settings_permission_not_now">Pas maintenant</string>

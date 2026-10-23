@@ -23,6 +23,13 @@ object TrackingPermissions {
     const val RECEIVE_SMS = Manifest.permission.RECEIVE_SMS
 
     /**
+     * "Show notifications" (issue #1919). Runtime permission on API 33+; below
+     * that the app can always post, so [PermissionChecker] reports it granted
+     * instead of asking for a permission the platform does not know.
+     */
+    const val POST_NOTIFICATIONS = Manifest.permission.POST_NOTIFICATIONS
+
+    /**
      * "Log calls as activities": READ_CALL_LOG reads the call-log provider,
      * READ_PHONE_STATE is what the system requires before PHONE_STATE broadcasts
      * are delivered and CallDetectionService may register a PhoneStateListener.
@@ -36,4 +43,16 @@ object TrackingPermissions {
      * broadcasts are delivered to SmsReceiver.
      */
     val SMS_TRACKING: Array<String> = arrayOf(READ_SMS, RECEIVE_SMS)
+
+    /** "Show notifications" (API 33+ only; see [POST_NOTIFICATIONS]). */
+    val NOTIFICATIONS: Array<String> = arrayOf(POST_NOTIFICATIONS)
 }
+
+/**
+ * Whether the OS knows [permission] as a runtime grant on [sdkInt]. Only
+ * POST_NOTIFICATIONS is version-scoped today (it arrived in API 33); below
+ * that the platform grants notification posting unconditionally, so a query
+ * for it would report DENIED and the toggle would ask for nothing.
+ */
+internal fun isRuntimePermissionApplicable(permission: String, sdkInt: Int): Boolean =
+    permission != TrackingPermissions.POST_NOTIFICATIONS || sdkInt >= 33
