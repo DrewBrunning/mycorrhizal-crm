@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { getContacts } from './api/contacts';
 import { createUnassignedNote } from './api/notes';
+import { DateFormatProvider } from './DateFormatProvider';
 import ShareTargetPage from './ShareTargetPage';
 import { makeFakeCaches } from './test/fakeCaches';
 import { storeSharedDraft } from './utils/shareTarget';
@@ -39,13 +40,15 @@ beforeEach(() => {
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/share" element={<ShareTargetPage />} />
-        <Route path="/notes" element={<div>notes page</div>} />
-        <Route path="/" element={<div>dashboard</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/share" element={<ShareTargetPage />} />
+          <Route path="/notes" element={<div>notes page</div>} />
+          <Route path="/" element={<div>dashboard</div>} />
+        </Routes>
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
 }
 

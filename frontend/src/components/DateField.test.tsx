@@ -128,3 +128,9 @@ test('closes on Escape', async () => {
   fireEvent.keyDown(screen.getByRole('dialog', { name: 'Start date' }), { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });
+
+test('a required field exposes its label and required state to assistive tech', () => {
+  renderField({ required: true });
+  const field = screen.getByRole('textbox', { name: 'Start date *' });
+  expect(field).toHaveAttribute('aria-required', 'true');
+});

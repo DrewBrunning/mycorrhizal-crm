@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { SnackbarProvider } from '../context/SnackbarContext';
-import { DateFormatProvider } from '../DateFormatProvider';
+import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
+import { pickDate } from '../testSupport/dateField';
 import EditTimelineItemDialog from './EditTimelineItemDialog';
 
 beforeEach(() => {
@@ -76,7 +77,9 @@ test('renders assigned contact name when opened with noteContactId and noteConta
 
   // The content and date fields are present
   expect(screen.getByDisplayValue('Test note content')).toBeDefined();
-  expect(screen.getByDisplayValue('2026-01-01')).toBeDefined();
+  expect(screen.getByLabelText('Date')).toHaveValue(
+    formatDateWithFormat('2026-01-01', getDateFormat()),
+  );
 });
 
 // T6b: When the contact has no assignment, the dialog shows no Chip and
@@ -201,7 +204,7 @@ test('activity mode renders the activity fields and Save calls onSave', () => {
   expect(onSave).toHaveBeenCalledTimes(1);
 });
 
-test('editing the note content and date reports the changes upward', () => {
+test('editing the note content and date reports the changes upward', async () => {
   mockFetchByUrl({ '/contacts?': contactsResponse });
   const onChange = vi.fn();
 
@@ -225,7 +228,7 @@ test('editing the note content and date reports the changes upward', () => {
   fireEvent.change(screen.getByLabelText('Content'), { target: { value: 'updated body' } });
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ noteContent: 'updated body' }));
 
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-03-03' } });
+  await pickDate('Date', '2026-03-03');
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ noteDate: '2026-03-03' }));
 });
 
@@ -292,7 +295,7 @@ test('editing each activity field calls onChange', async () => {
 
   fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Long chat' } });
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Cafe' } });
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-02-02' } });
+  await pickDate('Date', '2026-02-02', '2026-01-01');
   fireEvent.mouseDown(screen.getByRole('combobox'));
   fireEvent.click(await screen.findByRole('option', { name: 'Ada Lovelace' }));
 

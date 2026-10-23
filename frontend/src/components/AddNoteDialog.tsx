@@ -18,6 +18,7 @@ import { handleFetchError } from '../utils/errorHandler';
 import { todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
+import DateField from './DateField';
 
 interface ContactBrief {
   ID: number;
@@ -231,18 +232,7 @@ export default function AddNoteDialog({
             required
             autoFocus
           />
-          <TextField
-            label={t('noteDialog.date')}
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            fullWidth
-            slotProps={{
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-          />
+          <DateField label={t('noteDialog.date')} value={date} onChange={setDate} />
         </Box>
       </DialogContent>
       <DialogActions>

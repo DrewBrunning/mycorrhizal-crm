@@ -516,8 +516,8 @@ test('a non-412 failure on note save shows no conflict dialog and keeps the edit
   await openStaleNote();
 
   // A cleared date takes the "now" fallback on save.
-  const dateInput = screen.getByRole('dialog').querySelector('input[type="date"]');
-  fireEvent.change(dateInput as HTMLInputElement, { target: { value: '' } });
+  fireEvent.click(screen.getByLabelText('Date'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));

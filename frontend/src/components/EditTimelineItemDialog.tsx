@@ -17,6 +17,7 @@ import { type Contact, getContacts } from '../api/contacts';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { handleFetchError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
+import DateField from './DateField';
 
 export interface TimelineItemValues {
   noteContent?: string;
@@ -261,15 +262,10 @@ export default function EditTimelineItemDialog({
               placeholder={t('noteDialog.contentPlaceholder')}
               autoFocus
             />
-            <TextField
-              fullWidth
-              type="date"
+            <DateField
               value={values.noteDate || ''}
-              onChange={(e) => updateValues({ ...values, noteDate: e.target.value })}
+              onChange={(value) => updateValues({ ...values, noteDate: value })}
               label={t('noteDialog.date')}
-              slotProps={{
-                inputLabel: { shrink: true },
-              }}
             />
           </Box>
         ) : (
@@ -296,15 +292,10 @@ export default function EditTimelineItemDialog({
               onChange={(e) => updateValues({ ...values, activityLocation: e.target.value })}
               label={t('activityDialog.location')}
             />
-            <TextField
-              fullWidth
-              type="date"
+            <DateField
               value={values.activityDate || ''}
-              onChange={(e) => updateValues({ ...values, activityDate: e.target.value })}
+              onChange={(value) => updateValues({ ...values, activityDate: value })}
               label={t('activityDialog.date')}
-              slotProps={{
-                inputLabel: { shrink: true },
-              }}
             />
             <Autocomplete
               multiple
