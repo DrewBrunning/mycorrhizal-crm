@@ -2297,4 +2297,45 @@
     <string name="entity_circle">el círculo</string>
     <string name="entity_tag">la etiqueta</string>
     <string name="entity_relationship">la relación</string>
+    <!-- Relationship health score explanations, rendered from the server's reason_code + reason_params (v1.5.0 review). -->
+    <plurals name="score_reason_every">
+        <item quantity="one">cada día</item>
+        <item quantity="many">cada %1$d días</item>
+        <item quantity="other">cada %1$d días</item>
+    </plurals>
+    <plurals name="score_reason_last_days">
+        <item quantity="one">el último día</item>
+        <item quantity="many">los últimos %1$d días</item>
+        <item quantity="other">los últimos %1$d días</item>
+    </plurals>
+    <string name="score_reason_closeness_direct">Conectado directamente como %1$s</string>
+    <plurals name="score_reason_closeness_hops">
+        <item quantity="one">A %1$d paso en tu red de relaciones</item>
+        <item quantity="many">A %1$d pasos en tu red de relaciones</item>
+        <item quantity="other">A %1$d pasos en tu red de relaciones</item>
+    </plurals>
+    <string name="score_reason_closeness_unknown">No está conectado contigo en la red de relaciones, así que la cercanía es desconocida</string>
+    <string name="score_reason_recency_none">Aún no hay ninguna interacción válida registrada</string>
+    <plurals name="score_reason_recency_days">
+        <item quantity="one">Última interacción válida hace %1$d día (objetivo: %2$s)</item>
+        <item quantity="many">Última interacción válida hace %1$d días (objetivo: %2$s)</item>
+        <item quantity="other">Última interacción válida hace %1$d días (objetivo: %2$s)</item>
+    </plurals>
+    <plurals name="score_reason_frequency_count">
+        <item quantity="one">%1$d interacción válida en %2$s (se esperan unas %3$s con esta cadencia)</item>
+        <item quantity="many">%1$d interacciones válidas en %2$s (se esperan unas %3$s con esta cadencia)</item>
+        <item quantity="other">%1$d interacciones válidas en %2$s (se esperan unas %3$s con esta cadencia)</item>
+    </plurals>
+    <string name="score_reason_reach_out_pending">Hay una sugerencia de contacto sin revisar para esta persona</string>
+    <string name="score_reason_reach_out_none">Ninguna sugerencia de contacto pendiente</string>
+    <plurals name="score_reason_last_updated_days">
+        <item quantity="one">Ficha del contacto editada por última vez hace %1$d día</item>
+        <item quantity="many">Ficha del contacto editada por última vez hace %1$d días</item>
+        <item quantity="other">Ficha del contacto editada por última vez hace %1$d días</item>
+    </plurals>
+    <string name="score_reason_ambient_household">Contacto ambiental (vive contigo)</string>
+    <string name="score_reason_ambient_flag">Contacto ambiental (marcado)</string>
+    <string name="score_reason_target_cadence_policy">Recencia y frecuencia suman %1$d frente a tu cadencia (%2$s)</string>
+    <string name="score_reason_target_tier">Recencia y frecuencia suman %1$d frente al objetivo «%2$s» (%3$s)</string>
+    <string name="score_reason_target_ambient">Contacto ambiental, siempre al día</string>
 </resources>

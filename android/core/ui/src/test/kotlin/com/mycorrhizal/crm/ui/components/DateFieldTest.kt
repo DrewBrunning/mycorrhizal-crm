@@ -19,9 +19,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.Instant
 import java.time.OffsetDateTime
-import java.time.ZoneId
+import java.util.TimeZone
 
 /** Issue #1726: the shared date field renders, opens the picker and clears. */
 @RunWith(RobolectricTestRunner::class)
@@ -158,14 +157,26 @@ class DateFieldTest {
     @Test
     fun `removing an existing time keeps the date-only shape`() {
         var picked: String? = null
-        // The stored instant is shown in the device zone; derive its calendar
-        // day the same way so the assertion holds in any test-runner zone.
-        val storedDay = Instant.parse("2026-08-10T12:00:00Z").atZone(ZoneId.systemDefault()).toLocalDate()
+        // The stored instant is shown in the device zone. Pin a zone where that
+        // day differs from the UTC day (12:00Z is 02:00 on the 11th at UTC+14),
+        // so the expected value is a literal: deriving it with the same
+        // ZoneId.systemDefault() conversion the code uses could never fail.
+        val savedZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati"))
+        try {
+            removeTimeFromStoredInstant { picked = it }
+        } finally {
+            TimeZone.setDefault(savedZone)
+        }
+        assertEquals("2026-08-11T00:00:00Z", picked)
+    }
+
+    private fun removeTimeFromStoredInstant(onPicked: (String?) -> Unit) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 DateField(
                     value = "2026-08-10T12:00:00Z",
-                    onValueChange = { picked = it },
+                    onValueChange = onPicked,
                     label = "Date",
                     mode = DateFieldMode.DATE_TIME,
                     testTag = "date-time",
@@ -177,7 +188,5 @@ class DateFieldTest {
         composeTestRule.onNodeWithTag("date-picker-time").performClick()
         composeTestRule.onNodeWithTag("time-picker-remove").performClick()
         composeTestRule.onNodeWithTag("date-picker-confirm").performClick()
-
-        assertEquals("${storedDay}T00:00:00Z", picked)
     }
 }

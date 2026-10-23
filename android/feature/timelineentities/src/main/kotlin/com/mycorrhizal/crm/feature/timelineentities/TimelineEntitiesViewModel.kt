@@ -38,7 +38,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 /**
@@ -122,32 +124,46 @@ data class PreferenceFormData(
 )
 
 /**
- * Gift `YYYY-MM-DD` -> UTC ISO instant, matching the web's
- * `new Date("YYYY-MM-DDT00:00:00").toISOString()`: the chosen date is treated
- * as local midnight and converted to UTC. Without this the stored instant and
- * the web-visible date would drift for non-UTC users (review-pass fix).
+ * Gift `YYYY-MM-DD` -> the wire value: that calendar day at `00:00:00Z`. A gift
+ * date is a calendar day (ADR 0015's 2026-10-23 amendment), stored exactly
+ * like an activity date, so the picked day survives every time zone. It used
+ * to be the day's local midnight, which the server's calendar-day reading
+ * shifted to the previous day east of UTC.
  */
 fun giftDateToIso(date: String): String? {
     val normalized = date.trim()
     if (normalized.isBlank()) return null
     return runCatching { LocalDate.parse(normalized) }
         .getOrNull()
-        ?.atStartOfDay(ZoneId.systemDefault())
-        ?.toInstant()
-        ?.toString()
+        ?.let { "${it}T00:00:00Z" }
 }
 
 /**
- * Stored UTC ISO instant -> the local `YYYY-MM-DD` it represents, mirroring
- * web's toDateInputValue (getFullYear/getMonth/getDate — deliberately NOT the
- * UTC date part, which would show the previous day west of UTC).
+ * Stored gift date -> the `YYYY-MM-DD` it denotes. A UTC-midnight value is a
+ * calendar day and its UTC date is the day (converting it into the device zone
+ * would show the previous day west of UTC). Any other instant is a legacy
+ * value written before the server normalized gift dates, which was the picked
+ * day's local midnight, so it is read in [zone].
  */
-fun giftDateFromIso(iso: String?): String {
+fun giftDateFromIso(iso: String?, zone: ZoneId = ZoneId.systemDefault()): String {
     if (iso.isNullOrBlank()) return ""
     return runCatching {
-        Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+        val utc = Instant.parse(iso).atOffset(ZoneOffset.UTC)
+        if (utc.toLocalTime() == LocalTime.MIDNIGHT) {
+            utc.toLocalDate().toString()
+        } else {
+            Instant.parse(iso).atZone(zone).toLocalDate().toString()
+        }
     }.getOrDefault("")
 }
+
+/**
+ * "Mark given" with no date: the device's local today as a gift date (that day
+ * at `00:00:00Z`). The UTC date of now would be tomorrow on a west-of-UTC
+ * evening. [now] and [zone] are parameters for tests.
+ */
+fun giftTodayIso(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String =
+    "${now.atZone(zone).toLocalDate()}T00:00:00Z"
 
 // ---------------------------------------------------------------------------
 // Life events
@@ -483,7 +499,7 @@ class GiftsViewModel @Inject constructor(
                     description = gift.description,
                     url = gift.url,
                     notes = gift.notes,
-                    date = gift.date ?: currentUtcIso(),
+                    date = gift.date ?: giftTodayIso(),
                     valueCents = gift.valueCents,
                     currency = gift.currency,
                     lifeEventId = gift.lifeEventId,
@@ -636,9 +652,6 @@ private fun GiftFormData.toInput(entityId: String): GiftInput =
         activityId = activityId,
     )
 
-/** `now` as a UTC ISO instant — the mark-given default date. */
-private fun currentUtcIso(): String =
-    java.time.Instant.now().toString()
 
 // ---------------------------------------------------------------------------
 // Preferences

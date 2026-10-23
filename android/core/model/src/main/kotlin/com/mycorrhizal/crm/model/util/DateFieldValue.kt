@@ -12,7 +12,8 @@ import java.util.Locale
  * How a date-entry field stores its value on the wire (issue #1726).
  *
  * The modes exist because the clients have to write more than one date shape:
- *  - [DATE_ONLY] — a plain `YYYY-MM-DD` string (list filters, gift date, a
+ *  - [DATE_ONLY] — a plain `YYYY-MM-DD` string (list filters, the gift form's
+ *    date — giftDateToIso then sends it as that day at `00:00:00Z` — and a
  *    custom field of type `date`).
  *  - [DATE_UTC_MIDNIGHT] — a calendar day stored as the exact UTC-midnight
  *    instant (a reminder's `remind_at`, ADR 0015 category 2).

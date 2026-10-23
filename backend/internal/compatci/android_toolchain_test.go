@@ -139,13 +139,31 @@ func TestAndroidModulesUseBuiltInKotlin(t *testing.T) {
 	// android.compileOptions.targetCompatibility; the detekt pin must stay in
 	// sync with it or detekt analyses a different bytecode target than the app.
 	config := readRepoFile(t, androidConfigKtRel)
-	if !regexp.MustCompile(`targetCompatibility\s*=\s*JavaVersion\.VERSION_17`).MatchString(config) {
-		t.Errorf("%s no longer sets compileOptions.targetCompatibility = JavaVersion.VERSION_17; "+
+	target := regexp.MustCompile(`targetCompatibility\s*=\s*JavaVersion\.VERSION_(\d+)`).FindStringSubmatch(config)
+	if target == nil {
+		t.Fatalf("%s no longer sets compileOptions.targetCompatibility = JavaVersion.VERSION_<n>; "+
 			"built-in Kotlin no longer defaults jvmTarget to the documented target (issue #1858)", androidConfigKtRel)
 	}
-	if !regexp.MustCompile(`jvmTarget\.set\("17"\)`).MatchString(config) {
-		t.Errorf("%s no longer pins detekt's jvmTarget to 17, which must match "+
-			"compileOptions.targetCompatibility (issue #1858)", androidConfigKtRel)
+	if source := regexp.MustCompile(`sourceCompatibility\s*=\s*JavaVersion\.VERSION_(\d+)`).FindStringSubmatch(config); source == nil || source[1] != target[1] {
+		t.Errorf("%s: sourceCompatibility must equal targetCompatibility (VERSION_%s)", androidConfigKtRel, target[1])
+	}
+	if !regexp.MustCompile(`jvmTarget\.set\("` + target[1] + `"\)`).MatchString(config) {
+		t.Errorf("%s no longer pins detekt's jvmTarget to %s, which must match "+
+			"compileOptions.targetCompatibility (issue #1858)", androidConfigKtRel, target[1])
+	}
+	// The macrobenchmark test module sets its own compileOptions; it must
+	// compile to the same bytecode target as the app it drives.
+	bench := readRepoFile(t, androidTreeRel+"/macrobenchmark/build.gradle.kts")
+	if !regexp.MustCompile(`targetCompatibility\s*=\s*JavaVersion\.VERSION_` + target[1] + `\b`).MatchString(bench) {
+		t.Errorf("android/macrobenchmark/build.gradle.kts must target JavaVersion.VERSION_%s like the app modules", target[1])
+	}
+	// JaCoCo must understand the build JVM's class files: the convention
+	// plugin's toolVersion and build-logic's org.jacoco.core dependency are
+	// one version, kept in step by hand.
+	tool := regexp.MustCompile(`JACOCO_TOOL_VERSION\s*=\s*"([^"]+)"`).FindStringSubmatch(config)
+	core := regexp.MustCompile(`org\.jacoco:org\.jacoco\.core:([^"]+)"`).FindStringSubmatch(readRepoFile(t, androidBuildLogicRel+"/build.gradle.kts"))
+	if tool == nil || core == nil || tool[1] != core[1] {
+		t.Errorf("JaCoCo toolVersion (%v) and build-logic's org.jacoco.core (%v) must be the same version", tool, core)
 	}
 }
 

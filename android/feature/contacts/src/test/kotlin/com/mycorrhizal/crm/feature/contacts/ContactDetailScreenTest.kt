@@ -1892,6 +1892,40 @@ class ContactDetailScreenTest {
         assertEquals("uid-5", sharedUid)
     }
 
+    // --- v1.5.0 review / #1893: a refresh keeps the page on screen ---
+
+    @Test
+    fun `a reload with a contact already on screen keeps the content instead of the skeleton`() {
+        // The ON_RESUME reload after a drill-down sets isLoading while the
+        // previous record is still in state; the page must stay (with its
+        // scroll position) rather than flash the skeleton.
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact, isLoading = true))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list").assertExists()
+        composeTestRule.onNodeWithContentDescription("Loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the first load with no contact yet shows the skeleton`() {
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(isLoading = true))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Loading").assertExists()
+        composeTestRule.onNodeWithTag("contact-detail-list").assertDoesNotExist()
+    }
+
     // --- T90 / issue #831: Mark as Me / Unmark as Me in the action menu (web parity) ---
 
     @Test
