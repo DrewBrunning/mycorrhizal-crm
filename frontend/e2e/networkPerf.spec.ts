@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 
-const GRAPH_ROUTE = '**/api/v1/graph';
+const GRAPH_ROUTE = '**/api/v1/graph*';
 
 /**
  * Network-graph render ceiling (issue #556, recommended actions 2 + 3).

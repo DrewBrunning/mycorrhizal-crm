@@ -24,7 +24,7 @@ import { buildScaleGraph, GRAPH_SCALE_PROFILES } from './graphScaleProfiles';
 const NODE_CEILING = 2000;
 const EDGE_CEILING = 6000;
 
-const GRAPH_ROUTE = '**/api/v1/graph';
+const GRAPH_ROUTE = '**/api/v1/graph*';
 
 // The `large` profile ships a ~2.6 MB /graph payload the page must fetch,
 // JSON-parse, set into state and reconcile before it can even decide to
