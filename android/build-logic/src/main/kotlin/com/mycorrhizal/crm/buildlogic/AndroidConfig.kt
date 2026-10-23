@@ -98,6 +98,12 @@ internal fun Project.configureKotlinWarnings() {
         // the current rule keeps that semantics and silences the warning on
         // every DTO.
         compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=first-only")
+        // Moshi codegen (KSP, 1.15.x) emits `.toInt()` on an Int in generated
+        // adapters such as CardJsonAdapter. Generated code can't be edited or
+        // @Suppress-ed, so this one diagnostic is disabled. The cost is that a
+        // redundant conversion in hand-written code no longer warns either;
+        // revisit when a Moshi release stops emitting it.
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=REDUNDANT_CALL_OF_CONVERSION_METHOD:disabled")
     }
 }
 
