@@ -167,6 +167,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.healthBandColor
 import com.mycorrhizal.crm.ui.components.targetStatusBand
 import com.mycorrhizal.crm.ui.components.targetStatusLabel
@@ -1262,12 +1263,14 @@ fun ContactDetailContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
+                    // Issue #1922: focus/announce the contact name on entry,
+                    // including a cold-start deep link (the collapsed app-bar
+                    // title is transparent at the top, so the large header is
+                    // the visible page title).
+                    ScreenTitle(
                         text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
-                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.semantics { heading() },
                     )
                     if (deathAnniversary != null) {
                         // Issue #1193: neutral, non-interactive chip -- same

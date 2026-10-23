@@ -94,6 +94,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
@@ -171,7 +172,7 @@ internal fun EntityListScaffold(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
-                title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+                title = { ScreenTitle(text = title) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
