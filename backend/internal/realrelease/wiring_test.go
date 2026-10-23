@@ -62,6 +62,8 @@ func TestImageNotYetPublishedWiring(t *testing.T) {
 	sh := read(".github", "scripts", "realrelease-image-expected.sh")
 	assert.Contains(t, sh, "::notice::")
 	assert.Contains(t, sh, "manifest unknown", "only a definitive absence may skip")
+	assert.Contains(t, sh, "REALRELEASE_TAG_EXISTS_CMD")
+	assert.Contains(t, sh, "git/ref/tags/", "a version pre-registered before its tag must skip")
 
 	dp := read(".github", "workflows", "docker-publish.yml")
 	i := strings.Index(dp, "\n  real-release-leg:")
