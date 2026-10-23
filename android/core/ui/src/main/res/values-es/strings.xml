@@ -925,9 +925,11 @@
     <string name="settings_permission_rationale_title">Permiso necesario</string>
     <string name="settings_call_permission_rationale">El registro de llamadas registra las llamadas como actividades, lo que requiere acceso a tu registro de llamadas y al estado del teléfono. Concede el permiso para activarlo.</string>
     <string name="settings_sms_permission_rationale">El registro de mensajes registra los SMS como actividades, lo que requiere acceso a tus mensajes. Concede el permiso para activarlo.</string>
+    <string name="settings_notification_permission_rationale">Las notificaciones necesitan permiso para mostrarse. Permite las notificaciones para recibir recordatorios y avisos.</string>
     <string name="settings_permission_settings_title">Permiso bloqueado</string>
     <string name="settings_call_permission_settings">El registro de llamadas necesita los permisos de Registro de llamadas y Teléfono. Están bloqueados: actívalos para Mycorrhizal en los ajustes del sistema y vuelve a activar el interruptor.</string>
     <string name="settings_sms_permission_settings">El registro de mensajes necesita los permisos de SMS. Están bloqueados: actívalos para Mycorrhizal en los ajustes del sistema y vuelve a activar el interruptor.</string>
+    <string name="settings_notification_permission_settings">Las notificaciones están bloqueadas: actívalas para Mycorrhizal en los ajustes del sistema y vuelve a activar el interruptor.</string>
     <string name="settings_permission_try_again">Reintentar</string>
     <string name="settings_permission_open_settings">Abrir ajustes</string>
     <string name="settings_permission_not_now">Ahora no</string>

@@ -31,6 +31,7 @@ import com.mycorrhizal.crm.ui.R
 private fun permissionsFor(request: TrackingPermissionRequest): Array<String> = when (request) {
     TrackingPermissionRequest.CALL_TRACKING -> TrackingPermissions.CALL_TRACKING
     TrackingPermissionRequest.SMS_TRACKING -> TrackingPermissions.SMS_TRACKING
+    TrackingPermissionRequest.NOTIFICATIONS -> TrackingPermissions.NOTIFICATIONS
 }
 
 /** Deep link to this app's page in the system settings (permanent-denial path). */
@@ -200,12 +201,16 @@ fun TrackingSettingsContent(
                     stringResource(R.string.settings_call_permission_rationale)
                 TrackingPermissionRequest.SMS_TRACKING ->
                     stringResource(R.string.settings_sms_permission_rationale)
+                TrackingPermissionRequest.NOTIFICATIONS ->
+                    stringResource(R.string.settings_notification_permission_rationale)
             }
             is TrackingPermissionDialog.AppSettings -> when (request) {
                 TrackingPermissionRequest.CALL_TRACKING ->
                     stringResource(R.string.settings_call_permission_settings)
                 TrackingPermissionRequest.SMS_TRACKING ->
                     stringResource(R.string.settings_sms_permission_settings)
+                TrackingPermissionRequest.NOTIFICATIONS ->
+                    stringResource(R.string.settings_notification_permission_settings)
             }
         }
         val confirmLabel = when (dialog) {
