@@ -8,6 +8,7 @@
  */
 
 import { ApiError } from '../api/client';
+import i18n from '../i18n/config';
 
 /**
  * Error context for logging and display
@@ -26,10 +27,37 @@ export interface ErrorNotifier {
   showError: (message: string) => void;
 }
 
+// Fetch rejects with a TypeError on a network failure; the other messages are
+// what some engines/browsers use instead (Safari, older Chrome).
+const NETWORK_ERROR_MESSAGES = new Set([
+  'Failed to fetch',
+  'NetworkError when attempting to fetch resource.',
+  'Load failed',
+  'Network request failed',
+  'The Internet connection appears to be offline.',
+  'The network connection was lost.',
+]);
+
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  return error instanceof Error && NETWORK_ERROR_MESSAGES.has(error.message);
+}
+
+function isOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 /**
  * Extract a user-friendly error message from any error type
  */
 export function getErrorMessage(error: unknown): string {
+  // A raw "Failed to fetch" tells the user nothing (#1915). Name the
+  // condition instead, and distinguish a browser that is offline from a
+  // reachable browser whose server is down.
+  if (isNetworkError(error)) {
+    return i18n.t(isOffline() ? 'common.offlineMessage' : 'common.networkError');
+  }
+
   if (error instanceof ApiError) {
     return error.getDisplayMessage();
   }

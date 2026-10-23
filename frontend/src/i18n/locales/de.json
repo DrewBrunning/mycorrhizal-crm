@@ -20,7 +20,10 @@
       "message": "Der Server startet noch — das ist normal, während ein Update angewendet wird. Die App wird automatisch geladen.",
       "retry": "Erneut versuchen"
     },
-    "submitSearch": "Suche absenden"
+    "submitSearch": "Suche absenden",
+    "offline": {
+      "banner": "Du bist offline. Einige Funktionen sind möglicherweise nicht verfügbar."
+    }
   },
   "duplicates": {
     "reviewTitle": "Duplikate prüfen",
@@ -1010,7 +1013,9 @@
     "conflictMessage": "Dieser Eintrag wurde nach dem Öffnen woanders geändert (anderer Tab, anderes Gerät oder Synchronisierung), daher wurde Ihre Änderung nicht gespeichert. Änderungen werden nie automatisch zusammengeführt. Laden Sie die neueste Version, um fortzufahren (Ihre Änderung wird verworfen), oder lassen Sie die Bearbeitung offen, um Ihre Änderungen vorher zu kopieren.",
     "conflictReload": "Neueste Version laden",
     "retry": "Erneut versuchen",
-    "loadFailed": "Diese Daten konnten nicht geladen werden"
+    "loadFailed": "Diese Daten konnten nicht geladen werden",
+    "offlineMessage": "Du bist offline. Prüfe deine Verbindung und versuche es erneut.",
+    "networkError": "Der Server ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut."
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
