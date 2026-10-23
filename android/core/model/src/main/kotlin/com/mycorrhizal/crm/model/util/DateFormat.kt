@@ -43,7 +43,7 @@ object DateFormat {
      *  - unknown: ""
      */
     fun PartialDate.display(format: String, locale: Locale = Locale.getDefault()): String = when {
-        year != null && hasMonthDay -> formatFull(year!!, month!!, day!!, format, locale)
+        year != null && hasMonthDay -> formatFull(year, month!!, day!!, format, locale)
         hasMonthDay -> formatYearless(month!!, day!!, format, locale)
         isYearOnly -> "$year"
         else -> ""

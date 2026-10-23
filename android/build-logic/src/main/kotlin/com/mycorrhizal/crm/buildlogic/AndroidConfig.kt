@@ -92,6 +92,12 @@ internal fun Project.configureKotlinWarnings() {
         .orElse(false)
     tasks.withType<KotlinCompilationTask<*>>().configureEach {
         compilerOptions.allWarningsAsErrors.set(allowWarnings.map { !it })
+        // Moshi's `@Json(name = ...)` on a constructor `val` targets the value
+        // parameter, which is what Moshi reads. Kotlin 2.2 warns that the
+        // default target will widen to the field as well (KT-73255); pinning
+        // the current rule keeps that semantics and silences the warning on
+        // every DTO.
+        compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=first-only")
     }
 }
 
