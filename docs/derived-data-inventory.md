@@ -72,6 +72,8 @@ are correct, the output is correct; there is no stale copy to detect.
 | Graph suggestions | `services.graph_suggestion_service` | the confirmed edge graph |
 | Dashboard / briefing aggregates | `models.dashboard.go` / `models.briefing.go` | live rows, counted per request |
 | Contact list `resolved_relation`, search relation synonyms | `services.search_service` | the relation-type registry (code) |
+| Relationship health score, its facets and `reason_code`s, and the target-closeness status (`on_track` / `drifting` / `behind`) | `services.contact_score_service` → `internal/scoring` | live contacts, the interaction timeline (activities + given gifts), cadence policies, edges, pending reach-out rows, `contacts.target_closeness`, ambient status. Only the user-set inputs (`target_closeness`, `ambient`) are stored. |
+| Co-resident **ambient** status (issue #1733) | `services.ambientByEntityID` | `household_members` tenures shared with the user's self contact, read against today in the reminder zone. Only the explicit per-contact flag (`contacts.ambient`) is stored. |
 
 ---
 

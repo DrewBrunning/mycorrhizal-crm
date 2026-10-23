@@ -103,12 +103,12 @@ fun QuickCaptureSheet(
             }
 
             Text(
-                text = if (resolving) {
-                    stringResource(R.string.quick_capture_resolving)
-                } else {
-                    state.prefill.contactName?.let {
-                        stringResource(R.string.quick_capture_with_contact, it)
-                    } ?: stringResource(R.string.quick_capture_unknown)
+                text = when {
+                    resolving -> stringResource(R.string.quick_capture_resolving)
+                    state.prefill.contactName != null ->
+                        stringResource(R.string.quick_capture_with_contact, state.prefill.contactName)
+                    state.prefill.manual -> stringResource(R.string.quick_capture_no_contact)
+                    else -> stringResource(R.string.quick_capture_unknown)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -94,3 +94,10 @@ test('renders a kind chip labeled per the suggestion kind', () => {
   expect(screen.getByText('Moved')).toBeInTheDocument();
   expect(screen.getByText('Now: 2 New Ave')).toBeInTheDocument();
 });
+
+test('the section header uses a lightbulb icon, not an office building (issue #1761)', () => {
+  renderList({ suggestions: [] });
+
+  expect(screen.getByTestId('LightbulbOutlinedIcon')).toBeInTheDocument();
+  expect(screen.queryByTestId('BusinessOutlinedIcon')).not.toBeInTheDocument();
+});

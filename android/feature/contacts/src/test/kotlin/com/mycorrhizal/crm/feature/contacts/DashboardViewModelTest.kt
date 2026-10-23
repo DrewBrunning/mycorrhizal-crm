@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
@@ -42,6 +43,7 @@ class DashboardViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private val activityRepository = mockk<ActivityRepository>(relaxed = true)
     private val backupStatus = MutableStateFlow(BundleBackupStatus())
     private val bundleBackupRepository = mockk<BundleBackupRepository> {
         every { observeStatus() } returns backupStatus
@@ -52,7 +54,7 @@ class DashboardViewModelTest {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        val vm = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
+        val vm = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
         vm.nowMillis = { NOW }
         return Triple(vm, apiClient, authRepository)
     }
@@ -500,7 +502,7 @@ class DashboardViewModelTest {
             every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = "us"))
             coEvery { apiClient.getDashboard() } returns Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
+            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
             advanceUntilIdle()
 
             assertEquals("us", viewModel.uiState.value.dateFormat)
@@ -517,7 +519,7 @@ class DashboardViewModelTest {
                 Result.failure(ApiError.Server(500, "boom")) andThen
                 Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository)
+            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
             advanceUntilIdle()
             assertEquals("Server error (500)", viewModel.uiState.value.error)
 

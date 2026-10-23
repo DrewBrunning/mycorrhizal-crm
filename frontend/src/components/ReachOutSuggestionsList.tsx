@@ -2,6 +2,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import BusinessIcon from '@mui/icons-material/Business';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import {
   Alert,
@@ -56,7 +57,7 @@ export default function ReachOutSuggestionsList({
   return (
     <Box>
       <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <BusinessIcon color="primary" fontSize="small" />
+        <LightbulbOutlinedIcon color="primary" fontSize="small" />
         <Typography
           variant="subtitle1"
           component="h2"

@@ -5,6 +5,7 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -40,7 +41,7 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
-	randomContacts, err := fetchRandomContacts(db, userID)
+	randomContacts, err := fetchRandomContacts(db, userID, now)
 	if err != nil {
 		abortQueryFailure(c, "Failed to retrieve contacts", err)
 		return
@@ -138,9 +139,12 @@ func capDashboardSection[T any](items []T) []T {
 // fetchRandomContacts mirrors GetContactsRandom's query exactly
 // (contact_controller.go) — same field selection, same archived filter, same
 // RANDOM() ordering — so the dashboard composite's block is identical to
-// what GET /contacts/random returns today.
-func fetchRandomContacts(db *gorm.DB, userID uint) ([]models.ContactResponse, error) {
-	selectedFields := []string{"ID", "firstname", "lastname", "nickname", "circles", "photo_thumbnail"}
+// what GET /contacts/random returns today. Issue #1761 adds the relationship
+// signal (last interaction / cadence due) the "Stay in Touch" card renders as
+// its reason subtitle, derived in the same bulk query shape as the cadence
+// view rather than one query per contact.
+func fetchRandomContacts(db *gorm.DB, userID uint, now time.Time) ([]models.DashboardRandomContact, error) {
+	selectedFields := []string{"ID", "firstname", "lastname", "nickname", "circles", "photo_thumbnail", "vcard_uid"}
 
 	var contacts []models.Contact
 	query := services.ExcludeSelfContact(
@@ -155,12 +159,26 @@ func fetchRandomContacts(db *gorm.DB, userID uint) ([]models.ContactResponse, er
 		return nil, err
 	}
 
-	responses := make([]models.ContactResponse, len(contacts))
+	relationships, err := services.ContactRelationships(db, userID, contacts, now)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]models.DashboardRandomContact, len(contacts))
 	for i, contact := range contacts {
-		responses[i] = models.ContactResponse{
-			Contact:        contact,
-			PhotoThumbnail: contact.PhotoThumbnail,
+		rel := relationships[contact.VCardUID]
+		response := models.DashboardRandomContact{
+			ContactResponse: models.ContactResponse{
+				Contact:        contact,
+				PhotoThumbnail: contact.PhotoThumbnail,
+			},
 		}
+		response.Relationship = models.DashboardContactRelationship{
+			HasCadence:               rel.HasCadence,
+			DaysSinceLastInteraction: rel.DaysSinceLastInteraction,
+			DaysUntilDue:             rel.DaysUntilDue,
+		}
+		responses[i] = response
 	}
 	return responses, nil
 }
@@ -289,7 +307,7 @@ func normalizeDashboardSlices(resp *models.DashboardResponse) {
 		resp.Birthdays = []models.Birthday{}
 	}
 	if resp.RandomContacts == nil {
-		resp.RandomContacts = []models.ContactResponse{}
+		resp.RandomContacts = []models.DashboardRandomContact{}
 	}
 	if resp.UpcomingReminders == nil {
 		resp.UpcomingReminders = []models.DashboardReminder{}

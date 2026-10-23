@@ -52,4 +52,18 @@ class QuickCapturePrefillTest {
         assertEquals("\"Jay\"", prefill.contactName)
         assertEquals("Jay", prefill.participants[0].nickname)
     }
+
+    @Test
+    fun `a manual capture has no caller, a blank title and a neutral type`() {
+        // Issue #1761: the dashboard FAB logs an interaction on demand, not
+        // after a call, so it must not claim a caller or prefill "Call".
+        val prefill = QuickCapturePrefillFactory.forManual(nowIso)
+
+        assertEquals("", prefill.title)
+        assertEquals("meeting", prefill.type)
+        assertEquals(nowIso, prefill.date)
+        assertTrue(prefill.participants.isEmpty())
+        assertNull(prefill.contactName)
+        assertTrue(prefill.manual)
+    }
 }

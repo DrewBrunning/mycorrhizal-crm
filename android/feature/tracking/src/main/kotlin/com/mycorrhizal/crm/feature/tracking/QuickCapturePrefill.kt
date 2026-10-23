@@ -18,6 +18,12 @@ data class QuickCapturePrefill(
     val date: String,
     val participants: List<ContactFlat>,
     val contactName: String?,
+    /**
+     * Issue #1761: an in-app manual capture (the dashboard FAB) has no caller
+     * to resolve, so the sheet must not label it "Unknown number". The call
+     * overlay leaves this false and keeps its caller-resolution labels.
+     */
+    val manual: Boolean = false,
 )
 
 /**
@@ -48,6 +54,22 @@ object QuickCapturePrefillFactory {
         )
     }
 
+    /**
+     * Issue #1761: a manual capture from the dashboard's quick-capture FAB.
+     * No contact is prefilled (the sheet cannot pick one), the title starts
+     * blank so the user supplies it, and the type is a neutral interaction
+     * token rather than the call overlay's "call".
+     */
+    fun forManual(nowIso: String): QuickCapturePrefill = QuickCapturePrefill(
+        title = "",
+        type = MANUAL_TYPE,
+        date = nowIso,
+        participants = emptyList(),
+        contactName = null,
+        manual = true,
+    )
+
     const val CALL_TITLE = "Call"
     const val CALL_TYPE = "call"
+    const val MANUAL_TYPE = "meeting"
 }
