@@ -1,9 +1,9 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { getContacts } from '../api/contacts';
 import { SnackbarProvider } from '../context/SnackbarContext';
-import { DateFormatProvider } from '../DateFormatProvider';
+import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
 import { useTimeZone } from '../testSupport/timeZone';
 import AddActivityDialog from './AddActivityDialog';
 import AddNoteDialog from './AddNoteDialog';
@@ -38,10 +38,14 @@ afterEach(() => {
 
 test('AddActivityDialog defaults the date to the local date', async () => {
   render(
-    <AddActivityDialog open onClose={vi.fn()} onSave={vi.fn().mockResolvedValue(undefined)} />,
+    <DateFormatProvider>
+      <AddActivityDialog open onClose={vi.fn()} onSave={vi.fn().mockResolvedValue(undefined)} />
+    </DateFormatProvider>,
   );
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
-  expect(screen.getByLabelText('Date *')).toHaveValue('2026-03-11');
+  expect(screen.getByLabelText('Date *')).toHaveValue(
+    formatDateWithFormat('2026-03-11', getDateFormat()),
+  );
 });
 
 test('AddNoteDialog defaults the date to the local date', async () => {
@@ -53,19 +57,28 @@ test('AddNoteDialog defaults the date to the local date', async () => {
     </SnackbarProvider>,
   );
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
-  expect(screen.getByLabelText('Date')).toHaveValue('2026-03-11');
+  expect(screen.getByLabelText('Date')).toHaveValue(
+    formatDateWithFormat('2026-03-11', getDateFormat()),
+  );
 });
 
 test('ReminderDialog defaults the date, and its min, to the local date', () => {
   render(
-    <ReminderDialog
-      open
-      contactId={3}
-      onClose={vi.fn()}
-      onSave={vi.fn().mockResolvedValue(undefined)}
-    />,
+    <DateFormatProvider>
+      <ReminderDialog
+        open
+        contactId={3}
+        onClose={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />
+    </DateFormatProvider>,
   );
-  const input = screen.getByLabelText('Date *');
-  expect(input).toHaveValue('2026-03-11');
-  expect(input).toHaveAttribute('min', '2026-03-11');
+  expect(screen.getByLabelText('Date *')).toHaveValue(
+    formatDateWithFormat('2026-03-11', getDateFormat()),
+  );
+
+  // The min is enforced by the calendar: the day before "today" is disabled.
+  fireEvent.click(screen.getByLabelText('Date *'));
+  expect(screen.getByRole('button', { name: '10.03.2026' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '11.03.2026' })).not.toBeDisabled();
 });

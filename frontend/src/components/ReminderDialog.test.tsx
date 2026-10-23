@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Reminder } from '../api/reminders';
+import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
 import { localISODate, todayLocalISODate } from '../utils/localDate';
 import ReminderDialog from './ReminderDialog';
 
@@ -31,7 +32,11 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ReminderDialog>
     contactId: 3,
   };
   const merged = { ...defaults, ...props };
-  render(<ReminderDialog {...merged} />);
+  render(
+    <DateFormatProvider>
+      <ReminderDialog {...merged} />
+    </DateFormatProvider>,
+  );
   return {
     onClose: merged.onClose,
     onSave: vi.mocked(merged.onSave),
@@ -44,7 +49,9 @@ test('shows the add form with sensible defaults when no reminder is provided', (
   expect(screen.getByText('Add Reminder')).toBeInTheDocument();
   expect(screen.getByLabelText('Message *')).toHaveValue('');
   expect(screen.getByText('Once')).toBeInTheDocument();
-  expect(screen.getByLabelText('Date *')).toHaveValue(todayLocalISODate());
+  expect(screen.getByLabelText('Date *')).toHaveValue(
+    formatDateWithFormat(todayLocalISODate(), getDateFormat()),
+  );
   expect(screen.getByRole('checkbox', { name: 'Send email notification' })).toBeChecked();
   expect(
     screen.queryByRole('checkbox', { name: 'Reschedule from completion date' }),
@@ -81,14 +88,15 @@ test('requires a message before saving', () => {
   expect(onSave).not.toHaveBeenCalled();
 });
 
-test('requires a date before saving', () => {
+test('requires a date before saving', async () => {
   const { onSave } = renderDialog();
 
   fireEvent.change(screen.getByLabelText('Message *'), { target: { value: 'Water the plants' } });
-  fireEvent.change(screen.getByLabelText('Date *'), { target: { value: '' } });
+  fireEvent.click(screen.getByLabelText('Date *'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-  expect(screen.getByText('Date is required')).toBeInTheDocument();
+  expect(await screen.findByText('Date is required')).toBeInTheDocument();
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -97,7 +105,9 @@ test('pre-fills the form when editing an existing reminder', async () => {
 
   expect(screen.getByText('Edit Reminder')).toBeInTheDocument();
   expect(screen.getByLabelText('Message *')).toHaveValue('Water the plants');
-  expect(screen.getByLabelText('Date *')).toHaveValue('2026-08-01');
+  expect(screen.getByLabelText('Date *')).toHaveValue(
+    formatDateWithFormat('2026-08-01', getDateFormat()),
+  );
   expect(screen.getByText('Monthly')).toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: 'Send email notification' })).toBeChecked();
   expect(
@@ -123,7 +133,9 @@ test('changing the recurrence re-schedules the date for a new reminder', async (
 
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  expect(screen.getByLabelText('Date *')).toHaveValue(localISODate(d));
+  expect(screen.getByLabelText('Date *')).toHaveValue(
+    formatDateWithFormat(localISODate(d), getDateFormat()),
+  );
   expect(
     screen.getByRole('checkbox', { name: 'Reschedule from completion date' }),
   ).toBeInTheDocument();

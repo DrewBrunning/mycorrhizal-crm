@@ -26,6 +26,8 @@ interface DateFieldProps {
   min?: string;
   max?: string;
   size?: 'small' | 'medium';
+  /** Marks the field as required (MUI appends " *" to the label). */
+  required?: boolean;
   sx?: SxProps<Theme>;
 }
 
@@ -91,6 +93,7 @@ export default function DateField({
   min,
   max,
   size = 'small',
+  required = false,
   sx,
 }: DateFieldProps) {
   const { t, i18n } = useTranslation();
@@ -152,6 +155,7 @@ export default function DateField({
         placeholder={getDatePlaceholder()}
         size={size}
         fullWidth
+        required={required}
         onClick={openPicker}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
@@ -171,7 +175,8 @@ export default function DateField({
           },
           htmlInput: {
             'aria-haspopup': 'dialog',
-            'aria-label': label,
+            'aria-label': required ? `${label} *` : label,
+            'aria-required': required ? 'true' : undefined,
           },
         }}
       />
