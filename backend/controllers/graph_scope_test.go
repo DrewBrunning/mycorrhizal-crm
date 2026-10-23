@@ -18,9 +18,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Issue #1791: GET /graph defaults to the ego-network of the caller's self
-// contact instead of the whole account, and every read is bound to the
-// request context.
+// Issue #1791: GET /graph's ego-network view (`?full=false`, or an explicit
+// `from`) is the depth-2 neighbourhood of the caller's self contact. The
+// no-parameter default stays the full graph, the documented pre-v1.5
+// behavior, and every read is bound to the request context.
 
 func seedFriendEdge(t *testing.T, db *gorm.DB, userID uint, a, b models.Contact) {
 	t.Helper()
@@ -54,7 +55,7 @@ func nodeIDs(nodes []models.GraphNode) []string {
 
 func contactNodeID(c models.Contact) string { return "c-" + itoa(c.ID) }
 
-func TestGetGraph_DefaultsToEgoNetworkOfSelfContact(t *testing.T) {
+func TestGetGraph_EgoNetworkScope(t *testing.T) {
 	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
@@ -86,8 +87,15 @@ func TestGetGraph_DefaultsToEgoNetworkOfSelfContact(t *testing.T) {
 	require.NoError(t, db.Model(&outside).Association("Contacts").Append(&far, &island))
 	require.NoError(t, db.Model(&straddle).Association("Contacts").Append(&b, &far))
 
-	t.Run("default is depth 2 around the self contact", func(t *testing.T) {
+	t.Run("default is the full graph", func(t *testing.T) {
 		resp := getGraphResp(t, router, "/graph", http.StatusOK)
+		assert.False(t, resp.Scoped)
+		assert.Empty(t, resp.FromVCardUID)
+		assert.Len(t, resp.Nodes, 5+3)
+	})
+
+	t.Run("full=false is depth 2 around the self contact", func(t *testing.T) {
+		resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 		assert.True(t, resp.Scoped)
 		assert.Equal(t, self.VCardUID, resp.FromVCardUID)
 		assert.Equal(t, 2, resp.Depth)
@@ -103,14 +111,14 @@ func TestGetGraph_DefaultsToEgoNetworkOfSelfContact(t *testing.T) {
 	})
 
 	t.Run("depth widens the radius", func(t *testing.T) {
-		resp := getGraphResp(t, router, "/graph?depth=3", http.StatusOK)
+		resp := getGraphResp(t, router, "/graph?full=false&depth=3", http.StatusOK)
 		assert.Contains(t, nodeIDs(resp.Nodes), contactNodeID(far))
 		assert.NotContains(t, nodeIDs(resp.Nodes), contactNodeID(island))
 		// "Straddle" now has two in-scope participants.
 		assert.Contains(t, nodeIDs(resp.Nodes), "a-"+itoa(straddle.ID))
 		assert.NotContains(t, nodeIDs(resp.Nodes), "a-"+itoa(outside.ID))
 
-		one := getGraphResp(t, router, "/graph?depth=1", http.StatusOK)
+		one := getGraphResp(t, router, "/graph?full=false&depth=1", http.StatusOK)
 		assert.ElementsMatch(t, []string{contactNodeID(self), contactNodeID(a)}, nodeIDs(one.Nodes))
 	})
 
@@ -169,7 +177,7 @@ func TestGetGraph_EgoNetworkSkipsHiddenContacts(t *testing.T) {
 	// in place -- the graph must not lean on the cascade to hide them.
 	require.NoError(t, db.Delete(&deleted).Error)
 
-	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 	require.True(t, resp.Scoped)
 	assert.ElementsMatch(t, []string{contactNodeID(self), contactNodeID(friend)}, nodeIDs(resp.Nodes))
 
@@ -189,7 +197,7 @@ func TestGetGraph_NoSelfContactFallsBackToFullGraph(t *testing.T) {
 		require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: n}).Error)
 	}
 
-	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 	assert.False(t, resp.Scoped, "no anchor to centre on, so the full graph")
 	assert.Len(t, resp.Nodes, 2)
 }
@@ -232,7 +240,7 @@ func TestGraphAndDashboard_StopWhenClientDisconnects(t *testing.T) {
 	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	for _, path := range []string{"/graph", "/graph?full=true", "/graph/connections?from=" + contact.VCardUID, "/dashboard"} {
+	for _, path := range []string{"/graph", "/graph?full=true", "/graph?full=false", "/graph/connections?from=" + contact.VCardUID, "/dashboard"} {
 		t.Run(path, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
@@ -256,7 +264,7 @@ func TestGetGraph_ScopeLookupFailuresUseErrorEnvelope(t *testing.T) {
 		db, router := setupRouter(t)
 		router.GET("/graph", GetGraph)
 		dbtest.HideTable(t, db, "users")
-		getGraphResp(t, router, "/graph", http.StatusInternalServerError)
+		getGraphResp(t, router, "/graph?full=false", http.StatusInternalServerError)
 	})
 	t.Run("edges table unavailable for connections traversal", func(t *testing.T) {
 		db, router := setupRouter(t)
@@ -291,7 +299,7 @@ func TestGetGraph_MissingUserRowFallsBackToFull(t *testing.T) {
 		c.Next()
 	})
 	router.GET("/graph", GetGraph)
-	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 	assert.False(t, resp.Scoped)
 	assert.Empty(t, resp.Nodes)
 }

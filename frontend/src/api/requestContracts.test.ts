@@ -595,7 +595,7 @@ const rows: Row[] = [
     name: 'graph.getGraph',
     call: () => graph.getGraph(),
     method: 'get',
-    route: '/graph',
+    route: '/graph?full=false',
     ok: { nodes: [] },
     result: { nodes: [] },
   },

@@ -40,9 +40,10 @@ export default function NetworkPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  // Issue #1791: the default graph is the ego-network of the self contact;
-  // the whole account is an explicit opt-in (it is slow to load and, above
-  // the render ceiling, shows the list-view fallback instead of the canvas).
+  // Issue #1791: the page opens on the ego-network of the self contact
+  // (`?full=false`); the whole account is an explicit opt-in (it is slow to
+  // load and, above the render ceiling, shows the list-view fallback instead
+  // of the canvas).
   const [fullNetwork, setFullNetwork] = useState(false);
   const { data, loading, error } = useGraph(fullNetwork);
   const { circles: circleEntities, circleNamesByUid, loading: circlesLoading } = useCircles();

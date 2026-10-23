@@ -184,8 +184,8 @@ test('a stale response that lands last neither overwrites nor ends loading', asy
   expect(result.current.loading).toBe(true);
 });
 
-// Issue #1791: the default request is the ego-network; `full` opts into the
-// whole account and refetches when it changes.
+// Issue #1791: the default request is the ego-network (`?full=false` on the
+// wire); `full` opts into the whole account and refetches when it changes.
 test('useGraph(true) requests the full graph', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
   vi.mocked(getGraph).mockResolvedValue(graphResponse);
@@ -196,7 +196,7 @@ test('useGraph(true) requests the full graph', async () => {
   expect(getGraph).toHaveBeenCalledWith({ full: true });
 });
 
-test('the default request takes no params, and flipping full refetches', async () => {
+test('the default request asks for the ego view, and flipping full refetches', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
   vi.mocked(getGraph).mockResolvedValue({ ...graphResponse, scoped: true, depth: 2 });
 

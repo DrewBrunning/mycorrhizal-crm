@@ -8810,25 +8810,25 @@ paths:
       description: >
         Contact nodes, activity nodes (only activities with 2+ participants
         among the returned contacts), relationship edges (only
-        status=confirmed), and activity star-edges. Issue #1791: by default
-        this is the ego-network (`depth` hops, default 2) of the caller's
-        self contact, or of `from`; pass `full=true` for every non-archived
-        contact (the explicit "entire network" view). An account with no
-        self contact and no `from` has nothing to centre on and gets the
-        full graph (`scoped: false`). The request stops working when the
-        client disconnects.
+        status=confirmed), and activity star-edges. By default this is every
+        non-archived contact (the pre-v1.5 behavior). Issue #1791: pass
+        `full=false` -- or an explicit `from` -- for the ego-network
+        (`depth` hops, default 2) of the caller's self contact, or of `from`.
+        An account with no self contact and no `from` has nothing to centre
+        on, so `full=false` also gets the full graph (`scoped: false`). The
+        request stops working when the client disconnects.
       parameters:
         - name: full
           in: query
-          description: "true returns the whole account's graph instead of an ego-network."
-          schema: { type: boolean, default: false }
+          description: "true (the default) returns the whole account's graph; false returns the ego-network of the caller's self contact (or `from`)."
+          schema: { type: boolean, default: true }
         - name: from
           in: query
-          description: "Ego-network anchor: a Contact.VCardUID the caller owns (default: the caller's self contact)."
+          description: "Ego-network anchor: a Contact.VCardUID the caller owns. Implies `full=false`."
           schema: { type: string, format: uuid }
         - name: depth
           in: query
-          description: "Ego-network radius in hops (1..5, default 2). Ignored with full=true."
+          description: "Ego-network radius in hops (1..5, default 2). Used only with `full=false` or `from`."
           schema: { type: integer, minimum: 1, maximum: 5, default: 2 }
       responses:
         "404":

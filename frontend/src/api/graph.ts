@@ -4,13 +4,16 @@ import type { GraphResponse } from '../types/graph';
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface GetGraphParams {
-  // true asks for every non-archived contact; the default (issue #1791) is
-  // the depth-2 ego-network of the caller's self contact.
+  // true asks for every non-archived contact (the server's default, kept for
+  // pre-v1.5 clients); false asks for the depth-2 ego-network of the caller's
+  // self contact (issue #1791), which the web UI uses by default.
   full?: boolean;
 }
 
 export async function getGraph(params?: GetGraphParams): Promise<GraphResponse> {
-  const query = params?.full ? '?full=true' : '';
+  // Always state the view: an absent `full` is the server's backward-
+  // compatible full graph, not the ego view the web wants.
+  const query = params?.full ? '?full=true' : '?full=false';
   const response = await apiFetch(`${API_BASE_URL}/graph${query}`, { headers: getAuthHeaders() });
 
   if (!response.ok) {

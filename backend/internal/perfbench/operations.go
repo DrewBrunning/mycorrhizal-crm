@@ -165,12 +165,14 @@ func Registry() []Operation {
 
 		// --- network graph (issue #1791) -----------------------------------
 		{
-			// The default GET /graph: the depth-2 ego-network of the user's
-			// self contact. Must stay cheap however large the account is --
-			// the web /network page loads this on every visit.
+			// The explicit ?full=false GET /graph: the depth-2 ego-network of
+			// the user's self contact. Must stay cheap however large the
+			// account is -- the web /network page loads this on every visit.
+			// (The no-parameter default remains the full graph for every
+			// pre-v1.5 client; see graph.full below.)
 			Name: "graph.ego", Category: "read", ExpectedGrowth: GrowthConstant,
 			Run: func(e *Env) (int, error) {
-				return e.arrayLen(e.get("/graph"), "nodes")
+				return e.arrayLen(e.get("/graph?full=false"), "nodes")
 			},
 		},
 		{
