@@ -93,7 +93,6 @@ truncates to microseconds for deterministic chain hashing (`audit.go`).
 
 | Field | Where | Notes |
 |---|---|---|
-| `Gift.Date` | `backend/models/gift.go` | Nullable — an idea has no date |
 | `Reminder.RemindAt`, `.LastSent`; `ReminderCompletion.CompletedAt` | `backend/models/reminder.go` | Day-granular in intent: the write path zeroes the time-of-day (`reminder_controller.go:49-58`) and the daily job compares against a day boundary |
 | `ExternalActivity.OccurredAt` | `backend/models/external_activity.go` | Timeline sort key for an external system's event |
 | `ConversationAgenda.DiscussedAt` | `backend/models/conversation_agenda.go` | Nil = open item |
@@ -112,6 +111,7 @@ fields are instants of the same kind (pre-`SyncHealthFields` pass/fail clocks).
 | Field | Where | Precision |
 |---|---|---|
 | `Activity.Date`, `Note.Date` | `backend/models/activity.go`, `note.go` | `YYYY-MM-DD`, transported as RFC 3339 midnight UTC (`YYYY-MM-DDT00:00:00Z`) for wire compatibility. Only the UTC date is meaningful; calendar-day derivations never convert it into another zone. Reclassified from Category 1 by the 2026-10-21 amendment (issue #1823) |
+| `Gift.Date` | `backend/models/gift.go` | Nullable (an idea has no date). `YYYY-MM-DD`, transported as RFC 3339 midnight UTC like `Activity.Date`. Reclassified from Category 1 by the 2026-10-23 amendment below |
 | `Contact.Birthday`, `Contact.Anniversary` | `backend/models/contact.go:90-96,137-139` | `YYYY-MM-DD` **or** year-less `--MM-DD` (partial). String by design (vCard BDAY grammar); validated by the `birthday` validator |
 | `ContactSummary.Birthday`, `Birthday` DTO, `BriefingUpcomingDate.Date` | `backend/models/contact_summary.go`, `dtos.go`, `briefing.go` | Mirrors of the flat columns; same forms |
 | `LifeEvent.Date` | `backend/models/life_event.go:141` | `contactmodel.PartialDate` (any of year/month/day). The neutral model's calendar-date type; no zone, only `calendarScale` |
@@ -301,6 +301,42 @@ keeps the reminder-zone calendar day: verifying at 20:00 in Chicago is the 22nd 
 already rolled over to the 23rd. The issue's decision text named data decay alongside the
 interaction-derived surfaces; this amendment records the correction. Pinned by
 `TestComputeDataDecayHealth_InstantBaselineUsesReminderZoneDay`.
+
+## Amendment, 2026-10-23 (gift date is a calendar day, v1.5.0 review)
+
+The original classification listed `Gift.Date` as a domain-meaningful instant. Since issue #1736 a
+given gift is a qualifying interaction, and the 2026-10-21 amendment made every interaction-derived
+calendar day the **UTC date of the stored value**. Gifts were still written as instants, though: the
+web client and Android stored the picked day's **local midnight**, Android's "mark given" stored the
+current time, and the server's own given-date default stamped the current instant. East of UTC a gift
+given on the 22nd was stored as `…21T22:00:00Z` and counted as the 21st (Recency, cadence `next_due` /
+`overdue_by`, the target-gap key and reminder text); west of UTC an evening "mark given" counted as
+tomorrow.
+
+**Decision: `Gift.Date` is a Category 2 calendar day, stored and transported exactly like
+`Activity.Date`: the picked day at `00:00:00Z`.** It answers "on which day was the gift given or
+received"; no surface uses its time of day. Concretely:
+
+- **Clients** write `YYYY-MM-DDT00:00:00Z` for the picked day and read the stored value's UTC date back
+  (never converting it into the device zone). Android's "mark given" writes the device's local today at
+  UTC midnight.
+- **The server normalizes every write** through one helper, `models.GiftCalendarDay`: a value already at
+  exactly UTC midnight is kept; any other instant (an older client's local midnight, a time-of-day) is
+  read in the reminder zone (Rule 4) and that day is stored. The given-date default stamps the reminder
+  zone's today. Imports read an RFC 3339 value in its own offset.
+- **Existing rows** are rewritten once at startup (`services.NormalizeGiftDatesToCalendarDays`, the
+  `gifts.date_calendar_day` row in the `data_backfills` ledger). The writer's zone was never stored, so
+  each instant is read in `REMINDER_TIMEZONE`, which is exactly how the server interpreted gift dates
+  before #1823. Rounding to the nearest UTC midnight was rejected: it is wrong for UTC+13/+14 and for
+  time-of-day values. Soft-deleted rows are included, and `updated_at` is bumped so the incremental feed
+  re-delivers the corrected row to the Android mirror.
+- The score's frequency window is counted in calendar days on the same basis (interaction rows are
+  filtered by their calendar day in Go, after a widened SQL prefilter), so a gift or activity on the
+  window's first day is counted in every reminder zone.
+
+Residual ambiguity: a pre-amendment row written from a device whose zone differs from
+`REMINDER_TIMEZONE` can still land a day off. Single-tenant deployments run both in the same zone; the
+user can correct the date, which is now stable.
 
 ## Code ↔ document citations
 
