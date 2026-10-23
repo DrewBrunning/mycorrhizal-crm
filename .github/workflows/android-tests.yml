@@ -174,7 +174,7 @@ jobs:
         working-directory: android
         env:
           RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
-        run: ./gradlew --warning-mode=fail $RERUN_FLAG testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
+        run: ./gradlew --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
 
       # Issue #268: the test-retry plugin reruns a failed Robolectric test
       # once; Gradle retains the failed attempt in the XML even when the
