@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import './i18n/config';
 import { listCircles } from './api/circles';
 import { dismissContactSyncConflict, restoreContactSyncConflict } from './api/contactSyncConflicts';
 import { type DashboardResponse, getDashboard } from './api/dashboard';
@@ -9,6 +8,7 @@ import { getUpcomingOccasions, type UpcomingOccasion } from './api/occasionOblig
 import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
 import DashboardPage from './DashboardPage';
 import { DateFormatProvider } from './DateFormatProvider';
+import i18n from './i18n/config';
 
 // M3: the page
 // now fetches one GET /dashboard composite instead of fanning out to four
@@ -526,4 +526,22 @@ test('Stay in Touch falls back to a generic reason on an older server', async ()
 
   await waitFor(() => expect(screen.getByText('Legacy Lena')).toBeInTheDocument());
   expect(screen.getByText('Keep in touch')).toBeInTheDocument();
+});
+
+// Issue #1915: an offline reload should name the offline condition, never
+// surface the raw browser fetch error to the user.
+test('an offline dashboard load shows the offline message, not the raw fetch error', async () => {
+  const original = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+  Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
+  try {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    getDashboardMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    renderPage();
+
+    expect(await screen.findByText(i18n.t('common.offlineMessage'))).toBeInTheDocument();
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+  } finally {
+    if (original) Object.defineProperty(window.navigator, 'onLine', original);
+  }
 });

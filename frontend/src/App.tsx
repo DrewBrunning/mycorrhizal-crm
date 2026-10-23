@@ -102,6 +102,7 @@ import ContactSharesPage from './ContactSharesPage';
 import ContactsPage from './ContactsPage';
 import BrandLogo from './components/BrandLogo';
 import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/OfflineBanner';
 import RouteAnnouncer from './components/RouteAnnouncer';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
 import SessionExpiredNotice from './components/SessionExpiredNotice';
@@ -383,6 +384,7 @@ function AppContent({
   if (!token) {
     return (
       <Box component="main" id="main-content" tabIndex={-1} sx={{ p: 2, width: '100%' }}>
+        <OfflineBanner />
         <RouteAnnouncer />
         <Routes>
           <Route path="/register" element={<RegisterPage setToken={setToken} />} />
@@ -691,6 +693,7 @@ function AppContent({
             an ErrorBoundary's caught-error state does not otherwise clear
             just because its children changed. */}
         <SessionExpiredNotice />
+        <OfflineBanner />
         <RouteAnnouncer />
         <ErrorBoundary key={location.pathname} name="Page">
           <Routes>

@@ -20,7 +20,10 @@
       "message": "El servidor todavía se está iniciando — es normal mientras aplica una actualización. La aplicación se cargará automáticamente.",
       "retry": "Reintentar"
     },
-    "submitSearch": "Enviar búsqueda"
+    "submitSearch": "Enviar búsqueda",
+    "offline": {
+      "banner": "Estás sin conexión. Es posible que algunas funciones no estén disponibles."
+    }
   },
   "duplicates": {
     "reviewTitle": "Revisar duplicados",
@@ -1035,7 +1038,9 @@
     "conflictMessage": "Este registro se modificó en otro lugar (otra pestaña, dispositivo o sincronización) después de abrirlo, por lo que tu edición no se guardó. Los cambios nunca se fusionan automáticamente. Carga la última versión para continuar (se descartará tu edición) o deja esta edición abierta para copiar tus cambios antes.",
     "conflictReload": "Cargar la última versión",
     "retry": "Reintentar",
-    "loadFailed": "No se pudieron cargar estos datos"
+    "loadFailed": "No se pudieron cargar estos datos",
+    "offlineMessage": "Estás sin conexión. Comprueba tu conexión e inténtalo de nuevo.",
+    "networkError": "No se puede conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo."
   },
   "externalLinks": {
     "title": "Enlaces externos",

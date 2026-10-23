@@ -8,6 +8,7 @@ import { isAdmin } from './auth';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import i18n from './i18n/config';
 
 // Mirrors index.tsx's real provider composition -- App itself doesn't
 // include these, they're only added at the root render call, so any
@@ -209,6 +210,21 @@ test('the sidebar brand logo is inside the main navigation landmark (#1792)', ()
   const nav = logo.closest('nav');
   expect(nav).not.toBeNull();
   expect(nav).toHaveAttribute('aria-label', 'Main navigation');
+});
+
+// Issue #1915: with the shell served from the service worker cache but the API
+// unreachable, the app must say it is offline.
+test('shows the offline banner when the browser is offline', () => {
+  const original = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+  Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
+  try {
+    setLoggedInUser(false);
+    renderApp();
+
+    expect(screen.getByText(i18n.t('app.offline.banner'))).toBeInTheDocument();
+  } finally {
+    if (original) Object.defineProperty(window.navigator, 'onLine', original);
+  }
 });
 
 // Issue #1917: a pushState navigation must move focus off the activated link

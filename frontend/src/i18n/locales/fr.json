@@ -20,7 +20,10 @@
       "message": "Le serveur est encore en cours de démarrage — c'est normal pendant l'application d'une mise à jour. L'application se chargera automatiquement.",
       "retry": "Réessayer"
     },
-    "submitSearch": "Envoyer la recherche"
+    "submitSearch": "Envoyer la recherche",
+    "offline": {
+      "banner": "Vous êtes hors ligne. Certaines fonctions peuvent être indisponibles."
+    }
   },
   "duplicates": {
     "reviewTitle": "Examiner les doublons",
@@ -1035,7 +1038,9 @@
     "conflictMessage": "Cet enregistrement a été modifié ailleurs (autre onglet, appareil ou synchronisation) après son ouverture ; votre modification n'a donc pas été enregistrée. Les modifications ne sont jamais fusionnées automatiquement. Chargez la dernière version pour continuer (votre modification sera abandonnée), ou gardez cette modification ouverte pour copier vos changements d'abord.",
     "conflictReload": "Charger la dernière version",
     "retry": "Réessayer",
-    "loadFailed": "Impossible de charger ces données"
+    "loadFailed": "Impossible de charger ces données",
+    "offlineMessage": "Vous êtes hors ligne. Vérifiez votre connexion et réessayez.",
+    "networkError": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
   },
   "externalLinks": {
     "title": "Liens externes",
