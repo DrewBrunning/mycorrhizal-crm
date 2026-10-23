@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm
 
+import android.os.Build
 import android.view.Window
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -20,8 +21,23 @@ import androidx.core.view.WindowCompat
 internal fun statusBarLightAppearance(darkTheme: Boolean, onPrimaryBar: Boolean): Boolean =
     if (onPrimaryBar) darkTheme else !darkTheme
 
-/** The navigation bar always sits on bone / boneDark: dark icons only in light theme. */
-internal fun navigationBarLightAppearance(darkTheme: Boolean): Boolean = !darkTheme
+/**
+ * The navigation bar sits on bone / boneDark from API 27+ (dark icons only in
+ * light theme). On API 26 `android:windowLightNavigationBar` does not exist and
+ * the bone bar rendered with the platform's light (white) icons; the API-26
+ * theme instead paints the bar brand green, so it needs light icons in both
+ * themes ([navigationBarBackground] supplies the matching color).
+ */
+internal fun navigationBarLightAppearance(darkTheme: Boolean, sdkInt: Int): Boolean =
+    sdkInt >= Build.VERSION_CODES.O_MR1 && !darkTheme
+
+/**
+ * Issue #1920: below API 27 the bone navigation bar cannot get dark icons, so a
+ * light theme uses the dark brand-green bar instead (light icons on both sides
+ * of the contrast pair). From API 27+ the bar is the surface color as before.
+ */
+internal fun navigationBarBackground(darkTheme: Boolean, sdkInt: Int, surface: Int, primary: Int): Int =
+    if (!darkTheme && sdkInt < Build.VERSION_CODES.O_MR1) primary else surface
 
 internal fun applySystemBarAppearance(
     window: Window,
@@ -37,7 +53,8 @@ internal fun applySystemBarAppearance(
     }
     val controller = WindowCompat.getInsetsController(window, window.decorView)
     controller.isAppearanceLightStatusBars = statusBarLightAppearance(darkTheme, onPrimaryBar)
-    controller.isAppearanceLightNavigationBars = navigationBarLightAppearance(darkTheme)
+    controller.isAppearanceLightNavigationBars =
+        navigationBarLightAppearance(darkTheme, Build.VERSION.SDK_INT)
 }
 
 /**

@@ -7,6 +7,7 @@ package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -356,7 +357,12 @@ fun MycorrhizalApp(
             session.isLoggedIn -> surfaceContainerLowArgb
             else -> surfaceArgb
         },
-        navigationBarColor = surfaceArgb,
+        navigationBarColor = navigationBarBackground(
+            darkTheme = darkTheme,
+            sdkInt = Build.VERSION.SDK_INT,
+            surface = surfaceArgb,
+            primary = primaryArgb,
+        ),
     )
 
     // Issue #722: the root branches on where the user is in the session +
