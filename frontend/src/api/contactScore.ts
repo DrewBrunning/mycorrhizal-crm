@@ -9,6 +9,43 @@ import type { TargetClosenessTier } from './targetCloseness';
 // AmbientReason* constants.
 export type AmbientReason = 'household' | 'flag';
 
+// Stable identifiers for a facet's/target's explanation sentence, so the
+// client renders it in the user's language (utils/scoreReason.ts) instead of
+// the server's English `reason`. MUST stay in sync with backend
+// scoring.ReasonCodes() (CLAUDE.md frontend trap #4); pinned to the spec by
+// contractConformance.ts.
+export const SCORE_REASON_CODES = [
+  'closeness_direct',
+  'closeness_hops',
+  'closeness_unknown',
+  'recency_none',
+  'recency_days',
+  'frequency_count',
+  'reach_out_pending',
+  'reach_out_none',
+  'last_updated_days',
+  'ambient_household',
+  'ambient_flag',
+  'target_cadence_policy',
+  'target_tier',
+  'target_ambient',
+] as const;
+export type ScoreReasonCode = (typeof SCORE_REASON_CODES)[number];
+
+// The values a reason sentence interpolates; only the ones its code uses are
+// present.
+export interface ScoreReasonParams {
+  days?: number;
+  interval_days?: number;
+  hops?: number;
+  count?: number;
+  window_days?: number;
+  expected?: number;
+  score?: number;
+  relation?: string;
+  tier?: TargetClosenessTier;
+}
+
 // Mirrors backend/models/contact_score.go's ContactScoreTarget (issue #1796,
 // ADR-0023 amendment). Color mapping is in utils/healthBand.ts
 // (targetStatusBand): on_track -> moss, drifting -> chanterelle, behind ->
@@ -19,14 +56,20 @@ export interface ContactScoreTarget {
   value: number;
   interval_days: number;
   interval_source: 'cadence_policy' | 'target_tier';
+  // English; render reason_code/reason_params instead (formatScoreReason).
   reason: string;
+  reason_code: 'target_cadence_policy' | 'target_tier' | 'target_ambient';
+  reason_params: ScoreReasonParams;
 }
 
 // Mirrors backend/models/contact_score.go's ContactScoreFacet.
 export interface ContactScoreFacet {
   value: number;
   weight: number;
+  // English; render reason_code/reason_params instead (formatScoreReason).
   reason: string;
+  reason_code: ScoreReasonCode;
+  reason_params: ScoreReasonParams;
 }
 
 // Mirrors backend/models/contact_score.go's ContactScoreResponse. `band` is

@@ -76,6 +76,14 @@ export const AAA_CONTRAST_RULE = 'color-contrast-enhanced';
 export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
 
 /**
+ * Annotation type that opts a test out of the automatic uncaught-page-error
+ * check (see `context` below). Use it only for a test that provokes a page
+ * error on purpose, with the reason as the annotation description:
+ *   test.info().annotations.push({ type: ALLOW_PAGE_ERRORS, description: '…' })
+ */
+export const ALLOW_PAGE_ERRORS = 'allow-page-errors';
+
+/**
  * Waits for any in-flight CSS transition/animation on `context` (default: the
  * whole page) to settle before a contrast-sensitive scan runs.
  *
@@ -262,7 +270,17 @@ export const authTest = base.extend<
     await use(sharedUser ? SHARED_STORAGE_STATE : workerUser.storageStatePath);
   },
 
-  context: async ({ context, sharedUser, storageState }, use) => {
+  context: async ({ context, sharedUser, storageState }, use, testInfo) => {
+    // Every spec fails on an uncaught exception in the page (v1.5.0 review):
+    // only two specs listened for `pageerror`, so a crash a test did not
+    // happen to assert on (the UI often still looks right) passed silently.
+    const pageErrors: string[] = [];
+    const watchPage = (p: Page) => {
+      p.on('pageerror', (e) => pageErrors.push(`${p.url()}: ${e.message}`));
+    };
+    for (const p of context.pages()) watchPage(p);
+    context.on('page', watchPage);
+
     const violations: string[] = [];
     // Only the shared user's own session is guarded: a LOGGED_OUT /
     // other-account context in a sharedUser describe is not that user.
@@ -283,6 +301,16 @@ export const authTest = base.extend<
       violations,
       "the shared read-only user's account settings are immutable -- run this spec as a per-worker user (drop test.use({ sharedUser: true }))",
     ).toEqual([]);
+    // A test that already failed keeps its own failure as the headline.
+    if (
+      testInfo.status === testInfo.expectedStatus &&
+      !testInfo.annotations.some((a) => a.type === ALLOW_PAGE_ERRORS)
+    ) {
+      expect(
+        pageErrors,
+        `uncaught page error(s); fix the cause, or annotate the test with ${ALLOW_PAGE_ERRORS} and a reason`,
+      ).toEqual([]);
+    }
   },
 });
 

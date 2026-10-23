@@ -31,6 +31,18 @@ describe('formatUserAgent', () => {
       'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36',
       'Samsung Internet 23 on Android',
     ],
+    [
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1',
+      'Chrome 120 on iPhone',
+    ],
+    [
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/121.0 Mobile/15E148 Safari/605.1.15',
+      'Firefox 121 on iPhone',
+    ],
+    [
+      'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/120.0.2210.126 Version/17.0 Mobile/15E148 Safari/604.1',
+      'Edge 120 on iPad',
+    ],
     ['Some Completely Unknown Agent/1.0', ''],
     ['', ''],
   ])('userAgent %s -> %s', (ua, expected) => {

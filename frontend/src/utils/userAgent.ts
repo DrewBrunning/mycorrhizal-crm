@@ -22,6 +22,12 @@ function majorVersionAfter(userAgent: string, token: string): string {
 
 export function describeUserAgent(userAgent: string): UserAgentDescription {
   const browserToken = (() => {
+    // iOS browsers are WebKit shells whose UA also carries "Safari/"; their own
+    // token comes first so Chrome/Firefox/Edge on iOS are not "Safari". Kept
+    // in step with backend services.DefaultCredentialLabel.
+    if (userAgent.includes('CriOS/')) return { name: 'Chrome', token: 'CriOS/' };
+    if (userAgent.includes('FxiOS/')) return { name: 'Firefox', token: 'FxiOS/' };
+    if (userAgent.includes('EdgiOS/')) return { name: 'Edge', token: 'EdgiOS/' };
     if (userAgent.includes('Edg/')) return { name: 'Edge', token: 'Edg/' };
     if (userAgent.includes('OPR/')) return { name: 'Opera', token: 'OPR/' };
     if (userAgent.includes('SamsungBrowser/')) {

@@ -23,6 +23,7 @@ import type { Gift, GiftStatus } from '../api/gifts';
 import type { LifeEvent } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { calendarDateOnly } from '../utils/localDate';
 
 interface GiftListProps {
   items: Gift[];
@@ -225,7 +226,7 @@ export default function GiftList({
   const renderMeta = (gift: Gift) => {
     const metas: string[] = [];
     if (gift.occasion) metas.push(gift.occasion);
-    if (gift.date) metas.push(formatDate(gift.date));
+    if (gift.date) metas.push(formatDate(calendarDateOnly(gift.date)));
     const value = formatValue(gift.value_cents, gift.currency);
     if (value) metas.push(value);
     if (gift.life_event_id) {

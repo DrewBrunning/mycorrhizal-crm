@@ -1981,6 +1981,30 @@
       "closeness": "Nähe",
       "reachOut": "Kontaktbereitschaft",
       "lastUpdated": "Profilaktualität"
+    },
+    "reasons": {
+      "every_one": "jeden Tag",
+      "every_other": "alle {{count}} Tage",
+      "lastDays_one": "dem letzten Tag",
+      "lastDays_other": "den letzten {{count}} Tagen",
+      "closeness_direct": "Direkt verbunden als {{relation}}",
+      "closeness_hops_one": "Im Beziehungsnetz {{count}} Schritt entfernt",
+      "closeness_hops_other": "Im Beziehungsnetz {{count}} Schritte entfernt",
+      "closeness_unknown": "Im Beziehungsnetz nicht mit dir verbunden, daher ist die Nähe unbekannt",
+      "recency_none": "Noch keine zählende Interaktion erfasst",
+      "recency_days_one": "Letzte zählende Interaktion vor {{count}} Tag (Ziel: {{interval}})",
+      "recency_days_other": "Letzte zählende Interaktion vor {{count}} Tagen (Ziel: {{interval}})",
+      "frequency_count_one": "{{count}} zählende Interaktion in {{window}} (bei diesem Rhythmus etwa {{expected}} erwartet)",
+      "frequency_count_other": "{{count}} zählende Interaktionen in {{window}} (bei diesem Rhythmus etwa {{expected}} erwartet)",
+      "reach_out_pending": "Es gibt einen ungeprüften Kontaktvorschlag für diese Person",
+      "reach_out_none": "Kein offener Kontaktvorschlag",
+      "last_updated_days_one": "Kontaktdaten zuletzt vor {{count}} Tag bearbeitet",
+      "last_updated_days_other": "Kontaktdaten zuletzt vor {{count}} Tagen bearbeitet",
+      "ambient_household": "Umgebungskontakt (lebt mit dir zusammen)",
+      "ambient_flag": "Umgebungskontakt (markiert)",
+      "target_cadence_policy": "Aktualität und Häufigkeit ergeben {{score}} gemessen an deinem Rhythmus ({{interval}})",
+      "target_tier": "Aktualität und Häufigkeit ergeben {{score}} gemessen am Ziel „{{tier}}“ ({{interval}})",
+      "target_ambient": "Umgebungskontakt, immer im Plan"
     }
   },
   "relationships": {

@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
+import { useTimeZone } from '../testSupport/timeZone';
 import '../i18n/config';
 import type { Gift } from '../api/gifts';
 import { DateFormatProvider } from '../DateFormatProvider';
@@ -69,7 +70,31 @@ test('save submits the converted value/currency pair and ISO date', async () => 
     value_cents: 12000,
     currency: 'EUR',
   });
-  expect(submitted.date.startsWith('2026-08-03')).toBe(true);
+  // A gift date is a calendar day at 00:00Z (ADR 0015 amendment), not local midnight.
+  expect(submitted.date).toBe('2026-08-03T00:00:00Z');
+});
+
+test('a calendar-day gift date reads back as that day west of UTC', () => {
+  // 00:00Z on 22 Oct is 19:00 on the 21st in Chicago; the picker must still
+  // show the 22nd, and re-saving must not drift a day.
+  const restore = useTimeZone('America/Chicago');
+  try {
+    renderDialog({ gift: { ...gift, date: '2026-10-22T00:00:00Z' } });
+    expect(screen.getByLabelText('Date')).toHaveValue('2026-10-22');
+  } finally {
+    restore();
+  }
+});
+
+test('a legacy local-midnight gift date still reads back as the picked day', () => {
+  // Written before the server normalized gift dates: Berlin local midnight.
+  const restore = useTimeZone('Europe/Berlin');
+  try {
+    renderDialog({ gift: { ...gift, date: '2026-10-21T22:00:00Z' } });
+    expect(screen.getByLabelText('Date')).toHaveValue('2026-10-22');
+  } finally {
+    restore();
+  }
 });
 
 test('a new gift without a value sends no currency and a null date', async () => {

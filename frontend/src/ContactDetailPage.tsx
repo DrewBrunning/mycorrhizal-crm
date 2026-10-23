@@ -626,10 +626,7 @@ export default function ContactDetailPage() {
   const handleMarkGivenGift = async (gift: Gift) => {
     if (!record?.uid) return;
     try {
-      await handleUpdateGift(
-        gift.id,
-        markGivenGiftInput(gift, record.uid, new Date().toISOString()),
-      );
+      await handleUpdateGift(gift.id, markGivenGiftInput(gift, record.uid));
     } catch {
       showError(t('gifts.validation.saveFailed'));
     }

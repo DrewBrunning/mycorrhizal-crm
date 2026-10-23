@@ -60,6 +60,7 @@ import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useDateFormat } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
 import { healthBandChipColor, healthBandIcon, targetStatusBand } from '../utils/healthBand';
+import { formatScoreReason } from '../utils/scoreReason';
 import AmbientExplanation from './AmbientExplanation';
 import CadenceOfferDialog from './CadenceOfferDialog';
 import LanguageField from './LanguageField';
@@ -157,7 +158,7 @@ export default function ContactHeader({
   isMe,
   onToggleMe,
 }: ContactHeaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
   // Overflow menu for the header action buttons on narrow viewports (T28).
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
@@ -1097,7 +1098,7 @@ export default function ContactHeader({
                         {t(`contactScore.facets.${i18nKey}`)}
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {facet.reason}
+                        {formatScoreReason(t, facet, i18n.language)}
                       </Typography>
                     </Box>
                   ))}
@@ -1127,7 +1128,7 @@ export default function ContactHeader({
                         variant="caption"
                         sx={{ color: 'text.secondary', display: 'block', mt: 1 }}
                       >
-                        {score.target.reason}
+                        {formatScoreReason(t, score.target, i18n.language)}
                       </Typography>
                     )}
                   </>

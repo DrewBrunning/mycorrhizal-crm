@@ -55,15 +55,23 @@ test('"Not now" closes without making a request', () => {
   expect(onAccept).not.toHaveBeenCalled();
 });
 
-test('a failed accept keeps the dialog open for a retry', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-  const onAccept = vi.fn().mockRejectedValue(new Error('nope'));
+test('a failed accept keeps the dialog open, says why, and clears on retry', async () => {
+  const onAccept = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('nope'))
+    .mockResolvedValueOnce(undefined);
   const onClose = vi.fn();
   renderDialog({ onAccept, onClose });
 
   fireEvent.click(screen.getByRole('button', { name: 'Create cadence' }));
 
-  await waitFor(() => expect(console.error).toHaveBeenCalled());
+  // The cadence save reports nothing itself, so the dialog must: the failure
+  // used to reach only console.error.
+  expect(await screen.findByRole('alert')).toHaveTextContent('nope');
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.getByText('Create a cadence?')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create cadence' }));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole('alert')).toBeNull();
 });

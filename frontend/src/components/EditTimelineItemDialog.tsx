@@ -143,7 +143,10 @@ export default function EditTimelineItemDialog({
         onChange({ ...values, noteContactName: contactLabel(found) });
       }
     }
-  }, [type, values.noteContactId, values.noteContactName, noteContacts, onChange]);
+    // `values` itself, not just the two fields read: the update spreads it, and
+    // a stale closure would write back an older copy of every other field.
+    // Re-running on any edit is a no-op once the name is resolved.
+  }, [type, values, noteContacts, onChange]);
 
   // Resolve contact name on first open if not already resolved (do a broader
   // fetch so the user immediately sees who the note is assigned to).
