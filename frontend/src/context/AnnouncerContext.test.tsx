@@ -29,9 +29,42 @@ test('announce() lands in the polite live region after its debounce', () => {
   act(() => {
     vi.advanceTimersByTime(60);
   });
-  expect(container.ownerDocument.querySelector('[aria-live="polite"]')).toHaveTextContent(
-    '3 results',
+  const region = screen.getByRole('status');
+  expect(region).toHaveAttribute('aria-live', 'polite');
+  expect(region).toHaveAttribute('aria-atomic', 'true');
+  expect(region).toHaveTextContent('3 results');
+  expect(container.ownerDocument.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+});
+
+// #1918: Orca exposed this region in the AX tree but never spoke it. A stable
+// role="status" region must exist from the first render -- creating the region
+// together with the message is the classic live-region bug.
+test('the status live region exists before anything is announced', () => {
+  render(
+    <AnnouncerProvider>
+      <Probe message="x" />
+    </AnnouncerProvider>,
   );
+
+  const region = screen.getByRole('status');
+  expect(region).toBeEmptyDOMElement();
+  expect(region).toHaveAttribute('aria-live', 'polite');
+});
+
+// The hidden technique must keep the node in the accessibility tree: display:none
+// or visibility:hidden would make the role="status" region unannounceable.
+test('the status live region is clipped, not removed from the accessibility tree', () => {
+  render(
+    <AnnouncerProvider>
+      <Probe message="x" />
+    </AnnouncerProvider>,
+  );
+
+  const style = getComputedStyle(screen.getByRole('status'));
+  expect(style.display).not.toBe('none');
+  expect(style.visibility).not.toBe('hidden');
+  expect(style.width).toBe('1px');
+  expect(style.height).toBe('1px');
 });
 
 // MUI's sx reads a bare `1` as 100%, so `width: 1; height: 1` made this
@@ -45,7 +78,7 @@ test('the live region is a 1px box, not 100% of its containing block (#1788)', (
       <Probe message="x" />
     </AnnouncerProvider>,
   );
-  const region = document.querySelector('[aria-live="polite"]') as HTMLElement;
+  const region = screen.getByRole('status');
   const style = getComputedStyle(region);
   expect(style.width).toBe('1px');
   expect(style.height).toBe('1px');
