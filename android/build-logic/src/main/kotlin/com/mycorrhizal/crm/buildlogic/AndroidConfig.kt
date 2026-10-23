@@ -110,6 +110,12 @@ internal fun Project.configureKotlinWarnings() {
         // API work, tracked in #1903. Remove these two lines when it lands.
         compilerOptions.freeCompilerArgs.add("-Xwarning-level=DEPRECATION:warning")
         compilerOptions.freeCompilerArgs.add("-Xwarning-level=OVERRIDE_DEPRECATION:warning")
+        // Unit tests drive coroutines with kotlinx-coroutines-test's
+        // experimental API (advanceUntilIdle, UnconfinedTestDispatcher, ...);
+        // opt them all in here rather than annotating every test class.
+        if (name.contains("UnitTest")) {
+            compilerOptions.optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
+        }
     }
 }
 

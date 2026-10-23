@@ -56,7 +56,8 @@ class LocalesConsistencyTest {
     /** quantity name -> value for one plural resource, in one values dir. */
     private fun pluralQuantitiesFor(valuesDir: String, name: String): Map<String, String> {
         val text = contentFor(valuesDir)
-        val block = Regex("""<plurals name="${Regex.escape(name)}">([\s\S]*?)</plurals>""")
+        // Attributes after the name (e.g. tools:ignore) are allowed.
+        val block = Regex("""<plurals name="${Regex.escape(name)}"[^>]*>([\s\S]*?)</plurals>""")
             .find(text)
             ?.groupValues
             ?.get(1)
