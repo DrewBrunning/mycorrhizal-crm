@@ -232,7 +232,7 @@ class GeoPulseSuggestionsScreenTest {
         composeTestRule.onNodeWithContentDescription("Log activity at Cafe Roma, 14:30").performClick()
 
         assertEquals("geopulse:stay:42", logged!!.first.externalRef)
-        assertEquals("2026-03-10T00:00:00Z", logged!!.second)
+        assertEquals("2026-03-10T00:00:00Z", logged.second)
     }
 
     @Test
