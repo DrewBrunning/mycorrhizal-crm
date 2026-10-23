@@ -13475,21 +13475,55 @@ components:
         How the contact is doing against its target closeness (issue #1796, ADR
         0023 amendment). status colors map on_track to moss, drifting to
         chanterelle, behind to russula. Does not feed back into score or band.
-      required: [tier, status, value, interval_days, interval_source, reason]
+      required: [tier, status, value, interval_days, interval_source, reason, reason_code, reason_params]
       properties:
         tier: { type: string, enum: [immediate, close, casual, distant] }
         status: { type: string, enum: [on_track, drifting, behind] }
         value: { type: number }
         interval_days: { type: integer }
         interval_source: { type: string, enum: [cadence_policy, target_tier] }
-        reason: { type: string }
+        reason: { type: string, description: "English explanation, kept for older clients." }
+        reason_code:
+          type: string
+          enum: [target_cadence_policy, target_tier, target_ambient]
+        reason_params:
+          $ref: "#/components/schemas/ContactScoreReasonParams"
     ContactScoreFacet:
       type: object
-      description: One weighted facet's 0-100 sub-score, weight, and plain-language reason.
+      description: >
+        One weighted facet's 0-100 sub-score, weight, and plain-language
+        reason. reason is English; clients localize from reason_code and
+        reason_params instead.
+      required: [value, weight, reason, reason_code, reason_params]
       properties:
         value: { type: number }
         weight: { type: number }
-        reason: { type: string }
+        reason: { type: string, description: "English explanation, kept for older clients." }
+        reason_code:
+          type: string
+          description: Identifies the reason sentence. Mirrors scoring.ReasonCodes(); keep in sync with the clients.
+          enum: [closeness_direct, closeness_hops, closeness_unknown, recency_none, recency_days, frequency_count, reach_out_pending, reach_out_none, last_updated_days, ambient_household, ambient_flag, target_cadence_policy, target_tier, target_ambient]
+        reason_params:
+          $ref: "#/components/schemas/ContactScoreReasonParams"
+    ContactScoreReasonParams:
+      type: object
+      description: >
+        The values a reason sentence interpolates; only the ones its
+        reason_code uses are present (closeness_direct: relation;
+        closeness_hops: hops; recency_days: days, interval_days;
+        frequency_count: count, window_days, expected; last_updated_days:
+        days; target_cadence_policy: score, interval_days; target_tier: score,
+        interval_days, tier).
+      properties:
+        days: { type: integer }
+        interval_days: { type: integer }
+        hops: { type: integer }
+        count: { type: integer }
+        window_days: { type: integer }
+        expected: { type: number }
+        score: { type: integer }
+        relation: { type: string }
+        tier: { type: string, enum: [immediate, close, casual, distant] }
     BriefingActivity:
       type: object
       description: Slim projection of an Activity shown as the briefing's "last interaction".
@@ -13519,7 +13553,7 @@ components:
       properties:
         has_qualifying_interaction: { type: boolean }
         last_interaction: { type: string, format: date-time, nullable: true }
-        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD) in the reminder zone, not an instant (issue #1778)." }
+        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD), not an instant (issue #1778): the last qualifying interaction's calendar day plus the policy interval (issue #1823)." }
         overdue_by: { type: integer }
         ambient: { type: boolean, description: "Issue #1733: an ambient contact is never overdue (overdue_by is 0). Always present." }
         ambient_reason: { type: string, enum: [household, flag], description: "Why the contact is ambient; absent when ambient is false." }
@@ -15517,7 +15551,7 @@ components:
       properties:
         has_qualifying_interaction: { type: boolean }
         last_interaction: { type: string, format: date-time, nullable: true }
-        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD) in the reminder zone, not an instant (issue #1778)." }
+        next_due: { type: string, format: date, nullable: true, description: "Calendar day (YYYY-MM-DD), not an instant (issue #1778): the last qualifying interaction's calendar day plus the policy interval (issue #1823)." }
         overdue_by:
           type: integer
           description: >

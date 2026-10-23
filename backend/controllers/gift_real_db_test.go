@@ -111,7 +111,8 @@ func TestGift_RealMigratedSchema(t *testing.T) {
 	require.NotNil(t, reloaded.ActivityID)
 	assert.Equal(t, activity.ID, *reloaded.ActivityID)
 	require.NotNil(t, reloaded.Date)
-	assert.Equal(t, date.Unix(), reloaded.Date.Unix())
+	// Stored as the calendar day at UTC midnight (ADR 0015 amendment).
+	assert.Equal(t, models.GiftCalendarDay(date, time.UTC).Unix(), reloaded.Date.Unix())
 
 	// Soft-delete: gone from the browse list but still present unscoped (the
 	// change-feed tombstone / retention job's row).

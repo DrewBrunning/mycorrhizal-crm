@@ -130,8 +130,3 @@ func ambientByEntityID(db *gorm.DB, userID uint, uids []string, now time.Time) (
 	}
 	return result, nil
 }
-
-// ambientForUIDs is ambientByEntityID under the name the cadence callers use.
-func ambientForUIDs(db *gorm.DB, userID uint, uids []string, now time.Time) (map[string]string, error) {
-	return ambientByEntityID(db, userID, uids, now)
-}

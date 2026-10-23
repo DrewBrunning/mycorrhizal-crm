@@ -175,6 +175,12 @@ func TestOpenNoTxWrapFlagParsesTrue(t *testing.T) {
 // pointing at a read-only database opens the connection but cannot initialize
 // the version table, so Open must fail rather than return a half-built driver.
 func TestOpenReportsInstanceFailure(t *testing.T) {
+	if os.Geteuid() == 0 {
+		// root ignores the 0444 mode below, so the "unwritable" file is
+		// writable and Open succeeds (containers and agent sandboxes run tests
+		// as root). Same guard as backup_signature_test.go.
+		t.Skip("file permissions do not apply to root")
+	}
 	p := filepath.Join(t.TempDir(), "ro-open.db")
 	f, err := os.Create(p)
 	require.NoError(t, err)

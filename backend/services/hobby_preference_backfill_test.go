@@ -1,6 +1,7 @@
 package services
 
 import (
+	"mycorrhizal/internal/logtest"
 	"testing"
 	"time"
 
@@ -71,6 +72,7 @@ func personalInfoByValue(contact models.Contact, value string) (contactmodel.Per
 // main mapping and every carried-over field, then the recoverable soft-delete
 // and the once-only ledger.
 func TestMigrateHobbyPreferences_FavoriteBecomesPersonalInfoWithMeta(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db, user, contact := newHobbyBackfillFixture(t)
 	confirmed := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	confidence := 0.8
@@ -153,6 +155,7 @@ func TestMigrateHobbyPreferences_FavoriteBecomesPersonalInfoWithMeta(t *testing.
 // merge table from the issue: level only when empty, stricter sensitivity,
 // favorite if either, notes concatenated, existing provenance kept.
 func TestMigrateHobbyPreferences_MergesCaseInsensitiveDuplicatePerRules(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db, user, contact := newHobbyBackfillFixture(t)
 	oldSource := models.PreferenceSourceExternal
 	oldConfidence := 0.4
@@ -212,7 +215,45 @@ func TestMigrateHobbyPreferences_MergesCaseInsensitiveDuplicatePerRules(t *testi
 // TestMigrateHobbyPreferences_DislikeRecategorizedInPlace pins the lossless
 // second half: a dislike is not a hobby, keeps every column, gains the new
 // category, clears the key, and is not soft-deleted.
+// A hobby preference whose value matches an entry of a DIFFERENT kind
+// (expertise "Chess") is a different fact: it becomes its own hobby entry, and
+// the expertise entry and its metadata are left exactly as they were. Merging
+// by value alone used to fold the hobby into the expertise entry.
+func TestMigrateHobbyPreferences_SameValueOtherKindIsNotMerged(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
+	db, user, contact := newHobbyBackfillFixture(t)
+	contact.Card.PersonalInfo = []contactmodel.PersonalInfo{
+		{ID: "existing-chess", Kind: "expertise", Value: "Chess", Level: "high"},
+	}
+	contact.CRM.PersonalInfoMeta = map[string]contactmodel.PersonalInfoMeta{
+		"existing-chess": {Notes: "club champion"},
+	}
+	require.NoError(t, db.Save(&contact).Error)
+	seedHobbyPreference(t, db, user.ID, contact.VCardUID, "favorite", " chess ", "", models.RelationshipSensitivityNormal)
+
+	stats, err := MigrateHobbyPreferencesToPersonalInfo(db)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, stats.PersonalInfoEntriesMerged)
+
+	stored := reloadContact(t, db, contact.ID)
+	require.Len(t, stored.Card.PersonalInfo, 2, "a same-value entry of another kind must not absorb the hobby")
+	byKind := map[string]contactmodel.PersonalInfo{}
+	for _, e := range stored.Card.PersonalInfo {
+		byKind[e.Kind] = e
+	}
+	assert.Equal(t, "existing-chess", byKind["expertise"].ID)
+	assert.Equal(t, "high", byKind["expertise"].Level)
+	assert.Equal(t, "club champion", stored.CRM.PersonalInfoMeta["existing-chess"].Notes)
+	assert.False(t, stored.CRM.PersonalInfoMeta["existing-chess"].Favorite, "the expertise entry's metadata is untouched")
+
+	hobby, ok := byKind["hobby"]
+	require.True(t, ok, "the preference becomes its own hobby entry")
+	assert.Equal(t, "chess", hobby.Value, "the moved value is trimmed")
+	assert.True(t, stored.CRM.PersonalInfoMeta[hobby.ID].Favorite)
+}
+
 func TestMigrateHobbyPreferences_DislikeRecategorizedInPlace(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db, user, contact := newHobbyBackfillFixture(t)
 	pref := seedHobbyPreference(t, db, user.ID, contact.VCardUID, models.PreferenceKeyDislike, "Crowded parties", models.PreferenceLevelLow, models.RelationshipSensitivityPrivate)
 	pref.Notes = "leaves early"
@@ -249,12 +290,14 @@ func TestMigrateHobbyPreferences_DislikeRecategorizedInPlace(t *testing.T) {
 // preference key the mapping cannot represent without losing data.
 func TestMigrateHobbyPreferences_EdgeBranches(t *testing.T) {
 	t.Run("nil db is a no-op", func(t *testing.T) {
+		logtest.Guard(t)
 		stats, err := MigrateHobbyPreferencesToPersonalInfo(nil)
 		require.NoError(t, err)
 		assert.NotNil(t, stats)
 	})
 
 	t.Run("missing ledger fails closed", func(t *testing.T) {
+		logtest.Guard(t)
 		db, _, _ := newHobbyBackfillFixture(t)
 		require.NoError(t, db.Exec("DROP TABLE data_backfills").Error)
 		_, err := MigrateHobbyPreferencesToPersonalInfo(db)
@@ -263,8 +306,13 @@ func TestMigrateHobbyPreferences_EdgeBranches(t *testing.T) {
 	})
 
 	t.Run("dangling preference is left untouched", func(t *testing.T) {
+		rec := logtest.Capture(t)
 		db, user, _ := newHobbyBackfillFixture(t)
 		pref := seedHobbyPreference(t, db, user.ID, "00000000-0000-4000-8000-000000000000", "favorite", "Orphan", "", models.RelationshipSensitivityNormal)
+		// The skip is deliberate and must be visible in the log -- and be the
+		// only warning.
+		defer rec.AssertNoWarnings(t, "hobby preference backfill: contact not found, leaving preferences untouched")
+		defer func() { assert.Len(t, rec.Warnings(), 1, "the dangling preference must be logged once") }()
 
 		stats, err := MigrateHobbyPreferencesToPersonalInfo(db)
 		require.NoError(t, err)
@@ -277,8 +325,11 @@ func TestMigrateHobbyPreferences_EdgeBranches(t *testing.T) {
 	})
 
 	t.Run("unrecognized key is left untouched rather than losing it", func(t *testing.T) {
+		rec := logtest.Capture(t)
 		db, user, contact := newHobbyBackfillFixture(t)
 		pref := seedHobbyPreference(t, db, user.ID, contact.VCardUID, "allergy", "Pollen", "", models.RelationshipSensitivityNormal)
+		defer rec.AssertNoWarnings(t, "hobby preference backfill: unrecognized key, leaving preference untouched")
+		defer func() { assert.Len(t, rec.Warnings(), 1, "the unrecognized key must be logged once") }()
 
 		stats, err := MigrateHobbyPreferencesToPersonalInfo(db)
 		require.NoError(t, err)

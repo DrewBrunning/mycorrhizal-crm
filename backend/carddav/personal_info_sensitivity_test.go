@@ -11,6 +11,8 @@ package carddav
 
 import (
 	"context"
+	"gorm.io/gorm"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -21,9 +23,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// seedCardDAVUser creates the user row (ID 1) the backend's ContextWithUser
+// writes as. Without it every contact write's audit event fails its users
+// foreign key -- a swallowed warn that logtest.Guard reports.
+func seedCardDAVUser(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	require.NoError(t, db.Create(&models.User{Model: gorm.Model{ID: 1}, Username: "tester", Email: "tester@example.com", Password: "password123"}).Error)
+}
+
 func newPersonalInfoContact(t *testing.T, uid string) (*Backend, models.Contact) {
 	t.Helper()
 	backend, db := newTestBackend(t)
+	seedCardDAVUser(t, db)
 
 	record := &contactmodel.Record{
 		Card: contactmodel.Card{
@@ -64,6 +75,7 @@ func clientHobbyCard(uid string, hobbies ...string) vcard.Card {
 const vcard4PropHobby = "HOBBY"
 
 func TestCardDAV_GetAddressObject_ExcludesSensitivePersonalInfo(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	backend, contact := newPersonalInfoContact(t, "pi-secret-get")
 	ctx := ContextWithUser(context.Background(), 1, "tester", backend.db, backend.photoDir, "")
 
@@ -82,6 +94,7 @@ func TestCardDAV_GetAddressObject_ExcludesSensitivePersonalInfo(t *testing.T) {
 }
 
 func TestCardDAV_PutPreservesOmittedSensitivePersonalInfo(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	backend, contact := newPersonalInfoContact(t, "pi-secret-put")
 	ctx := ContextWithUser(context.Background(), 1, "tester", backend.db, backend.photoDir, "")
 	urlPath := "/carddav/addressbooks/tester/contacts/" + contact.VCardUID + ".vcf"

@@ -3,7 +3,6 @@ package controllers
 import (
 	"errors"
 	apperrors "mycorrhizal/errors"
-	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -71,9 +70,12 @@ func verifyOwnedActivity(c *gin.Context, db *gorm.DB, userID uint, id *uint) boo
 // fix in the notes) would invent an interaction "today" that never happened. An
 // explicit date is always kept, and a gift in any other status
 // (idea/purchased/received) is left as sent.
+//
+// The stamped value is today's calendar day in now's zone (pass the reminder
+// zone), stored at UTC midnight like every other gift date (GiftCalendarDay).
 func defaultGivenGiftDate(gift *models.Gift, previousStatus string, now time.Time) {
 	if gift.Status == models.GiftStatusGiven && previousStatus != models.GiftStatusGiven && gift.Date == nil {
-		d := now
+		d := models.GiftCalendarDay(now, now.Location())
 		gift.Date = &d
 	}
 }
@@ -123,13 +125,13 @@ func CreateGift(c *gin.Context) {
 		Description: input.Description,
 		URL:         input.URL,
 		Notes:       input.Notes,
-		Date:        input.Date,
+		Date:        models.GiftCalendarDayPtr(input.Date, reminderNow(c).Location()),
 		ValueCents:  input.ValueCents,
 		Currency:    input.Currency,
 		LifeEventID: input.LifeEventID,
 		ActivityID:  input.ActivityID,
 	}
-	defaultGivenGiftDate(&gift, "", clock.FromContext(c).Now())
+	defaultGivenGiftDate(&gift, "", reminderNow(c))
 
 	if err := db.Create(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
@@ -300,12 +302,12 @@ func UpdateGift(c *gin.Context) {
 	gift.Description = input.Description
 	gift.URL = input.URL
 	gift.Notes = input.Notes
-	gift.Date = input.Date
+	gift.Date = models.GiftCalendarDayPtr(input.Date, reminderNow(c).Location())
 	gift.ValueCents = input.ValueCents
 	gift.Currency = input.Currency
 	gift.LifeEventID = input.LifeEventID
 	gift.ActivityID = input.ActivityID
-	defaultGivenGiftDate(&gift, previousStatus, clock.FromContext(c).Now())
+	defaultGivenGiftDate(&gift, previousStatus, reminderNow(c))
 
 	if err := db.Save(&gift).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))

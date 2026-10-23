@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -26,6 +27,7 @@ func importBundleInto(t *testing.T, bundle *models.AccountBundle) (models.User, 
 }
 
 func TestAccountBundle_TimeFormatRoundTrips(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	for _, want := range []string{"12h", "24h"} {
 		t.Run(want, func(t *testing.T) {
 			ownerDB := dbtest.New(t)
@@ -60,6 +62,7 @@ func TestAccountBundle_TimeFormatRoundTrips(t *testing.T) {
 }
 
 func TestAccountBundle_AutoIsExportedAndKeepsDestinationDefault(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	ownerDB := dbtest.New(t)
 	owner := bundleTestUser(t, ownerDB, "tf-owner-auto")
 	exported, _, err := BuildAccountBundle(ownerDB, owner.ID, t.TempDir())
@@ -72,6 +75,7 @@ func TestAccountBundle_AutoIsExportedAndKeepsDestinationDefault(t *testing.T) {
 }
 
 func TestAccountBundle_OlderBundleWithoutTimeFormatImportsAsAuto(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	old := `{"format":"mycorrhizal-account","version":1,"exported_at":"2026-01-01T00:00:00Z",` +
 		`"plan":{"contacts":[]},"attachments":[],"omitted":{"attachments":true,"photos_omitted":0}}`
 	var bundle models.AccountBundle
@@ -85,6 +89,7 @@ func TestAccountBundle_OlderBundleWithoutTimeFormatImportsAsAuto(t *testing.T) {
 }
 
 func TestAccountBundle_TimeFormatRawJSONPresence(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := dbtest.New(t)
 	user := bundleTestUser(t, db, "tf-raw")
 	require.NoError(t, db.Model(&user).Update("time_format", "24h").Error)
@@ -99,6 +104,7 @@ func TestAccountBundle_TimeFormatRawJSONPresence(t *testing.T) {
 }
 
 func TestAccountBundle_ImportNeverOverwritesDestinationChoice(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	targetDB := dbtest.New(t)
 	target := bundleTestUser(t, targetDB, "tf-chosen")
 	require.NoError(t, targetDB.Model(&target).Update("time_format", "12h").Error)
@@ -114,6 +120,7 @@ func TestAccountBundle_ImportNeverOverwritesDestinationChoice(t *testing.T) {
 }
 
 func TestAccountBundle_UnknownTimeFormatIsDropped(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	bundle := &models.AccountBundle{Format: models.AccountBundleFormat, Version: models.AccountBundleVersion, TimeFormat: "13h"}
 	assert.Empty(t, MapAccountBundle(bundle).TimeFormat)
 	got, err := importBundleInto(t, bundle)

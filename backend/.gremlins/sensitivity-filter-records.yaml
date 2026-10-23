@@ -48,6 +48,7 @@ unleash:
         - ^field_definition\.go$
         - ^geopulse_config\.go$
         - ^gift\.go$
+        - ^gift_date\.go$
         - ^gift_shopping\.go$
         - ^household\.go$
         - ^idempotency_key\.go$

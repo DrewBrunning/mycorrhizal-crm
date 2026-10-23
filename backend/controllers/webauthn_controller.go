@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -123,7 +124,7 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 		}
 	}
 	name := strings.TrimSpace(input.Name)
-	if len(name) > 100 {
+	if utf8.RuneCountInString(name) > 100 {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be 100 characters or fewer"))
 		return
 	}
@@ -413,7 +414,9 @@ func RenameWebAuthnCredential(c *gin.Context) {
 		return
 	}
 	name := strings.TrimSpace(input.Name)
-	if name == "" || len(name) > 100 {
+	// Characters, not bytes: a 40-character label in a non-Latin script is
+	// well over 100 bytes.
+	if name == "" || utf8.RuneCountInString(name) > 100 {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be between 1 and 100 characters"))
 		return
 	}

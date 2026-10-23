@@ -1,6 +1,7 @@
 package services
 
 import (
+	"mycorrhizal/internal/logtest"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 // Issue #1796: target_closeness reaches scoring through the one bulk contact
 // load, both for a single contact and for the whole account.
 func TestComputeContactScore_TargetClosenessProducesTarget(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "score-target")
 	targeted := createScoreTestContact(t, db, user.ID, "Targeted")
@@ -46,6 +48,7 @@ func TestComputeContactScore_TargetClosenessProducesTarget(t *testing.T) {
 // A pending target_behind row must not lower the ReachOut facet (ADR 0023 "No
 // feedback loop"), while a pending org/title/address row still does.
 func TestComputeContactScore_TargetBehindSuggestionDoesNotLowerReachOut(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "score-target-loop")
 	behind := createScoreTestContact(t, db, user.ID, "Behind")

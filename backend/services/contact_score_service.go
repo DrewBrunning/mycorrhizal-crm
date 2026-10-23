@@ -106,8 +106,10 @@ func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []model
 		return scoreInputs{}, fmt.Errorf("loading last qualifying interactions: %w", err)
 	}
 
-	since := now.AddDate(0, 0, -cfg.FrequencyWindowDays)
-	frequencyCounts, err := qualifyingInteractionCountsByEntityID(db, userID, uids, realPolicies, since)
+	// The window is counted in calendar days: interaction dates are calendar
+	// days (ADR 0015 category 2), and "today" is now's wall-clock date.
+	sinceDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -cfg.FrequencyWindowDays)
+	frequencyCounts, err := qualifyingInteractionCountsByEntityID(db, userID, uids, realPolicies, sinceDay)
 	if err != nil {
 		return scoreInputs{}, fmt.Errorf("loading interaction frequency: %w", err)
 	}
@@ -264,18 +266,26 @@ func lastQualifyingInteractionByEntityID(db *gorm.DB, userID uint, uids []string
 }
 
 // qualifyingInteractionCountsByEntityID counts, per contact, how many
-// qualifying activities occurred on or after since — the Frequency facet's
-// raw input.
-func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []string, realPolicies map[string]models.CadencePolicy, since time.Time) (map[string]int, error) {
+// qualifying interactions fall on or after the calendar day sinceDay (a UTC
+// midnight) -- the Frequency facet's raw input.
+//
+// The day cut is applied in Go on each row's calendar day
+// (interactionCalendarDay), not in SQL: the date columns hold RFC 3339 text in
+// whatever offset the writer sent, and SQLite compares that text, so a bound
+// `a.date >= ?` silently mis-orders values with different offsets (v1.5.0
+// review). SQL only prefilters with frequencyWindowSlack, which is wider than
+// any UTC offset can shift the date digits.
+func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []string, realPolicies map[string]models.CadencePolicy, sinceDay time.Time) (map[string]int, error) {
+	prefilter := sinceDay.UTC().Add(-frequencyWindowSlack)
 	var rows []activityDateRow
 	if err := activityDateRowsQuery(db, userID, uids).
-		Where("a.date >= ?", since).
+		Where("a.date >= ?", prefilter).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
 	// Issue #1736: given gifts in the window count like activities.
-	gifts, err := givenGiftDateRows(db, userID, uids, &since)
+	gifts, err := givenGiftDateRows(db, userID, uids, &prefilter)
 	if err != nil {
 		return nil, err
 	}
@@ -283,6 +293,9 @@ func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []stri
 
 	counts := make(map[string]int, len(uids))
 	for i := range rows {
+		if interactionCalendarDay(rows[i].Date).Before(sinceDay) {
+			continue
+		}
 		policy, ok := realPolicies[rows[i].VCardUID]
 		if !ok {
 			policy = models.CadencePolicy{EntityID: rows[i].VCardUID}
@@ -294,6 +307,11 @@ func qualifyingInteractionCountsByEntityID(db *gorm.DB, userID uint, uids []stri
 	}
 	return counts, nil
 }
+
+// frequencyWindowSlack widens the SQL prefilter of the frequency window: a
+// stored offset moves an instant's text by at most one calendar day, so two
+// days always include every row whose calendar day is inside the window.
+const frequencyWindowSlack = 48 * time.Hour
 
 // selfContactVCardUID returns the caller's User.SelfContactVCardUID, or ""
 // when unset (T90 — every account gets one lazily via EnsureSelfContact, but

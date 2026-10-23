@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/logtest"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 // date-only YYYY-MM-DD (same calendar-day semantics as the REST health), not
 // an RFC 3339 instant. Reads the raw marshalled JSON.
 func TestBuildOverduePayload_NextDueIsDateOnly(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	last := time.Date(2026, 8, 22, 15, 0, 0, 0, time.UTC)
 	now := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
 	health := deriveHealth(&last, 30, now)
@@ -35,6 +37,7 @@ func TestBuildOverduePayload_NextDueIsDateOnly(t *testing.T) {
 // 22 Sep. Auckland shows the mirror case: 13:00Z on 22 Aug is already the 23rd
 // there, but the activity remains dated the 22nd, so it is due 21 Sep.
 func TestCalendarOnlyNextDue_ActivityUsesUTCDay(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	chicago, err := time.LoadLocation("America/Chicago")
 	require.NoError(t, err)
 	now := time.Date(2026, 10, 1, 9, 0, 0, 0, chicago)
@@ -62,6 +65,7 @@ func TestCalendarOnlyNextDue_ActivityUsesUTCDay(t *testing.T) {
 // This is deliberately different from deriveHealth above (ADR 0015's
 // 2026-10-21 amendment); the date-only marshal is still exercised here.
 func TestCalendarOnlyNextDue_DataDecayUsesReminderZoneInstantDay(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	chicago, err := time.LoadLocation("America/Chicago")
 	require.NoError(t, err)
 	now := time.Date(2026, 10, 1, 9, 0, 0, 0, chicago)

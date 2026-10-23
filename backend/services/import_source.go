@@ -1259,7 +1259,9 @@ func importGifts(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 		}
 		if g.Date != "" {
 			if t, err := parseSourceTime(g.Date); err == nil {
-				gift.Date = &t
+				// A gift date is a calendar day (ADR 0015 amendment): an RFC 3339
+				// source value is read in its own offset.
+				gift.Date = models.GiftCalendarDayPtr(&t, nil)
 			} else {
 				report.appendIssue(ImportIssue{
 					Record:   record,

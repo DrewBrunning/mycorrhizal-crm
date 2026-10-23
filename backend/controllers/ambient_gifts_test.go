@@ -153,10 +153,12 @@ func TestGiftController_GivenWithoutDateIsStampedNow(t *testing.T) {
 		return g
 	}
 
-	// Create as given with no date: stamped with the request clock.
+	// Create as given with no date: stamped with the request clock's calendar
+	// day (a gift date is a calendar day at UTC midnight, ADR 0015).
+	stamped := time.Date(2030, 6, 15, 0, 0, 0, 0, time.UTC)
 	g := create(models.GiftStatusGiven, nil)
 	require.NotNil(t, g.Date)
-	assert.True(t, fixed.Equal(*g.Date), "got %s", g.Date)
+	assert.True(t, stamped.Equal(*g.Date), "got %s", g.Date)
 
 	// An explicit date is kept as is.
 	explicit := time.Date(2029, 12, 24, 0, 0, 0, 0, time.UTC)
@@ -171,7 +173,7 @@ func TestGiftController_GivenWithoutDateIsStampedNow(t *testing.T) {
 	// idea -> given with no date on update: stamped.
 	moved := update(idea.ID, models.GiftStatusGiven, nil)
 	require.NotNil(t, moved.Date)
-	assert.True(t, fixed.Equal(*moved.Date))
+	assert.True(t, stamped.Equal(*moved.Date))
 
 	// An already-given gift re-saved with its date is untouched.
 	kept := update(g2.ID, models.GiftStatusGiven, &explicit)
@@ -258,4 +260,55 @@ func TestContactMerge_AmbientFlagIsUnioned(t *testing.T) {
 	assert.True(t, merge(false, true).Ambient, "the loser's flag survives into the keeper")
 	assert.True(t, merge(true, false).Ambient, "the keeper's own flag is not cleared")
 	assert.False(t, merge(false, false).Ambient)
+}
+
+// A gift date is a calendar day (ADR 0015 amendment): every write stores the
+// day the client meant at UTC midnight. An older client's local-midnight
+// instant is read in the reminder zone, and "mark given" with no date stamps
+// the reminder zone's today -- never the UTC date of the current instant,
+// which is tomorrow on a Chicago evening.
+func TestGiftController_DatesAreCalendarDaysInTheReminderZone(t *testing.T) {
+	for _, tc := range []struct {
+		zone    string
+		now     time.Time // the request clock
+		sent    time.Time // an older client's local midnight of 22 Oct
+		stamped time.Time // today in the zone, at UTC midnight
+	}{
+		{"Europe/Berlin", time.Date(2026, 10, 22, 23, 30, 0, 0, time.UTC), time.Date(2026, 10, 21, 22, 0, 0, 0, time.UTC), time.Date(2026, 10, 23, 0, 0, 0, 0, time.UTC)},
+		{"America/Chicago", time.Date(2026, 10, 23, 2, 30, 0, 0, time.UTC), time.Date(2026, 10, 22, 5, 0, 0, 0, time.UTC), time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)},
+	} {
+		t.Run(tc.zone, func(t *testing.T) {
+			db, _ := setupRouter(t)
+			router := zoneRouter(t, db, tc.zone)
+			withClock(router, clock.NewFake(tc.now))
+			router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
+			var user models.User
+			require.NoError(t, db.First(&user).Error)
+			contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+			require.NoError(t, db.Create(&contact).Error)
+
+			create := func(date *time.Time) time.Time {
+				body, _ := json.Marshal(models.GiftInput{EntityID: contact.VCardUID, Status: models.GiftStatusGiven, Description: "x", Date: date})
+				req, _ := http.NewRequest("POST", "/gifts", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+				require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+				var resp struct {
+					Gift models.Gift `json:"gift"`
+				}
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+				require.NotNil(t, resp.Gift.Date)
+				return *resp.Gift.Date
+			}
+
+			got := create(&tc.sent)
+			assert.True(t, time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC).Equal(got), "local midnight of the 22nd -> the 22nd, got %s", got)
+			utcMidnight := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+			got = create(&utcMidnight)
+			assert.True(t, utcMidnight.Equal(got), "a UTC-midnight calendar day is kept, got %s", got)
+			got = create(nil)
+			assert.True(t, tc.stamped.Equal(got), "mark given stamps the zone's today, got %s", got)
+		})
+	}
 }

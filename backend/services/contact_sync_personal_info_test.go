@@ -1,6 +1,7 @@
 package services
 
 import (
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -17,6 +18,7 @@ import (
 // remote update must preserve them and carry metadata forward for entries it
 // still has, while a normal entry the remote deleted really is deleted.
 func TestReconcileContactSync_PreservesSensitivePersonalInfo(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactSyncTestDB(t)
 	cfg := contactSyncTestConfig()
 	user := createContactSyncTestUser(t, db)
@@ -84,6 +86,7 @@ func TestReconcileContactSync_PreservesSensitivePersonalInfo(t *testing.T) {
 // the canonical home, and reconcile never invents a deprecated hobby
 // Preference row.
 func TestReconcileContactSync_RemoteHobbyNeverBecomesHobbyPreference(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactSyncTestDB(t)
 	cfg := contactSyncTestConfig()
 	user := createContactSyncTestUser(t, db)

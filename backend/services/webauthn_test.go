@@ -207,6 +207,21 @@ func TestDefaultCredentialLabel(t *testing.T) {
 			want: "Safari 17 on iPhone",
 		},
 		{
+			name: "chrome on iphone (CriOS, not Safari)",
+			ua:   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1",
+			want: "Chrome 120 on iPhone",
+		},
+		{
+			name: "firefox on iphone (FxiOS, not Safari)",
+			ua:   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/121.0 Mobile/15E148 Safari/605.1.15",
+			want: "Firefox 121 on iPhone",
+		},
+		{
+			name: "edge on ipad (EdgiOS, not Safari)",
+			ua:   "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/120.0.2210.126 Version/17.0 Mobile/15E148 Safari/604.1",
+			want: "Edge 120 on iPad",
+		},
+		{
 			name: "safari on ipad",
 			ua:   "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 			want: "Safari 17 on iPad",

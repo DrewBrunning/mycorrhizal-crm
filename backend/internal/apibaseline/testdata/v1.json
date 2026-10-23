@@ -11717,16 +11717,98 @@
         {
           "name": "reason",
           "type": "string",
-          "required": false
+          "required": true
+        },
+        {
+          "name": "reason_code",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "closeness_direct",
+            "closeness_hops",
+            "closeness_unknown",
+            "recency_none",
+            "recency_days",
+            "frequency_count",
+            "reach_out_pending",
+            "reach_out_none",
+            "last_updated_days",
+            "ambient_household",
+            "ambient_flag",
+            "target_cadence_policy",
+            "target_tier",
+            "target_ambient"
+          ]
+        },
+        {
+          "name": "reason_params",
+          "type": "ref:ContactScoreReasonParams",
+          "required": true
         },
         {
           "name": "value",
           "type": "number",
-          "required": false
+          "required": true
         },
         {
           "name": "weight",
           "type": "number",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactScoreReasonParams",
+      "properties": [
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "expected",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "hops",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "interval_days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "relation",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "score",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "tier",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "immediate",
+            "close",
+            "casual",
+            "distant"
+          ]
+        },
+        {
+          "name": "window_days",
+          "type": "integer",
           "required": false
         }
       ]
@@ -11820,6 +11902,21 @@
         {
           "name": "reason",
           "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason_code",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "target_cadence_policy",
+            "target_tier",
+            "target_ambient"
+          ]
+        },
+        {
+          "name": "reason_params",
+          "type": "ref:ContactScoreReasonParams",
           "required": true
         },
         {

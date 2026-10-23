@@ -42,7 +42,7 @@ type graphActivityRow struct {
 // (?full=true) and is what the web client's "show entire network" action
 // asks for; an account with no self contact and no ?from= has no anchor, so
 // it also gets the full graph. Every read is bound to the request context, so
-// a client that disconnects (or the server's request deadline) stops the work.
+// a client that disconnects stops the work.
 func GetGraph(c *gin.Context) {
 	db := requestDB(c)
 
@@ -62,10 +62,19 @@ func GetGraph(c *gin.Context) {
 	// (Card is `serializer:encryptedjson`, so SQL cannot filter on it), and
 	// this is the only place a deceased contact's graph node gets colored.
 	// "updated_at" feeds the health score (computed for exactly these rows).
+	// The ego-network's member UIDs, as one lazily-evaluated sub-select shared
+	// by the contact, edge and activity reads below. SQLite evaluates it once
+	// per statement (~ms at the PERF-01 typical profile, graph.ego); inlining
+	// the UID list instead would bind one variable per member and can exceed
+	// SQLite's variable limit on a large account, so the sub-select stays.
+	var hood *gorm.DB
+	if !scope.full {
+		hood = services.GraphNeighbourhood(db, userID, scope.fromUID, scope.depth)
+	}
 	contactQuery := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles", "card", "updated_at", "target_closeness").
 		Where("user_id = ? AND archived = ?", userID, false)
 	if !scope.full {
-		contactQuery = contactQuery.Where("vcard_uid IN (?)", services.GraphNeighbourhood(db, userID, scope.fromUID, scope.depth))
+		contactQuery = contactQuery.Where("vcard_uid IN (?)", hood)
 	}
 	var contacts []models.Contact
 	if err := contactQuery.Find(&contacts).Error; err != nil {
@@ -82,7 +91,6 @@ func GetGraph(c *gin.Context) {
 	// read (an edge to a contact outside the radius would dangle).
 	edgeQuery := db.Where("user_id = ? AND status = ?", userID, models.RelationshipStatusConfirmed)
 	if !scope.full {
-		hood := services.GraphNeighbourhood(db, userID, scope.fromUID, scope.depth)
 		edgeQuery = edgeQuery.Where("source_id IN (?) AND target_id IN (?)", hood, hood)
 	}
 	var relationshipEdges []models.RelationshipEdge
@@ -104,7 +112,7 @@ func GetGraph(c *gin.Context) {
 		Where("activities.user_id = ? AND activities.deleted_at IS NULL", userID).
 		Order("activities.id ASC, ac.contact_id ASC")
 	if !scope.full {
-		activityQuery = activityQuery.Where("c.vcard_uid IN (?)", services.GraphNeighbourhood(db, userID, scope.fromUID, scope.depth))
+		activityQuery = activityQuery.Where("c.vcard_uid IN (?)", hood)
 	}
 	var activityRows []graphActivityRow
 	if err := activityQuery.Scan(&activityRows).Error; err != nil {
@@ -254,7 +262,10 @@ func resolveGraphScope(c *gin.Context, db *gorm.DB, userID uint) (graphScope, bo
 	from := strings.TrimSpace(c.Query("from"))
 	if from != "" {
 		var count int64
-		if err := db.Model(&models.Contact{}).Where("user_id = ? AND vcard_uid = ?", userID, from).Count(&count).Error; err != nil {
+		// Archived contacts are not graph nodes (the node query drops them), so
+		// an archived anchor would be missing from its own ego-network: treat
+		// it like an unknown contact.
+		if err := db.Model(&models.Contact{}).Where("user_id = ? AND vcard_uid = ? AND archived = ?", userID, from, false).Count(&count).Error; err != nil {
 			abortQueryFailure(c, "Failed to retrieve contact", err)
 			return graphScope{}, false
 		}

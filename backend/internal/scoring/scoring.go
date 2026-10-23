@@ -101,7 +101,60 @@ type FacetResult struct {
 	// interacted 42 days ago (target every 30 days)" or "No self-contact set
 	// — closeness unknown".
 	Reason string `json:"reason"`
+	// ReasonCode identifies Reason's sentence so clients can render it in the
+	// user's language (v1.5.0 review: the English Reason was shown verbatim in
+	// every locale). One of the Reason* codes below; ReasonParams carries the
+	// numbers/tokens the sentence interpolates. Mirrored by hand in the web and
+	// Android clients (frontend trap #4): keep in sync.
+	ReasonCode   string       `json:"reason_code"`
+	ReasonParams ReasonParams `json:"reason_params"`
 }
+
+// ReasonParams are the values a reason sentence interpolates. Only the fields
+// the ReasonCode uses are set; the rest are omitted from the JSON.
+type ReasonParams struct {
+	Days         *int     `json:"days,omitempty"`
+	IntervalDays *int     `json:"interval_days,omitempty"`
+	Hops         *int     `json:"hops,omitempty"`
+	Count        *int     `json:"count,omitempty"`
+	WindowDays   *int     `json:"window_days,omitempty"`
+	Expected     *float64 `json:"expected,omitempty"`
+	Score        *int     `json:"score,omitempty"`
+	Relation     string   `json:"relation,omitempty"`
+	Tier         string   `json:"tier,omitempty"`
+}
+
+// Reason codes on FacetResult.ReasonCode and TargetResult.ReasonCode.
+// Mirrored in openapi.yaml and both clients (frontend trap #4).
+const (
+	ReasonClosenessDirect  = "closeness_direct"      // relation
+	ReasonClosenessHops    = "closeness_hops"        // hops
+	ReasonClosenessUnknown = "closeness_unknown"     //
+	ReasonRecencyNone      = "recency_none"          //
+	ReasonRecencyDays      = "recency_days"          // days, interval_days
+	ReasonFrequencyCount   = "frequency_count"       // count, window_days, expected
+	ReasonReachOutPending  = "reach_out_pending"     //
+	ReasonReachOutNone     = "reach_out_none"        //
+	ReasonLastUpdatedDays  = "last_updated_days"     // days
+	ReasonAmbientHousehold = "ambient_household"     //
+	ReasonAmbientFlag      = "ambient_flag"          //
+	ReasonTargetPolicy     = "target_cadence_policy" // score, interval_days
+	ReasonTargetTier       = "target_tier"           // score, interval_days, tier
+	ReasonTargetAmbient    = "target_ambient"        //
+)
+
+// ReasonCodes lists every reason code, for drift tests against the clients.
+func ReasonCodes() []string {
+	return []string{
+		ReasonClosenessDirect, ReasonClosenessHops, ReasonClosenessUnknown,
+		ReasonRecencyNone, ReasonRecencyDays, ReasonFrequencyCount,
+		ReasonReachOutPending, ReasonReachOutNone, ReasonLastUpdatedDays,
+		ReasonAmbientHousehold, ReasonAmbientFlag,
+		ReasonTargetPolicy, ReasonTargetTier, ReasonTargetAmbient,
+	}
+}
+
+func intPtr(v int) *int { return &v }
 
 // Result is the full, explainable score for one contact.
 type Result struct {
@@ -146,6 +199,9 @@ type TargetResult struct {
 	IntervalDays   int     `json:"interval_days"`
 	IntervalSource string  `json:"interval_source"`
 	Reason         string  `json:"reason"`
+	// ReasonCode/ReasonParams: see FacetResult.
+	ReasonCode   string       `json:"reason_code"`
+	ReasonParams ReasonParams `json:"reason_params"`
 }
 
 // Compute derives Result from raw, already-gathered facts. Pure: same inputs

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -15,6 +16,7 @@ import (
 // account bundle / source import sets it explicitly.
 
 func TestBundleTargetCloseness_OnlyVocabularyTiersSurvive(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	assert.Nil(t, bundleTargetCloseness(nil))
 	for _, tier := range models.TargetClosenessTiers() {
 		got := bundleTargetCloseness(strPtr(tier))
@@ -26,6 +28,7 @@ func TestBundleTargetCloseness_OnlyVocabularyTiersSurvive(t *testing.T) {
 }
 
 func TestMapAccountBundle_CarriesTargetCloseness(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	bundle := &models.AccountBundle{}
 	bundle.Plan.Contacts = []models.AccountBundleContact{
 		{UID: "11111111-1111-4111-8111-111111111111", CRM: contactmodel.CRMEnvelope{TargetCloseness: strPtr("close")}},
@@ -41,6 +44,7 @@ func TestMapAccountBundle_CarriesTargetCloseness(t *testing.T) {
 }
 
 func TestSourceImport_TargetClosenessOnCreateAndFillOnlyWhenEmptyOnMerge(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupSourceImportTestDB(t)
 	user := createSourceImportUser(t, db)
 
@@ -83,6 +87,7 @@ func TestSourceImport_TargetClosenessOnCreateAndFillOnlyWhenEmptyOnMerge(t *test
 }
 
 func TestContactMerge_TargetClosenessResolution(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	cases := []struct {
 		name          string
 		keeper, loser *string
