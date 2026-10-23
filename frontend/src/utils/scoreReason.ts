@@ -23,10 +23,9 @@ export function formatScoreReason(
   const code = source.reason_code;
   const p = source.reason_params ?? {};
   const key = (k: string) => `contactScore.reasons.${k}`;
-  const every = (n: number | undefined) =>
-    n === undefined ? undefined : t(key('every'), { count: n });
-  const tierLabel = (tier: string | undefined) =>
-    tier === undefined ? undefined : t(`targetCloseness.tier.${tier}`, tier);
+  // Callers check the parameter is present before formatting with these.
+  const every = (n: number) => t(key('every'), { count: n });
+  const tierLabel = (tier: string) => t(`targetCloseness.tier.${tier}`, tier);
 
   switch (code) {
     case 'closeness_direct':

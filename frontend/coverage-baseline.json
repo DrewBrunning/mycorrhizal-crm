@@ -2164,9 +2164,9 @@
     },
     "src/utils/scoreReason.ts": {
       "lines": 100,
-      "linesTotal": 25,
-      "branches": 82.22,
-      "branchesTotal": 45
+      "linesTotal": 23,
+      "branches": 100,
+      "branchesTotal": 41
     },
     "src/utils/shareTarget.ts": {
       "lines": 100,

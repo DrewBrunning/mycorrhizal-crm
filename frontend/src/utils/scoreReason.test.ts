@@ -93,6 +93,28 @@ describe('formatScoreReason', () => {
     );
   });
 
+  // Each parameterised code checks every param it interpolates; dropping any
+  // one of them must fall back rather than render a half-filled template.
+  test.each([
+    ['closeness_direct', {}],
+    ['closeness_hops', {}],
+    ['recency_days', { interval_days: 30 }],
+    ['recency_days', { days: 3 }],
+    ['frequency_count', { window_days: 180, expected: 6 }],
+    ['frequency_count', { count: 2, expected: 6 }],
+    ['frequency_count', { count: 2, window_days: 180 }],
+    ['last_updated_days', {}],
+    ['target_cadence_policy', { interval_days: 21 }],
+    ['target_cadence_policy', { score: 72 }],
+    ['target_tier', { interval_days: 45, tier: 'casual' }],
+    ['target_tier', { score: 30, tier: 'casual' }],
+    ['target_tier', { score: 30, interval_days: 45 }],
+  ] as const)('%s with %o missing a param falls back', (code, params) => {
+    expect(formatScoreReason(t, src(code, params as ScoreReasonParams), 'en')).toBe(
+      'ENGLISH FALLBACK',
+    );
+  });
+
   test('falls back to the English reason for an unknown code, a missing param, or an older server', () => {
     expect(formatScoreReason(t, src('some_future_code'), 'en')).toBe('ENGLISH FALLBACK');
     expect(formatScoreReason(t, src('recency_days', { days: 3 }), 'en')).toBe('ENGLISH FALLBACK');
