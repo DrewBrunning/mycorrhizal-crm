@@ -52,19 +52,22 @@ interface GiftDialogProps {
   activities: Activity[];
 }
 
-// Converts a stored ISO datetime back to the local "YYYY-MM-DD" a date input
-// expects. Deliberately NOT iso.slice(0,10): the stored value is UTC (Go
-// serializes time.Time in UTC), and slicing that would show the previous day
-// for timezones west of UTC. This renders the date in the user's own zone, so
-// what they picked is what they see.
+// Converts a stored gift date back to the "YYYY-MM-DD" a date input expects.
+// A gift date is a calendar day stored at 00:00Z (ADR 0015's 2026-10-23
+// amendment), so its UTC date is the picked day -- reading it in the local
+// zone would show the previous day west of UTC. A legacy value that is not
+// at UTC midnight (written before the server normalized gift dates) falls
+// back to the local date it was picked as.
 function toDateInputValue(iso: string | undefined): string {
   if (!iso) return '';
+  const day = calendarDateOnly(iso);
+  if (day !== iso) return day;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 }
 
 export default function GiftDialog({
@@ -156,7 +159,8 @@ export default function GiftDialog({
       url: normalizedUrl || undefined,
       notes: notes.trim() || undefined,
       occasion: occasion.trim() || undefined,
-      date: date ? new Date(`${date}T00:00:00`).toISOString() : null,
+      // The picked calendar day at 00:00Z, like an activity date.
+      date: date ? `${date}T00:00:00Z` : null,
       value_cents: valueCents,
       currency: currency.trim().toUpperCase() || undefined,
       life_event_id: lifeEventId || undefined,

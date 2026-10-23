@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { Card, ContactRecordResponse } from '../api/contacts';
 import type { Gift } from '../api/gifts';
+import { useTimeZone } from '../testSupport/timeZone';
 import {
   applyRecordPatch,
   buildProfileUpdate,
@@ -278,15 +279,15 @@ describe('markGivenGiftInput', () => {
     life_event_id: 'le-1',
   };
 
-  test('flips to given, defaults the date to now, preserves the rest', () => {
-    expect(markGivenGiftInput(idea, 'alice-uid', '2026-01-01T00:00:00.000Z')).toEqual({
+  test('flips to given, defaults the date to today, preserves the rest', () => {
+    expect(markGivenGiftInput(idea, 'alice-uid', new Date(2026, 0, 1, 15, 30))).toEqual({
       entity_id: 'alice-uid',
       status: 'given',
       description: 'Book',
       url: 'https://example.com',
       notes: 'hardcover',
       occasion: 'birthday',
-      date: '2026-01-01T00:00:00.000Z',
+      date: '2026-01-01T00:00:00Z',
       value_cents: 1500,
       currency: 'EUR',
       life_event_id: 'le-1',
@@ -294,11 +295,22 @@ describe('markGivenGiftInput', () => {
     });
   });
 
+  test('the default is the LOCAL calendar day at UTC midnight, not the UTC date of now', () => {
+    // 20:30 on 22 Oct in Chicago is already 01:30Z on the 23rd.
+    const restore = useTimeZone('America/Chicago');
+    try {
+      const input = markGivenGiftInput(idea, 'alice-uid', new Date('2026-10-23T01:30:00Z'));
+      expect(input.date).toBe('2026-10-22T00:00:00Z');
+    } finally {
+      restore();
+    }
+  });
+
   test('keeps an existing date and activity link', () => {
     const input = markGivenGiftInput(
       { ...idea, date: '2025-12-24T00:00:00Z', activity_id: 9 },
       'alice-uid',
-      '2026-01-01T00:00:00.000Z',
+      new Date(2026, 0, 1),
     );
     expect(input.date).toBe('2025-12-24T00:00:00Z');
     expect(input.activity_id).toBe(9);

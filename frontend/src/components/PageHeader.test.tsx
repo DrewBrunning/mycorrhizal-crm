@@ -16,13 +16,13 @@ function renderHeader(ui: React.ReactElement) {
 
 test('renders the title as the page h1', () => {
   renderHeader(<PageHeader title="Systemereignisse" />);
-  expect(screen.getByRole('heading', { level: 1, name: 'Systemereignisse' })).toBeTruthy();
+  expect(screen.getByRole('heading', { level: 1, name: 'Systemereignisse' })).toBeInTheDocument();
   expect(screen.queryByTestId('page-header-actions')).toBeNull();
 });
 
 test('leading replaces the title block and keeps custom content', () => {
   renderHeader(<PageHeader title="ignored" leading={<h2>Overall status</h2>} />);
-  expect(screen.getByRole('heading', { level: 2, name: 'Overall status' })).toBeTruthy();
+  expect(screen.getByRole('heading', { level: 2, name: 'Overall status' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
 });
 

@@ -758,12 +758,17 @@ test('device-contacts button uploads the picked contacts as a VCF', async () => 
 });
 
 test('cancelling the picker uploads nothing and shows no error', async () => {
-  stubContactPicker(async () => {
+  const select = vi.fn(async () => {
     throw new DOMException('dismissed', 'AbortError');
   });
+  stubContactPicker(select);
   renderDialog();
   fireEvent.click(screen.getByText("Pick from this device's contacts"));
-  await new Promise((r) => setTimeout(r, 20));
+  // Prove the cancel path actually ran (an absence check alone also passes
+  // when the click never reached the picker), then let it finish: the whole
+  // path is promise continuations, which drain before a 0 ms macrotask.
+  await waitFor(() => expect(select).toHaveBeenCalledTimes(1));
+  await new Promise((r) => setTimeout(r, 0));
   expect(uploadVCFForImport).not.toHaveBeenCalled();
   expect(screen.queryByText("Couldn't read the selected contacts.")).toBeNull();
 });

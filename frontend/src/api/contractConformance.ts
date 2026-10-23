@@ -40,7 +40,7 @@ import type {
   ContactDetailUser,
   ImmichPersonSummary,
 } from './contactDetail';
-import type { ContactScoreTarget } from './contactScore';
+import type { ContactScoreFacet, ContactScoreTarget, SCORE_REASON_CODES } from './contactScore';
 import type { ContactSyncConflict } from './contactSyncConflicts';
 import type {
   Birthday,
@@ -187,6 +187,7 @@ export type Conformance = [
   NoDrift<ResponseDrift<ReachOutSuggestion, S.ReachOutSuggestion>>,
   NoDrift<ResponseDrift<ContactTargetClosenessResponse, S.ContactTargetClosenessResponse>>,
   NoDrift<ResponseDrift<ContactScoreTarget, S.ContactScoreTarget>>,
+  NoDrift<ResponseDrift<ContactScoreFacet, S.ContactScoreFacet>>,
   NoDrift<ResponseDrift<ExternalIdentity, S.ExternalIdentity>>,
   NoDrift<ResponseDrift<ExternalActivity, S.ExternalActivity>>,
   NoDrift<ResponseDrift<FieldDefinition, S.FieldDefinition>>,
@@ -251,4 +252,5 @@ export type EnumConformance = [
   Assert<SameMembers<RelationshipEdgeStatus, Defined<S.RelationshipEdge['status']>>>,
   Assert<SameMembers<RelationshipEdgeSensitivity, Defined<S.RelationshipEdge['sensitivity']>>>,
   Assert<SameMembers<Reminder['recurrence'], Defined<S.Reminder['recurrence']>>>,
+  Assert<SameMembers<(typeof SCORE_REASON_CODES)[number], S.ContactScoreFacet['reason_code']>>,
 ];

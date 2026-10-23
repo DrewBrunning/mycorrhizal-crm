@@ -89,6 +89,20 @@ export default function NetworkPage() {
     return circleEntities.map((c) => c.name).sort();
   }, [circleEntities]);
 
+  // What the circle Select may show. While the list loads, the persisted
+  // circle is offered as its own option so the control is not blank (and MUI
+  // does not warn about an out-of-range value); once loaded, a stale value
+  // renders as "all circles" for the one render before the effect below
+  // clears it.
+  const circleOptions = useMemo(
+    () =>
+      circlesLoading && selectedCircle && !circleNames.includes(selectedCircle)
+        ? [...circleNames, selectedCircle]
+        : circleNames,
+    [circlesLoading, selectedCircle, circleNames],
+  );
+  const circleSelectValue = circleOptions.includes(selectedCircle) ? selectedCircle : '';
+
   // Drop a persisted selectedCircle that no longer exists (renamed or
   // deleted since it was saved) once the circle list has actually loaded --
   // otherwise the empty circleNames during the initial fetch would look
@@ -305,13 +319,13 @@ export default function NetworkPage() {
         >
           <InputLabel id="network-circle-filter-label">{t('network.filterByCircle')}</InputLabel>
           <Select
-            value={selectedCircle}
+            value={circleSelectValue}
             onChange={handleCircleChange}
             label={t('network.filterByCircle')}
             labelId="network-circle-filter-label"
           >
             <MenuItem value="">{t('network.allCircles')}</MenuItem>
-            {circleNames.map((c) => (
+            {circleOptions.map((c) => (
               <MenuItem key={c} value={c}>
                 {c}
               </MenuItem>

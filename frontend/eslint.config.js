@@ -86,6 +86,13 @@ export default tseslint.config(
       // the WCAG concern is *page-load* autofocus, and none of these are
       // that. Kept visible so new page-load autofocus is reviewed, matching
       // the repo's pattern for exhaustive-deps / no-explicit-any.
+      //
+      // "Visible" is enforced, not hoped for: `yarn lint` runs with
+      // --max-warnings at the current warn-level count (package.json), so a
+      // NEW warning fails CI and the pre-commit hook. A PR that removes
+      // warnings lowers that number in the same change; raising it is a
+      // reviewed diff with a reason (v1.5.0 review: these used to pass
+      // silently).
       'jsx-a11y/no-autofocus': 'warn',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',

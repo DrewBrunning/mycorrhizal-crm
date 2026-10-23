@@ -403,7 +403,10 @@ export default function SettingsPage() {
             <InputLabel id="language-select-label">{t('settings.language.label')}</InputLabel>
             <Select
               labelId="language-select-label"
-              value={i18n.language}
+              // resolvedLanguage, not language: before a preference is saved
+              // i18n.language is the browser's tag (en-US, de-AT), which
+              // matches no option and renders the select blank.
+              value={i18n.resolvedLanguage ?? 'en'}
               label={t('settings.language.label')}
               onChange={(p0) => void handleLanguageChange(p0)}
             >

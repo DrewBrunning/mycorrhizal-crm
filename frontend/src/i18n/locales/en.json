@@ -2013,6 +2013,30 @@
       "closeness": "Closeness",
       "reachOut": "Reach-out readiness",
       "lastUpdated": "Profile freshness"
+    },
+    "reasons": {
+      "every_one": "every day",
+      "every_other": "every {{count}} days",
+      "lastDays_one": "the last day",
+      "lastDays_other": "the last {{count}} days",
+      "closeness_direct": "Directly connected as {{relation}}",
+      "closeness_hops_one": "Reachable {{count}} hop away in your relationship graph",
+      "closeness_hops_other": "Reachable {{count}} hops away in your relationship graph",
+      "closeness_unknown": "Not connected to you in the relationship graph, so closeness is unknown",
+      "recency_none": "No qualifying interaction recorded yet",
+      "recency_days_one": "Last qualifying interaction {{count}} day ago (target: {{interval}})",
+      "recency_days_other": "Last qualifying interaction {{count}} days ago (target: {{interval}})",
+      "frequency_count_one": "{{count}} qualifying interaction in {{window}} (about {{expected}} expected at this cadence)",
+      "frequency_count_other": "{{count}} qualifying interactions in {{window}} (about {{expected}} expected at this cadence)",
+      "reach_out_pending": "There's an unreviewed reach-out suggestion for this contact",
+      "reach_out_none": "No pending reach-out suggestion",
+      "last_updated_days_one": "Contact record last edited {{count}} day ago",
+      "last_updated_days_other": "Contact record last edited {{count}} days ago",
+      "ambient_household": "Ambient contact (lives with you)",
+      "ambient_flag": "Ambient contact (marked)",
+      "target_cadence_policy": "Recency and frequency score {{score}} against your cadence ({{interval}})",
+      "target_tier": "Recency and frequency score {{score}} against the {{tier}} target ({{interval}})",
+      "target_ambient": "Ambient contact, always on track"
     }
   },
   "relationships": {

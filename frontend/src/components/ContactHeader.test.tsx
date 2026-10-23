@@ -22,11 +22,42 @@ function scoreFixture(band: string): ContactScoreResponse {
     contact_id: 1,
     score: 72,
     band,
-    recency: { value: 80, weight: 35, reason: 'Last qualifying interaction 5 day(s) ago' },
-    frequency: { value: 60, weight: 20, reason: 'Roughly on pace, every 12 days on average' },
-    closeness: { value: 85, weight: 20, reason: 'Marked as a close relationship' },
-    reach_out: { value: 100, weight: 15, reason: 'No reach-out currently overdue' },
-    last_updated: { value: 90, weight: 10, reason: 'Profile updated within the last month' },
+    recency: {
+      value: 80,
+      weight: 35,
+      reason: 'Last qualifying interaction 5 day(s) ago (target every 14 days)',
+      reason_code: 'recency_days',
+      reason_params: { days: 5, interval_days: 14 },
+    },
+    frequency: {
+      value: 60,
+      weight: 20,
+      reason:
+        '1 qualifying interaction(s) in the last 180 days (expected ~12.9 at the target cadence)',
+      reason_code: 'frequency_count',
+      reason_params: { count: 1, window_days: 180, expected: 12.857 },
+    },
+    closeness: {
+      value: 85,
+      weight: 20,
+      reason: 'Directly connected via a spouse_of relationship',
+      reason_code: 'closeness_direct',
+      reason_params: { relation: 'spouse_of' },
+    },
+    reach_out: {
+      value: 100,
+      weight: 15,
+      reason: 'No pending reach-out suggestion',
+      reason_code: 'reach_out_none',
+      reason_params: {},
+    },
+    last_updated: {
+      value: 90,
+      weight: 10,
+      reason: 'Contact record last edited 1 day(s) ago',
+      reason_code: 'last_updated_days',
+      reason_params: { days: 1 },
+    },
     target: null,
   };
 }
@@ -50,7 +81,9 @@ function targetFixture(overrides: Partial<ContactScoreTarget> = {}): ContactScor
     value: 30,
     interval_days: 14,
     interval_source: 'target_tier',
-    reason: 'Last contact 21 days ago, target is every 14 days',
+    reason: 'Recency and frequency score 30 against a 14-day interval from the close target',
+    reason_code: 'target_tier',
+    reason_params: { score: 30, interval_days: 14, tier: 'close' },
     ...overrides,
   };
 }
@@ -612,11 +645,20 @@ test('wide layout: clicking the health badge opens a popover with all five facet
   fireEvent.click(screen.getByText('Healthy'));
 
   expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
-  expect(screen.getByText('Last qualifying interaction 5 day(s) ago')).toBeInTheDocument();
-  expect(screen.getByText('Roughly on pace, every 12 days on average')).toBeInTheDocument();
-  expect(screen.getByText('Marked as a close relationship')).toBeInTheDocument();
-  expect(screen.getByText('No reach-out currently overdue')).toBeInTheDocument();
-  expect(screen.getByText('Profile updated within the last month')).toBeInTheDocument();
+  // Rendered from reason_code/reason_params in the UI language, never the
+  // server's English "day(s)" sentence.
+  expect(
+    screen.getByText('Last qualifying interaction 5 days ago (target: every 14 days)'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      '1 qualifying interaction in the last 180 days (about 12.9 expected at this cadence)',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Directly connected as Spouse')).toBeInTheDocument();
+  expect(screen.getByText('Contact record last edited 1 day ago')).toBeInTheDocument();
+  expect(screen.queryByText(/day\(s\)/)).toBeNull();
+  expect(screen.getByText('No pending reach-out suggestion')).toBeInTheDocument();
 });
 
 test('compact layout: clicking the health badge opens the same popover with all five facet reasons', async () => {
@@ -629,11 +671,20 @@ test('compact layout: clicking the health badge opens the same popover with all 
   fireEvent.click(screen.getByRole('button', { name: 'Neglected' }));
 
   expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
-  expect(screen.getByText('Last qualifying interaction 5 day(s) ago')).toBeInTheDocument();
-  expect(screen.getByText('Roughly on pace, every 12 days on average')).toBeInTheDocument();
-  expect(screen.getByText('Marked as a close relationship')).toBeInTheDocument();
-  expect(screen.getByText('No reach-out currently overdue')).toBeInTheDocument();
-  expect(screen.getByText('Profile updated within the last month')).toBeInTheDocument();
+  // Rendered from reason_code/reason_params in the UI language, never the
+  // server's English "day(s)" sentence.
+  expect(
+    screen.getByText('Last qualifying interaction 5 days ago (target: every 14 days)'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      '1 qualifying interaction in the last 180 days (about 12.9 expected at this cadence)',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Directly connected as Spouse')).toBeInTheDocument();
+  expect(screen.getByText('Contact record last edited 1 day ago')).toBeInTheDocument();
+  expect(screen.queryByText(/day\(s\)/)).toBeNull();
+  expect(screen.getByText('No pending reach-out suggestion')).toBeInTheDocument();
 });
 
 test('the health score popover closes on an outside click', async () => {
@@ -845,7 +896,9 @@ test('the target chip opens the same score popover', async () => {
   fireEvent.click(screen.getByText('Target: Close · Drifting'));
 
   expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
-  expect(screen.getByText(targetFixture().reason)).toBeInTheDocument();
+  expect(
+    screen.getByText('Recency and frequency score 30 against the Close target (every 14 days)'),
+  ).toBeInTheDocument();
 });
 
 test('renders no target picker when onSetTargetCloseness is not provided', async () => {

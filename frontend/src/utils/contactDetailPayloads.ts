@@ -15,6 +15,7 @@ import type { Gift, GiftInput } from '../api/gifts';
 import type { LifeEventInputData } from '../api/lifeEvents';
 import type { ProfileValues } from '../components/ContactHeader';
 import type { LifeEventFormData } from '../components/LifeEventDialog';
+import { todayLocalISODate } from './localDate';
 
 // Pure request-shaping helpers for ContactDetailPage: every function here
 // turns page state into the exact payload an API call sends, so the rules
@@ -186,8 +187,16 @@ export function fieldValueInputsWith(
 }
 
 // One-click "mark it given" (T20b): status flips to given, the date defaults
-// to now when the idea had none. All other fields are preserved.
-export function markGivenGiftInput(gift: Gift, entityId: string, nowIso: string): GiftInput {
+// to today when the idea had none. All other fields are preserved. A gift
+// date is a calendar day at 00:00Z (ADR 0015's 2026-10-23 amendment), so
+// "today" is the user's LOCAL date -- the UTC date of now is tomorrow on a
+// west-of-UTC evening.
+export function markGivenGiftInput(
+  gift: Gift,
+  entityId: string,
+  now: Date = new Date(),
+): GiftInput {
+  const today = `${todayLocalISODate(now)}T00:00:00Z`;
   return {
     entity_id: entityId,
     status: 'given',
@@ -195,7 +204,7 @@ export function markGivenGiftInput(gift: Gift, entityId: string, nowIso: string)
     url: gift.url,
     notes: gift.notes,
     occasion: gift.occasion,
-    date: gift.date ?? nowIso,
+    date: gift.date ?? today,
     value_cents: gift.value_cents,
     currency: gift.currency,
     life_event_id: gift.life_event_id,

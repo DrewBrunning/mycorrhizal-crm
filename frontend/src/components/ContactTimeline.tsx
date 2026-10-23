@@ -138,7 +138,7 @@ export default function ContactTimeline({
                 }}
               >
                 <Typography variant="caption">
-                  {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                  {isValidDate ? formatDate(calendarDateOnly(item.date)) : item.date || 'N/A'}
                 </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
@@ -149,7 +149,7 @@ export default function ContactTimeline({
               </TimelineSeparator>
               <TimelineContent>
                 <Typography variant="caption" sx={timelineMobileDateSx}>
-                  {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
+                  {isValidDate ? formatDate(calendarDateOnly(item.date)) : item.date || 'N/A'}
                 </Typography>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
                   <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>

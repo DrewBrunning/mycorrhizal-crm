@@ -19,12 +19,10 @@ export default defineConfig({
     ],
     // Node >= 22 ships its own experimental localStorage global, which is
     // undefined without --localstorage-file and shadows jsdom's working one
+    // Vitest 4 removed `poolOptions` (it only logged a DEPRECATED notice and
+    // silently dropped this flag); `execArgv` is now a top-level option.
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        execArgv: ['--no-experimental-webstorage'],
-      },
-    },
+    execArgv: ['--no-experimental-webstorage'],
     // Issue #268: CI-only retry so a flaky component test is retried once
     // instead of failing the required check. The github-actions reporter
     // writes anything that only passed on retry to the job summary ("Flaky

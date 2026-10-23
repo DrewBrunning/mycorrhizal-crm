@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   DialogActions,
   DialogContent,
@@ -8,6 +9,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CadencePolicyInput } from '../api/cadencePolicies';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 interface CadenceOfferDialogProps {
@@ -32,26 +34,39 @@ export default function CadenceOfferDialog({
 }: CadenceOfferDialogProps) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const close = () => {
+    setError(null);
+    onClose();
+  };
 
   const handleAccept = async () => {
     if (!offer || saving) return;
     setSaving(true);
+    setError(null);
     try {
       await onAccept(offer);
-      onClose();
+      close();
     } catch (err) {
-      // Leave the dialog open so the user can retry; the caller owns the
-      // error message.
-      console.error('Error accepting cadence offer:', err);
+      // Leave the dialog open so the user can retry, and say why: the
+      // cadence save (useCadencePolicy.handleSave) reports nothing itself,
+      // so a failure here used to reach only the console.
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <AppDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <AppDialog open={open} onClose={close} maxWidth="xs" fullWidth>
       <DialogTitle>{t('targetCloseness.offer.title')}</DialogTitle>
       <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         <DialogContentText>
           {t('targetCloseness.offer.body', {
             name: contactName,
@@ -60,7 +75,7 @@ export default function CadenceOfferDialog({
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={close} disabled={saving}>
           {t('targetCloseness.offer.dismiss')}
         </Button>
         <Button onClick={() => void handleAccept()} variant="contained" disabled={saving || !offer}>

@@ -56,9 +56,11 @@ const DATE_PREFIX = /^\d{4}-\d{2}-\d{2}$/;
  *   zone showed an activity logged "today" as yesterday west of UTC, and a
  *   different day in the list than in its own edit form.
  *
- * Not for values written at local midnight (gifts' `date`, which GiftDialog
- * stores as local midnight and reads back in the local zone) or for real
- * instants (`*_at`, `discussed_at`, external activities' `occurred_at`).
+ * - a gift's `date`: a calendar day at 00:00Z since ADR 0015's 2026-10-23
+ *   amendment (an older local-midnight value is left as an instant).
+ *
+ * Not for real instants (`*_at`, `discussed_at`, external activities'
+ * `occurred_at`).
  */
 export function calendarDateOnly(value: string): string {
   const date = value.slice(0, 10);

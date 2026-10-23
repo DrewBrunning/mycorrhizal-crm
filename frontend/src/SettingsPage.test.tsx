@@ -18,6 +18,7 @@ import { updateSelfContact, updateTimeFormat } from './api/users';
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import i18n from './i18n/config';
 import SettingsPage from './SettingsPage';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
 
@@ -40,6 +41,12 @@ vi.mock('./components/SeafileSettings', () => ({ default: () => null }));
 vi.mock('./components/NextcloudSettings', () => ({ default: () => null }));
 vi.mock('./components/LinkFieldTypesSettings', () => ({ default: () => null }));
 vi.mock('./components/GeoPulseSettings', () => ({ default: () => null }));
+// PasskeySettings is rendered for real; its list call must not leave the test
+// process (it used to hit 127.0.0.1:3000 and log ECONNREFUSED in every test).
+vi.mock('./api/webauthn', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./api/webauthn')>()),
+  listPasskeys: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock('./api/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/auth')>();
@@ -146,6 +153,21 @@ function renderPage() {
     </AppThemeProvider>,
   );
 }
+
+// --- Language ---------------------------------------------------------------
+
+test('the language select shows the active language even when the detected tag is regional', async () => {
+  // Before a preference is saved, i18n.language is the browser's tag (en-US);
+  // the select used to bind to it, match no option and render blank (and MUI
+  // warned "out-of-range value" on every render).
+  await i18n.changeLanguage('en-US');
+  try {
+    renderPage();
+    expect(screen.getByRole('combobox', { name: 'Language' })).toHaveTextContent('English');
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
 
 // --- Time format (issue #1830) ------------------------------------------
 
