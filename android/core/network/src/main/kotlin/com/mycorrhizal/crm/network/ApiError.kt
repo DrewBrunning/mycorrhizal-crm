@@ -73,7 +73,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
 fun Throwable.toApiError(): ApiError = when (this) {
     is ApiError -> this
     is ArchivedProfileWriteException -> ApiError.ArchivedProfile(this)
-    is UnknownHostException, is ConnectException -> ApiError.Network(this as IOException)
+    is UnknownHostException, is ConnectException -> ApiError.Network(this)
     is SocketTimeoutException -> ApiError.Timeout(this)
     is com.squareup.moshi.JsonDataException -> ApiError.Parse(this.message ?: "Parse error")
     else -> ApiError.Unknown(this)

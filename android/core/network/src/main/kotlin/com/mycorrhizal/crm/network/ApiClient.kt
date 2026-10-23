@@ -298,7 +298,7 @@ class ApiClient(
                 dateFormat = loginResponse?.dateFormat,
                 twoFactorRequired = twoFactorRequired,
                 pending2faCookie = if (twoFactorRequired) extractCookie(setCookies, TWO_FACTOR_COOKIE) else null,
-                methods = if (twoFactorRequired) loginResponse?.methods else null,
+                methods = if (twoFactorRequired) loginResponse.methods else null,
             )
         }
 
@@ -346,7 +346,7 @@ class ApiClient(
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/begin".toHttpUrl())
             .addHeader("Cookie", "$TWO_FACTOR_COOKIE=$pending2faCookie")
-            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .post(ByteArray(0).toRequestBody(null))
             .build()
         return execute(request) { _, body -> body.ifBlank { null } }
     }
@@ -2874,7 +2874,7 @@ class ApiClient(
     ): Result<T> {
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
-            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .post(ByteArray(0).toRequestBody(null))
             .build()
         return execute(request, mapper)
     }
@@ -2896,6 +2896,8 @@ class ApiClient(
     private suspend fun <T> executePatch(
         url: String,
         body: Any,
+        // A Unit result for callers that ignore the body; T is Unit there.
+        @Suppress("UNCHECKED_CAST")
         mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
     ): Result<T> {
         val request = Request.Builder()
@@ -2911,7 +2913,7 @@ class ApiClient(
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
-            .patch(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .patch(ByteArray(0).toRequestBody(null))
             .build()
         return execute(request, mapper)
     }
@@ -2959,6 +2961,8 @@ class ApiClient(
     private suspend fun <T> executeDelete(
         url: String,
         ifMatchRevision: Int? = null,
+        // A Unit result for callers that ignore the body; T is Unit there.
+        @Suppress("UNCHECKED_CAST")
         mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
     ): Result<T> {
         val request = Request.Builder()
