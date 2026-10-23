@@ -30,7 +30,7 @@ import org.robolectric.annotation.Config
 class TokenLabelsTest {
 
     private fun repoRoot(): File {
-        var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+        var dir: File? = File(checkNotNull(System.getProperty("user.dir"))).absoluteFile
         while (dir != null) {
             if (File(dir, "backend/models/activity.go").isFile) return dir
             dir = dir.parentFile
