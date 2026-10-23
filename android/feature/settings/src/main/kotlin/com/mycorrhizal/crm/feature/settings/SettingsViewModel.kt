@@ -38,6 +38,7 @@ import javax.inject.Inject
 enum class TrackingPermissionRequest {
     CALL_TRACKING,
     SMS_TRACKING,
+    NOTIFICATIONS,
 }
 
 /**
@@ -213,8 +214,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val callStored = trackingSettings.callTrackingEnabled()
             val smsStored = trackingSettings.smsTrackingEnabled()
+            val notificationsStored = trackingSettings.notificationsEnabled()
             val callGranted = callPermissionsGranted()
             val smsGranted = smsPermissionsGranted()
+            val notificationsGranted = notificationsPermissionGranted()
 
             if (callStored && !callGranted) {
                 trackingSettings.setCallTrackingEnabled(false)
@@ -223,13 +226,18 @@ class SettingsViewModel @Inject constructor(
             if (smsStored && !smsGranted) {
                 trackingSettings.setSmsTrackingEnabled(false)
             }
+            // Issue #1919: the notifications toggle is the same kind of claim —
+            // on only while the OS grant actually allows a notification to post.
+            if (notificationsStored && !notificationsGranted) {
+                trackingSettings.setNotificationsEnabled(false)
+            }
 
             _uiState.update {
                 it.copy(
                     callSmsTrackingAvailable = callSmsTrackingCapability.isAvailable(),
                     callTrackingEnabled = callStored && callGranted,
                     smsTrackingEnabled = smsStored && smsGranted,
-                    notificationsEnabled = trackingSettings.notificationsEnabled(),
+                    notificationsEnabled = notificationsStored && notificationsGranted,
                     // Issue #1029: the capture-policy escape hatch + its
                     // diagnostics counter are plain reads (not flows), refreshed
                     // with the rest of the tracking state.
@@ -310,9 +318,33 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Issue #1919: mirror the call/SMS flow for the notifications toggle. On
+     * API 33+ turning it on requires POST_NOTIFICATIONS; without the grant the
+     * preference is never persisted and the toggle stays off after the system's
+     * denial, so the row can't claim notifications work when they cannot post.
+     */
     fun setNotificationsEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(notificationsEnabled = enabled) }
-        viewModelScope.launch { trackingSettings.setNotificationsEnabled(enabled) }
+        if (_uiState.value.pendingPermissionRequest != null && enabled) return
+        if (!enabled) {
+            _uiState.update {
+                it.copy(
+                    notificationsEnabled = false,
+                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest == TrackingPermissionRequest.NOTIFICATIONS) {
+                        null
+                    } else {
+                        _uiState.value.pendingPermissionRequest
+                    },
+                )
+            }
+            viewModelScope.launch { trackingSettings.setNotificationsEnabled(false) }
+            return
+        }
+        if (notificationsPermissionGranted()) {
+            enableNotifications()
+        } else {
+            _uiState.update { it.copy(pendingPermissionRequest = TrackingPermissionRequest.NOTIFICATIONS) }
+        }
     }
 
     /**
@@ -461,11 +493,13 @@ class SettingsViewModel @Inject constructor(
         val granted = when (request) {
             TrackingPermissionRequest.CALL_TRACKING -> callPermissionsGranted()
             TrackingPermissionRequest.SMS_TRACKING -> smsPermissionsGranted()
+            TrackingPermissionRequest.NOTIFICATIONS -> notificationsPermissionGranted()
         }
         if (granted) {
             when (request) {
                 TrackingPermissionRequest.CALL_TRACKING -> enableCallTracking()
                 TrackingPermissionRequest.SMS_TRACKING -> enableSmsTracking()
+                TrackingPermissionRequest.NOTIFICATIONS -> enableNotifications()
             }
         } else {
             _uiState.update {
@@ -498,6 +532,14 @@ class SettingsViewModel @Inject constructor(
 
     private fun smsPermissionsGranted(): Boolean =
         TrackingPermissions.SMS_TRACKING.all { permissionChecker.isGranted(it) }
+
+    private fun notificationsPermissionGranted(): Boolean =
+        TrackingPermissions.NOTIFICATIONS.all { permissionChecker.isGranted(it) }
+
+    private fun enableNotifications() {
+        _uiState.update { it.copy(notificationsEnabled = true) }
+        viewModelScope.launch { trackingSettings.setNotificationsEnabled(true) }
+    }
 
     private fun enableCallTracking() {
         _uiState.update { it.copy(callTrackingEnabled = true) }

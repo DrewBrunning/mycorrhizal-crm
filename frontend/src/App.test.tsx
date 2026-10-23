@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -209,4 +209,20 @@ test('the sidebar brand logo is inside the main navigation landmark (#1792)', ()
   const nav = logo.closest('nav');
   expect(nav).not.toBeNull();
   expect(nav).toHaveAttribute('aria-label', 'Main navigation');
+});
+
+// Issue #1917: a pushState navigation must move focus off the activated link
+// to the new page's heading, so assistive technology announces the new screen.
+test('a client-side navigation moves focus to the new page heading', async () => {
+  setLoggedInUser(false);
+  renderApp();
+
+  const contactsLinks = screen.getAllByRole('link', { name: 'Contacts' });
+  fireEvent.click(contactsLinks[0]);
+
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Contacts' }),
+    ),
+  );
 });

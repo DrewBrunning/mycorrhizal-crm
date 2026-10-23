@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 
 /**
  * Issue #1759: the building blocks shared by the Settings root and its grouped sub-screens, so a
@@ -83,7 +84,7 @@ internal fun SettingsScaffold(
                         }
                     }
                 },
-                title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+                title = { ScreenTitle(text = title) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,

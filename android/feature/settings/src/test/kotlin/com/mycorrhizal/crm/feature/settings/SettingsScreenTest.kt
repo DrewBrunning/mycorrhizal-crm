@@ -567,6 +567,42 @@ class SettingsScreenTest {
         assertEquals(true, dismissed)
     }
 
+    @Test
+    fun `a rationale dialog explains the notification permission`() {
+        show {
+            TrackingSettingsContent(
+                state = SettingsUiState(
+                    permissionDialog = TrackingPermissionDialog.Rationale(TrackingPermissionRequest.NOTIFICATIONS),
+                ),
+            )
+        }
+
+        composeTestRule.onNodeWithText("Permission needed").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(
+                "Notifications need permission to be shown. Allow notifications to receive reminders and alerts.",
+            )
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `an app-settings dialog explains a permanent notification denial`() {
+        show {
+            TrackingSettingsContent(
+                state = SettingsUiState(
+                    permissionDialog = TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.NOTIFICATIONS),
+                ),
+            )
+        }
+
+        composeTestRule.onNodeWithText("Permission blocked").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(
+                "Notifications are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on.",
+            )
+            .assertIsDisplayed()
+    }
+
     // --- Integrations / Administration ---------------------------------------------------------
 
     @Test
@@ -694,6 +730,7 @@ class SettingsScreenTest {
         coEvery { trackingSettings.callTrackingEnabled() } returns false
         coEvery { trackingSettings.smsTrackingEnabled() } returns false
         coEvery { trackingSettings.notificationsEnabled() } returns true
+        coEvery { trackingSettings.setNotificationsEnabled(any()) } returns Unit
         coEvery { trackingSettings.includeUnknownNumbers() } returns false
         coEvery { trackingSettings.filteredUnknownCount() } returns 0
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
@@ -705,6 +742,9 @@ class SettingsScreenTest {
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
         every { callSmsTrackingCapability.isAvailable() } returns true
         every { permissionChecker.isGranted(any()) } returns false
+        every {
+            permissionChecker.isGranted(com.mycorrhizal.crm.feature.tracking.TrackingPermissions.POST_NOTIFICATIONS)
+        } returns true
         every { authRepository.observeSession() } returns MutableStateFlow(
             SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
         )

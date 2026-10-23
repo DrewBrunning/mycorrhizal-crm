@@ -2,10 +2,10 @@
 <resources>
     <!-- T97: night palette. Mirrors values/themes.xml's Base.Theme.Mycorrhizal
          but with the dark tokens, and drops the ".Light" parent (unlike the
-         light theme) so the platform's own dark chrome matches too. See
-         values/themes.xml for why windowLightNavigationBar itself lives in
-         the v27-qualified sibling (values-night-v27/themes.xml) rather than
-         here. -->
+         light theme) so the platform's own dark chrome matches too. The night
+         navigation bar is already dark (boneDark) with light icons, so API 26
+         needs no fallback; windowLightNavigationBar itself lives in the
+         v27-qualified sibling (values-night-v27/themes.xml). -->
     <style name="Base.Theme.Mycorrhizal" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">#9EB698</item> <!-- myceliumDark -->
         <item name="android:windowLightStatusBar">true</item> <!-- light bg -> dark icons -->
@@ -15,8 +15,12 @@
     <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal" />
 
     <!-- T106: only the background differs from values/themes.xml's splash
-         theme; the icon and postSplashScreenTheme are inherited unchanged. -->
+         theme; the icon and postSplashScreenTheme are inherited unchanged.
+         Issue #1920: the splash status bar follows the dark splash background
+         (light icons), rather than the platform default. -->
     <style name="Theme.Mycorrhizal.Splash" parent="Base.Theme.Mycorrhizal.Splash">
         <item name="windowSplashScreenBackground">#1E1A13</item> <!-- boneDark -->
+        <item name="android:statusBarColor">#1E1A13</item> <!-- boneDark -->
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

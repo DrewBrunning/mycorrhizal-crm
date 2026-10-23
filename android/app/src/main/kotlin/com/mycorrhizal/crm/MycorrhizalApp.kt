@@ -6,7 +6,9 @@
 package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
+import android.view.accessibility.AccessibilityManager
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -356,7 +358,12 @@ fun MycorrhizalApp(
             session.isLoggedIn -> surfaceContainerLowArgb
             else -> surfaceArgb
         },
-        navigationBarColor = surfaceArgb,
+        navigationBarColor = navigationBarBackground(
+            darkTheme = darkTheme,
+            sdkInt = Build.VERSION.SDK_INT,
+            surface = surfaceArgb,
+            primary = primaryArgb,
+        ),
     )
 
     // Issue #722: the root branches on where the user is in the session +
@@ -738,6 +745,33 @@ internal fun usesPermanentNavigation(windowSizeClass: WindowSizeClass): Boolean 
  * drawer. Stateless so host-level width-class tests can drive it with a fake
  * [WindowSizeClass] and slot content.
  */
+/**
+ * Issue #1923: whether a screen reader's touch exploration is active. While it
+ * is, one-finger swipes belong to the reader's traversal, so the modal drawer's
+ * edge-swipe gesture must stay disabled; the drawer remains reachable from the
+ * Menu icon (phones) and the rail's More item (tablets). Reads the live value
+ * and follows changes, so enabling/disabling TalkBack does not require a
+ * process restart.
+ */
+@Composable
+private fun rememberTouchExplorationEnabled(): Boolean {
+    val context = LocalContext.current
+    val manager = remember(context) {
+        context.getSystemService(AccessibilityManager::class.java)
+    }
+    var enabled by remember(manager) {
+        mutableStateOf(manager?.isTouchExplorationEnabled == true)
+    }
+    DisposableEffect(manager) {
+        if (manager == null) return@DisposableEffect onDispose { }
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { enabled = it }
+        manager.addTouchExplorationStateChangeListener(listener)
+        enabled = manager.isTouchExplorationEnabled
+        onDispose { manager.removeTouchExplorationStateChangeListener(listener) }
+    }
+    return enabled
+}
+
 @Composable
 internal fun MainNavScaffold(
     currentRoute: String?,
@@ -754,10 +788,15 @@ internal fun MainNavScaffold(
 ) {
     val permanent = usesPermanentNavigation(windowSizeClass)
     val scope = rememberCoroutineScope()
+    val touchExplorationEnabled = rememberTouchExplorationEnabled()
     // The drawer stays mounted at permanent widths too: the rail's "More" item is
     // the way to reach the destinations the primary rail set leaves out.
     ModalNavigationDrawer(
         drawerState = drawerState,
+        // Issue #1923: with a screen reader on, one-finger swipes are its
+        // next/previous-item navigation; the edge swipe must not open the
+        // drawer out from under them. Menu/More still open it explicitly.
+        gesturesEnabled = !touchExplorationEnabled,
         drawerContent = {
             DrawerContent(
                 currentRoute = currentRoute,
