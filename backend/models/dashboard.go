@@ -11,6 +11,33 @@ type DashboardReminder struct {
 	ContactName string `json:"contact_name"`
 }
 
+// DashboardContactRelationship is the compact "why is this person here"
+// read-model carried by every random_contacts entry (issue #1761). It is
+// derived from the same cadence computation the cadence view uses, but ships
+// day counts rather than timestamps so every client renders the identical
+// "due in N days" / "last talked N days ago" line without re-implementing
+// the reminder-zone calendar-day rule (ADR 0015).
+//
+// DaysSinceLastInteraction/DaysUntilDue are pointers so "unknown" (no
+// interaction ever / no cadence policy) is distinct from a genuine 0 (today).
+// DaysUntilDue is negative when overdue; HasCadence says whether a policy
+// exists at all, so a no-policy contact can still show its last interaction.
+type DashboardContactRelationship struct {
+	HasCadence               bool `json:"has_cadence"`
+	DaysSinceLastInteraction *int `json:"days_since_last_interaction,omitempty"`
+	DaysUntilDue             *int `json:"days_until_due,omitempty"`
+}
+
+// DashboardRandomContact is one random_contacts entry: the contact plus the
+// relationship signal the "Stay in Touch" card uses as its reason subtitle
+// (issue #1761). Relationship is always present (a zero value means "no
+// cadence policy and no interactions yet"), so the block never needs a
+// null-check for the object itself.
+type DashboardRandomContact struct {
+	ContactResponse
+	Relationship DashboardContactRelationship `json:"relationship"`
+}
+
 // DashboardOverdueCadence mirrors services.OverdueCadence field-for-field
 // (same JSON shape, so the frontend's existing OverdueCadence type needs no
 // change) — kept as a models-local type rather than importing
@@ -53,7 +80,7 @@ type DashboardOverdueDataDecay struct {
 // broke the prep view once already).
 type DashboardResponse struct {
 	Birthdays         []Birthday                `json:"birthdays"`
-	RandomContacts    []ContactResponse         `json:"random_contacts"`
+	RandomContacts    []DashboardRandomContact  `json:"random_contacts"`
 	UpcomingReminders []DashboardReminder       `json:"upcoming_reminders"`
 	Overdue           []DashboardOverdueCadence `json:"overdue"`
 	// Favorites (issue #173): the user's favorite, non-archived contacts,

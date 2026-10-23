@@ -53,7 +53,11 @@ import type {
   CRMEnvelope,
 } from './contacts';
 import type { ConversationAgenda } from './conversationAgenda';
-import type { DashboardReminder, DashboardResponse } from './dashboard';
+import type {
+  DashboardContactRelationship,
+  DashboardReminder,
+  DashboardResponse,
+} from './dashboard';
 import type { DataDecayHealth, DataDecayPolicy, OverdueDataDecayPolicy } from './dataDecayPolicies';
 import type { ExternalActivity, ExternalIdentity } from './externalLinks';
 import type { FEED_DETAILS, FEED_KINDS, Feed, FeedCreateResponse } from './feeds';
@@ -195,6 +199,7 @@ export type Conformance = [
   NoDrift<ResponseDrift<LinkFieldType, S.LinkFieldType>>,
   NoDrift<ResponseDrift<Birthday, S.Birthday>>,
   NoDrift<ResponseDrift<DashboardReminder, S.DashboardReminder>>,
+  NoDrift<ResponseDrift<DashboardContactRelationship, S.DashboardContactRelationship>>,
   NoDrift<
     ResponseDrift<
       DeliberateException<

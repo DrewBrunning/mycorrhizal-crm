@@ -39,6 +39,11 @@
       "photo": "",
       "photo_thumbnail": "",
       "prefix": "",
+      "relationship": {
+        "days_since_last_interaction": 12,
+        "days_until_due": 18,
+        "has_cadence": true
+      },
       "role": "",
       "suffix": "",
       "urls": null,
@@ -74,6 +79,10 @@
       "photo": "",
       "photo_thumbnail": "",
       "prefix": "",
+      "relationship": {
+        "days_since_last_interaction": 3,
+        "has_cadence": false
+      },
       "role": "",
       "suffix": "",
       "urls": null,
