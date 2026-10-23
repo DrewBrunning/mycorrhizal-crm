@@ -35,6 +35,10 @@ test('distinguishes an unreachable server from a browser that is offline', () =>
 test('leaves non-network errors and API error display messages alone', () => {
   setOnline(false);
   expect(getErrorMessage(new Error('Service unavailable'))).toBe('Service unavailable');
+  // A programming TypeError must not be mislabelled as an offline condition.
+  expect(getErrorMessage(new TypeError('Cannot read properties of undefined'))).toBe(
+    'Cannot read properties of undefined',
+  );
   expect(getErrorMessage(new ApiError('Contact not found', 'NOT_FOUND', 404))).toBe(
     'Contact not found',
   );

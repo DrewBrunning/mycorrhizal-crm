@@ -39,7 +39,9 @@ const NETWORK_ERROR_MESSAGES = new Set([
 ]);
 
 function isNetworkError(error: unknown): boolean {
-  if (error instanceof TypeError) return true;
+  // Match the known messages rather than every TypeError: a programming bug
+  // ("Cannot read properties of undefined") is not a network failure and its
+  // real message is more useful than a made-up offline state.
   return error instanceof Error && NETWORK_ERROR_MESSAGES.has(error.message);
 }
 
