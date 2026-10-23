@@ -160,9 +160,21 @@ jobs:
       # (coverage/release) + `foss` (must compile its FCM-free Hilt graph).
       # `play` is source-identical to `obtainium` and exercised by the
       # APK-build workflow instead.
+      # The nightly `schedule` run re-executes every task instead of
+      # restoring test results from the Gradle build cache: on push/PR an
+      # unchanged module's Robolectric tests are FROM-CACHE (correct, and
+      # fast), which also means a flaky test there is never re-run. The
+      # nightly is the zero-retry flake signal (nightly-failure-alert.yml),
+      # so it must actually run them (v1.5.0 review).
+      #
+      # --warning-mode=fail on the Gradle steps of this job: a Gradle
+      # deprecation (the class #1868 cleaned up by hand) fails the build
+      # instead of scrolling past in a log nobody reads.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
-        run: ./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
+        env:
+          RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
+        run: ./gradlew --warning-mode=fail $RERUN_FLAG testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
 
       # Issue #268: the test-retry plugin reruns a failed Robolectric test
       # once; Gradle retains the failed attempt in the XML even when the
@@ -186,7 +198,7 @@ jobs:
       # `feature/*` modules at 0% despite local reports showing ~70%.
       - name: Coverage report (JaCoCo, aggregated)
         working-directory: android
-        run: ./gradlew jacocoTestReportAggregated
+        run: ./gradlew --warning-mode=fail jacocoTestReportAggregated
 
       # Issue #1627: the Android half of the per-file no-regression ratchet
       # (backend cmd/coverageratchet; frontend check-coverage-ratchet.mjs).
@@ -259,7 +271,7 @@ jobs:
 
       - name: Lint
         working-directory: android
-        run: ./gradlew lintDebug :app:lintObtainiumDebug :app:lintFossDebug
+        run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
 
       # Issue #358: detekt, the Kotlin correctness/smell analyzer
       # complementing CodeQL + mobsfscan + Android Lint (shared config:
@@ -268,14 +280,14 @@ jobs:
       # needed anymore.
       - name: detekt
         working-directory: android
-        run: ./gradlew detekt
+        run: ./gradlew --warning-mode=fail detekt
 
       # Issue #1133: obtainium (gold-standard) + foss (proves the
       # Firebase-free flavor builds end to end, the F-Droid precondition).
       # Issue #1200: play too, for its restricted-permission carve-out below.
       - name: Assemble debug APKs (obtainium + foss + play)
         working-directory: android
-        run: ./gradlew :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
+        run: ./gradlew --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
 
       # Issue #1133: F-Droid requires the FOSS APK carry no Firebase/GMS
       # code. obtainium is checked for the opposite, so this can't pass by
