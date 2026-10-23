@@ -36,8 +36,14 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
     <AnnouncerContext.Provider value={{ announce }}>
       {children}
       <Box
+        // Role status carries an implicit polite live region. Orca announces
+        // changes to a status role reliably; the same text in a bare
+        // aria-live box was exposed in the AX tree but never spoken (#1918).
+        role="status"
         aria-live="polite"
         aria-atomic="true"
+        // Keep the region mounted and visually hidden but *showing* to AT:
+        // display:none/visibility:hidden would remove it from the AX tree.
         sx={{
           position: 'absolute',
           // Pixel strings, not `1`: MUI's sx reads a bare number in 0..1 as a
@@ -47,6 +53,9 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
           // a viewport of blank space (#1788).
           width: '1px',
           height: '1px',
+          p: 0,
+          m: '-1px',
+          border: 0,
           overflow: 'hidden',
           clip: 'rect(0 0 0 0)',
           clipPath: 'inset(50%)',
