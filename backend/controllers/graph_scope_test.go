@@ -212,6 +212,10 @@ func TestGetGraph_RejectsBadScopeParameters(t *testing.T) {
 	// Ownership scoping: another user's contact is indistinguishable from a
 	// missing one.
 	getGraphResp(t, router, "/graph?from="+foreign.VCardUID, http.StatusNotFound)
+	// An archived contact is not a graph node, so it cannot anchor one.
+	archived := models.Contact{UserID: user.ID, Firstname: "Archived", Archived: true}
+	require.NoError(t, db.Create(&archived).Error)
+	getGraphResp(t, router, "/graph?from="+archived.VCardUID, http.StatusNotFound)
 }
 
 // A request whose context is already cancelled (the client went away) must
@@ -237,7 +241,11 @@ func TestGraphAndDashboard_StopWhenClientDisconnects(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Empty(t, w.Body.String(), "a cancelled request must not produce a response body")
-			assert.NotEqual(t, http.StatusInternalServerError, w.Code)
+			// The recorder's Code defaults to 200, so asserting on it proves
+			// nothing; an aborted handler must not have started a response at
+			// all (no status line, no headers). A logged 500 is caught by
+			// setupRouter's logtest guard.
+			assert.Empty(t, w.Header().Get("Content-Type"), "a cancelled request must not start a response")
 		})
 	}
 }

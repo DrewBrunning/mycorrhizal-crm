@@ -1,6 +1,9 @@
 package models
 
 import (
+	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -10,8 +13,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTargetClosenessTiers_Order(t *testing.T) {
-	assert.Equal(t, []string{"immediate", "close", "casual", "distant"}, TargetClosenessTiers())
+// TestTargetClosenessTiers_MirrorsMatch pins every hand-written copy of the
+// tier vocabulary (frontend trap #4) to TargetClosenessTiers(), in order: the
+// migration's CHECK, the API's enum, and both clients' constants. A constant
+// compared with itself proves nothing; drift between the copies is the bug.
+func TestTargetClosenessTiers_MirrorsMatch(t *testing.T) {
+	want := TargetClosenessTiers()
+	quoted := func(src string) []string {
+		var out []string
+		for _, m := range regexp.MustCompile(`['"]([a-z_]+)['"]`).FindAllStringSubmatch(src, -1) {
+			out = append(out, m[1])
+		}
+		return out
+	}
+	read := func(path string) string {
+		b, err := os.ReadFile(path)
+		require.NoError(t, err)
+		return string(b)
+	}
+
+	migration := read("../database/migrations/000076_target_closeness.up.sql")
+	check := regexp.MustCompile(`target_closeness IN \(([^)]*)\)`).FindStringSubmatch(migration)
+	require.NotNil(t, check, "000076 no longer carries the target_closeness CHECK")
+	assert.Equal(t, want, quoted(check[1]), "migration 000076 CHECK")
+
+	spec := read("../openapi.yaml")
+	input := regexp.MustCompile(`(?s)ContactTargetClosenessInput:.*?enum: \[([^\]]*)\]`).FindStringSubmatch(spec)
+	require.NotNil(t, input)
+	assert.Equal(t, want, strings.Split(strings.ReplaceAll(input[1], " ", ""), ","), "openapi ContactTargetClosenessInput.tier")
+
+	web := regexp.MustCompile(`TARGET_CLOSENESS_TIERS = \[([^\]]*)\]`).FindStringSubmatch(read("../../frontend/src/api/targetCloseness.ts"))
+	require.NotNil(t, web)
+	assert.Equal(t, want, quoted(web[1]), "frontend TARGET_CLOSENESS_TIERS")
+
+	android := read("../../android/core/model/src/main/kotlin/com/mycorrhizal/crm/model/network/TargetCloseness.kt")
+	consts := regexp.MustCompile(`(?s)object TargetClosenessTier \{(.*?)val ALL`).FindStringSubmatch(android)
+	require.NotNil(t, consts)
+	assert.Equal(t, want, quoted(consts[1]), "Android TargetClosenessTier constants")
 }
 
 func TestContactTargetClosenessInput_Validation(t *testing.T) {

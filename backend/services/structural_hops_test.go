@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/internal/scoring"
@@ -58,6 +59,7 @@ func isStructuralChain(chain models.GraphChain, cfg scoring.Config) bool {
 }
 
 func TestStructuralHops_ChainDepthsAndCap(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-chain")
 	cfg := scoringCfg(t)
@@ -81,6 +83,7 @@ func TestStructuralHops_ChainDepthsAndCap(t *testing.T) {
 }
 
 func TestStructuralHops_AffinityOnlyPathsAreExcluded(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-affinity")
 	cfg := scoringCfg(t)
@@ -109,6 +112,7 @@ func TestStructuralHops_AffinityOnlyPathsAreExcluded(t *testing.T) {
 // per-target de-dup could instead pick the shorter, non-structural chain and
 // then drop the contact entirely.)
 func TestStructuralHops_LongerStructuralPathBeatsShorterAffinityEdge(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-longer")
 	cfg := scoringCfg(t)
@@ -126,6 +130,7 @@ func TestStructuralHops_LongerStructuralPathBeatsShorterAffinityEdge(t *testing.
 }
 
 func TestStructuralHops_SecretSuggestedAndForeignEdgesDoNotConnect(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-filters")
 	other := createScoreTestUser(t, db, "hops-filters-other")
@@ -151,6 +156,7 @@ func TestStructuralHops_SecretSuggestedAndForeignEdgesDoNotConnect(t *testing.T)
 }
 
 func TestStructuralHops_DirectionalRelationsMatchTraversal(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-direction")
 	cfg := scoringCfg(t)
@@ -177,6 +183,7 @@ func TestStructuralHops_DirectionalRelationsMatchTraversal(t *testing.T) {
 // provably the same question (they differ only when an affinity edge ties a
 // structural path, pinned separately above).
 func TestStructuralHops_DifferentialAgainstTraversal(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-differential")
 	cfg := scoringCfg(t)
@@ -225,6 +232,7 @@ func TestStructuralHops_DifferentialAgainstTraversal(t *testing.T) {
 }
 
 func TestStructuralHops_StopsOnCancelledContext(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-cancel")
 	self := createScoreTestContact(t, db, user.ID, "Self")
@@ -236,6 +244,7 @@ func TestStructuralHops_StopsOnCancelledContext(t *testing.T) {
 }
 
 func TestStatementContextErr(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	assert.NoError(t, statementContextErr(db), "a plain session has a background context")
 	assert.NoError(t, statementContextErr(nil))
@@ -257,6 +266,7 @@ func TestStatementContextErr(t *testing.T) {
 // -> unreachable. Swapping the forward/backward flags in
 // structuralHopsByEntityID's adjacency build inverts both assertions.
 func TestStructuralHops_EdgeDirectionWithAsymmetricTiers(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "hops-asym")
 

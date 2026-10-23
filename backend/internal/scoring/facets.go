@@ -58,9 +58,11 @@ func computeCloseness(raw RawInputs, cfg Config) (defaultIntervalDays int, facet
 	}
 	if best != nil {
 		return best.DefaultIntervalDays, FacetResult{
-			Value:  best.Weight,
-			Weight: cfg.WeightCloseness,
-			Reason: fmt.Sprintf("Directly connected via a %s relationship", bestType),
+			Value:        best.Weight,
+			Weight:       cfg.WeightCloseness,
+			Reason:       fmt.Sprintf("Directly connected via a %s relationship", bestType),
+			ReasonCode:   ReasonClosenessDirect,
+			ReasonParams: ReasonParams{Relation: bestType},
 		}
 	}
 
@@ -68,16 +70,19 @@ func computeCloseness(raw RawInputs, cfg Config) (defaultIntervalDays int, facet
 		hops := *raw.ReachableHops
 		value := clamp(cfg.ClosenessHopBaseWeight-cfg.ClosenessHopDecayPerHop*float64(hops-1), cfg.ClosenessHopFloor, 100)
 		return cfg.UnknownClosenessIntervalDays, FacetResult{
-			Value:  value,
-			Weight: cfg.WeightCloseness,
-			Reason: fmt.Sprintf("Reachable %d hops away in the relationship graph", hops),
+			Value:        value,
+			Weight:       cfg.WeightCloseness,
+			Reason:       fmt.Sprintf("Reachable %d hops away in the relationship graph", hops),
+			ReasonCode:   ReasonClosenessHops,
+			ReasonParams: ReasonParams{Hops: intPtr(hops)},
 		}
 	}
 
 	return cfg.UnknownClosenessIntervalDays, FacetResult{
-		Value:  cfg.UnknownClosenessWeight,
-		Weight: cfg.WeightCloseness,
-		Reason: "Not connected to your self-contact in the relationship graph — closeness unknown",
+		Value:      cfg.UnknownClosenessWeight,
+		Weight:     cfg.WeightCloseness,
+		Reason:     "Not connected to your self-contact in the relationship graph — closeness unknown",
+		ReasonCode: ReasonClosenessUnknown,
 	}
 }
 
@@ -93,17 +98,23 @@ func computeRecency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
 	}
 	if !raw.HasQualifyingInteraction {
 		return FacetResult{
-			Value:  cfg.RecencyNoInteractionValue,
-			Weight: cfg.WeightRecency,
-			Reason: "No qualifying interaction recorded yet",
+			Value:      cfg.RecencyNoInteractionValue,
+			Weight:     cfg.WeightRecency,
+			Reason:     "No qualifying interaction recorded yet",
+			ReasonCode: ReasonRecencyNone,
 		}
 	}
 	ratio := float64(raw.DaysSinceLastInteraction) / float64(intervalDays)
 	value := clamp(100*(1-ratio/cfg.RecencyOverdueRatioCap), 0, 100)
 	return FacetResult{
-		Value:  value,
-		Weight: cfg.WeightRecency,
-		Reason: fmt.Sprintf("Last qualifying interaction %d day(s) ago (target every %d days)", raw.DaysSinceLastInteraction, intervalDays),
+		Value:      value,
+		Weight:     cfg.WeightRecency,
+		Reason:     fmt.Sprintf("Last qualifying interaction %d day(s) ago (target every %d days)", raw.DaysSinceLastInteraction, intervalDays),
+		ReasonCode: ReasonRecencyDays,
+		ReasonParams: ReasonParams{
+			Days:         intPtr(raw.DaysSinceLastInteraction),
+			IntervalDays: intPtr(intervalDays),
+		},
 	}
 }
 
@@ -120,10 +131,18 @@ func computeFrequency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
 		ratio = float64(raw.QualifyingInteractionsInWindow) / expected
 	}
 	value := clamp(100*ratio, 0, 100)
+	// One decimal, matching the English Reason's %.1f.
+	expectedRounded := math.Round(expected*10) / 10
 	return FacetResult{
-		Value:  value,
-		Weight: cfg.WeightFrequency,
-		Reason: fmt.Sprintf("%d qualifying interaction(s) in the last %d days (expected ~%.1f at the target cadence)", raw.QualifyingInteractionsInWindow, cfg.FrequencyWindowDays, expected),
+		Value:      value,
+		Weight:     cfg.WeightFrequency,
+		Reason:     fmt.Sprintf("%d qualifying interaction(s) in the last %d days (expected ~%.1f at the target cadence)", raw.QualifyingInteractionsInWindow, cfg.FrequencyWindowDays, expected),
+		ReasonCode: ReasonFrequencyCount,
+		ReasonParams: ReasonParams{
+			Count:      intPtr(raw.QualifyingInteractionsInWindow),
+			WindowDays: intPtr(cfg.FrequencyWindowDays),
+			Expected:   &expectedRounded,
+		},
 	}
 }
 
@@ -135,15 +154,17 @@ func computeFrequency(raw RawInputs, cfg Config, intervalDays int) FacetResult {
 func computeReachOut(raw RawInputs, cfg Config) FacetResult {
 	if raw.HasPendingReachOut {
 		return FacetResult{
-			Value:  cfg.ReachOutPendingValue,
-			Weight: cfg.WeightReachOut,
-			Reason: "There's an unreviewed reach-out suggestion for this contact",
+			Value:      cfg.ReachOutPendingValue,
+			Weight:     cfg.WeightReachOut,
+			Reason:     "There's an unreviewed reach-out suggestion for this contact",
+			ReasonCode: ReasonReachOutPending,
 		}
 	}
 	return FacetResult{
-		Value:  100,
-		Weight: cfg.WeightReachOut,
-		Reason: "No pending reach-out suggestion",
+		Value:      100,
+		Weight:     cfg.WeightReachOut,
+		Reason:     "No pending reach-out suggestion",
+		ReasonCode: ReasonReachOutNone,
 	}
 }
 
@@ -155,9 +176,11 @@ func computeLastUpdated(raw RawInputs, cfg Config) FacetResult {
 	ratio := float64(raw.DaysSinceUpdated) / float64(cfg.LastUpdatedWindowDays)
 	value := clamp(100-(100-cfg.LastUpdatedFloor)*ratio, cfg.LastUpdatedFloor, 100)
 	return FacetResult{
-		Value:  value,
-		Weight: cfg.WeightLastUpdated,
-		Reason: fmt.Sprintf("Contact record last edited %d day(s) ago", raw.DaysSinceUpdated),
+		Value:        value,
+		Weight:       cfg.WeightLastUpdated,
+		Reason:       fmt.Sprintf("Contact record last edited %d day(s) ago", raw.DaysSinceUpdated),
+		ReasonCode:   ReasonLastUpdatedDays,
+		ReasonParams: ReasonParams{Days: intPtr(raw.DaysSinceUpdated)},
 	}
 }
 
@@ -165,11 +188,11 @@ func computeLastUpdated(raw RawInputs, cfg Config) FacetResult {
 // #1733): a full score, because the user is in regular contact with them
 // without logging it.
 func ambientFacet(raw RawInputs, weight float64) FacetResult {
-	reason := "Ambient contact (marked)"
+	reason, code := "Ambient contact (marked)", ReasonAmbientFlag
 	if raw.AmbientReason == AmbientReasonHousehold {
-		reason = "Ambient contact (lives with you)"
+		reason, code = "Ambient contact (lives with you)", ReasonAmbientHousehold
 	}
-	return FacetResult{Value: 100, Weight: weight, Reason: reason}
+	return FacetResult{Value: 100, Weight: weight, Reason: reason, ReasonCode: code}
 }
 
 // computeTarget reports how the contact is doing against its target closeness
@@ -190,16 +213,23 @@ func computeTarget(raw RawInputs, cfg Config, intervalDays int, recency, frequen
 		Value:        value,
 		IntervalDays: intervalDays,
 	}
+	score := intPtr(int(math.Round(value)))
 	if raw.HasCadencePolicy {
 		res.IntervalSource = IntervalSourceCadencePolicy
 		res.Reason = fmt.Sprintf("Recency and frequency score %.0f against a %d-day interval from your cadence policy", value, intervalDays)
+		res.ReasonCode = ReasonTargetPolicy
+		res.ReasonParams = ReasonParams{Score: score, IntervalDays: intPtr(intervalDays)}
 	} else {
 		res.IntervalSource = IntervalSourceTargetTier
 		res.Reason = fmt.Sprintf("Recency and frequency score %.0f against a %d-day interval from the %s target", value, intervalDays, raw.TargetTier)
+		res.ReasonCode = ReasonTargetTier
+		res.ReasonParams = ReasonParams{Score: score, IntervalDays: intPtr(intervalDays), Tier: raw.TargetTier}
 	}
 	if raw.Ambient {
 		res.Status = TargetStatusOnTrack
 		res.Reason = "Ambient contact — always on track"
+		res.ReasonCode = ReasonTargetAmbient
+		res.ReasonParams = ReasonParams{}
 	}
 	return res
 }

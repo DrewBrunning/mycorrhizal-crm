@@ -661,9 +661,23 @@ export type ContactResponse = ContactFlat & {
 };
 
 export type ContactScoreFacet = {
-  reason?: string;
-  value?: number;
-  weight?: number;
+  reason: string;
+  reason_code: 'closeness_direct' | 'closeness_hops' | 'closeness_unknown' | 'recency_none' | 'recency_days' | 'frequency_count' | 'reach_out_pending' | 'reach_out_none' | 'last_updated_days' | 'ambient_household' | 'ambient_flag' | 'target_cadence_policy' | 'target_tier' | 'target_ambient';
+  reason_params: ContactScoreReasonParams;
+  value: number;
+  weight: number;
+};
+
+export type ContactScoreReasonParams = {
+  count?: number;
+  days?: number;
+  expected?: number;
+  hops?: number;
+  interval_days?: number;
+  relation?: string;
+  score?: number;
+  tier?: 'immediate' | 'close' | 'casual' | 'distant';
+  window_days?: number;
 };
 
 export type ContactScoreResponse = {
@@ -684,6 +698,8 @@ export type ContactScoreTarget = {
   interval_days: number;
   interval_source: 'cadence_policy' | 'target_tier';
   reason: string;
+  reason_code: 'target_cadence_policy' | 'target_tier' | 'target_ambient';
+  reason_params: ContactScoreReasonParams;
   status: 'on_track' | 'drifting' | 'behind';
   tier: 'immediate' | 'close' | 'casual' | 'distant';
   value: number;

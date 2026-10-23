@@ -49,6 +49,15 @@ type alertConditionResult struct {
 // path. Indirected for tests.
 var diskUsageFn = statfsDiskUsage
 
+// SetDiskUsageFn swaps the filesystem-usage probe and returns the restore
+// func (the SetClock shape). For tests outside this package whose outcome
+// must not depend on how full the runner's real disk is.
+func SetDiskUsageFn(fn func(path string) (int, error)) (restore func()) {
+	prev := diskUsageFn
+	diskUsageFn = fn
+	return func() { diskUsageFn = prev }
+}
+
 func statfsDiskUsage(path string) (int, error) {
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(path, &st); err != nil {

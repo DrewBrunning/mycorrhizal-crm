@@ -260,6 +260,14 @@ func RandomCredentialLabel() string {
 func DefaultCredentialLabel(userAgent string) string {
 	browser, token := "", ""
 	switch {
+	// iOS browsers are WebKit shells whose UA also carries "Safari/"; their
+	// own token comes first so Chrome/Firefox/Edge on iOS are not "Safari".
+	case strings.Contains(userAgent, "CriOS/"):
+		browser, token = "Chrome", "CriOS/"
+	case strings.Contains(userAgent, "FxiOS/"):
+		browser, token = "Firefox", "FxiOS/"
+	case strings.Contains(userAgent, "EdgiOS/"):
+		browser, token = "Edge", "EdgiOS/"
 	case strings.Contains(userAgent, "Edg/"):
 		browser, token = "Edge", "Edg/"
 	case strings.Contains(userAgent, "OPR/"):
@@ -286,6 +294,9 @@ func DefaultCredentialLabel(userAgent string) string {
 	case strings.Contains(userAgent, "CrOS"):
 		platform = "Chrome OS"
 	case strings.Contains(userAgent, "Mac OS X"), strings.Contains(userAgent, "Macintosh"):
+		// iPadOS 13+ Safari sends a desktop "Macintosh" UA by default; the
+		// server cannot tell it from a Mac (no touch hint in the UA), so this
+		// stays "macOS" -- the user can rename the passkey (#1793).
 		platform = "macOS"
 	case strings.Contains(userAgent, "Linux"):
 		platform = "Linux"

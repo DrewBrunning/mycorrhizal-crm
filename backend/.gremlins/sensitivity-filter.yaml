@@ -38,6 +38,7 @@ unleash:
         - ^geocoder_client\.go$
         - ^geopulse_client\.go$
         - ^geopulse_service\.go$
+        - ^gift_date_backfill\.go$
         - ^graph_neighbourhood\.go$
         - ^graph_traversal\.go$
         - ^hibp_service\.go$

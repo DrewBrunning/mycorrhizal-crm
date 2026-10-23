@@ -7,6 +7,7 @@ package carddav
 
 import (
 	"context"
+	"mycorrhizal/internal/logtest"
 	"testing"
 
 	"mycorrhizal/models"
@@ -16,7 +17,9 @@ import (
 )
 
 func TestCardDAV_PutKeepsAmbientFlagAndGetDoesNotServeIt(t *testing.T) {
+	logtest.Guard(t) // happy-path tests fail on unexpected warn/error logs (issue #1474)
 	backend, db := newTestBackend(t)
+	seedCardDAVUser(t, db)
 	contact := models.Contact{UserID: 1, Firstname: "Ada", Ambient: true}
 	require.NoError(t, db.Create(&contact).Error)
 	ctx := ContextWithUser(context.Background(), 1, "tester", backend.db, backend.photoDir, "")

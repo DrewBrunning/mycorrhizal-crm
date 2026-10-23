@@ -135,8 +135,9 @@ func policyAcceptsGifts(p *models.CadencePolicy) bool {
 // givenGiftDateRows returns one row (date, type "gift", vcard_uid) per live
 // gift with status "given" and a non-null date for each of the given contacts
 // (issue #1736): the bulk, ownership-scoped gift counterpart of
-// activityDateRowsQuery, in no particular order. since, when non-nil, keeps
-// only gifts dated on or after it. One query regardless of len(uids).
+// activityDateRowsQuery, in no particular order. since, when non-nil, is a
+// coarse SQL prefilter (bound in UTC; the caller applies the exact calendar-day
+// cut). One query regardless of len(uids).
 //
 // A gift whose activity_id points at a live activity linked to the same contact
 // is skipped: that activity is already counted as an activity (the optional
@@ -160,7 +161,7 @@ func givenGiftDateRows(db *gorm.DB, userID uint, uids []string, since *time.Time
 			WHERE la.id = g.activity_id AND lac.contact_id = c.id
 			  AND la.user_id = ? AND la.deleted_at IS NULL))`, userID)
 	if since != nil {
-		q = q.Where("g.date >= ?", *since)
+		q = q.Where("g.date >= ?", since.UTC())
 	}
 	var rows []activityDateRow
 	if err := q.Scan(&rows).Error; err != nil {
@@ -234,7 +235,7 @@ func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy
 	if err != nil {
 		return CadenceHealth{}, err
 	}
-	ambient, err := ambientForUIDs(db, userID, []string{policy.EntityID}, now)
+	ambient, err := ambientByEntityID(db, userID, []string{policy.EntityID}, now)
 	if err != nil {
 		return CadenceHealth{}, err
 	}
@@ -260,7 +261,7 @@ func ComputeCadenceHealthBatch(db *gorm.DB, userID uint, policies []models.Caden
 	for i := range policies {
 		uids = append(uids, policies[i].EntityID)
 	}
-	ambient, err := ambientForUIDs(db, userID, uids, now)
+	ambient, err := ambientByEntityID(db, userID, uids, now)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +455,7 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 	}
 	// Issue #1733: an ambient contact is never overdue. Looked up only for the
 	// contacts that would otherwise be listed, in bulk.
-	ambient, err := ambientForUIDs(db, userID, uids, now)
+	ambient, err := ambientByEntityID(db, userID, uids, now)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +606,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 
 		// Issue #1733: an ambient contact is never overdue, so no
 		// cadence.overdue webhook either.
-		ambient, err := ambientForUIDs(db, userID, uids, now)
+		ambient, err := ambientByEntityID(db, userID, uids, now)
 		if err != nil {
 			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to resolve ambient contacts for webhooks")
 			continue

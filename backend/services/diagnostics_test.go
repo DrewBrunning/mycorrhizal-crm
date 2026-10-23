@@ -78,6 +78,9 @@ func findCheck(t *testing.T, d Diagnostics, name string) DiagnosticCheck {
 func TestRunDiagnosticsHealthyInstall(t *testing.T) {
 	db := dbtest.New(t)
 	cfg := validDiagnosticsConfig(t)
+	// Pin the filesystem fill level: "healthy" must not depend on how full the
+	// runner's real disk is (a CI or sandbox disk over 90% failed this test).
+	t.Cleanup(SetDiskUsageFn(func(string) (int, error) { return 40, nil }))
 	require.NoError(t, db.Create(&models.OperationalCheckResult{
 		CheckName: models.JobNameRestoreDrill, Status: models.OpCheckStatusOK, CheckedAt: time.Now(),
 	}).Error)

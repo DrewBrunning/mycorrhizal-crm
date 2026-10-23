@@ -29,8 +29,9 @@ import (
 //   - key favorite/like/empty: merge into (or create) a Card.PersonalInfo
 //     entry {kind: hobby, value, level}, and record sensitivity/favorite/
 //     notes/provenance in CRMEnvelope.PersonalInfoMeta keyed by the entry's
-//     stable ID. A same-value (case-insensitive) entry is merged rather than
-//     duplicated: fill level only if empty, keep the stricter sensitivity,
+//     stable ID. A same-value (case-insensitive) hobby or kind-less entry is
+//     merged rather than duplicated (an expertise/interest entry with the same
+//     value is a different fact and is left alone): fill level only if empty, keep the stricter sensitivity,
 //     OR the favorite flag, concatenate non-empty notes, and keep existing
 //     provenance unless it is empty.
 //   - key "dislike": recategorize in place to dislike_activity, clear the key,
@@ -210,6 +211,14 @@ func mergeHobbyPreferenceIntoRecord(record *contactmodel.Record, pref *models.Pr
 	idx := -1
 	value := strings.TrimSpace(pref.Value)
 	for i := range records {
+		// Only a hobby (or kind-less) entry is the same hobby: merging into an
+		// expertise/interest entry with the same value would silently turn the
+		// hobby into that kind. A different-kind entry gets a new hobby entry
+		// beside it, the way the CardDAV merge (matchPersonalInfoIndex) is
+		// kind-aware.
+		if records[i].Kind != "" && records[i].Kind != "hobby" {
+			continue
+		}
 		if strings.EqualFold(strings.TrimSpace(records[i].Value), value) {
 			idx = i
 			break
@@ -220,7 +229,7 @@ func mergeHobbyPreferenceIntoRecord(record *contactmodel.Record, pref *models.Pr
 		entry := contactmodel.PersonalInfo{
 			ID:    uuid.NewString(),
 			Kind:  "hobby",
-			Value: pref.Value,
+			Value: value,
 		}
 		if pref.Level != nil {
 			entry.Level = *pref.Level

@@ -224,6 +224,12 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 		return fail(fmt.Errorf("backfilling hobby preferences into contact personalInfo: %w", err))
 	}
 
+	// Gift dates -> calendar days (ADR 0015 amendment): existing instants are
+	// read in the reminder zone, once per database.
+	if _, err := services.NormalizeGiftDatesToCalendarDays(db, cfg.GetReminderLocation()); err != nil {
+		return fail(fmt.Errorf("backfilling gift dates to calendar days: %w", err))
+	}
+
 	// T18 audit hash chain (issue #381).
 	if err := models.RecomputeAuditChain(db); err != nil {
 		return fail(fmt.Errorf("backfilling the audit hash chain: %w", err))

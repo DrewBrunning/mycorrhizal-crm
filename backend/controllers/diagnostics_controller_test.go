@@ -58,6 +58,9 @@ func diagnosticsTestConfig(t *testing.T) config.Config {
 
 func TestRunDiagnosticsEndpoint(t *testing.T) {
 	db := dbtest.New(t)
+	// Pin the filesystem fill level so "healthy" does not depend on the
+	// runner's real disk (one over 90% full failed this test).
+	t.Cleanup(services.SetDiskUsageFn(func(string) (int, error) { return 40, nil }))
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
