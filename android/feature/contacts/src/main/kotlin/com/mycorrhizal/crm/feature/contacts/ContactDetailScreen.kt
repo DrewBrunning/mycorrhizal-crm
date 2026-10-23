@@ -1396,35 +1396,35 @@ fun ContactDetailContent(
         if (!card?.keywords.isNullOrEmpty() && ContactFieldKey.KEYWORDS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_keywords)) {
-                    InfoRow(card?.keywords.orEmpty().joinToString(", "))
+                    InfoRow(card.keywords.orEmpty().joinToString(", "))
                 }
             }
         }
         if (!card?.preferredLanguages.isNullOrEmpty() && ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_preferred_languages)) {
-                    card?.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
+                    card.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
                 }
             }
         }
         if (!card?.phones.isNullOrEmpty() && ContactFieldKey.PHONES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_phone)) {
-                    card?.phones?.forEach { PhoneRow(it) }
+                    card.phones?.forEach { PhoneRow(it) }
                 }
             }
         }
         if (!card?.addresses.isNullOrEmpty() && ContactFieldKey.ADDRESSES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_address)) {
-                    card?.addresses?.forEach { AddressRow(it) }
+                    card.addresses?.forEach { AddressRow(it) }
                 }
             }
         }
         if (!card?.emails.isNullOrEmpty() && ContactFieldKey.EMAILS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_email)) {
-                    card?.emails?.forEach { EmailRow(it) }
+                    card.emails?.forEach { EmailRow(it) }
                 }
             }
         }
@@ -1446,7 +1446,7 @@ fun ContactDetailContent(
         if (!card?.links.isNullOrEmpty() && ContactFieldKey.LINKS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_links)) {
-                card?.links?.forEach { link ->
+                card.links?.forEach { link ->
                     val uri = link.uri.orEmpty()
                     LinkRow(
                         uri = uri,
@@ -1478,7 +1478,7 @@ fun ContactDetailContent(
         if (!card?.notes.isNullOrEmpty() && ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_notes)) {
-                    card?.notes?.forEach { note ->
+                    card.notes?.forEach { note ->
                         note.note?.let { InfoRow(it) }
                     }
                 }

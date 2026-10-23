@@ -192,7 +192,7 @@ fun AboutSettingsContent(state: SettingsUiState, modifier: Modifier = Modifier) 
             val serverVersion = state.serverHealth?.version?.takeIf { it.isNotBlank() }
             SettingsInfoRow(
                 stringResource(R.string.settings_about_server_version),
-                serverVersion?.let { AboutDetails.versionWithCommit(it, state.serverHealth?.commit) } ?: dash,
+                serverVersion?.let { AboutDetails.versionWithCommit(it, state.serverHealth.commit) } ?: dash,
             )
             state.serverHealth?.buildDate?.takeIf { it.isNotBlank() }?.let {
                 SettingsInfoRow(stringResource(R.string.settings_about_server_built), it)

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- App / navigation -->
     <string name="app_name">Mycorrhizal</string>
     <string name="nav_contacts">Contacts</string>
@@ -2298,12 +2298,14 @@
     <string name="entity_tag">cette étiquette</string>
     <string name="entity_relationship">cette relation</string>
     <!-- Relationship health score explanations, rendered from the server's reason_code + reason_params (v1.5.0 review). -->
-    <plurals name="score_reason_every">
+    <!-- French "one" also covers 0, but this count is a day interval/window, always >= 1. -->
+    <plurals name="score_reason_every" tools:ignore="ImpliedQuantity">
         <item quantity="one">chaque jour</item>
         <item quantity="many">tous les %1$d jours</item>
         <item quantity="other">tous les %1$d jours</item>
     </plurals>
-    <plurals name="score_reason_last_days">
+    <!-- French "one" also covers 0, but this count is a day interval/window, always >= 1. -->
+    <plurals name="score_reason_last_days" tools:ignore="ImpliedQuantity">
         <item quantity="one">le dernier jour</item>
         <item quantity="many">les %1$d derniers jours</item>
         <item quantity="other">les %1$d derniers jours</item>

@@ -90,7 +90,7 @@ class ForgotPasswordViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             step = PasswordResetStep.CONFIRM,
-                            requestMessage = message ?: state.email,
+                            requestMessage = message,
                         )
                     }
                 },

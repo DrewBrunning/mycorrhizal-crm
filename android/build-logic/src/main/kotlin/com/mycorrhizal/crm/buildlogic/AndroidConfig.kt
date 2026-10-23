@@ -104,6 +104,12 @@ internal fun Project.configureKotlinWarnings() {
         // redundant conversion in hand-written code no longer warns either;
         // revisit when a Moshi release stops emitting it.
         compilerOptions.freeCompilerArgs.add("-Xwarning-level=REDUNDANT_CALL_OF_CONVERSION_METHOD:disabled")
+        // Deprecations stay visible warnings rather than errors for now: the
+        // tree carries 64 (Compose dropdown anchors, AutoMirrored icons,
+        // PhoneStateListener, statusBarColor, ...) whose migrations need real
+        // API work, tracked in #1903. Remove these two lines when it lands.
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=DEPRECATION:warning")
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=OVERRIDE_DEPRECATION:warning")
     }
 }
 

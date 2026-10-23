@@ -120,6 +120,39 @@ class ScoreReasonTest {
     }
 
     @Test
+    fun `a parameterised code falls back when any of its params is missing`() {
+        // No params at all, then each multi-param code with only one of its
+        // params set: neither may render a half-filled template.
+        val partial = ScoreReasonParams(days = 2, score = 50, count = 2)
+        val noParams = listOf(
+            ScoreReasonCode.CLOSENESS_DIRECT,
+            ScoreReasonCode.CLOSENESS_HOPS,
+            ScoreReasonCode.RECENCY_DAYS,
+            ScoreReasonCode.FREQUENCY_COUNT,
+            ScoreReasonCode.LAST_UPDATED_DAYS,
+            ScoreReasonCode.TARGET_CADENCE_POLICY,
+            ScoreReasonCode.TARGET_TIER,
+        )
+        val partialParams = listOf(
+            ScoreReasonCode.RECENCY_DAYS,
+            ScoreReasonCode.FREQUENCY_COUNT,
+            ScoreReasonCode.TARGET_CADENCE_POLICY,
+            ScoreReasonCode.TARGET_TIER,
+        )
+        val rendered = mutableListOf<Pair<String, String>>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                rendered.clear()
+                noParams.forEach { rendered += it to scoreReasonText(it, ScoreReasonParams(), FALLBACK) }
+                partialParams.forEach { rendered += "$it (partial)" to scoreReasonText(it, partial, FALLBACK) }
+            }
+        }
+        composeTestRule.waitForIdle()
+        assertEquals(noParams.size + partialParams.size, rendered.size)
+        rendered.forEach { (label, text) -> assertEquals(label, FALLBACK, text) }
+    }
+
+    @Test
     @Config(qualifiers = "de")
     fun `renders in the UI language with its plurals`() {
         assertEquals(

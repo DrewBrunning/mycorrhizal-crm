@@ -219,7 +219,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun requestPasswordReset(email: String): Result<String> {
         val result = apiClient.requestPasswordReset(email)
         return result.fold(
-            onSuccess = { message -> Result.success(message?.message ?: "") },
+            onSuccess = { message -> Result.success(message.message ?: "") },
             onFailure = { Result.failure(it.toApiError()) },
         )
     }
