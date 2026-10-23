@@ -200,9 +200,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -213,7 +224,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -429,9 +440,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -442,7 +464,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -559,9 +581,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -572,7 +605,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -696,9 +729,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -709,7 +753,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -849,9 +893,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -862,7 +917,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -993,9 +1048,20 @@ jobs:
         # The cache keys below embed the OS image (issue #1659): an apt .deb
         # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
         # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
-        # the runner-provided ImageOS is not in the expressions `env` context.
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
         id: image
-        run: echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1006,7 +1072,7 @@ jobs:
           # own key (not the browser one) so an existing browser cache entry
           # cannot block saving the package cache.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
