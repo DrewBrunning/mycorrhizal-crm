@@ -9,6 +9,8 @@ import {
   type GeoPulseSuggestionsResponse,
   getGeoPulseSuggestions,
 } from '../api/geopulse';
+import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
+import { pickDate } from '../testSupport/dateField';
 import { setTimeFormat } from '../timeFormat';
 import GeoPulseSuggestionsDialog from './GeoPulseSuggestionsDialog';
 
@@ -57,6 +59,9 @@ function contact(): Contact {
 }
 
 beforeEach(() => {
+  // ISO display keeps these assertions about the dialog's date *value* rather
+  // than repeating the format-preference cases DateField already owns.
+  setDateFormatPreference('iso');
   vi.mocked(getGeoPulseSuggestions).mockReset();
   vi.mocked(createActivity).mockReset();
   vi.mocked(createActivity).mockResolvedValue({} as never);
@@ -68,15 +73,17 @@ beforeEach(() => {
 function renderDialog(props: Partial<React.ComponentProps<typeof GeoPulseSuggestionsDialog>> = {}) {
   const defaults = { open: true, onClose: vi.fn(), onLogged: vi.fn(), ...props };
   const utils = render(
-    <MemoryRouter>
-      <GeoPulseSuggestionsDialog {...defaults} />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <GeoPulseSuggestionsDialog {...defaults} />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
   return { ...utils, props: defaults };
 }
 
 async function lookUp(date = '2026-09-20') {
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: date } });
+  await pickDate('Date', date);
   fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
 }
 
@@ -102,7 +109,8 @@ test('opens with the explanation, today (local) as the date, and nothing looked 
 
 test('Look up is disabled without a date', () => {
   renderDialog();
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '' } });
+  fireEvent.click(screen.getByLabelText('Date'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   expect(screen.getByRole('button', { name: 'Look up' })).toBeDisabled();
 });
 
@@ -362,27 +370,33 @@ test('closing the dialog forgets the lookup, the logged set and any open form', 
   vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
   const onClose = vi.fn();
   const { rerender } = render(
-    <MemoryRouter>
-      <GeoPulseSuggestionsDialog open onClose={onClose} />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <GeoPulseSuggestionsDialog open onClose={onClose} />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
   await lookUp();
   fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
   await screen.findByRole('dialog', { name: 'Add Activity' });
 
   rerender(
-    <MemoryRouter>
-      <GeoPulseSuggestionsDialog open={false} onClose={onClose} />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <GeoPulseSuggestionsDialog open={false} onClose={onClose} />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
   await waitFor(() =>
     expect(screen.queryByRole('dialog', { name: 'Add Activity' })).not.toBeInTheDocument(),
   );
 
   rerender(
-    <MemoryRouter>
-      <GeoPulseSuggestionsDialog open onClose={onClose} />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <GeoPulseSuggestionsDialog open onClose={onClose} />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
   expect(screen.queryByText('Cafe Nero')).not.toBeInTheDocument();
   expect(screen.queryByText('Already logged')).not.toBeInTheDocument();
@@ -401,7 +415,7 @@ test('the activity form is pre-filled from the stay, not from a date typed after
   const logButton = await screen.findByRole('button', { name: /^Log activity at / });
 
   // The user fiddles with the date input but does not press Look up again.
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2027-01-02' } });
+  await pickDate('Date', '2027-01-02', '2026-09-20');
   fireEvent.click(logButton);
 
   const form = await screen.findByRole('dialog', { name: 'Add Activity' });

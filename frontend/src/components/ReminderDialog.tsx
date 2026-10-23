@@ -17,6 +17,7 @@ import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage } from '../utils/errorHandler';
 import { localISODate, todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
+import DateField from './DateField';
 
 interface InitialReminderValues {
   message?: string;
@@ -185,20 +186,15 @@ export default function ReminderDialog({
             ))}
           </TextField>
 
-          <TextField
+          <DateField
             label={t('reminders.date')}
-            type="date"
             value={remindAt}
-            onChange={(e) => {
+            onChange={(value) => {
               markDirty();
-              setRemindAt(e.target.value);
+              setRemindAt(value);
             }}
             required
-            fullWidth
-            slotProps={{
-              inputLabel: { shrink: true },
-              htmlInput: { min: todayLocalISODate() },
-            }}
+            min={todayLocalISODate()}
           />
 
           {recurrence !== 'once' && (

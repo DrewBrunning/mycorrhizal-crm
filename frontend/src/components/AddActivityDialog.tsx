@@ -17,6 +17,7 @@ import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import { todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
+import DateField from './DateField';
 
 // ActivityPrefill pre-fills the dialog from outside — e.g. confirming a GeoPulse
 // location-history suggestion (issue #160). `externalRef` rides through to onSave
@@ -246,19 +247,7 @@ export default function AddActivityDialog({
             fullWidth
           />
 
-          <TextField
-            label={t('activityDialog.date')}
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            fullWidth
-            required
-            slotProps={{
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-          />
+          <DateField label={t('activityDialog.date')} value={date} onChange={setDate} required />
 
           <Autocomplete
             multiple

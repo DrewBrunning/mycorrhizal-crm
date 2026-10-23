@@ -3,6 +3,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { type Contact, getContacts } from '../api/contacts';
+import { DateFormatProvider } from '../DateFormatProvider';
+import { pickDate } from '../testSupport/dateField';
 import AddActivityDialog from './AddActivityDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -37,7 +39,11 @@ function renderDialog(props: Partial<React.ComponentProps<typeof AddActivityDial
     onSave: vi.fn().mockResolvedValue(undefined),
     ...props,
   };
-  return render(<AddActivityDialog {...defaults} />);
+  return render(
+    <DateFormatProvider>
+      <AddActivityDialog {...defaults} />
+    </DateFormatProvider>,
+  );
 }
 
 test('renders the title, description, location, date, and contacts fields', async () => {
@@ -199,7 +205,7 @@ test('a successful save clears the draft', async () => {
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
   fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Saved activity' } });
-  fireEvent.change(screen.getByLabelText('Date *'), { target: { value: '2026-01-01' } });
+  await pickDate('Date *', '2026-01-01');
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
   await waitFor(() => expect(onSave).toHaveBeenCalled());
 
@@ -220,7 +226,7 @@ test('a prefill fills the location and date, and passes external_ref through to 
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
   expect(screen.getByLabelText('Location')).toHaveValue('Cafe Nero');
-  expect(screen.getByLabelText('Date *')).toHaveValue('2026-09-20');
+  expect(screen.getByLabelText('Date *')).toHaveValue('20.09.2026');
 
   fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee' } });
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -273,12 +279,14 @@ test('the user can still edit a prefilled location, and a re-render does not re-
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Cafe Nero, Leeds' } });
   // A parent re-rendering with a structurally-identical (but new) prefill object.
   view.rerender(
-    <AddActivityDialog
-      open
-      onClose={vi.fn()}
-      onSave={onSave}
-      prefill={{ location: 'Cafe Nero', date: '2026-09-20', externalRef: 'geopulse:stay:7' }}
-    />,
+    <DateFormatProvider>
+      <AddActivityDialog
+        open
+        onClose={vi.fn()}
+        onSave={onSave}
+        prefill={{ location: 'Cafe Nero', date: '2026-09-20', externalRef: 'geopulse:stay:7' }}
+      />
+    </DateFormatProvider>,
   );
 
   expect(screen.getByLabelText('Location')).toHaveValue('Cafe Nero, Leeds');
@@ -345,7 +353,11 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
       ],
       { initialEntries: ['/activities'] },
     );
-    render(<RouterProvider router={router} />);
+    render(
+      <DateFormatProvider>
+        <RouterProvider router={router} />
+      </DateFormatProvider>,
+    );
     return { router, onClose };
   }
 

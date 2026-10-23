@@ -18,6 +18,7 @@ import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 import { calendarDateOnly } from '../utils/localDate';
 import AppDialog from './AppDialog';
+import DateField from './DateField';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
 // to the hook as a GiftInput.
@@ -254,16 +255,13 @@ export default function GiftDialog({
             helperText={t('gifts.occasionHint')}
           />
 
-          <TextField
+          <DateField
             label={t('gifts.date')}
-            type="date"
             value={date}
-            onChange={(e) => {
+            onChange={(value) => {
               markDirty();
-              setDate(e.target.value);
+              setDate(value);
             }}
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
           />
 
           <Box

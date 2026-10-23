@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import type { Activity } from './api/activities';
 import { ApiError } from './api/client';
+import { DateFormatProvider } from './DateFormatProvider';
 import type { GraphData, GraphNode } from './types/graph';
 
 // NetworkGraph renders to a canvas via react-force-graph-2d, which is out of
@@ -133,9 +134,11 @@ afterEach(() => {
 async function renderPage() {
   const { default: NetworkPage } = await import('./NetworkPage');
   return render(
-    <MemoryRouter>
-      <NetworkPage />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <NetworkPage />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
 }
 
@@ -436,9 +439,11 @@ test('a persisted circle that no longer exists is dropped once circles finish lo
 
   const { default: NetworkPage } = await import('./NetworkPage');
   const { rerender } = render(
-    <MemoryRouter>
-      <NetworkPage />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <NetworkPage />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
 
   // Still loading circles -- the stale value must not be wiped out yet.
@@ -447,9 +452,11 @@ test('a persisted circle that no longer exists is dropped once circles finish lo
 
   mockUseCirclesResult.loading = false;
   rerender(
-    <MemoryRouter>
-      <NetworkPage />
-    </MemoryRouter>,
+    <DateFormatProvider>
+      <MemoryRouter>
+        <NetworkPage />
+      </MemoryRouter>
+    </DateFormatProvider>,
   );
 
   await waitFor(() => {

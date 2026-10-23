@@ -3,7 +3,8 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { useTimeZone } from '../testSupport/timeZone';
 import '../i18n/config';
 import type { Gift } from '../api/gifts';
-import { DateFormatProvider } from '../DateFormatProvider';
+import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
+import { pickDate } from '../testSupport/dateField';
 import GiftDialog from './GiftDialog';
 
 afterEach(cleanup);
@@ -50,7 +51,9 @@ test('prefills the editable fields from the gift', () => {
   renderDialog();
   expect(screen.getByLabelText('What the gift is *')).toHaveValue('The espresso machine');
   expect(screen.getByLabelText('Occasion (optional)')).toHaveValue('birthday');
-  expect(screen.getByLabelText('Date')).toHaveValue('2026-08-03');
+  expect(screen.getByLabelText('Date')).toHaveValue(
+    formatDateWithFormat('2026-08-03', getDateFormat()),
+  );
   expect(screen.getByLabelText('Amount (optional)')).toHaveValue(120);
   expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
 });
@@ -80,7 +83,9 @@ test('a calendar-day gift date reads back as that day west of UTC', () => {
   const restore = useTimeZone('America/Chicago');
   try {
     renderDialog({ gift: { ...gift, date: '2026-10-22T00:00:00Z' } });
-    expect(screen.getByLabelText('Date')).toHaveValue('2026-10-22');
+    expect(screen.getByLabelText('Date')).toHaveValue(
+      formatDateWithFormat('2026-10-22', getDateFormat()),
+    );
   } finally {
     restore();
   }
@@ -91,7 +96,9 @@ test('a legacy local-midnight gift date still reads back as the picked day', () 
   const restore = useTimeZone('Europe/Berlin');
   try {
     renderDialog({ gift: { ...gift, date: '2026-10-21T22:00:00Z' } });
-    expect(screen.getByLabelText('Date')).toHaveValue('2026-10-22');
+    expect(screen.getByLabelText('Date')).toHaveValue(
+      formatDateWithFormat('2026-10-22', getDateFormat()),
+    );
   } finally {
     restore();
   }
@@ -301,10 +308,12 @@ test('occasion, date, currency, and both link selectors are editable', async () 
   fireEvent.change(screen.getByLabelText('Occasion (optional)'), {
     target: { value: 'anniversary' },
   });
-  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-09' } });
+  await pickDate('Date', '2026-09-09', '2026-08-03');
   fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'gbp' } });
 
-  expect(screen.getByLabelText('Date')).toHaveValue('2026-09-09');
+  expect(screen.getByLabelText('Date')).toHaveValue(
+    formatDateWithFormat('2026-09-09', getDateFormat()),
+  );
   expect(screen.getByLabelText('Currency')).toHaveValue('GBP');
 
   fireEvent.mouseDown(screen.getByLabelText(/Relates to a life event/i));

@@ -10,7 +10,6 @@ import {
   Link,
   Paper,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,6 +21,7 @@ import { useGeoPulse } from '../hooks/useGeoPulse';
 import { formatTime } from '../timeFormat';
 import AddActivityDialog from './AddActivityDialog';
 import AppDialog from './AppDialog';
+import DateField from './DateField';
 
 interface GeoPulseSuggestionsDialogProps {
   open: boolean;
@@ -166,14 +166,11 @@ export default function GeoPulseSuggestionsDialog({
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <TextField
+              <DateField
                 label={t('geopulse.dialog.date')}
-                type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={setDate}
+                sx={{ flexGrow: 1 }}
               />
               <Button
                 variant="contained"

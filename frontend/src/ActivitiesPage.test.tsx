@@ -404,7 +404,7 @@ test('west of UTC an activity date shows the same day in the list and the edit f
     await waitFor(() => expect(screen.getAllByText('05.01.2026')).toHaveLength(2));
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
-    await waitFor(() => expect(screen.getByDisplayValue('2026-01-05')).toBeDefined());
+    await waitFor(() => expect(screen.getByLabelText('Date')).toHaveValue('05.01.2026'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
