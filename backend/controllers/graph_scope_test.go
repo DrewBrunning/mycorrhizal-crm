@@ -299,7 +299,7 @@ func TestGetGraph_MissingUserRowFallsBackToFull(t *testing.T) {
 		c.Next()
 	})
 	router.GET("/graph", GetGraph)
-	resp := getGraphResp(t, router, "/graph", http.StatusOK)
+	resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 	assert.False(t, resp.Scoped)
 	assert.Empty(t, resp.Nodes)
 }
