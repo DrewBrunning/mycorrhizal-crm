@@ -46,7 +46,7 @@ per the policy.
 
 | id | surface | summary | deprecated-in | deprecated-on | replacement | earliest-removal | not-before | status | tracking |
 |---|---|---|---|---|---|---|---|---|---|
-| preference-category-hobby | api | `Preference.category: "hobby"` on the preferences API (create/update/read keep working, with RFC 8594 headers) | v1.5.0 | 2026-10-21 | `Card.personalInfo` with `kind: hobby` on the contact record; CRM metadata in `crm.personalInfoMeta` | v2.0 | 2027-01-19 | deprecated | #1738, #1739 |
+| preference-category-hobby | api | `Preference.category: "hobby"` on the preferences API (create/update/read keep working, with RFC 8594 headers) | v1.5.0 | 2026-10-23 | `Card.personalInfo` with `kind: hobby` on the contact record; CRM metadata in `crm.personalInfoMeta` | v2.0 | 2027-01-21 | deprecated | #1738, #1739 |
 
 <!-- deprecations:end -->
 

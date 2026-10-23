@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="1" failures="0" errors="0" skipped="0" time="8.045" timestamp="2026-10-23T21:10:49" hostname="localhost">
+  <testsuite name="com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest" tests="1" failures="0" errors="0" skipped="0" time="6.426" timestamp="2026-10-23T21:10:49" hostname="localhost">
+    <properties>
+      <property name="device" value="Pixel 8a - 17" />
+      <property name="flavor" value="obtainium" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="embeddedServerStartsServesHealthAndDeletesOverTheSocket" classname="com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest" time="6.426" />
+  </testsuite>
+</testsuites>
