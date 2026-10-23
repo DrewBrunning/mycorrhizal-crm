@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -42,7 +41,7 @@ class DeepLinkE2eTest : E2eBaseTest() {
 
     @After
     fun disarmAppLock() {
-        val activity = compose.activity as MainActivity
+        val activity = compose.activity
         runBlocking { activity.localAuthSettings.setRequireLocalAuth(false) }
     }
 
@@ -77,7 +76,7 @@ class DeepLinkE2eTest : E2eBaseTest() {
 
     @Test
     fun appLockShowsTheLockScreenFirstThenTheContactAfterUnlock() {
-        val activity = compose.activity as MainActivity
+        val activity = compose.activity
         armAppLock()
         waitForText("Your data is locked")
 

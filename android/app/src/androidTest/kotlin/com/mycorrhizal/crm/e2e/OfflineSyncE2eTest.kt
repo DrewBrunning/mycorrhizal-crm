@@ -6,7 +6,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.data.di.DataModule
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS
@@ -73,16 +72,16 @@ class OfflineSyncE2eTest : E2eBaseTest() {
     private val offlineUrl = "http://127.0.0.1:1"
 
     private val pendingRepo: PendingInteractionRepository
-        get() = (compose.activity as MainActivity).pendingInteractionRepository
+        get() = compose.activity.pendingInteractionRepository
 
     private val trackingSettings: TrackingSettingsRepository
-        get() = (compose.activity as MainActivity).trackingSettings
+        get() = compose.activity.trackingSettings
 
     private val sessionManager
-        get() = (compose.activity as MainActivity).sessionManager
+        get() = compose.activity.sessionManager
 
     private val apiClient: ApiClient
-        get() = (compose.activity as MainActivity).apiClient
+        get() = compose.activity.apiClient
 
     private val appContext
         get() = compose.activity.applicationContext

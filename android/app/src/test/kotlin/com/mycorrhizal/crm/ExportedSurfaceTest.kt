@@ -23,8 +23,8 @@ class ExportedSurfaceTest {
 
     @Test
     fun `merged manifest surface of every variant equals the allowlist`() {
-        val manifests = System.getProperty("exportedSurface.manifests")
-        val allowlist = System.getProperty("exportedSurface.allowlist")
+        val manifests = System.getProperty("exportedSurface.manifests").orEmpty()
+        val allowlist = System.getProperty("exportedSurface.allowlist").orEmpty()
         assertTrue(
             "exportedSurface.* system properties missing: run via Gradle (app/build.gradle.kts wires them)",
             !manifests.isNullOrBlank() && !allowlist.isNullOrBlank(),

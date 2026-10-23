@@ -1,7 +1,6 @@
 package com.mycorrhizal.crm.e2e
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationStore
@@ -56,7 +55,7 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
 
     /** The app's real, already-authenticated singleton. */
     private val apiClient: ApiClient
-        get() = (compose.activity as MainActivity).apiClient
+        get() = compose.activity.apiClient
 
     @After
     fun deviceLifecycleTearDown() {

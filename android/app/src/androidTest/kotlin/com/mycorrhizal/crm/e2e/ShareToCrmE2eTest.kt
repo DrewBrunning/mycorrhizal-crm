@@ -5,7 +5,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -41,7 +40,7 @@ class ShareToCrmE2eTest : E2eBaseTest() {
 
     @After
     fun disarmAppLock() {
-        val activity = compose.activity as MainActivity
+        val activity = compose.activity
         runBlocking { activity.localAuthSettings.setRequireLocalAuth(false) }
     }
 
@@ -92,7 +91,7 @@ class ShareToCrmE2eTest : E2eBaseTest() {
 
     @Test
     fun appLockShowsTheLockScreenBeforeThePicker() {
-        val activity = compose.activity as MainActivity
+        val activity = compose.activity
         armAppLock()
         waitForText("Your data is locked")
 
