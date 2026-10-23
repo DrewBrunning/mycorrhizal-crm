@@ -15,7 +15,12 @@ Your language preference is also used by the backend for notifications — remin
 
 ## Date Format
 
-You can choose between the European (DD.MM.YYYY), US (MM/DD/YYYY), and ISO (YYYY-MM-DD) date format. This affects all date displays and also determines the expected input format when entering dates like birthdays.
+Choose how dates are written: European (DD.MM.YYYY or DD-MM-YYYY), US (MM/DD/YYYY), ISO (YYYY-MM-DD), Canadian (DD/MM/YYYY), or with the month spelled out (for example "Oct 22, 2026" or "22 October, 2026"). This affects all date displays, including the date half of timestamps such as the audit log, and the expected input format when entering dates like birthdays.
+
+
+## Time Format
+
+Choose whether times of day are shown in **12-hour** (3:30 PM) or **24-hour** (15:30) form. **Automatic** follows the usual style for your language in the browser; on Android it follows the device's 12/24-hour setting. The choice is saved to your account, so it follows you to other browsers and the Android app.
 
 
 ## Appearance
@@ -26,6 +31,17 @@ Choose your preference between light mode and dark mode. This setting is stored 
 ## Custom Field Names
 
 Define custom fields that appear on all your contacts for tracking information that doesn't fit into the standard contact fields. You can change the order of the custom fields, though they will always be displayed after the standard fields.
+
+Give related fields the same optional **Group** (for example "Travel profile") and the contact page shows them together under that heading; on Android each group is its own drill-down. A group is only a shared label: renaming or clearing it moves no data, and fields with no group appear under "Custom fields".
+
+
+## Relationship goals on a contact
+
+These live on each contact's page rather than in Settings, next to the relationship health badge.
+
+- **Target closeness** says how close you want to be: Immediate, Close, Casual or Distant. The badge then shows how you are doing against it ("Target: close · drifting"). If the contact has no cadence yet, you are offered one at the target's usual interval; you can decline and keep just the target. A contact who falls behind their target appears in the dashboard's reach-out suggestions, once per gap.
+- **Ambient contact** ("I see them all the time") marks someone you are in regular contact with without logging it. Their health score counts as fully up to date and they are never overdue. People who live with you (current members of a household with your own contact) count as ambient automatically.
+- **Skills & interests, work and anniversaries** have their own sections on the contact page (drill-downs on Android) instead of fields in the edit form. Hobbies now live only under Skills & interests, which is what syncs over CardDAV. Activities a person dislikes have their own **Dislikes** section under Preferences.
 
 
 ## Notifications
@@ -138,7 +154,10 @@ app; you can have both, and at sign-in either satisfies the second step (the sig
   passkey** and follow your browser's prompt. If you cancel or the prompt times out, nothing is
   saved. If this passkey is your account's first second factor, you are shown recovery codes once —
   see [Recovery codes](#recovery-codes) — and your other sessions are signed out.
-- **The list** shows each passkey's name, when it was added and when it was last used.
+- **The list** shows each passkey's name, when it was added and when it was last used. A passkey
+  added without a name is labelled after the browser and device that created it (for example
+  "Chrome 153 on Linux"). **Rename** changes the label at any time; it needs no extra proof, since a
+  name changes nothing about your account's security.
 - **Remove a passkey:** removing is deliberately harder than adding, because it weakens the
   account. **Remove** asks for a proof: a current authenticator code, a recovery code, or — via
   **Verify with another passkey instead** — an assertion from a *different* passkey (that button only

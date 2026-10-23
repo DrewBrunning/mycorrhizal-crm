@@ -294,7 +294,8 @@ starts a new gap, and so does a tier change. The row is created with the same co
 Reminder and the same `reach_out_suggested` webhook as the org/title/address kinds, in
 `createReachOutSuggestion`'s single transaction. The Reminder message is
 `Reach out — behind your <tier> target: <name> (last interaction <YYYY-MM-DD>)`, with the date
-taken in the reminder location. The webhook payload keys are unchanged, and `kind` carries the
+the interaction's own calendar day (its UTC date, never converted into the reminder zone; ADR 0015's
+2026-10-21 amendment, issue #1823). The webhook payload keys are unchanged, and `kind` carries the
 new value.
 
 The same pass **auto-dismisses** a `pending` `target_behind` row when its contact no longer
@@ -474,3 +475,28 @@ given gift is simply one more qualifying interaction for that amendment's Recenc
   explicit and reversible, and the breakdown always says why.
 - Cadence for an ambient contact is a deliberate no-op: a policy can still exist (it is the user's
   record of intent), but it never fires.
+
+## Amendment, 2026-10-23 (localizable reasons and calendar-day windows, v1.5.0 review)
+
+### Context
+
+Every facet and target `reason` is an English sentence (`Last qualifying interaction 3 day(s) ago …`).
+Both clients rendered it verbatim, so the score breakdown stayed English, with `day(s)`, in every
+locale. That undercut the v1.5.0 pluralization work (#1786 web, #1770 Android).
+
+### Decision
+
+- **Reason codes.** Each facet and the target result gain `reason_code` (a stable token from
+  `scoring.ReasonCodes()`) and `reason_params` (the numbers and tokens the sentence interpolates:
+  `days`, `interval_days`, `hops`, `count`, `window_days`, `expected`, `score`, `relation`, `tier`, only
+  the ones the code uses). Clients render the sentence from their own translation and plural rules,
+  and fall back to the English `reason` for a code they do not know. `reason` itself stays on the wire,
+  unchanged, so older clients keep working. The code list is a hand-mirrored vocabulary (frontend trap
+  #4), pinned by drift tests on both sides against `openapi.yaml`.
+- **Calendar-day frequency window.** The Frequency facet's window is the last `window_days`
+  **calendar** days ending today in the reminder zone, compared with each interaction's calendar day
+  (ADR 0015, Category 2). It used to be an instant comparison in SQL, which SQLite performs on the
+  RFC 3339 text, so a reminder-zone bound against UTC-stored dates dropped interactions on the window's
+  first day. Counts can therefore rise by the boundary day's interactions; nothing else moves.
+- **Gift dates** are calendar days (ADR 0015's 2026-10-23 amendment), so the #1736 rule "a given gift
+  counts on its date" now uses the same calendar day on every surface.

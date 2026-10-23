@@ -84,6 +84,7 @@ Every request and response carries an `X-Request-ID` header created by the middl
 | `POST` | `/webauthn/register/begin`, `/webauthn/register/finish` | Enroll a passkey (needs a live second-factor proof once one is already enrolled) |
 | `POST` | `/webauthn/assert/begin` | Start a passkey assertion used as the proof for removing a passkey or adding a factor |
 | `GET` | `/webauthn/credentials` | List the caller's passkeys |
+| `PATCH` | `/webauthn/credentials/:id` | Rename one of the caller's passkeys (`{"name": "…"}`, 1–100 characters; no second-factor proof — a label is not a security change). An unnamed passkey is labelled after the enrolling browser and platform, e.g. "Chrome 153 on Linux" |
 | `DELETE` | `/webauthn/credentials/:id` | Remove a passkey (needs a live second-factor proof) |
 
 These routes, and everything else under `/webauthn/*`, are absent from an embedded (Android local-profile) deployment.
@@ -111,6 +112,9 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 | `DELETE` | `/contacts/:id` | Delete a contact |
 | `POST` | `/contacts/:id/archive` | Archive a contact |
 | `POST` | `/contacts/:id/unarchive` | Unarchive a contact |
+| `GET` | `/contacts/:id/score` | Relationship health score breakdown. Each facet (and `target`) carries an English `reason` plus a stable `reason_code` and `reason_params` for clients to render it in the user's language |
+| `PUT` | `/contacts/:id/target-closeness` | Set the contact's target closeness (`{"tier": "immediate"\|"close"\|"casual"\|"distant"}`). The response includes a `cadence_policy_offer` when the contact has no cadence policy |
+| `DELETE` | `/contacts/:id/target-closeness` | Clear the target and dismiss its pending "behind target" suggestions |
 | `GET` | `/contacts/circles` | List all circles in use |
 | `GET` | `/contacts/random` | Get five random contacts |
 | `GET` | `/contacts/birthdays` | Get upcoming birthdays |
@@ -238,7 +242,14 @@ Private Atom feeds ([ADR 0030](adrs/0030-feeds-atom-emission.md)). Feed manageme
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/graph` | Get contact network graph data |
+| `GET` | `/graph` | Contact network graph. By default the ego network (`depth` 2) of your self contact; `?from=<vCard UID>` re-centres it on another (non-archived) contact, `?depth=1..5` sets the radius, and `?full=true` returns the whole account. Accounts without a self contact get the full graph. The response's `scoped`, `from_vcard_uid` and `depth` say which view it is |
+| `GET` | `/graph/connections` | Multi-hop relationship chains from `?from=<vCard UID>` (`?depth` up to 5, optional `?relation`) |
+
+### Dashboard
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/dashboard` | The dashboard composite. Each list block (`birthdays`, `upcoming_reminders`, `overdue`, `reach_out_suggestions`, `contact_sync_conflicts`, `data_decay_overdue`) holds at most 25 rows, most urgent first; the matching `*_total` field carries the uncapped count |
 
 ### API Tokens
 
