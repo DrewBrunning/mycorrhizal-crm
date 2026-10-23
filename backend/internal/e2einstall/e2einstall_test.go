@@ -87,7 +87,7 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 		t.Fatal(err)
 	}
 	worst := worstCaseSeconds(t, string(script))
-	for _, want := range []string{"timeout --kill-after=", "pkill -9 -x apt-get", "fuser /var/lib/dpkg/lock-frontend", "exit 1", "PLAYWRIGHT_APT_CACHE", "/var/cache/apt/archives"} {
+	for _, want := range []string{"timeout --kill-after=", "pkill -9 -x apt-get", "fuser /var/lib/dpkg/lock-frontend", "exit 1", "PLAYWRIGHT_APT_CACHE", "/var/cache/apt/archives", "Acquire::Retries", "Acquire::http::Timeout", "Acquire::https::Timeout", "Acquire::http::Pipeline-Depth"} {
 		if !strings.Contains(string(script), want) {
 			t.Errorf("install script missing %q", want)
 		}
@@ -121,6 +121,13 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 			// browser cache: a slow Ubuntu mirror otherwise re-downloads
 			// ~50 MiB of browser dependencies on every run. Separate key so an
 			// existing browser cache entry cannot block saving the packages.
+			// The apt cache key includes the runner image *version* (issue
+			// #1912), so the step that produces that output must exist and
+			// emit it; a missing output would silently make the key match
+			// every image refresh's stale package set.
+			if i < 3 || j.Steps[i-3].Name != "Detect runner image" || !strings.Contains(j.Steps[i-3].Run, "version=${ImageVersion") {
+				t.Errorf("%s: install step not preceded by a runner-image step emitting ImageVersion", id)
+			}
 			if i < 2 || !strings.HasPrefix(j.Steps[i-2].Name, "Cache apt packages") {
 				t.Errorf("%s: install step not preceded by an apt-package cache step (issue #1646)", id)
 			} else {
@@ -128,7 +135,7 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 				if path := aptStep.With["path"]; !strings.Contains(path, "~/.cache/playwright-apt") {
 					t.Errorf("%s: apt cache step path %q, want ~/.cache/playwright-apt", id, path)
 				}
-				wantAptKey := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('frontend/yarn.lock') }}"
+				wantAptKey := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}"
 				if got := aptStep.With["key"]; got != wantAptKey {
 					t.Errorf("%s: apt cache key %q, want %q", id, got, wantAptKey)
 				}

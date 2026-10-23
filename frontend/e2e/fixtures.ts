@@ -625,13 +625,48 @@ export async function stableClick(locator: Locator): Promise<void> {
 }
 
 /**
- * Searches the contacts list and returns once the matching contact is visible.
- * Replaces the previous fill + fixed-sleep pattern with an auto-waiting assertion.
+ * Types a query into the contacts search box and waits for the *debounced*
+ * search to be committed and served before returning.
+ *
+ * Issue #1911: this used to fill the box (and press Enter, which the field
+ * ignores) and return immediately. ContactsPage debounces the field into the
+ * URL's `?search=` param after 300 ms, and that pending write can land while a
+ * test is already interacting with the still-unfiltered list -- in the flaky
+ * `should navigate to contact detail`, the click on the (already visible)
+ * seeded "Alice Johnson" card raced the debounced URL replace and the
+ * navigation was lost (`/contacts?search=Alice`, not `/contacts/<id>`).
+ * Waiting for the request the debounce fires guarantees the write has landed;
+ * waiting for the response also keeps callers from acting on the previous
+ * query's rows. The caller still asserts whatever it needs is visible.
  */
 export async function searchContact(page: Page, query: string): Promise<void> {
   const searchInput = page.locator('input[placeholder*="earch"]').first();
+  const term = query.trim();
+  const alreadyCommitted = new URL(page.url()).searchParams.get('search') === term;
+
+  const responsePromise = alreadyCommitted
+    ? null
+    : page.waitForResponse(
+        (response) => {
+          if (response.request().method() !== 'GET') return false;
+          const url = new URL(response.url());
+          return url.pathname.endsWith('/contacts') && url.searchParams.get('search') === term;
+        },
+        { timeout: 15000 },
+      );
+
   await searchInput.fill(query);
   await searchInput.press('Enter');
+  await responsePromise;
+  // Belt and braces when the query was already committed (no new request) and
+  // to surface a debounce that never wrote the URL instead of failing later in
+  // an unrelated-looking assertion.
+  await page.waitForFunction(
+    (q) => new URL(window.location.href).searchParams.get('search') === q,
+    term,
+    { timeout: 15000 },
+  );
+  await waitForLoading(page);
 }
 
 // ---------------------------------------------------------------------------

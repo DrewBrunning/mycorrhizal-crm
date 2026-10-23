@@ -37,6 +37,25 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
+# configure_apt bounds each individual download (issue #1912): with apt's
+# default 120 s per-connection timeout, one stalled package (libflite1, 13.5 MB,
+# in the Ubuntu 26.04 WebKit dependency set) burned 140 s of a 240 s attempt
+# before apt gave up on it and moved on. On a healthy mirror the same 84 MB of
+# packages download in ~1 s, so the failure was a stalled connection, not
+# volume. A short per-connection timeout plus retries makes apt abandon a bad
+# socket quickly and try another instead of spending the whole attempt on it.
+configure_apt() {
+  sudo tee /etc/apt/apt.conf.d/99-playwright-retry >/dev/null <<'EOF'
+// Installed by .github/scripts/playwright-install-retry.sh (issue #1912).
+// Short per-transfer timeout + retries so one stalled mirror connection
+// cannot consume a whole bounded install attempt.
+Acquire::Retries "5";
+Acquire::http::Timeout "20";
+Acquire::https::Timeout "20";
+Acquire::http::Pipeline-Depth "0";
+EOF
+}
+
 release_apt() {
   sudo pkill -9 -x apt-get >/dev/null 2>&1 || true
   sudo pkill -9 -x dpkg >/dev/null 2>&1 || true
@@ -78,6 +97,7 @@ collect_apt_cache() {
   fi
 }
 
+configure_apt
 seed_apt_cache
 
 for attempt in $(seq 1 "$attempts"); do
