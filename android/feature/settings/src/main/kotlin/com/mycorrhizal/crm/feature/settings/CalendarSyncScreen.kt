@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.network.ContactSubscription
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Duration
@@ -158,7 +159,7 @@ internal fun CalendarSyncContent(
                     },
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                     item {
                         Text(
                             text = stringResource(R.string.settings_calendar_sync_description),

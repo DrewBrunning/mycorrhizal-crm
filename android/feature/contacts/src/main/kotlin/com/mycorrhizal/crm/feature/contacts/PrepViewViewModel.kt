@@ -4,9 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftStatuses
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +28,15 @@ data class PrepViewUiState(
     val error: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
+    /**
+     * Issue #1774: the contact's preferences and still-unbought gift ideas —
+     * the two "what do I know about them" blocks the prep view was missing.
+     * Loaded from their own endpoints (they are not part of the briefing
+     * contract), and kept empty on failure so the briefing itself still
+     * renders.
+     */
+    val preferences: List<Preference> = emptyList(),
+    val giftIdeas: List<Gift> = emptyList(),
 )
 
 /**
@@ -40,6 +55,8 @@ data class PrepViewUiState(
 class PrepViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val authRepository: AuthRepository,
+    private val preferenceRepository: PreferenceRepository,
+    private val giftRepository: GiftRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -73,14 +90,46 @@ class PrepViewModel @Inject constructor(
         if (loadJob?.isActive == true) return
         loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            apiClient.getBriefing(contactId).foldApiError(
-                onSuccess = { briefing ->
-                    _uiState.update { it.copy(isLoading = false, briefing = briefing) }
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, briefing = null, error = error.displayMessage) }
-                },
-            )
+            val result = apiClient.getBriefing(contactId)
+            val briefing = result.getOrNull()
+            if (briefing == null) {
+                val error = result.exceptionOrNull()?.toApiError()
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        briefing = null,
+                        preferences = emptyList(),
+                        giftIdeas = emptyList(),
+                        error = error?.displayMessage,
+                    )
+                }
+                return@launch
+            }
+            // Issue #1774: preferences and gift ideas live on their own list
+            // endpoints, not in the briefing. A failure of either is not a
+            // prep-view failure — the briefing is still useful on its own, so
+            // fold each to an empty list.
+            val uid = briefing.uid
+            val preferences = if (uid.isBlank()) {
+                emptyList()
+            } else {
+                preferenceRepository.listForContact(uid).getOrDefault(emptyList())
+            }
+            val giftIdeas = if (uid.isBlank()) {
+                emptyList()
+            } else {
+                giftRepository.listForContact(uid)
+                    .getOrDefault(emptyList())
+                    .filter { it.status == GiftStatuses.IDEA }
+            }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    briefing = briefing,
+                    preferences = preferences,
+                    giftIdeas = giftIdeas,
+                )
+            }
         }
     }
 }

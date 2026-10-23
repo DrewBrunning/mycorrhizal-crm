@@ -3,10 +3,13 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -20,6 +23,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
@@ -65,6 +69,7 @@ class ContactListScreenTest {
         onCircleFilterChange: (String?) -> Unit = {},
         onIncludeArchivedChange: (Boolean) -> Unit = {},
         onIncludeFavoritesChange: (Boolean) -> Unit = {},
+        onSortChange: (ContactSort) -> Unit = {},
         onToggleFavorite: (ContactSummary) -> Unit = {},
         onToggleSelection: (Int) -> Unit = {},
         onToggleSelectAll: () -> Unit = {},
@@ -82,6 +87,7 @@ class ContactListScreenTest {
                     onCircleFilterChange = onCircleFilterChange,
                     onIncludeArchivedChange = onIncludeArchivedChange,
                     onIncludeFavoritesChange = onIncludeFavoritesChange,
+                    onSortChange = onSortChange,
                     onToggleFavorite = onToggleFavorite,
                     onToggleSelection = onToggleSelection,
                     onToggleSelectAll = onToggleSelectAll,
@@ -120,6 +126,113 @@ class ContactListScreenTest {
         )
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+    }
+
+
+    // --- Issue #1754: subtitle separators and the non-interactive "You" badge ---
+
+    @Test
+    fun `an email-only subtitle has no dangling separator`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "alex.rivera@example.com",
+                        primaryPhone = "",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("alex.rivera@example.com").assertIsDisplayed()
+        composeTestRule.onNodeWithText("alex.rivera@example.com ·").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a phone-only subtitle has no leading separator`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "",
+                        primaryPhone = "+15551230000",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("+15551230000").assertIsDisplayed()
+        composeTestRule.onNodeWithText(" · +15551230000").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a contact with neither email nor phone has no subtitle line`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListItem(
+                    contact = ContactSummary(
+                        id = 1,
+                        fn = "Alex Rivera",
+                        firstname = "Alex",
+                        lastname = "Rivera",
+                        primaryEmail = "",
+                        primaryPhone = "",
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Alex Rivera").assertIsDisplayed()
+        assertTrue(
+            "no separator may render when both contact fields are blank",
+            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    @Test
+    fun `the you badge is a non-interactive label, not a disabled chip`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                selfContactVCardUid = "u1",
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("you-badge-1")
+            .assertIsDisplayed()
+            // A disabled AssistChip exposed a click action (and the disabled
+            // state); the badge must be plain text/label semantics.
+            .assertHasNoClickAction()
+        composeTestRule.onNodeWithText("You").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the last row can scroll clear of the create-contact FAB`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = manyContacts(30)),
+        )
+
+        composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
+        composeTestRule.waitForIdle()
+
+        val fabTop = composeTestRule.onNodeWithTag("create-contact-fab").getUnclippedBoundsInRoot().top
+        val lastRowStarBottom = composeTestRule.onNodeWithTag("favorite-30").getUnclippedBoundsInRoot().bottom
+        assertTrue(
+            "the last row's star ($lastRowStarBottom) must sit above the FAB ($fabTop)",
+            lastRowStarBottom <= fabTop,
+        )
     }
 
     // --- T90 / issue #831: "You" badge on the marked contact's row (web parity) ---
@@ -175,7 +288,7 @@ class ContactListScreenTest {
             ContactListUiState(isLoading = false, contacts = emptyList()),
             onSearchQueryChange = { query = it },
         )
-        composeTestRule.onNodeWithText("Search contacts").performTextInput("ali")
+        composeTestRule.onNodeWithTag("contact-search").performTextInput("ali")
         assertEquals("ali", query)
     }
 
@@ -368,12 +481,10 @@ class ContactListScreenTest {
     }
 
     @Test
-    fun `circle filter anchor announces label and full value as one control`() {
-        // #209: a long selected circle name is visually ellipsised by the anchor
-        // (Compose text fields cannot ellipsize their values), so the full name
-        // must still be in the semantics — TalkBack reads the whole value, and
-        // the label + value are merged into one node so it doesn't read as two
-        // unrelated texts.
+    fun `circle filter chip shows the selected circle name and opens the menu`() {
+        // Issue #1762: the circle control is a compact FilterChip; its label is
+        // the selected circle (or "All circles"), and the whole chip is one
+        // merged control for TalkBack.
         setContent(
             ContactListUiState(
                 isLoading = false,
@@ -384,10 +495,8 @@ class ContactListScreenTest {
         )
 
         composeTestRule.onNodeWithTag("circle-filter")
-            .assertTextContains("Circle", substring = true)
             .assertTextContains("Neighbourhood Watch Committee", substring = true)
 
-        // The anchor still opens the menu on tap.
         composeTestRule.onNodeWithTag("circle-filter").performClick()
         composeTestRule.onNodeWithText("All circles").assertIsDisplayed()
     }
@@ -403,6 +512,84 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithTag("archived-toggle").performClick()
 
         assertEquals(true, toggled)
+    }
+
+
+    // --- Issue #1762: compact filter row, sort control, sticky headers -------
+
+    @Test
+    fun `the filter and sort chips scroll away with the list`() {
+        setContent(ContactListUiState(isLoading = false, contacts = manyContacts(40)))
+
+        composeTestRule.onNodeWithTag("favorites-toggle").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("sort-filter").performScrollTo().assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("contact-list").performScrollToNode(hasText("Contact 40"))
+        composeTestRule.waitForIdle()
+
+        // The chip row is a list item, not fixed chrome above the list.
+        composeTestRule.onNodeWithTag("favorites-toggle").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("sort-filter").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the sort control offers all three orders and reports the choice`() {
+        var chosen: ContactSort? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onSortChange = { chosen = it },
+        )
+
+        composeTestRule.onNodeWithTag("sort-filter")
+            .performScrollTo()
+            .assertTextContains("Sort: Name", substring = true)
+        composeTestRule.onNodeWithTag("sort-filter").performClick()
+        composeTestRule.onNodeWithText("Recently contacted").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recently added").performClick()
+
+        assertEquals(ContactSort.RECENTLY_ADDED, chosen)
+    }
+
+    @Test
+    fun `the default name order renders sticky letter headers by sort key`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, firstname = "Alice", lastname = "Adams"),
+                    ContactSummary(id = 2, firstname = "Bob", lastname = "Brown"),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("contact-header-A").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-header-B").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice Adams").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Bob Brown").assertIsDisplayed()
+    }
+
+    @Test
+    fun `non-name sorts do not render letter headers`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                sort = ContactSort.RECENTLY_ADDED,
+                contacts = listOf(
+                    ContactSummary(id = 1, firstname = "Alice", lastname = "Adams"),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("contact-header-A").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Alice Adams").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the duplicates entry is labelled unambiguously`() {
+        setContent(ContactListUiState(isLoading = false, contacts = emptyList()))
+
+        composeTestRule.onNodeWithTag("review-duplicates")
+            .assertContentDescriptionEquals("Review duplicates")
     }
 
     // --- Issue #212: favorites filter + per-row star (web #173) --------------
@@ -656,7 +843,7 @@ class ContactListScreenTest {
         coEvery { repository.observeContacts() } returns emptyFlow()
         coEvery { repository.searchLocal(any()) } returns emptyList()
         coEvery { repository.syncContacts() } returns Result.success(Unit)
-        coEvery { repository.listContacts(any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { repository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             Result.success(
                 ContactsPage(
                     contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
@@ -674,6 +861,8 @@ class ContactListScreenTest {
         coEvery { tagRepository.list() } returns Result.success(emptyList())
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(AppSettingsRepository.CONTACT_SORT_NAME)
         val viewModel = ContactListViewModel(
             repository,
             apiClient,
@@ -681,6 +870,7 @@ class ContactListScreenTest {
             bulkRepository,
             tagRepository,
             authRepository,
+            appSettingsRepository,
         )
 
         composeTestRule.setContent {

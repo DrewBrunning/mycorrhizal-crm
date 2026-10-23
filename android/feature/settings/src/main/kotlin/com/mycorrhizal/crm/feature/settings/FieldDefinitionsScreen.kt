@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -130,7 +131,7 @@ fun FieldDefinitionsScreen(
                         )
                     }
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                             itemsIndexed(state.definitions, key = { _, definition -> definition.id }) { index, definition ->
                                 FieldDefinitionListItem(
                                     definition = definition,

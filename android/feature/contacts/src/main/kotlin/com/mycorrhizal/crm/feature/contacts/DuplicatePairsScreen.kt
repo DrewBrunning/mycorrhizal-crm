@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -164,7 +165,7 @@ fun DuplicatePairsScreenContent(
                     ) {
                         item(key = "count") {
                             Text(
-                                text = stringResource(R.string.duplicates_count, uiState.total),
+                                text = pluralStringResource(R.plurals.duplicates_count, uiState.total, uiState.total),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -309,17 +310,23 @@ private fun DuplicateContactLine(contact: ContactSummary, modifier: Modifier = M
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = listOfNotNull(
-                    contact.primaryEmail?.takeIf { it.isNotBlank() },
-                    contact.primaryPhone?.takeIf { it.isNotBlank() },
-                    if (contact.archived) stringResource(R.string.contact_archived) else null,
-                ).joinToString(" · ").ifBlank { " " },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Issue #1754: the same blank-filtering rule as the contact list.
+            // Render nothing (not a lone " · " or a blank line) when there is
+            // nothing to say.
+            val subtitle = listOfNotNull(
+                contact.primaryEmail?.takeIf { it.isNotBlank() },
+                contact.primaryPhone?.takeIf { it.isNotBlank() },
+                if (contact.archived) stringResource(R.string.contact_archived) else null,
+            ).joinToString(" · ")
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

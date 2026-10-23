@@ -176,18 +176,18 @@ func parsePositiveOrDefault(raw string, fallback int) int {
 }
 
 // parseContactSort normalizes GET /contacts' ?sort= query param (T73):
-// "updated_at" (default — today's (updated_at, id) cursor order) or "name"
-// (the denormalized sort_name key). Anything else is a 400, not a silent
-// fallback — an explicitly-set parameter that is ignored is the worse
-// failure (the same policy the handler applies to sort=name combined with
-// ?since=).
+// "updated_at" (default — today's (updated_at, id) cursor order), "name"
+// (the denormalized sort_name key), or "created_at" (issue #1762's "recently
+// added" order). Anything else is a 400, not a silent fallback — an
+// explicitly-set parameter that is ignored is the worse failure (the same
+// policy the handler applies to sort=name/created_at combined with ?since=).
 func parseContactSort(c *gin.Context) (string, *apperrors.AppError) {
 	sort := c.DefaultQuery("sort", "updated_at")
 	switch sort {
-	case "updated_at", "name":
+	case "updated_at", "name", "created_at":
 		return sort, nil
 	default:
-		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name")
+		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name, created_at")
 	}
 }
 
@@ -308,6 +308,44 @@ func DecodeCursor(raw string) (*Cursor, error) {
 	return &Cursor{UpdatedAt: t, ID: parts[1]}, nil
 }
 
+// createdCursorPrefix distinguishes the issue-#1762 created_at cursor from
+// the updated_at cursor. Both are time-shaped, so unlike the name cursor a
+// bare timestamp cannot tell them apart; the prefix is what lets a cursor
+// minted under one time sort fail loudly under the other.
+const createdCursorPrefix = "created:"
+
+// EncodeCreatedCursor renders a created_at-sorted cursor as an opaque
+// base64url string: base64url("created:<RFC3339Nano>|<id>").
+func EncodeCreatedCursor(createdAt time.Time, id any) string {
+	return base64.RawURLEncoding.EncodeToString(
+		[]byte(createdCursorPrefix + createdAt.Format(time.RFC3339Nano) + "|" + fmt.Sprint(id)),
+	)
+}
+
+// DecodeCreatedCursor parses a created_at-sorted cursor back into its
+// (created_at, id) position, rejecting the updated_at shape so a cursor from
+// another sort is never silently misapplied.
+func DecodeCreatedCursor(raw string) (*Cursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, errors.New("cursor is not valid base64url")
+	}
+	s := string(decoded)
+	if !strings.HasPrefix(s, createdCursorPrefix) {
+		return nil, errors.New("cursor is a time-based cursor; expected a created_at-sorted cursor")
+	}
+	rest := strings.TrimPrefix(s, createdCursorPrefix)
+	parts := strings.SplitN(rest, "|", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return nil, errors.New("cursor is malformed")
+	}
+	t, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return nil, errors.New("cursor timestamp is malformed")
+	}
+	return &Cursor{UpdatedAt: t, ID: parts[1]}, nil
+}
+
 // EncodeNameCursor renders a T73 name-sort cursor as an opaque base64url
 // string: base64url("sort_name|id"). Same wire idiom as EncodeCursor; only
 // the leading component differs (a sort name instead of a timestamp).
@@ -338,6 +376,9 @@ func DecodeNameCursor(raw string) (*NameCursor, error) {
 		return nil, errors.New("cursor is malformed")
 	}
 	sortName := s[:sep]
+	if strings.HasPrefix(s, createdCursorPrefix) {
+		return nil, errors.New("cursor is a created_at-sorted cursor; expected a name-sorted cursor")
+	}
 	if _, err := time.Parse(time.RFC3339Nano, sortName); err == nil {
 		return nil, errors.New("cursor is a time-based cursor; expected a name-sorted cursor")
 	}
@@ -389,6 +430,10 @@ type CursorParams struct {
 	// the request is GET /contacts?sort=name — the (sort_name, id) shape.
 	// Every other list endpoint leaves it nil.
 	NameCursor *NameCursor
+	// CreatedCursor is the issue-#1762 resume-after position supplied via
+	// ?cursor= when the request is GET /contacts?sort=created_at — the
+	// (created_at, id) shape.
+	CreatedCursor *Cursor
 	// PositionCursor is the resume-after position supplied via ?cursor= when
 	// the request is a list ordered by an explicit integer `position` column
 	// (field definitions, issue #1210) — the (position, id) shape. Every
@@ -408,6 +453,7 @@ const (
 	cursorUpdatedAt cursorKind = iota
 	cursorName
 	cursorPosition
+	cursorCreatedAt
 )
 
 // GetCursorParams extracts cursor pagination controls from the request,
@@ -431,8 +477,11 @@ func GetCursorParams(c *gin.Context) (CursorParams, *apperrors.AppError) {
 // shape.
 func GetCursorParamsForSort(c *gin.Context, sort string) (CursorParams, *apperrors.AppError) {
 	kind := cursorUpdatedAt
-	if sort == "name" {
+	switch sort {
+	case "name":
 		kind = cursorName
+	case "created_at":
+		kind = cursorCreatedAt
 	}
 	return cursorParams(c, kind)
 }
@@ -481,6 +530,12 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 				return params, apperrors.ErrInvalidInput("cursor", err.Error())
 			}
 			params.PositionCursor = cur
+		case cursorCreatedAt:
+			cur, err := DecodeCreatedCursor(raw)
+			if err != nil {
+				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+			}
+			params.CreatedCursor = cur
 		default:
 			cur, err := DecodeCursor(raw)
 			if err != nil {
@@ -581,6 +636,27 @@ func nameCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
 		dir = "DESC"
 	}
 	return q.Order(table + ".sort_name " + dir).Order(table + ".id " + dir)
+}
+
+// createdAtCursorPredicate is the issue-#1762 analog of cursorPredicate over
+// the (created_at, id) key — the "recently added" order. Same
+// strictly-after/before semantics.
+func createdAtCursorPredicate(table string, cursor *Cursor, id any, desc bool) (string, any, any) {
+	op := ">"
+	if desc {
+		op = "<"
+	}
+	return fmt.Sprintf("(%s.created_at, %s.id) %s (?, ?)", table, table, op), cursor.UpdatedAt, id
+}
+
+// createdAtCursorOrderBy orders a query by the (created_at, id) key in the
+// given direction — the issue-#1762 "recently added" cursor order.
+func createdAtCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	return q.Order(table + ".created_at " + dir).Order(table + ".id " + dir)
 }
 
 // positionCursorOrderBy is the issue-#1210 analog of cursorOrderBy: order by

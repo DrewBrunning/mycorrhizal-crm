@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -175,7 +176,7 @@ fun ActivitiesScreenContent(
                                 onAction = if (hasFilters) null else onCreateActivity,
                             )
                         else -> {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
                                 items(state.activities, key = { it.id }) { activity ->
                                     ActivityListItem(
                                         activity = activity,

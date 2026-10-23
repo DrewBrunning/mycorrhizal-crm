@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -151,7 +152,7 @@ fun NotesInboxScreenContent(
                     state.notes.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("notes-inbox-list")) {
+                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("notes-inbox-list"), contentPadding = FabListContentPadding) {
                             items(state.notes, key = { it.id }) { note ->
                                 InboxNoteRow(note = note, onClick = { onNoteClick(note.id) })
                             }

@@ -137,6 +137,10 @@
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Rechercher des contacts</string>
+    <string name="contacts_sort_label">Tri : %1$s</string>
+    <string name="contacts_sort_name">Nom</string>
+    <string name="contacts_sort_recently_contacted">Contactés récemment</string>
+    <string name="contacts_sort_recently_added">Ajoutés récemment</string>
     <string name="contacts_empty">Aucun contact pour le moment</string>
     <string name="contacts_empty_body">Ajoutez quelqu\'un pour commencer, ou importez vos contacts.</string>
     <string name="contacts_new">Nouveau contact</string>
@@ -448,9 +452,11 @@
     <string name="prep_cadence_overdue">%1$d jours de retard</string>
     <string name="prep_cadence_on_track">Dans les temps</string>
     <string name="prep_cadence_next_due">Prochaine échéance : %1$s</string>
-    <string name="prep_cadence_last_interaction">Dernière interaction : %1$s</string>
     <string name="prep_cadence_no_interactions_yet">Aucune interaction prise en compte pour l\'instant — la cadence démarre dès la première.</string>
     <string name="prep_agenda_title">Sujets à aborder</string>
+    <string name="prep_preferences_title">Préférences</string>
+    <string name="prep_gift_ideas_title">Idées de cadeaux</string>
+    <string name="prep_preference_line">%1$s : %2$s</string>
     <string name="prep_last_interaction_title">Dernière interaction</string>
     <string name="prep_last_interaction_none">Aucune interaction enregistrée</string>
     <string name="prep_recent_notes_title">Notes récentes</string>
@@ -459,8 +465,13 @@
     <string name="prep_reminders_title">Rappels à venir</string>
     <string name="prep_upcoming_dates_title">Dates à venir</string>
     <string name="prep_upcoming_dates_birthday">Anniversaire</string>
+    <string name="prep_upcoming_dates_turns">Fête ses %1$d ans · %2$s</string>
     <string name="prep_upcoming_dates_anniversary">Anniversaire de mariage</string>
-    <string name="prep_upcoming_dates_in_days">dans %1$d jour(s)</string>
+    <plurals name="prep_upcoming_dates_in_days">
+        <item quantity="one">dans %1$d jour</item>
+        <item quantity="many">dans %1$d jours</item>
+        <item quantity="other">dans %1$d jours</item>
+    </plurals>
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
@@ -1095,13 +1106,48 @@
     <string name="triage_circle">Cercle</string>
     <string name="triage_tag">Étiquette</string>
     <string name="triage_skip">Ignorer</string>
-    <string name="triage_contacts_count">%1$d contacts</string>
-    <string name="triage_summary">%1$d cercles, %2$d étiquettes, %3$d ignorés</string>
+    <plurals name="triage_contacts_count">
+        <item quantity="one">%1$d contact</item>
+        <item quantity="many">%1$d contacts</item>
+        <item quantity="other">%1$d contacts</item>
+    </plurals>
+    <string name="triage_summary_format">%1$s, %2$s, %3$s</string>
+    <plurals name="triage_summary_circles">
+        <item quantity="one">%1$d cercle</item>
+        <item quantity="many">%1$d cercles</item>
+        <item quantity="other">%1$d cercles</item>
+    </plurals>
+    <plurals name="triage_summary_tags">
+        <item quantity="one">%1$d étiquette</item>
+        <item quantity="many">%1$d étiquettes</item>
+        <item quantity="other">%1$d étiquettes</item>
+    </plurals>
+    <string name="triage_summary_skipped">%1$d ignorés</string>
+    <string name="triage_done_message_format">%1$s et %2$s créés.</string>
+    <plurals name="triage_done_circles">
+        <item quantity="one">%1$d cercle</item>
+        <item quantity="many">%1$d cercles</item>
+        <item quantity="other">%1$d cercles</item>
+    </plurals>
+    <plurals name="triage_done_tags">
+        <item quantity="one">%1$d étiquette</item>
+        <item quantity="many">%1$d étiquettes</item>
+        <item quantity="other">%1$d étiquettes</item>
+    </plurals>
+    <string name="triage_done_partial_format">%1$s et %2$s. Relancez le tri pour réessayer.</string>
+    <plurals name="triage_done_partial_items">
+        <item quantity="one">%1$d élément n\'a pas pu être créé</item>
+        <item quantity="many">%1$d éléments n\'ont pas pu être créés</item>
+        <item quantity="other">%1$d éléments n\'ont pas pu être créés</item>
+    </plurals>
+    <plurals name="triage_done_partial_members">
+        <item quantity="one">%1$d ajout de membre a échoué</item>
+        <item quantity="many">%1$d ajouts de membres ont échoué</item>
+        <item quantity="other">%1$d ajouts de membres ont échoué</item>
+    </plurals>
     <string name="triage_apply">Appliquer</string>
     <string name="triage_empty">Aucune ancienne chaîne de cercle à nettoyer</string>
     <string name="triage_done_title">Tri terminé</string>
-    <string name="triage_done_message">%1$d cercle(s) et %2$d étiquette(s) créés.</string>
-    <string name="triage_done_partial">%1$d élément(s) n\'ont pas pu être créés et %2$d ajout(s) de membre ont échoué. Relancez le tri pour réessayer.</string>
     <string name="action_done">Terminé</string>
 
     <!-- Admin user management (issue #348) -->
@@ -1245,7 +1291,11 @@
     <string name="households_suggest_relationships">Suggérer des relations</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Écrire à tous</string>
-    <string name="households_suggestions_generated">%1$d nouvelles relations suggérées générées. Examinez-les sur les pages de contact des membres.</string>
+    <plurals name="households_suggestions_generated">
+        <item quantity="one">%1$d nouvelle relation suggérée générée. Consultez-la sur les pages de contact des membres.</item>
+        <item quantity="many">%1$d nouvelles relations suggérées générées. Consultez-les sur les pages de contact des membres.</item>
+        <item quantity="other">%1$d nouvelles relations suggérées générées. Consultez-les sur les pages de contact des membres.</item>
+    </plurals>
     <string name="households_no_new_suggestions">Aucune nouvelle suggestion — les relations existantes couvrent déjà ce foyer.</string>
     <string name="households_suggest_addresses">Suggérer des foyers depuis une adresse partagée</string>
     <string name="households_address_suggestions">Suggestions d\'adresse partagée</string>
@@ -1466,7 +1516,7 @@
     <string name="gifts_status_given">Offert</string>
     <string name="gifts_status_received">Reçu</string>
     <string name="gifts_url">URL</string>
-    <string name="gifts_url_invalid">Saisissez une URL http(s) valide</string>
+    <string name="gifts_url_invalid">Saisissez une URL HTTP ou HTTPS valide</string>
     <string name="gifts_notes">Notes</string>
     <string name="gifts_occasion">Occasion</string>
     <string name="gifts_date">Date</string>
@@ -1601,7 +1651,11 @@
     <!-- T93 duplicate review (issue #710, web parity) -->
     <string name="duplicates_title">Examiner les doublons</string>
     <string name="duplicates_empty">Aucun contact en double trouvé</string>
-    <string name="duplicates_count">%1$d paire(s) de doublons potentiels</string>
+    <plurals name="duplicates_count">
+        <item quantity="one">%1$d paire de doublons potentielle</item>
+        <item quantity="many">%1$d paires de doublons potentielles</item>
+        <item quantity="other">%1$d paires de doublons potentielles</item>
+    </plurals>
     <string name="duplicates_vs">contre</string>
     <string name="duplicates_reason_email">Même e-mail</string>
     <string name="duplicates_reason_name">Même nom</string>
@@ -1965,7 +2019,11 @@
     <string name="settings_delete_local_data_hint">Saisissez %1$s pour confirmer</string>
     <string name="settings_delete_local_data_confirm">Supprimer les données locales</string>
     <string name="settings_servers_switch_title">Activité non envoyée</string>
-    <string name="settings_servers_switch_body">%1$d interaction(s) capturée(s) n\'ont pas encore été envoyées. Passer à %2$s les supprimera.</string>
+    <plurals name="settings_servers_switch_body">
+        <item quantity="one">%1$d interaction capturée n\'a pas encore été envoyée. Passer à %2$s la supprimera.</item>
+        <item quantity="many">%1$d interactions capturées n\'ont pas encore été envoyées. Passer à %2$s les supprimera.</item>
+        <item quantity="other">%1$d interactions capturées n\'ont pas encore été envoyées. Passer à %2$s les supprimera.</item>
+    </plurals>
     <string name="settings_servers_switch_confirm">Supprimer et changer</string>
     <string name="servers_add_invalid_url">Saisissez une URL de serveur valide, par exemple https://crm.example.com.</string>
     <string name="login_use_local_only">Utiliser uniquement sur cet appareil</string>
@@ -1987,7 +2045,11 @@
     <string name="attach_stage_importing">Importation sur le serveur…</string>
     <string name="attach_progress">%1$d sur %2$d</string>
     <string name="attach_review_totals">Prêt à déplacer %1$d contacts, %2$d notes et %3$d activités.</string>
-    <string name="attach_review_loss">%1$d champ(s) ne peuvent pas être repris exactement.</string>
+    <plurals name="attach_review_loss">
+        <item quantity="one">%1$d champ ne peut pas être repris exactement.</item>
+        <item quantity="many">%1$d champs ne peuvent pas être repris exactement.</item>
+        <item quantity="other">%1$d champs ne peuvent pas être repris exactement.</item>
+    </plurals>
     <string name="attach_prepare_failed">Le transfert n\'a pas pu être préparé. Rien n\'a été modifié sur cet appareil.</string>
     <string name="attach_retry">Réessayer</string>
     <string name="attach_done_title">Données déplacées</string>
@@ -1995,7 +2057,11 @@
     <string name="attach_done_archive_note">La copie de cet appareil est maintenant une archive en lecture seule. Vous pouvez la consulter, mais pas la modifier, jusqu\'à ce que vous la supprimiez dans Paramètres → Serveurs.</string>
     <string name="attach_done_button">Terminé</string>
     <string name="attach_discard_title">Activité non envoyée</string>
-    <string name="attach_discard_body">%1$d interaction(s) saisie(s) sur cet appareil n\'ont pas été envoyées et ne font pas partie du transfert. Les abandonner et terminer ?</string>
+    <plurals name="attach_discard_body">
+        <item quantity="one">%1$d interaction saisie sur cet appareil n\'a pas été envoyée et ne fait pas partie du transfert. L\'abandonner et terminer ?</item>
+        <item quantity="many">%1$d interactions saisies sur cet appareil n\'ont pas été envoyées et ne font pas partie du transfert. Les abandonner et terminer ?</item>
+        <item quantity="other">%1$d interactions saisies sur cet appareil n\'ont pas été envoyées et ne font pas partie du transfert. Les abandonner et terminer ?</item>
+    </plurals>
     <string name="attach_discard_confirm">Abandonner et terminer</string>
     <string name="attach_error_not_local">Seul le profil sur l\'appareil peut être déplacé vers un serveur.</string>
     <string name="attach_error_credentials">Saisissez votre nom d\'utilisateur ou e-mail et votre mot de passe.</string>
