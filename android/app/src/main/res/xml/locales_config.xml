@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Issue #1921: the languages the app ships translations for (values-XX, kept in
+  sync by core:ui's LocalesConsistencyTest). Declaring them here adds the
+  Android 13+ Settings -> Apps -> Mycorrhizal -> Language entry; the in-app
+  Appearance setting mirrors its choice into the OS per-app locale (AppLocale).
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="de" />
+    <locale android:name="es" />
+    <locale android:name="fr" />
+    <locale android:name="it" />
+</locale-config>

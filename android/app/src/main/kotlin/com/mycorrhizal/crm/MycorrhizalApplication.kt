@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm
 
 import android.app.Application
+import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -10,6 +11,7 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
 import com.mycorrhizal.crm.feature.tracking.MycorrhizalNotificationChannels
 import com.mycorrhizal.crm.feature.tracking.TrackingWorkerScheduler
@@ -66,6 +68,20 @@ class MycorrhizalApplication : Application(), Configuration.Provider {
         // chosen language (attachBaseContext reads currentLanguageOverride()).
         // One tiny prefs file, once, at startup.
         runBlocking { appSettings.hydrate() }
+        // Issue #1921: reconcile the in-app language with the OS per-app locale
+        // on API 33+. An explicit system choice (the Settings picker) wins and
+        // is adopted into the local cache; if the OS has none yet (fresh
+        // install or upgrade from a version that only had the in-app setting)
+        // seed it from the stored choice so the two surfaces agree.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val systemTag = AppLocale.systemLanguageTag(this)
+            if (systemTag == null) {
+                AppLocale.languageTag?.let { AppLocale.applyToSystem(this, it) }
+            } else if (systemTag != AppLocale.languageTag) {
+                AppLocale.languageTag = systemTag
+                runBlocking { appSettings.setLanguageOverride(systemTag) }
+            }
+        }
         // M5 §3.1: Coil must fetch photos through the same OkHttpClient the API
         // uses — its default network stack carries no Authorization header, so
         // an auth'd photo URL would 401 (the M1 landing note recorded this as
