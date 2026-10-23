@@ -158,7 +158,7 @@ fun FormScaffold(
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                         }
                     },
-                    title = { Text(text = title, style = MaterialTheme.typography.titleLarge) },
+                    title = { ScreenTitle(text = title) },
                     actions = {
                         if (saveInTopBar) {
                             TextButton(
