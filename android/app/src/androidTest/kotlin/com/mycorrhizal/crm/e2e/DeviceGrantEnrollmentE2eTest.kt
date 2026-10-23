@@ -1,7 +1,6 @@
 package com.mycorrhizal.crm.e2e
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.network.ApiClient
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -33,7 +32,7 @@ class DeviceGrantEnrollmentE2eTest : E2eBaseTest() {
 
     /** The app's real, already-authenticated singleton. */
     private val apiClient: ApiClient
-        get() = (compose.activity as MainActivity).apiClient
+        get() = compose.activity.apiClient
 
     @After
     fun deviceGrantTearDown() {

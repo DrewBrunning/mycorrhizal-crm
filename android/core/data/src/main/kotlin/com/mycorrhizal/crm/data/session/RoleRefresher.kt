@@ -35,7 +35,10 @@ class RoleRefresher(
     private val sessionManager: SessionManager,
     private val fetchIsAdmin: suspend () -> Boolean?,
     private val debounceMillis: Long = DEFAULT_DEBOUNCE_MILLIS,
-    private val nowMillis: () -> Long = System::currentTimeMillis,
+    // Monotonic: the debounce window measures elapsed time, and the wall
+    // clock can jump (manual change, NTP sync, a time-zone travel fix), which
+    // would either open a second window inside the first or never reopen one.
+    private val nowMillis: () -> Long = { System.nanoTime() / NANOS_PER_MILLI },
 ) {
     private val _demotions = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
@@ -81,5 +84,6 @@ class RoleRefresher(
     companion object {
         /** A burst of 403s from one screen lands well inside this. */
         const val DEFAULT_DEBOUNCE_MILLIS = 30_000L
+        private const val NANOS_PER_MILLI = 1_000_000L
     }
 }

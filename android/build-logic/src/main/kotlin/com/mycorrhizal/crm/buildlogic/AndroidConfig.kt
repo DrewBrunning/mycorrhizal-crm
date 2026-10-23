@@ -18,6 +18,7 @@ import org.gradle.api.file.FileVisitor
 import org.gradle.api.file.FileVisitDetails
 import org.gradle.api.artifacts.ProjectDependency
 import org.jacoco.core.instr.Instrumenter
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
 import java.io.File
 import org.gradle.testretry.TestRetryTaskExtension
@@ -62,15 +63,60 @@ internal fun Project.configureAndroidCommon(
     extension.apply {
         compileSdk = AndroidConfig.COMPILE_SDK
         defaultConfig.minSdk = AndroidConfig.MIN_SDK
+        // Bytecode stays at 17 although CI builds on JDK 25: F-Droid's build
+        // server compiles the FOSS flavor with its own (Debian) JDK, 17 today,
+        // and a higher target would fail there. Kotlin output gains nothing
+        // from 21. Raise it only together with the F-Droid recipe's JDK.
         compileOptions.sourceCompatibility = JavaVersion.VERSION_17
         compileOptions.targetCompatibility = JavaVersion.VERSION_17
         testOptions.unitTests.isIncludeAndroidResources = true
     }
 
     configureAccessibilityLint(extension.lint)
+    configureKotlinWarnings()
     configureAndroidTestCommon()
     configureJacoco()
     configureDetekt()
+}
+
+/**
+ * v1.5.0 review: a Kotlin compiler warning fails the build. Before this, a
+ * deprecation or unchecked-cast warning only scrolled past in the log, and on
+ * CI most compile tasks are restored FROM-CACHE, so the warning was not even
+ * printed. `-Pmycorrhizal.allowKotlinWarnings=true` relaxes it for a local
+ * experiment; CI never sets it.
+ */
+internal fun Project.configureKotlinWarnings() {
+    val allowWarnings = providers.gradleProperty("mycorrhizal.allowKotlinWarnings")
+        .map { it.toBoolean() }
+        .orElse(false)
+    tasks.withType<KotlinCompilationTask<*>>().configureEach {
+        compilerOptions.allWarningsAsErrors.set(allowWarnings.map { !it })
+        // Moshi's `@Json(name = ...)` on a constructor `val` targets the value
+        // parameter, which is what Moshi reads. Kotlin 2.2 warns that the
+        // default target will widen to the field as well (KT-73255); pinning
+        // the current rule keeps that semantics and silences the warning on
+        // every DTO.
+        compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=first-only")
+        // Moshi codegen (KSP, 1.15.x) emits `.toInt()` on an Int in generated
+        // adapters such as CardJsonAdapter. Generated code can't be edited or
+        // @Suppress-ed, so this one diagnostic is disabled. The cost is that a
+        // redundant conversion in hand-written code no longer warns either;
+        // revisit when a Moshi release stops emitting it.
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=REDUNDANT_CALL_OF_CONVERSION_METHOD:disabled")
+        // Deprecations stay visible warnings rather than errors for now: the
+        // tree carries 64 (Compose dropdown anchors, AutoMirrored icons,
+        // PhoneStateListener, statusBarColor, ...) whose migrations need real
+        // API work, tracked in #1903. Remove these two lines when it lands.
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=DEPRECATION:warning")
+        compilerOptions.freeCompilerArgs.add("-Xwarning-level=OVERRIDE_DEPRECATION:warning")
+        // Unit tests drive coroutines with kotlinx-coroutines-test's
+        // experimental API (advanceUntilIdle, UnconfinedTestDispatcher, ...);
+        // opt them all in here rather than annotating every test class.
+        if (name.contains("UnitTest")) {
+            compilerOptions.optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
+        }
+    }
 }
 
 /**
@@ -163,6 +209,12 @@ internal fun Project.configureAndroidTestCommon() {
     val isCi = providers.environmentVariable("CI").isPresent
     val isNightlySchedule = providers.environmentVariable("GITHUB_EVENT_NAME").orNull == "schedule"
     tasks.withType<Test>().configureEach {
+        // mockk (ByteBuddy) attaches its agent at runtime. JDK 21+ prints a
+        // "Java agent has been loaded dynamically" warning on every test JVM
+        // and a future JDK will refuse it outright (JEP 451); opting in
+        // explicitly keeps the unit tests working and the log clean on the
+        // JDK 25 CI runner.
+        jvmArgs("-XX:+EnableDynamicAgentLoading")
         extensions.configure<TestRetryTaskExtension> {
             if (isCi) {
                 maxRetries.set(if (isNightlySchedule) 0 else 1)
@@ -178,7 +230,10 @@ internal fun Project.configureAndroidTestCommon() {
     }
 }
 
-private const val JACOCO_TOOL_VERSION = "0.8.12"
+// 0.8.14 is the first JaCoCo release with official Java 25 support (the
+// JVM the build and tests run on); keep in sync with build-logic's
+// org.jacoco.core dependency.
+private const val JACOCO_TOOL_VERSION = "0.8.14"
 
 /**
  * Issue #1133: coverage is collected from exactly one build of a module — the

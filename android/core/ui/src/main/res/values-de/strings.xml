@@ -2304,4 +2304,39 @@
     <string name="entity_circle">Kreis</string>
     <string name="entity_tag">Tag</string>
     <string name="entity_relationship">Beziehung</string>
+    <!-- Relationship health score explanations, rendered from the server's reason_code + reason_params (v1.5.0 review). -->
+    <plurals name="score_reason_every">
+        <item quantity="one">jeden Tag</item>
+        <item quantity="other">alle %1$d Tage</item>
+    </plurals>
+    <plurals name="score_reason_last_days">
+        <item quantity="one">dem letzten Tag</item>
+        <item quantity="other">den letzten %1$d Tagen</item>
+    </plurals>
+    <string name="score_reason_closeness_direct">Direkt verbunden als %1$s</string>
+    <plurals name="score_reason_closeness_hops">
+        <item quantity="one">Im Beziehungsnetz %1$d Schritt entfernt</item>
+        <item quantity="other">Im Beziehungsnetz %1$d Schritte entfernt</item>
+    </plurals>
+    <string name="score_reason_closeness_unknown">Im Beziehungsnetz nicht mit dir verbunden, daher ist die Nähe unbekannt</string>
+    <string name="score_reason_recency_none">Noch keine zählende Interaktion erfasst</string>
+    <plurals name="score_reason_recency_days">
+        <item quantity="one">Letzte zählende Interaktion vor %1$d Tag (Ziel: %2$s)</item>
+        <item quantity="other">Letzte zählende Interaktion vor %1$d Tagen (Ziel: %2$s)</item>
+    </plurals>
+    <plurals name="score_reason_frequency_count">
+        <item quantity="one">%1$d zählende Interaktion in %2$s (bei diesem Rhythmus etwa %3$s erwartet)</item>
+        <item quantity="other">%1$d zählende Interaktionen in %2$s (bei diesem Rhythmus etwa %3$s erwartet)</item>
+    </plurals>
+    <string name="score_reason_reach_out_pending">Es gibt einen ungeprüften Kontaktvorschlag für diese Person</string>
+    <string name="score_reason_reach_out_none">Kein offener Kontaktvorschlag</string>
+    <plurals name="score_reason_last_updated_days">
+        <item quantity="one">Kontaktdaten zuletzt vor %1$d Tag bearbeitet</item>
+        <item quantity="other">Kontaktdaten zuletzt vor %1$d Tagen bearbeitet</item>
+    </plurals>
+    <string name="score_reason_ambient_household">Umgebungskontakt (lebt mit dir zusammen)</string>
+    <string name="score_reason_ambient_flag">Umgebungskontakt (markiert)</string>
+    <string name="score_reason_target_cadence_policy">Aktualität und Häufigkeit ergeben %1$d gemessen an deinem Rhythmus (%2$s)</string>
+    <string name="score_reason_target_tier">Aktualität und Häufigkeit ergeben %1$d gemessen am Ziel „%2$s“ (%3$s)</string>
+    <string name="score_reason_target_ambient">Umgebungskontakt, immer im Plan</string>
 </resources>

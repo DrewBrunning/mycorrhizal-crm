@@ -7,7 +7,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.WorkManager
-import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
 import com.mycorrhizal.crm.feature.tracking.TrackingWorkerScheduler
@@ -47,7 +46,7 @@ import org.junit.runner.RunWith
 class TrackingPermissionsE2eTest : E2eBaseTest() {
 
     private val trackingSettings: TrackingSettingsRepository
-        get() = (compose.activity as MainActivity).trackingSettings
+        get() = compose.activity.trackingSettings
 
     private val appContext
         get() = compose.activity.applicationContext

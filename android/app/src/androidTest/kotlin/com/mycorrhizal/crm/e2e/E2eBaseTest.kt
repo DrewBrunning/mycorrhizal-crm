@@ -218,7 +218,7 @@ abstract class E2eBaseTest {
      * until the gate reports Locked instead of assuming the settings have propagated.
      */
     protected fun armAppLock() {
-        val activity = compose.activity as MainActivity
+        val activity = compose.activity
         runBlocking {
             activity.localAuthSettings.setAutoLockDelay(com.mycorrhizal.crm.domain.repository.AutoLockDelay.IMMEDIATELY)
             activity.localAuthSettings.setRequireLocalAuth(true)
@@ -235,7 +235,7 @@ abstract class E2eBaseTest {
     /** Drops the app's persisted session via the real SessionManager; the app
      *  recomposes to the login screen on its own (no UI logout navigation). */
     protected fun clearSession() {
-        val session = (compose.activity as MainActivity).sessionManager
+        val session = compose.activity.sessionManager
         runBlocking {
             // The startup hydration (DefaultSessionManager.init) is async; wait
             // for it so a stale logged-in state can't be published after we

@@ -35,5 +35,6 @@ dependencies {
     implementation(libs.gradle.test.retry.plugin)
     // JaCoCo offline instrumentation (Robolectric sandbox coverage): the core
     // Instrumenter runs inside the convention plugin's custom instrument task.
-    implementation("org.jacoco:org.jacoco.core:0.8.12")
+    // Same version as AndroidConfig.kt JACOCO_TOOL_VERSION (Java 25 support).
+    implementation("org.jacoco:org.jacoco.core:0.8.14")
 }

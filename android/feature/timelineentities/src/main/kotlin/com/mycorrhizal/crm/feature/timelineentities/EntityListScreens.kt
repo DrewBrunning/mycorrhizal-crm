@@ -834,7 +834,7 @@ internal fun GiftForm(
                     // Only a non-negative amount is a real amount; a
                     // negative/zero-blank entry sends null (review-pass
                     // fix — web rejects negatives client-side).
-                    valueCents = if (hasAmount) parsedAmount!!.movePointRight(2).toLong() else null,
+                    valueCents = if (hasAmount) parsedAmount.movePointRight(2).toLong() else null,
                     currency = currency,
                     lifeEventId = lifeEventId,
                     activityId = activityId,

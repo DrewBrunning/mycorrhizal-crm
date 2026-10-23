@@ -2319,4 +2319,39 @@
     <string name="entity_circle">circle</string>
     <string name="entity_tag">tag</string>
     <string name="entity_relationship">relationship</string>
+    <!-- Relationship health score explanations, rendered from the server's reason_code + reason_params (v1.5.0 review). -->
+    <plurals name="score_reason_every">
+        <item quantity="one">every day</item>
+        <item quantity="other">every %1$d days</item>
+    </plurals>
+    <plurals name="score_reason_last_days">
+        <item quantity="one">the last day</item>
+        <item quantity="other">the last %1$d days</item>
+    </plurals>
+    <string name="score_reason_closeness_direct">Directly connected as %1$s</string>
+    <plurals name="score_reason_closeness_hops">
+        <item quantity="one">Reachable %1$d hop away in your relationship graph</item>
+        <item quantity="other">Reachable %1$d hops away in your relationship graph</item>
+    </plurals>
+    <string name="score_reason_closeness_unknown">Not connected to you in the relationship graph, so closeness is unknown</string>
+    <string name="score_reason_recency_none">No qualifying interaction recorded yet</string>
+    <plurals name="score_reason_recency_days">
+        <item quantity="one">Last qualifying interaction %1$d day ago (target: %2$s)</item>
+        <item quantity="other">Last qualifying interaction %1$d days ago (target: %2$s)</item>
+    </plurals>
+    <plurals name="score_reason_frequency_count">
+        <item quantity="one">%1$d qualifying interaction in %2$s (about %3$s expected at this cadence)</item>
+        <item quantity="other">%1$d qualifying interactions in %2$s (about %3$s expected at this cadence)</item>
+    </plurals>
+    <string name="score_reason_reach_out_pending">There\'s an unreviewed reach-out suggestion for this contact</string>
+    <string name="score_reason_reach_out_none">No pending reach-out suggestion</string>
+    <plurals name="score_reason_last_updated_days">
+        <item quantity="one">Contact record last edited %1$d day ago</item>
+        <item quantity="other">Contact record last edited %1$d days ago</item>
+    </plurals>
+    <string name="score_reason_ambient_household">Ambient contact (lives with you)</string>
+    <string name="score_reason_ambient_flag">Ambient contact (marked)</string>
+    <string name="score_reason_target_cadence_policy">Recency and frequency score %1$d against your cadence (%2$s)</string>
+    <string name="score_reason_target_tier">Recency and frequency score %1$d against the %2$s target (%3$s)</string>
+    <string name="score_reason_target_ambient">Ambient contact, always on track</string>
 </resources>

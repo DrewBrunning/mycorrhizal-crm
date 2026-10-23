@@ -122,6 +122,6 @@ class MultiValueSpecResourcesTest {
             context.getString(R.string.contact_item_grammatical_gender),
             context.getString(GrammaticalGenderSpec.itemLabel),
         )
-        assertEquals("de, fr, es", GrammaticalGenderSpec.valueExample?.let { context.getString(it) })
+        assertEquals("de, fr, es", context.getString(GrammaticalGenderSpec.valueExample))
     }
 }

@@ -19,7 +19,7 @@ class AndroidTestHiltDeclarationsTest {
 
     @Test
     fun `no androidTest source declares a Hilt entry point or module install`() {
-        val roots = System.getProperty("androidTestHilt.roots")
+        val roots = System.getProperty("androidTestHilt.roots").orEmpty()
         assertTrue(
             "androidTestHilt.roots system property missing: run via Gradle (app/build.gradle.kts wires it)",
             !roots.isNullOrBlank(),

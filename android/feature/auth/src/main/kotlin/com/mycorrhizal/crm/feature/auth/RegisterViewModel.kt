@@ -169,7 +169,7 @@ class RegisterViewModel @Inject constructor(
             return
         }
         if (state.passwordChecked && state.passwordStrength?.isValid == false) {
-            val feedback = state.passwordStrength?.feedback
+            val feedback = state.passwordStrength.feedback
             if (feedback.isNullOrBlank()) {
                 _uiState.update { it.copy(errorRes = R.string.register_error_password_weak, error = null) }
             } else {

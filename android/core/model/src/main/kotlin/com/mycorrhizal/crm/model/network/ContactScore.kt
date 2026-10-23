@@ -46,7 +46,7 @@ data class ContactScoreResponse(
  * `models.ContactScoreTarget` (issue #1796). [status] is one of
  * [TargetStatus.ON_TRACK]/[TargetStatus.DRIFTING]/[TargetStatus.BEHIND];
  * [intervalSource] is "cadence_policy" or "target_tier". [reason] is the
- * server's plain-language explanation, rendered verbatim.
+ * server's English explanation; the UI renders [reasonCode] instead.
  */
 @JsonClass(generateAdapter = true)
 data class ContactScoreTarget(
@@ -55,7 +55,10 @@ data class ContactScoreTarget(
     val value: Double = 0.0,
     @Json(name = "interval_days") val intervalDays: Int = 0,
     @Json(name = "interval_source") val intervalSource: String = "",
+    /** English; render [reasonCode] + [reasonParams] instead (scoreReasonText). */
     val reason: String = "",
+    @Json(name = "reason_code") val reasonCode: String? = null,
+    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams(),
 )
 
 /** `ambient_reason`: a current member of a household the user's self-contact is also in. */
@@ -75,5 +78,62 @@ const val AMBIENT_REASON_FLAG = "flag"
 data class ContactScoreFacet(
     val value: Double = 0.0,
     val weight: Double = 0.0,
+    /** English; render [reasonCode] + [reasonParams] instead (scoreReasonText). */
     val reason: String = "",
+    /**
+     * Stable id of the explanation sentence (v1.5.0 review), one of
+     * [ScoreReasonCode.ALL]; null from a server that predates it, in which
+     * case the English [reason] is shown.
+     */
+    @Json(name = "reason_code") val reasonCode: String? = null,
+    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams(),
 )
+
+/**
+ * The values a score explanation interpolates (backend `scoring.ReasonParams`);
+ * only the ones its reason code uses are present.
+ */
+@JsonClass(generateAdapter = true)
+data class ScoreReasonParams(
+    val days: Int? = null,
+    @Json(name = "interval_days") val intervalDays: Int? = null,
+    val hops: Int? = null,
+    val count: Int? = null,
+    @Json(name = "window_days") val windowDays: Int? = null,
+    val expected: Double? = null,
+    val score: Int? = null,
+    val relation: String? = null,
+    val tier: String? = null,
+)
+
+/**
+ * Reason codes on [ContactScoreFacet.reasonCode] / [ContactScoreTarget.reasonCode].
+ * Hand-mirrored from backend `scoring.ReasonCodes()` (CLAUDE.md trap #4): a new
+ * backend code must be added here and in scoreReasonText; until then it falls
+ * back to the English reason.
+ */
+object ScoreReasonCode {
+    const val CLOSENESS_DIRECT = "closeness_direct"
+    const val CLOSENESS_HOPS = "closeness_hops"
+    const val CLOSENESS_UNKNOWN = "closeness_unknown"
+    const val RECENCY_NONE = "recency_none"
+    const val RECENCY_DAYS = "recency_days"
+    const val FREQUENCY_COUNT = "frequency_count"
+    const val REACH_OUT_PENDING = "reach_out_pending"
+    const val REACH_OUT_NONE = "reach_out_none"
+    const val LAST_UPDATED_DAYS = "last_updated_days"
+    const val AMBIENT_HOUSEHOLD = "ambient_household"
+    const val AMBIENT_FLAG = "ambient_flag"
+    const val TARGET_CADENCE_POLICY = "target_cadence_policy"
+    const val TARGET_TIER = "target_tier"
+    const val TARGET_AMBIENT = "target_ambient"
+
+    /** Same order as backend `scoring.ReasonCodes()`. */
+    val ALL = listOf(
+        CLOSENESS_DIRECT, CLOSENESS_HOPS, CLOSENESS_UNKNOWN,
+        RECENCY_NONE, RECENCY_DAYS, FREQUENCY_COUNT,
+        REACH_OUT_PENDING, REACH_OUT_NONE, LAST_UPDATED_DAYS,
+        AMBIENT_HOUSEHOLD, AMBIENT_FLAG,
+        TARGET_CADENCE_POLICY, TARGET_TIER, TARGET_AMBIENT,
+    )
+}

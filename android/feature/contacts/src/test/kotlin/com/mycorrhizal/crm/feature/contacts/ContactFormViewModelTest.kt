@@ -401,7 +401,7 @@ class ContactFormViewModelTest {
             contactRepository.createContact(
                 match<ContactRecordInput> { input ->
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
-                    partial?.year == 1990 && partial?.month == 6 && partial?.day == 15
+                    partial?.year == 1990 && partial.month == 6 && partial.day == 15
                 },
             )
         }
@@ -602,7 +602,7 @@ class ContactFormViewModelTest {
                 5,
                 match<ContactRecordInput> { input ->
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
-                    partial?.year == null && partial?.month == 12 && partial?.day == 25
+                    partial?.year == null && partial?.month == 12 && partial.day == 25
                 },
                 any(),
             )
@@ -649,7 +649,7 @@ class ContactFormViewModelTest {
                 5,
                 match<ContactRecordInput> { input ->
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
-                    partial?.year == 2020 && partial?.month == null
+                    partial?.year == 2020 && partial.month == null
                 },
                 any(),
             )

@@ -81,7 +81,7 @@ class PrepViewModelTest {
             assertNull(success.error)
             assertEquals("Alice Wonder", success.briefing?.name)
             assertTrue(success.briefing!!.recentNotes.isEmpty())
-            assertTrue(success.briefing!!.openAgendaItems.isEmpty())
+            assertTrue(success.briefing.openAgendaItems.isEmpty())
         }
         coVerify(exactly = 1) { apiClient.getBriefing(7) }
     }

@@ -1,9 +1,11 @@
 package com.mycorrhizal.crm.security
 
 import android.os.Build
+import android.os.SystemClock
 import android.view.WindowManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.mycorrhizal.crm.MainActivity
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import kotlinx.coroutines.runBlocking
@@ -53,10 +55,16 @@ class ScreenResilienceTest {
         return secure
     }
 
+    // The flag follows a DataStore flow collected on the main thread, so it
+    // lands asynchronously and there is no idling resource to wait on. Poll a
+    // monotonic deadline, letting the main looper drain between checks (the
+    // collector's dispatch is what we are waiting for), instead of sleeping a
+    // fixed interval against the wall clock.
     private fun ActivityScenario<MainActivity>.awaitFlagSecure(expected: Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (hasFlagSecure() != expected && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50)
+        val deadline = SystemClock.uptimeMillis() + FLAG_TIMEOUT_MS
+        while (hasFlagSecure() != expected && SystemClock.uptimeMillis() < deadline) {
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            SystemClock.sleep(FLAG_POLL_MS)
         }
         assertEquals("FLAG_SECURE after toggling the setting", expected, hasFlagSecure())
     }
@@ -119,5 +127,10 @@ class ScreenResilienceTest {
                 )
             }
         }
+    }
+
+    private companion object {
+        const val FLAG_TIMEOUT_MS = 5_000L
+        const val FLAG_POLL_MS = 20L
     }
 }

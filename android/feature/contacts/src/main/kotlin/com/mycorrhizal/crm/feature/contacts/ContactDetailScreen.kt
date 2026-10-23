@@ -170,6 +170,7 @@ import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.components.healthBandColor
 import com.mycorrhizal.crm.ui.components.targetStatusBand
 import com.mycorrhizal.crm.ui.components.targetStatusLabel
+import com.mycorrhizal.crm.ui.components.scoreReasonText
 import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
@@ -706,7 +707,12 @@ fun ContactDetailScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                state.isLoading -> LoadingSkeleton()
+                // Only a first load shows the skeleton. The ON_RESUME reload
+                // after returning from a drill-down keeps the current content
+                // (and its scroll position) on screen while it refreshes;
+                // swapping in the skeleton lost the user's place and flashed the
+                // page (and raced the skills drill-down E2E, #1893).
+                state.isLoading && state.contact == null -> LoadingSkeleton()
                 state.contact == null && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 state.contact == null -> EmptyState(stringResource(R.string.contact_not_found))
@@ -1390,35 +1396,35 @@ fun ContactDetailContent(
         if (!card?.keywords.isNullOrEmpty() && ContactFieldKey.KEYWORDS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_keywords)) {
-                    InfoRow(card?.keywords.orEmpty().joinToString(", "))
+                    InfoRow(card.keywords.orEmpty().joinToString(", "))
                 }
             }
         }
         if (!card?.preferredLanguages.isNullOrEmpty() && ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_preferred_languages)) {
-                    card?.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
+                    card.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
                 }
             }
         }
         if (!card?.phones.isNullOrEmpty() && ContactFieldKey.PHONES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_phone)) {
-                    card?.phones?.forEach { PhoneRow(it) }
+                    card.phones?.forEach { PhoneRow(it) }
                 }
             }
         }
         if (!card?.addresses.isNullOrEmpty() && ContactFieldKey.ADDRESSES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_address)) {
-                    card?.addresses?.forEach { AddressRow(it) }
+                    card.addresses?.forEach { AddressRow(it) }
                 }
             }
         }
         if (!card?.emails.isNullOrEmpty() && ContactFieldKey.EMAILS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_email)) {
-                    card?.emails?.forEach { EmailRow(it) }
+                    card.emails?.forEach { EmailRow(it) }
                 }
             }
         }
@@ -1440,7 +1446,7 @@ fun ContactDetailContent(
         if (!card?.links.isNullOrEmpty() && ContactFieldKey.LINKS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_links)) {
-                card?.links?.forEach { link ->
+                card.links?.forEach { link ->
                     val uri = link.uri.orEmpty()
                     LinkRow(
                         uri = uri,
@@ -1472,7 +1478,7 @@ fun ContactDetailContent(
         if (!card?.notes.isNullOrEmpty() && ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_notes)) {
-                    card?.notes?.forEach { note ->
+                    card.notes?.forEach { note ->
                         note.note?.let { InfoRow(it) }
                     }
                 }
@@ -1765,7 +1771,7 @@ fun ContactDetailContent(
                     val target = score.target
                     if (target != null) {
                         Text(
-                            text = target.reason,
+                            text = scoreReasonText(target.reasonCode, target.reasonParams, target.reason),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.testTag("target-closeness-reason"),
@@ -1864,8 +1870,8 @@ private fun TargetClosenessPicker(
 
 /**
  * One weighted facet row in the [ContactDetailContent] score-breakdown
- * dialog: its label, its 0-100 sub-score + weight, and its plain-language
- * [ContactScoreFacet.reason] — all read verbatim from the server response.
+ * dialog: its label, its 0-100 sub-score + weight, and its explanation,
+ * rendered in the UI language from [ContactScoreFacet.reasonCode].
  */
 @Composable
 private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
@@ -1886,7 +1892,7 @@ private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
             )
         }
         Text(
-            text = facet.reason,
+            text = scoreReasonText(facet.reasonCode, facet.reasonParams, facet.reason),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

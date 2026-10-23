@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- App / navigation -->
     <string name="app_name">Mycorrhizal</string>
     <string name="nav_contacts">Contacts</string>
@@ -2318,4 +2318,47 @@
     <string name="entity_circle">ce cercle</string>
     <string name="entity_tag">cette étiquette</string>
     <string name="entity_relationship">cette relation</string>
+    <!-- Relationship health score explanations, rendered from the server's reason_code + reason_params (v1.5.0 review). -->
+    <!-- French "one" also covers 0, but this count is a day interval/window, always >= 1. -->
+    <plurals name="score_reason_every" tools:ignore="ImpliedQuantity">
+        <item quantity="one">chaque jour</item>
+        <item quantity="many">tous les %1$d jours</item>
+        <item quantity="other">tous les %1$d jours</item>
+    </plurals>
+    <!-- French "one" also covers 0, but this count is a day interval/window, always >= 1. -->
+    <plurals name="score_reason_last_days" tools:ignore="ImpliedQuantity">
+        <item quantity="one">le dernier jour</item>
+        <item quantity="many">les %1$d derniers jours</item>
+        <item quantity="other">les %1$d derniers jours</item>
+    </plurals>
+    <string name="score_reason_closeness_direct">Lien direct : %1$s</string>
+    <plurals name="score_reason_closeness_hops">
+        <item quantity="one">À %1$d étape dans votre réseau de relations</item>
+        <item quantity="many">À %1$d étapes dans votre réseau de relations</item>
+        <item quantity="other">À %1$d étapes dans votre réseau de relations</item>
+    </plurals>
+    <string name="score_reason_closeness_unknown">Aucun lien avec vous dans le réseau de relations, la proximité est donc inconnue</string>
+    <string name="score_reason_recency_none">Aucune interaction prise en compte pour l’instant</string>
+    <plurals name="score_reason_recency_days">
+        <item quantity="one">Dernière interaction prise en compte il y a %1$d jour (objectif : %2$s)</item>
+        <item quantity="many">Dernière interaction prise en compte il y a %1$d jours (objectif : %2$s)</item>
+        <item quantity="other">Dernière interaction prise en compte il y a %1$d jours (objectif : %2$s)</item>
+    </plurals>
+    <plurals name="score_reason_frequency_count">
+        <item quantity="one">%1$d interaction prise en compte sur %2$s (environ %3$s attendues à ce rythme)</item>
+        <item quantity="many">%1$d interactions prises en compte sur %2$s (environ %3$s attendues à ce rythme)</item>
+        <item quantity="other">%1$d interactions prises en compte sur %2$s (environ %3$s attendues à ce rythme)</item>
+    </plurals>
+    <string name="score_reason_reach_out_pending">Une suggestion de prise de contact n’a pas encore été examinée</string>
+    <string name="score_reason_reach_out_none">Aucune suggestion de prise de contact en attente</string>
+    <plurals name="score_reason_last_updated_days">
+        <item quantity="one">Fiche modifiée pour la dernière fois il y a %1$d jour</item>
+        <item quantity="many">Fiche modifiée pour la dernière fois il y a %1$d jours</item>
+        <item quantity="other">Fiche modifiée pour la dernière fois il y a %1$d jours</item>
+    </plurals>
+    <string name="score_reason_ambient_household">Contact ambiant (vit avec vous)</string>
+    <string name="score_reason_ambient_flag">Contact ambiant (marqué)</string>
+    <string name="score_reason_target_cadence_policy">Récence et fréquence : %1$d par rapport à votre cadence (%2$s)</string>
+    <string name="score_reason_target_tier">Récence et fréquence : %1$d par rapport à l’objectif « %2$s » (%3$s)</string>
+    <string name="score_reason_target_ambient">Contact ambiant, toujours dans les temps</string>
 </resources>

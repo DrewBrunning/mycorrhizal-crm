@@ -242,7 +242,7 @@ fun CadencePanelContent(
                     isAmbient -> {
                         Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                         AmbientExplanation(
-                            reason = health?.ambientReason,
+                            reason = health.ambientReason,
                             modifier = Modifier.testTag("cadence-ambient"),
                         )
                     }
@@ -252,7 +252,7 @@ fun CadencePanelContent(
                         // 3:1 non-text amber); the words use onSurface.
                         Icon(Icons.Outlined.Warning, contentDescription = null, tint = LocalWarningColors.current.foreground)
                         Text(
-                            text = stringResource(R.string.cadence_overdue_by, health!!.overdueBy),
+                            text = stringResource(R.string.cadence_overdue_by, health.overdueBy),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )

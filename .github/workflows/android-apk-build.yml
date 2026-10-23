@@ -78,7 +78,9 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          # JDK 25: the same JVM android-tests.yml builds and tests on (#1858), so
+          # the shipped APK/AAB is built by the toolchain CI exercised.
+          java-version: 25
 
       # Issue #1390 / ADR 0028 Decision 2: the release APK/AAB must embed the Go
       # server (lib/arm64-v8a/libmycorrhizal.so). android/app/build.gradle.kts

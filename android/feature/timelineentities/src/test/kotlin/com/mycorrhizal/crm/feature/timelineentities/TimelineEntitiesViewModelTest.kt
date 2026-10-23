@@ -37,6 +37,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
+import java.time.Instant
+import java.time.ZoneId
 import java.util.TimeZone
 
 /**
@@ -421,7 +423,7 @@ class GiftsViewModelTest {
             }
         }
 
-    @Test fun `markGiven flips an idea gift to given and defaults the date to now`() =
+    @Test fun `markGiven flips an idea gift to given and defaults the date to today`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubContact(contacts)
             val idea = Gift(id = "g1", entityId = UID, status = GiftStatuses.IDEA, description = "Socks")
@@ -435,7 +437,8 @@ class GiftsViewModelTest {
             coVerify {
                 repo.update(
                     "g1",
-                    match { it.status == GiftStatuses.GIVEN && it.date != null },
+                    // A calendar day at UTC midnight (giftTodayIso), not an instant.
+                    match { it.status == GiftStatuses.GIVEN && it.date?.endsWith("T00:00:00Z") == true },
                 )
             }
         }
@@ -969,8 +972,19 @@ class ConversationAgendaViewModelTest {
 class GiftDateHelpersTest {
     @get:Rule val utcTimezone = UtcTimezoneRule()
 
-    @Test fun `giftDateToIso converts a local date to a UTC midnight instant`() {
-        assertEquals("2026-08-10T00:00:00Z", giftDateToIso("2026-08-10"))
+    @Test fun `giftDateToIso writes the picked calendar day at UTC midnight in any zone`() {
+        // A gift date is a calendar day (ADR 0015's 2026-10-23 amendment); it
+        // used to be the device's local midnight, which this assertion could
+        // not tell apart from UTC midnight on a UTC test JVM.
+        val saved = TimeZone.getDefault()
+        try {
+            for (zone in listOf("Europe/Berlin", "America/Chicago", "Pacific/Auckland")) {
+                TimeZone.setDefault(TimeZone.getTimeZone(zone))
+                assertEquals(zone, "2026-08-10T00:00:00Z", giftDateToIso("2026-08-10"))
+            }
+        } finally {
+            TimeZone.setDefault(saved)
+        }
     }
 
     @Test fun `giftDateToIso rejects malformed or blank input`() {
@@ -978,9 +992,27 @@ class GiftDateHelpersTest {
         assertEquals(null, giftDateToIso("  "))
     }
 
-    @Test fun `giftDateFromIso reads the local date part`() {
-        assertEquals("2026-08-10", giftDateFromIso("2026-08-10T00:00:00Z"))
-        assertEquals("2026-08-10", giftDateFromIso("2026-08-10T22:00:00.000Z"))
+    @Test fun `giftDateFromIso reads a calendar day by its UTC date, a legacy instant in the zone`() {
+        val chicago = ZoneId.of("America/Chicago")
+        val berlin = ZoneId.of("Europe/Berlin")
+        // UTC midnight is the calendar day itself, even west of UTC.
+        assertEquals("2026-08-10", giftDateFromIso("2026-08-10T00:00:00Z", chicago))
+        assertEquals("2026-08-10", giftDateFromIso("2026-08-10T00:00:00.000Z", berlin))
+        // A pre-normalization Berlin local midnight (22:00Z the day before).
+        assertEquals("2026-08-10", giftDateFromIso("2026-08-09T22:00:00.000Z", berlin))
+    }
+
+    @Test fun `giftTodayIso is the device's local today, not the UTC date of now`() {
+        // 20:30 on 22 Oct in Chicago is already 01:30Z on the 23rd.
+        assertEquals(
+            "2026-10-22T00:00:00Z",
+            giftTodayIso(Instant.parse("2026-10-23T01:30:00Z"), ZoneId.of("America/Chicago")),
+        )
+        // 00:30 on 23 Oct in Berlin is still 22:30Z on the 22nd.
+        assertEquals(
+            "2026-10-23T00:00:00Z",
+            giftTodayIso(Instant.parse("2026-10-22T22:30:00Z"), ZoneId.of("Europe/Berlin")),
+        )
     }
 
     @Test fun `giftDateFromIso tolerates blank and garbage`() {

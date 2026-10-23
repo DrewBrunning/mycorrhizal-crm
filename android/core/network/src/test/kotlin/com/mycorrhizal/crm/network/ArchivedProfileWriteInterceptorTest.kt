@@ -122,6 +122,6 @@ class ArchivedProfileWriteInterceptorTest {
         assertTrue(error is ApiError.ArchivedProfile)
         assertNotNull(error.cause)
         assertTrue(error.displayMessage.contains("read-only archive"))
-        assertNull((error as ApiError).cause?.cause)
+        assertNull(error.cause?.cause)
     }
 }
