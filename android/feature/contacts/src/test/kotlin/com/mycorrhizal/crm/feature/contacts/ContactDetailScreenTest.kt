@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performScrollTo
@@ -125,6 +127,29 @@ class ContactDetailScreenTest {
             }
         }
         composeTestRule.onNodeWithContentDescription("Unmark Dana White as favorite").assertIsDisplayed()
+    }
+
+    // --- Issue #1922: TalkBack focus on the contact's name on entry -------
+
+    @Test
+    fun `the contact name receives focus on entry`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                    ),
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // The name is the large header title (the collapsed app-bar copy is not
+        // part of ContactDetailContent, hence no ambiguous duplicate here).
+        composeTestRule
+            .onAllNodesWithText("Dana White", useUnmergedTree = true)
+            .assertAny(isFocused())
     }
 
     @Test

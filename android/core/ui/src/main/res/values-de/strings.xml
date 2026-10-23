@@ -924,9 +924,11 @@
     <string name="settings_permission_rationale_title">Berechtigung erforderlich</string>
     <string name="settings_call_permission_rationale">Die Anruferfassung protokolliert Anrufe als Aktivitäten und benötigt dafür Zugriff auf dein Anrufprotokoll und den Telefonstatus. Erteile die Berechtigung, um sie zu aktivieren.</string>
     <string name="settings_sms_permission_rationale">Die Nachrichtenerfassung protokolliert Nachrichten als Aktivitäten und benötigt dafür Zugriff auf deine Nachrichten. Erteile die Berechtigung, um sie zu aktivieren.</string>
+    <string name="settings_notification_permission_rationale">Benachrichtigungen benötigen die Berechtigung, um angezeigt zu werden. Erlaube Benachrichtigungen, um Erinnerungen und Hinweise zu erhalten.</string>
     <string name="settings_permission_settings_title">Berechtigung blockiert</string>
     <string name="settings_call_permission_settings">Die Anruferfassung benötigt die Berechtigungen „Anrufprotokoll“ und „Telefon“. Sie sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter wieder ein.</string>
     <string name="settings_sms_permission_settings">Die Nachrichtenerfassung benötigt die SMS-Berechtigungen. Sie sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter wieder ein.</string>
+    <string name="settings_notification_permission_settings">Benachrichtigungen sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter dann wieder ein.</string>
     <string name="settings_permission_try_again">Erneut versuchen</string>
     <string name="settings_permission_open_settings">Einstellungen öffnen</string>
     <string name="settings_permission_not_now">Jetzt nicht</string>

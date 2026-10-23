@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -225,4 +225,20 @@ test('shows the offline banner when the browser is offline', () => {
   } finally {
     if (original) Object.defineProperty(window.navigator, 'onLine', original);
   }
+});
+
+// Issue #1917: a pushState navigation must move focus off the activated link
+// to the new page's heading, so assistive technology announces the new screen.
+test('a client-side navigation moves focus to the new page heading', async () => {
+  setLoggedInUser(false);
+  renderApp();
+
+  const contactsLinks = screen.getAllByRole('link', { name: 'Contacts' });
+  fireEvent.click(contactsLinks[0]);
+
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Contacts' }),
+    ),
+  );
 });

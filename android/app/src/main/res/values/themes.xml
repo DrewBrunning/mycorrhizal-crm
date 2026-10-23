@@ -7,15 +7,17 @@
              state (bone at the top, green once collapsed). The bone-colored
              navigation bar gets dark (light-appearance) icons/buttons via
              android:windowLightNavigationBar, but that attribute requires API
-             27+ (min is 26), so it's added on top of this base theme in
-             values-v27/themes.xml instead of here. -->
+             27+ (min is 26). On API 26 (issue #1920) that fallback does not
+             exist, so this base theme paints the navigation bar brand green
+             with the platform's light icons instead; values-v27/themes.xml
+             restores the bone bar + dark icons on API 27+. -->
         <item name="android:statusBarColor">#3E543E</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#FAF5EA</item>
+        <item name="android:navigationBarColor">#3E543E</item>
     </style>
 
-    <!-- Identity theme for API < 27; values-v27/themes.xml overrides this
-         with the windowLightNavigationBar addition on API 27+. -->
+    <!-- Identity theme for API < 27; values-v27/themes.xml overrides the
+         navigation-bar color and adds windowLightNavigationBar on API 27+. -->
     <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal" />
 
     <!-- T106: splash theme, shown by the OS before installSplashScreen()'s
@@ -23,7 +25,12 @@
          as the pair above so values-night/themes.xml only has to override the
          background. No dedicated splash icon asset exists; the adaptive
          launcher-icon foreground (already used by mipmap-anydpi-v26/ic_launcher.xml)
-         is reused as-is, per platform convention for apps without one. -->
+         is reused as-is, per platform convention for apps without one.
+
+         Issue #1920: Theme.SplashScreen does not publish the splash window's
+         status bar, so API 26 fell back to the platform's pink default above
+         the cream splash. Set the bar to the splash background explicitly,
+         with dark icons, in both the light and night siblings. -->
     <style name="Base.Theme.Mycorrhizal.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.Mycorrhizal</item>
@@ -31,5 +38,7 @@
 
     <style name="Theme.Mycorrhizal.Splash" parent="Base.Theme.Mycorrhizal.Splash">
         <item name="windowSplashScreenBackground">#FAF5EA</item> <!-- bone -->
+        <item name="android:statusBarColor">#FAF5EA</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

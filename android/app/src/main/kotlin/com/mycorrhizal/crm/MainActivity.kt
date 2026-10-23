@@ -242,10 +242,14 @@ class MainActivity : FragmentActivity() {
             } else {
                 SystemBarStyle.dark(MycorrhizalColors.mycelium.toArgbCompat())
             },
-            navigationBarStyle = if (darkThemeAtLaunch) {
-                SystemBarStyle.dark(MycorrhizalColors.boneDark.toArgbCompat())
-            } else {
-                SystemBarStyle.light(
+            navigationBarStyle = when {
+                darkThemeAtLaunch -> SystemBarStyle.dark(MycorrhizalColors.boneDark.toArgbCompat())
+                // Issue #1920: API 26 cannot render dark icons on the bone bar
+                // (android:windowLightNavigationBar is API 27+), so the launch
+                // window paints the bar brand green with light icons instead.
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1 ->
+                    SystemBarStyle.dark(MycorrhizalColors.mycelium.toArgbCompat())
+                else -> SystemBarStyle.light(
                     MycorrhizalColors.bone.toArgbCompat(),
                     MycorrhizalColors.bone.toArgbCompat(),
                 )

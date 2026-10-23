@@ -61,8 +61,10 @@ class SettingsViewModelTest {
         themePreference: String = AppSettingsRepository.THEME_SYSTEM,
         callStored: Boolean = false,
         smsStored: Boolean = false,
+        notificationsStored: Boolean = true,
         callGranted: Boolean = false,
         smsGranted: Boolean = false,
+        notificationsGranted: Boolean = true,
         includeUnknown: Boolean = false,
         filteredCount: Int = 0,
         callSmsAvailable: Boolean = true,
@@ -79,11 +81,12 @@ class SettingsViewModelTest {
         }
         coEvery { trackingSettings.callTrackingEnabled() } returns callStored
         coEvery { trackingSettings.smsTrackingEnabled() } returns smsStored
-        coEvery { trackingSettings.notificationsEnabled() } returns true
+        coEvery { trackingSettings.notificationsEnabled() } returns notificationsStored
         coEvery { trackingSettings.includeUnknownNumbers() } returns includeUnknown
         coEvery { trackingSettings.filteredUnknownCount() } returns filteredCount
         coEvery { trackingSettings.setCallTrackingEnabled(any()) } returns Unit
         coEvery { trackingSettings.setSmsTrackingEnabled(any()) } returns Unit
+        coEvery { trackingSettings.setNotificationsEnabled(any()) } returns Unit
         coEvery { trackingSettings.setIncludeUnknownNumbers(any()) } returns Unit
         every { authRepository.observeSession() } returns MutableStateFlow(session)
         coEvery { appSettings.themePreference() } returns flowOf(themePreference)
@@ -106,6 +109,9 @@ class SettingsViewModelTest {
         every {
             permissionChecker.isGranted(TrackingPermissions.RECEIVE_SMS)
         } returns smsGranted
+        every {
+            permissionChecker.isGranted(TrackingPermissions.POST_NOTIFICATIONS)
+        } returns notificationsGranted
         return SettingsViewModel(
             authRepository,
             trackingSettings,
@@ -492,6 +498,122 @@ class SettingsViewModelTest {
 
             assertFalse(vm.uiState.value.callTrackingEnabled)
             coVerify { trackingSettings.setCallTrackingEnabled(false) }
+        }
+
+    // --- Issue #1919: the notifications toggle owns its runtime permission ---
+
+    @Test
+    fun `enabling notifications requests POST_NOTIFICATIONS when the grant is missing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = false, notificationsGranted = false)
+            advanceUntilIdle()
+
+            vm.setNotificationsEnabled(true)
+            advanceUntilIdle()
+
+            // The toggle stays off and nothing is persisted until the OS grants
+            // the permission; the screen launches the system dialog instead.
+            assertFalse(vm.uiState.value.notificationsEnabled)
+            assertEquals(
+                TrackingPermissionRequest.NOTIFICATIONS,
+                vm.uiState.value.pendingPermissionRequest,
+            )
+            coVerify(exactly = 0) { trackingSettings.setNotificationsEnabled(true) }
+        }
+
+    @Test
+    fun `granting the notification permission persists the opt-in and turns the toggle on`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = false, notificationsGranted = false)
+            advanceUntilIdle()
+            vm.setNotificationsEnabled(true)
+            advanceUntilIdle()
+
+            every {
+                permissionChecker.isGranted(TrackingPermissions.POST_NOTIFICATIONS)
+            } returns true
+            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = false)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.notificationsEnabled)
+            assertNull(vm.uiState.value.pendingPermissionRequest)
+            assertNull(vm.uiState.value.permissionDialog)
+            coVerify { trackingSettings.setNotificationsEnabled(true) }
+        }
+
+    @Test
+    fun `denying the notification permission leaves the toggle off and offers a rationale`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = false, notificationsGranted = false)
+            advanceUntilIdle()
+            vm.setNotificationsEnabled(true)
+            advanceUntilIdle()
+
+            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = false)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.notificationsEnabled)
+            assertEquals(
+                TrackingPermissionDialog.Rationale(TrackingPermissionRequest.NOTIFICATIONS),
+                vm.uiState.value.permissionDialog,
+            )
+            coVerify(exactly = 0) { trackingSettings.setNotificationsEnabled(true) }
+        }
+
+    @Test
+    fun `a permanently denied notification permission offers the system settings path`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = false, notificationsGranted = false)
+            advanceUntilIdle()
+            vm.setNotificationsEnabled(true)
+            advanceUntilIdle()
+
+            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = true)
+            advanceUntilIdle()
+
+            assertEquals(
+                TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.NOTIFICATIONS),
+                vm.uiState.value.permissionDialog,
+            )
+        }
+
+    @Test
+    fun `a stored notifications flag whose permission was revoked is reverted on refresh`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = true, notificationsGranted = false)
+            advanceUntilIdle()
+
+            // The stored flag said "on" but POST_NOTIFICATIONS is denied: the
+            // row must render off and the preference be persisted off, or the
+            // workers keep queuing notifications that can never post.
+            assertFalse(vm.uiState.value.notificationsEnabled)
+            coVerify { trackingSettings.setNotificationsEnabled(false) }
+        }
+
+    @Test
+    fun `a stored notifications flag with the grant still present stays on`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = true, notificationsGranted = true)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.notificationsEnabled)
+            coVerify(exactly = 0) { trackingSettings.setNotificationsEnabled(false) }
+        }
+
+    @Test
+    fun `disabling notifications while a request is pending cancels the request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(notificationsStored = false, notificationsGranted = false)
+            advanceUntilIdle()
+            vm.setNotificationsEnabled(true)
+            advanceUntilIdle()
+
+            vm.setNotificationsEnabled(false)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.notificationsEnabled)
+            assertNull(vm.uiState.value.pendingPermissionRequest)
+            coVerify { trackingSettings.setNotificationsEnabled(false) }
         }
 
     // --- Issue #1200: distribution builds without the call/SMS capture feature ---
