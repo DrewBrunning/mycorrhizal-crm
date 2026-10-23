@@ -50,12 +50,15 @@ stub ratelimit 1 "toomanyrequests: rate limit exceeded"
 stub pending1 0 ""
 printf '#!/usr/bin/env bash\necho 1\n' > "$work/pending1"
 printf '#!/usr/bin/env bash\necho 0\n' > "$work/pending0"
-chmod +x "$work/pending1" "$work/pending0"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$work/tagpresent"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$work/tagabsent"
+printf '#!/usr/bin/env bash\nexit 2\n' > "$work/tagunknown"
+chmod +x "$work/pending1" "$work/pending0" "$work/tagpresent" "$work/tagabsent" "$work/tagunknown"
 
 run_test() {
-  local name="$1" register="$2" manifest="$3" pending="$4" want="$5" want_notice="$6" dir out
+  local name="$1" register="$2" manifest="$3" pending="$4" tag="$5" want="$6" want_notice="$7" dir out
   dir="$(mkrepo "$register")"
-  out="$(cd "$dir" && REALRELEASE_MANIFEST_CMD="$work/$manifest" REALRELEASE_PUBLISH_PENDING_CMD="$work/$pending" bash "$SCRIPT" v1.9.9 2>&1)"
+  out="$(cd "$dir" && REALRELEASE_MANIFEST_CMD="$work/$manifest" REALRELEASE_PUBLISH_PENDING_CMD="$work/$pending" REALRELEASE_TAG_EXISTS_CMD="$work/$tag" bash "$SCRIPT" v1.9.9 2>&1)"
   local ok=1
   [ "$(printf '%s\n' "$out" | grep -E '^(RUN|SKIP)$')" = "$want" ] || ok=0
   if [ "$want_notice" = 1 ]; then
@@ -68,19 +71,25 @@ run_test() {
 }
 
 run_test "release-registration commit + image not published -> SKIP with a notice" \
-  1 unknown pending0 SKIP 1
+  1 unknown pending0 tagabsent SKIP 1
 run_test "image published -> RUN, even on the registration commit" \
-  1 present pending0 RUN 0
+  1 present pending0 tagabsent RUN 0
 run_test "REGRESSION GUARD: later commit, publish finished, image missing -> RUN (leg then fails)" \
-  0 unknown pending0 RUN 0
+  0 unknown pending0 tagpresent RUN 0
 run_test "later commit but the tag's docker-publish is still running, image missing -> SKIP" \
-  0 unknown pending1 SKIP 1
+  0 unknown pending1 tagpresent SKIP 1
 run_test "registry rate limit is not proof of absence -> RUN even on the registration commit" \
-  1 ratelimit pending1 RUN 0
+  1 ratelimit pending1 tagpresent RUN 0
+run_test "pre-registered version with no tag yet -> SKIP (the image cannot exist before the tag)" \
+  0 unknown pending0 tagabsent SKIP 1
+run_test "tag exists, no publish run, image missing -> RUN (published release whose image is gone)" \
+  0 unknown pending0 tagpresent RUN 0
+run_test "tag lookup error is not proof of absence -> RUN" \
+  0 unknown pending0 tagunknown RUN 0
 
 # The decision is also exported for the workflow step.
 dir="$(mkrepo 1)"
-(cd "$dir" && GITHUB_OUTPUT="$work/out" REALRELEASE_MANIFEST_CMD="$work/unknown" bash "$SCRIPT" v1.9.9 >/dev/null)
+(cd "$dir" && GITHUB_OUTPUT="$work/out" REALRELEASE_MANIFEST_CMD="$work/unknown" REALRELEASE_TAG_EXISTS_CMD="$work/tagabsent" bash "$SCRIPT" v1.9.9 >/dev/null)
 if grep -qx 'skip=true' "$work/out"; then pass=$((pass + 1)); echo "PASS: writes skip=true to GITHUB_OUTPUT"
 else fail=$((fail + 1)); echo "FAIL: GITHUB_OUTPUT"; fi
 

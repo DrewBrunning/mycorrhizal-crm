@@ -23,15 +23,18 @@
 #      "manifest unknown"-class answer (a rate limit / network error is NOT
 #      proof of absence and stays RUN, so the leg's own retries and honest
 #      failure apply); and
-#   2. the tag is not yet published *by construction*: either HEAD is the
-#      release-registration commit (it adds the tag's `{Tag: "...",` line to
-#      releases.go), or the tag's docker-publish.yml run has not completed.
+#   2. the tag is not yet published *by construction*: either the tag does not
+#      exist yet, HEAD is the release-registration commit (it adds the tag's
+#      `{Tag: "...",` line to releases.go), or the tag's docker-publish.yml run
+#      has not completed.
 # Any other missing image -- a published release whose image is gone -- is RUN,
 # and the leg then fails as it should.
 #
 # Test seams (never set in CI): REALRELEASE_MANIFEST_CMD (default
-# `docker manifest inspect`), REALRELEASE_PUBLISH_PENDING_CMD (default queries
-# the Actions API; prints the number of non-completed docker-publish runs).
+# `docker manifest inspect`), REALRELEASE_TAG_EXISTS_CMD (default queries the
+# Actions tags API; exit 0 when the tag exists), REALRELEASE_PUBLISH_PENDING_CMD
+# (default queries the Actions API; prints the number of non-completed
+# docker-publish runs).
 set -u
 
 tag="${1:?usage: realrelease-image-expected.sh vX.Y.Z [releases.go]}"
@@ -58,9 +61,39 @@ if ! printf '%s' "$out" | grep -qiE 'manifest unknown|no such manifest|name unkn
 fi
 
 reason=""
-if git diff HEAD^ HEAD -U0 -- "$releases" 2>/dev/null | grep -qE "^\+[[:space:]]*\{Tag: \"${tag}\","; then
+# A tag that does not exist yet proves the image cannot exist yet: no
+# docker-publish.yml run can have started, and the release-cut path may have
+# registered the version in SupportedReleases before tagging (so HEAD is not
+# necessarily the registration commit any more). This is the pre-dispatch
+# validate case: the version being cut is in the matrix but its image is
+# deliberately not published until the tag is pushed.
+tag_exists=true
+tag_cmd="${REALRELEASE_TAG_EXISTS_CMD:-}"
+if [ -n "$tag_cmd" ]; then
+  # Test seam: exit 0 = tag present, 1 = definitively absent, anything else =
+  # unknown (conservative: let the leg run and fail honestly).
+  "$tag_cmd" "$tag" >/dev/null 2>&1
+  case $? in
+    0) tag_exists=true ;;
+    1) tag_exists=false ;;
+    *) tag_exists=true ;;
+  esac
+elif [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  # Only a 404 is proof of absence; a rate limit or network error must not
+  # turn a published-but-missing image into a skip.
+  tag_out="$(gh api --include "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" 2>&1 || true)"
+  if printf '%s' "$tag_out" | grep -qE '^HTTP/[0-9.]+ 404'; then
+    tag_exists=false
+  fi
+fi
+if [ "$tag_exists" = "false" ]; then
+  reason="tag ${tag} is not published yet"
+fi
+
+if [ -z "$reason" ] && git diff HEAD^ HEAD -U0 -- "$releases" 2>/dev/null | grep -qE "^\+[[:space:]]*\{Tag: \"${tag}\","; then
   reason="HEAD is the release-registration commit for ${tag}"
-else
+fi
+if [ -z "$reason" ]; then
   pending_cmd="${REALRELEASE_PUBLISH_PENDING_CMD:-}"
   if [ -n "$pending_cmd" ]; then
     pending="$($pending_cmd "$tag" 2>/dev/null || echo 0)"
