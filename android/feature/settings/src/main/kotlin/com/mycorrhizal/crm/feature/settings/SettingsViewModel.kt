@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
@@ -527,10 +528,18 @@ class SettingsViewModel @Inject constructor(
      */
     fun updateLanguage(language: String) {
         val current = _uiState.value.session.language
-        if (language == current) return
+        // Issue #1921: re-selecting the current language still reconciles the OS
+        // per-app locale, which the user may have changed from system Settings
+        // to a different value. applyToSystem is a no-op when they already match.
+        if (language == current) {
+            AppLocale.applyToSystem(appContext, language)
+            return
+        }
         viewModelScope.launch {
             authRepository.updateLanguage(language).onSuccess {
                 appSettings.setLanguageOverride(language)
+                // The OS picker (API 33+) is kept in step with the in-app choice.
+                AppLocale.applyToSystem(appContext, language)
                 _events.value = SettingsEvent.LocaleChanged
             }
         }

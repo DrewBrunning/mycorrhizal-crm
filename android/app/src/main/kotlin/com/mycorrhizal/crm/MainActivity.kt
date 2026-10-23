@@ -140,8 +140,21 @@ class MainActivity : FragmentActivity() {
     // the synchronous AppLocale cache (hydrated at startup, updated whenever
     // the setting changes). A language change recreates the Activity so this
     // re-runs with the fresh value.
+    //
+    // Issue #1921: on API 33+ the OS per-app locale (system Settings picker)
+    // is authoritative when explicitly set. Applying the local cache there
+    // would immediately overwrite a choice made in system Settings; the cache
+    // is only the fallback for installs that have not mirrored it to the OS.
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(LocaleContextWrapper.wrap(newBase, AppLocale.languageTag))
+        val systemHasLocale = AppLocale.systemLanguageTag(newBase) != null
+        val tag = if (
+            AppLocale.shouldApplyInAppOverride(Build.VERSION.SDK_INT, systemHasLocale)
+        ) {
+            AppLocale.languageTag
+        } else {
+            null
+        }
+        super.attachBaseContext(LocaleContextWrapper.wrap(newBase, tag))
     }
 
     /**
