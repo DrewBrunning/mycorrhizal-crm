@@ -193,6 +193,113 @@ last runs on `main` are green, not that they were re-executed here.
 | Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |
 
+### Nuclei and TLS scanner trial (issue #1881)
+
+**Decision: not adopted.** A time-boxed spike on 2026-10-24 ran Nuclei v3.11.1 against the same
+throwaway all-in-one instance `zap-dast.yml` builds (`docker-compose.test.yml`,
+`http://localhost:7300`), authenticated with a full-scope API token minted the way the ZAP job mints
+one. Templates were updated immediately before the run. No nightly job, ignore list, or
+`dastcanary`-style self-test was added because the spike found no real High/Critical signal.
+
+| Run | Templates | Requests | Errors | Matches |
+|---|---|---|---|---|
+| Default templates (`-etags dos,fuzz`) | 11,212 | 20,762 | 228 | 11 |
+| `-tags exposure,misconfig` | 2,030 | 4,957 | 10 | 5 |
+
+All eleven default-template matches are Informational; the tag-only run is a subset (the same five
+missing-header matchers). None is a CVE or exploit template: the target is a custom Go/Gin app, and
+the products the template library targets (Spring, PHP, Jenkins, …) are absent, so that part of the
+library is inapplicable by construction. The 228 errors are non-fatal template/request errors spread
+across the 11k-template library, not an aborted scan (the run completed with an exit 0).
+
+| Findings | Count | Classification |
+|---|---|---|
+| `http-missing-security-headers` on the SPA shell: `strict-transport-security`, `cross-origin-embedder-policy`, `cross-origin-opener-policy`, `cross-origin-resource-policy`, `x-permitted-cross-domain-policies` | 5 | **Inapplicable to this target.** HSTS is emitted only when `COOKIE_SECURE=true` behind operator TLS ([deployment baseline](deployment-baseline.md#what-this-application-does-not-secure)), and the CI instance is deliberately plain HTTP; the other headers have no sink in a same-origin SPA with no cross-origin-isolation, Flash, or Acrobat use. The pinned ZAP full scan did not emit them, so they are net-new **informational** observations rather than ZAP duplicates — and still not actionable High/Critical findings. |
+| `waf-detect`, `tech-detect`, `robots-txt`, `security-txt`, `google-floc-disabled` | 6 | **Inapplicable: detection/meta templates.** `tech-detect` identifies only nginx (the expected front door); `security.txt` and `robots.txt` are intentional assets, and the FLoC opt-out is a privacy posture, not a defect. |
+
+**Classification: 0 real, 0 ZAP duplicates, 11 inapplicable/informational.** The five header matchers
+are net-new relative to ZAP's report, but they are informational and inapplicable to this target, not
+duplicates.
+
+**ZAP duplicate check.** The report from the latest green nightly ZAP run (run
+[40070673592](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/40070673592),
+`zap-dast-report` artifact) was inspected. The app's unaccepted High/Medium alerts there are the
+already-triaged Spring4Shell false positive and the two accepted CSP findings (`zap/dast.ignore`);
+Nuclei reproduced none of them, and it found no High/Medium of its own. There is therefore no
+net-new *real* finding to gate, and the informational header class is already covered by ZAP's
+header checks plus the ASVS header posture.
+
+**TLS: not applicable.** The repository owns no TLS endpoint. The shipped all-in-one image serves
+plain HTTP on the published port; TLS is terminated by the operator's reverse proxy, and the
+deployment baseline lists TLS protocol/cipher selection and certificate material as explicit
+operator-owned surface. `testssl.sh`/`sslyze` would therefore scan either the operator's proxy (a host
+this project must never scan) or a synthetic endpoint the repo does not ship. No TLS scanner is
+wired, and none should be until the repo owns a TLS listener.
+
+**Revisit trigger.** Re-run this trial if the app grows a product fingerprint that Nuclei's
+CVE/misconfig templates target, or if the repo starts owning a TLS endpoint (a reference deployment
+or bundled proxy), at which point `testssl.sh`/`sslyze` can be scoped to that endpoint. Until then ZAP
+(authenticated, OpenAPI-seeded, High/Medium-gated, with the `dastcanary` self-test) plus
+Schemathesis/`bolacheck`/`schemagate` remain the DAST layer.
+
+Reproduce from a checkout:
+
+```sh
+docker compose -f docker-compose.test.yml up -d
+# Mint a full-scope API token exactly as .github/workflows/zap-dast.yml does.
+docker volume create nuclei-templates
+docker run --rm -v nuclei-templates:/root/nuclei-templates \
+  projectdiscovery/nuclei:latest -update-templates -duc
+docker run --rm --network host -v nuclei-templates:/root/nuclei-templates \
+  -e NUCLEI_TOKEN="$TOKEN" projectdiscovery/nuclei:latest \
+  -u http://localhost:7300 -H "Authorization: Bearer $NUCLEI_TOKEN" \
+  -jsonl -o /tmp/nuclei.jsonl -etags dos,fuzz
+```
+
+### Community Semgrep rulesets trial (issue #1879)
+
+**Decision: not adopted.** A backend-only spike on 2026-10-24 ran semgrep 1.172.0 with the
+`p/golang` and `p/owasp-top-ten` registry rulesets over `backend/`, excluding `**/testdata/**` and
+`**/node_modules/**`, matching the issue's 2026-10-23 scope decision. The frontend trial
+(`p/typescript`, `p/react`) and the `sast.yml` plumbing were deliberately out of scope; the registry
+rulesets are under the Semgrep Rules License, which does not permit redistributing them in this
+public repository, so no rule files were vendored and CI still does not fetch them.
+
+| Ruleset | Findings | Rules | Scope |
+|---|---|---|---|
+| `p/golang` | 7 | 42 | 560 Go files (861 tracked files considered) |
+| `p/owasp-top-ten` | 9 | 225 | 861 files (the 7 Go findings above, plus 2 Dockerfile findings) |
+
+The two rulesets overlap; the combined result is **9 findings, no real defect**:
+
+| Finding | Site | Classification |
+|---|---|---|
+| `raw-html-format` | `backend/cmd/dastcanary/main.go` | CodeQL duplicate (`go/reflected-xss`, dismissed "used in tests"). The reflected XSS is the canary's planted vulnerability, annotated for both CodeQL and gosec. |
+| `math-random-used` | `backend/integrations/retry.go` | False positive: retry jitter, not a security primitive. |
+| `math-random-used` | `backend/internal/soak/workload.go` | False positive: seeded load-generator workload mix. |
+| `math-random-used` | `backend/services/webhook_service.go` | False positive: retry jitter, already carries `//nolint:gosec // G404`. |
+| `unsafe-deserialization-interface` | `backend/models/audit.go` | False positive: unmarshals the app's own `json.Marshal` output for audit redaction; no untrusted input. |
+| `use-of-sha1` | `backend/services/hibp_service.go` | CodeQL duplicate (`go/weak-sensitive-data-hashing`, dismissed). SHA-1 is the HIBP k-anonymity wire format; password storage is bcrypt. |
+| `missing-ssl-minversion` | `backend/services/mailer.go` | False positive for this toolchain: Go 1.22+ (this repo builds on Go 1.26) defaults `MinVersion` to TLS 1.2. An explicit pin would be defence in depth, not a defect. |
+| `missing-user-entrypoint` / `missing-user` | `backend/Dockerfile` | False positive: the entrypoint starts as root only to reconcile PUID/PGID and `chown` the data directories, then `exec su-exec appuser:appgroup`. The container does not serve as root. |
+
+Hand-verification that the registry config actually loaded: the same `p/golang` invocation over a
+throwaway `main.go` containing a reflected-HTML `fmt.Fprintf`, `math/rand.Int()` and a plain
+`http.ListenAndServe` produced three findings (`raw-html-format`, `math-random-used`, `use-tls`).
+Reproduce the baseline from `backend/`:
+
+```bash
+SEMGREP_SEND_METRICS=off uvx --from 'semgrep==1.172.0' semgrep \
+  --config p/golang --config p/owasp-top-ten --error \
+  --exclude '**/testdata/**' --exclude '**/node_modules/**' .
+```
+
+No finding required a new issue: the two CodeQL duplicates are already dismissed with reasons, and
+the rest are patterns this app either uses by design (jitter, HIBP SHA-1, the DAST canary) or never
+feeds untrusted input (audit redaction). The rules therefore add no net-new signal over CodeQL
+security-extended plus `backend/.semgrep/mycorrhizal-traps.yaml`, and the existing custom trap rules
+remain the Semgrep gate.
+
 ---
 
 ## 4. Manual verification records
@@ -374,7 +481,7 @@ chapter; the notes below record the manual read the counts depend on.
 | **V9** Communication | TLS boundary re-confirmed at `docs/deployment.md:32`; HSTS wiring (`security_headers.go:43-46`, wired `main.go:521`). |
 | **V10** Malicious Code | 10.3.2's SRI claim now cites why SRI is moot here (no external origin in the CSP) rather than asserting it (F-2). |
 | **V11** Business Logic | The 2 `partial` rows are product decisions (per-user content quotas, business-activity monitoring) — unchanged, restated in §7; the alerting row (11.1.8) closed in #940. |
-| **V12** Files and Resources | 12.3.6 now cites the lockfiles and the absence of `os/exec` in non-test packages rather than asserting it (F-2). |
+| **V12** Files and Resources | 12.3.6 now cites the lockfiles and the scoped `os/exec` posture (none on any server or request path; the build/test-tooling packages are enumerated in `asvs-l2.md` P12) rather than asserting an absolute absence (F-2; issue #1943). |
 | **V13** API | 13.1.3 now cites the Semgrep rule; 13.2.6 now states the deliberate absence of application-layer signing (F-2). API9 stays `partial` — no endpoint-inventory doc. |
 | **V14** Configuration | The heaviest drift cluster: CORS, trusted proxies, and the boot validators had all moved within `main.go`/`config.go` (F-1). All re-located and re-read. |
 | **API1–API10** | API1's evidence (the strongest claim in the file — "every handler AND-scopes") re-verified by manual audit A and the matrix/bolacheck pair. |
@@ -430,7 +537,7 @@ Stated so the claim is not read as stronger than it is:
 
 "L2 with 23 documented exceptions" is only meaningful if the exceptions are enumerable. They are.
 
-### The eleven written-down positions
+### The twelve written-down positions
 
 Full reasoning lives in `asvs-l2.md` § Documented positions; the revisit trigger is what matters for
 re-verification.
@@ -448,6 +555,7 @@ re-verification.
 | **P9** | Bidi/zero-width/confusable characters in contact names preserved verbatim; display-spoofing defense is a frontend concern, not data-layer stripping (#945) | A maintained Go confusables-detection library becomes available, or the frontend adds rendering-layer defenses that would make data-layer stripping worth reconsidering |
 | **P10** | Attachment EXIF/GPS stripped for JPEG/PNG at ingest; HEIC is a named, untouched gap (#945) | A HEIC-capable metadata-editing library becomes available |
 | **P11** | Outbound email CRLF hardening (explicit `To` rejection, defensive `Subject` strip) is defense-in-depth, not a response to a reachable gap — no current caller passes anything but a validated address / fixed subject (#945) | A caller ever needs to pass a non-`user.Email` recipient or a non-fixed subject |
+| **P12** | No `os/exec` on any server or request path; the build-time notice generator (`backend/internal/notices`, used only by `backend/cmd/gennotices`) and the test-only differential harness (`backend/differential`) are the enumerated exceptions, with fixed or operator-controlled test commands and no request input (#1943) | The notice generator becomes reachable from a request or job, a third non-test package starts a process, or the differential checkers stop being test-only |
 
 ### The 23 ASVS `partial` rows
 
@@ -527,7 +635,7 @@ A re-pass is a diff against this file, not a rewrite. In order:
    a new persistence target, a new authentication path — and for each, either name the mechanism
    that fails when the next one is added, or file the issue that will build it. A new category with
    neither is the gap this whole section exists to prevent.
-7. Re-check every documented-position revisit trigger in §7 (`P1`–`P11`).
+7. Re-check every documented-position revisit trigger in §7 (`P1`–`P12`).
 8. Update the header (pass number, date, commit), the census (from `citecheck`), §6 findings, and add
    a changelog row (§10). If a mechanism in §9 has been superseded, update §9 to describe what
    actually runs, and delete what it replaced. **#608 did the first such supersession** (2026-09-10):
@@ -724,3 +832,4 @@ govulncheck).
 | 2.33 | 2026-10-14 | (see PR) | ASVS L2 with 23 documented exceptions; MASVS-L1 with 1 | **Pre-dispatch §8 diff review for the PATCH release `v1.4.3`**, over the range from tag `v1.4.2` (`6f180717`, remote tag verified) to main: seven commits, all build/CI/packaging; no application source under `backend/` or `frontend/src` changed. **The security fix this patch ships is [#1708](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1708)** ([#1703](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1703)): the `v1.4.2` publish-time Trivy scan flagged CVE-2026-85091 (MEDIUM, zlib heap overflow, fixed in `1.3.2-r1`); the pinned `alpine:3.24` digest still ships `r0`, so all three Dockerfiles gained an exact `zlib=1.3.2-r1` pin in the runtime-stage `apk add`, following the existing `libssl3` pin policy (an Alpine prune of the version fails the build loudly rather than floating). Checked against the container/config and known-vulnerable-component rows (V14.1, V14.2): the evidence is strengthened, not changed, so no row was re-cited. **[#1707](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1707)** ([#1702](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1702)): `trivy-action` unsets `TRIVY_SEVERITY` in SARIF mode, so the publish gate had failed on any severity; `limit-severities-for-sarif: true` makes it honour its declared `CRITICAL,HIGH`, the SARIF is uploaded even when the scan fails, and the new `releaseworkflow` structure test pins it. The gate is restored to its documented threshold, not loosened: CRITICAL and HIGH still block publication. **[#1709](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1709)** ([#1704](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1704)): on tag-time battery reuse, `docker-publish` now publishes the battery-validated candidate digest instead of rebuilding; `candidate-image.sh verify-candidate` checks that the digest resolves in GHCR, its revision label is the validated commit, version equals the tag and every platform is present, and `verify-release-assets` asserts published == validated == this run's candidate (`releaseplan` refuses reuse without a verified digest; a test proves the fixture allowlist is not linked into the server binary). This closes a supply-chain gap (shipped bytes were previously covered only by deploy-smoke) and strengthens V10 (malicious code) and V14.1 (build pipeline); no new secret, permission scope or write target. **Dependency bumps:** [#1697](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1697) (`fxamacker/cbor/v2` 2.9.4 to 2.9.6, `golang.org/x/tools` 0.50.0 to 0.51.0; patch-level), [#1698](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1698) (14 frontend minor/patch updates incl. `maplibre-gl`, `vite`, `react-i18next`), [#1700](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1700) (six Actions bumps; every `uses:` is still pinned by full 40-hex SHA with a version comment). **[#1699](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1699), `vite-plugin-pwa` 1.3.0 to 2.0.0 (major, dev-only build tool):** `yarn build` was run on the branch: the `injectManifest` strategy, `injectRegister: false` and the hand-written `src/service-worker.ts` / `src/serviceWorkerRegistration.ts` are unchanged and still build; the generated `build/service-worker.js` carries the injected precache manifest (16 entries) and no `_recovery.*` entry, so the WEB-02 escape-hatch exclusion and the SW registration/caching scope are intact; the plugin runs at build time only and ships no runtime code of its own. `govulncheck ./...` (latest): no vulnerabilities affect the code (0 in imported packages, 1 in a required module the code does not call). **Finding: none** (the zlib CVE was the finding, fixed by #1708). No new client, route class, persistence target or session-minting path; **no new §9 class**. **No control flipped; the census is unchanged and was recounted from `citecheck`** (ASVS 197 satisfied / 23 partial / 36 not-applicable / 2 out-of-scope; MASVS 37 / 1 / 6). `citecheck`, `docscheck`, `governancecheck` and `releasegatecheck` re-ran clean after the last edit. |
 | 2.34 | 2026-10-16 | (see PR) | ASVS L2 with 23 documented exceptions; MASVS-L1 with 1 | Not a full re-pass. Posture change for Android screenshot prevention, issue [#1741](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1741) (maintainer decision 2026-10-16, raised by the Android UX audit #1718; supersedes the interim debug-build exemption #1740). The unconditional `FLAG_SECURE` adopted under #507 (`masvs-l1.md` P6) is replaced by: (1) `Activity.setRecentsScreenshotEnabled(false)` on API 33+ in every build type, blanking the recent-apps thumbnail without blocking screenshots; (2) an opt-in, default-off, device-local "Block screenshots and screen recording" setting (`LocalAuthSettingsRepository`, never synced) that sets/clears `FLAG_SECURE` live and is applied before the first frame on cold start. `filterTouchesWhenObscured` (tapjacking) is unchanged and unconditional. **MASVS-L1 STORAGE-9 (an L2 control, bonus not level claim) moves `satisfied` to `partial`** (satisfied on API 33+; on API 26-32 with the setting off, the default, the thumbnail shows app content — accepted residual risk, mitigated by the opt-in app lock P7 and the setting itself). The MASVS-L1 level claim is unchanged (L1 with 1 exception). `android/.mobsf` re-ignores `android_prevent_screenshot` with a recorded reason pointing at P6. ASVS L2 statuses unchanged. Verified by `ScreenResilienceTest` on a Pixel 8a, `FlagSecurePolicyTest` and `LocalAuthSettingsRepositoryImplTest`. **Census recount** (issue [#1747](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1747): the change landed without it and `TestVerificationReportClaimsMatchCensus` failed on `main`): MASVS all-rows census 36 satisfied / 2 partial / 6 not-applicable; L1-claim partials still 1 (STORAGE-5). The gate now counts the level claim over L1 rows only (`(L2)`-tagged IDs excluded) and the census over all rows. ASVS unchanged (197 / 23 / 36 / 2). |
 | 2.35 | 2026-10-23 | (see PR) | ASVS L2 with 23 documented exceptions; MASVS-L1 with 1 | The **v1.5.0 milestone-gate closure** (issue [#1743](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1743)), following the §8 procedure and the standing "do the §8 pass at gate-close time" criterion (issue #378 / #985 / #608). Not a full re-pass: the §8 diff review of everything since row 2.34's 2026-10-16 anchor, plus the two security surfaces this milestone introduced. **New class — per-entry sensitivity (#1738).** `Card.PersonalInfo` is now the canonical hobby store (replacing the `hobby` Preference category, deprecated in `docs/deprecations.md` row `preference-category-hobby`), with each entry's `private`/`secret` classification held in CRM-only `crm.personalInfoMeta`. This is the first sensitivity rule that filters *inside* a record rather than whole rows. The filter is centralized in `backend/models/contact_record.go#RecordForContactFiltered` for every outward projection (vCard 3/4, JSContact, CardDAV, contact shares), re-includable only via the explicit `include_sensitive` opt-in; the inbound half is `backend/models/contact_personal_info.go#MergePersonalInfoFromRemote`, so a CardDAV PUT (or subscription reconcile) that never saw a private entry cannot delete or downgrade it. The owner's own reads and the full-fidelity CSV/account-bundle backups keep everything, per the documented exception. Verified by `backend/models/contact_personal_info_test.go#TestRecordForContactFiltered_PersonalInfoSensitivity`, `backend/models/contact_personal_info_test.go#TestMergePersonalInfoFromRemote`, `backend/carddav/personal_info_sensitivity_test.go#TestCardDAV_GetAddressObject_ExcludesSensitivePersonalInfo`, `backend/carddav/personal_info_sensitivity_test.go#TestCardDAV_PutPreservesOmittedSensitivePersonalInfo`, `backend/controllers/export_personal_info_sensitivity_test.go#TestPersonalInfoSensitivity_OutwardExportsWithholdAboveNormal`, `backend/controllers/export_personal_info_sensitivity_test.go#TestPersonalInfoSensitivity_CSVAndAccountBundleKeepEverything`, `backend/controllers/contact_share_personal_info_test.go#TestCreateContactShare_PersonalInfoSensitivity`, and `backend/services/contact_sync_personal_info_test.go#TestReconcileContactSync_PreservesSensitivePersonalInfo` (all re-run clean on this tree). `docs/security/asvs-l2.md` rows 1.5.1 and 1.8.2 carry the claim, and `docs/security/data-retention-lifecycle.md` records the moved-hobby copy and the soft-delete. §9 gained a row for the class; its residual is mechanical, not behavioural: no check fails when a *new* outward surface bypasses the filtered projection, so issue [#1935](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1935) tracks the AST/route-census gate. **Android screenshot posture (#1740/#1741).** Row 2.34 already records the posture change; this pass re-read the shipped code and re-ran the Android JVM half (`FlagSecurePolicyTest`, `LocalAuthSettingsRepositoryImplTest`) and confirmed the instrumented `ScreenResilienceTest` (default off; flag set before the first frame on cold start; live toggle; recents thumbnail blanked on API 33+ regardless; tapjacking filter unchanged) is the recorded Pixel 8a result in PR [#1744](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1744). `docs/security/masvs-l1.md` P6/STORAGE-9 (`partial`, satisfied on API 33+), `docs/security/threat-model.md` gating decision 3 and `android/.mobsf`'s reasoned `android_prevent_screenshot` ignore still describe exactly that behaviour. **§9 "new class" answer for #1741:** not a new class — a device-local, default-off setting on an existing settings screen, with no new data copy, credential, server route or trust boundary; the window flags and manifest surface are pinned by `ScreenResilienceTest`, `FlagSecurePolicyTest` and `ExportedSurfaceTest`, and the MASVS P6/STORAGE-9 review owns the next flag. **Other surfaces reviewed.** New routes are additive and authorization-matrix-declared: `PATCH /api/v1/users/time-format` (`classProtected`), `PATCH /api/v1/webauthn/credentials/:id` (`classProtected`, ownership-scoped rename of the caller's own passkey, deliberately proof-free because a label is not a posture change), and `PUT`/`DELETE /api/v1/contacts/:id/target-closeness` (`classItem`; `contact_target_closeness_controller_test.go#TestTargetCloseness_OwnershipAndMissing`). The time-format work adds `time_format` to login/2FA/OIDC/device-grant responses only — no authentication decision changes, no new session-minting path (`routes/session_minting_route_gate_test.go`) and no JWT/clock change. Migrations `000074`–`000077` are additive/defaulted columns or a verbatim table rebuild, each with a tested `.down.sql` and an `## Upgrade notes` block in its PR (#1813, #1816, #1834, #1836); the #1738 data move is a ledgered startup backfill that soft-deletes moved rows, not a migration, and its tests hand-verify every source column has a destination. #1720 maps SQLite lock timeouts to a retryable `503 DATABASE_BUSY` without leaking internals; #1848 clears a critical CI-only certificate advisory and raises the build toolchain floor; #1870/#1873 are dependency bumps. #1791 is query/cancellation work with no new write or egress path; the `/graph` no-parameter default was corrected by [#1934](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1934) before this pass so the release remains additive under MAINT-02 (the ego view is the explicit `?full=false`). The web Contact Picker import (#164) and Share Target (#1294) are browser-side ingress into the existing import/note-draft flows, and the Android notification/locale work (#1924/#1926) changes no server surface. **No control flipped and no exception-count change.** Census recounted from `citecheck`: ASVS **197 satisfied / 23 partial / 36 not-applicable / 2 out-of-scope**; MASVS all-rows **36 satisfied / 2 partial / 6 not-applicable**, L1 claim partials still **1** (STORAGE-5). `citecheck`, `docscheck`, `deprecations`, `depexceptions`, `releasegatecheck`, `governancecheck`, `pragmacheck` and `nightlyalertcheck` re-ran clean after the edit. Findings: the per-entry mechanical gap above (#1935), and the pre-pass MAINT-02 default break fixed by #1934; no code finding in a control. |
+| 2.36 | 2026-10-24 | (see PR) | ASVS L2 with 23 documented exceptions; MASVS-L1 with 1 | The **v1.5.1 re-verification** record for issue [#1943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1943), a **claim correction** (not a full re-pass; no control flipped, no exception-count change). PR [#1942](https://github.com/DrewBrunning/mycorrhizal-crm/pull/1942)'s build-time third-party notice generator — `backend/internal/notices/collect.go#CollectGo` runs `go list`, `#CollectNPM` runs the pinned repo-local `license-checker-rseidelsohn` — and the older test-only differential harness (`backend/differential/harness.go#NewPyRef`, `#NewCalcardRef`) made the absolute "no `os/exec` anywhere" claims in ASVS **5.3.8**, **12.3.5** and **12.3.6**, `CLAUDE.md`/`AGENTS.md`, `docs/development/scale-testing.md` and this report's §5 V12 note false. **Decision (option 1 — scope the ban):** the invariant is "no process execution on any server or request path"; the two non-test packages are build/test tooling (the generator runs only from `backend/cmd/gennotices`; the differential package is imported only by `*_test.go`), with fixed or operator-configured test commands and arguments and no request input. The threat reasoning is recorded as `asvs-l2.md` **P12** (twelve written-down positions now — not a new ASVS exception), and every affected claim now states the scope and the enumerated exceptions instead of asserting absence. `citecheck` and `docscheck` green; no absolute "no `os/exec` anywhere" claim remains. |

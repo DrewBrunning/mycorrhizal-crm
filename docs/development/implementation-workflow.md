@@ -117,7 +117,8 @@ Run this before you commit. It is the same list a reviewer will use.
 - No secrets in code, logs, fixtures, or commit messages.
 - Input is validated; SSRF/path/CSV/import parsing guards are intact.
 - Sensitivity filtering still applies to every copy that leaves the instance.
-- No `os/exec` in app code; no mass assignment (explicit update allowlists only).
+- No `os/exec` on any server or request path (build/test tooling is the scoped exception in
+  `docs/security/asvs-l2.md` P12); no mass assignment (explicit update allowlists only).
 
 ### Hygiene
 

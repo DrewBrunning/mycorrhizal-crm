@@ -145,6 +145,7 @@ if [ "$frontend_changed" = true ]; then
     run "frontend: tsc --noEmit" frontend ./node_modules/.bin/tsc --noEmit
     run "frontend: biome ci" frontend ./node_modules/.bin/biome ci .
     run "frontend: eslint (yarn lint)" frontend yarn lint
+    run "frontend: knip (unused files/exports/dependencies, issue #1907)" frontend ./node_modules/.bin/knip
   fi
 fi
 
@@ -155,6 +156,7 @@ run "citecheck census (ASVS/MASVS claims match checklists, issue #1747)" backend
 run "depexceptions (dependency-exception ledger)" backend go run ./cmd/depexceptions
 run "deprecations (deprecation register)" backend go run ./cmd/deprecations
 run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
+run "contextcheck (AGENTS.md file set, aliases, budgets, registry parity)" backend go run ./cmd/contextcheck
 run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck

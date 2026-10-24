@@ -9,9 +9,6 @@ import type { SvgIconProps } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import type { ComponentType } from 'react';
 
-// Mirrors backend/models/contact_score.go's ContactScoreResponse.Band values.
-export type HealthBand = 'moss' | 'chanterelle' | 'russula';
-
 // Raw theme color for NON-TEXT uses only (canvas fills, list-row dots) --
 // see NetworkGraph.tsx's existing circleNodeColor = theme.palette.warning.main
 // for the precedent that a raw `.main` fill is fine here. Do NOT use this

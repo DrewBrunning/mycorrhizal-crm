@@ -17,6 +17,7 @@ window, migration path, release note, explicit approval). Upgrade floor and rele
 | Where | What |
 |---|---|
 | **GitHub Issues** | The backlog — the live plan and source of truth for outstanding work. |
+| [docs/development/context-engineering.md](docs/development/context-engineering.md) | The AGENTS.md layout, alias contract, line budgets, and `contextcheck`. |
 | [backend/AGENTS.md](backend/AGENTS.md) | Go/Gin/GORM conventions, backend traps 1–10, generated artifacts. |
 | [frontend/AGENTS.md](frontend/AGENTS.md) | React/TS/MUI conventions, frontend traps 1–8, web budgets. |
 | [android/AGENTS.md](android/AGENTS.md) | Kotlin/Compose modules, Gradle, detekt, E2E, macrobenchmark. |
@@ -34,6 +35,10 @@ binary; setup and the manual check are in `README-developer.md`.
 
 ```bash
 cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...
+```
+
+```bash
+cd backend && go run ./cmd/contextcheck
 ```
 
 ```bash
@@ -65,7 +70,8 @@ actual port or CORS fails. Service-worker testing needs `frontend-prod` — see 
   registry-enforced — add a new entity there in the same change (`backend/AGENTS.md` traps 6–7).
 - **Generated artifacts are regenerated, never hand-edited.** Each area's file names its artifacts
   and drift test; the main backend inventory is `backend/AGENTS.md`.
-- **Security:** no secrets, no `os/exec` in app code, templates from an embedded FS, explicit update
+- **Security:** no secrets, no `os/exec` on any server or request path (build/test tooling is the
+  scoped exception in `docs/security/asvs-l2.md` P12), templates from an embedded FS, explicit update
   allowlists (no mass assignment), parameterized SQL, CSV formula-injection neutralization, SSRF
   guards in the transport dialer, and the Go toolchain stays pinned.
 - **Never commit to `main` or merge without explicit approval.** Every commit needs a DCO

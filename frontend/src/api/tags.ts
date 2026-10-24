@@ -13,11 +13,6 @@ export interface ContactTag {
   contact_vcard_uid: string;
 }
 
-export interface TagWithContacts {
-  tag: Tag;
-  contacts: ContactTag[];
-}
-
 export interface TagCreateResponse {
   message: string;
   tag: Tag;

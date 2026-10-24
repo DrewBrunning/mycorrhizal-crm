@@ -224,9 +224,6 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
   { category: 'dislike', section: 'giftAvoid', keyMode: 'freeSolo', keySuggestions: [] },
 ];
 
-export const PREFERENCE_CATEGORIES = PREFERENCE_CATEGORY_CONFIG.map((c) => c.category);
-export type PreferenceCategory = string;
-
 // Default `key` suggestions per category, offered by the free-solo key input
 // in the preference dialog. These are conveniences, not a closed enum — the
 // key stays free text, exactly like gender in contact creation.

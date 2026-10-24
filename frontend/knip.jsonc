@@ -1,0 +1,50 @@
+{
+  // knip (issue #1907): detects dead weight the type/lint/bundle gates cannot --
+  // files and exports nothing imports, and dependencies nothing uses.
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // The app entry (src/index.tsx), the service worker, the vite/vitest/
+  // playwright configs and the Playwright specs are auto-detected by knip's
+  // Vite/Vitest/Playwright plugins. Only the roots those plugins cannot see
+  // are declared here.
+  "entry": [
+    // Types-only by design: pins the hand-written API types to the generated
+    // spec and is imported by nothing (see the file header). It is an analysis
+    // root, not dead code -- its imports are what keep the API types in use.
+    "src/api/contractConformance.ts",
+    // Playwright specs/setup and the service-worker upgrade harness.
+    "e2e/**/*.{spec,setup}.ts",
+    "e2e/**/*.vitest.ts",
+    "e2e/sw-upgrade/*.mjs",
+    // A Playwright "service worker" fixture served by path, never imported.
+    "e2e/sw-upgrade/poison-worker.js",
+    // Build/operations tooling run directly with `node`, not imported.
+    "scripts/*.mjs",
+    // Served verbatim as a static asset (the stale-chunk recovery bootstrap).
+    "public/_recovery.js"
+  ],
+  // Generated from backend/openapi.yaml by `go run ./cmd/gentsapi`; never
+  // hand-edited, so its unused types are not this project's dead code.
+  "ignore": ["src/generated/**"],
+  // An export used inside its own module is not dead weight. This keeps the
+  // report focused on symbols nothing outside the file references.
+  "ignoreExportsUsedInFile": true,
+  // External CLIs invoked by e2e specs (backup/restore drives the real stack).
+  "ignoreBinaries": ["go", "make"],
+  "ignoreDependencies": [
+    // Invoked as a local binary by the pre-commit hook and CI, never imported.
+    "@biomejs/biome",
+    // Read from the installed tree by the security-floor regression test
+    // (scripts/check-vitest-mocker-version.test.mjs); pinned transitively by
+    // vitest, so it must not become a direct dependency.
+    "@vitest/mocker",
+    // Invoked by backend/cmd/gennotices as a repo-local binary (issue #1944),
+    // never imported from frontend source.
+    "license-checker-rseidelsohn"
+  ],
+  "ignoreIssues": {
+    // Intentional alias: rejectRelationshipEdge IS deleteRelationshipEdge (a
+    // rejected suggestion is deleted), pinned by relationshipEdges.test.ts.
+    // Both names are public API for callers, so keep the duplicate export.
+    "src/api/relationshipEdges.ts": ["duplicates"]
+  }
+}
