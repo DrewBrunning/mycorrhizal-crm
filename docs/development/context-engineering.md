@@ -34,9 +34,8 @@ read, and do not duplicate it across files.
 Recurring procedures live in `.agents/skills/<name>/SKILL.md`, with long-form
 detail in that skill's `references/*.md`. `.claude/skills` is a symlink to
 `../.agents/skills`, never a second copy. `.opencode/skills` is deliberately not
-used. The Tier 1 tree is created by #1957; #1956 adds the checks, so an absent
-`.agents/skills` and `.claude/skills` pass at this stage while a
-present-but-wrong alias fails.
+used. The Tier 1 tree and alias landed in #1957; both are required, and a
+missing or wrong alias fails `contextcheck`.
 
 ## The alias contract
 

@@ -26,8 +26,8 @@ type frontmatter struct {
 }
 
 // checkSkills validates the skill tree: the .claude/skills alias, the skill
-// contract, and reference integrity (issue #1956). An absent skills tree is
-// valid until #1957 creates it; a present-but-wrong alias is not.
+// contract, and reference integrity (issues #1956/#1957). The alias and the
+// skill tree are both required now that #1957 has created them.
 func checkSkills(root string) ([]Skill, []mdref.Finding) {
 	var findings []mdref.Finding
 	findings = append(findings, checkClaudeSkillsAlias(root)...)
@@ -71,7 +71,8 @@ func checkClaudeSkillsAlias(root string) []mdref.Finding {
 	info, err := os.Lstat(abs)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil // temporary stage-4 allowance; #1957 creates the alias
+			return []mdref.Finding{{File: rel, Line: 1,
+				Message: fmt.Sprintf("required alias is missing; create a symlink to %s", ClaudeSkillsLink)}}
 		}
 		return []mdref.Finding{{File: rel, Line: 1, Message: fmt.Sprintf("unreadable: %v", err)}}
 	}

@@ -12,6 +12,10 @@
 # `@AGENTS.md` import and warns that the working tree differs from git. Both
 # forms are accepted by the context-check gate that follows this stage.
 #
+# The skills tree follows the same rule: .claude/skills is a symlink to
+# ../.agents/skills. A materialized copy is repaired; a real directory is never
+# deleted.
+#
 # Safe to re-run.
 
 set -euo pipefail
@@ -70,7 +74,46 @@ for link in "${links[@]}"; do
   fi
 done
 
+# The skills directory alias. Unlike CLAUDE.md there is no @-import fallback:
+# .claude/skills must be a directory symlink. Git materializes a symlink as a
+# regular file whose contents are the link target when core.symlinks=false.
+skills_link=".claude/skills"
+skills_target="../.agents/skills"
+
+if [ ! -d ".agents/skills" ]; then
+  echo "error: .agents/skills is missing; cannot create the alias at $skills_link" >&2
+  exit 1
+fi
+
+if [ -L "$skills_link" ] && [ "$(readlink "$skills_link")" = "$skills_target" ]; then
+  skills_already=1
+  skills_fixed=0
+elif [ -d "$skills_link" ] && [ ! -L "$skills_link" ]; then
+  echo "error: $skills_link is a real directory; refusing to delete it." >&2
+  echo "       It must be a symlink to $skills_target. Remove the copy yourself if it is safe." >&2
+  exit 1
+else
+  if [ -e "$skills_link" ] && [ ! -L "$skills_link" ]; then
+    contents="$(cat "$skills_link" 2>/dev/null || true)"
+    if [ "$contents" != "$skills_target" ]; then
+      echo "error: $skills_link is a regular file that is not the materialized symlink target;" >&2
+      echo "       refusing to replace it. Expected contents: $skills_target" >&2
+      exit 1
+    fi
+    rm -f "$skills_link"
+  fi
+  mkdir -p "$(dirname "$skills_link")"
+  if ! ln -s "$skills_target" "$skills_link" 2>/dev/null; then
+    echo "error: could not create a symlink at $skills_link." >&2
+    echo "       The skills alias must be a directory symlink; enable symlinks and re-run." >&2
+    exit 1
+  fi
+  skills_already=0
+  skills_fixed=1
+fi
+
 echo "Agent context links: $already already correct, $fixed repaired, $fallback fallback"
+echo "Skills alias: $skills_link -> $skills_target ($skills_already already correct, $skills_fixed repaired)"
 for link in "${links[@]}"; do
   printf '  %-28s -> %s\n' "$link" "$(readlink "$link" 2>/dev/null || echo '(regular file)')"
 done

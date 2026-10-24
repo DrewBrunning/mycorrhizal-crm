@@ -17,7 +17,8 @@ window, migration path, release note, explicit approval). Upgrade floor and rele
 | Where | What |
 |---|---|
 | **GitHub Issues** | The backlog — the live plan and source of truth for outstanding work. |
-| [docs/development/context-engineering.md](docs/development/context-engineering.md) | The AGENTS.md layout, alias contract, line budgets, and `contextcheck`. |
+| [.agents/skills/](.agents/skills/) | Tier 1 procedure skills (migration, contact fidelity, relationships, API changes, security, releases); `.claude/skills` is an alias. |
+| [docs/development/context-engineering.md](docs/development/context-engineering.md) | The AGENTS/skills layout, alias contracts, line budgets, Suites, and `contextcheck`. |
 | [backend/AGENTS.md](backend/AGENTS.md) | Go/Gin/GORM conventions, backend traps 1–10, generated artifacts. |
 | [frontend/AGENTS.md](frontend/AGENTS.md) | React/TS/MUI conventions, frontend traps 1–8, web budgets. |
 | [android/AGENTS.md](android/AGENTS.md) | Kotlin/Compose modules, Gradle, detekt, E2E, macrobenchmark. |
@@ -27,6 +28,10 @@ window, migration path, release note, explicit approval). Upgrade floor and rele
 | `docs/adrs/` | Architecture decision records — the load-bearing design decisions. |
 | `docs/specs/` | Curated RFC excerpts — the external ground truth. |
 | `docs/golden-fixtures/` | Verbatim RFC example cards — the external test oracle. |
+
+When a task matches a recurring procedure, load the matching `SKILL.md` from
+`.agents/skills/` before writing code; skills add procedure but never override
+this hierarchy. On conflict, the `AGENTS.md` file wins.
 
 Secrets: `.githooks/pre-commit` runs `gitleaks` with `.gitleaks.toml` and fails closed on a missing
 binary; setup and the manual check are in `README-developer.md`.
@@ -46,7 +51,7 @@ cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
 Run once per clone **and once per worktree**, before your first commit there (idempotent; also
-repairs the `CLAUDE.md` symlink aliases):
+repairs the `CLAUDE.md` and `.claude/skills` symlink aliases):
 
 ```bash
 bash scripts/install-git-hooks.sh

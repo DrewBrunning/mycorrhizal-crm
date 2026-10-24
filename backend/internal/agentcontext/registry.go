@@ -87,7 +87,8 @@ func Suites() []Suite {
 			Name: "database-migration",
 			Commands: []string{
 				"cd backend && go test ./database/... ./internal/dbtest/...",
-				"cd backend && go test ./internal/schemafixture/...",
+				"cd backend && go run ./cmd/genschema",
+				"cd backend && go test ./internal/schemafixture/... ./cmd/genschema/...",
 			},
 			CIJobs:    []string{"upgrade-matrix", "schemafixture-suite"},
 			CICommand: "go test ./internal/schemafixture/",
@@ -96,6 +97,7 @@ func Suites() []Suite {
 			Name: "contact-data-fidelity",
 			Commands: []string{
 				"cd backend && go test ./correspondence/... ./vcard3/... ./vcard4/... ./jscontact/... ./internal/rfctest/...",
+				"cd backend && go run ./cmd/gencompatmatrix",
 				"cd frontend && npx tsc --noEmit",
 			},
 			CIJobs:    []string{"backend-tests", "frontend"},
@@ -105,6 +107,7 @@ func Suites() []Suite {
 			Name: "relationship-semantics-change",
 			Commands: []string{
 				"cd backend && go test ./models/... ./services/... ./controllers/...",
+				"cd frontend && npx vitest run src/utils/graphBudget.test.ts",
 			},
 			CIJobs:    []string{"backend-tests"},
 			CICommand: "go test",
@@ -112,9 +115,12 @@ func Suites() []Suite {
 		{
 			Name: "api-contract-change",
 			Commands: []string{
-				"cd backend && go run ./cmd/gencontract && go run ./cmd/gentsapi && go run ./cmd/genapibaseline",
+				"cd backend && go run ./cmd/gencontract",
+				"cd backend && go run ./cmd/gentsapi",
+				"cd backend && go run ./cmd/genapibaseline",
+				"cd backend && go test ./internal/apibaseline/... ./internal/contractfixtures/... ./internal/tsapi/...",
 				"cd frontend && npx tsc --noEmit",
-				"cd frontend && npx vitest run",
+				"cd android && ./gradlew :core:network:testDebugUnitTest --tests '*ContractFixtureTest*'",
 			},
 			CIJobs:    []string{"frontend"},
 			CICommand: "npx tsc --noEmit",
@@ -122,6 +128,7 @@ func Suites() []Suite {
 		{
 			Name: "security-sensitive-change",
 			Commands: []string{
+				"cd backend && go test ./middleware/... ./routes/...",
 				"cd backend && go run ./cmd/citecheck",
 				"cd backend && go run ./cmd/docscheck",
 			},
@@ -132,8 +139,9 @@ func Suites() []Suite {
 			Name: "release-readiness",
 			Commands: []string{
 				"cd backend && go run ./cmd/releasegatecheck",
-				"cd backend && go run ./cmd/manualgatecheck",
+				"cd backend && go run ./cmd/manualgatecheck validate -ledger ../.github/manual-gates.json -root ..",
 				"cd backend && go run ./cmd/asvsstale",
+				"cd backend && go run ./cmd/genschema",
 			},
 			CIJobs:    []string{"docs-citations", "release"},
 			CICommand: "go run ./cmd/releasegatecheck",
