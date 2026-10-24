@@ -16,6 +16,7 @@ shape is ordinary pre-1.0 practice. Upgrade floor and release mechanics: `backen
 |---|---|
 | **GitHub Issues** | The backlog — the live plan and source of truth for outstanding work. |
 | [AGENTS.md](AGENTS.md) | This router; root safety, workflow, and trap index. |
+| [docs/development/context-engineering.md](docs/development/context-engineering.md) | The AGENTS.md layout, alias contract, line budgets, and `contextcheck`. |
 | [backend/AGENTS.md](backend/AGENTS.md) | Go/Gin/GORM conventions, backend traps 1–10, generated artifacts. |
 | [frontend/AGENTS.md](frontend/AGENTS.md) | React/TS/MUI conventions, frontend traps 1–8, web budgets. |
 | [android/AGENTS.md](android/AGENTS.md) | Kotlin/Compose modules, Gradle, detekt, E2E, macrobenchmark. |
@@ -42,6 +43,10 @@ binary; setup and the manual check are in `README-developer.md`. Never commit a 
 
 ```bash
 cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...
+```
+
+```bash
+cd backend && go run ./cmd/contextcheck
 ```
 
 ```bash
