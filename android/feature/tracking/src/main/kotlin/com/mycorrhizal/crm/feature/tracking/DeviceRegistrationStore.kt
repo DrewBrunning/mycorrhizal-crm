@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.content.Context
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -27,11 +28,11 @@ class SharedPrefsDeviceRegistrationStore @Inject constructor(
         prefs.getInt(KEY_DEVICE_ID, -1).takeIf { it > 0 }
 
     override fun saveDeviceId(id: Int) {
-        prefs.edit().putInt(KEY_DEVICE_ID, id).apply()
+        prefs.edit { putInt(KEY_DEVICE_ID, id) }
     }
 
     override fun clearDeviceId() {
-        prefs.edit().remove(KEY_DEVICE_ID).apply()
+        prefs.edit { remove(KEY_DEVICE_ID) }
     }
 
     private companion object {

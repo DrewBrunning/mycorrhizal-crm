@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
+import androidx.core.net.toUri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Contacts
@@ -110,6 +111,6 @@ internal fun isSelected(currentRoute: String?, item: TopLevelDestination): Boole
 internal fun serverHostOf(serverUrl: String?): String? {
     val raw = serverUrl?.trim().orEmpty()
     if (raw.isEmpty()) return null
-    val host = runCatching { android.net.Uri.parse(raw).host }.getOrNull()
+    val host = raw.toUri().host
     return host?.takeIf { it.isNotBlank() } ?: raw
 }

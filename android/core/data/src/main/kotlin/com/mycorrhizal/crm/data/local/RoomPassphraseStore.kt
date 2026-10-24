@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.security.SecureRandom
@@ -60,6 +61,9 @@ class RoomPassphraseStore(context: Context) {
     fun getOrCreate(): String {
         prefs.getString(KEY_PASSPHRASE, null)?.let { return it }
         val passphrase = generatePassphrase()
+        // The KTX edit {} helper returns Unit, but this durability check needs
+        // commit()'s Boolean (issue #998), so the raw editor is deliberate.
+        //noinspection UseKtx
         val committed = prefs.edit().putString(KEY_PASSPHRASE, passphrase).commit() // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
         check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) { // # pragma: no cover
             "Failed to durably persist the Room passphrase; refusing to encrypt the cache " + // # pragma: no cover
@@ -70,7 +74,7 @@ class RoomPassphraseStore(context: Context) {
 
     /** Drops the stored passphrase (only safe alongside deleting the DB file). */
     fun clear() {
-        prefs.edit().remove(KEY_PASSPHRASE).apply()
+        prefs.edit { remove(KEY_PASSPHRASE) } // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
     }
 
     private fun generatePassphrase(): String = randomHexPassphrase()

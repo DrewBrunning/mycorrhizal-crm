@@ -50,7 +50,9 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
   #1907).
-- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt` locally.
+- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt lintDebug
+  :app:lintObtainiumDebug` locally. Lint warnings are errors; `android/lint.xml` lists the reasoned
+  exceptions.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
   `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips

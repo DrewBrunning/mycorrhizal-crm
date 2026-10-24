@@ -5,7 +5,6 @@
     <string name="nav_contacts">Contacts</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_activities">Activities</string>
-    <string name="nav_home">Home</string>
     <string name="nav_dashboard">Dashboard</string>
     <string name="dashboard_birthdays">Upcoming birthdays</string>
     <string name="dashboard_reminders">Upcoming reminders</string>
@@ -47,7 +46,6 @@
     <string name="dashboard_stay_in_touch_keep">Keep in touch</string>
     <string name="dashboard_add_reminder">Add reminder</string>
     <string name="cd_quick_capture">Quick capture</string>
-    <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_map">Map</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
@@ -69,7 +67,6 @@
     <string name="login_server_url">Server URL</string>
     <string name="login_server_url_hint">https://crm.example.com</string>
     <string name="login_mode_password">Password</string>
-    <string name="login_mode_api_token">API token</string>
     <string name="login_username_or_email">Username or email</string>
     <string name="login_api_token">API token</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
@@ -149,7 +146,6 @@
          to read naturally as "double tap to <contacts_photo_change>". -->
     <string name="contacts_photo_change">add or change photo</string>
     <!-- M23: list breadth — circle filter, archived toggle, inline bulk selection -->
-    <string name="contacts_filter_circle">Circle</string>
     <string name="contacts_all_circles">All circles</string>
     <string name="contacts_show_archived">Show archived</string>
     <!-- Issue #212: the favorites-only lens, mirroring the archived switch (web #173). -->
@@ -260,7 +256,6 @@
     <string name="profile_picture_crop_failed">Could not crop the photo. Try again.</string>
     <!-- Issue #220: the External Links panel (ExternalIdentity substrate). -->
     <string name="external_links_title">External links</string>
-    <string name="external_links_remove">Remove link</string>
     <string name="external_links_remove_named">Remove link %1$s</string>
     <string name="external_links_remove_title">Remove external link</string>
     <string name="external_links_remove_confirm">Remove the %1$s link (%2$s)?</string>
@@ -403,7 +398,6 @@
     <string name="contact_card_kind_application">Application</string>
     <string name="contact_card_kind_device">Device</string>
     <!-- M7: new form sections -->
-    <string name="contact_department">Department</string>
     <string name="contact_job_titles">Job titles</string>
     <string name="contact_impps">Instant messaging</string>
     <string name="contact_social_profiles">Social profiles</string>
@@ -439,9 +433,7 @@
     <string name="contact_address_sensitivity_secret">Secret</string>
     <string name="contact_address_sensitivity_hint">Private and secret addresses are withheld from sync, exports and shares.</string>
     <string name="contact_address_find_coordinates_sensitive">This address is marked private or secret, so it is never sent to the geocoder. Enter coordinates by hand instead.</string>
-    <string name="contact_address_find_coordinates_failed">Could not find coordinates for this address.</string>
     <string name="contact_address_find_coordinates_loading">Looking up coordinates…</string>
-    <string name="contact_period">Period</string>
     <string name="contact_period_from">From (year)</string>
     <string name="contact_period_to">To (year)</string>
     <string name="contact_create">Create contact</string>
@@ -502,11 +494,6 @@
     <string name="settings_two_factor_title">Two-factor authentication</string>
     <string name="settings_two_factor_description">Add a second step to sign-in with your password: a 6-digit code from an authenticator app. This protects your data even if your password is stolen.</string>
     <string name="settings_two_factor_enable_button">Enable two-factor authentication</string>
-    <string name="settings_two_factor_setting_up">Setting up...</string>
-    <string name="settings_two_factor_enable_success">Two-factor authentication enabled.</string>
-    <string name="settings_two_factor_disable_success">Two-factor authentication disabled.</string>
-    <string name="settings_two_factor_regenerate_success">Recovery codes regenerated.</string>
-    <string name="settings_two_factor_setup_error">We couldn\'t start setup. Please try again.</string>
     <string name="settings_two_factor_invalid_code">Invalid code. Please try again.</string>
     <string name="settings_two_factor_enabled_badge">Two-factor authentication is enabled</string>
     <string name="settings_two_factor_enabled_description">Sign-in now requires a code from your authenticator app in addition to your password. CardDAV sync and API tokens are not affected.</string>
@@ -518,7 +505,7 @@
     <string name="settings_two_factor_setup_code_label">Verification code</string>
     <string name="settings_two_factor_setup_code_help">6-digit code from your authenticator app.</string>
     <string name="settings_two_factor_setup_confirm_button">Enable and continue</string>
-    <string name="settings_two_factor_setup_enabling">Enabling...</string>
+    <string name="settings_two_factor_setup_enabling">Enabling…</string>
     <string name="settings_two_factor_disable_title">Disable two-factor authentication</string>
     <string name="settings_two_factor_disable_description">Enter a current code from your authenticator app to confirm. All other sessions will be signed out.</string>
     <string name="settings_two_factor_regenerate_title">Regenerate recovery codes</string>
@@ -526,7 +513,7 @@
     <string name="settings_two_factor_regenerate_proof_description">Enter a recovery code or a current code from your authenticator app, or verify with a passkey. The old recovery codes will stop working immediately.</string>
     <string name="settings_two_factor_code_prompt_label">Verification code</string>
     <string name="settings_two_factor_confirm">Confirm</string>
-    <string name="settings_two_factor_submitting">Please wait...</string>
+    <string name="settings_two_factor_submitting">Please wait…</string>
     <string name="settings_two_factor_recovery_title">Recovery codes</string>
     <string name="settings_two_factor_recovery_warning">Store these somewhere safe. Each code works only once, and they will not be shown again.</string>
     <string name="settings_two_factor_recovery_description">Use a recovery code to sign in if you lose your authenticator app.</string>
@@ -723,7 +710,6 @@
     <string name="settings_webhooks_delete_named">Delete %1$s</string>
     <string name="settings_webhooks_delete_title">Delete webhook</string>
     <string name="settings_webhooks_delete_body">Delete "%1$s"? This will stop all future deliveries.</string>
-    <string name="settings_webhooks_test">Test</string>
     <string name="settings_webhooks_test_named">Test %1$s</string>
     <string name="settings_webhooks_active">Active</string>
     <string name="settings_webhooks_inactive">Inactive</string>
@@ -811,7 +797,6 @@
     <string name="settings_calendar_sync_dialog_info">Mycorrhizal periodically imports events from this calendar as activities. Deleting the subscription keeps any activities already imported.</string>
     <string name="settings_calendar_sync_empty">No calendars yet</string>
     <string name="settings_calendar_sync_disabled">Disabled</string>
-    <string name="settings_calendar_sync_sync_now">Sync now</string>
     <string name="settings_calendar_sync_sync_now_named">Sync %1$s now</string>
     <string name="settings_calendar_sync_edit_named">Edit %1$s</string>
     <string name="settings_calendar_sync_delete_named">Delete %1$s</string>
@@ -820,17 +805,12 @@
     <string name="settings_calendar_sync_never_synced">Never synced</string>
     <string name="settings_calendar_sync_last_synced">Last synced %1$s</string>
     <string name="settings_calendar_sync_sync_success">Synced: %1$d created, %2$d updated, %3$d skipped</string>
-    <string name="settings_calendar_sync_load_error">Unable to load calendar subscriptions.</string>
-    <string name="settings_calendar_sync_save_error">Unable to save calendar.</string>
-    <string name="settings_calendar_sync_delete_error">Unable to delete calendar.</string>
-    <string name="settings_calendar_sync_sync_error">Unable to sync calendar.</string>
     <string name="settings_calendar_sync_sync_failed">Sync failed</string>
     <string name="settings_calendar_sync_sync_failed_count">Sync failed (%1$d times)</string>
 
     <!-- Settings: contact (CardDAV) subscriptions — read-only health list (#628 scope note 4) -->
     <string name="settings_contact_sync_title">Contact sync</string>
     <string name="settings_contact_sync_description">CardDAV address books syncing contacts into this account. Add or edit these from the web app.</string>
-    <string name="settings_contact_sync_empty">No CardDAV address books configured.</string>
     <string name="settings_contact_sync_pending_conflicts">%1$d unreviewed conflicts</string>
 
     <!-- Sync-health line (issue #390 / INT-04 #467), shared by calendar and contact subscriptions -->
@@ -969,7 +949,6 @@
     <string name="quick_capture_title_required">Title is required</string>
 
     <!-- Activities -->
-    <string name="activities_title">Activities</string>
     <string name="activities_empty">No activities yet</string>
     <string name="activities_empty_body">Log calls, meetings and messages to keep track of how you stay in touch.</string>
     <string name="activities_search">Search activities</string>
@@ -996,7 +975,6 @@
     <string name="cd_new_activity">New activity</string>
 
     <!-- Notes -->
-    <string name="notes_title">Notes</string>
     <string name="notes_empty">No notes yet</string>
     <string name="notes_empty_body">Notes capture what you want to remember about someone.</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
@@ -1112,7 +1090,6 @@
     <string name="circles_delete_title">Delete circle?</string>
     <string name="circles_delete_confirm">Delete “%1$s”? This removes the circle and its memberships.</string>
     <string name="circles_add_member">Add member</string>
-    <string name="circles_remove_member">Remove member</string>
     <string name="circles_remove_member_named">Remove member %1$s</string>
     <string name="circles_member_vcard_uid">Contact VCard UID</string>
     <string name="circles_empty">No circles yet</string>
@@ -1209,7 +1186,6 @@
     <string name="tags_delete_title">Delete tag?</string>
     <string name="tags_delete_confirm">Delete “%1$s”? This removes the tag and its contact taggings.</string>
     <string name="tags_add_contact">Tag contact</string>
-    <string name="tags_remove_contact">Remove tag from contact</string>
     <string name="tags_remove_contact_named">Remove tag from contact %1$s</string>
     <string name="tags_contact_vcard_uid">Contact VCard UID</string>
     <string name="tags_empty">No tags yet</string>
@@ -1287,7 +1263,6 @@
     <string name="households_delete_title">Delete household?</string>
     <string name="households_delete_confirm">Delete “%1$s”? This removes the household and its memberships.</string>
     <string name="households_add_member">Add member</string>
-    <string name="households_remove_member">Remove member</string>
     <string name="households_remove_member_named">Remove member %1$s</string>
     <string name="households_member_search">Search contacts</string>
     <string name="households_type_to_search">Type to search</string>
@@ -1349,7 +1324,6 @@
     <string name="relationships_sensitivity_private">Private</string>
     <string name="relationships_sensitivity_secret">Secret</string>
     <string name="relationships_edit_title">Edit relationship</string>
-    <string name="relationships_edit">Edit relationship</string>
     <string name="relationships_edit_named">Edit %1$s</string>
     <string name="relationships_other_party_readonly_hint">The other party can\'t be changed here — delete and recreate the relationship to link a different contact.</string>
     <string name="relationships_unknown_contact">Unknown contact</string>
@@ -1486,7 +1460,6 @@
     <string name="life_events_empty">No life events yet</string>
     <string name="life_events_empty_body">Record moves, new jobs and other moments worth remembering.</string>
     <string name="life_events_edit">Edit life event</string>
-    <string name="life_events_type">Type</string>
     <string name="life_events_description">Description</string>
     <string name="gifts_title">Gifts</string>
     <string name="gifts_new">New gift</string>
@@ -1615,7 +1588,6 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Merge contacts</string>
-    <string name="merge_preview">Preview merge</string>
     <string name="merge_no_conflicts">No field conflicts — merge is ready.</string>
     <string name="merge_commit">Merge</string>
     <string name="merge_done">Contacts merged.</string>
@@ -1715,7 +1687,6 @@
     <string name="data_custom_export_format_jscontact">JSContact (.json)</string>
     <string name="data_custom_export_button">Export</string>
     <string name="data_custom_export_exporting">Exporting…</string>
-    <string name="data_custom_export_error">Failed to export contacts. Please try again.</string>
     <string name="data_custom_export_preview_button">Preview what this export would lose</string>
     <string name="data_custom_export_preview_checking">Checking…</string>
     <string name="data_custom_export_preview_title">Export preview</string>
@@ -1996,7 +1967,6 @@
     <string name="occasions_add_attendee">Add invitee</string>
     <string name="occasions_remove_attendee">Remove attendee</string>
     <string name="occasions_remove_confirm">Remove %1$s from this event?</string>
-    <string name="occasions_rsvp">RSVP</string>
     <string name="occasions_rsvp_pending">Pending</string>
     <string name="occasions_rsvp_accepted">Accepted</string>
     <string name="occasions_rsvp_declined">Declined</string>

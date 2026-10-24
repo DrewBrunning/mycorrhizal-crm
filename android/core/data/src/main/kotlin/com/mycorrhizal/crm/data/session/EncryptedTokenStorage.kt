@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.session
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -30,20 +31,20 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
     }
 
     override suspend fun save(profileId: String, token: String) {
-        prefs.edit().putString(keyFor(profileId), token).apply()
+        prefs.edit { putString(keyFor(profileId), token) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
     override suspend fun load(profileId: String): String? =
         prefs.getString(keyFor(profileId), null)
 
     override suspend fun clear(profileId: String) {
-        prefs.edit().remove(keyFor(profileId)).apply()
+        prefs.edit { remove(keyFor(profileId)) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
     override suspend fun loadLegacy(): String? = prefs.getString(KEY_LEGACY_JWT, null)
 
     override suspend fun clearLegacy() {
-        prefs.edit().remove(KEY_LEGACY_JWT).apply()
+        prefs.edit { remove(KEY_LEGACY_JWT) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
     private fun keyFor(profileId: String): String = "$KEY_JWT_PREFIX$profileId"

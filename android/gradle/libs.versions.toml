@@ -21,6 +21,7 @@ kotlinxDatetime = "0.6.1"
 kotlinxCoroutines = "1.9.0"
 datastore = "1.1.1"
 securityCrypto = "1.1.0-alpha06"
+javaxInject = "1"
 work = "2.9.1"
 turbine = "1.2.0"
 # 1.14.x: its ByteBuddy line supports the JDK 25 test JVM (1.13.x predates
@@ -132,7 +133,6 @@ androidx-navigation-testing = { group = "androidx.navigation", name = "navigatio
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltNavigationCompose" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
@@ -180,6 +180,8 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+# Issue #1902: core:domain's compileOnly annotation dependency (UseTomlInstead).
+javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }

@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     // Issue #219/#220: uCrop — the profile-photo crop step (gallery + Immich).

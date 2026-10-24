@@ -358,6 +358,6 @@ class TwoFactorScreenTest {
             ),
         )
         composeTestRule.onNodeWithText("Account temporarily locked").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Please wait...").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Please wait…").assertIsNotEnabled()
     }
 }
