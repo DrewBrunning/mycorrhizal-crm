@@ -95,6 +95,15 @@ func writeFixturePrereqs(t *testing.T, root string) {
 	}, "\n")+"\n")
 	writeFile(t, root, ".github/release-gates.json", `{"gates":[{"tier":"per-pr","mandatory":true,"check_context":"Backend (Go)"}]}`)
 	writeFile(t, root, ".github/rulesets/main-protection.json", `{"rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`)
+	if err := os.MkdirAll(filepath.Join(root, SkillsRoot), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../.agents/skills", filepath.Join(root, ClaudeSkillsRoot)); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func findings(root string) []string {

@@ -154,3 +154,8 @@ fly.test.toml
 # reference's transitive dependency graph).
 backend/differential/reference/calcard/target/
 backend/differential/reference/vobject/__pycache__/
+
+# Agent tooling: local per-user Claude settings are never committed. The
+# canonical skills tree (.agents/**) and .claude/skills alias are tracked;
+# .claude/launch.json is tracked too (see docs/development/context-engineering.md).
+**/.claude/settings.local.json

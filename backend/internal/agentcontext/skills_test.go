@@ -160,6 +160,9 @@ func TestSkillDirectoryWithoutSkillFileFails(t *testing.T) {
 func TestDuplicateSkillAcrossRootsFails(t *testing.T) {
 	root := validTree(t)
 	copySkillFixture(t, root, "valid")
+	if err := os.Remove(filepath.Join(root, ClaudeSkillsRoot)); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(root, ClaudeSkillsRoot), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -171,28 +174,26 @@ func TestDuplicateSkillAcrossRootsFails(t *testing.T) {
 }
 
 func TestClaudeSkillsAlias(t *testing.T) {
-	t.Run("absent is allowed until #1957", func(t *testing.T) {
+	t.Run("absent alias fails", func(t *testing.T) {
 		root := validTree(t)
-		if got := findings(root); len(got) != 0 {
-			t.Fatalf("absent .claude/skills should pass: %s", strings.Join(got, "\n"))
+		if err := os.Remove(filepath.Join(root, ClaudeSkillsRoot)); err != nil {
+			t.Fatal(err)
+		}
+		got := strings.Join(findings(root), "\n")
+		if !strings.Contains(got, "required alias is missing") {
+			t.Fatalf("absent .claude/skills not reported: %s", got)
 		}
 	})
 	t.Run("correct symlink passes", func(t *testing.T) {
 		root := validTree(t)
 		copySkillFixture(t, root, "valid")
-		if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink("../.agents/skills", filepath.Join(root, ClaudeSkillsRoot)); err != nil {
-			t.Fatal(err)
-		}
 		if got := findings(root); len(got) != 0 {
 			t.Fatalf("correct alias should pass: %s", strings.Join(got, "\n"))
 		}
 	})
 	t.Run("wrong target fails", func(t *testing.T) {
 		root := validTree(t)
-		if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		if err := os.Remove(filepath.Join(root, ClaudeSkillsRoot)); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Symlink("../.agents/other", filepath.Join(root, ClaudeSkillsRoot)); err != nil {
@@ -205,6 +206,9 @@ func TestClaudeSkillsAlias(t *testing.T) {
 	})
 	t.Run("regular file fails", func(t *testing.T) {
 		root := validTree(t)
+		if err := os.Remove(filepath.Join(root, ClaudeSkillsRoot)); err != nil {
+			t.Fatal(err)
+		}
 		writeFile(t, root, ClaudeSkillsRoot, "not a symlink\n")
 		got := strings.Join(findings(root), "\n")
 		if !strings.Contains(got, "must be a symlink to ../.agents/skills") {
@@ -213,10 +217,7 @@ func TestClaudeSkillsAlias(t *testing.T) {
 	})
 	t.Run("broken target fails", func(t *testing.T) {
 		root := validTree(t)
-		if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink("../.agents/skills", filepath.Join(root, ClaudeSkillsRoot)); err != nil {
+		if err := os.Remove(filepath.Join(root, ".agents", "skills")); err != nil {
 			t.Fatal(err)
 		}
 		got := strings.Join(findings(root), "\n")
