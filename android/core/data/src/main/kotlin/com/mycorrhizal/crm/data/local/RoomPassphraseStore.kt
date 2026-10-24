@@ -74,7 +74,7 @@ class RoomPassphraseStore(context: Context) {
 
     /** Drops the stored passphrase (only safe alongside deleting the DB file). */
     fun clear() {
-        prefs.edit { remove(KEY_PASSPHRASE) }
+        prefs.edit { remove(KEY_PASSPHRASE) } // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
     }
 
     private fun generatePassphrase(): String = randomHexPassphrase()

@@ -111,6 +111,6 @@ internal fun isSelected(currentRoute: String?, item: TopLevelDestination): Boole
 internal fun serverHostOf(serverUrl: String?): String? {
     val raw = serverUrl?.trim().orEmpty()
     if (raw.isEmpty()) return null
-    val host = runCatching { raw.toUri().host }.getOrNull()
+    val host = raw.toUri().host
     return host?.takeIf { it.isNotBlank() } ?: raw
 }

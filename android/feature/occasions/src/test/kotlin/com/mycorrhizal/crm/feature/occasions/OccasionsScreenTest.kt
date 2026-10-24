@@ -118,6 +118,15 @@ class OccasionsScreenTest {
     }
 
     @Test
+    fun `the start field opens the date picker and then the time picker`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("New event").performClick()
+        composeTestRule.onNodeWithContentDescription("Starts").performClick()
+        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Time").assertIsDisplayed()
+    }
+
+    @Test
     fun `the delete action opens a confirmation`() {
         render(listOf(event()))
         composeTestRule.onNodeWithContentDescription("Delete").performClick()
