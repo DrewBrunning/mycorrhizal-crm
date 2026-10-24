@@ -72,8 +72,10 @@ a self-hosted instance you don't control.
 ## What We Already Do
 
 For context, this repo already runs: CodeQL static analysis, Trivy
-container scanning, GitHub secret scanning, and dependency review on every
-pull request, and pins its Go toolchain and container base images. See
+container scanning, GitHub secret scanning (provider patterns), a
+`gitleaks` pre-commit scan that also knows this app's own `mycorrhizal_`
+token format, and dependency review on every pull request, and pins its Go
+toolchain and container base images. See
 [README-developer.md](README-developer.md) for the full CI posture.
 
 ## Security Documentation
