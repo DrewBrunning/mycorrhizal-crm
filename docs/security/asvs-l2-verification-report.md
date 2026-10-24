@@ -193,6 +193,69 @@ last runs on `main` are green, not that they were re-executed here.
 | Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |
 
+### Nuclei and TLS scanner trial (issue #1881)
+
+**Decision: not adopted.** A time-boxed spike on 2026-10-24 ran Nuclei v3.11.1 against the same
+throwaway all-in-one instance `zap-dast.yml` builds (`docker-compose.test.yml`,
+`http://localhost:7300`), authenticated with a full-scope API token minted the way the ZAP job mints
+one. Templates were updated immediately before the run. No nightly job, ignore list, or
+`dastcanary`-style self-test was added because the spike found no real High/Critical signal.
+
+| Run | Templates | Requests | Errors | Matches |
+|---|---|---|---|---|
+| Default templates (`-etags dos,fuzz`) | 11,212 | 20,762 | 228 | 11 |
+| `-tags exposure,misconfig` | 2,030 | 4,957 | 10 | 5 |
+
+All eleven default-template matches are Informational; the tag-only run is a subset (the same five
+missing-header matchers). None is a CVE or exploit template: the target is a custom Go/Gin app, and
+the products the template library targets (Spring, PHP, Jenkins, …) are absent, so that part of the
+library is inapplicable by construction. The 228 errors are non-fatal template/request errors spread
+across the 11k-template library, not an aborted scan (the run completed with an exit 0).
+
+| Findings | Count | Classification |
+|---|---|---|
+| `http-missing-security-headers` on the SPA shell: `strict-transport-security`, `cross-origin-embedder-policy`, `cross-origin-opener-policy`, `cross-origin-resource-policy`, `x-permitted-cross-domain-policies` | 5 | **Inapplicable to this target.** HSTS is emitted only when `COOKIE_SECURE=true` behind operator TLS ([deployment baseline](deployment-baseline.md#what-this-application-does-not-secure)), and the CI instance is deliberately plain HTTP; the other headers have no sink in a same-origin SPA with no cross-origin-isolation, Flash, or Acrobat use. The pinned ZAP full scan did not emit them, so they are net-new **informational** observations rather than ZAP duplicates — and still not actionable High/Critical findings. |
+| `waf-detect`, `tech-detect`, `robots-txt`, `security-txt`, `google-floc-disabled` | 6 | **Inapplicable: detection/meta templates.** `tech-detect` identifies only nginx (the expected front door); `security.txt` and `robots.txt` are intentional assets, and the FLoC opt-out is a privacy posture, not a defect. |
+
+**Classification: 0 real, 0 ZAP duplicates, 11 inapplicable/informational.** The five header matchers
+are net-new relative to ZAP's report, but they are informational and inapplicable to this target, not
+duplicates.
+
+**ZAP duplicate check.** The report from the latest green nightly ZAP run (run
+[40070673592](https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/40070673592),
+`zap-dast-report` artifact) was inspected. The app's unaccepted High/Medium alerts there are the
+already-triaged Spring4Shell false positive and the two accepted CSP findings (`zap/dast.ignore`);
+Nuclei reproduced none of them, and it found no High/Medium of its own. There is therefore no
+net-new *real* finding to gate, and the informational header class is already covered by ZAP's
+header checks plus the ASVS header posture.
+
+**TLS: not applicable.** The repository owns no TLS endpoint. The shipped all-in-one image serves
+plain HTTP on the published port; TLS is terminated by the operator's reverse proxy, and the
+deployment baseline lists TLS protocol/cipher selection and certificate material as explicit
+operator-owned surface. `testssl.sh`/`sslyze` would therefore scan either the operator's proxy (a host
+this project must never scan) or a synthetic endpoint the repo does not ship. No TLS scanner is
+wired, and none should be until the repo owns a TLS listener.
+
+**Revisit trigger.** Re-run this trial if the app grows a product fingerprint that Nuclei's
+CVE/misconfig templates target, or if the repo starts owning a TLS endpoint (a reference deployment
+or bundled proxy), at which point `testssl.sh`/`sslyze` can be scoped to that endpoint. Until then ZAP
+(authenticated, OpenAPI-seeded, High/Medium-gated, with the `dastcanary` self-test) plus
+Schemathesis/`bolacheck`/`schemagate` remain the DAST layer.
+
+Reproduce from a checkout:
+
+```sh
+docker compose -f docker-compose.test.yml up -d
+# Mint a full-scope API token exactly as .github/workflows/zap-dast.yml does.
+docker volume create nuclei-templates
+docker run --rm -v nuclei-templates:/root/nuclei-templates \
+  projectdiscovery/nuclei:latest -update-templates -duc
+docker run --rm --network host -v nuclei-templates:/root/nuclei-templates \
+  -e NUCLEI_TOKEN="$TOKEN" projectdiscovery/nuclei:latest \
+  -u http://localhost:7300 -H "Authorization: Bearer $NUCLEI_TOKEN" \
+  -jsonl -o /tmp/nuclei.jsonl -etags dos,fuzz
+```
+
 ### Community Semgrep rulesets trial (issue #1879)
 
 **Decision: not adopted.** A backend-only spike on 2026-10-24 ran semgrep 1.172.0 with the

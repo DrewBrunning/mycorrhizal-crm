@@ -130,7 +130,7 @@ const VENDOR_CHUNKS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['react-vendor', ['react', 'react-dom', 'react-router']],
   ['mui-core', ['@mui/material', '@mui/lab', '@emotion/react', '@emotion/styled']],
   ['mui-icons', ['@mui/icons-material']],
-  ['mdi', ['@mdi/react', '@mdi/js']],
+  ['mdi', ['@mdi/js']],
   ['i18n-vendor', ['i18next', 'react-i18next', 'i18next-browser-languagedetector']],
   ['graph-vendor', ['react-force-graph-2d', 'd3-force']],
   // ADR 0031: MapLibre GL JS and its runtime dependencies, loaded only via the

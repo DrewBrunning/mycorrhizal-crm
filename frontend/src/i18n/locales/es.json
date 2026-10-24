@@ -267,21 +267,6 @@
     "sortNameDesc": "Nombre (Z–A)",
     "sortUpdatedDesc": "Editados recientemente (más recientes primero)",
     "sortUpdatedAsc": "Editados recientemente (más antiguos primero)",
-    "filteredMessage_one": "{{count}} contacto de {{total}} en '{{circle}}'",
-    "filteredMessage_other": "{{count}} contactos de {{total}} en '{{circle}}'",
-    "filteredMessage_many": "{{count}} contactos de {{total}} en '{{circle}}'",
-    "filteredBySearch_one": "{{count}} contacto que coincide con '{{search}}'",
-    "filteredBySearch_other": "{{count}} contactos que coinciden con '{{search}}'",
-    "filteredBySearch_many": "{{count}} contactos que coinciden con '{{search}}'",
-    "filteredBySearchAndCircle_one": "{{count}} contacto que coincide con '{{search}}' en '{{circle}}'",
-    "filteredBySearchAndCircle_other": "{{count}} contactos que coinciden con '{{search}}' en '{{circle}}'",
-    "filteredBySearchAndCircle_many": "{{count}} contactos que coinciden con '{{search}}' en '{{circle}}'",
-    "totalContacts_one": "{{count}} contacto",
-    "totalContacts_other": "{{count}} contactos",
-    "totalContacts_many": "{{count}} contactos",
-    "resetFilter": "Restablecer Filtro",
-    "noContacts": "No se encontraron contactos",
-    "addContact": "Agregar Contacto",
     "firstname": "Nombre",
     "lastname": "Apellido",
     "nickname": "Apodo",
@@ -295,8 +280,6 @@
     "prefer_not_to_say": "Prefiero no decirlo",
     "preferred": "Preferido",
     "kind": "Tipo",
-    "individual": "Individual",
-    "pet": "Mascota",
     "human": "Humano",
     "animal": "Animal",
     "email": "Email",
@@ -333,12 +316,7 @@
       "addCircle": "Agregar",
       "requiredFields": "El nombre y el apellido son obligatorios",
       "firstNameRequired": "El nombre es obligatorio",
-      "error": "Error al crear el contacto. Inténtalo de nuevo.",
-      "success": "¡Contacto creado exitosamente!",
-      "createBirthdayReminder": "Crear recordatorio de cumpleaños",
-      "email": "Correo electrónico",
-      "firstname": "Nombre",
-      "lastname": "Apellido"
+      "success": "¡Contacto creado exitosamente!"
     },
     "showArchived": "Mostrar archivados",
     "showFavorites": "Mostrar favoritos",
@@ -363,18 +341,14 @@
       "button": "Importar",
       "title": "Importar Contactos",
       "upload": {
-        "title": "Subir Archivo de Contactos",
-        "description": "Selecciona un archivo CSV o VCF con tus contactos. Un archivo CSV debe tener encabezados en la primera fila.",
         "dragDrop": "Arrastra y suelta un archivo CSV o VCF aquí, o haz clic para seleccionar",
         "maxSize": "Tamaño máximo del archivo: 50MB (VCF) / 20MB (CSV)",
-        "uploading": "Subiendo...",
         "supportedFormats": "Formatos compatibles: CSV (hoja de cálculo), VCF (vCard)",
         "pickFromDevice": "Elegir de los contactos de este dispositivo",
         "pickFromDeviceHint": "Abre el selector de contactos de tu teléfono. Tú eliges qué contactos compartir; revisarás los duplicados antes de importar nada.",
         "pickerError": "No se pudieron leer los contactos seleccionados."
       },
       "mapping": {
-        "title": "Mapear Columnas",
         "description": "Asocia las columnas de tu CSV con los campos de contacto. Las columnas marcadas como 'Ignorar' no se importarán.",
         "csvColumn": "Columna CSV",
         "mapsTo": "Se asigna a",
@@ -402,8 +376,6 @@
         "label": "Etiqueta"
       },
       "preview": {
-        "title": "Revisar Importación",
-        "description": "Revisa los contactos a importar. Resuelve los duplicados antes de continuar.",
         "duplicateOf": "Coincide con: {{name}} ({{reason}})",
         "toCreate_one": "{{count}} para crear",
         "toCreate_other": "{{count}} para crear",
@@ -464,11 +436,7 @@
       "errors": {
         "invalidFile": "Selecciona un archivo CSV válido",
         "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es 5MB",
-        "emptyFile": "El archivo CSV está vacío",
-        "noMappings": "Mapea al menos una columna",
-        "uploadFailed": "Error al subir el archivo. Inténtalo de nuevo.",
-        "previewFailed": "Error al generar la vista previa. Inténtalo de nuevo.",
-        "importFailed": "Error en la importación. Inténtalo de nuevo."
+        "noMappings": "Mapea al menos una columna"
       }
     },
     "urls": "Sitios Web",
@@ -659,7 +627,6 @@
       "about": "Acerca de",
       "contact": "Contacto",
       "genderAndPronouns": "Género y pronombres",
-      "professional": "Profesional",
       "notes": "Notas",
       "overview": "Resumen",
       "people": "Personas",
@@ -681,7 +648,6 @@
     "address": "Dirección",
     "workInfo": "Información Laboral",
     "period": {
-      "label": "Período",
       "from": "Desde (año)",
       "to": "Hasta (año)",
       "since": "Desde {{year}}",
@@ -694,7 +660,6 @@
     "note": "Nota",
     "addNote": "Agregar Nota",
     "addActivity": "Agregar Actividad",
-    "exportVCard": "Exportar vCard",
     "edit": "Editar",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -703,19 +668,12 @@
     "editNote": "Editar Nota",
     "editActivity": "Editar Actividad",
     "circles": "Círculos",
-    "addCircle": "Agregar Círculo",
     "newCircle": "Nombre del nuevo círculo...",
     "noCircles": "Aún no hay círculos",
     "firstname": "Nombre",
     "lastname": "Apellido",
     "nickname": "Apodo",
-    "gender": "Género",
-    "male": "Masculino",
-    "female": "Femenino",
-    "other": "Otro",
-    "prefer_not_to_say": "Prefiero no decirlo",
     "kind": "Tipo",
-    "individual": "Individual",
     "human": "Humano",
     "animal": "Animal",
     "deleteContact": "Eliminar Contacto",
@@ -774,7 +732,6 @@
       "noTitles": "Aún no hay cargos ni roles.",
       "noWorkInformation": "Aún no hay información laboral.",
       "kindOptions": {
-        "title": "Puesto de trabajo",
         "role": "Rol"
       },
       "validation": {
@@ -966,7 +923,6 @@
     "deleteConfirm": "Eliminar Recordatorio",
     "deleteMessage": "¿Estás seguro de que quieres eliminar este recordatorio?",
     "email": "Email",
-    "birthdayMessage": "Cumpleaños de {{name}}",
     "flexible": "Flexible",
     "reoccurFromCompletion": "Reprogramar desde la fecha de finalización",
     "reoccurFromCompletionTooltip": "Al completarse, el próximo recordatorio se programará desde la fecha de finalización en lugar de la fecha original del recordatorio",
@@ -1063,7 +1019,6 @@
     "results_many": "{{count}} conexiones",
     "empty": "No se encontraron conexiones dentro de esta profundidad.",
     "noRelationMatches": "Ninguna conexión coincide con \"{{relation}}\".",
-    "notAvailable": "No disponible.",
     "viewAll": "Ver todo",
     "showLess": "Mostrar menos"
   },
@@ -1377,8 +1332,7 @@
       },
       "disable": {
         "title": "Desactivar la autenticación de dos factores",
-        "description": "Introduce un código actual de tu aplicación de autenticación para confirmar. Todas las demás sesiones se cerrarán.",
-        "button": "Desactivar"
+        "description": "Introduce un código actual de tu aplicación de autenticación para confirmar. Todas las demás sesiones se cerrarán."
       },
       "regenerate": {
         "title": "Regenerar códigos de recuperación",
@@ -1451,8 +1405,7 @@
       "promoteUserLabel": "Ascender a administrador",
       "confirmButton": "Eliminar mi cuenta de forma permanente",
       "deleting": "Eliminando...",
-      "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo.",
-      "success": "Tu cuenta y todos tus datos han sido eliminados."
+      "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo."
     },
     "export": {
       "title": "Exportar Datos",
@@ -3328,8 +3281,7 @@
       "current": "Versión actual",
       "latest": "Última versión publicada",
       "checkedAt": "Comprobado el"
-    },
-    "error": "No se pudo cargar el estado del sistema."
+    }
   },
   "backgroundJobs": {
     "title": "Tareas en segundo plano",
@@ -3350,11 +3302,9 @@
     "durationTrend": "media {{avg}}, máx. {{max}} en {{n}} ejecuciones",
     "consecutiveFailures": "Ha fallado {{n}} veces seguidas",
     "incidentSince": "desde {{time}}",
-    "itemsProcessed": "{{n}} procesados",
     "never": "nunca",
     "history": "Historial de ejecuciones",
     "noHistory": "Todavía no hay ejecuciones registradas para esta tarea.",
-    "close": "Cerrar",
     "trigger": {
       "scheduled": "programada",
       "initial": "inicio",

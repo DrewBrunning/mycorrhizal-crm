@@ -21,7 +21,6 @@ export const QUALIFYING_INTERACTION_TYPE_TOKENS = [
   'message',
   'shared_activity',
 ] as const;
-export type InteractionType = (typeof QUALIFYING_INTERACTION_TYPE_TOKENS)[number];
 
 // Derived relationship health  -- computed from the timeline, never
 // persisted. `has_qualifying_interaction` stays false until the contact has

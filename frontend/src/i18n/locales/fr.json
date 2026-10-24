@@ -267,21 +267,6 @@
     "sortNameDesc": "Nom (Z–A)",
     "sortUpdatedDesc": "Modifiés récemment (plus récents d'abord)",
     "sortUpdatedAsc": "Modifiés récemment (plus anciens d'abord)",
-    "filteredMessage_one": "{{count}} contact sur {{total}} dans '{{circle}}'",
-    "filteredMessage_other": "{{count}} contacts sur {{total}} dans '{{circle}}'",
-    "filteredMessage_many": "{{count}} contacts sur {{total}} dans '{{circle}}'",
-    "filteredBySearch_one": "{{count}} contact correspondant à '{{search}}'",
-    "filteredBySearch_other": "{{count}} contacts correspondant à '{{search}}'",
-    "filteredBySearch_many": "{{count}} contacts correspondant à '{{search}}'",
-    "filteredBySearchAndCircle_one": "{{count}} contact correspondant à '{{search}}' dans '{{circle}}'",
-    "filteredBySearchAndCircle_other": "{{count}} contacts correspondant à '{{search}}' dans '{{circle}}'",
-    "filteredBySearchAndCircle_many": "{{count}} contacts correspondant à '{{search}}' dans '{{circle}}'",
-    "totalContacts_one": "{{count}} contact",
-    "totalContacts_other": "{{count}} contacts",
-    "totalContacts_many": "{{count}} contacts",
-    "resetFilter": "Réinitialiser le filtre",
-    "noContacts": "Aucun contact trouvé",
-    "addContact": "Ajouter un contact",
     "firstname": "Prénom",
     "lastname": "Nom",
     "nickname": "Surnom",
@@ -295,8 +280,6 @@
     "prefer_not_to_say": "Je préfère ne pas dire",
     "preferred": "Préféré",
     "kind": "Type",
-    "individual": "Particulier",
-    "pet": "Animal de compagnie",
     "human": "Humain",
     "animal": "Animal",
     "email": "E-mail",
@@ -333,12 +316,7 @@
       "addCircle": "Ajouter",
       "requiredFields": "Le prénom et le nom sont requis",
       "firstNameRequired": "Le prénom est requis",
-      "error": "Échec de la création du contact. Veuillez réessayer.",
-      "success": "Contact créé avec succès !",
-      "createBirthdayReminder": "Créer un rappel d'anniversaire",
-      "email": "E-mail",
-      "firstname": "Prénom",
-      "lastname": "Nom"
+      "success": "Contact créé avec succès !"
     },
     "showArchived": "Afficher les archivés",
     "showFavorites": "Afficher les favoris",
@@ -363,18 +341,14 @@
       "button": "Importer",
       "title": "Importer des contacts",
       "upload": {
-        "title": "Télécharger le fichier de contacts",
-        "description": "Sélectionnez un fichier CSV ou VCF contenant vos contacts. Un fichier CSV doit avoir des en-têtes dans la première ligne.",
         "dragDrop": "Glissez-déposez un fichier CSV ou VCF ici, ou cliquez pour le sélectionner",
         "maxSize": "Taille maximale du fichier : 50 Mo (VCF) / 20 Mo (CSV)",
-        "uploading": "Téléchargement en cours...",
         "supportedFormats": "Formats supportés : CSV (tableur), VCF (vCard)",
         "pickFromDevice": "Choisir parmi les contacts de cet appareil",
         "pickFromDeviceHint": "Ouvre le sélecteur de contacts de votre téléphone. Vous choisissez les contacts à partager ; vous vérifierez les doublons avant tout import.",
         "pickerError": "Impossible de lire les contacts sélectionnés."
       },
       "mapping": {
-        "title": "Mapper les colonnes",
         "description": "Associez vos colonnes CSV aux champs de contact. Les colonnes marquées 'Ignorer' ne seront pas importées.",
         "csvColumn": "Colonne CSV",
         "mapsTo": "Correspond à",
@@ -402,8 +376,6 @@
         "label": "Libellé"
       },
       "preview": {
-        "title": "Vérifier l'importation",
-        "description": "Vérifiez les contacts à importer. Résolvez les doublons avant de continuer.",
         "duplicateOf": "Correspond à : {{name}} ({{reason}})",
         "toCreate_one": "{{count}} à créer",
         "toCreate_other": "{{count}} à créer",
@@ -464,11 +436,7 @@
       "errors": {
         "invalidFile": "Veuillez sélectionner un fichier CSV valide",
         "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 5 Mo",
-        "emptyFile": "Le fichier CSV est vide",
-        "noMappings": "Veuillez mapper au moins une colonne",
-        "uploadFailed": "Échec du téléchargement du fichier. Veuillez réessayer.",
-        "previewFailed": "Échec de la génération de l'aperçu. Veuillez réessayer.",
-        "importFailed": "Échec de l'importation. Veuillez réessayer."
+        "noMappings": "Veuillez mapper au moins une colonne"
       }
     },
     "urls": "Sites web",
@@ -659,7 +627,6 @@
       "about": "À propos",
       "contact": "Contact",
       "genderAndPronouns": "Genre et pronoms",
-      "professional": "Professionnel",
       "notes": "Notes",
       "overview": "Aperçu",
       "people": "Personnes",
@@ -681,7 +648,6 @@
     "address": "Adresse",
     "workInfo": "Informations professionnelles",
     "period": {
-      "label": "Période",
       "from": "De (année)",
       "to": "À (année)",
       "since": "Depuis {{year}}",
@@ -694,7 +660,6 @@
     "note": "Note",
     "addNote": "Ajouter une note",
     "addActivity": "Ajouter une activité",
-    "exportVCard": "Exporter vCard",
     "edit": "Modifier",
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -703,19 +668,12 @@
     "editNote": "Modifier la note",
     "editActivity": "Modifier l'activité",
     "circles": "Cercles",
-    "addCircle": "Ajouter un cercle",
     "newCircle": "Nouveau nom de cercle...",
     "noCircles": "Aucun cercle pour l'instant",
     "firstname": "Prénom",
     "lastname": "Nom",
     "nickname": "Surnom",
-    "gender": "Genre",
-    "male": "Homme",
-    "female": "Femme",
-    "other": "Autre",
-    "prefer_not_to_say": "Je préfère ne pas dire",
     "kind": "Type",
-    "individual": "Particulier",
     "human": "Humain",
     "animal": "Animal",
     "deleteContact": "Supprimer le contact",
@@ -774,7 +732,6 @@
       "noTitles": "Pas encore de postes ni de rôles.",
       "noWorkInformation": "Pas encore d'informations professionnelles.",
       "kindOptions": {
-        "title": "Intitulé de poste",
         "role": "Rôle"
       },
       "validation": {
@@ -966,7 +923,6 @@
     "deleteConfirm": "Supprimer le rappel",
     "deleteMessage": "Êtes-vous sûr de vouloir supprimer ce rappel ?",
     "email": "E-mail",
-    "birthdayMessage": "Anniversaire de {{name}}",
     "flexible": "Flexible",
     "reoccurFromCompletion": "Reprogrammer depuis la date de complétion",
     "reoccurFromCompletionTooltip": "Une fois terminé, le prochain rappel sera programmé à partir de la date de complétion plutôt que de la date initiale du rappel",
@@ -1063,7 +1019,6 @@
     "results_many": "{{count}} connexions",
     "empty": "Aucune connexion trouvée à cette profondeur.",
     "noRelationMatches": "Aucune connexion ne correspond à \"{{relation}}\".",
-    "notAvailable": "Indisponible.",
     "viewAll": "Tout voir",
     "showLess": "Afficher moins"
   },
@@ -1377,8 +1332,7 @@
       },
       "disable": {
         "title": "Désactiver l'authentification à deux facteurs",
-        "description": "Saisissez un code actuel de votre application d'authentification pour confirmer. Toutes les autres sessions seront déconnectées.",
-        "button": "Désactiver"
+        "description": "Saisissez un code actuel de votre application d'authentification pour confirmer. Toutes les autres sessions seront déconnectées."
       },
       "regenerate": {
         "title": "Régénérer les codes de récupération",
@@ -1451,8 +1405,7 @@
       "promoteUserLabel": "Promouvoir en administrateur",
       "confirmButton": "Supprimer définitivement mon compte",
       "deleting": "Suppression...",
-      "error": "Nous n'avons pas pu supprimer votre compte. Veuillez réessayer.",
-      "success": "Votre compte et toutes vos données ont été supprimés."
+      "error": "Nous n'avons pas pu supprimer votre compte. Veuillez réessayer."
     },
     "export": {
       "title": "Exporter les données",
@@ -3328,8 +3281,7 @@
       "current": "Version actuelle",
       "latest": "Dernière version publiée",
       "checkedAt": "Vérifiée le"
-    },
-    "error": "Impossible de charger l'état du système."
+    }
   },
   "backgroundJobs": {
     "title": "Tâches en arrière-plan",
@@ -3350,11 +3302,9 @@
     "durationTrend": "moy. {{avg}}, max {{max}} sur {{n}} exécutions",
     "consecutiveFailures": "En échec {{n}} fois d'affilée",
     "incidentSince": "depuis {{time}}",
-    "itemsProcessed": "{{n}} traités",
     "never": "jamais",
     "history": "Historique des exécutions",
     "noHistory": "Aucune exécution enregistrée pour cette tâche pour l'instant.",
-    "close": "Fermer",
     "trigger": {
       "scheduled": "planifiée",
       "initial": "démarrage",
