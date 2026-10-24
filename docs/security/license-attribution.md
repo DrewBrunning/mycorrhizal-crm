@@ -56,6 +56,10 @@ cd backend && go run ./cmd/gennotices
   `thirdparty/licenses/`; an unknown license fails generation rather than
   silently omitting attribution.
 
+Generation executes local tools (`go list` and the repo-local checker). That is
+build-time tooling, not a server or request path; the `os/exec` scope and its
+threat reasoning are recorded in `docs/security/asvs-l2.md` P12 (issue #1943).
+
 The file is copied into the image (`/app/THIRD_PARTY_NOTICES.md`) and served at
 `/third-party-notices.txt`. Because it is committed and consumed by the
 Dockerfile, the release build ships it; no release-only generation step can

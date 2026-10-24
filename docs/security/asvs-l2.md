@@ -27,7 +27,7 @@ grep for it below, and get a status + citation. No row is left `satisfied` witho
 
 ## Documented positions
 
-Eleven deliberate, written-down decisions this project has made. They are positions, not code
+Twelve deliberate, written-down decisions this project has made. They are positions, not code
 changes; revisit each pre-1.0 or when the cited trigger happens.
 
 ### P1 — Password hashing: bcrypt, not Argon2id (NIST 800-63B §5.1.1.2)
@@ -346,6 +346,45 @@ solely on stdlib's incidental behavior.
 - **Pinned by:** `backend/services/mailer_test.go`'s `TestSendEmail_RejectsCRLFInRecipient` and
   `TestBuildSMTPMessage`'s `"strips CRLF from the subject..."` subtest.
 
+### P12 — No `os/exec` on any server or request path; build/test tooling is a scoped exception (issue #1943)
+
+The ban is on **process execution in the server runtime and on every request path**. Nothing linked
+into the distributed `mycorrhizal` binary invokes an external command, and no HTTP, CardDAV, CalDAV,
+MCP or background-job path passes request or user input to a process. That is the invariant ASVS
+5.3.8, 12.3.5 and 12.3.6 rely on.
+
+Two non-test packages outside that boundary execute local tools. Both are build/test tooling; neither
+ships in, nor serves requests from, the server binary:
+
+- **`backend/internal/notices`** — imported only by `backend/cmd/gennotices`, a CI/release-time
+  generator. `CollectGo` (`backend/internal/notices/collect.go#CollectGo`) runs
+  `go list -deps -json .`, and `CollectNPM` (`backend/internal/notices/collect.go#CollectNPM`) runs
+  the pinned repo-local `license-checker-rseidelsohn` binary. The command names and argument lists
+  are fixed in source; the only variable inputs are the repository directory and license files that
+  are *read* for text, never executed (`backend/internal/notices/collect.go#moduleLicenseText`). The
+  two `exec` sites carry `#nosec G204` annotations stating that reasoning.
+- **`backend/differential`** — imported only by `*_test.go`. `NewPyRef`
+  (`backend/differential/harness.go#NewPyRef`) probes and executes the system `python3` vobject
+  reference; `NewCalcardRef` (`backend/differential/harness.go#NewCalcardRef`) executes a prebuilt
+  reference binary or the operator-set `$MYCORRHIZAL_CALCARD_CMD`. Both return "unavailable" and the
+  test skips when the tool is absent; this is test-oracle tooling, never reachable from the server.
+
+Test files that use `os/exec` (for example `backend/database/backup_test.go`) are likewise outside
+the server binary.
+
+**Threat reasoning.** Command injection requires a request-controlled command or argument. None
+exists here: commands are constants or operator-controlled test configuration, no shell is used,
+stdin to the references is fixed test data, and their output is parsed as JSON or opaque bytes.
+The worst case is a local developer/CI process running a tool it already controls, at the same trust
+level as `go test` or `go run`. Stating the exception explicitly is safer than an absolute claim that
+is false: a new `os/exec` now has a review question — server-surface change (reject) versus tooling
+in one of these two packages (review against this position).
+
+- **Invariant:** the only non-test `os/exec` imports are the two packages above; everything else is
+  `*_test.go`.
+- **Revisit when:** the notice generator becomes reachable from a request or job, a third non-test
+  package starts a process, or the differential checkers stop being test-only.
+
 ---
 
 ## V1 — Architecture, Design and Threat Modeling
@@ -509,7 +548,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 5.3.5 | Contextual encoding where no parameterization | satisfied | No non-parameterized SQL paths; identifier interpolation is compile-time constants only (`export_controller.go#groupingNamesByContact`) |
 | 5.3.6 | JSON injection / JSON eval | satisfied | Responses via `encoding/json`; frontend uses `fetch().json()` (JSON.parse), never eval |
 | 5.3.7 | LDAP injection | not-applicable | No LDAP |
-| 5.3.8 | OS command injection | satisfied | No `os/exec` anywhere (security review ban); parameterized everything |
+| 5.3.8 | OS command injection | satisfied | No `os/exec` on any server or request path: the runtime binary starts no process and no handler passes request input to one. Two build/test-tooling packages are the scoped exception (P12): `backend/internal/notices/collect.go#CollectGo` / `backend/internal/notices/collect.go#CollectNPM` (CI/release generator) and `backend/differential/harness.go#NewPyRef` / `backend/differential/harness.go#NewCalcardRef` (tests only), all with fixed or operator-controlled test commands/arguments and no request input; parameterized everything |
 | 5.3.9 | LFI/RFI | satisfied | Server-generated UUID filenames (`photo_controller.go#processAndSavePhoto`, `attachments/attachments.go#Save`); traversal guards reject `..`/absolute (`photo_controller.go#GetProfilePicture`, `attachments.go#StoredPath`) |
 | 5.3.10 | XPath/XML injection | not-applicable | No XML parsing of untrusted input (CardDAV is text/vCard) |
 | 5.4.1–5.4.3 | Memory safety / format strings / integer overflow | not-applicable | Go is memory-safe (runtime bounds checks); `unsafe` unused in app code; `go vet` in CI |
@@ -629,8 +668,8 @@ L3-only, out of scope: 10.1.1, 10.2.3, 10.2.4, 10.2.5, 10.2.6.
 | 12.3.2 | LFI via filenames | satisfied | Traversal guards (`photo_controller.go#GetProfilePicture`, `attachments.go#StoredPath`) — E2E'd end-to-end through the real upload handler (issue #375, `controllers/attachment_real_db_test.go` `TestAttachmentTraversalFilenameNeutralized`) |
 | 12.3.3 | RFI/SSRF via filenames/URLs | satisfied | Public-IP-only dialer (`httputil/safedial.go#SafeDialContext`); URL import path shares it (`photostore.go#FetchPhotoFromURL`) |
 | 12.3.4 | Reflective File Download | satisfied | `Content-Disposition` with fixed/server names + `nosniff` on downloads (`attachment_controller.go#loadOwnedAttachment`, `attachment_controller.go#DownloadAttachment`, `photo_controller.go#ProxyImage`). CRLF-in-filename header-injection now regression-tested, issue #948 (`backend/controllers/http_desync_test.go` `TestDownloadCRLFFilenameNeutralizedOnWire`). |
-| 12.3.5 | No OS-command injection via files | satisfied | No `os/exec`; no filename in system calls |
-| 12.3.6 | No execution of untrusted code | satisfied | No plugin system, no runtime code loading, and no `os/exec` in any non-test backend package (`AGENTS.md` safety boundaries; the sole `os/exec` import in the tree is `backend/database/backup_test.go`). Every dependency is version-pinned in a lockfile (`backend/go.sum`, `frontend/yarn.lock`) and the Go toolchain is pinned (`backend/go.mod`) |
+| 12.3.5 | No OS-command injection via files | satisfied | No request-controlled filename reaches a system call: the server runtime executes no process, and the build/test tooling that does (P12) passes only fixed tool names and arguments — license filenames are read as text, never executed (`backend/internal/notices/collect.go#moduleLicenseText`) |
+| 12.3.6 | No execution of untrusted code | satisfied | No plugin system, no runtime code loading, and no `os/exec` in the server binary or any request-handling package. The non-test exceptions are build/test tooling scoped in P12: `backend/internal/notices/collect.go#CollectGo` / `backend/internal/notices/collect.go#CollectNPM` run only from `backend/cmd/gennotices` with fixed tool names and arguments, and `backend/differential/harness.go#NewPyRef` / `backend/differential/harness.go#NewCalcardRef` are imported only by `*_test.go` — neither takes request input. Every dependency is version-pinned in a lockfile (`backend/go.sum`, `frontend/yarn.lock`) and the Go toolchain is pinned (`backend/go.mod`) |
 | 12.4.1 | Uploads outside web root, limited perms | satisfied | Photo/attachment dirs 0700/0750 (`photostore.go#SaveContactPhoto`, `attachments.go#Save`); served via controllers, not static. The Meerkat import upload (issue #550) is staged in a per-session `os.MkdirTemp` directory, written `0600`, never under a served path, and `os.RemoveAll`'d on cancel/expiry (`services/meerkat_import_session.go`); pinned by `services/meerkat_import_session_test.go` (`TestMeerkatImportSession_CancelRemovesTempDir`, `TestMeerkatImportSession_CleanupExpiredRemovesTempDir`) |
 | 12.4.2 | Antivirus scanning | not-applicable | Self-hosted; replaced by magic-byte + decode + markup-signature validation (V12.2.1, `attachment_controller.go#isRenderableVulnerableType`, `attachment_controller.go#hasMarkupSignature`) |
 | 12.5.1 | Extension allow-list on web tier | satisfied | No static serving of uploads; only built SPA assets are static (`docker/nginx.conf`) |
