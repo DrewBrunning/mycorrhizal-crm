@@ -1,0 +1,5 @@
+---
+name: [unterminated
+---
+
+# Bad frontmatter

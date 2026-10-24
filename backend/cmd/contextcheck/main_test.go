@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"mycorrhizal/internal/agentcontext"
+	"mycorrhizal/internal/schemafixture"
 )
 
 func writeFixtureFile(t *testing.T, root, rel, content string) {
@@ -42,7 +44,54 @@ func fixtureRoot(t *testing.T) string {
 		}
 		writeFixtureFile(t, root, af.Path, strings.Repeat("context\n", af.TargetLines))
 	}
+	writeFixturePrereqs(t, root)
 	return root
+}
+
+func writeFixturePrereqs(t *testing.T, root string) {
+	t.Helper()
+	for _, code := range []string{"de", "en", "es", "fr", "it"} {
+		writeFixtureFile(t, root, "frontend/src/i18n/locales/"+code+".json", "{}\n")
+	}
+	writeFixtureFile(t, root, "frontend/e2e/global-setup.ts", "export const APP_ORIGIN = 'http://localhost:7300';\n")
+	writeFixtureFile(t, root, "backend/database/AGENTS.md", fmt.Sprintf(
+		"Upgrades are supported from `%s` (migration `%06d`) and later.\n",
+		schemafixture.FloorTag, schemafixture.FloorVersion))
+	writeFixtureFile(t, root, "frontend/AGENTS.md",
+		"All five locale files (`en`, `de`, `es`, `fr`, `it`) are translated.\n"+
+			"The e2e setup hardcodes `http://localhost:7300`.\n")
+	writeFixtureFile(t, root, ".github/workflows/fixture.yml", strings.Join([]string{
+		"name: Fixture",
+		"on: push",
+		"jobs:",
+		"  upgrade-matrix:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./internal/schemafixture/ -count=1",
+		"  schemafixture-suite:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./internal/schemafixture/ -count=1",
+		"  backend-tests:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./...",
+		"  frontend:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: npx tsc --noEmit",
+		"  docs-citations:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go run ./cmd/citecheck",
+		"      - run: go run ./cmd/releasegatecheck",
+		"  release:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go run ./cmd/releasegatecheck",
+	}, "\n")+"\n")
+	writeFixtureFile(t, root, ".github/release-gates.json", `{"gates":[{"tier":"per-pr","mandatory":true,"check_context":"Backend (Go)"}]}`)
+	writeFixtureFile(t, root, ".github/rulesets/main-protection.json", `{"rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`)
 }
 
 func runCLI(t *testing.T, args ...string) (int, string, string) {

@@ -1,10 +1,13 @@
 package agentcontext
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"mycorrhizal/internal/schemafixture"
 )
 
 func writeFile(t *testing.T, root, rel, content string) {
@@ -19,7 +22,9 @@ func writeFile(t *testing.T, root, rel, content string) {
 }
 
 // validTree builds the registry's files: AGENTS.md entries at the target line
-// count and CLAUDE.md aliases in symlink form.
+// count and CLAUDE.md aliases in symlink form. It also writes the canonical
+// sources the Suite and Fact checks read, so an AGENTS-only fixture is a clean
+// tree.
 func validTree(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -40,7 +45,56 @@ func validTree(t *testing.T) string {
 		}
 		writeFile(t, root, af.Path, strings.Repeat("context\n", af.TargetLines))
 	}
+	writeFixturePrereqs(t, root)
 	return root
+}
+
+func writeFixturePrereqs(t *testing.T, root string) {
+	t.Helper()
+	locales := []string{"de", "en", "es", "fr", "it"}
+	for _, code := range locales {
+		writeFile(t, root, "frontend/src/i18n/locales/"+code+".json", "{}\n")
+	}
+	writeFile(t, root, "frontend/e2e/global-setup.ts", "export const APP_ORIGIN = 'http://localhost:7300';\n")
+	writeFile(t, root, "backend/Makefile", "gen-contract-fixtures:\n\t@echo fixtures\n")
+	writeFile(t, root, "backend/database/AGENTS.md", fmt.Sprintf(
+		"Upgrades are supported from `%s` (migration `%06d`) and later.\n",
+		schemafixture.FloorTag, schemafixture.FloorVersion))
+	writeFile(t, root, "frontend/AGENTS.md",
+		"All five locale files (`en`, `de`, `es`, `fr`, `it`) are translated.\n"+
+			"The e2e setup hardcodes `http://localhost:7300`.\n")
+	writeFile(t, root, ".github/workflows/fixture.yml", strings.Join([]string{
+		"name: Fixture",
+		"on: push",
+		"jobs:",
+		"  upgrade-matrix:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./internal/schemafixture/ -count=1",
+		"  schemafixture-suite:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./internal/schemafixture/ -count=1",
+		"  backend-tests:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go test ./...",
+		"  frontend:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: npx tsc --noEmit",
+		"  docs-citations:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go run ./cmd/citecheck",
+		"      - run: go run ./cmd/releasegatecheck",
+		"  release:",
+		"    runs-on: ubuntu-latest",
+		"    steps:",
+		"      - run: go run ./cmd/releasegatecheck",
+	}, "\n")+"\n")
+	writeFile(t, root, ".github/release-gates.json", `{"gates":[{"tier":"per-pr","mandatory":true,"check_context":"Backend (Go)"}]}`)
+	writeFile(t, root, ".github/rulesets/main-protection.json", `{"rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`)
 }
 
 func findings(root string) []string {
