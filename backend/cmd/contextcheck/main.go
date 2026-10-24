@@ -1,10 +1,10 @@
-// Command contextcheck validates the AGENTS.md hierarchy (issue #1955): every
-// registered file exists, CLAUDE.md aliases resolve, files stay within the
-// 200-line hard maximum, and the registry matches the AGENTS.md files on disk.
+// Command contextcheck validates the agent-context tree: the AGENTS.md
+// hierarchy (issue #1955), the skill contract and reference integrity, the
+// Suites registry, static path/command resolution, and fact parity (issue
+// #1956).
 //
-// It validates only the AGENTS.md files. Skill/reference/Suite checks land in a
-// later stage. It is read-only: it never executes a command parsed out of prose
-// and never rewrites a file.
+// It is read-only: it never executes a command parsed out of prose and never
+// rewrites a file.
 //
 // Output is one "path:line: message" finding per line; any finding exits 1 and
 // a clean tree exits 0. -list prints the registry and budgets, and
@@ -42,7 +42,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&list, "list", false, "list registered files and budgets")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: contextcheck [-root DIR] [-list] [-explain PATH]")
-		fmt.Fprintln(stderr, "files may be between the 100-line target and the 200-line hard maximum; only the hard maximum fails")
+		fmt.Fprintln(stderr, "validates AGENTS.md files, skills/references, Suites and fact parity; only the 200-line hard maximum fails")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {

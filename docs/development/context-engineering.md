@@ -6,10 +6,11 @@ nav_order: 12
 
 # Context Engineering
 
-Agent context is code here: the `AGENTS.md` hierarchy is validated in CI and in
-the pre-commit hook so it cannot silently drift from the repository. This page
-describes the layout, the alias contract, the registry and budgets, and the
-checks that are deliberately manual.
+Agent context is code here: the `AGENTS.md` hierarchy, the skills tree, and the
+`Suites`/fact registries are validated in CI and in the pre-commit hook so they
+cannot silently drift from the repository. This page describes the layout, the
+alias contracts, the skill contract, the registries and budgets, and the checks
+that are deliberately manual.
 
 ## Layout
 
@@ -30,6 +31,13 @@ A platform file is the single home for its area's conventions; the root file
 points at it. Put a rule in the file a contributor working in that area will
 read, and do not duplicate it across files.
 
+Recurring procedures live in `.agents/skills/<name>/SKILL.md`, with long-form
+detail in that skill's `references/*.md`. `.claude/skills` is a symlink to
+`../.agents/skills`, never a second copy. `.opencode/skills` is deliberately not
+used. The Tier 1 tree is created by #1957; #1956 adds the checks, so an absent
+`.agents/skills` and `.claude/skills` pass at this stage while a
+present-but-wrong alias fails.
+
 ## The alias contract
 
 Every `AGENTS.md` has a colocated `CLAUDE.md` alias so Claude Code and other
@@ -41,7 +49,30 @@ tools that look for `CLAUDE.md` read the same text. The alias is one of:
 An alias is never a second source of truth. Editing `CLAUDE.md` content — or
 leaving anything other than the one-line import in it — fails the check. The
 symlink form is preferred; the import exists for filesystems and checkouts that
-do not preserve symlinks.
+do not preserve symlinks. The skills tree follows the same rule: `.claude/skills`
+must resolve to `.agents/skills`, by symlink (or the documented materialized
+fallback that `scripts/install-agent-links.sh` owns).
+
+## Skill contract
+
+Every `SKILL.md` is validated statically (issue #1956):
+
+- Frontmatter `name` equals the directory name and matches
+  `^[a-z0-9]+(-[a-z0-9]+)*$`; `description` is present and at most 1024
+  characters. It is a trigger, not a summary.
+- The body targets 100 lines and has a hard maximum of 200. A 101–200-line body
+  passes; only exceeding 200 fails. The target is guidance: never cut a
+  load-bearing step to hit it.
+- Every `.md` file under the skill's `references/` is a declared reference. It
+  must be named in its `SKILL.md` (the condition that should make an agent open
+  it) and stays within the same 200-line hard maximum. A file on disk that is
+  not linked is an orphan and fails; a link to a missing file fails through the
+  shared resolver.
+- Duplicate skill names across `.agents/skills` and a materialized
+  `.claude/skills` fail.
+
+Skills add procedure; they never override `AGENTS.md`. On conflict, `AGENTS.md`
+wins.
 
 ## Registry and budgets
 
@@ -64,10 +95,45 @@ registry↔disk walk skips VCS, dependency, and build directories (`.git`,
 `node_modules`, `build`, `dist`, `out`, `target`, `vendor`, `.gradle`) so a
 dependency's own context file is never mistaken for ours.
 
+## Suites registry
+
+`internal/agentcontext.Suites()` is the single "what verifies this change"
+registry shared by skills, CI and (in #1959) the eval harness. Each row carries:
+
+- `Commands` — the exact DoD commands a skill may list.
+- `CIJobs` — job ids in `.github/workflows/` that run the suite.
+- `CICommand` — a literal token that must appear in at least one listed job.
+
+The six Tier 1 suites are registered in #1956; Tier 2 is added in #1958. Every
+command fence under a skill's `## DoD` heading must belong to a registered suite
+(after normalizing `cd <dir> &&` prefixes and `&&` chains), and every suite's
+jobs must exist and contain its `CICommand`. This check is static: it parses
+YAML, it never runs a workflow or a test.
+
+## Fact parity
+
+Four stable, load-bearing values are read from their canonical source, never
+from a copied literal (issue #1956):
+
+| Fact | Canonical source | Context files |
+|---|---|---|
+| upgrade floor | `schemafixture.FloorTag` / `FloorVersion` | `backend/database/AGENTS.md`, database-migration skill |
+| locale set | `frontend/src/i18n/locales/*.json` (not `json.d.ts`) | localization skill (and `frontend/AGENTS.md`) |
+| e2e port | `frontend/e2e/global-setup.ts` / `playwright.config.ts` | `frontend/AGENTS.md` and the relevant skill |
+| required gate jobs | `.github/release-gates.json` + `.github/rulesets/main-protection.json` | add-quality-gate skill |
+
+Each `Fact` names its reader (`upgrade-floor`, `locale-set`, `e2e-port`,
+`required-gate-jobs`), the regex that finds the value in the named files, and
+the files themselves. A present file that disagrees with the canonical source
+fails; an absent file (for example a skill a later stage has not created yet) is
+skipped. Do not add churny counts to this table: every anchor is maintenance.
+
 ## contextcheck
 
-`cmd/contextcheck` validates only the `AGENTS.md` files. It is read-only: it
-never executes a command parsed out of prose and never rewrites a file.
+`cmd/contextcheck` validates the `AGENTS.md` hierarchy, the skill contract and
+references, the `Suites` registry, static path/command resolution, and fact
+parity. It is read-only: it never executes a command parsed out of prose and
+never rewrites a file.
 
 ```bash
 cd backend && go run ./cmd/contextcheck
@@ -84,11 +150,18 @@ and hard maximum; `-explain` prints the `AGENTS.md` files that would load for a
 path, root first, so override and discovery surprises are debuggable. `-root`
 points the check at a fixture tree (used by the tests).
 
+Static reference resolution covers relative links, `#anchor`s, repo paths,
+`go run ./cmd/<tool>` targets, `make` targets, `yarn` scripts, the allowlisted
+`npx tsc`/`npx vitest`/`npx playwright` binaries, and `file_test.go#TestFoo`
+test references. Only fenced code, inline code and explicit link targets are
+parsed; free prose is not. Tokens such as `user_id`, `suggested`,
+`normal|private|secret` and `GET /api/v1/...` are never treated as paths.
+
 The check runs in `.githooks/pre-commit` and in `unit-tests.yml`'s
 `docs-citations` job, unconditionally, so a context-only change cannot merge
-with a broken hierarchy. It does not validate skill frontmatter, reference
-linkage, `Suites`, fact parity, command resolution, `.claude/skills`, or the
-eval harness; those are later stages.
+with a broken hierarchy. It does not run the eval harness (a later stage) and it
+does not execute any documented command; it proves the target exists and the
+command is registered, not that the command passes.
 
 ## What stays manual
 
@@ -98,7 +171,8 @@ eval harness; those are later stages.
   review decision.
 - **The target budget.** Nothing enforces 100 lines; a reviewer should push back
   on padding without treating 101 lines as a defect.
-- **Executable prose.** Commands in context files are not executed or resolved
-  by this stage, and neither are links outside `docs/` (the docs structural
-  check covers `docs/` only). Verify a cited command/path by hand when you edit
-  it.
+- **Executable prose.** Commands are resolved statically (the path, make target
+  or package script exists), never executed. A command that exists but no longer
+  works is still a review problem.
+- **Which suite verifies a change.** The registry proves the command and job are
+  wired; choosing the right suite remains a review decision.
