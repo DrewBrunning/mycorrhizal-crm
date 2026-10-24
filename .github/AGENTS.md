@@ -17,7 +17,7 @@ governance change. The three jobs that carry the load:
 - **`Backend (Go)`** — `unit-tests.yml`'s lint/analyzers and `go test ./...` (so any Go test is
   enforced: schema parity, the `AutoMigrate` ratchet, `omitemptyguard`, generated-artifact drift).
 - **`Frontend (Vitest)`** — `tsc --noEmit` (picks up `src/api/contractConformance.ts`), type-aware
-  `yarn lint`, and the per-file coverage ratchet.
+  `yarn lint`, `yarn knip` (unused files/exports/dependencies), and the per-file coverage ratchet.
 - **`Docs & security-doc citations`** — runs **unconditionally**, so a repo-wide analyzer or
   docs/citation gate goes here (`pragmacheck`, `nightlyalertcheck`, `codecovcheck`, `docscheck`, …).
 
@@ -48,7 +48,8 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   version `unit-tests.yml` uses), `gormerrcheck`, `rawtimecheck`, the contract-fixtures/DATA-01/
   INT-01/API-baseline/generated-TS drift tests, and the mutation-scope config drift test.
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
-  `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
+  `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
+  #1907).
 - **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt` locally.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
   `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
