@@ -146,6 +146,52 @@ func Suites() []Suite {
 			CIJobs:    []string{"docs-citations", "release"},
 			CICommand: "go run ./cmd/releasegatecheck",
 		},
+		{
+			Name: "localization-change",
+			Commands: []string{
+				"cd frontend && npx vitest run src/i18n/locales.test.ts",
+				"cd frontend && npx tsc --noEmit",
+			},
+			CIJobs:    []string{"frontend"},
+			CICommand: "npx tsc --noEmit",
+		},
+		{
+			Name: "dependency-update-review",
+			Commands: []string{
+				"cd backend && go run ./cmd/depexceptions",
+				"cd backend && make gen-notices",
+			},
+			CIJobs:    []string{"docs-citations"},
+			CICommand: "go run ./cmd/depexceptions",
+		},
+		{
+			Name: "documentation-maintenance",
+			Commands: []string{
+				"cd backend && go run ./cmd/docscheck",
+				"cd backend && go run ./cmd/citecheck",
+			},
+			CIJobs:    []string{"docs-citations"},
+			CICommand: "go run ./cmd/docscheck",
+		},
+		{
+			Name: "performance-investigation",
+			Commands: []string{
+				"cd backend && go test ./internal/perfbench/ -run '^TestCoreOperationBenchmarks$' -count=1",
+			},
+			CIJobs:    []string{"backend-checks"},
+			CICommand: "go test -run '^$' -bench .",
+		},
+		{
+			Name: "add-quality-gate",
+			Commands: []string{
+				"cd backend && go run ./cmd/governancecheck",
+				"cd backend && go run ./cmd/releasegatecheck",
+				"cd backend && go run ./cmd/nightlyalertcheck",
+				"cd backend && go run ./cmd/mainalertcheck",
+			},
+			CIJobs:    []string{"docs-citations"},
+			CICommand: "go run ./cmd/governancecheck",
+		},
 	}
 }
 
