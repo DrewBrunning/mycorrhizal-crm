@@ -1162,6 +1162,13 @@ jobs:
         working-directory: frontend
         run: yarn lint
 
+      # Issue #1907: dead-weight detection the type/lint/bundle gates cannot
+      # see -- files and exports nothing imports, and unused dependencies.
+      # The i18n key-usage guard runs with vitest above.
+      - name: Knip (unused files, exports, dependencies)
+        working-directory: frontend
+        run: yarn knip
+
       # Issue #251: the project-wide number stays informational. The hard
       # gate is the diff-based codecov/patch status (issue #267).
       - name: Upload coverage report

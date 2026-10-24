@@ -46,6 +46,11 @@ This file is the frontend contract. Android shares the trap IDs below.
 - API modules live in `src/api/<entity>.ts`, hooks in `src/hooks/use<Entity>.ts`, dialogs/lists in
   `src/components/`. `relationshipEdges.ts` + `useRelationshipEdges.ts` +
   `RelationshipEdgeDialog/List` is the most complete example of the full pattern — copy that shape.
+- **Dead weight is gated (issue #1907).** `cd frontend && yarn knip` (config `knip.jsonc`) fails on
+  files/exports nothing imports and unused dependencies; `src/i18n/keyUsage.test.ts` fails when an
+  `en.json` leaf key is referenced nowhere under `src/`. A key built with a template literal must be
+  registered in that test's `DYNAMIC_KEY_SOURCES` (prefix, builder file, reason — and the closed value
+  set when there is one); the test fails if the builder file stops containing the prefix.
 - Generated TS types: `src/generated/openapi.ts` is generated from `openapi.yaml` by
   `cd backend && go run ./cmd/gentsapi` — never hand-edited. The hand-written types in `src/api/*.ts`
   are pinned to it by `src/api/contractConformance.ts` (types only; imported by nothing): `tsc` fails

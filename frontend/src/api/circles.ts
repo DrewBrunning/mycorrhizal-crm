@@ -13,11 +13,6 @@ export interface CircleMember {
   member_vcard_uid: string;
 }
 
-export interface CircleWithMembers {
-  circle: Circle;
-  members: CircleMember[];
-}
-
 export interface CircleCreateResponse {
   message: string;
   circle: Circle;

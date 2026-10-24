@@ -483,14 +483,6 @@ export async function loginUser(page: Page, credentials = TEST_USER): Promise<vo
 }
 
 /**
- * Logs the current user out via the UI and waits for the login form.
- */
-export async function logoutUser(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /logout/i }).click();
-  await expect(page.getByRole('heading', { name: /login/i })).toBeVisible({ timeout: 10000 });
-}
-
-/**
  * Waits for a page's scrollHeight to hold steady across a few consecutive
  * checks, spaced 50ms apart. A generic "layout has stopped changing" signal.
  */

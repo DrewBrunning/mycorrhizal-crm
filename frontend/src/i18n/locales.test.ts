@@ -14,7 +14,7 @@ import it from './locales/it.json';
 //   1. `contacts.personalInfo.kind` existed only in en, so the four other
 //      locales fell back to English on a visible form label.
 //   2. `activities.exportVCard` existed in de/es/fr/it but NOT en — an
-//      orphan left behind when the key moved to contactDetail.exportVCard.
+//      orphan left behind when the key moved (it has since been removed).
 //   3. The entire `triage.*` block (25 keys) was untranslated English in all
 //      four non-English locales, with the longer strings truncated rather
 //      than translated.

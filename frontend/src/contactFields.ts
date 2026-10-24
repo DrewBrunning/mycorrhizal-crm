@@ -211,28 +211,6 @@ export const PERSONAL_INFO_KIND_OPTIONS = ['expertise', 'hobby', 'interest'] as 
 // PersonalInfo levels (RFC 9555 §2.8 personalInfo.level).
 export const PERSONAL_INFO_LEVEL_OPTIONS = ['high', 'medium', 'low'] as const;
 
-// Card.Kind values (RFC 9553 §2.1.4 kind — distinct from CRMEnvelope.Kind).
-export const CARD_KIND_OPTIONS = [
-  'individual',
-  'group',
-  'org',
-  'location',
-  'application',
-  'device',
-] as const;
-
-// Phone feature tokens (RFC 9554 §6.4.1 TEL TYPE).
-export const PHONE_FEATURE_OPTIONS = [
-  'voice',
-  'fax',
-  'cell',
-  'video',
-  'pager',
-  'text',
-  'textphone',
-  'main-number',
-] as const;
-
 // Resolves the stored setting (null/undefined => defaults) into a concrete enabled set.
 export function resolveEnabledFields(stored: string[] | null | undefined): Set<ContactFieldKey> {
   const keys = stored == null ? DEFAULT_ENABLED_CONTACT_FIELDS : (stored as ContactFieldKey[]);

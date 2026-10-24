@@ -8,7 +8,6 @@ import { downloadFileFromResponse } from './export';
 // — card/gift/invite are the three named ones; the value is free text
 // server-side, this frontend mirror just offers the three as suggestions.
 export const OCCASION_OBLIGATION_KINDS = ['card', 'gift', 'invite'] as const;
-export type OccasionObligationKind = (typeof OCCASION_OBLIGATION_KINDS)[number];
 
 // Mirrors the shared normal/private/secret set (RelationshipEdgeSensitivity).
 export type OccasionSensitivity = 'normal' | 'private' | 'secret';
