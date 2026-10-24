@@ -70,7 +70,8 @@ actual port or CORS fails. Service-worker testing needs `frontend-prod` — see 
 - **Soft vs hard delete is a model property**, decided once per entity. Cascades are manual and
   registry-enforced — add a new entity there in the same change (`backend/AGENTS.md` traps 6–7).
 - **Generated artifacts are regenerated, never hand-edited** — see `backend/AGENTS.md`.
-- **Security:** no secrets, no `os/exec` in app code, explicit update allowlists (no mass assignment),
+- **Security:** no secrets, no `os/exec` on any server or request path (build/test tooling is the
+  scoped exception in `docs/security/asvs-l2.md` P12), explicit update allowlists (no mass assignment),
   parameterized SQL, and the SSRF/CSV guards stay.
 - **Never commit to `main` or merge without explicit approval.** Every commit needs a DCO
   `Signed-off-by:` (`git commit -s`). Never `--no-verify` without the user's explicit go-ahead.

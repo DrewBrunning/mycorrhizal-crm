@@ -93,7 +93,8 @@ go run ./cmd/migratebench measure --db /tmp/floor.db
 ```
 
 There is deliberately no `run` convenience subcommand that execs `measure`:
-the security posture bans `os/exec` in non-test packages (ASVS 12.3.6), and a
+the security posture bans `os/exec` on any server or request path (ASVS 12.3.6;
+the build/test-tooling exception is scoped in `docs/security/asvs-l2.md` P12), and a
 same-process measure would report the seed's in-memory manifest as the
 migration's peak RSS. The three commands above are the workflow.
 
