@@ -2121,10 +2121,10 @@
       "branchesTotal": 0
     },
     "src/utils/errorHandler.ts": {
-      "lines": 82.6,
-      "linesTotal": 23,
-      "branches": 75,
-      "branchesTotal": 16
+      "lines": 100,
+      "linesTotal": 28,
+      "branches": 100,
+      "branchesTotal": 24
     },
     "src/utils/graphBudget.ts": {
       "lines": 100,
