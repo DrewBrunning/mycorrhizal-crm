@@ -56,6 +56,7 @@ jobs:
       android: ${{ steps.resolve.outputs.android }}
       openapi: ${{ steps.resolve.outputs.openapi }}
       workflows: ${{ steps.resolve.outputs.workflows }}
+      notices: ${{ steps.resolve.outputs.notices }}
       changelog-relevant: ${{ steps.resolve.outputs.changelog-relevant }}
     steps:
       - name: Checkout repository
@@ -83,10 +84,10 @@ jobs:
         id: resolve
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
-            backend=true; frontend=true; android=true; openapi=true; workflows=true; changelog=true
+            backend=true; frontend=true; android=true; openapi=true; workflows=true; notices=true; changelog=true
           else
             backend="$BACKEND_CHANGED"; frontend="$FRONTEND_CHANGED"; android="$ANDROID_CHANGED"
-            openapi="$OPENAPI_CHANGED"; workflows="$WORKFLOWS_CHANGED"; changelog="$CHANGELOG_RELEVANT"
+            openapi="$OPENAPI_CHANGED"; workflows="$WORKFLOWS_CHANGED"; notices="$NOTICES_CHANGED"; changelog="$CHANGELOG_RELEVANT"
           fi
           {
             echo "backend=$backend"
@@ -94,6 +95,7 @@ jobs:
             echo "android=$android"
             echo "openapi=$openapi"
             echo "workflows=$workflows"
+            echo "notices=$notices"
             echo "changelog-relevant=$changelog"
           } | tee -a "$GITHUB_OUTPUT"
         env:
@@ -103,18 +105,35 @@ jobs:
           ANDROID_CHANGED: ${{ steps.filter.outputs.android }}
           OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+          NOTICES_CHANGED: ${{ steps.filter.outputs.notices }}
           CHANGELOG_RELEVANT: ${{ steps.filter.outputs.changelog-relevant }}
 
   # Issue #378: the security checklists' `file:line`/test citations rot when
   # *code moves*, not when the doc is edited (74 drifted before this existed)
   # -- so this job is deliberately NOT path-gated: any PR can orphan a
   # citation, and .github/filters.yaml maps docs/** to nothing anyway.
+  #
+  # Issue #1944: the third-party notices drift check lives here rather than in
+  # license-compliance.yml, which carries no required status check. This job
+  # IS required (main-protection + release-gates.json) and is composed by the
+  # release gate, so a stale notice now blocks a merge instead of being
+  # advisory. The expensive dependency install + regeneration steps are
+  # path-gated on the `notices` filter; the job itself still always runs for
+  # the citation checks.
   docs-citations:
     permissions:
       contents: read
     name: Docs & security-doc citations
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    needs: changes
+    timeout-minutes: 15
+    env:
+      # Fires when a dependency manifest / generator / committed notice
+      # changed (RUN_NOTICES), when the workflow definition itself changed (as
+      # for every suite job), and always on the nightly schedule and the
+      # release composition's dispatch/call paths. Kept as one job-level value
+      # so the setup, install and check steps cannot drift apart.
+      RUN_NOTICES: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || needs.changes.outputs.notices == 'true' || needs.changes.outputs.workflows == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,6 +145,31 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
+
+      # Issue #1944: license-checker reads the resolved production
+      # node_modules, so the same install license-compliance.yml's removed
+      # job used to do is required before the generator can run.
+      - name: Set up Node.js (third-party notices)
+        if: env.RUN_NOTICES == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies (third-party notices)
+        if: env.RUN_NOTICES == 'true'
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      # Issue #1880: regenerate from the actual shipped dependency graph and
+      # compare with the committed notice. A dependency bump (or a new
+      # transitive module) that does not regenerate is the drift this gate
+      # exists to catch.
+      - name: Verify third-party notices are current
+        if: env.RUN_NOTICES == 'true'
+        working-directory: backend
+        run: go run ./cmd/gennotices -check
 
       # Every citation resolves (file + the `#anchor` thing still exists; a
       # `path:line` citation is itself a failure) and every `satisfied` row

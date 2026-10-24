@@ -56,7 +56,16 @@ gradle-manifests:
 # Issue #1880: third-party attribution. A dependency-manifest change must
 # regenerate THIRD_PARTY_NOTICES.md, and a change to the generator, its
 # license-text fallbacks, or the committed notice itself must re-run the drift
-# check.
+# check. Issue #1944 moved that check into unit-tests.yml's required
+# `Docs & security-doc citations` job; this filter still gates it.
+#
+# Dockerfile / docker/** are deliberately NOT listed. The Alpine base layer is
+# an unmodified upstream distribution whose licence inventory
+# (/lib/apk/db/installed) is not restated in the application notice, so a base
+# image or `apk add` change cannot make THIRD_PARTY_NOTICES.md stale -- adding
+# it here would run a check that cannot fail on the change it supposedly
+# guards. It is a manual-review boundary instead, documented in
+# docs/security/license-attribution.md (issue #1944).
 notices:
   - 'backend/go.mod'
   - 'backend/go.sum'

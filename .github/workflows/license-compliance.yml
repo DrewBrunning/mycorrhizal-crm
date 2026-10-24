@@ -29,6 +29,12 @@ name: License Compliance
 # legs: resolve real dependency files first (the `downloadLicenseScanArtifacts`
 # task, this repo's equivalent of `go mod download` / `yarn install`), then
 # scan + gate.
+#
+# Issue #1944: the third-party notices *drift* check that PR #1942 added here
+# moved to unit-tests.yml's required `Docs & security-doc citations` job. This
+# workflow has no required status check, so a stale notice could merge; the
+# check is a step in a required job there instead. This workflow remains the
+# "may we ship this license?" scan, which is what it is for.
 
 on:
   push:
@@ -61,7 +67,6 @@ jobs:
       go-manifests: ${{ steps.filter.outputs['go-manifests'] }}
       npm-manifests: ${{ steps.filter.outputs['npm-manifests'] }}
       gradle-manifests: ${{ steps.filter.outputs['gradle-manifests'] }}
-      notices: ${{ steps.filter.outputs['notices'] }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - name: Checkout repository
@@ -82,7 +87,6 @@ jobs:
           echo "go-manifests=$GO_MANIFESTS_CHANGED"
           echo "npm-manifests=$NPM_MANIFESTS_CHANGED"
           echo "gradle-manifests=$GRADLE_MANIFESTS_CHANGED"
-          echo "notices=$NOTICES_CHANGED"
           echo "workflows=$WORKFLOWS_CHANGED"
         env:
           # Boolean outputs only (the *_files outputs are the
@@ -91,7 +95,6 @@ jobs:
           GO_MANIFESTS_CHANGED: ${{ steps.filter.outputs['go-manifests'] }}
           NPM_MANIFESTS_CHANGED: ${{ steps.filter.outputs['npm-manifests'] }}
           GRADLE_MANIFESTS_CHANGED: ${{ steps.filter.outputs['gradle-manifests'] }}
-          NOTICES_CHANGED: ${{ steps.filter.outputs['notices'] }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
   backend-license:
@@ -215,48 +218,6 @@ jobs:
           name: frontend-license-report
           path: frontend-license-report.json
           retention-days: 30
-
-  notices-drift:
-    name: Third-party notices drift
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    needs: changes
-    if: github.event_name == 'schedule' || needs.changes.outputs['notices'] == 'true' || needs.changes.outputs.workflows == 'true'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          # COMPAT-01 (issue #472): floor comes from frontend/package.json.
-          node-version-file: frontend/package.json
-          cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
-
-      # license-checker reads node_modules, so the production tree must exist
-      # before the generator runs.
-      - name: Install dependencies
-        working-directory: frontend
-        run: yarn install --frozen-lockfile
-
-      # Issue #1880: regenerate from the actual shipped dependency graph and
-      # compare with the committed notice. A dependency bump that does not
-      # regenerate is the drift this gate exists to catch.
-      - name: Verify third-party notices are current
-        working-directory: backend
-        run: go run ./cmd/gennotices -check
 
   android-license:
     name: Android (Gradle) license scan
