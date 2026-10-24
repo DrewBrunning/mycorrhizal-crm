@@ -6,12 +6,6 @@
 // needed here.
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
-// count at which the backend flags a bucket `recurring` — kept here only so the
-// UI copy ("Recurring") and the styling threshold agree with
-// backend/services/error_aggregation.go's errAggRecurringThreshold. A single
-// transient failure is not recurring; a repeating cause is.
-export const RECURRING_THRESHOLD = 3;
-
 export interface ErrorBucket {
   // The system_events component the failures share (contact_sync, notification,
   // webhook, …).

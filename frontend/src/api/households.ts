@@ -32,11 +32,6 @@ export interface HouseholdMember {
   until?: string;
 }
 
-export interface HouseholdWithMembers {
-  household: Household;
-  members: HouseholdMember[];
-}
-
 export interface HouseholdListResponse {
   households: Household[];
   total: number;

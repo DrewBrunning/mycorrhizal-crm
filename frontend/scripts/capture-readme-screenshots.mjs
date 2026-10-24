@@ -27,7 +27,7 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:7300';
 const USERNAME = process.env.USERNAME ?? 'pentest';

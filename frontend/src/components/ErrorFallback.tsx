@@ -34,7 +34,7 @@ interface ErrorFallbackProps {
  * </ErrorBoundary>
  * ```
  */
-export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
+const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   error,
   onReset,
   title = 'Something went wrong',

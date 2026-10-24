@@ -145,6 +145,7 @@ if [ "$frontend_changed" = true ]; then
     run "frontend: tsc --noEmit" frontend ./node_modules/.bin/tsc --noEmit
     run "frontend: biome ci" frontend ./node_modules/.bin/biome ci .
     run "frontend: eslint (yarn lint)" frontend yarn lint
+    run "frontend: knip (unused files/exports/dependencies, issue #1907)" frontend ./node_modules/.bin/knip
   fi
 fi
 

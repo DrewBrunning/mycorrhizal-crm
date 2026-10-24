@@ -260,17 +260,6 @@
     "sortNameDesc": "Name (Z–A)",
     "sortUpdatedDesc": "Recently edited (newest first)",
     "sortUpdatedAsc": "Recently edited (oldest first)",
-    "filteredMessage_one": "{{count}} contact out of {{total}} in '{{circle}}'",
-    "filteredMessage_other": "{{count}} contacts out of {{total}} in '{{circle}}'",
-    "filteredBySearch_one": "{{count}} contact matching '{{search}}'",
-    "filteredBySearch_other": "{{count}} contacts matching '{{search}}'",
-    "filteredBySearchAndCircle_one": "{{count}} contact matching '{{search}}' in '{{circle}}'",
-    "filteredBySearchAndCircle_other": "{{count}} contacts matching '{{search}}' in '{{circle}}'",
-    "totalContacts_one": "{{count}} contact",
-    "totalContacts_other": "{{count}} contacts",
-    "resetFilter": "Reset Filter",
-    "noContacts": "No contacts found",
-    "addContact": "Add Contact",
     "firstname": "First Name",
     "lastname": "Last Name",
     "nickname": "Nickname",
@@ -284,8 +273,6 @@
     "prefer_not_to_say": "Prefer not to say",
     "preferred": "Preferred",
     "kind": "Kind",
-    "individual": "Individual",
-    "pet": "Pet",
     "human": "Human",
     "animal": "Animal",
     "email": "Email",
@@ -322,12 +309,7 @@
       "addCircle": "Add",
       "requiredFields": "First name and last name are required",
       "firstNameRequired": "First name is required",
-      "error": "Failed to create contact. Please try again.",
-      "success": "Contact created successfully!",
-      "createBirthdayReminder": "Create birthday reminder",
-      "email": "Email",
-      "firstname": "First Name",
-      "lastname": "Last Name"
+      "success": "Contact created successfully!"
     },
     "showArchived": "Show archived",
     "showFavorites": "Show favorites",
@@ -350,18 +332,14 @@
       "button": "Import",
       "title": "Import Contacts",
       "upload": {
-        "title": "Upload Contacts File",
-        "description": "Select a CSV or VCF file containing your contacts. A CSV file should have headers in the first row.",
         "dragDrop": "Drag and drop a CSV or VCF file here, or click to select",
         "maxSize": "Maximum file size: 50MB (VCF) / 20MB (CSV)",
-        "uploading": "Uploading...",
         "supportedFormats": "Supported formats: CSV (spreadsheet), VCF (vCard)",
         "pickFromDevice": "Pick from this device's contacts",
         "pickFromDeviceHint": "Opens your phone's contact picker. You choose which contacts to share; you'll review duplicates before anything is imported.",
         "pickerError": "Couldn't read the selected contacts."
       },
       "mapping": {
-        "title": "Map Columns",
         "description": "Match your CSV columns to contact fields. Columns marked 'Ignore' will not be imported.",
         "csvColumn": "CSV Column",
         "mapsTo": "Maps To",
@@ -389,8 +367,6 @@
         "label": "Label"
       },
       "preview": {
-        "title": "Review Import",
-        "description": "Review the contacts to be imported. Resolve any duplicates before proceeding.",
         "duplicateOf": "Matches: {{name}} ({{reason}})",
         "toCreate_one": "{{count}} to create",
         "toCreate_other": "{{count}} to create",
@@ -442,11 +418,7 @@
       "errors": {
         "invalidFile": "Please select a valid CSV file",
         "fileTooLarge": "File is too large. Maximum size is 5MB",
-        "emptyFile": "The CSV file is empty",
-        "noMappings": "Please map at least one column",
-        "uploadFailed": "Failed to upload file. Please try again.",
-        "previewFailed": "Failed to generate preview. Please try again.",
-        "importFailed": "Import failed. Please try again."
+        "noMappings": "Please map at least one column"
       }
     },
     "urls": "Websites",
@@ -637,7 +609,6 @@
       "about": "About",
       "contact": "Contact",
       "genderAndPronouns": "Gender & Pronouns",
-      "professional": "Professional",
       "notes": "Notes",
       "overview": "Overview",
       "people": "People",
@@ -659,7 +630,6 @@
     "address": "Address",
     "workInfo": "Work Information",
     "period": {
-      "label": "Period",
       "from": "From (year)",
       "to": "To (year)",
       "since": "Since {{year}}",
@@ -672,7 +642,6 @@
     "note": "Note",
     "addNote": "Add Note",
     "addActivity": "Add Activity",
-    "exportVCard": "Export vCard",
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
@@ -681,19 +650,12 @@
     "editNote": "Edit Note",
     "editActivity": "Edit Activity",
     "circles": "Circles",
-    "addCircle": "Add Circle",
     "newCircle": "New circle name...",
     "noCircles": "No circles yet",
     "firstname": "First Name",
     "lastname": "Last Name",
     "nickname": "Nickname",
-    "gender": "Gender",
-    "male": "Male",
-    "female": "Female",
-    "other": "Other",
-    "prefer_not_to_say": "Prefer not to say",
     "kind": "Kind",
-    "individual": "Individual",
     "human": "Human",
     "animal": "Animal",
     "deleteContact": "Delete Contact",
@@ -752,7 +714,6 @@
       "noTitles": "No titles or roles yet.",
       "noWorkInformation": "No work information yet.",
       "kindOptions": {
-        "title": "Job title",
         "role": "Role"
       },
       "validation": {
@@ -984,7 +945,6 @@
     "deleteConfirm": "Delete Reminder",
     "deleteMessage": "Are you sure you want to delete this reminder?",
     "email": "Email",
-    "birthdayMessage": "Birthday of {{name}}",
     "flexible": "Flexible",
     "reoccurFromCompletion": "Reschedule from completion date",
     "reoccurFromCompletionTooltip": "When completed, next reminder will be scheduled from the completion date instead of the original reminder date",
@@ -1077,7 +1037,6 @@
     "results_other": "{{count}} connections",
     "empty": "No connections found within this depth.",
     "noRelationMatches": "No connections match \"{{relation}}\".",
-    "notAvailable": "Not available.",
     "viewAll": "View all",
     "showLess": "Show less"
   },
@@ -1386,8 +1345,7 @@
       },
       "disable": {
         "title": "Disable two-factor authentication",
-        "description": "Enter a current code from your authenticator app to confirm. All other sessions will be signed out.",
-        "button": "Disable"
+        "description": "Enter a current code from your authenticator app to confirm. All other sessions will be signed out."
       },
       "regenerate": {
         "title": "Regenerate recovery codes",
@@ -1460,8 +1418,7 @@
       "promoteUserLabel": "Promote to admin",
       "confirmButton": "Permanently delete my account",
       "deleting": "Deleting...",
-      "error": "We couldn't delete your account. Please try again.",
-      "success": "Your account and all its data have been deleted."
+      "error": "We couldn't delete your account. Please try again."
     },
     "export": {
       "title": "Export Data",
@@ -3230,8 +3187,7 @@
       "current": "Current version",
       "latest": "Latest release",
       "checkedAt": "Checked at"
-    },
-    "error": "Could not load system status."
+    }
   },
   "backgroundJobs": {
     "title": "Background jobs",
@@ -3252,11 +3208,9 @@
     "durationTrend": "avg {{avg}}, max {{max}} over {{n}} runs",
     "consecutiveFailures": "Failed {{n}} times in a row",
     "incidentSince": "since {{time}}",
-    "itemsProcessed": "{{n}} processed",
     "never": "never",
     "history": "Run history",
     "noHistory": "No runs recorded for this job yet.",
-    "close": "Close",
     "trigger": {
       "scheduled": "scheduled",
       "initial": "startup",

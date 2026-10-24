@@ -133,7 +133,6 @@ icons) are documented separately in THIRD_PARTY_SOURCES.md.
 | `@maplibre/mlt` | `1.3.0` | (MIT OR Apache-2.0) | https://github.com/maplibre/maplibre-tile-spec |
 | `@maplibre/vt-pbf` | `4.3.2` | MIT | https://github.com/maplibre/vt-pbf |
 | `@mdi/js` | `7.4.47` | Apache-2.0 | https://github.com/Templarian/MaterialDesign-JS |
-| `@mdi/react` | `1.6.1` | MIT | https://github.com/Templarian/MaterialDesign-React |
 | `@mui/core-downloads-tracker` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/icons-material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/lab` | `9.0.0-beta.9` | MIT | https://github.com/mui/material-ui |
@@ -199,6 +198,7 @@ icons) are documented separately in THIRD_PARTY_SOURCES.md.
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
 | `i18next` | `26.4.5` | MIT | https://github.com/i18next/i18next |
 | `i18next-browser-languagedetector` | `8.2.1` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
+| `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |
 | `index-array-by` | `1.4.2` | MIT | https://github.com/vasturiano/index-array-by |
 | `internmap` | `2.0.3` | ISC | https://github.com/mbostock/internmap |
@@ -255,6 +255,11 @@ icons) are documented separately in THIRD_PARTY_SOURCES.md.
 | `typescript` | `6.0.3` | Apache-2.0 | https://github.com/microsoft/TypeScript |
 | `use-sync-external-store` | `1.6.0` | MIT | https://github.com/facebook/react |
 | `web-vitals` | `6.2.3` | Apache-2.0 | https://github.com/GoogleChrome/web-vitals |
+| `workbox-core` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
+| `workbox-expiration` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
+| `workbox-precaching` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
+| `workbox-routing` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
+| `workbox-strategies` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
 | `yaml` | `1.10.3` | ISC | https://github.com/eemeli/yaml |
 
 ## License texts
@@ -1055,36 +1060,6 @@ The MIT license applies to all non-font and non-icon files.
 
 ### 16. MIT
 
-Applies to: `@mdi/react`
-
-```text
-MIT License
-
-Copyright (c) 2018 Austin Andrews
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-### 17. MIT
-
 Applies to: `@mui/core-downloads-tracker`, `@mui/icons-material`, `@mui/lab`, `@mui/material`, `@mui/private-theming`, `@mui/styled-engine`, `@mui/system`, `@mui/types`, `@mui/utils`
 
 ```text
@@ -1113,7 +1088,7 @@ SOFTWARE.
 
 ---
 
-### 18. MIT
+### 17. MIT
 
 Applies to: `@popperjs/core`
 
@@ -1142,7 +1117,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 19. MIT
+### 18. MIT
 
 Applies to: `@remix-run/route-pattern`
 
@@ -1172,7 +1147,7 @@ SOFTWARE.
 
 ---
 
-### 20. MIT
+### 19. MIT
 
 Applies to: `@tweenjs/tween.js`
 
@@ -1204,7 +1179,7 @@ THE SOFTWARE.
 
 ---
 
-### 21. MIT
+### 20. MIT
 
 Applies to: `@types/d3-force`, `@types/geojson`, `@types/parse-json`, `@types/prop-types`, `@types/react`, `@types/react-transition-group`
 
@@ -1234,7 +1209,7 @@ MIT License
 
 ---
 
-### 22. MIT
+### 21. MIT
 
 Applies to: `accessor-fn`, `d3-binarytree`, `d3-force-3d`, `d3-octree`, `kapsule`, `react-kapsule`
 
@@ -1264,7 +1239,7 @@ SOFTWARE.
 
 ---
 
-### 23. MIT
+### 22. MIT
 
 Applies to: `babel-plugin-macros`
 
@@ -1293,7 +1268,7 @@ SOFTWARE.
 
 ---
 
-### 24. MIT
+### 23. MIT
 
 Applies to: `bezier-js`
 
@@ -1381,7 +1356,7 @@ For comments and questions, [tweet at me](https://twitter.com/TheRealPomax) or f
 
 ---
 
-### 25. MIT
+### 24. MIT
 
 Applies to: `bidi-js`
 
@@ -1412,7 +1387,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 26. MIT
+### 25. MIT
 
 Applies to: `callsites`, `parent-module`, `path-type`, `resolve-from`
 
@@ -1430,7 +1405,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 27. MIT
+### 26. MIT
 
 Applies to: `canvas-color-tracker`, `force-graph`, `index-array-by`
 
@@ -1460,7 +1435,7 @@ SOFTWARE.
 
 ---
 
-### 28. MIT
+### 27. MIT
 
 Applies to: `clsx`
 
@@ -1478,7 +1453,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 29. MIT
+### 28. MIT
 
 Applies to: `convert-source-map`
 
@@ -1510,7 +1485,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 30. MIT
+### 29. MIT
 
 Applies to: `cookie-es`
 
@@ -1547,7 +1522,7 @@ SOFTWARE.
 
 ---
 
-### 31. MIT
+### 30. MIT
 
 Applies to: `cosmiconfig`
 
@@ -1577,7 +1552,7 @@ SOFTWARE.
 
 ---
 
-### 32. MIT
+### 31. MIT
 
 Applies to: `csstype`
 
@@ -1605,7 +1580,7 @@ SOFTWARE.
 
 ---
 
-### 33. ISC
+### 32. ISC
 
 Applies to: `d3-array`
 
@@ -1627,7 +1602,7 @@ THIS SOFTWARE.
 
 ---
 
-### 34. ISC
+### 33. ISC
 
 Applies to: `d3-color`, `d3-time`
 
@@ -1649,7 +1624,7 @@ THIS SOFTWARE.
 
 ---
 
-### 35. ISC
+### 34. ISC
 
 Applies to: `d3-dispatch`, `d3-drag`, `d3-force`, `d3-interpolate`, `d3-quadtree`, `d3-scale`, `d3-selection`, `d3-time-format`, `d3-timer`, `d3-transition`, `d3-zoom`
 
@@ -1671,7 +1646,7 @@ THIS SOFTWARE.
 
 ---
 
-### 36. BSD-3-Clause
+### 35. BSD-3-Clause
 
 Applies to: `d3-ease`
 
@@ -1708,7 +1683,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 37. ISC
+### 36. ISC
 
 Applies to: `d3-format`
 
@@ -1730,7 +1705,7 @@ THIS SOFTWARE.
 
 ---
 
-### 38. ISC
+### 37. ISC
 
 Applies to: `d3-scale-chromatic`
 
@@ -1767,7 +1742,7 @@ specific language governing permissions and limitations under the License.
 
 ---
 
-### 39. MIT
+### 38. MIT
 
 Applies to: `debug`
 
@@ -1795,7 +1770,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 40. MIT
+### 39. MIT
 
 Applies to: `dom-helpers`
 
@@ -1825,7 +1800,7 @@ SOFTWARE.
 
 ---
 
-### 41. ISC
+### 40. ISC
 
 Applies to: `earcut`
 
@@ -1849,7 +1824,7 @@ THIS SOFTWARE.
 
 ---
 
-### 42. MIT
+### 41. MIT
 
 Applies to: `error-ex`, `is-arrayish`
 
@@ -1879,7 +1854,7 @@ THE SOFTWARE.
 
 ---
 
-### 43. MIT
+### 42. MIT
 
 Applies to: `es-errors`
 
@@ -1909,7 +1884,7 @@ SOFTWARE.
 
 ---
 
-### 44. MIT
+### 43. MIT
 
 Applies to: `escape-string-regexp`, `import-fresh`, `parse-json`
 
@@ -1927,7 +1902,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 45. MIT
+### 44. MIT
 
 Applies to: `find-root`
 
@@ -1943,7 +1918,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 ---
 
-### 46. MIT
+### 45. MIT
 
 Applies to: `float-tooltip`
 
@@ -1973,7 +1948,7 @@ SOFTWARE.
 
 ---
 
-### 47. MIT
+### 46. MIT
 
 Applies to: `function-bind`
 
@@ -2001,7 +1976,7 @@ THE SOFTWARE.
 
 ---
 
-### 48. MIT
+### 47. MIT
 
 Applies to: `github.com/SherClockHolmes/webpush-go`
 
@@ -2033,7 +2008,7 @@ SOFTWARE.
 
 ---
 
-### 49. MIT
+### 48. MIT
 
 Applies to: `github.com/boombuler/barcode`
 
@@ -2065,7 +2040,7 @@ SOFTWARE.
 
 ---
 
-### 50. Apache-2.0
+### 49. Apache-2.0
 
 Applies to: `github.com/coreos/go-oidc/v3`
 
@@ -2285,7 +2260,7 @@ This product includes software developed at CoreOS, Inc.
 
 ---
 
-### 51. MIT
+### 50. MIT
 
 Applies to: `github.com/dustin/go-humanize`
 
@@ -2317,7 +2292,7 @@ SOFTWARE.
 
 ---
 
-### 52. Apache-2.0
+### 51. Apache-2.0
 
 Applies to: `github.com/ebitengine/purego`
 
@@ -2529,7 +2504,7 @@ Apache License
 
 ---
 
-### 53. MIT
+### 52. MIT
 
 Applies to: `github.com/emersion/go-ical`
 
@@ -2561,7 +2536,7 @@ SOFTWARE.
 
 ---
 
-### 54. MIT
+### 53. MIT
 
 Applies to: `github.com/emersion/go-vcard`
 
@@ -2593,7 +2568,7 @@ SOFTWARE.
 
 ---
 
-### 55. MIT
+### 54. MIT
 
 Applies to: `github.com/emersion/go-webdav`
 
@@ -2625,7 +2600,7 @@ SOFTWARE.
 
 ---
 
-### 56. MIT
+### 55. MIT
 
 Applies to: `github.com/fxamacker/cbor/v2`
 
@@ -2657,7 +2632,7 @@ SOFTWARE.
 
 ---
 
-### 57. MIT
+### 56. MIT
 
 Applies to: `github.com/gabriel-vasile/mimetype`
 
@@ -2689,7 +2664,7 @@ SOFTWARE.
 
 ---
 
-### 58. MIT
+### 57. MIT
 
 Applies to: `github.com/gen2brain/heic`
 
@@ -2721,7 +2696,7 @@ SOFTWARE.
 
 ---
 
-### 59. MIT
+### 58. MIT
 
 Applies to: `github.com/gin-contrib/cors`
 
@@ -2753,7 +2728,7 @@ SOFTWARE.
 
 ---
 
-### 60. MIT
+### 59. MIT
 
 Applies to: `github.com/gin-contrib/sse`, `github.com/gin-gonic/gin`
 
@@ -2785,7 +2760,7 @@ THE SOFTWARE.
 
 ---
 
-### 61. BSD-3-Clause
+### 60. BSD-3-Clause
 
 Applies to: `github.com/glebarez/go-sqlite`, `modernc.org/sqlite`
 
@@ -2822,7 +2797,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 62. MIT
+### 61. MIT
 
 Applies to: `github.com/glebarez/sqlite`, `github.com/jinzhu/now`
 
@@ -2854,7 +2829,7 @@ THE SOFTWARE.
 
 ---
 
-### 63. MIT
+### 62. MIT
 
 Applies to: `github.com/go-co-op/gocron`
 
@@ -2886,7 +2861,7 @@ SOFTWARE.
 
 ---
 
-### 64. Apache-2.0
+### 63. Apache-2.0
 
 Applies to: `github.com/go-jose/go-jose/v4`, `github.com/google/go-tpm`, `go.mongodb.org/mongo-driver/v2`
 
@@ -3098,7 +3073,7 @@ Apache License
 
 ---
 
-### 65. MIT
+### 64. MIT
 
 Applies to: `github.com/go-playground/locales`, `github.com/go-playground/universal-translator`
 
@@ -3130,7 +3105,7 @@ SOFTWARE.
 
 ---
 
-### 66. MIT
+### 65. MIT
 
 Applies to: `github.com/go-playground/validator/v10`
 
@@ -3162,7 +3137,7 @@ SOFTWARE.
 
 ---
 
-### 67. MIT
+### 66. MIT
 
 Applies to: `github.com/go-viper/mapstructure/v2`
 
@@ -3194,7 +3169,7 @@ THE SOFTWARE.
 
 ---
 
-### 68. BSD-3-Clause
+### 67. BSD-3-Clause
 
 Applies to: `github.com/go-webauthn/webauthn`
 
@@ -3231,7 +3206,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 69. BSD-3-Clause
+### 68. BSD-3-Clause
 
 Applies to: `github.com/go-webauthn/x`
 
@@ -3263,7 +3238,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 70. MIT
+### 69. MIT
 
 Applies to: `github.com/goccy/go-yaml`
 
@@ -3295,7 +3270,7 @@ SOFTWARE.
 
 ---
 
-### 71. MIT
+### 70. MIT
 
 Applies to: `github.com/golang-jwt/jwt/v4`, `github.com/golang-jwt/jwt/v5`
 
@@ -3314,7 +3289,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 72. MIT
+### 71. MIT
 
 Applies to: `github.com/golang-migrate/migrate/v4`
 
@@ -3353,7 +3328,7 @@ THE SOFTWARE.
 
 ---
 
-### 73. MIT
+### 72. MIT
 
 Applies to: `github.com/google/jsonschema-go`
 
@@ -3385,7 +3360,7 @@ SOFTWARE.
 
 ---
 
-### 74. BSD-3-Clause
+### 73. BSD-3-Clause
 
 Applies to: `github.com/google/uuid`
 
@@ -3423,7 +3398,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 75. MIT
+### 74. MIT
 
 Applies to: `github.com/jinzhu/inflection`
 
@@ -3455,7 +3430,7 @@ SOFTWARE.
 
 ---
 
-### 76. MIT
+### 75. MIT
 
 Applies to: `github.com/leodido/go-urn`
 
@@ -3487,7 +3462,7 @@ SOFTWARE.
 
 ---
 
-### 77. MIT
+### 76. MIT
 
 Applies to: `github.com/mattn/go-colorable`
 
@@ -3519,7 +3494,7 @@ SOFTWARE.
 
 ---
 
-### 78. MIT
+### 77. MIT
 
 Applies to: `github.com/mattn/go-isatty`
 
@@ -3539,7 +3514,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 79. Apache-2.0, MIT
+### 78. Apache-2.0, MIT
 
 Applies to: `github.com/modelcontextprotocol/go-sdk`
 
@@ -3825,7 +3800,7 @@ Use of this source code is governed by (the license\n|an MIT-style\nlicense )tha
 
 ---
 
-### 80. ISC
+### 79. ISC
 
 Applies to: `github.com/nfnt/resize`
 
@@ -3849,7 +3824,7 @@ THIS SOFTWARE.
 
 ---
 
-### 81. MIT
+### 80. MIT
 
 Applies to: `github.com/pelletier/go-toml/v2`
 
@@ -3882,7 +3857,7 @@ SOFTWARE.
 
 ---
 
-### 82. MIT
+### 81. MIT
 
 Applies to: `github.com/philhofer/fwd`
 
@@ -3900,7 +3875,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 83. Apache-2.0
+### 82. Apache-2.0
 
 Applies to: `github.com/pquerna/otp`
 
@@ -4120,7 +4095,7 @@ Paul Querna (http://paul.querna.org/).
 
 ---
 
-### 84. MIT
+### 83. MIT
 
 Applies to: `github.com/quic-go/qpack`
 
@@ -4138,7 +4113,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 85. MIT
+### 84. MIT
 
 Applies to: `github.com/quic-go/quic-go`
 
@@ -4170,7 +4145,7 @@ SOFTWARE.
 
 ---
 
-### 86. BSD-3-Clause
+### 85. BSD-3-Clause
 
 Applies to: `github.com/remyoudompheng/bigfft`
 
@@ -4208,7 +4183,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 87. MIT
+### 86. MIT
 
 Applies to: `github.com/resend/resend-go/v2`
 
@@ -4240,7 +4215,7 @@ SOFTWARE.
 
 ---
 
-### 88. MIT
+### 87. MIT
 
 Applies to: `github.com/robfig/cron/v3`
 
@@ -4272,7 +4247,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 89. MIT
+### 88. MIT
 
 Applies to: `github.com/rs/zerolog`
 
@@ -4304,7 +4279,7 @@ SOFTWARE.
 
 ---
 
-### 90. MIT
+### 89. MIT
 
 Applies to: `github.com/segmentio/asm`
 
@@ -4336,7 +4311,7 @@ SOFTWARE.
 
 ---
 
-### 91. MIT
+### 90. MIT
 
 Applies to: `github.com/segmentio/encoding`
 
@@ -4368,7 +4343,7 @@ SOFTWARE.
 
 ---
 
-### 92. MIT
+### 91. MIT
 
 Applies to: `github.com/teambition/rrule-go`
 
@@ -4400,7 +4375,7 @@ SOFTWARE.
 
 ---
 
-### 93. Apache-2.0
+### 92. Apache-2.0
 
 Applies to: `github.com/tetratelabs/wazero`
 
@@ -4617,7 +4592,7 @@ Copyright 2020-2023 wazero authors
 
 ---
 
-### 94. MIT
+### 93. MIT
 
 Applies to: `github.com/tinylib/msgp`
 
@@ -4636,7 +4611,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-### 95. MIT
+### 94. MIT
 
 Applies to: `github.com/ugorji/go/codec`
 
@@ -4669,7 +4644,7 @@ SOFTWARE.
 
 ---
 
-### 96. MIT
+### 95. MIT
 
 Applies to: `github.com/x448/float16`
 
@@ -4701,7 +4676,7 @@ SOFTWARE.
 
 ---
 
-### 97. BSD-3-Clause
+### 96. BSD-3-Clause
 
 Applies to: `github.com/yosida95/uritemplate/v3`
 
@@ -4737,7 +4712,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 98. MIT
+### 97. MIT
 
 Applies to: `gl-matrix`
 
@@ -4765,7 +4740,7 @@ THE SOFTWARE.
 
 ---
 
-### 99. MIT
+### 98. MIT
 
 Applies to: `go.uber.org/atomic`
 
@@ -4795,7 +4770,7 @@ THE SOFTWARE.
 
 ---
 
-### 100. BSD-3-Clause
+### 99. BSD-3-Clause
 
 Applies to: `golang.org/x/crypto`, `golang.org/x/mod`, `golang.org/x/net`, `golang.org/x/oauth2`, `golang.org/x/sync`, `golang.org/x/sys`, `golang.org/x/text`, `golang.org/x/time`
 
@@ -4833,7 +4808,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 101. BSD-3-Clause
+### 100. BSD-3-Clause
 
 Applies to: `google.golang.org/protobuf`
 
@@ -4871,7 +4846,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 102. MIT
+### 101. MIT
 
 Applies to: `gorm.io/gorm`
 
@@ -4903,7 +4878,7 @@ THE SOFTWARE.
 
 ---
 
-### 103. MIT
+### 102. MIT
 
 Applies to: `hasown`
 
@@ -4933,7 +4908,7 @@ SOFTWARE.
 
 ---
 
-### 104. BSD-3-Clause
+### 103. BSD-3-Clause
 
 Applies to: `hoist-non-react-statics`
 
@@ -4971,7 +4946,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 105. MIT
+### 104. MIT
 
 Applies to: `html-parse-stringify`
 
@@ -5002,7 +4977,7 @@ SOFTWARE.
 
 ---
 
-### 106. MIT
+### 105. MIT
 
 Applies to: `i18next`
 
@@ -5032,7 +5007,7 @@ SOFTWARE.
 
 ---
 
-### 107. MIT
+### 106. MIT
 
 Applies to: `i18next-browser-languagedetector`
 
@@ -5058,6 +5033,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+---
+
+### 107. ISC
+
+Applies to: `idb`
+
+```text
+ISC License (ISC)
+Copyright (c) 2016, Jake Archibald <jaffathecake@gmail.com>
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
 ---
@@ -7145,7 +7135,35 @@ Apache License
 
 ---
 
-### 153. ISC
+### 153. MIT
+
+Applies to: `workbox-core`, `workbox-expiration`, `workbox-precaching`, `workbox-routing`, `workbox-strategies`
+
+```text
+Copyright 2018 Google LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+---
+
+### 154. ISC
 
 Applies to: `yaml`
 
