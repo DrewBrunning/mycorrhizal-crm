@@ -1,10 +1,10 @@
-// Package agentcontext validates the repository's AGENTS.md hierarchy: the
-// expected file set, CLAUDE.md alias resolution, line budgets, and
-// registry↔disk parity (issue #1955).
+// Package agentcontext validates the repository's agent-context tree: the
+// AGENTS.md file set and aliases (issue #1955), the skill contract and
+// reference integrity, the Suites registry, static path/command resolution,
+// and fact parity (issue #1956).
 //
 // It is deliberately read-only and static: it never executes a command parsed
-// out of prose and never rewrites a file. Skill/reference/Suite validation
-// lands in a later stage.
+// out of prose and never rewrites a file.
 package agentcontext
 
 import (
@@ -42,18 +42,47 @@ var excludedDirs = map[string]bool{
 func Check(root string) []mdref.Finding {
 	var findings []mdref.Finding
 	registered := map[string]bool{}
+	var contextFiles []contextFile
 	for _, af := range Registry() {
 		if af.AliasOf == "" {
 			registered[af.Path] = true
 			findings = append(findings, checkAgentFile(root, af)...)
+			abs := filepath.Join(root, filepath.FromSlash(af.Path))
+			if body, err := os.ReadFile(abs); err == nil { // #nosec G304 -- af.Path comes from the fixed registry
+				contextFiles = append(contextFiles, contextFile{Path: af.Path, Text: string(body)})
+			}
 			continue
 		}
 		findings = append(findings, checkAlias(root, af)...)
 	}
 	findings = append(findings, checkParity(root, registered)...)
-	// One finding per file is the current invariant, so path ordering is
-	// deterministic.
-	sort.Slice(findings, func(i, j int) bool { return findings[i].File < findings[j].File })
+
+	skills, skillFindings := checkSkills(root)
+	findings = append(findings, skillFindings...)
+	findings = append(findings, checkSuites(root, skills, Suites())...)
+	findings = append(findings, checkFacts(root, Facts())...)
+	for _, skill := range skills {
+		abs := filepath.Join(root, filepath.FromSlash(skill.File))
+		if body, err := os.ReadFile(abs); err == nil { // #nosec G304 -- skill.File is a discovered repo path
+			contextFiles = append(contextFiles, contextFile{Path: skill.File, Text: string(body)})
+		}
+		for _, ref := range skill.References {
+			abs := filepath.Join(root, filepath.FromSlash(ref))
+			if body, err := os.ReadFile(abs); err == nil { // #nosec G304 -- ref is a discovered repo path
+				contextFiles = append(contextFiles, contextFile{Path: ref, Text: string(body)})
+			}
+		}
+	}
+	findings = append(findings, checkReferences(root, contextFiles)...)
+	sort.Slice(findings, func(i, j int) bool {
+		if findings[i].File != findings[j].File {
+			return findings[i].File < findings[j].File
+		}
+		if findings[i].Line != findings[j].Line {
+			return findings[i].Line < findings[j].Line
+		}
+		return findings[i].Message < findings[j].Message
+	})
 	return findings
 }
 
