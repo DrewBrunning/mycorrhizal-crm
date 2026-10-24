@@ -1,0 +1,106 @@
+# Versioned skill-trigger prompts (issue #1960).
+#
+# These test SELECTION, not task completion: a fresh agent session with only
+# the repository context should load the expected SKILL.md for each prompt.
+# Run the procedure in docs/development/context-engineering.md#trigger-tests.
+# Keep these independent of testdata/agent-eval/*/task.md.
+version: 1
+
+# Pairs that are easy to confuse. The manual run must record which one loaded
+# and why the other did not.
+ambiguous_pairs:
+  - skills: [contact-data-fidelity, relationship-semantics-change]
+  - skills: [api-contract-change, release-readiness]
+  - skill: security-sensitive-change
+    context_file: backend/AGENTS.md
+
+prompts:
+  - prompt: "Add a last_reviewed_at column to contacts and index it."
+    expect: database-migration
+  - prompt: "Split the addresses table into a child table without losing existing rows."
+    expect: database-migration
+  - prompt: "Change a contact column from TEXT to INTEGER and backfill the old values."
+    expect: database-migration
+
+  - prompt: "The CSV export is missing a contact's birthday after an import."
+    expect: contact-data-fidelity
+    not: [relationship-semantics-change]
+  - prompt: "A custom phone-number label disappears after saving from the Android app."
+    expect: contact-data-fidelity
+  - prompt: "Add a new vCard property and keep JSContact in sync."
+    expect: contact-data-fidelity
+    not: [relationship-semantics-change]
+
+  - prompt: "The graph shows a sibling relationship that I only marked as suggested."
+    expect: relationship-semantics-change
+    not: [contact-data-fidelity]
+  - prompt: "Add a grandparent_of relation token and its inverse."
+    expect: relationship-semantics-change
+  - prompt: "Household membership is being counted as a confirmed relationship."
+    expect: relationship-semantics-change
+    not: [contact-data-fidelity]
+
+  - prompt: "Add a limit parameter to the contact list response envelope."
+    expect: api-contract-change
+    not: [release-readiness]
+  - prompt: "Return 409 instead of 400 for a revision conflict and update both clients."
+    expect: api-contract-change
+  - prompt: "Rename a response field without breaking older clients."
+    expect: api-contract-change
+    not: [release-readiness]
+
+  - prompt: "We need to cut the next patch release; what evidence is still missing?"
+    expect: release-readiness
+    not: [api-contract-change]
+  - prompt: "An RC is being promoted to final; check the schema and ASVS obligations."
+    expect: release-readiness
+    not: [api-contract-change]
+
+  - prompt: "A user can download another user's attachment by guessing its ID."
+    expect: security-sensitive-change
+    not: [api-contract-change]
+  - prompt: "Add a new outbound notification webhook to a user-supplied URL."
+    expect: security-sensitive-change
+  - prompt: "An import endpoint accepts a 200 MB vCard without any limits."
+    expect: security-sensitive-change
+
+  - prompt: "Add a translated empty-state message for the new dashboard."
+    expect: localization-change
+    not: [documentation-maintenance]
+  - prompt: "The German plural form for '3 contacts' is wrong."
+    expect: localization-change
+  - prompt: "The date picker shows US month/day order in French."
+    expect: localization-change
+
+  - prompt: "Bump the Alpine base image digest."
+    expect: dependency-update-review
+  - prompt: "Dependabot wants to upgrade a Go module to a new major version."
+    expect: dependency-update-review
+  - prompt: "Add a new npm package for date formatting."
+    expect: dependency-update-review
+    not: [add-quality-gate]
+
+  - prompt: "The configuration reference is stale after adding an environment variable."
+    expect: documentation-maintenance
+    not: [localization-change]
+  - prompt: "A heading rename broke links in the deployment guide."
+    expect: documentation-maintenance
+  - prompt: "Document the new CLI flag on the operator upgrade page."
+    expect: documentation-maintenance
+
+  - prompt: "The contact list query runs 30 queries for one page."
+    expect: performance-investigation
+    not: [database-migration]
+  - prompt: "Raise the dashboard wall-clock budget so the flaky test stops failing."
+    expect: performance-investigation
+  - prompt: "Regenerate the benchmark baseline after changing the query shape."
+    expect: performance-investigation
+    not: [database-migration]
+
+  - prompt: "Make knip a required check."
+    expect: add-quality-gate
+    not: [documentation-maintenance]
+  - prompt: "Add a nightly workflow for dependency drift."
+    expect: add-quality-gate
+  - prompt: "Promote the codecov patch status to blocking on main."
+    expect: add-quality-gate

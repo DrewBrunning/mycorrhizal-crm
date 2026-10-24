@@ -158,9 +158,55 @@ parsed; free prose is not. Tokens such as `user_id`, `suggested`,
 
 The check runs in `.githooks/pre-commit` and in `unit-tests.yml`'s
 `docs-citations` job, unconditionally, so a context-only change cannot merge
-with a broken hierarchy. It does not run the eval harness (a later stage) and it
-does not execute any documented command; it proves the target exists and the
-command is registered, not that the command passes.
+with a broken hierarchy. It does not run the dispatch-only agent eval harness
+(#1959) and it does not execute any documented command; it proves the target
+exists and the command is registered, not that the command passes.
+
+## Trigger tests
+
+The versioned prompt set is `testdata/agent-eval/triggers.yaml` (issue #1960).
+It has 2–3 realistic prompts per skill and records the expected skill, the
+neighbour that must not load, and the ambiguous pairs:
+
+- `contact-data-fidelity` vs `relationship-semantics-change`;
+- `api-contract-change` vs `release-readiness`;
+- `security-sensitive-change` vs the platform files (for example
+  `backend/AGENTS.md`).
+
+This tests **selection**, not task completion. The prompts are deliberately
+independent of `testdata/agent-eval/*/task.md`; do not copy an eval task prompt
+into the trigger set.
+
+Procedure (manual; no pass/fail automation yet):
+
+1. Start a fresh agent session with only the repository context loaded (the
+   `AGENTS.md` hierarchy and `.agents/skills/`). Do not paste the skill text or
+   name the skill in the prompt.
+2. Send each prompt verbatim, one at a time, and record which `SKILL.md` the
+   agent opened (or that it answered from a platform file with no skill).
+3. Compare with the `expect` field. For each `not` neighbour, record why it did
+   not win; for each ambiguous pair, record both sides.
+4. Put the result in the PR's Context-change checklist (or the milestone-gate
+   issue). A mismatch means the skill description needs tightening, not that
+   the prompt is wrong.
+
+A completeness test (`TestTriggerPromptSetIsComplete` in
+`backend/internal/agentcontext`) is deterministic: it proves every skill has
+2–3 prompts, every named skill exists, and the ambiguous pairs are declared. It
+does **not** prove selection; that is the manual run.
+
+## Milestone-gate audit
+
+At every milestone gate, do the context truth audit and record it in the gate
+issue:
+
+- Read every `AGENTS.md`, `SKILL.md`, and reference against the code since the
+  last gate; update or delete what is stale.
+- Run every `Suites` DoD command once from a clean checkout.
+- Re-run the trigger prompts if any skill description changed.
+
+The standing criterion is also in
+`.github/ISSUE_TEMPLATE/milestone_gate.md`; this page is the long form.
 
 ## What stays manual
 
