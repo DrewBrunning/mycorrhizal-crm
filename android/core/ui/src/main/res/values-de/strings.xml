@@ -942,6 +942,11 @@
     <string name="settings_about_server_version">Serverversion</string>
     <string name="settings_about_server_built">Server erstellt am</string>
     <string name="settings_about_copy">Build-Details kopieren</string>
+    <string name="settings_about_licenses">Lizenzen Dritter</string>
+    <string name="settings_licenses_title">Lizenzen Dritter</string>
+    <string name="settings_licenses_empty">In diesem Build sind keine Lizenzinformationen verfügbar.</string>
+    <string name="settings_licenses_expanded">Erweitert</string>
+    <string name="settings_licenses_collapsed">Reduziert</string>
     <string name="settings_cancel">Abbrechen</string>
 
     <!-- Aktivitäten -->

@@ -5,8 +5,11 @@ This project incorporates content, assets, and libraries from the following thir
 > **Note:** this file documents bundled *content* (icons, fonts) that does not
 > come from a package manifest. The Go and npm dependency trees are licensed
 > automatically in CI (`.github/workflows/license-compliance.yml`), which gates
-> on copyleft (GPL/AGPL/LGPL) licenses — that scan, not this file, is the
-> authoritative record of dependency licenses.
+> on copyleft (GPL/AGPL/LGPL) licenses. The attribution record those permissive
+> dependencies require is generated into `THIRD_PARTY_NOTICES.md` (container)
+> and the app's Settings → About → Third-party licenses screen (Android); see
+> `docs/security/license-attribution.md`. This file is not the authoritative
+> record of dependency licenses.
 
 ---
 

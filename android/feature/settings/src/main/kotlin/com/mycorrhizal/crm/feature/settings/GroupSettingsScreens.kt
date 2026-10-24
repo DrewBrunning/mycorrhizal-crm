@@ -163,11 +163,12 @@ fun AdministrationSettingsContent(
 @Composable
 fun AboutSettingsScreen(
     onBack: () -> Unit,
+    onLicenses: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScaffold(title = stringResource(R.string.settings_about), onBack = onBack) { padding ->
-        AboutSettingsContent(state = state, modifier = padding)
+        AboutSettingsContent(state = state, onLicenses = onLicenses, modifier = padding)
     }
 }
 
@@ -178,7 +179,11 @@ fun AboutSettingsScreen(
  * informational: a failure (or the wait) shows a dash and the rest of Settings is unaffected.
  */
 @Composable
-fun AboutSettingsContent(state: SettingsUiState, modifier: Modifier = Modifier) {
+fun AboutSettingsContent(
+    state: SettingsUiState,
+    modifier: Modifier = Modifier,
+    onLicenses: () -> Unit = {},
+) {
     val context = LocalContext.current
     val dash = stringResource(R.string.settings_value_placeholder)
     SettingsColumn(modifier = modifier) {
@@ -210,6 +215,12 @@ fun AboutSettingsContent(state: SettingsUiState, modifier: Modifier = Modifier) 
             ) {
                 Text(label)
             }
+            // Issue #1880: attribution required by the dependencies the APK/AAB
+            // distributes, generated at build time by AboutLibraries.
+            SettingsNavigationRow(
+                title = stringResource(R.string.settings_about_licenses),
+                onClick = onLicenses,
+            )
         }
     }
 }

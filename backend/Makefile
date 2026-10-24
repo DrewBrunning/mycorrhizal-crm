@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-ts-api gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix gen-perf-baseline gen-mutation-scope gen-config-reference gen-coverage-baseline help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-ts-api gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix gen-perf-baseline gen-mutation-scope gen-config-reference gen-coverage-baseline gen-notices help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -92,6 +92,9 @@ gen-mutation-scope: ## Regenerate the gremlins exclude-files configs under backe
 
 gen-config-reference: ## Regenerate the configuration register (issue #933, #501 action 1-2/7) from the cfgreg struct tags on config.Config. Run when a Config field or its cfgreg tag changes; the completeness + drift tests fail until this is committed.
 	@go run ./cmd/genconfigreference
+
+gen-notices: ## Regenerate the third-party attribution file (issue #1880) from the modules linked into the backend binary and the frontend's production npm tree. Run after a dependency change; the notice drift check fails until the diff is committed. Requires `yarn install --frozen-lockfile` in frontend/ (license-checker reads node_modules).
+	@go run ./cmd/gennotices
 
 gen-coverage-baseline: ## Regenerate the per-file coverage no-regression ratchet's baseline from a cross-package profile (issue #1477): runs the WHOLE suite once with -coverpkg=./... (heavy, ~4 min, one process) and rewrites internal/coverageratchet/testdata/baseline.json. Keeps the existing tolerance; commit the diff -- it is the review. RAPID_CHECKS/ADDRESS_PROPERTY_ITERATIONS are pinned to the PR tier (200), matching the "Collect cross-package coverage" step in unit-tests.yml, so the baseline is generated at the same property-test depth it is checked against. Frontend counterpart: `yarn coverage:ratchet:update`.
 	@RAPID_CHECKS=200 ADDRESS_PROPERTY_ITERATIONS=200 go test $$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$$') -coverpkg=./... -covermode=atomic -p 4 -coverprofile=coverage-cross.out

@@ -19,6 +19,9 @@ dependencies {
     // Issue #814 Phase 2: encode the TOTP enrollment otpauth:// URI as a QR
     // bitmap (pure-Java, no scanning/camera).
     implementation(libs.zxing.core)
+    // Issue #1880: parse the AboutLibraries JSON the app build embeds for the
+    // third-party licenses screen. Core only — no Material UI dependency.
+    implementation(libs.aboutlibraries.core)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

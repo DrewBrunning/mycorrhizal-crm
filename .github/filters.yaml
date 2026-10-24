@@ -53,6 +53,20 @@ gradle-manifests:
   - 'android/gradle/libs.versions.toml'
   - 'android/settings.gradle.kts'
 
+# Issue #1880: third-party attribution. A dependency-manifest change must
+# regenerate THIRD_PARTY_NOTICES.md, and a change to the generator, its
+# license-text fallbacks, or the committed notice itself must re-run the drift
+# check.
+notices:
+  - 'backend/go.mod'
+  - 'backend/go.sum'
+  - 'frontend/package.json'
+  - 'frontend/yarn.lock'
+  - 'backend/cmd/gennotices/**'
+  - 'backend/internal/notices/**'
+  - 'thirdparty/**'
+  - 'THIRD_PARTY_NOTICES.md'
+
 # REL-05 (issue #449): the operator-visible surfaces. A PR touching one of these
 # must carry an `## Upgrade notes` / `## Breaking changes` block in its
 # description, or `no-changelog: <reason>` — the `changelog-note` job in

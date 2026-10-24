@@ -59,6 +59,9 @@ repository (`google()`, `mavenCentral()`, and `jitpack.io` in
 - `com.google.zxing:core` (Maven Central) — Apache-2.0, a pure-Java QR
   *encoder*; no camera or ML Kit is involved.
 - AndroidX / Kotlin / OkHttp / Moshi / Coil / Hilt / Room — Apache-2.0.
+- `com.mikepenz:aboutlibraries-core` — Apache-2.0. It parses the build-time
+  license metadata for Settings → About → Third-party licenses (issue #1880)
+  and is GMS-free; the zero-GMS check above stays at `0`.
 
 No proprietary analytics, ad, or crash-reporting SDK is bundled. The
 `foss` flavor's locked dependency graph is `android/app/gradle.lockfile`'s

@@ -5,6 +5,9 @@
 .github
 .gitignore
 *.md
+# Issue #1880: the generated third-party attribution file is copied into the
+# image; every other markdown file stays out of the build context.
+!THIRD_PARTY_NOTICES.md
 
 # Node
 node_modules

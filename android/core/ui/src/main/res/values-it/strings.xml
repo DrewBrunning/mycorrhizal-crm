@@ -943,6 +943,11 @@
     <string name="settings_about_server_version">Versione del server</string>
     <string name="settings_about_server_built">Server compilato</string>
     <string name="settings_about_copy">Copia dettagli build</string>
+    <string name="settings_about_licenses">Licenze di terze parti</string>
+    <string name="settings_licenses_title">Licenze di terze parti</string>
+    <string name="settings_licenses_empty">Nessuna informazione sulle licenze è disponibile in questa build.</string>
+    <string name="settings_licenses_expanded">Espanso</string>
+    <string name="settings_licenses_collapsed">Compresso</string>
     <string name="settings_cancel">Annulla</string>
 
     <!-- Activities -->

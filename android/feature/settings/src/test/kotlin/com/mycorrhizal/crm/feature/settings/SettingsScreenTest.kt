@@ -19,6 +19,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mikepenz.aboutlibraries.Libs
+import com.mikepenz.aboutlibraries.entity.License
+import com.mikepenz.aboutlibraries.entity.Library
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
 import com.mycorrhizal.crm.domain.about.AppBuildInfo
@@ -690,6 +693,54 @@ class SettingsScreenTest {
         show { AboutSettingsContent(state = SettingsUiState(buildInfo = release, serverLookupFailed = true)) }
         composeTestRule.onNodeWithText("Server version").assertIsDisplayed()
         assertTrue(composeTestRule.onAllNodesWithText("—").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun `About opens the third-party licenses screen`() {
+        var opened = false
+        show { AboutSettingsContent(state = SettingsUiState(buildInfo = release), onLicenses = { opened = true }) }
+        composeTestRule.onNodeWithText("Third-party licenses").performScrollTo().performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun `third-party licenses lists a dependency and expands its license text`() {
+        show { ThirdPartyLicensesContent(libs = sampleLibs()) }
+        composeTestRule.onNodeWithText("Example Lib 1.2.3").assertIsDisplayed()
+        composeTestRule.onNodeWithText("MIT").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("license-text", useUnmergedTree = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText("Example Lib 1.2.3").performClick()
+        composeTestRule.onNodeWithTag("license-text", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Permission is hereby granted, free of charge.").assertExists()
+    }
+
+    @Test
+    fun `third-party licenses explains when the build has no data`() {
+        show { ThirdPartyLicensesContent(libs = null) }
+        composeTestRule.onNodeWithTag("licenses-empty").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No license information is available in this build.").assertIsDisplayed()
+    }
+
+    private fun sampleLibs(): Libs {
+        val license = License(
+            name = "MIT",
+            url = "https://opensource.org/license/mit",
+            spdxId = "MIT",
+            licenseContent = "Permission is hereby granted, free of charge.",
+            hash = "mit",
+        )
+        val library = Library(
+            uniqueId = "com.example:lib",
+            artifactVersion = "1.2.3",
+            name = "Example Lib",
+            description = null,
+            website = null,
+            developers = emptyList(),
+            organization = null,
+            scm = null,
+            licenses = setOf(license),
+        )
+        return Libs(libraries = listOf(library), licenses = setOf(license))
     }
 
     @Test
