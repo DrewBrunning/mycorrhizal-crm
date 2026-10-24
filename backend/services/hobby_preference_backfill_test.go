@@ -285,6 +285,32 @@ func TestMigrateHobbyPreferences_DislikeRecategorizedInPlace(t *testing.T) {
 	assert.Empty(t, live.Card.PersonalInfo, "a dislike never projects to a Card")
 }
 
+// TestMetaFromHobbyPreference_NoteMergeRules pins every arm of the notes
+// merge: a missing existing note takes the preference's, an absent or
+// identical incoming note leaves the existing one untouched (so a re-run
+// cannot duplicate it), and two different notes are joined with a blank line.
+func TestMetaFromHobbyPreference_NoteMergeRules(t *testing.T) {
+	cases := []struct {
+		name     string
+		existing string
+		incoming string
+		want     string
+	}{
+		{name: "existing empty takes incoming", existing: "", incoming: "plays weekly", want: "plays weekly"},
+		{name: "incoming empty keeps existing", existing: "learned young", incoming: "", want: "learned young"},
+		{name: "identical notes are not duplicated", existing: "plays weekly", incoming: "plays weekly", want: "plays weekly"},
+		{name: "different notes are joined", existing: "learned young", incoming: "plays weekly", want: "learned young\n\nplays weekly"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pref := &models.Preference{Notes: tc.incoming}
+			existing := contactmodel.PersonalInfoMeta{Notes: tc.existing}
+			got := metaFromHobbyPreference(pref, existing)
+			assert.Equal(t, tc.want, got.Notes)
+		})
+	}
+}
+
 // TestMigrateHobbyPreferences_EdgeBranches covers the failure and no-op
 // branches: nil db, a pre-000052 schema, a dangling preference, and a
 // preference key the mapping cannot represent without losing data.
@@ -322,6 +348,17 @@ func TestMigrateHobbyPreferences_EdgeBranches(t *testing.T) {
 		var raw models.Preference
 		require.NoError(t, db.First(&raw, "id = ?", pref.ID).Error)
 		assert.Equal(t, models.PreferenceCategoryHobby, raw.Category)
+	})
+
+	t.Run("a failed ledger write is reported", func(t *testing.T) {
+		logtest.Guard(t)
+		db, user, contact := newHobbyBackfillFixture(t)
+		seedHobbyPreference(t, db, user.ID, contact.VCardUID, "favorite", "Chess", "", models.RelationshipSensitivityNormal)
+		require.NoError(t, db.Exec(`CREATE TRIGGER fail_ledger BEFORE INSERT ON data_backfills BEGIN SELECT RAISE(ABORT, 'boom'); END`).Error)
+
+		_, err := MigrateHobbyPreferencesToPersonalInfo(db)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "record completion")
 	})
 
 	t.Run("unrecognized key is left untouched rather than losing it", func(t *testing.T) {

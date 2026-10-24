@@ -167,12 +167,13 @@ func MigrateHobbyPreferencesToPersonalInfo(db *gorm.DB) (*HobbyPreferenceBackfil
 		}
 	}
 
-	if err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		return tx.Exec(
 			`INSERT INTO data_backfills (name, version, completed_at) VALUES (?, ?, ?)`,
 			HobbyPreferenceBackfillName, HobbyPreferenceBackfillVersion, Now().UTC(),
 		).Error
-	}); err != nil {
+	})
+	if err != nil {
 		return stats, fmt.Errorf("hobby preference backfill (record completion): %w", err)
 	}
 
@@ -265,12 +266,11 @@ func metaFromHobbyPreference(pref *models.Preference, existing contactmodel.Pers
 	meta := existing
 	meta.Sensitivity = stricterSensitivity(existing.NormalizedSensitivity(), pref.Sensitivity)
 	meta.Favorite = existing.Favorite || pref.Key == "favorite"
-	switch {
-	case existing.Notes == "":
+	if existing.Notes == "" {
 		meta.Notes = pref.Notes
-	case pref.Notes == "" || pref.Notes == existing.Notes:
+	} else if pref.Notes == "" || pref.Notes == existing.Notes {
 		meta.Notes = existing.Notes
-	default:
+	} else {
 		meta.Notes = existing.Notes + "\n\n" + pref.Notes
 	}
 	if meta.Source == "" {

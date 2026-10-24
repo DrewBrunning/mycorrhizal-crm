@@ -97,6 +97,11 @@ jobs:
           # only thread an include_sensitive flag into these.
           - scope: sensitivity-filter-records
             package: models
+          # Issue #1946: the one-shot v1.5.0 startup rewrites whose ledger row
+          # makes a wrong run permanent — gift-date calendar-day normalization
+          # and the deprecated-hobby-Preference move into Card.PersonalInfo.
+          - scope: services-backfill
+            package: services
 
     steps:
       - name: Checkout repository
