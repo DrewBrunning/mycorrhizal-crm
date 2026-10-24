@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.core.content.edit
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -111,7 +112,7 @@ internal class BiometricUnlockVault(
 
     /** Wipe the wrapped token + the auth-bound key (a permanently invalidated key can never be used again). */
     fun clear() { // # pragma: no cover — AndroidKeyStore is unavailable under Robolectric
-        prefs.edit().remove(KEY_WRAPPED).apply()
+        prefs.edit { remove(KEY_WRAPPED) }
         keyStore.deleteEntry(KEY_ALIAS)
     }
 
@@ -143,7 +144,7 @@ internal class BiometricUnlockVault(
     }
 
     private fun storeWrapped(wrapped: ByteArray) { // # pragma: no cover
-        prefs.edit().putString(KEY_WRAPPED, Base64.encodeToString(wrapped, Base64.NO_WRAP)).apply()
+        prefs.edit { putString(KEY_WRAPPED, Base64.encodeToString(wrapped, Base64.NO_WRAP)) }
     }
 
     companion object {

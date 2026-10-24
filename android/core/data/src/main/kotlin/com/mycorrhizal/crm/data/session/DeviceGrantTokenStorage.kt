@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.session
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -52,10 +53,10 @@ class EncryptedDeviceGrantTokenStorage(context: Context) : DeviceGrantTokenStora
     }
 
     override suspend fun save(profileId: String, token: String, id: Long) { // # pragma: no cover — needs a real Android Keystore (see EncryptedDeviceGrantStorageGuardTest)
-        prefs.edit() // # pragma: no cover
-            .putString(tokenKey(profileId), token) // # pragma: no cover
-            .putLong(idKey(profileId), id) // # pragma: no cover
-            .apply() // # pragma: no cover
+        prefs.edit { // # pragma: no cover
+            putString(tokenKey(profileId), token) // # pragma: no cover
+            putLong(idKey(profileId), id) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     override suspend fun loadToken(profileId: String): String? =
@@ -65,10 +66,10 @@ class EncryptedDeviceGrantTokenStorage(context: Context) : DeviceGrantTokenStora
         prefs.getLong(idKey(profileId), 0L).takeIf { it != 0L } // # pragma: no cover — needs a real Android Keystore
 
     override suspend fun clear(profileId: String) { // # pragma: no cover — needs a real Android Keystore (see EncryptedDeviceGrantStorageGuardTest)
-        prefs.edit() // # pragma: no cover
-            .remove(tokenKey(profileId)) // # pragma: no cover
-            .remove(idKey(profileId)) // # pragma: no cover
-            .apply() // # pragma: no cover
+        prefs.edit { // # pragma: no cover
+            remove(tokenKey(profileId)) // # pragma: no cover
+            remove(idKey(profileId)) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     override suspend fun loadLegacy(): LegacyDeviceGrant? { // # pragma: no cover — needs a real Android Keystore
@@ -78,10 +79,10 @@ class EncryptedDeviceGrantTokenStorage(context: Context) : DeviceGrantTokenStora
     }
 
     override suspend fun clearLegacy() { // # pragma: no cover — needs a real Android Keystore
-        prefs.edit() // # pragma: no cover
-            .remove(KEY_LEGACY_GRANT) // # pragma: no cover
-            .remove(KEY_LEGACY_GRANT_ID) // # pragma: no cover
-            .apply() // pragma: no cover
+        prefs.edit { // # pragma: no cover
+            remove(KEY_LEGACY_GRANT) // # pragma: no cover
+            remove(KEY_LEGACY_GRANT_ID) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     private fun tokenKey(profileId: String): String = "$KEY_GRANT_PREFIX$profileId"

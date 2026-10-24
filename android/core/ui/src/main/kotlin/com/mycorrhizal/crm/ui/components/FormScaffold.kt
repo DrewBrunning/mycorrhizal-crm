@@ -30,7 +30,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -137,7 +138,12 @@ fun FormScaffold(
     // Issue #1772: on a phone in landscape (or a half-height split-screen window) the pinned
     // top bar plus the pinned save bar left almost no room above the keyboard. Move Save into
     // the top bar there so the form content keeps the space; portrait is unchanged.
-    val compactHeight = LocalConfiguration.current.screenHeightDp < COMPACT_HEIGHT_THRESHOLD_DP
+    // Issue #1902: LocalWindowInfo is the window the content actually occupies,
+    // so a multi-window/split-screen height is measured correctly; the app-wide
+    // Configuration.screenHeightDp could report the full display instead.
+    val compactHeight = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    } < COMPACT_HEIGHT_THRESHOLD_DP.dp
     val savingLabel = stringResource(R.string.a11y_state_saving)
     val saveInTopBar = showSaveBar && compactHeight
     val topBarHint = saveDisabledHint?.takeIf { saveInTopBar && !saveEnabled && !isSaving }

@@ -56,9 +56,17 @@ internal object AndroidConfig {
     const val TARGET_SDK = 37
 }
 
-/** Applies the Android/JVM/test baseline to any android module. */
+/**
+ * Applies the Android/JVM/test baseline to any android module.
+ *
+ * [checkDependencies] is only enabled for the application module: with
+ * `checkDependencies = true` lint analyses a module's library dependencies
+ * from that module's variant, so setting it on every library would lint the
+ * same sources once per consumer (issue #1902).
+ */
 internal fun Project.configureAndroidCommon(
     extension: CommonExtension,
+    checkDependencies: Boolean = false,
 ) {
     extension.apply {
         compileSdk = AndroidConfig.COMPILE_SDK
@@ -72,7 +80,7 @@ internal fun Project.configureAndroidCommon(
         testOptions.unitTests.isIncludeAndroidResources = true
     }
 
-    configureAccessibilityLint(extension.lint)
+    configureLint(extension.lint, checkDependencies)
     configureKotlinWarnings()
     configureAndroidTestCommon()
     configureJacoco()
@@ -146,8 +154,19 @@ internal fun Project.configureDetekt() {
 }
 
 /**
- * Issue #214: pins every check in Android Lint's built-in `Accessibility`
- * category to `error` so a regression fails `lintDebug`, not just warns.
+ * Issue #1902: lint warnings fail the build, the same way Kotlin compiler
+ * warnings do since #1900. Before this only lint *errors* failed, so
+ * `UnusedResources`, `MissingTranslation`, `Range`, ... scrolled past in a
+ * report nobody opened. `android/lint.xml` (shared by every module through
+ * `lintConfig`) carries the deliberate exceptions, each with a reason; there
+ * is no `lint-baseline.xml`.
+ *
+ * [checkDependencies] is true for `:app` only. The application variant is the
+ * one whose dependency graph is the shipped app, so linting dependencies from
+ * there covers them once; enabling it on every library would repeat the work.
+ *
+ * Issue #214: every check in Android Lint's built-in `Accessibility` category
+ * is pinned to `error` so a regression fails `lintDebug`, not just warns.
  * `abortOnError` is left at AGP's default (`true`).
  *
  * This is the full category list, not a hand-picked subset — verified via
@@ -171,7 +190,10 @@ internal fun Project.configureDetekt() {
  * misuse. That's what `core:testing`'s `assertAccessibleSemantics` sweep
  * (mounted per top-level screen in each feature module's tests) is for.
  */
-internal fun configureAccessibilityLint(lint: Lint) {
+internal fun Project.configureLint(lint: Lint, checkDependencies: Boolean) {
+    lint.lintConfig = rootProject.file("lint.xml")
+    lint.warningsAsErrors = true
+    lint.checkDependencies = checkDependencies
     lint.error += setOf(
         "ContentDescription",
         "LabelFor",

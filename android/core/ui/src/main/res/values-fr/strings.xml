@@ -47,8 +47,6 @@
     <string name="dashboard_stay_in_touch_keep">Restez en contact</string>
     <string name="dashboard_add_reminder">Ajouter un rappel</string>
     <string name="cd_quick_capture">Capture rapide</string>
-    <string name="nav_home">Accueil</string>
-    <string name="nav_settings">Paramètres</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
     <string name="nav_group_people">Personnes</string>
     <string name="nav_group_interactions">Interactions</string>
@@ -70,7 +68,6 @@
     <string name="login_server_url">URL du serveur</string>
     <string name="login_server_url_hint">https://crm.example.com</string>
     <string name="login_mode_password">Mot de passe</string>
-    <string name="login_mode_api_token">Jeton API</string>
     <string name="login_username_or_email">Nom d\'utilisateur ou e-mail</string>
     <string name="login_api_token">Jeton API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
@@ -150,7 +147,6 @@
          to read naturally as "double tap to <contacts_photo_change>". -->
     <string name="contacts_photo_change">ajouter ou modifier la photo</string>
     <!-- M23 : étendue de la liste — filtre par cercle, bascule des archivés, sélection groupée intégrée -->
-    <string name="contacts_filter_circle">Cercle</string>
     <string name="contacts_all_circles">Tous les cercles</string>
     <string name="contacts_show_archived">Afficher les archivés</string>
     <!-- Issue #212: the favorites-only lens, mirroring the archived switch (web #173). -->
@@ -255,7 +251,6 @@
     <string name="profile_picture_crop_failed">Impossible de recadrer la photo. Réessayez.</string>
     <!-- Issue #220 : panneau Liens externes (substrat ExternalIdentity). -->
     <string name="external_links_title">Liens externes</string>
-    <string name="external_links_remove">Retirer le lien</string>
     <string name="external_links_remove_named">Retirer le lien %1$s</string>
     <string name="external_links_remove_title">Retirer le lien externe</string>
     <string name="external_links_remove_confirm">Retirer le lien %1$s (%2$s) ?</string>
@@ -398,7 +393,6 @@
     <string name="contact_card_kind_application">Application</string>
     <string name="contact_card_kind_device">Appareil</string>
     <!-- M7 : nouvelles sections du formulaire -->
-    <string name="contact_department">Service</string>
     <string name="contact_job_titles">Titres de poste</string>
     <string name="contact_impps">Messagerie instantanée</string>
     <string name="contact_social_profiles">Profils sociaux</string>
@@ -434,9 +428,7 @@
     <string name="contact_address_sensitivity_secret">Secrète</string>
     <string name="contact_address_sensitivity_hint">Les adresses privées et secrètes sont exclues de la synchronisation, des exports et des partages.</string>
     <string name="contact_address_find_coordinates_sensitive">Cette adresse est marquée comme privée ou secrète ; elle n\'est donc jamais envoyée au géocodeur. Saisissez les coordonnées à la main.</string>
-    <string name="contact_address_find_coordinates_failed">Impossible de trouver les coordonnées de cette adresse.</string>
     <string name="contact_address_find_coordinates_loading">Recherche des coordonnées…</string>
-    <string name="contact_period">Période</string>
     <string name="contact_period_from">De (année)</string>
     <string name="contact_period_to">À (année)</string>
     <string name="contact_create">Créer le contact</string>
@@ -497,11 +489,6 @@
     <string name="settings_two_factor_title">Authentification à deux facteurs</string>
     <string name="settings_two_factor_description">Ajoutez une deuxième étape à la connexion avec votre mot de passe : un code à 6 chiffres provenant d\'une application d\'authentification. Cela protège vos données même si votre mot de passe est volé.</string>
     <string name="settings_two_factor_enable_button">Activer l\'authentification à deux facteurs</string>
-    <string name="settings_two_factor_setting_up">Configuration en cours...</string>
-    <string name="settings_two_factor_enable_success">Authentification à deux facteurs activée.</string>
-    <string name="settings_two_factor_disable_success">Authentification à deux facteurs désactivée.</string>
-    <string name="settings_two_factor_regenerate_success">Codes de récupération régénérés.</string>
-    <string name="settings_two_factor_setup_error">Nous n\'avons pas pu démarrer la configuration. Veuillez réessayer.</string>
     <string name="settings_two_factor_invalid_code">Code invalide. Veuillez réessayer.</string>
     <string name="settings_two_factor_enabled_badge">L\'authentification à deux facteurs est activée</string>
     <string name="settings_two_factor_enabled_description">La connexion exige désormais un code de votre application d\'authentification en plus de votre mot de passe. La synchronisation CardDAV et les jetons d\'API ne sont pas concernés.</string>
@@ -513,7 +500,7 @@
     <string name="settings_two_factor_setup_code_label">Code de vérification</string>
     <string name="settings_two_factor_setup_code_help">Code à 6 chiffres de votre application d\'authentification.</string>
     <string name="settings_two_factor_setup_confirm_button">Activer et continuer</string>
-    <string name="settings_two_factor_setup_enabling">Activation en cours...</string>
+    <string name="settings_two_factor_setup_enabling">Activation en cours…</string>
     <string name="settings_two_factor_disable_title">Désactiver l\'authentification à deux facteurs</string>
     <string name="settings_two_factor_disable_description">Saisissez un code actuel de votre application d\'authentification pour confirmer. Toutes les autres sessions seront déconnectées.</string>
     <string name="settings_two_factor_regenerate_title">Régénérer les codes de récupération</string>
@@ -521,7 +508,7 @@
     <string name="settings_two_factor_regenerate_proof_description">Saisissez un code de récupération ou un code actuel de votre application d\'authentification, ou vérifiez avec une clé d\'accès. Les anciens codes de récupération cesseront immédiatement de fonctionner.</string>
     <string name="settings_two_factor_code_prompt_label">Code de vérification</string>
     <string name="settings_two_factor_confirm">Confirmer</string>
-    <string name="settings_two_factor_submitting">Veuillez patienter...</string>
+    <string name="settings_two_factor_submitting">Veuillez patienter…</string>
     <string name="settings_two_factor_recovery_title">Codes de récupération</string>
     <string name="settings_two_factor_recovery_warning">Conservez ces codes dans un endroit sûr. Chaque code ne fonctionne qu\'une seule fois et ne sera plus affiché.</string>
     <string name="settings_two_factor_recovery_description">Utilisez un code de récupération pour vous connecter si vous perdez votre application d\'authentification.</string>
@@ -682,7 +669,6 @@
     <string name="settings_webhooks_delete_named">Supprimer %1$s</string>
     <string name="settings_webhooks_delete_title">Supprimer le webhook</string>
     <string name="settings_webhooks_delete_body">Supprimer "%1$s" ? Cela arrêtera toutes les futures livraisons.</string>
-    <string name="settings_webhooks_test">Tester</string>
     <string name="settings_webhooks_test_named">Tester %1$s</string>
     <string name="settings_webhooks_active">Actif</string>
     <string name="settings_webhooks_inactive">Inactif</string>
@@ -770,7 +756,6 @@
     <string name="settings_calendar_sync_dialog_info">Mycorrhizal importe régulièrement les événements de ce calendrier en tant qu\'activités. La suppression de l\'abonnement conserve les activités déjà importées.</string>
     <string name="settings_calendar_sync_empty">Aucun calendrier pour le moment</string>
     <string name="settings_calendar_sync_disabled">Désactivé</string>
-    <string name="settings_calendar_sync_sync_now">Synchroniser maintenant</string>
     <string name="settings_calendar_sync_sync_now_named">Synchroniser %1$s maintenant</string>
     <string name="settings_calendar_sync_edit_named">Modifier %1$s</string>
     <string name="settings_calendar_sync_delete_named">Supprimer %1$s</string>
@@ -779,17 +764,12 @@
     <string name="settings_calendar_sync_never_synced">Jamais synchronisé</string>
     <string name="settings_calendar_sync_last_synced">Dernière synchronisation %1$s</string>
     <string name="settings_calendar_sync_sync_success">Synchronisé : %1$d créés, %2$d mis à jour, %3$d ignorés</string>
-    <string name="settings_calendar_sync_load_error">Impossible de charger les abonnements au calendrier.</string>
-    <string name="settings_calendar_sync_save_error">Impossible d\'enregistrer le calendrier.</string>
-    <string name="settings_calendar_sync_delete_error">Impossible de supprimer le calendrier.</string>
-    <string name="settings_calendar_sync_sync_error">Impossible de synchroniser le calendrier.</string>
     <string name="settings_calendar_sync_sync_failed">Synchronisation échouée</string>
     <string name="settings_calendar_sync_sync_failed_count">Synchronisation échouée (%1$d fois)</string>
 
     <!-- Settings: contact (CardDAV) subscriptions — read-only health list (#628 scope note 4) -->
     <string name="settings_contact_sync_title">Synchronisation des contacts</string>
     <string name="settings_contact_sync_description">Carnets d\'adresses CardDAV qui synchronisent des contacts avec ce compte. Ajoutez-les ou modifiez-les depuis l\'application web.</string>
-    <string name="settings_contact_sync_empty">Aucun carnet d\'adresses CardDAV configuré.</string>
     <string name="settings_contact_sync_pending_conflicts">%1$d conflits non examinés</string>
 
     <!-- Sync-health line (issue #390 / INT-04 #467), shared by calendar and contact subscriptions -->
@@ -951,7 +931,6 @@
     <string name="settings_cancel">Annuler</string>
 
     <!-- Activities -->
-    <string name="activities_title">Activités</string>
     <string name="activities_empty">Aucune activité pour le moment</string>
     <string name="activities_empty_body">Consignez appels, rencontres et messages pour suivre vos échanges.</string>
     <string name="activities_search">Rechercher des activités</string>
@@ -977,7 +956,6 @@
     <string name="cd_new_activity">Nouvelle activité</string>
 
     <!-- Notes -->
-    <string name="notes_title">Notes</string>
     <string name="notes_empty">Aucune note pour le moment</string>
     <string name="notes_empty_body">Les notes conservent ce que vous voulez retenir sur quelqu\'un.</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
@@ -1096,7 +1074,6 @@
     <string name="circles_delete_title">Supprimer le cercle ?</string>
     <string name="circles_delete_confirm">Supprimer « %1$s » ? Cela retire le cercle et ses adhésions.</string>
     <string name="circles_add_member">Ajouter un membre</string>
-    <string name="circles_remove_member">Retirer un membre</string>
     <string name="circles_remove_member_named">Retirer le membre %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard du contact</string>
     <string name="circles_empty">Aucun cercle pour le moment</string>
@@ -1199,7 +1176,6 @@
     <string name="tags_delete_title">Supprimer l\'étiquette ?</string>
     <string name="tags_delete_confirm">Supprimer « %1$s » ? Cela retire l\'étiquette et ses étiquetages de contact.</string>
     <string name="tags_add_contact">Étiqueter le contact</string>
-    <string name="tags_remove_contact">Retirer l\'étiquette du contact</string>
     <string name="tags_remove_contact_named">Retirer l\'étiquette du contact %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard du contact</string>
     <string name="tags_empty">Aucune étiquette pour le moment</string>
@@ -1278,7 +1254,6 @@
     <string name="households_delete_title">Supprimer le foyer ?</string>
     <string name="households_delete_confirm">Supprimer « %1$s » ? Cela retire le foyer et ses adhésions.</string>
     <string name="households_add_member">Ajouter un membre</string>
-    <string name="households_remove_member">Retirer un membre</string>
     <string name="households_remove_member_named">Retirer le membre %1$s</string>
     <string name="households_member_search">Rechercher des contacts</string>
     <string name="households_type_to_search">Saisissez pour rechercher</string>
@@ -1341,7 +1316,6 @@
     <string name="relationships_sensitivity_private">Privée</string>
     <string name="relationships_sensitivity_secret">Secrète</string>
     <string name="relationships_edit_title">Modifier la relation</string>
-    <string name="relationships_edit">Modifier la relation</string>
     <string name="relationships_edit_named">Modifier %1$s</string>
     <string name="relationships_other_party_readonly_hint">L\'autre personne ne peut pas être modifiée ici — supprimez puis recréez la relation pour la lier à un autre contact.</string>
     <string name="relationships_unknown_contact">Contact inconnu</string>
@@ -1479,7 +1453,6 @@
     <string name="life_events_empty">Aucun événement de vie pour le moment</string>
     <string name="life_events_empty_body">Notez les déménagements, nouveaux emplois et autres moments à retenir.</string>
     <string name="life_events_edit">Modifier l\'événement</string>
-    <string name="life_events_type">Type</string>
     <string name="life_events_description">Description</string>
     <string name="gifts_title">Cadeaux</string>
     <string name="gifts_new">Nouveau cadeau</string>
@@ -1610,7 +1583,6 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Fusionner des contacts</string>
-    <string name="merge_preview">Aperçu de la fusion</string>
     <string name="merge_no_conflicts">Aucun conflit de champs — la fusion est prête.</string>
     <string name="merge_commit">Fusionner</string>
     <string name="merge_done">Contacts fusionnés.</string>
@@ -1707,7 +1679,6 @@
     <string name="data_custom_export_format_jscontact">JSContact (.json)</string>
     <string name="data_custom_export_button">Exporter</string>
     <string name="data_custom_export_exporting">Exportation en cours…</string>
-    <string name="data_custom_export_error">Échec de l\'exportation des contacts. Veuillez réessayer.</string>
     <string name="data_custom_export_preview_button">Aperçu de ce que cet export perdrait</string>
     <string name="data_custom_export_preview_checking">Vérification…</string>
     <string name="data_custom_export_preview_title">Aperçu de l\'export</string>
@@ -1990,7 +1961,6 @@
     <string name="occasions_add_attendee">Ajouter un invité</string>
     <string name="occasions_remove_attendee">Retirer l\'invité</string>
     <string name="occasions_remove_confirm">Retirer %1$s de cet événement ?</string>
-    <string name="occasions_rsvp">Réponse</string>
     <string name="occasions_rsvp_pending">En attente</string>
     <string name="occasions_rsvp_accepted">Accepté</string>
     <string name="occasions_rsvp_declined">Refusé</string>

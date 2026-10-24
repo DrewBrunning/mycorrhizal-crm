@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * Builds the Android Intents behind a contact detail field's tappable
@@ -26,13 +27,13 @@ object FieldActions {
     /** `ACTION_DIAL` — opens the dialer pre-filled with [phoneNumber]. */
     fun dialIntent(phoneNumber: String): Intent =
         Intent(Intent.ACTION_DIAL).apply {
-            data = Uri.parse("tel:${phoneNumber.trim()}")
+            data = "tel:${phoneNumber.trim()}".toUri()
         }
 
     /** `ACTION_SENDTO smsto:` — opens the SMS app with [phoneNumber] pre-filled. */
     fun smsIntent(phoneNumber: String): Intent =
         Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:${phoneNumber.trim()}")
+            data = "smsto:${phoneNumber.trim()}".toUri()
         }
 
     /**
@@ -50,7 +51,7 @@ object FieldActions {
      */
     fun groupSmsIntent(numbers: List<String>, context: Context): Intent =
         Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:${numbers.joinToString(";")}")
+            data = "smsto:${numbers.joinToString(";")}".toUri()
             resolveActivityInfo(context.packageManager, 0)?.let { resolved ->
                 setComponent(ComponentName(resolved.packageName, resolved.name))
             }
@@ -59,19 +60,19 @@ object FieldActions {
     /** `ACTION_SENDTO mailto:` — opens the mail app with [address] pre-filled. */
     fun emailIntent(address: String): Intent =
         Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:${address.trim()}")
+            data = "mailto:${address.trim()}".toUri()
         }
 
     /** `ACTION_VIEW geo:` — opens a maps app for [formattedAddress]. */
     fun mapIntent(formattedAddress: String): Intent =
         Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("geo:0,0?q=${Uri.encode(formattedAddress.trim())}")
+            data = "geo:0,0?q=${Uri.encode(formattedAddress.trim())}".toUri()
         }
 
     /** `ACTION_VIEW` — opens [url] in the browser. */
     fun browserIntent(url: String): Intent =
         Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse(url.trim())
+            data = url.trim().toUri()
         }
 
     /** Copies [text] to the system clipboard (no permission needed). */

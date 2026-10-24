@@ -29,7 +29,7 @@ class MycorrhizalAndroidApplicationPlugin : Plugin<Project> {
         val versionCodeOverride = target.providers.gradleProperty("MYCORRHIZAL_VERSION_CODE").orNull?.toIntOrNull()
 
         target.extensions.configure<ApplicationExtension>("android") {
-            target.configureAndroidCommon(this)
+            target.configureAndroidCommon(this, checkDependencies = true)
             defaultConfig {
                 applicationId = "com.mycorrhizal.crm"
                 targetSdk = AndroidConfig.TARGET_SDK

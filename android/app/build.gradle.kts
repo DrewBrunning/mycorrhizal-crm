@@ -147,6 +147,18 @@ android {
         }
     }
 
+    // Issue #1902: the in-app language picker switches locale at runtime via
+    // LocaleContextWrapper (createConfigurationContext), which only works for
+    // languages already present in the APK. Play's default language split
+    // installs just the device locale, so installing de/es/fr/it later needs
+    // Play Core; shipping every bundled language in the base APK is simpler and
+    // matches the flavor-agnostic F-Droid/Obtainium builds.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     signingConfigs {
         if (releaseSigningConfigured) {
             create("release") {

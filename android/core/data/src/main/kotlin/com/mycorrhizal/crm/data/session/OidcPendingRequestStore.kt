@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.session
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -70,11 +71,11 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
     }
 
     override suspend fun save(profileId: String, state: String, codeVerifier: String) { // # pragma: no cover — needs a real Android Keystore
-        prefs.edit() // # pragma: no cover
-            .putString(stateKey(profileId), state) // # pragma: no cover
-            .putString(verifierKey(profileId), codeVerifier) // # pragma: no cover
-            .putLong(createdAtKey(profileId), System.currentTimeMillis()) // # pragma: no cover
-            .apply() // # pragma: no cover
+        prefs.edit { // # pragma: no cover
+            putString(stateKey(profileId), state) // # pragma: no cover
+            putString(verifierKey(profileId), codeVerifier) // # pragma: no cover
+            putLong(createdAtKey(profileId), System.currentTimeMillis()) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     override suspend fun load(profileId: String): OidcPendingRequest? { // # pragma: no cover — needs a real Android Keystore
@@ -88,11 +89,11 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
     }
 
     override suspend fun clear(profileId: String) { // # pragma: no cover — needs a real Android Keystore
-        prefs.edit() // # pragma: no cover
-            .remove(stateKey(profileId)) // # pragma: no cover
-            .remove(verifierKey(profileId)) // # pragma: no cover
-            .remove(createdAtKey(profileId)) // # pragma: no cover
-            .apply() // # pragma: no cover
+        prefs.edit { // # pragma: no cover
+            remove(stateKey(profileId)) // # pragma: no cover
+            remove(verifierKey(profileId)) // # pragma: no cover
+            remove(createdAtKey(profileId)) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     override suspend fun loadLegacy(): OidcPendingRequest? { // # pragma: no cover — needs a real Android Keystore
@@ -106,11 +107,11 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
     }
 
     override suspend fun clearLegacy() { // # pragma: no cover — needs a real Android Keystore
-        prefs.edit() // # pragma: no cover
-            .remove(KEY_LEGACY_STATE) // # pragma: no cover
-            .remove(KEY_LEGACY_VERIFIER) // # pragma: no cover
-            .remove(KEY_LEGACY_CREATED_AT) // # pragma: no cover
-            .apply() // # pragma: no cover
+        prefs.edit { // # pragma: no cover
+            remove(KEY_LEGACY_STATE) // # pragma: no cover
+            remove(KEY_LEGACY_VERIFIER) // # pragma: no cover
+            remove(KEY_LEGACY_CREATED_AT) // # pragma: no cover
+        } // # pragma: no cover
     }
 
     private fun stateKey(profileId: String): String = "$KEY_STATE_PREFIX$profileId"

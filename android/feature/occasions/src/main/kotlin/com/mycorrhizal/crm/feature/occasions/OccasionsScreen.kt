@@ -46,6 +46,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -399,7 +400,7 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
     val initialInstant = remember(initial) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
     val initialLocal = remember(initialInstant) { pickerInitial(initialInstant) }
     val is24Hour = LocalIs24Hour.current
-    var step by remember { mutableStateOf(0) }
+    var step by remember { mutableIntStateOf(0) }
     val dateState = rememberDatePickerState(initialSelectedDateMillis = initialLocal.dateMillis)
     val timeState = rememberTimePickerState(
         initialHour = initialLocal.hour,

@@ -17,6 +17,11 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   supports the JDK 25 build JVM, so no JDK downgrade is needed; CI runs the same task in
   `android-tests.yml`'s `Android (Gradle)` job. There is no Gradle step in the local pre-commit hook
   (too slow to launch a build per commit).
+- `lint` is the Android resource/manifest/framework gate and treats **warnings** as errors (issue
+  #1902): `./gradlew lintDebug :app:lintObtainiumDebug :app:lintFossDebug`. The shared config is
+  `android/lint.xml`, where every `ignore` carries a reason (dependency freshness is Renovate's).
+  There is deliberately no `lint-baseline.xml`: a new exemption needs a reasoned per-check `ignore`
+  and, when it is deferred work, a linked follow-up issue.
 
 ## Instrumented E2E
 

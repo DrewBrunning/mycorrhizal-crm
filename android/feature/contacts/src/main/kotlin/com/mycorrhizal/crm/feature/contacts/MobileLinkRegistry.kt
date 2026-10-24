@@ -1,7 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.annotation.StringRes
 import com.mycorrhizal.crm.ui.R
 
@@ -55,12 +55,12 @@ data class MobileLinkType(
 object MobileLinkRegistry {
 
     private fun sendTo(uri: String, pkg: String? = null) = Intent(Intent.ACTION_SENDTO).apply {
-        data = Uri.parse(uri)
+        data = uri.toUri()
         if (pkg != null) `package` = pkg
     }
 
     private fun view(uri: String, pkg: String? = null) = Intent(Intent.ACTION_VIEW).apply {
-        data = Uri.parse(uri)
+        data = uri.toUri()
         if (pkg != null) `package` = pkg
     }
 

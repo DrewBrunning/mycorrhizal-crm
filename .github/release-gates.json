@@ -55,7 +55,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "`testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug`, `detekt`, and the flavor-qualified debug assembles all pass."
+      "criterion": "`testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, and the flavor-qualified debug assembles all pass."
     },
     {
       "name": "Android E2E (emulator)",

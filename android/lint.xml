@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared Android Lint configuration for every module (wired through
+  configureLint in build-logic). Issue #1902 makes lint warnings fatal, so
+  every deliberate exception lives here as one visible line with a reason.
+  There is intentionally no lint-baseline.xml: a baseline silently
+  grandfathers findings, the same reason detekt.yml has none (#358).
+-->
+<lint>
+    <!--
+      Renovate owns dependency and version freshness
+      (docs/dependency-upgrade-policy.md). These checks warn as soon as
+      upstream publishes a release, so making them errors would turn an
+      untouched PR red overnight for a change we did not make.
+    -->
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="OldTargetApi" severity="ignore" />
+    <issue id="GradleDynamicVersion" severity="ignore" />
+
+    <!--
+      Deferred i18n batch (issue #1975): 62 PluralsCandidate plus the
+      es/fr/it MissingQuantity and de UnusedQuantity findings. Converting the
+      count strings to <plurals> and wiring pluralStringResource is real
+      translation work, tracked separately rather than bundled into #1902.
+    -->
+    <issue id="PluralsCandidate" severity="ignore" />
+    <issue id="MissingQuantity" severity="ignore" />
+    <issue id="UnusedQuantity" severity="ignore" />
+
+    <!--
+      Deferred Compose API cleanup (issue #1976): 26 composables take other
+      optional parameters before Modifier. Reordering the signatures touches
+      many files and their tests, so it is tracked separately.
+    -->
+    <issue id="ModifierParameter" severity="ignore" />
+
+    <!--
+      This app logs through android.util.Log and has no Timber dependency.
+      These four call sites are OS/boundary error paths, not app-wide logging.
+    -->
+    <issue id="LogNotTimber" severity="ignore" />
+
+    <!--
+      POST_NOTIFICATIONS is an inlined String constant, so lint sees it as an
+      API-33 reference. Every call site is already guarded by a
+      Build.VERSION.SDK_INT >= 33 check before touching the permission.
+    -->
+    <issue id="InlinedApi" severity="ignore" />
+
+    <!--
+      android:allowBackup="false" already disables pre-Android-12 backup, so a
+      separate fullBackupContent file would only repeat that decision.
+    -->
+    <issue id="DataExtractionRules" severity="ignore" />
+
+    <!--
+      The runtime locale switch lives in core:ui (LocaleContextWrapper), but the
+      App Bundle language-split setting lives in the only application module
+      (:app's bundle { language { enableSplit = false } }). A library variant
+      has no bundle configuration for lint to inspect, so it reports every
+      consumer as unconfigured.
+    -->
+    <issue id="AppBundleLocaleChanges" severity="ignore" />
+</lint>

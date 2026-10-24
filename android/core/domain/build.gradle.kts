@@ -9,5 +9,5 @@ android {
 dependencies {
     api(project(":core:model"))
     implementation(libs.kotlinx.coroutines.core)
-    compileOnly("javax.inject:javax.inject:1")
+    compileOnly(libs.javax.inject)
 }

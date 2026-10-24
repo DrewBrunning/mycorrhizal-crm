@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Issue #1902: groupSmsIntent resolves the smsto: handler before pinning the
+      intent to it (CWE-927), so the app must declare that it queries this
+      intent. Without the <queries> entry Android 11+ package visibility hides
+      every SMS app from resolveActivityInfo and the pinned intent is never
+      built.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+    </queries>
+</manifest>
