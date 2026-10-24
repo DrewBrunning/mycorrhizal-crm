@@ -80,7 +80,7 @@ citation checks, not the dependency install.
 The check used to live in `license-compliance.yml` (PR #1942), whose jobs carry
 no required status check; it was advisory there. Issue #1944 moved it into the
 already-required job rather than creating a new required context, per
-`CLAUDE.md`'s "Adding a quality gate".
+`.github/AGENTS.md`'s "Adding a quality gate".
 
 ## Android: GMS-free in-app surface
 

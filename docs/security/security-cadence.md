@@ -73,7 +73,7 @@ loudly on a malformed row rather than skipping it.
 | `release_app_key` | Rotate the release GitHub App private key | 365 | 2026-09-18 | Add the new key in the App settings, update the Actions secret, revoke the old key. |
 | `android_signing_key` | Confirm the Android signing keystore is still recoverable | 365 | 2026-09-18 | Restore the keystore from its offline backup into a scratch dir and confirm the release APK still builds; see [custody & backup](#android-signing-keystore-custody-and-backup). |
 | `access_list_review` | Review the sensitive-resource access list in `GOVERNANCE.md` | 365 | 2026-09-18 | Confirm who holds repo admin, ruleset bypass, Actions secrets, and the deployment host; update the table in place ([GOVERNANCE.md](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/GOVERNANCE.md)). |
-| `support_window_review` | Review the support window / EOL policy | 365 | 2026-09-18 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported; at `1.0.0`, confirm the defined window is in force. |
+| `support_window_review` | Review the support window / EOL policy | 365 | 2026-09-18 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported and that the defined `1.x` window is in force. |
 <!-- security-cadence:end -->
 
 ## Android signing-keystore custody and backup
@@ -117,19 +117,16 @@ Two duties in #956 have no natural event trigger and so share the register:
   change and no fresh confirmation that the list is still complete. The annual
   review re-reads the live GitHub collaborators/ruleset bypass list and the App
   installations against the committed table and records the date.
-- **Support window / EOL.** `SECURITY.md` fixes only the latest tag pre-`1.0`;
-  at `1.0.0` a real support window (below) is defined. Until then the annual
-  review confirms the pre-`1.0` statement is still what is actually practised;
-  from `1.0.0` it confirms the defined window still matches the backport
-  behaviour.
+- **Support window / EOL.** `SECURITY.md` defines the `1.x` support window
+  below. The annual review confirms the defined window still matches what is
+  actually backported.
 
-## Support window and end-of-life (1.0)
+## Support window and end-of-life
 
-The project is pre-`1.0`: **only the latest tagged release receives security
-fixes**, and previous tags are not backported to (`SECURITY.md` → Supported
-Versions). That is a deliberate pre-`1.0` position, not a permanent one.
+The project is on `1.x`: the support window below is in force (`SECURITY.md` →
+Supported Versions).
 
-**At `1.0.0` the support window is defined as:**
+**The support window is:**
 
 - Every `1.x` release receives security fixes for **12 months from the next
   minor release** (so the supported set is always the newest minor plus the
@@ -145,11 +142,10 @@ Versions). That is a deliberate pre-`1.0` position, not a permanent one.
   [`release-candidate-process.md`](../release-candidate-process.md)). A fix that
   cannot be cherry-picked cleanly is re-implemented on the older branch and
   called out in the advisory.
-- **The EOL review is the annual `support_window_review` entry above** — at
-  `1.0` it names each tag crossing EOL in the next 12 months. Enforcement
-  (mechanically flagging an EOL tag in the release workflow) is tracked to the
-  `1.0` milestone; this page and the register are the pre-`1.0` policy
-  definition.
+- **The EOL review is the annual `support_window_review` entry above** — it
+  names each tag crossing EOL in the next 12 months. Mechanical EOL flagging in
+  the release workflow remains a separate follow-up; this page and the register
+  are the policy definition.
 
 ## Updating the register
 
