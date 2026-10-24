@@ -209,6 +209,13 @@ jobs:
         working-directory: backend
         run: go run ./cmd/docscheck
 
+      # Issue #1955: the AGENTS.md hierarchy (file set, CLAUDE.md aliases,
+      # line budgets, registry<->disk parity) stays valid as context files
+      # move. Read-only; no new required context.
+      - name: Verify agent context files (AGENTS.md hierarchy)
+        working-directory: backend
+        run: go run ./cmd/contextcheck
+
       # REL-03 (#447): .github/release-gates.json is well-formed, every gate
       # names a real workflow, and release-gates.md's table matches it.
       - name: Verify release-gate registry

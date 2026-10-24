@@ -49,8 +49,8 @@ deterministic gates. Install per clone **and per worktree** with `bash scripts/i
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
 - **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt` locally.
-- **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `releasegatecheck`,
-  `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
+- **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
+  `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
   `pre-commit` there), catching merge-skew in generated artifacts.
 - **`commit-msg`:** rejects a missing/mismatched DCO `Signed-off-by:` trailer — use `git commit -s`.
