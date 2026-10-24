@@ -206,7 +206,6 @@ func TestParsePartialDate(t *testing.T) {
 		{name: "invalid_length_9", in: "202505220", wantNil: true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := parsePartialDate(tt.in)
@@ -249,7 +248,6 @@ func TestFormatPartialDate(t *testing.T) {
 		{name: "day_only", in: &contactmodel.PartialDate{Day: intPtr(5)}, want: "---05"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if got := formatPartialDate(tt.in); got != tt.want {
@@ -276,7 +274,6 @@ func TestPartialDateRoundTrip(t *testing.T) {
 		{"day_only", &contactmodel.PartialDate{Day: intPtr(28)}},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			wire := formatPartialDate(tt.pd)

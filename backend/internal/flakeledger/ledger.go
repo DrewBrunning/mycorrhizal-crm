@@ -53,6 +53,8 @@ func Build(runs []RunData, now time.Time, windowDays int) Ledger {
 				}
 				s.Runs++
 				switch o {
+				case Passed:
+					// Already counted in Runs; no separate tally.
 				case PassedOnRetry:
 					s.PassedOnRetry++
 				case Failed:
@@ -110,7 +112,9 @@ func Candidates(l Ledger, threshold int, closed map[string]time.Time) []Candidat
 					continue
 				}
 			}
-			switch h.Outcome {
+			// Hits is populated only from outcomes that are not Passed (see
+			// Build), so Passed is deliberately absent here.
+			switch h.Outcome { //nolint:exhaustive // Hits never contains Passed
 			case PassedOnRetry:
 				c.PassedOnRetry++
 			case Failed:

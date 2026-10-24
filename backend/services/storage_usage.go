@@ -134,15 +134,21 @@ func walkDirUsage(root string) DirectoryUsage {
 			return nil
 		}
 
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-		usage.Bytes += info.Size()
-		usage.FileCount++
+		usage.addFile(d)
 		return nil
 	})
 	return usage
+}
+
+// addFile counts one non-directory entry. A file that vanished between the
+// directory read and its stat is skipped rather than failing the whole walk.
+func (u *DirectoryUsage) addFile(d fs.DirEntry) {
+	info, err := d.Info()
+	if err != nil {
+		return
+	}
+	u.Bytes += info.Size()
+	u.FileCount++
 }
 
 // dirDepth is how many path segments below root path sits: root itself is 0,

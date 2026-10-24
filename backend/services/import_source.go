@@ -720,7 +720,7 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 			Category: ImportIssueCategoryInvalid,
 			Message:  "update target contact was not found",
 		})
-		return "", 0, nil
+		return "", 0, nil //nolint:nilerr // a missing target is a row-level import issue, not a fatal transaction error
 	}
 
 	if self {

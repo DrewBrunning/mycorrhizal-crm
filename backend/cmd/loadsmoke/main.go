@@ -264,6 +264,8 @@ func (t *tally) record(method, url string, status int, body []byte, err error) {
 		return
 	}
 	switch classify(status, body) {
+	case classifyOK:
+		// A healthy response is already counted in total; nothing to tally.
 	case classifyBusy:
 		atomic.AddInt64(&t.busy, 1)
 		t.addSample(&t.busySamples, method, url, status, body)

@@ -27,7 +27,7 @@ func TestBidiZeroWidthPreservedThroughExport(t *testing.T) {
 		fixture string
 		want    string // a substring proving the special characters survived
 	}{
-		{fixture: "enc-rtl-override.vcf", want: "‮"}, // RTL override
+		{fixture: "enc-rtl-override.vcf", want: "‮"}, //nolint:bidichk // the fixture exists to prove the RTL override survives
 		{fixture: "enc-zero-width.vcf", want: "‍"},   // zero-width joiner
 	}
 

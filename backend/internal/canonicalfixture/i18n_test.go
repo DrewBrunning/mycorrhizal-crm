@@ -350,5 +350,5 @@ func TestI18NByteTruncationWouldBreakTheTripwire(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, full, "priya must be in the manifest")
-	require.False(t, utf8.ValidString(string(full[:1])), "a byte-count truncation of a multi-byte name must split a rune")
+	require.False(t, utf8.ValidString(full[:1]), "a byte-count truncation of a multi-byte name must split a rune")
 }

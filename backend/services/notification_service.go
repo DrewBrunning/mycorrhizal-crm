@@ -1116,6 +1116,11 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		// "push" channel, tested as one unit).
 		return deliverPushToUser(db, cfg, user, title, message)
 
+	case models.ChannelEmail:
+		// Email delivery is configured globally (SMTP), not per-user, so the
+		// per-user "test" button has nothing to probe for it.
+		return fmt.Errorf("email is not a per-user test channel")
+
 	default:
 		return fmt.Errorf("unsupported notification channel %q", channel)
 	}

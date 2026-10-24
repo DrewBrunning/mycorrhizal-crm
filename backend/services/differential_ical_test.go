@@ -27,7 +27,6 @@ func TestICalDifferential_ReferenceToOurs(t *testing.T) {
 	require.NotEmpty(t, corpus)
 
 	for _, entry := range corpus {
-		entry := entry
 		t.Run(entry.ID, func(t *testing.T) {
 			want := entry.ExpectedEvent()
 

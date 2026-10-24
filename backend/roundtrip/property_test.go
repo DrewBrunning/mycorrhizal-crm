@@ -44,7 +44,6 @@ func TestRoundTrip_Property(t *testing.T) {
 	byConcept := correspondence.ByConcept()
 
 	for _, f := range formats {
-		f := f
 		t.Run(f.name, rapid.MakeCheck(func(t *rapid.T) {
 			rec := contactgen.Record(t)
 
@@ -83,7 +82,6 @@ func TestRoundTrip_Property(t *testing.T) {
 func TestRepeatedConversion_Property(t *testing.T) {
 	t.Parallel()
 	for _, f := range formats {
-		f := f
 		t.Run(f.name, rapid.MakeCheck(func(t *rapid.T) {
 			rec := contactgen.Record(t)
 

@@ -261,7 +261,6 @@ func TestManifestValidateRejectsBreakages(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// fresh copy per case so mutations never leak across subtests
 			m, err := Read()
@@ -418,7 +417,6 @@ func TestPopulateRejectsUnvalidatedManifest(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			m, err := Read()
 			require.NoError(t, err)

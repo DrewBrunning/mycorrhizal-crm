@@ -86,9 +86,7 @@ func TestRoundTrip_CanonicalFixture(t *testing.T) {
 	byConcept := correspondence.ByConcept()
 
 	for _, f := range formats {
-		f := f
 		for _, entry := range m.Contacts {
-			entry := entry
 			t.Run(f.name+"/"+entry.Name, func(t *testing.T) {
 				rec := entry.Record()
 				if entry.RecreatesVCardUIDOf != "" {

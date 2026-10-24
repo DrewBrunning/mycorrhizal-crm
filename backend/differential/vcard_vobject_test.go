@@ -48,10 +48,8 @@ func TestVCardVObjectDifferential(t *testing.T) {
 	}
 
 	for _, leg := range legs {
-		leg := leg
 		t.Run(leg.version, func(t *testing.T) {
 			for _, entry := range corpus {
-				entry := entry
 				t.Run(entry.ID, func(t *testing.T) {
 					assertVCardLeg(t, ref, leg.version, leg.format, leg.importer, leg.exporter, entry)
 				})

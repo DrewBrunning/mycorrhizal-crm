@@ -124,6 +124,9 @@ func (i *Injector) intercept(tx *gorm.DB, verb string) {
 	st := Statement{Verb: verb, Table: tableOf(tx)}
 	i.seen = append(i.seen, st)
 	switch i.mode {
+	case modeIdle, modeRecord:
+		// idle returned above; record-only mode counts the statement and
+		// injects nothing.
 	case modeFailNth:
 		if len(i.seen) == i.failAt {
 			i.fire(tx, st)

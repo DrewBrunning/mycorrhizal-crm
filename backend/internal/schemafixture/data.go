@@ -191,16 +191,13 @@ func presentColumns(conn *sql.DB) (map[string]map[string]bool, error) {
 	if err != nil {
 		return nil, err // # pragma: no cover — a schema dump just applied always answers sqlite_master
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			_ = rows.Close()
 			return nil, err // # pragma: no cover — a single TEXT column always scans
 		}
 		tables = append(tables, name)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err // # pragma: no cover — closing a completed rows set does not fail
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err // # pragma: no cover — iteration errors surface during Next, not after Close

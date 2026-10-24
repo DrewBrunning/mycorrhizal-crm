@@ -576,6 +576,12 @@ func TestTestNotificationChannel(t *testing.T) {
 	err := TestNotificationChannel(db, cfg, other, models.ChannelNtfy)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
+
+	// Email is a real channel but is configured globally (SMTP), so the
+	// per-user test button must say so rather than silently doing nothing.
+	err = TestNotificationChannel(db, cfg, other, models.ChannelEmail)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "email is not a per-user test channel")
 }
 
 // TestPushRecordSize pins the RecordSize computation (T51): a short payload

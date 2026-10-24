@@ -805,7 +805,7 @@ thresholds in [soak-baseline.md](soak-baseline.md).
 - **Owns** the vulnerability classes no layer above is shaped to catch: BOLA/IDOR
   (`cmd/bolacheck`, the deterministic complement to Schemathesis), spec-derived
   fuzzing for 5xx/auth (Schemathesis + `cmd/schemagate` + ignore list), DAST
-  (ZAP, weekly), static analysis (CodeQL, golangci-lint gosec + errcheck/staticcheck, `cmd/gormerrcheck`, detekt, mobsfscan),
+  (ZAP, weekly), static analysis (CodeQL, golangci-lint's `backend/.golangci.yml` set — gosec, errcheck/staticcheck and the #1906 additions — `cmd/gormerrcheck`, detekt, mobsfscan),
   dependency and workflow audits. These are **their own workflows** with their own
   triggers (PR/push/nightly per workflow); a feature PR writes tests in the
   pyramid, not in these. The security checklist (`docs/security/asvs-l2.md`) is

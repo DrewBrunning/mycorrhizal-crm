@@ -250,7 +250,6 @@ func TestGetUpcomingBirthdays_LeapDayBirthdayReachableThroughThePreselect(t *tes
 // non-leap year 2100.
 func TestDaysUntilBirthday_LeapDayFullMatrix(t *testing.T) {
 	for _, stored := range []string{"2000-02-29", "--02-29"} {
-		stored := stored
 		t.Run(stored, func(t *testing.T) {
 			t.Run("Feb 28 of a leap year is one day before", func(t *testing.T) {
 				now := time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC)

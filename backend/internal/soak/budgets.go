@@ -141,6 +141,8 @@ func kindLabel(k Kind) string {
 		return "ceiling (tail max)"
 	case KindDegradation:
 		return "degradation (tail vs first third)"
+	case KindGrowth:
+		fallthrough
 	default:
 		return "fitted growth over the tail window"
 	}

@@ -27,20 +27,56 @@
 #   - staticcheck — SA (bugs), S (simplifications), ST/QF (style) with the
 #                   opt-outs listed under settings.
 #   - unused      — dead code.
+#   - exhaustive  — switches over enum-like types (sensitivity, contact/edge
+#                   status, activity/job/notification/score reason codes,
+#                   cursor and soak kinds) must handle every value. A new
+#                   enum member silently falling through is a recurring bug
+#                   class; a `default` is not accepted as covering the enum.
+#   - rowserrcheck — a `*sql.Rows` iteration whose `Err()` is never checked
+#                   loses the iteration error (database/, FTS, backfills).
+#   - sqlclosecheck — a `*sql.Rows`/Stmt that is never closed leaks a
+#                   connection; the `database/` driver and schema fixtures are
+#                   the raw-SQL paths this guards.
+#   - nilerr      — `if err != nil { return nil }` swallows an error (the same
+#                   class as CLAUDE.md backend trap #4). Every current hit is
+#                   a documented best-effort path with a reasoned `nolint`.
+#   - bidichk     — bidirectional Unicode control characters ("trojan
+#                   source"), cheap supply-chain hygiene. The adversarial
+#                   fixtures that deliberately carry an RTL override are the
+#                   only exceptions, each with a reasoned `nolint`.
+#   - durationcheck — `time.Duration * time.Duration` mistakes in cadence,
+#                   reminder and job-staleness math.
+#   - copyloopvar — redundant per-iteration copies of a loop variable; Go
+#                   1.22+ already gives each iteration its own binding.
+#   - unconvert   — conversions that do not change the type.
+#   - misspell    — spelling in comments and identifiers, with autofix.
 #
 # Deliberately NOT enabled:
-#   - noctx: the HTTP helpers and the database layer (the golang-migrate
-#     sqlite driver in database/) do not thread contexts through their
-#     signatures; wiring them in is a context-propagation refactor across the
-#     SSRF-guarded fetcher, the SMTP client, and the DB driver, tracked
-#     separately rather than rushed behind a red gate.
+#   - forcetypeassert: 588 findings on main (353 outside tests), 334 of them
+#     in controllers — overwhelmingly `c.MustGet("db").(*gorm.DB)` and the
+#     CardDAV/CalDAV principal `username.(string)`, where the router or
+#     middleware installed the concrete type hours earlier. Rewriting all of
+#     those as checked assertions is a large, low-value sweep that would bury
+#     the few genuine unchecked assertions in noise. Rejected for this
+#     adoption pass; revisit as a targeted cleanup if a real panic surfaces.
+#   - noctx / contextcheck: the HTTP helpers and the database layer (the
+#     golang-migrate sqlite driver in database/) do not thread contexts
+#     through their signatures; wiring them in is a context-propagation
+#     refactor across the SSRF-guarded fetcher, the SMTP client, and the DB
+#     driver. That refactor is tracked in issue #1939 rather than rushed
+#     behind a red gate.
 #
 # gosec G104 (unhandled errors) stays excluded — errcheck is now the one
 # owner of that rule, with a real exclusion list instead of a blanket skip.
 #
 # Test files are exempt from gosec/bodyclose (they exercise hostile input by
-# design) and from the correctness linters below (errcheck & co. over tests
-# is a separate, larger sweep; `go test -race` exercises them anyway).
+# design) and from the correctness linters below (errcheck & co., exhaustive,
+# rowserrcheck, sqlclosecheck, nilerr, durationcheck) — a test's intentional
+# partial switch or deliberately leaked rows test would otherwise need a
+# `nolint` on every case, and `go test -race` exercises the runtime behavior
+# anyway. copyloopvar, unconvert and misspell DO run over tests: those
+# findings are mechanical, and leaving them on keeps test code held to the
+# same hygiene bar as production.
 version: "2"
 
 run:
@@ -57,7 +93,21 @@ linters:
     - ineffassign
     - staticcheck
     - unused
+    - exhaustive
+    - rowserrcheck
+    - sqlclosecheck
+    - nilerr
+    - bidichk
+    - durationcheck
+    - copyloopvar
+    - unconvert
+    - misspell
   settings:
+    exhaustive:
+      # A `default` must not hide a newly added enum member: the missing case
+      # is the signal. Intentional partial switches get an explicit case (or
+      # a reasoned `nolint`) instead.
+      default-signifies-exhaustive: false
     gosec:
       excludes:
         - G104
@@ -123,6 +173,11 @@ linters:
           - ineffassign
           - staticcheck
           - unused
+          - exhaustive
+          - rowserrcheck
+          - sqlclosecheck
+          - nilerr
+          - durationcheck
       # CLI tools under cmd/ print reports to stdout/stderr; a failed write
       # to the terminal has no recovery path worth writing.
       - path: '^cmd/'

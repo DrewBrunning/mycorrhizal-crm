@@ -78,7 +78,6 @@ func TestAuditRecorder_TwoRecordersDoNotInterfere(t *testing.T) {
 // that each own a DB; any shared recorder state would cross-contaminate counts.
 func TestAuditRecorder_ParallelTestsHaveOwnRecorders(t *testing.T) {
 	for i := 0; i < 6; i++ {
-		i := i
 		t.Run(fmt.Sprintf("p%d", i), func(t *testing.T) {
 			t.Parallel()
 			db := newAuditTestDB(t)

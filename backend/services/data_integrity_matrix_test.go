@@ -455,7 +455,6 @@ func db03MatrixCases() []matrixCase {
 
 func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
 	for _, tc := range db03MatrixCases() {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			db, cfg, ds := loadCanonicalFixture(t)
 

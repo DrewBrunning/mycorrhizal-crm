@@ -65,7 +65,7 @@ func Available(path string) (freeBytes, totalBytes uint64, err error) {
 func Require(path string, needBytes uint64) error {
 	free, _, err := Probe(path)
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // best-effort preflight; the operation has its own fail-closed path (see doc comment)
 	}
 	if free < needBytes {
 		return &ErrInsufficientSpace{Path: path, NeedBytes: needBytes, FreeBytes: free}

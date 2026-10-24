@@ -110,7 +110,6 @@ func (a *cookieAudit) assertExhaustive() {
 
 func TestCookieFlagPolicy(t *testing.T) {
 	for _, cookieSecure := range []bool{false, true} {
-		cookieSecure := cookieSecure
 		t.Run(fmt.Sprintf("CookieSecure=%t", cookieSecure), func(t *testing.T) {
 			checkCookieFlagPolicy(t, cookieSecure)
 		})
@@ -327,7 +326,6 @@ func checkCookieFlagPolicy(t *testing.T, cookieSecure bool) {
 // Secure injected against config) is caught even if the parser is lenient.
 func TestCookieFlagPolicy_HeaderStringCarriesDeclaredAttributes(t *testing.T) {
 	for _, cookieSecure := range []bool{false, true} {
-		cookieSecure := cookieSecure
 		t.Run(fmt.Sprintf("CookieSecure=%t", cookieSecure), func(t *testing.T) {
 			gin.SetMode(gin.ReleaseMode)
 			db := dbtest.New(t)

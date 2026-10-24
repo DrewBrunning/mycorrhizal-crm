@@ -101,7 +101,6 @@ func TestNeutralPathResolves(t *testing.T) {
 	rows := Load()
 	require.NotEmpty(t, rows)
 	for _, r := range rows {
-		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
 			if err := resolveNeutralPath(r.NeutralPath); err != nil {
 				t.Errorf("neutral_path %q for concept_id %q does not resolve: %v", r.NeutralPath, r.ConceptID, err)
@@ -142,7 +141,6 @@ func TestTransformNamesAreRegistered(t *testing.T) {
 	rows := Load()
 	require.NotEmpty(t, rows)
 	for _, r := range rows {
-		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
 			if !validTransforms[r.Transform] {
 				t.Errorf("concept_id %q: transform %q is not in the registry", r.ConceptID, r.Transform)
@@ -207,7 +205,6 @@ func TestPropertyNamesAreIANA(t *testing.T) {
 	rows := Load()
 	require.NotEmpty(t, rows)
 	for _, r := range rows {
-		r := r
 		t.Run(r.ConceptID+"/v4", func(t *testing.T) {
 			name, skip := baseProp(r.V4Prop)
 			if skip {

@@ -42,7 +42,6 @@ func TestFixtureRoundTripFixedPoint(t *testing.T) {
 		t.Fatal("no fixtures found under testdata/")
 	}
 	for _, path := range matches {
-		path := path
 		t.Run(filepath.Base(path), func(t *testing.T) {
 			raw, err := os.ReadFile(path)
 			if err != nil {

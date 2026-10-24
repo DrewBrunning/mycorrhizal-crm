@@ -99,7 +99,6 @@ func TestProfileUserManifestsValidate(t *testing.T) {
 	base := readManifest(t)
 
 	for _, p := range []Profile{Smoke, Typical} {
-		p := p
 		t.Run(p.Name, func(t *testing.T) {
 			ms, err := p.UserManifests(base)
 			require.NoError(t, err)
