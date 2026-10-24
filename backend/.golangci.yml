@@ -11,7 +11,7 @@
 #                   CalDAV / webpush / Resend clients all make outbound calls)
 #   - govet       — the correctness pass CI already runs via `go vet`; kept
 #                   here so golangci-lint is self-contained.
-#   - errcheck    — CLAUDE.md backend trap #4 ("check .Error on every
+#   - errcheck    — backend/AGENTS.md trap #4 ("check .Error on every
 #                   db.Updates/db.Save") generalised to every error return.
 #                   GORM's chained `*gorm.DB` result is invisible to errcheck,
 #                   so the GORM half of trap #4 is the separate custom
@@ -38,7 +38,7 @@
 #                   connection; the `database/` driver and schema fixtures are
 #                   the raw-SQL paths this guards.
 #   - nilerr      — `if err != nil { return nil }` swallows an error (the same
-#                   class as CLAUDE.md backend trap #4). Every current hit is
+#                   class as backend/AGENTS.md trap #4). Every current hit is
 #                   a documented best-effort path with a reasoned `nolint`.
 #   - bidichk     — bidirectional Unicode control characters ("trojan
 #                   source"), cheap supply-chain hygiene. The adversarial

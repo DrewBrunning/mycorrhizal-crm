@@ -48,14 +48,14 @@ token is immune to clock granularity and skew).
 
 Why a counter and not a timestamp: a counter is strictly monotonic per row, needs no clock, and its
 only failure mode is the write path's own read-modify-write, which the `_txlock=immediate` DSN
-(CLAUDE.md backend trap 9) serializes. A timestamp token is only as good as the clock's resolution
+(backend/AGENTS.md trap 9) serializes. A timestamp token is only as good as the clock's resolution
 and the "did the second tick over" races that produced the bug above.
 
 ### Which entities are excluded, and why
 
 The hard-delete edge/join rows (`RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`,
 `ContactSyncLink`, `CalendarEventLink`, `FieldValue`) are **deliberately excluded**. Per ADR 0004 and
-CLAUDE.md trap #7, they are small, bounded, re-pulled-wholesale rows with natural-key composite
+backend/AGENTS.md trap #7, they are small, bounded, re-pulled-wholesale rows with natural-key composite
 unique indexes; a client re-fetches the collection rather than tracking each row's deaths, so a
 per-row version token has no consumer. Writing the exclusion down here is the "say explicitly why
 rather than silently omitting" discipline from the ticket.
@@ -101,7 +101,7 @@ A single up/down migration adds the columns and backfills:
 ## Consequences
 
 - Two writes to the same row inside the same second produce different revisions (the regression the
-  ticket pins, tested against a real migrated schema — CLAUDE.md trap #1).
+  ticket pins, tested against a real migrated schema — backend/AGENTS.md trap #1).
 - A REST client can read a resource's revision from a normal response and use it later for #456's
   conditional writes.
 - `Note`/`Reminder` gain both a revision and a CardDAV/CalDAV-style `etag` for the first time —

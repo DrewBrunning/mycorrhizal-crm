@@ -42,7 +42,7 @@ following `CadencePolicy`'s exact template:
 - `Active` (`bool`) — pause without losing history, mirroring `OccasionObligation.Active`.
 
 No policy row for a contact means decay tracking is off for that contact — **opt-in**, same as
-`CadencePolicy`. This is deliberately safe for existing production data (CLAUDE.md's post-`v0.2.0-alpha`
+`CadencePolicy`. This is deliberately safe for existing production data (AGENTS.md's post-`v0.2.0-alpha`
 rule): upgrading never silently starts nagging about every existing contact.
 
 A partial unique index on `(user_id, entity_id) WHERE deleted_at IS NULL` (migration `000064`) enforces

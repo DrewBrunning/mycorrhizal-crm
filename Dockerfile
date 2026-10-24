@@ -54,7 +54,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # node-version: 22 pin (unit-tests.yml, e2e-tests.yml) rather than floating on
 # node:lts-alpine the way frontend/Dockerfile (the split image) does -- this
 # repo prefers an explicit, reproducible pin over a floating tag (see the Go
-# toolchain note in CLAUDE.md). frontend/Dockerfile didn't need this change:
+# toolchain note in backend/AGENTS.md). frontend/Dockerfile didn't need this change:
 # lts-alpine already resolves past the floor (Node 24 as of 2026-08).
 FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS frontend-builder
 

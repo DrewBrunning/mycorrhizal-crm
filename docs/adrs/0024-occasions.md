@@ -70,7 +70,7 @@ Fields:
 
 No unique constraint: like `Gift`/`Preference`, a contact can have any number of obligations, so there's
 no natural key to protect and no reason to hard-delete (content the user authored → soft delete, per
-CLAUDE.md backend trap 7).
+backend/AGENTS.md trap 7).
 
 ### 2. Recurrence: annual month/day only, reusing ADR 0015 Rule 3 verbatim — no RRULE-lite
 
@@ -103,12 +103,12 @@ reminder does.
 
 ### 4. Sensitivity: the general query-filtered rule, explicitly **not** the CSV-full-fidelity exception
 
-`OccasionObligation.Sensitivity` follows the general rule (CLAUDE.md, "Sensitivity" section): anything
+`OccasionObligation.Sensitivity` follows the general rule (backend/AGENTS.md, sensitivity): anything
 above `normal` is excluded from any list/export that **leaves the instance** — filtered in the query, not
 the caller, re-includable only via `?include_sensitive=true`. This explicitly governs the "Christmas
 cards" address-list export the issue asks for: that export is a **new, purpose-built, sensitivity-filtered
 CSV** (or reuse of the existing filtered vCard/address projection), **not** a route through
-`GET /api/v1/export`, which is the deliberate full-fidelity backup exception (CLAUDE.md, `export_csv_full_fidelity_test.go`)
+`GET /api/v1/export`, which is the deliberate full-fidelity backup exception (backend/AGENTS.md, `export_csv_full_fidelity_test.go`)
 that exists precisely because it's the user's own full backup — a mailing-label export is a copy meant to
 leave the instance (to a printer, a card-fulfillment service, etc.), which is exactly the case the
 full-fidelity exception does not cover. Any implementation that wires the card list through the full CSV

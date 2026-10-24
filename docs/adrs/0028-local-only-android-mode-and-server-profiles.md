@@ -279,7 +279,7 @@ A `Local` user who later wants a server **moves** their data; the two stores are
   it explicitly. Nothing is deleted automatically.
 - **Live two-way sync is out of scope** and rejected for now. It would be a fourth conflict policy
   alongside REST reject-and-return (ADR 0009), CardDAV remote-overwrites-then-surface, and CalDAV
-  local-wins/no-delete-propagation (T13), and the CLAUDE.md rule is that a new two-way path does not
+  local-wins/no-delete-propagation (T13), and the backend/AGENTS.md rule is that a new two-way path does not
   inherit an existing policy by accident. A future ADR can add it; the bundle and ledger would be its
   initial-sync step.
 - **Shape-independence.** Under shape B, Kotlin writes the same bundle format; the remote side is

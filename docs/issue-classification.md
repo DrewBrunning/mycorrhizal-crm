@@ -46,7 +46,7 @@ Every issue is one or the other. A "bug" that is really a missing feature is an
 | `security` | Security review, hardening, or compliance work; anything touching auth, crypto, the SSRF guards, isolation, or a hostile-input parser. | Triager |
 | `observability` | Logs, metrics, correlation IDs, the system-event timeline, health surface. | Triager |
 | `docker` | The images, `docker-compose*.yml`, entrypoints, the published-image pipeline. | Triager or Dependabot |
-| `documentation` | `docs/`, `README*`, `CLAUDE.md`, in-repo runbooks. | Triager |
+| `documentation` | `docs/`, `README*`, `AGENTS.md`/`CLAUDE.md` (the aliases), `.agents/skills/**`, in-repo runbooks. | Triager |
 | `dependencies` | A dependency-manifest change. | Dependabot |
 | `go`, `javascript`, `github_actions` | Ecosystem tags on a dependency PR. | Dependabot |
 

@@ -170,7 +170,7 @@ the same change.
 
 ## The data bar is higher than the shape bar
 
-Per CLAUDE.md's post-`v0.2.0-alpha-candidate` rule: a request shape can change
+Per AGENTS.md's production-data rule: a request shape can change
 with notice, but **removing a column that holds user data** needs a real
 backfill or an explicit, stated decision that the data is safe to lose —
 regardless of version, and never justified by "pre-alpha". A deprecation window
@@ -183,7 +183,7 @@ lose data follows the data-retention lifecycle
 
 **The promise — nothing on a covered surface is removed without a completed
 window — takes effect at `1.0.0`.** Until then, breaking changes (removals
-included) remain allowed, exactly as CLAUDE.md says: this is pre-alpha
+included) remain allowed, exactly as AGENTS.md says: this is pre-alpha
 software, not a stability commitment.
 
 What this policy changes *before* `1.0.0`:

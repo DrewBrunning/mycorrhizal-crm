@@ -2,7 +2,7 @@
 # Local mirror of CI's fast, deterministic gates (linters + governance/drift
 # checks), run on every commit so a commit that would fail CI fails locally
 # first. Installed via `scripts/install-git-hooks.sh` (sets
-# core.hooksPath=.githooks). See CLAUDE.md's "Local pre-commit checks" section
+# core.hooksPath=.githooks). See .github/AGENTS.md's "Local pre-commit checks" section
 # for what this does and does not cover, and why.
 #
 # Also runs the pre-existing client-side secret scan (issue #376,
@@ -115,7 +115,7 @@ if [ "$backend_changed" = true ]; then
   run "backend: go vet ./..." backend go vet ./...
   run "backend: golangci-lint (gosec + bodyclose + correctness set)" backend \
     go tool -modfile=tools.mod golangci-lint run ./...
-  run "backend: gormerrcheck (unchecked GORM .Error, CLAUDE.md trap #4)" backend \
+  run "backend: gormerrcheck (unchecked GORM .Error, backend/AGENTS.md trap #4)" backend \
     go run ./cmd/gormerrcheck ./...
   run "backend: rawtimecheck (raw time.Now outside the injected clock, issue #1494)" backend \
     go run ./cmd/rawtimecheck ./...

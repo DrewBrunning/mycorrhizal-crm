@@ -18,7 +18,7 @@ The `v0.6.8` milestone asks a question `PRAGMA integrity_check` cannot answer: *
 meaningful?* A database can be intact at the page level while holding a relationship that points at a
 contact that no longer exists, a `FieldValue` whose definition was removed, or an attachment row
 whose file is gone. Before this ADR the properties that must always hold were spread across model
-doc-comments, `/CLAUDE.md` traps, six other ADRs, and unwritten convention — so neither #460 (the
+doc-comments, `backend/AGENTS.md` traps, six other ADRs, and unwritten convention — so neither #460 (the
 checker) nor #494 (the tests) had a single list to implement against.
 
 This ADR is that list. It adds no enforcement code itself; the checker it specifies shipped in #460
@@ -75,7 +75,7 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 
 **Verified by (DB-03, issue #494):** every invariant below has both a *holds* case and a
 *detected* case, and the "break the code" step is a committed test rather than a manual ritual
-(`/CLAUDE.md`: a test that has never failed has proven nothing).
+(`docs/development/implementation-workflow.md`: a test that has never failed has proven nothing).
 
 **Kept in sync by (DB-02, issue #912):** the ADR rows above, the probe registry
 (`dataIntegrityChecks()` in `data_integrity_service.go`), and the DB-03 matrix
@@ -106,7 +106,7 @@ in CI via `RunDataIntegrityChecks`.
   cascade, source import, a migration-chain re-run and a backup/restore round-trip
   ([`data_integrity_operations_test.go`](../../backend/services/data_integrity_operations_test.go),
   [`controllers/data_integrity_operations_test.go`](../../backend/controllers/data_integrity_operations_test.go));
-  a contact left behind by a skipped cascade line is named by the checker, turning `/CLAUDE.md` trap
+  a contact left behind by a skipped cascade line is named by the checker, turning `backend/AGENTS.md` trap
   #6 into a failing test from the checker's side of `TestDeleteCascadeCoverage` (#611).
 - **`INV-A1`, `INV-A2`, `INV-A4`, `INV-D8`** — generative properties
   ([`backend/internal/propertytest/data_invariant_property_test.go`](../../backend/internal/propertytest/data_invariant_property_test.go)):
@@ -184,7 +184,7 @@ in CI via `RunDataIntegrityChecks`.
 > No `RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,
 > `CalendarEventLink`, or `FieldValue` row survives the deletion of an entity it depends on.
 
-- **Holds because:** these are hard-delete edge/join rows (ADR 0004, `/CLAUDE.md` trap #7).
+- **Holds because:** these are hard-delete edge/join rows (ADR 0004, `backend/AGENTS.md` trap #7).
   `DeleteContact` enumerates every dependent table explicitly, including the
   `(source_id = ? OR target_id = ?)` edge sweep
   ([`controllers/contact_controller.go:743`](../../backend/controllers/contact_controller.go)); the
@@ -216,7 +216,7 @@ in CI via `RunDataIntegrityChecks`.
 - **Can be violated by:** any of the targets being deleted without the referencing row being cleaned
   (the `VCardUID`-keyed links have no FK); a file removed from disk (backup restore, operator error,
   a failed write); a `FieldDefinition` removed while values remain; the audit log deliberately
-  outliving its subjects (append-only, `/CLAUDE.md` — a tombstone, not a violation, but the checker
+  outliving its subjects (append-only, `backend/AGENTS.md` trap 7 — a tombstone, not a violation, but the checker
   must distinguish the two).
 - **Checked by:** `checkDanglingExternalRefs` (`external_identity` / `external_activity` /
   `import_source_link` → contact), `checkDanglingFieldValues` (`field_value.dangling_definition`,
@@ -234,11 +234,11 @@ in CI via `RunDataIntegrityChecks`.
   `if c.VCardUID == "" { c.VCardUID = uuid.New().String() }`
   ([`models/contact.go:431`](../../backend/models/contact.go),
   [`models/relationship_edge.go:115`](../../backend/models/relationship_edge.go)). Update handlers
-  use explicit field allowlists (no mass assignment, `/CLAUDE.md` security posture), and no allowlist
+  use explicit field allowlists (no mass assignment, `backend/AGENTS.md`'s sensitivity and safety rules), and no allowlist
   includes the id column. The mutable `revision`/`etag` tokens are a *separate* column so that
   optimistic-concurrency churn never touches identity (ADR 0006).
 - **Can be violated by:** a raw `UPDATE` or a migration that rewrites a key column without carrying
-  references with it; `AutoMigrate` on a UUID-PK entity (adds a conflicting `ID uint`, `/CLAUDE.md`
+  references with it; `AutoMigrate` on a UUID-PK entity (adds a conflicting `ID uint`, `backend/AGENTS.md`
   trap #7).
 - **Checked by:** primarily a migration-review and schema-dump concern (`cmd/genschema`, issue #529);
   `checkRequiredFields` also reports `contact.missing_vcard_uid` (a blank stable id, DB-03 matrix
@@ -259,7 +259,7 @@ in CI via `RunDataIntegrityChecks`.
   constraints (e.g. `ImportRun.Format`, [`models/import_run.go:46`](../../backend/models/import_run.go)).
 - **Can be violated by:** a write path that skips the middleware (internal service code, import,
   migration backfill) and constructs a struct by hand; a `CHECK` constraint that drifts from the Go
-  `oneof` tag (`/CLAUDE.md` frontend trap #4 is the same drift class).
+  `oneof` tag (`frontend/AGENTS.md` trap #4 is the same drift class).
 - **Checked by:** `checkRequiredFields` flags `relationship_edges` rows whose `status` / `source` /
   `sensitivity` is out of range or whose `type` is empty (`relationship_edge.invalid_enum`), and
   contacts with a blank `vcard_uid` (`contact.missing_vcard_uid`, also INV-D5).
@@ -284,7 +284,7 @@ in CI via `RunDataIntegrityChecks`.
   terms.
 - **Checked by:** the `*.endpoint_soft_deleted` / `*.soft_deleted_contact` findings emitted by
   `checkRelationshipEndpoints` and `checkOrphanedContactRefs` — a soft-deleted contact that is still
-  a `confirmed` edge endpoint or a live membership. Asserted with `Unscoped()` (`/CLAUDE.md` trap
+  a `confirmed` edge endpoint or a live membership. Asserted with `Unscoped()` (`backend/AGENTS.md` trap
   #6). Never auto-repaired: the contact may be undeleted.
 
 #### INV-D8 — Canonical records are internally consistent
@@ -300,7 +300,7 @@ in CI via `RunDataIntegrityChecks`.
   ([`models/contact.go:356`](../../backend/models/contact.go),
   [`models/contact_card_merge.go:84`](../../backend/models/contact_card_merge.go); T75). `Card` is
   read back with `RecordForContact` (reads what is persisted), never `RecordFromContact` (rebuilds
-  from flat fields and silently drops the rest) — `/CLAUDE.md` trap #3
+  from flat fields and silently drops the rest) — `backend/AGENTS.md` trap #3
   ([`models/contact_record.go:50`](../../backend/models/contact_record.go)). Element `ID`s serialize
   (`json:"id,omitempty"`) so the round-trip survives save/reload (ADR 0001).
 - **Transient-photo carve-out:** the flat↔nested projection contract covers photo *bridging* only
@@ -313,7 +313,7 @@ in CI via `RunDataIntegrityChecks`.
   `#494`'s reprojection property compares flat columns, *not* `Card.Media` photo entries, for this
   reason.
 - **Can be violated by:** a new plain-save path that reintroduces a straight `db.Save` on a loaded
-  contact without the merge (`/CLAUDE.md` trap #3 standing rule); an import or migration that writes
+  contact without the merge (`backend/AGENTS.md` trap #3 standing rule); an import or migration that writes
   `Card` JSON directly with duplicate element IDs or a flat column that disagrees with the nested
   value.
 - **Checked by:** `checkCanonicalRecords` streams live contacts in pages and reports
@@ -393,8 +393,8 @@ in CI via `RunDataIntegrityChecks`.
 
 - **Holds because:** the store is a single SQLite file in WAL mode; GORM wraps every `Create`/`Save`
   in an implicit transaction, and `_txlock=immediate` makes it take the write lock up front
-  ([`database/migrate.go:68`](../../backend/database/migrate.go), `/CLAUDE.md` trap #9). `.Error` is
-  checked on every `db.Updates`/`db.Save` (`/CLAUDE.md` trap #4, audited across sites); a handler
+  ([`database/migrate.go:68`](../../backend/database/migrate.go), `backend/AGENTS.md` trap #9). `.Error` is
+  checked on every `db.Updates`/`db.Save` (`backend/AGENTS.md` trap #4, audited across sites); a handler
   emits `2xx` only after the call returns nil.
 - **Can be violated by:** a swallowed `.Error` (the trap-#4 class); a `2xx` written before commit; a
   best-effort side-write mistaken for the mutation (`RecordImportRun` is deliberately best-effort and
@@ -411,7 +411,7 @@ in CI via `RunDataIntegrityChecks`.
 - **Holds because:** multi-step mutations run inside `gorm.DB.Transaction`, which rolls back on any
   returned error and returns the closure's error verbatim so a typed `*apperrors.AppError` keeps its
   status ([`controllers/relationship_edge_controller.go`](../../backend/controllers/relationship_edge_controller.go),
-  `/CLAUDE.md` trap #8); `_txlock=immediate` avoids the deferred-to-write upgrade failure mid-txn.
+  `backend/AGENTS.md` trap #8); `_txlock=immediate` avoids the deferred-to-write upgrade failure mid-txn.
 - **Can be violated by:** a cascade or import loop that does N separate top-level writes instead of
   one transaction (INV-D3's "partially-applied cascade" gap); a handler that catches an error and
   continues.
@@ -504,7 +504,7 @@ in CI via `RunDataIntegrityChecks`.
 - **Holds because:** REST/CardDAV writes are full-overwrite by design — `reconcileContactSync`
   applies a whole address object and diffs membership to find deletions
   ([`services/contact_sync_service.go:393`](../../backend/services/contact_sync_service.go), the T13
-  ticket; `/CLAUDE.md` domain notes); the `revision`/`etag` token advances monotonically per write
+  ticket; `backend/AGENTS.md` domain notes); the `revision`/`etag` token advances monotonically per write
   so a no-op sync is detectable (ADR 0006, [`models/contact.go:450`](../../backend/models/contact.go));
   missed scheduled sync occurrences catch up once, de-duplicated (ADR 0011).
 - **Can be violated by:** a new *two-way* sync path that copies `reconcileContactSync`'s
@@ -524,9 +524,9 @@ in CI via `RunDataIntegrityChecks`.
   Detection is separate from repair and ships first; repair is a separate operator-invoked command,
   independently tested (#460 action 4).
 - **#494 (DB-03) implements one test per invariant** — see **Verified by**, above — and for each the
-  "break the code" step is a committed test, not a manual ritual (`/CLAUDE.md`: a test that has never
+  "break the code" step is a committed test, not a manual ritual (`backend/AGENTS.md`: a test that has never
   failed has proven nothing). `INV-D*` are a table-driven matrix over the TEST-02 fixture against a
-  real migrated schema (`/CLAUDE.md` trap #1) plus an across-operations suite (merge / cascade /
+  real migrated schema (`backend/AGENTS.md` trap #1) plus an across-operations suite (merge / cascade /
   import / migration / restore); `INV-A*` are generative properties (`internal/propertytest`, the
   #435 suite) with the #434 seams as the example-form backstop.
 - **This ADR is the citable list the `v0.6.8` gate (#538) requires.** Each invariant above is

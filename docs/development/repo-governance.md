@@ -148,7 +148,7 @@ bind no one else; it only ever bites a *future non-admin* contributor. Flip
 [`main-protection.json`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/rulesets/main-protection.json)
 (and `release-branches.json`) and apply it live when a second maintainer appears, since GitHub never
 counts the PR author's own approval toward a required code-owner review. The gate-adding procedure
-and rationale are in `CLAUDE.md`'s "Adding a quality gate".
+and rationale are in `.github/AGENTS.md` "Adding a quality gate".
 
 ## Release tags
 

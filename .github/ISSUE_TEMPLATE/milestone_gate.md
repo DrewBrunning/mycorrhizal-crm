@@ -76,7 +76,7 @@ genuinely does not apply to a milestone, say so here rather than dropping it.
       gate's closure and the actual release dispatch, redo the diff-review for just those
       before dispatching. (Standing criterion, issue #378. Added after closing the `v0.8.4`
       gate — #985 — skipped this and the next release dispatch failed on it; fixed
-      retroactively by pass 1.27 / PR #1110, documented in CLAUDE.md by PR #1111.)
+      retroactively by pass 1.27 / PR #1110, documented in the ASVS verification report by PR #1111.)
 
 ## Verify
 

@@ -6,7 +6,7 @@
 - **Implements:** issue #1495.
 - **Related:** `docs/adrs/0004-soft-vs-hard-delete-semantics.md` (the soft/hard rule each registry step
   records), `docs/adrs/0012-canonical-database-invariants.md`, `docs/adrs/0015-temporal-semantics.md` (the
-  one wall clock), CLAUDE.md backend traps #1, #6 and #7.
+  one wall clock), backend/AGENTS.md traps #1, #6 and #7.
 
 ## Context
 

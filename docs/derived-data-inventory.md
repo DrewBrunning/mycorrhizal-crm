@@ -86,7 +86,7 @@ covered by ordinary backup/restore and the delete cascade, **not** by a rebuild 
 
 | State | Why it is canonical, not derived |
 |---|---|
-| `reach_out_suggestions` rows + `status` | One row per detected meaningful change, plus the user's `pending`/`dismissed` decision and the linked one-off `Reminder`. The *detection* could be replayed from `audit_events`, but the dismissal decision and the reminder link cannot — replaying would resurface every suggestion the user already dismissed. Edge-shaped, hard-delete (CLAUDE.md trap #7). |
+| `reach_out_suggestions` rows + `status` | One row per detected meaningful change, plus the user's `pending`/`dismissed` decision and the linked one-off `Reminder`. The *detection* could be replayed from `audit_events`, but the dismissal decision and the reminder link cannot — replaying would resurface every suggestion the user already dismissed. Edge-shaped, hard-delete (backend/AGENTS.md trap #7). |
 | `reach_out_cursors.last_audit_event_id` | A watermark: the last `AuditEvent.ID` scanned for reach-out triggers. Not derived from anything — it *is* the job's position. **If lost / reset to 0:** the next run re-scans history; the per-suggestion de-dup (a suggestion already exists for that `audit_event_id`) prevents double-firing, so the failure mode is wasted work, not duplicate suggestions. |
 | `dismissed_household_suggestions` | A permanent "don't suggest this group again" decision, keyed by `(user_id, address_hash, member_hash)`. Purely a user choice; nothing to recompute. |
 | `cadence_policies` | User-authored maintenance rules (target interval, qualifying types). Soft-delete, user content. |
@@ -105,7 +105,7 @@ covered by ordinary backup/restore and the delete cascade, **not** by a rebuild 
 | HTTP `ETag` / `If-Match` / `If-None-Match` | Per response, client-held | The row's `revision` (above). No intermediary/proxy cache is assumed — self-hosted, single process. | Same as above: `412` on write, full body on read. |
 | CardDAV `getetag` / sync-token | Per address object / per collection, client-held | The contact's `etag`; the collection sync-token advances per change. `reconcileContactSync` is full-overwrite by design (T13) — a stale client is corrected on next sync, converging to a fixpoint (INV-A6). | Client re-pulls the changed objects. |
 | Frontend React-Query cache | Per browser tab, in-memory | `src/hooks/use<Entity>.ts` invalidate the relevant query keys after every mutation; no time-based staleness is relied on for correctness. | A refetch; worst case a brief stale render until the invalidation resolves. Not a persistence layer. |
-| Service worker (`frontend-prod` only) | Per browser, on-disk | App-shell precache is versioned by the build hash; API responses are **not** service-worker-cached. | Network fetch. `frontend-dev` never compiles a real service worker (CLAUDE.md frontend note). |
+| Service worker (`frontend-prod` only) | Per browser, on-disk | App-shell precache is versioned by the build hash; API responses are **not** service-worker-cached. | Network fetch. `frontend-dev` never compiles a real service worker (frontend/AGENTS.md). |
 | `localStorage` (auth token, UI prefs) | Per browser | Explicit writes on login/logout and setting changes. | Treated as absent — the app re-authenticates or falls back to defaults. |
 
 `localStorage` and the React-Query cache are per-viewer conveniences, never a source of truth: the
@@ -125,7 +125,7 @@ The trigger-bypassing situations that leave section 1 state stale, and the follo
 
 ---
 
-## Hand-verification (CLAUDE.md — a test that has never failed has proven nothing)
+## Hand-verification (`docs/development/implementation-workflow.md` — a test that has never failed has proven nothing)
 
 - **`checkDerivedContactColumns`** — neuter it to `return nil, nil`:
   `TestDataIntegrity_TEST02_InvariantMatrix/INV-A5/denormalized_contact_column_diverges_from_Card` and

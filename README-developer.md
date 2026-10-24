@@ -234,7 +234,7 @@
   bash scripts/install-git-hooks.sh
   ```
   Bypass a single commit with `git commit --no-verify` (e.g. a deliberate false positive you've
-  already reviewed) — full list of what runs, and what's deliberately excluded, in `CLAUDE.md`'s
+  already reviewed) — full list of what runs, and what's deliberately excluded, in `.github/AGENTS.md`'s
   "Local pre-commit checks" section.
 
 **Commit sign-off (DCO, OSPS-LE-01.01)**

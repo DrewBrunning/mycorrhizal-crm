@@ -54,7 +54,7 @@ geocoder requests go through the existing SSRF-guarded dialer (`backend/httputil
 `Address` gets a new `Sensitivity` field (`normal|private|secret`, default `normal`), mirroring
 `RelationshipEdge.Sensitivity` / `OccasionObligation.Sensitivity` / `Preference.Sensitivity` /
 `FieldValue.Sensitivity`. Because the neutral `contactmodel.Address` is synthesized from the flat
-`ContactAddress` table via `ApplyRecordToContact`/`RecordForContact` (CLAUDE.md backend traps #2/#3),
+`ContactAddress` table via `ApplyRecordToContact`/`RecordForContact` (backend/AGENTS.md traps #2/#3),
 the new column is added to `ContactAddress` (`backend/models/contact.go:66-79`) by migration, and
 must be threaded through those existing apply/record functions — **never** by mutating `Card`/`CRM`
 fields directly, which is exactly the class of bug traps #2/#3 document as having shipped broken
@@ -70,7 +70,7 @@ provider → coordinate, with a sane TTL) bounds repeat calls for the same addre
 ### 3. The map view itself is not sensitivity-gated
 
 Sensitivity governs copies that leave the instance or reach another party (exports, sync, shares) —
-it is not an access-control tier against the owning user (CLAUDE.md, "Sensitivity" section). The map
+it is not an access-control tier against the owning user (backend/AGENTS.md, sensitivity). The map
 view is the owner looking at their own data, same as the contact detail page: it plots every contact
 with a coordinate, `private`/`secret` included, with no `include_sensitive` gate. Tile requests never
 carry per-marker data — a slippy-map tile request is inherently just a viewport bbox — so there is
@@ -111,7 +111,7 @@ The post-ADR review of #694/#1286/#1287 found the original text under-specified 
 Settled:
 
 - **Stable address identifier.** `ContactAddress` gains an `ID` (migration with backfill for existing
-  rows — real data exists, CLAUDE.md "Orientation"), threaded through `AddressFromContactAddress` /
+  rows — real data exists, AGENTS.md "Project map"), threaded through `AddressFromContactAddress` /
   `contactAddressFromNeutral` into `contactmodel.Address.ID` and added to the schema-parity registry.
   `:addressId` in the geocode route is this ID. Array index was rejected: it shifts on reorder/delete.
 - **`Coordinates` column shape.** A `geo:` URI string, matching `contactmodel.Address.Coordinates`

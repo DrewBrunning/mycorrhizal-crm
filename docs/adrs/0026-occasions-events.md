@@ -83,7 +83,7 @@ predictable query instead of a graph walk with a policy attached. If it is wante
 
 ### 4. Attendees are nested sub-resources; sensitivity is carried but there is no export
 
-Per CLAUDE.md's backend convention ("join rows get real nested sub-resource endpoints, not a bulk-replace
+Per backend/AGENTS.md's conventions ("join rows get real nested sub-resource endpoints, not a bulk-replace
 field"), attendee lifecycle is:
 `POST /occasion-events/:id/attendees`, `PUT /occasion-events/:id/attendees/:vcard_uid`,
 `DELETE /occasion-events/:id/attendees/:vcard_uid`. The event's own `PUT` never carries an attendee list.

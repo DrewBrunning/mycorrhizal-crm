@@ -87,7 +87,7 @@ seconds to minutes. `PurgeExpiredIdempotencyKeys` hard-deletes rows past
 `IDEMPOTENCY_KEY_RETENTION_HOURS` (default 24; `<= 0` disables), on a 6-hour cron with a job lock —
 the same shape as `webhook_delivery_purge` (#622). `response_body` can hold a copy of the created
 entity, so the window also bounds that copy. User-scoped, hard-delete, swept by `DeleteUser`'s manual
-cascade (CLAUDE.md backend trap #6) and pinned by `delete_cascade_coverage_test.go`.
+cascade (backend/AGENTS.md trap #6) and pinned by `delete_cascade_coverage_test.go`.
 
 ### Documentation & drift
 
@@ -108,6 +108,6 @@ the MAINT-02 baseline records them, so a later removal is a reviewable breaking-
 - An un-keyed client is exactly as safe as before — the mechanism is opt-in, so a client that does
   not send the header still double-writes on a real double-submit. Making the header mandatory is a
   separate breaking-change decision, not taken here.
-- Concurrency: `ON CONFLICT DO NOTHING` + the `_txlock=immediate` DSN (CLAUDE.md backend trap 9)
+- Concurrency: `ON CONFLICT DO NOTHING` + the `_txlock=immediate` DSN (backend/AGENTS.md trap 9)
   serialise the claim; a concurrent retry that loses the claim race gets a `409` while the winner
   finishes, then replays. Pinned by a concurrent-retry test.

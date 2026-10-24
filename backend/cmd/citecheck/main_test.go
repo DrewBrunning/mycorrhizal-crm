@@ -660,8 +660,8 @@ func declaredCount(t *testing.T, body, re string, group int, where string) int {
 // checklists do not support — the drift that accumulated between Pass #1 and
 // Pass #2 (#932), where the report's own header/claim/census said 26/191/186
 // while §7 and a fresh citecheck said 23/194. The report's §7 count and the
-// level claim in both checklists and in CLAUDE.md are all compared to the one
-// parsed TOTAL, so the census can no longer "cannot drift" by assertion.
+// level claim in both checklists and in docs/AGENTS.md are all compared to the
+// one parsed TOTAL, so the census can no longer "cannot drift" by assertion.
 func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 	root, err := findRepoRoot(mustGetwd(t))
 	if err != nil {
@@ -675,7 +675,7 @@ func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 	report := readReportFile(t, root, "docs/security/asvs-l2-verification-report.md")
 	asvsHeader := readReportFile(t, root, "docs/security/asvs-l2.md")
 	masvsHeader := readReportFile(t, root, "docs/security/masvs-l1.md")
-	claude := readReportFile(t, root, "CLAUDE.md")
+	agents := readReportFile(t, root, "docs/AGENTS.md")
 
 	checks := []struct {
 		where string
@@ -698,8 +698,8 @@ func TestVerificationReportClaimsMatchCensus(t *testing.T) {
 		{"report census ASVS total not-applicable", report, `\*\*ASVS total\*\* \| \*\*\d+\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["not-applicable"], "ASVS not-applicable"},
 		{"report census MASVS total satisfied", report, `\*\*MASVS total\*\* \| \*\*(\d+)\*\* \|`, 1, masvs["satisfied"], "MASVS satisfied"},
 		{"report census MASVS total partial", report, `\*\*MASVS total\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, masvs["partial"], "MASVS partial"},
-		{"CLAUDE.md level claim", claude, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
-		{"CLAUDE.md MASVS level claim", claude, `MASVS-L1 with (\d+)\*\*`, 1, masvsL1["partial"], "MASVS-L1 partial"},
+		{"docs/AGENTS.md level claim", agents, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
+		{"docs/AGENTS.md MASVS level claim", agents, `MASVS-L1 with (\d+)\*\*`, 1, masvsL1["partial"], "MASVS-L1 partial"},
 	}
 	for _, c := range checks {
 		if got := declaredCount(t, c.body, c.re, c.group, c.where); got != c.want {

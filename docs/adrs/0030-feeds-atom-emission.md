@@ -9,7 +9,7 @@
   `docs/adrs/0015-temporal-semantics.md` (instants on the wire), the T66 contact timeline
   (`controllers/timeline_controller.go`, `models/timeline.go`) as the query layer, the `ApiToken`
   model and lifecycle (`models/api_token.go`, `controllers/api_token_controller.go`,
-  `services/api_token_service.go`) as the credential template, and CLAUDE.md's sensitivity rule.
+  `services/api_token_service.go`) as the credential template, and backend/AGENTS.md's sensitivity rule.
 - **Feeds:** #1274, #1275, #1276 on the v1.3.0 milestone (see "Implementation" below). #1274 and #1275
   ship as one backend PR; #1276 follows as its own PR.
 
@@ -125,7 +125,7 @@ that `full` copies note text into whatever reader they use (see ticket 3).
 
 ### 5. Sensitivity: a structural guarantee, not a comment
 
-CLAUDE.md's sensitivity rule covers copies that leave the instance. A feed is such a copy, so the rule
+backend/AGENTS.md's sensitivity rule covers copies that leave the instance. A feed is such a copy, so the rule
 applies:
 
 - **Rows above `normal` are excluded in the query, with no `include_sensitive` opt-in for feeds.** The

@@ -62,7 +62,7 @@ provider reader anywhere in `feature/tracking`.
   broadcast: does not address the *un-recoverable* cases (permission granted after the fact, app
   not yet installed/running at boot) and was not pursued as a substitute for reconciliation.
 - **Ship the reconciliation worker inside this same ticket:** rejected — #1124 itself asks for a
-  "deliberate reconciliation design, not a drop-in change," and CLAUDE.md's workflow cadence
+  "deliberate reconciliation design, not a drop-in change," and AGENTS.md's implementation workflow
   (research → plan → approve → implement → verify) applies to real design decisions like this one;
   bundling it into a four-issue cleanup PR alongside unrelated fixes would skip that review.
 

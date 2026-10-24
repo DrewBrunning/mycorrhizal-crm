@@ -105,7 +105,7 @@ time-based rule.
   migrated schema**:
   - GORM hooks and `BeforeSave`/`BeforeCreate` derivation, and the
     `RecordForContact`-vs-`RecordFromContact` / `contact_card_merge.go` data-loss
-    bug classes (CLAUDE.md backend traps #2 and #3);
+    bug classes (backend/AGENTS.md traps #2 and #3);
   - soft- vs hard-delete semantics and the `DeleteContact`/`DeleteUser` cascade
     lists (trap #6/#7), including unique-index interactions with soft-deleted rows;
   - ownership scoping — zero IDOR holes (trap #5);
@@ -180,7 +180,7 @@ time-based rule.
   from the router: a new handler is covered only once someone adds it, which is
   why `routes/authorization_matrix_test.go` (derived from the live router) stays
   the route-completeness gate and this matrix is the per-handler guard pin.
-- **The non-negotiable fixture rule** (CLAUDE.md trap #1): test against the real
+- **The non-negotiable fixture rule** (backend/AGENTS.md trap #1): test against the real
   migrated schema, never `AutoMigrate`. Prefer `internal/dbtest.New(t)`, which
   builds the migrated template once per test binary and hands each test an
   isolated copy (issue #632); the `database` package's own tests call
@@ -200,7 +200,7 @@ time-based rule.
   - request-body binding shapes and whether validation tags actually run
     (`openapi_request_test.go`, issue #256);
   - response DTOs not silently dropping required keys — the `omitempty` + required
-    TS field crash (CLAUDE.md frontend trap #8);
+    TS field crash (frontend/AGENTS.md trap #8);
   - captured real responses, one canonical copy consumed by both web and Android
     parse tests: `testdata/contract-fixtures/` → `frontend/src/api/contractFixtures.test.ts`
     and `android/core/network/.../ContractFixtureTest.kt` (issue #257; the
@@ -306,7 +306,7 @@ time-based rule.
   get their own file. Component editors assert the **save payload** passed to
   `onChange`, not just rendering.
 - **Must not be used for** end-to-end flows (that's Playwright).
-- **Gotchas that live here** (CLAUDE.md frontend traps): no auto-cleanup and no
+- **Gotchas that live here** (frontend/AGENTS.md traps): no auto-cleanup and no
   `globals: true` — add `afterEach(cleanup)` explicitly; MUI appends `" *"` to a
   required field's accessible label; don't nest `<Chip>` in `<Typography>`.
 - **Runs via** `npx vitest run` + `npx tsc --noEmit`; CI `unit-tests.yml`
@@ -597,7 +597,7 @@ and asset-404 blocks) so a failed test cannot leak state into the next file.
 It runs on Chromium **and** Firefox. Run locally with
 `npx playwright test -c playwright.sw.config.ts` (the webServer builds the
 fixtures on first run); the `e2e-sw-upgrade` job in `e2e-tests.yml` runs it in
-CI. `frontend-dev` is useless here (CLAUDE.md, T51): every build under test is
+CI. `frontend-dev` is useless here (see `frontend/AGENTS.md`): every build under test is
 a real `vite build`.
 
 ### WebKit smoke (issue #992)
@@ -631,8 +631,8 @@ in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
 
 Firefox is the engine most self-hosters on Linux run, and it already bit this
 project once (registering a service worker against the SPA-fallback
-`index.html` fails with "The operation is insecure"; see CLAUDE.md's
-`frontend-dev` note). `playwright.config.ts` therefore has a `firefox` project
+`index.html` fails with "The operation is insecure"; see `frontend/AGENTS.md`'s
+dev-server note). `playwright.config.ts` therefore has a `firefox` project
 with two scopes:
 
 - **Every PR — smoke.** `frontend/e2e/firefoxSmoke.spec.ts`, run by the
@@ -765,7 +765,7 @@ only a 5xx (or a genuinely swallowed internal failure) is `error`/`warn`.
   server log in both `reference-clients-e2e.yml` legs (which set
   `GIN_MODE=release`, since a non-release mode forces console-format logs).
   Adding an allowlist entry is a reviewed, reasoned weakening of the gate, like
-  any other (CLAUDE.md "Gates are not silently weakened").
+  any other (`.github/AGENTS.md` "Gates are not silently weakened").
 
 ## Cross-cutting: performance/load and security
 
@@ -979,7 +979,7 @@ warned about. Two directions:
    `android-tests.yml` uses), and runs the script — same nightly +
    path-gated schedule as the vdirsyncer job.
 
-**Running locally:** start our server (see the launch.json note in CLAUDE.md),
+**Running locally:** start our server (see the launch.json note in AGENTS.md),
 then
 
 ```bash
@@ -1031,7 +1031,7 @@ full-refetch fallback would receive vCard 3.0 re-serializations; the pinned
 divergence registers encode exactly that. Requesting vCard 4.0 from those
 servers would collapse most of the register. Tracked as a follow-up.
 
-**ETag hand-verification (per CLAUDE.md):** the matrix's quiescence and update
+**ETag hand-verification (per AGENTS.md):** the matrix's quiescence and update
 assertions ARE the automated ETag-correctness proof — vdirsyncer detects an
 update only if our server's ETag changes on PUT, and the "unchanged server
 makes no second pass" assertion fails if our server returns unstable ETags.

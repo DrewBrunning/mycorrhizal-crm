@@ -24,7 +24,7 @@ long as each is deliberate and written down — which is the point of this ADR f
   CON-01 added an opt-in `If-Match` check that returns `412` on a stale write. This ADR makes that
   the deliberate, documented conflict model and defines it for every entity shape.
 
-CLAUDE.md (T13) is explicit that the CardDAV full-overwrite policy must **not** be copied into new
+backend/AGENTS.md's domain notes are explicit that the CardDAV full-overwrite policy must **not** be copied into new
 two-way paths without a deliberate decision. This is that decision for REST.
 
 ## Decision
@@ -63,7 +63,7 @@ Why reject rather than auto-merge:
 |---|---|---|
 | **Scalar fields on a revision-bearing entity** (`Contact` name/birthday/org/…, `Activity`, `LifeEvent`, `Note`, `Reminder` fields) | Conditional write; stale → `412`, nothing changed. No merge. | The classic conflict with no correct automatic answer. The user resolves it with both versions visible. |
 | **Repeatable fields** (`Card` phones, emails, addresses, URLs, …) | Same conditional write — a stale write is rejected **whole**, not partially applied, so no entry is ever silently dropped. A union of two clients' additive changes is a **client-side** step after the `412` (re-read, merge the lists, re-PUT). | `PUT /contacts/{id}` replaces the list wholesale, so without the `If-Match` guard client B's single-phone PUT would silently drop client A's phone — which is the bug the guard prevents. Server-side auto-union is deferred, not rejected: it needs a "these entries were auto-added by conflict resolution" disclosure the REST surface does not have. Prerequisite for revisiting: a REST conflict-surface analogous to `contact_sync_conflicts`. |
-| **Edge- and join-shaped rows** (`RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, …) | Last-write-wins. No revision token, no conditional write. | ADR 0006 §"Which entities are excluded" and CLAUDE.md trap #7: these are hard-deleted, natural-keyed, and re-pulled wholesale by clients. A per-row version token has no consumer. The blast radius of a lost update is one cheap, re-fetchable row. |
+| **Edge- and join-shaped rows** (`RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, …) | Last-write-wins. No revision token, no conditional write. | ADR 0006 §"Which entities are excluded" and backend/AGENTS.md trap #7: these are hard-deleted, natural-keyed, and re-pulled wholesale by clients. A per-row version token has no consumer. The blast radius of a lost update is one cheap, re-fetchable row. |
 | **Relationship direction** (`RelationshipEdge.Type` + `source_id`/`target_id`) | Not a policy — an **invariant**. An update persists exactly the `(source, target, type)` the client sent. The server never derives the inverse and never writes it. | `RelationshipEdge.Type` describes the source's role relative to the target; only one direction is ever stored and the inverse is derived from `relationship_type_registry.go`, never persisted. A merge that inverted an edge would be silent corruption with no recovery. `UpdateRelationshipEdge` is full-replace of the input DTO, so LWW here cannot invert — it can only replace the row with another correctly-oriented row. Pinned by test, not left to policy. |
 
 ### Offline Android reconnection (#479)

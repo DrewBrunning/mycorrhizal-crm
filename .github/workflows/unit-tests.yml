@@ -466,7 +466,7 @@ jobs:
         working-directory: backend
         run: go tool -modfile=tools.mod golangci-lint run ./...
 
-      # CLAUDE.md backend trap #4: a GORM finisher (Create/Save/Updates/
+      # backend/AGENTS.md trap #4: a GORM finisher (Create/Save/Updates/
       # Delete/First/Find/Exec/...) returns *gorm.DB, not error, so errcheck
       # cannot see a discarded `.Error`. This repo-local analyzer
       # (backend/internal/lint/gormerr) flags every one in non-test code.

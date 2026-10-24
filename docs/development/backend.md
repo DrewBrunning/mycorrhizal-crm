@@ -82,7 +82,7 @@ go test ./...
 ```
 
 Tests that touch persistence run against the **real migrated schema** — never
-GORM `AutoMigrate` (CLAUDE.md backend trap #1). Use `internal/dbtest.New(t)`,
+GORM `AutoMigrate` (backend/AGENTS.md trap #1). Use `internal/dbtest.New(t)`,
 which hands each test an isolated copy of a per-binary migrated template
 (issue #632); the `database` package's own tests call
 `database.InitDB(filepath.Join(t.TempDir(), "x.db"))` directly. Which layer a

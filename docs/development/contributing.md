@@ -12,14 +12,18 @@ nav_order: 6
 2. Follow the setup steps in [Backend](backend.md) and [Frontend](frontend.md).
 3. Run `bash scripts/install-git-hooks.sh` once — it wires up local git hooks
    that mirror CI's linters and a few governance/drift checks, so a commit
-   that would fail CI fails locally first. See `CLAUDE.md`'s "Local
-   pre-commit checks" section for exactly what runs.
+   that would fail CI fails locally first. See [`.github/AGENTS.md`](../../.github/AGENTS.md)
+   ("Local pre-commit checks") for exactly what runs.
 4. Create a feature branch from `main`.
 
 ## Development Workflow
 
+The full, non-negotiable sequence is in
+[Implementation Workflow](implementation-workflow.md): write failing tests first, review the tests,
+implement in small TDD loops, self-review, run the local per-PR suite, then open the PR.
+
 1. Make your changes with tests.
-2. Run `go test ./...` (backend) and the Playwright E2E suite (frontend)
+2. Run `go test ./...` (backend) and the Playwright E2E suite (frontend).
 3. Open a pull request against `main`.
 
 ## Code Style
