@@ -1386,7 +1386,13 @@ criterion.**
     `sensitivity-filter-records` (the share/sync read projections in
     `models/contact_record.go`/`field_selection.go` — the filters the
     controller share/read entry points thread an `include_sensitive` flag
-    into), nineteen legs total.
+    into), nineteen legs total. Issue #1946 added `services-backfill` (the
+    one-shot v1.5.0 startup rewrites, `services/gift_date_backfill.go` and
+    `services/hobby_preference_backfill.go`, where a flipped condition
+    rewrites data and the ledger then makes it permanent) and folded
+    `models/contact_personal_info.go`'s per-entry personalInfo filter and
+    inbound remote merge into `sensitivity-filter-records` — twenty legs
+    total.
 
   Both stay nightly + manual-dispatch rather than per-PR: mutation testing is
   O(test suite × mutant count), too slow to gate every diff. Neither is a

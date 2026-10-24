@@ -59,7 +59,7 @@ registry disagree, so the branch-protection list can never drift from the gate l
 | `Android scan (mobsfscan)` | `sast.yml` |
 | `Scan workflows (zizmor)` | `zizmor.yml` |
 | `CIS container hardening scan` | `container-hardening.yml` |
-| `Docs & security-doc citations` | `unit-tests.yml` (citecheck + depexceptions + deprecations + docscheck + releasegatecheck + governancecheck) |
+| `Docs & security-doc citations` | `unit-tests.yml` (citecheck + depexceptions + deprecations + docscheck + releasegatecheck + governancecheck; path-gated third-party notices drift on dependency changes, #1944) |
 | `Go server binary is byte-reproducible` | `reproducibility.yml` |
 | `codecov/patch/backend` | Codecov |
 | `codecov/patch/frontend` | Codecov |
