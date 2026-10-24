@@ -193,6 +193,50 @@ last runs on `main` are green, not that they were re-executed here.
 | Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |
 
+### Community Semgrep rulesets trial (issue #1879)
+
+**Decision: not adopted.** A backend-only spike on 2026-10-24 ran semgrep 1.172.0 with the
+`p/golang` and `p/owasp-top-ten` registry rulesets over `backend/`, excluding `**/testdata/**` and
+`**/node_modules/**`, matching the issue's 2026-10-23 scope decision. The frontend trial
+(`p/typescript`, `p/react`) and the `sast.yml` plumbing were deliberately out of scope; the registry
+rulesets are under the Semgrep Rules License, which does not permit redistributing them in this
+public repository, so no rule files were vendored and CI still does not fetch them.
+
+| Ruleset | Findings | Rules | Scope |
+|---|---|---|---|
+| `p/golang` | 7 | 42 | 560 Go files (861 tracked files considered) |
+| `p/owasp-top-ten` | 9 | 225 | 861 files (the 7 Go findings above, plus 2 Dockerfile findings) |
+
+The two rulesets overlap; the combined result is **9 findings, no real defect**:
+
+| Finding | Site | Classification |
+|---|---|---|
+| `raw-html-format` | `backend/cmd/dastcanary/main.go` | CodeQL duplicate (`go/reflected-xss`, dismissed "used in tests"). The reflected XSS is the canary's planted vulnerability, annotated for both CodeQL and gosec. |
+| `math-random-used` | `backend/integrations/retry.go` | False positive: retry jitter, not a security primitive. |
+| `math-random-used` | `backend/internal/soak/workload.go` | False positive: seeded load-generator workload mix. |
+| `math-random-used` | `backend/services/webhook_service.go` | False positive: retry jitter, already carries `//nolint:gosec // G404`. |
+| `unsafe-deserialization-interface` | `backend/models/audit.go` | False positive: unmarshals the app's own `json.Marshal` output for audit redaction; no untrusted input. |
+| `use-of-sha1` | `backend/services/hibp_service.go` | CodeQL duplicate (`go/weak-sensitive-data-hashing`, dismissed). SHA-1 is the HIBP k-anonymity wire format; password storage is bcrypt. |
+| `missing-ssl-minversion` | `backend/services/mailer.go` | False positive for this toolchain: Go 1.22+ (this repo builds on Go 1.26) defaults `MinVersion` to TLS 1.2. An explicit pin would be defence in depth, not a defect. |
+| `missing-user-entrypoint` / `missing-user` | `backend/Dockerfile` | False positive: the entrypoint starts as root only to reconcile PUID/PGID and `chown` the data directories, then `exec su-exec appuser:appgroup`. The container does not serve as root. |
+
+Hand-verification that the registry config actually loaded: the same `p/golang` invocation over a
+throwaway `main.go` containing a reflected-HTML `fmt.Fprintf`, `math/rand.Int()` and a plain
+`http.ListenAndServe` produced three findings (`raw-html-format`, `math-random-used`, `use-tls`).
+Reproduce the baseline from `backend/`:
+
+```bash
+SEMGREP_SEND_METRICS=off uvx --from 'semgrep==1.172.0' semgrep \
+  --config p/golang --config p/owasp-top-ten --error \
+  --exclude '**/testdata/**' --exclude '**/node_modules/**' .
+```
+
+No finding required a new issue: the two CodeQL duplicates are already dismissed with reasons, and
+the rest are patterns this app either uses by design (jitter, HIBP SHA-1, the DAST canary) or never
+feeds untrusted input (audit redaction). The rules therefore add no net-new signal over CodeQL
+security-extended plus `backend/.semgrep/mycorrhizal-traps.yaml`, and the existing custom trap rules
+remain the Semgrep gate.
+
 ---
 
 ## 4. Manual verification records
