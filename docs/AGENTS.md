@@ -3,7 +3,8 @@
 Read the root `AGENTS.md` first. Docs are code here: they are gated by `docscheck`, `citecheck`,
 `depexceptions`, `deprecations`, `releasegatecheck`, `governancecheck`, `pragmacheck` and
 `nightlyalertcheck`, all of which CI runs unconditionally because `.github/filters.yaml` maps
-`docs/**` to nothing.
+`docs/**` to nothing. A documentation-only change is verified by these gates rather than by the
+test-first workflow; a change with runtime behaviour is not documentation-only.
 
 ## Structural gates
 

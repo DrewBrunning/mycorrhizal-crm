@@ -108,7 +108,8 @@ time-based rule.
     bug classes (backend/AGENTS.md traps #2 and #3);
   - soft- vs hard-delete semantics and the `DeleteContact`/`DeleteUser` cascade
     lists (trap #6/#7), including unique-index interactions with soft-deleted rows;
-  - ownership scoping — zero IDOR holes (trap #5);
+  - ownership enforced at the data-access boundary — a missing or inconsistent check is a security
+    defect (trap #5);
   - transactions, `SQLITE_BUSY` / `_txlock=immediate` behavior
     (`database/concurrent_write_test.go`, trap #9);
   - services that orchestrate multi-row operations: CardDAV/CalDAV sync,

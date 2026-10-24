@@ -39,8 +39,9 @@ and gate configs are routed to the maintainer by `.github/CODEOWNERS` (routing o
 ## Local pre-commit checks
 
 `.githooks/` are vendored hooks (no external pre-commit framework) that mirror CI's fast,
-deterministic gates. Install per clone **and per worktree** with `bash scripts/install-git-hooks.sh`
-(the script also sets a worktree-local `core.hooksPath` override when one shadows the shared setting).
+deterministic gates. Install per clone **and per worktree** as described in the root `AGENTS.md`
+(`bash scripts/install-git-hooks.sh` also sets a worktree-local `core.hooksPath` override when one
+shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 
 - **Always:** client-side `gitleaks` secret scan (fail-closed on a missing binary).
 - **Staged `backend/`:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned to the
@@ -58,8 +59,7 @@ deterministic gates. Install per clone **and per worktree** with `bash scripts/i
   reminder to add an `## Upgrade notes` block (or `no-changelog:`) to the PR body.
 
 Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, and any full suite (`go test ./...`,
-`vitest run`, Playwright, `yarn build`). Never bypass with `git commit --no-verify` without the
-user's explicit go-ahead for that specific commit.
+`vitest run`, Playwright, `yarn build`).
 
 ## Scheduled workflows and alerting
 

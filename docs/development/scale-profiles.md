@@ -65,9 +65,9 @@ contacts, so the shaped dataset passes the DB-01 application-invariant sweep
 `TestProfileDatasetPassesDB01`. A fixture that violated an invariant would make
 every downstream measurement meaningless.
 
-**Multi-user is its own axis.** Multi-user is supported at `1.0.0` (#558). Each
-profile user is a fully isolated account — its own re-keyed contacts, edges and
-content, no cross-user references (`TestProfileMultiUserIsolation`). Per-user
+**Multi-user is its own axis.** Multi-user has been supported since `1.0.0`
+(#558). Each profile user is a fully isolated account — its own re-keyed contacts,
+edges and content, no cross-user references (`TestProfileMultiUserIsolation`). Per-user
 background jobs, FTS indexes and integration sync schedules multiply with the
 user count independently of per-user data volume: ten users each syncing
 CardDAV on the same cadence is a contention profile one user with ten times the

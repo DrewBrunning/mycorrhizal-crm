@@ -10,9 +10,11 @@ This is the long form of the non-negotiable workflow in the root `AGENTS.md`. It
 contributor or agent can answer "what does done look like here?" without asking, and so a reviewer
 can point at a named step instead of re-litigating the process in a PR.
 
-The ordering is the point: **tests come first, the implementation second, the self-review third,
-and the pre-PR gate before the commit.** None of those steps is replaced by CI. CI catches
-what you missed; it does not prove you wrote the right test.
+For any change that can be tested, the ordering is the point: **tests come first, the implementation
+second, the self-review third, and the pre-PR gate before the commit.** None of those steps is
+replaced by CI. CI catches what you missed; it does not prove you wrote the right test.
+Documentation-only, generated-artifact, and purely mechanical changes replace the test step with
+their own verification below; they do not skip verification.
 
 ## Why test-first
 
@@ -25,6 +27,22 @@ rule at review time: break the production code, watch the new test fail, restore
 
 Test-first is not a demand for red-green on every line. It is a demand that **the failure is
 observed**, not assumed, before you rely on the test.
+
+## When test-first does not apply
+
+Test-first is mandatory for any functional or behavioural change, bug fix, new route, or new access
+path. Three categories replace it with their own verification — not with no verification:
+
+- **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
+  gates listed in [`docs/AGENTS.md`](../AGENTS.md) (`docscheck`, `citecheck`, `depexceptions`,
+  `deprecations`, `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`).
+- **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
+  named drift test. Never hand-edit.
+- **Purely mechanical changes** (renames, moves, formatting, or tooling/dependency updates with no
+  behaviour change): run build/vet/lint and the relevant existing tests. Add a characterization test
+  if the change could alter behaviour.
+
+Any change that can be tested uses the test-first process.
 
 ## What "test correctness" means
 
@@ -47,6 +65,8 @@ Before you implement, review the tests you just wrote against these questions:
 - **Is the regression test a reproduction?** For a bug, the test must fail on the buggy code for the
   reported reason. If you cannot reproduce it, say so rather than writing a test that only pins the
   new code.
+- **Does it need a CI-only prerequisite?** Use `internal/citest.SkipOrRequire`: it skips locally but
+  fails when `MYCORRHIZAL_REQUIRE_REFERENCES=1`, so a missing tool never becomes a passing test.
 
 If a test is genuinely wrong, change it deliberately, re-verify that the corrected test fails
 first, and explain why in the PR. Never weaken or delete a failing test to make an implementation
@@ -61,7 +81,9 @@ Run this before you commit. It is the same list a reviewer will use.
 - Compiles, lints, and the touched tests pass.
 - Errors are checked — including every GORM `.Error` (`.Error` on `db.Save`/`db.Updates` is not a
   returned `error`, so errcheck cannot see it).
-- Ownership scoping: every read/write is scoped by `user_id` (or `Contact.VCardUID`).
+- Ownership is enforced at the data-access boundary: every user-scoped read/write is scoped by
+  `user_id` (or `Contact.VCardUID`). A missing or inconsistent check is a security defect, and every
+  new route or access path needs regression coverage.
 - Transactions and concurrency: the `_txlock=immediate` assumption holds; no read-then-write race
   was introduced; partial failure does not leave half-written state.
 - Clock: no raw `time.Now`/`Since`/`Until` in controllers, services, or middleware — use the

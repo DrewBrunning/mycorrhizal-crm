@@ -105,11 +105,9 @@ A change is breaking if it does any of the following to a covered surface:
   support commitment. The chosen policy is a single supported major version:
   when `2.0.0` ships, `1.x` is retired per the deprecation policy (MAINT-01,
   issue #490), not maintained in parallel.
-- Pre-`1.0.0`, breaking changes remain **allowed** (AGENTS.md's standing
-  position: pre-alpha software). What this policy changes pre-`1.0.0` is that
-  a break is *classified and recorded* — the OpenAPI baseline drift test flags
-  it, the release notes must name it, and a data-lossing change still needs
-  the explicit call-out regardless of version.
+- Before `1.0.0`, breaking changes were allowed but still classified and
+  recorded. That period is over: `1.x` is covered by the promise above, and a
+  break follows the process below.
 
 ## Process
 
@@ -129,14 +127,15 @@ A breaking change (post-`1.0.0`) requires **all** of:
 
 ## The data bar is higher than the shape bar
 
-Per AGENTS.md, breaking a request shape is ordinary pre-`1.0` practice;
+Breaking a request or response shape follows the MAINT-02 process above;
 breaking **data** is a different, higher bar. A change that loses, corrupts,
 or silently reinterprets user data:
 
 - requires a real backfill or an explicit, stated decision that the data is
-  safe to lose, **regardless of version** (pre- or post-`1.0.0`);
-- is never justified by "pre-alpha" — that argument covers request shapes,
-  not someone's stored relationships, notes, and history;
+  safe to lose, **regardless of version**;
+- is never treated as ordinary interface churn — losing someone's stored
+  relationships, notes, and history is a different decision from changing a
+  request shape;
 - follows the data-retention/deletion lifecycle
   (`docs/security/data-retention-lifecycle.md`) so every copy of the affected
   data is accounted for.
