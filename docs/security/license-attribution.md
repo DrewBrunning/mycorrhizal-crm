@@ -30,7 +30,14 @@ The container's Alpine base layer is an unmodified upstream distribution. Its
 installed package inventory (including license identifiers) is present in the
 image at `/lib/apk/db/installed`; the application notice does not restate it.
 Changing the base image or the `apk add` list is still a distribution change and
-belongs in the same review as this notice.
+belongs in the same review as this notice. **This is a manual-review
+boundary, not an automated gate:** the drift check below compares only the Go
+and npm dependency graphs the image links or bundles, and a Dockerfile/base
+image/`apk add` edit cannot make `THIRD_PARTY_NOTICES.md` stale. The `notices`
+filter in `.github/filters.yaml` therefore deliberately does not match
+`Dockerfile` or `docker/**` (issue #1944) — a match would run a check that
+cannot fail on the change. A reviewer must read those diffs against this
+section.
 
 ## Container: generated file, drift-gated
 
@@ -54,12 +61,22 @@ The file is copied into the image (`/app/THIRD_PARTY_NOTICES.md`) and served at
 Dockerfile, the release build ships it; no release-only generation step can
 disagree with it.
 
-Drift is gated in `license-compliance.yml` (`Third-party notices drift`). The
-job runs on a dependency-manifest change, a change to the generator or its
-license-text fallbacks, and the nightly schedule. It regenerates from the
-resolved dependency graph and fails if the committed file differs. The diff on
-a dependency PR is the review artifact; unrelated PRs pay nothing because the
-job is path-gated.
+Drift is gated in `unit-tests.yml`'s `Docs & security-doc citations` job, step
+`Verify third-party notices are current` (issue #1944). That job is a required
+merge-blocking status check (`.github/rulesets/main-protection.json`) and a
+mandatory per-PR release gate (`.github/release-gates.json`), so a stale notice
+cannot merge. The step regenerates from the resolved dependency graph and fails
+if the committed file differs. It is path-gated by `.github/filters.yaml`'s
+`notices` filter — a dependency-manifest change, a change to the generator or
+its license-text fallbacks, or the committed notice itself. Nightly runs and
+the release composition's dispatch/call paths run it unconditionally. The diff
+on a dependency PR is the review artifact; unrelated PRs pay only for the
+citation checks, not the dependency install.
+
+The check used to live in `license-compliance.yml` (PR #1942), whose jobs carry
+no required status check; it was advisory there. Issue #1944 moved it into the
+already-required job rather than creating a new required context, per
+`CLAUDE.md`'s "Adding a quality gate".
 
 ## Android: GMS-free in-app surface
 
