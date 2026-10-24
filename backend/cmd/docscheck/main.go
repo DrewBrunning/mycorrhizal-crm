@@ -132,9 +132,8 @@ func checkLinks(root string) []string {
 		abs := filepath.Join(docsDir, rel)
 		body, err := os.ReadFile(abs) // #nosec G304 -- rel comes from the filepath.Walk over docs/, never request input
 		if err != nil {
-			// # pragma: no cover — the file was listed by the walk above, so a
-			// read failure is a racing deletion, not a normal state.
-			findings = append(findings, fmt.Sprintf("%s: unreadable: %v", rel, err))
+			// A racing deletion is not a normal state.
+			findings = append(findings, fmt.Sprintf("%s: unreadable: %v", rel, err)) // # pragma: no cover — the file was listed by the walk above; deletion during the walk is a race
 			continue
 		}
 		file := mdref.File{Path: abs, Display: rel, Text: string(body)}

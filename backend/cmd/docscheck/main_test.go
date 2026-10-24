@@ -514,3 +514,48 @@ func TestFileReferencesDuplicateAndTestdataSkip(t *testing.T) {
 		t.Errorf("ambiguous testdata/ references should be skipped: %s", got)
 	}
 }
+
+func TestSupportedVersionsDriftPageMissingFloor(t *testing.T) {
+	root := t.TempDir()
+	matrix := "# Supported runtime matrix\n\n"
+	page := "# Supported versions\n\n"
+	for i, f := range operatorFloors {
+		matrix += fmt.Sprintf("| %s | %s |\n", f.label, f.matrix)
+		if i == 0 {
+			continue
+		}
+		page += fmt.Sprintf("%s: %s\n", f.label, f.page)
+	}
+	write(t, root, "docs/development/supported-runtime-matrix.md", matrix)
+	write(t, root, "docs/supported-versions.md", page)
+	got := strings.Join(checkSupportedVersionsDrift(root), "\n")
+	if !strings.Contains(got, "does not state") || !strings.Contains(got, operatorFloors[0].label) {
+		t.Errorf("expected page-missing finding for %q, got: %s", operatorFloors[0].label, got)
+	}
+}
+
+func TestDockerEngineFloorMissingPageRow(t *testing.T) {
+	matrix := "# Supported runtime matrix\n\n| **Docker Engine** | `>=23.0` | why |\n"
+	page := "# Supported versions\n\n"
+	got := strings.Join(checkDockerEngineFloor(matrix, page), "\n")
+	if !strings.Contains(got, "has no **Docker Engine** row") {
+		t.Errorf("expected missing-row finding, got: %s", got)
+	}
+}
+
+func TestRunAtPrintsFindingsAndReturnsError(t *testing.T) {
+	root := fixtureTree(t)
+	write(t, root, "docs/bad.md", "[bad](missing.md)\n")
+	if err := runAt(root); err == nil {
+		t.Fatal("expected runAt to return an error when there are findings")
+	}
+}
+
+func TestDockerEngineFloorMultipleMatrixRows(t *testing.T) {
+	matrix := "# Supported runtime matrix\n\n| **Docker Engine** | `>=23.0` (was `>=24.0`) | why |\n"
+	page := "# Supported versions\n\n| **Docker Engine** | `>= 23.0` | why |\n"
+	got := strings.Join(checkDockerEngineFloor(matrix, page), "\n")
+	if !strings.Contains(got, "engineering matrix Docker Engine row states more than one competing floor") {
+		t.Errorf("expected multiple-matrix-floor finding, got: %s", got)
+	}
+}
