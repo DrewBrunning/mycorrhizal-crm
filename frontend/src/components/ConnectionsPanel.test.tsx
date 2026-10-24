@@ -237,7 +237,9 @@ test('previews the first five chains and reveals the rest on demand', async () =
 
   fireEvent.click(screen.getByRole('button', { name: 'View all' }));
 
-  expect(screen.getAllByText('Contact 6').length).toBeGreaterThan(0);
+  await waitFor(() => {
+    expect(screen.getAllByText('Contact 6').length).toBeGreaterThan(0);
+  });
   expect(screen.getAllByText('Contact 7').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument();
 });

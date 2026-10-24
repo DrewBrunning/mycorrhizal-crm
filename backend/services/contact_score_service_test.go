@@ -55,6 +55,17 @@ func createScoreTestActivity(t *testing.T, db *gorm.DB, userID uint, contact mod
 	require.NoError(t, db.Create(&activity).Error)
 }
 
+// scoreTestDay is the date-only value a client writes for an interaction:
+// midnight UTC on now's wall-clock date minus daysAgo. Activity dates are
+// calendar days (ADR 0015 category 2), so deriving the stored instant from
+// now's components keeps these tests exact at any time of day and in any
+// timezone. A bare time.Now().AddDate west of UTC in the evening lands on the
+// next UTC day, which made the recency/frequency assertions depend on when the
+// suite ran (issue #1885).
+func scoreTestDay(now time.Time, daysAgo int) time.Time {
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -daysAgo)
+}
+
 func setSelfContact(t *testing.T, db *gorm.DB, userID uint, uid string) {
 	t.Helper()
 	require.NoError(t, db.Model(&models.User{}).Where("id = ?", userID).Update("self_contact_vcard_uid", uid).Error)
@@ -67,9 +78,10 @@ func TestComputeAllContactScores_BulkAndSingleAgree(t *testing.T) {
 	friend := createScoreTestContact(t, db, user.ID, "Friend")
 	setSelfContact(t, db, user.ID, self.VCardUID)
 	createScoreTestEdge(t, db, user.ID, self.VCardUID, friend.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
-	createScoreTestActivity(t, db, user.ID, friend, models.InteractionTypeCall, time.Now().AddDate(0, 0, -5))
 
 	now := time.Now()
+	createScoreTestActivity(t, db, user.ID, friend, models.InteractionTypeCall, scoreTestDay(now, 5))
+
 	all, err := ComputeAllContactScores(db, user.ID, now)
 	require.NoError(t, err)
 
@@ -83,12 +95,13 @@ func TestComputeContactScore_UsesRealCadencePolicyInterval(t *testing.T) {
 	db := setupContactScoreTestDB(t)
 	user := createScoreTestUser(t, db, "score-policy")
 	contact := createScoreTestContact(t, db, user.ID, "Alice")
-	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, time.Now().AddDate(0, 0, -10))
+	now := time.Now()
+	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, scoreTestDay(now, 10))
 
 	policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 10}
 	require.NoError(t, db.Create(&policy).Error)
 
-	result, err := ComputeContactScore(db, user.ID, &contact, time.Now())
+	result, err := ComputeContactScore(db, user.ID, &contact, now)
 	require.NoError(t, err)
 	// 10 days since last interaction against a real 10-day policy interval
 	// is "exactly due" -> Recency should sit at the ratio-1.0 midpoint (50),
@@ -107,9 +120,10 @@ func TestComputeContactScore_NoCadencePolicy_FallsBackToClosenessTierDefault(t *
 	// 14 days since interaction, no CadencePolicy -> spouse_of's tier default
 	// interval (14 days, per weights.json) should be used, landing exactly
 	// at the "due today" midpoint.
-	createScoreTestActivity(t, db, user.ID, spouse, models.InteractionTypeCall, time.Now().AddDate(0, 0, -14))
+	now := time.Now()
+	createScoreTestActivity(t, db, user.ID, spouse, models.InteractionTypeCall, scoreTestDay(now, 14))
 
-	result, err := ComputeContactScore(db, user.ID, &spouse, time.Now())
+	result, err := ComputeContactScore(db, user.ID, &spouse, now)
 	require.NoError(t, err)
 	assert.InDelta(t, 50, result.Recency.Value, 1.0)
 }
@@ -310,14 +324,37 @@ func TestComputeContactScore_FrequencyWindowBoundary(t *testing.T) {
 
 	now := time.Now()
 	// One interaction just inside the window, one just outside.
-	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, now.AddDate(0, 0, -cfg.FrequencyWindowDays+1))
-	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, now.AddDate(0, 0, -cfg.FrequencyWindowDays-1))
+	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, scoreTestDay(now, cfg.FrequencyWindowDays-1))
+	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall, scoreTestDay(now, cfg.FrequencyWindowDays+1))
 
 	result, err := ComputeContactScore(db, user.ID, &contact, now)
 	require.NoError(t, err)
 	// Only the in-window interaction should count.
 	expectedRatio := 1.0 / (float64(cfg.FrequencyWindowDays) / float64(cfg.UnknownClosenessIntervalDays))
 	assert.InDelta(t, 100*expectedRatio, result.Frequency.Value, 1.0)
+}
+
+// TestComputeContactScore_DateOnlyInteractionUsesItsUtcCalendarDay pins issue
+// #1823's rule against a now whose local date differs from UTC's: an activity
+// written by a client as the picked day 00:00:00Z is that UTC calendar day, so
+// an evening west of UTC must not make "yesterday" read as today. The recency
+// test fixtures above need the same date-only shape (scoreTestDay); this test
+// fails if the day math regresses to elapsed hours.
+func TestComputeContactScore_DateOnlyInteractionUsesItsUtcCalendarDay(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "score-dateonly")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+
+	// 23:30 on the 15th in CDT (UTC-5) is already 04:30 on the 16th in UTC.
+	now := time.Date(2030, 6, 15, 23, 30, 0, 0, time.FixedZone("CDT", -5*60*60))
+	createScoreTestActivity(t, db, user.ID, contact, models.InteractionTypeCall,
+		time.Date(2030, 6, 14, 0, 0, 0, 0, time.UTC))
+
+	result, err := ComputeContactScore(db, user.ID, &contact, now)
+	require.NoError(t, err)
+	require.NotNil(t, result.Recency.ReasonParams.Days, "recency must report its day count")
+	assert.Equal(t, 1, *result.Recency.ReasonParams.Days,
+		"the 14th's date-only interaction is one calendar day before the 15th, regardless of UTC rollover")
 }
 
 // TestComputeContactScore_DirectEdgeReversedDirectionStillResolves proves
