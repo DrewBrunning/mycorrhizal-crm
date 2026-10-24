@@ -190,7 +190,9 @@ of `middleware-auth`/`ssrf` to a release gate waits on 30 stable nightly days. I
 `services-auth` (TOTP/session/reset/API-token/WebAuthn/OIDC/feed), `sensitivity-filter` (the
 `sensitivity = normal` query filters on the services query sites) and `sensitivity-filter-records` (the
 share/sync read projections in `models/contact_record.go`/`field_selection.go`, the filters the
-controller share/read entry points thread an `include_sensitive` flag into) — nineteen total. gremlins v0.6.0 only mutates
+controller share/read entry points thread an `include_sensitive` flag into), and issue #1946 added
+`services-backfill` (the one-shot gift-date and hobby-Preference startup rewrites) plus
+`models/contact_personal_info.go` to `sensitivity-filter-records` — twenty total. gremlins v0.6.0 only mutates
 comparisons/arithmetic/increments — it will not delete an `if !ok` arm or a `user_id` SQL filter, so
 ownership scoping is guarded by the route ownership matrix, not a mutation leg. A new scope also needs
 its leg added by hand to go-mutation.yml's matrix (`TestWorkflowMatrixMatchesScopes` enforces parity).

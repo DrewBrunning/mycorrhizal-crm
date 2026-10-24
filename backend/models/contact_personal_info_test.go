@@ -189,6 +189,31 @@ func TestMergePersonalInfoFromRemote(t *testing.T) {
 		assert.Equal(t, incoming, got)
 		assert.Nil(t, gotMeta)
 	})
+
+	// A local entry with no value has no content key to match on. It must not
+	// fall through to "the first entry with the same (empty) value" — that
+	// would overwrite an unrelated incoming entry's ID and drop the local,
+	// metadata-bearing entry.
+	t.Run("an entry with no value never content-matches", func(t *testing.T) {
+		blankLocal := []contactmodel.PersonalInfo{{ID: "blank", Kind: "hobby"}}
+		blankMeta := map[string]contactmodel.PersonalInfoMeta{
+			"blank": {Sensitivity: RelationshipSensitivityPrivate},
+		}
+		incoming := []contactmodel.PersonalInfo{
+			{ID: "a", Kind: "hobby", Value: "Chess"},
+			{ID: "b", Kind: "hobby", Value: "Go"},
+		}
+
+		got, gotMeta := MergePersonalInfoFromRemote(blankLocal, blankMeta, incoming)
+
+		require.Len(t, got, 3, "the value-less local entry is re-attached, not matched")
+		assert.Equal(t, "a", got[0].ID)
+		assert.Equal(t, "b", got[1].ID)
+		assert.Equal(t, "blank", got[2].ID)
+		assert.Equal(t, map[string]contactmodel.PersonalInfoMeta{
+			"blank": {Sensitivity: RelationshipSensitivityPrivate},
+		}, gotMeta)
+	})
 }
 
 // TestProjectPreferences_SkipsDislike is the projectPreferences half of the

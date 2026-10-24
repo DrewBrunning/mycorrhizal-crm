@@ -141,6 +141,29 @@ var Scopes = []Scope{
 			"locally, all covered mutants killed)",
 	},
 	{
+		Name:       "services-backfill",
+		PackageDir: "services",
+		TargetFiles: []string{
+			"gift_date_backfill.go",
+			"hobby_preference_backfill.go",
+		},
+		Efficacy:       95,
+		MutantCoverage: 90,
+		Reason: "baseline 2026-10-24 (issue #1946, workers=4, timeout-" +
+			"coefficient=30, cold test cache, gremlins v0.6.0): 62 killed / " +
+			"0 lived / 0 not covered / 0 timed out (efficacy 100.0%, mcover " +
+			"100.0%, 3m4s). The one-shot v1.5.0 startup rewrites that run " +
+			"once and then never again: gift_date_backfill.go normalizes " +
+			"pre-#1823 gift instants to UTC calendar days in the reminder " +
+			"zone (soft-deleted rows included, ledger-gated), and " +
+			"hobby_preference_backfill.go losslessly moves deprecated hobby " +
+			"Preferences into Card.PersonalInfo + PersonalInfoMeta (or " +
+			"recategorizes dislikes in place). A flipped condition here " +
+			"silently rewrites or drops contact data and, because of the " +
+			"ledger, never runs again to repair it. Floor set below " +
+			"measured to absorb CI-runner timeout variance",
+	},
+	{
 		Name:           "vcard3",
 		PackageDir:     "vcard3",
 		Efficacy:       70,
@@ -337,20 +360,28 @@ var Scopes = []Scope{
 		PackageDir: "models",
 		TargetFiles: []string{
 			"contact_record.go", "field_selection.go",
+			"contact_personal_info.go",
 		},
 		Efficacy:       95,
 		MutantCoverage: 90,
-		Reason: "baseline 2026-10-12 (issue #1624 §2 follow-up, workers=4, " +
-			"timeout-coefficient=30, cold test cache, gremlins v0.6.0): " +
-			"83 killed / 0 lived / 0 not covered / 0 timed out (efficacy " +
-			"100.0%, mcover 100.0%, 48s). The share/sync read projections " +
+		Reason: "baseline 2026-10-24 (issue #1946 re-measure of the " +
+			"issue #1624 §2 follow-up; workers=4, timeout-coefficient=30, " +
+			"cold test cache, gremlins v0.6.0): 122 killed / 0 lived / 0 " +
+			"not covered / 0 timed out (efficacy 100.0%, mcover 100.0%, " +
+			"1m7s). The share/sync read projections " +
 			"that enforce the sensitivity rule where contact shares and the " +
 			"CardDAV/CalDAV sync view actually build their payloads: " +
 			"models/contact_record.go's projectRelationshipEdges / " +
 			"projectPreferences / projectCustomFields (reached from " +
 			"RecordForContactFiltered, the shared path under " +
-			"contact_share_controller.go and RecordForContactForSync) and " +
-			"models/field_selection.go's address filter. The controller " +
+			"contact_share_controller.go and RecordForContactForSync), " +
+			"models/field_selection.go's address filter, and — added by " +
+			"issue #1946 — models/contact_personal_info.go's per-entry " +
+			"personalInfo filter (filterSensitivePersonalInfo), its inbound " +
+			"counterpart (MergePersonalInfoFromRemote / " +
+			"matchPersonalInfoIndex, which re-attaches entries the remote " +
+			"never saw) and the stable-ID/dangling-metadata write path " +
+			"(ensurePersonalInfoIDs). The controller " +
 			"share/read entry points only thread an include_sensitive bool " +
 			"into these, so the filters themselves — the thing a flipped " +
 			"comparison would leak — live here. export/account_bundle/" +
