@@ -42,7 +42,8 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | ARM64 Go suite | `vet` + `go test` (no `-race`, no coverage) of the `rest` and `controllers` legs natively on `ubuntu-24.04-arm`: architecture-sensitive code (build tags, atomics alignment, `unsafe`, seccomp) and `main_test.go`'s host-arch embedded handshake | Race detection and coverage (amd64 owns both); Android's `GOOS=android` cross-compile (`android-tests.yml`'s embedded-server step) | `.github/workflows/arm64-tests.yml` | `cd backend && go test $(go list ./... \| grep -vE 'mycorrhizal/(controllers\|services\|database\|internal/(schemafixture\|propertytest\|largedata\|contactgen))$')` on an arm64 host | `arm64-tests.yml` (release-tier; `rest` leg per backend PR, `controllers` on main/nightly) |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
 | Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
-| Context / agent tooling | Validity of the agent-context tree: `AGENTS.md` file set and aliases, budgets, skill contract, reference integrity, `Suites`, static path/command resolution, fact parity | Agent-behaviour eval harness (#1959) | `backend/internal/agentcontext/`, `backend/cmd/contextcheck/` | `cd backend && go run ./cmd/contextcheck` | `docs-citations` (also the pre-commit hook) |
+| Context / agent tooling | Validity of the agent-context tree: `AGENTS.md` file set and aliases, budgets, skill contract, reference integrity, `Suites`, static path/command resolution, fact parity | Agent-behaviour scoring (separate row) | `backend/internal/agentcontext/`, `backend/cmd/contextcheck/` | `cd backend && go run ./cmd/contextcheck` | `docs-citations` (also the pre-commit hook) |
+| Agent behaviour eval | One representative task per Tier 1 suite: the agent's diff stays in scope, generated artifacts are regenerated, and the suite's DoD commands pass; a stripped-context control records the delta | Merge/release gating (advisory and dispatch-only) | `testdata/agent-eval/`, `backend/internal/agenteval/`, `backend/cmd/agenteval/` | `cd backend && go run ./cmd/agenteval -task database-migration` | `agent-eval.yml` (`workflow_dispatch` only; uploads the JSON/Markdown artifact) |
 
 Detail and the hard-won traps for each layer follow.
 
@@ -820,6 +821,22 @@ thresholds in [soak-baseline.md](soak-baseline.md).
   (`docs/development/fault-injection.md`). It is the mechanism behind v0.8.0's
   adversarial audit; the domain milestones (MIG-04/05 #439/#440, DEPLOY-03
   #452, CON-04 #459, #526) consume it.
+
+## Agent behaviour eval (issue #1959)
+
+This is deliberately **not** a layer that gates anything. The harness
+(`backend/cmd/agenteval`, `backend/internal/agenteval`) runs one
+repository-shaped task per Tier 1 suite in a disposable `git worktree` from a
+pinned commit, executes the same `Suites` commands the skills and CI use, checks
+the changed paths against the task's `expect_paths`/`forbid_paths`, and flags a
+changed generated artifact whose editable source did not change. A second
+worktree with the skills tree, nested `AGENTS.md` files, and root routing table
+stripped is the control; the artifact records what was stripped and the delta.
+
+A missing `requires` tool skips the task with a recorded reason. A seed patch
+that does not apply fails before the agent runs. The workflow is
+`workflow_dispatch` only, has no write token, exposes only the model credential,
+and is not in `.github/release-gates.json` or any release workflow.
 
 ## Failure classes by owner
 

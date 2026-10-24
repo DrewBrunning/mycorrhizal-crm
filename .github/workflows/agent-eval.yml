@@ -1,0 +1,123 @@
+name: Agent evaluation (dispatch only)
+
+# Issue #1959: a dispatch-only harness that runs one representative task per
+# Tier 1 suite in a disposable worktree and scores it against the same Suite
+# commands the skills, CI and the eval harness share.
+#
+# This workflow is deliberately NOT a merge gate, a release gate, or part of
+# the release battery. Never add a pull_request/pull_request_target trigger:
+# the agent executes code and receives a model credential. If a schedule: is
+# ever added, it must run the trusted main tree only and be registered in
+# cmd/nightlyalertcheck.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Tier 1 eval task
+        type: choice
+        required: true
+        default: database-migration
+        options:
+          - database-migration
+          - contact-data-fidelity
+          - relationship-semantics-change
+          - api-contract-change
+          - security-sensitive-change
+          - release-readiness
+      agent_command:
+        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned.'
+        type: string
+        required: true
+        default: "true"
+      agent_name:
+        description: Agent name recorded in the artifact
+        type: string
+        required: true
+        default: dry-run
+      agent_model:
+        description: Model id recorded in the artifact
+        type: string
+        required: true
+        default: none
+      agent_version:
+        description: Agent CLI version recorded in the artifact (pin it)
+        type: string
+        required: true
+        default: "0"
+      base_ref:
+        description: Commit SHA to evaluate (defaults to the dispatch commit)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-eval-${{ inputs.task }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Agent eval (${{ inputs.task }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # The harness is advisory by design: a red eval is data, never a merge or
+    # release blocker.
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The task spec's base_ref is a commit SHA; a shallow checkout would
+          # not contain it.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run one eval task
+        env:
+          TASK: ${{ inputs.task }}
+          AGENT_COMMAND: ${{ inputs.agent_command }}
+          AGENT_NAME: ${{ inputs.agent_name }}
+          AGENT_MODEL: ${{ inputs.agent_model }}
+          AGENT_VERSION: ${{ inputs.agent_version }}
+          BASE_REF: ${{ inputs.base_ref }}
+          # Only the model credential is exposed to the agent subprocess; the
+          # workflow token is read-only and no unrelated repo secrets are set.
+          AGENT_EVAL_MODEL_KEY: ${{ secrets.AGENT_EVAL_MODEL_KEY }}
+        run: |
+          set -euo pipefail
+          args=(-task "$TASK" -agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+          if [ -n "$BASE_REF" ]; then
+            args+=(-base-ref "$BASE_REF")
+          fi
+          (
+            cd backend
+            go run ./cmd/agenteval "${args[@]}"
+          )
+
+      - name: Upload eval artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agent-eval-${{ inputs.task }}
+          path: agent-eval-results/
+          retention-days: 14
+          if-no-files-found: warn

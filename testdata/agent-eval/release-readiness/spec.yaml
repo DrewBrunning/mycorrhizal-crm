@@ -1,0 +1,22 @@
+name: release-readiness
+base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
+suite: release-readiness
+timeout: 20m
+requires: [go]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expected_findings:
+  - "ASVS/MASVS"
+  - "schema fixture"
+  - "manual gate"
+expect_paths:
+  - .github/**
+  - backend/internal/schemafixture/**
+  - backend/database/testdata/schemas/**
+  - docs/**
+forbid_paths:
+  - backend/controllers/**
+  - backend/services/**
+  - frontend/src/**

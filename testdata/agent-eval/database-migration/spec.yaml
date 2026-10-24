@@ -1,0 +1,23 @@
+# Dispatch-only eval task (issue #1959). The base ref is a real main commit so
+# the local smoke run is reproducible; the workflow overrides it with the
+# dispatch commit, which contains the skills tree.
+name: database-migration
+base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
+suite: database-migration
+timeout: 20m
+requires: [go]
+# A no-op keeps `go run ./cmd/agenteval -task database-migration` deterministic
+# locally. The dispatch workflow supplies a pinned agent command instead.
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - backend/database/**
+  - backend/models/**
+  - backend/internal/schemafixture/**
+  - backend/testdata/contract-fixtures/**
+forbid_paths:
+  - frontend/**
+  - android/**
+  - .github/**
