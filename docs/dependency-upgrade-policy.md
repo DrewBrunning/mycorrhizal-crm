@@ -96,10 +96,11 @@ ecosystem, grouped `minor-and-patch` updates into one PR per group, with a
 be a compromise before Dependabot offers it). A patch/minor PR merges once
 the full relevant CI suite is green — build/test/lint, `dependency-review.yml`
 (new-dependency vuln/license/typosquat check on the diff),
-`license-compliance.yml` where a manifest changed, and the security gates
-above — no separate design review is required beyond skimming the diff and
-changelog for anything touching a security-sensitive path (auth, crypto, the
-SSRF guards, a hostile-input parser). There is deliberately no auto-merge
+`license-compliance.yml` where a manifest changed, the `Docs & security-doc
+citations` notices drift check (`unit-tests.yml`, #1944), and the security
+gates above — no separate design review is required beyond skimming the diff
+and changelog for anything touching a security-sensitive path (auth, crypto,
+the SSRF guards, a hostile-input parser). There is deliberately no auto-merge
 workflow: a human still clicks merge, but does not need to re-derive what CI
 already verified.
 
