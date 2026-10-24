@@ -54,9 +54,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"unicode"
 
 	"mycorrhizal/integrations"
+	"mycorrhizal/internal/mdref"
 )
 
 func main() {
@@ -117,10 +117,7 @@ func findRepoRoot() (string, error) {
 
 func mustCompile(pat string) *regexp.Regexp { return regexp.MustCompile(pat) }
 
-var (
-	mdHeadingRe = mustCompile(`^(#{1,6})\s+(.*)$`)
-	anchorIDRe  = mustCompile(`<a\s+id="([^"]+)"`)
-)
+var mdHeadingRe = mustCompile(`^(#{1,6})\s+(.*)$`)
 
 // ---------------------------------------------------------------------------
 // 1 + 2. Links, anchors, and repo-file references
@@ -130,16 +127,22 @@ func checkLinks(root string) []string {
 	var findings []string
 	docsDir := filepath.Join(root, "docs")
 	files := listMarkdown(docsDir)
+	resolver := mdref.Resolver{Root: root}
 	for _, rel := range files {
-		body, err := os.ReadFile(filepath.Join(docsDir, rel)) // #nosec G304 -- rel comes from the filepath.Walk over docs/, never request input
+		abs := filepath.Join(docsDir, rel)
+		body, err := os.ReadFile(abs) // #nosec G304 -- rel comes from the filepath.Walk over docs/, never request input
 		if err != nil {
-			// # pragma: no cover — the file was listed by the walk above, so a
-			// read failure is a racing deletion, not a normal state.
-			findings = append(findings, fmt.Sprintf("%s: unreadable: %v", rel, err))
+			// A racing deletion is not a normal state.
+			findings = append(findings, fmt.Sprintf("%s: unreadable: %v", rel, err)) // # pragma: no cover — the file was listed by the walk above; deletion during the walk is a race
 			continue
 		}
-		findings = append(findings, checkFileLinks(root, docsDir, rel, string(body))...)
-		findings = append(findings, checkFileReferences(root, docsDir, rel, string(body))...)
+		file := mdref.File{Path: abs, Display: rel, Text: string(body)}
+		for _, f := range resolver.Links(file) {
+			findings = append(findings, f.String())
+		}
+		for _, f := range resolver.RepoReferences(file) {
+			findings = append(findings, f.String())
+		}
 	}
 	return findings
 }
@@ -157,410 +160,6 @@ func listMarkdown(docsDir string) []string {
 	})
 	sort.Strings(files)
 	return files
-}
-
-func checkFileLinks(root, docsDir, rel, text string) []string {
-	var findings []string
-	for _, ref := range extractLinks(text) {
-		dest := ref.dest
-		if dest == "" {
-			continue
-		}
-		where := fmt.Sprintf("%s:%d", rel, ref.line)
-		if strings.HasPrefix(dest, "http://") || strings.HasPrefix(dest, "https://") {
-			if blobPath := githubBlobRepoPath(dest); blobPath != "" && !pathExists(root, blobPath) {
-				findings = append(findings, fmt.Sprintf("%s: github link target missing: %s (no local %s)", where, dest, blobPath))
-			}
-			continue
-		}
-		if strings.HasPrefix(dest, "mailto:") || strings.HasPrefix(dest, "tel:") || dest == "#" {
-			continue
-		}
-		pathPart, frag := splitFragment(dest)
-		thisFile := filepath.Join(docsDir, rel)
-		if pathPart == "" {
-			if frag != "" && !headingIDs(thisFile)[frag] {
-				findings = append(findings, fmt.Sprintf("%s: anchor not found in this file: #%s", where, frag))
-			}
-			continue
-		}
-		if strings.HasPrefix(pathPart, "/") {
-			cand := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(pathPart, "/")))
-			if !pathExists(root, cand) {
-				findings = append(findings, fmt.Sprintf("%s: absolute link target missing: %s", where, dest))
-			}
-			continue
-		}
-		target := filepath.Clean(filepath.Join(filepath.Dir(thisFile), filepath.FromSlash(pathPart)))
-		probe := target
-		if strings.HasSuffix(probe, ".html") {
-			probe = strings.TrimSuffix(probe, ".html") + ".md"
-		}
-		if !pathExists(root, probe) && !pathExists(root, target) {
-			findings = append(findings, fmt.Sprintf("%s: link target missing: %s", where, dest))
-			continue
-		}
-		if frag != "" && strings.HasSuffix(probe, ".md") && !headingIDs(probe)[frag] {
-			findings = append(findings, fmt.Sprintf("%s: anchor not found: %s", where, dest))
-		}
-	}
-	return findings
-}
-
-func pathExists(root, p string) bool {
-	if p == "" {
-		return false
-	}
-	abs := p
-	if !filepath.IsAbs(abs) {
-		abs = filepath.Join(root, p)
-	}
-	_, err := os.Stat(abs)
-	return err == nil
-}
-
-// githubBlobRepoPath maps a github.com/DrewBrunning/mycorrhizal-crm blob/tree
-// link to a repo-relative path, or "" if the URL is not one of ours.
-func githubBlobRepoPath(u string) string {
-	const prefix = "https://github.com/DrewBrunning/mycorrhizal-crm/"
-	for _, kind := range []string{"blob/main/", "tree/main/", "blob/HEAD/", "tree/HEAD/"} {
-		if idx := strings.Index(u, prefix+kind); idx >= 0 {
-			return u[idx+len(prefix+kind):]
-		}
-	}
-	return ""
-}
-
-func splitFragment(dest string) (pathPart, frag string) {
-	if idx := strings.Index(dest, "#"); idx >= 0 {
-		return dest[:idx], dest[idx+1:]
-	}
-	return dest, ""
-}
-
-// linkRef is one link occurrence with its raw destination and start line.
-type linkRef struct {
-	dest string
-	line int
-}
-
-// extractLinks returns every markdown link destination in text, ignoring links
-// inside fenced code blocks, HTML comments, and inline code spans. Link text
-// and destinations may span lines.
-func extractLinks(text string) []linkRef {
-	cleaned := scrub(text)
-	runes := []rune(cleaned)
-	n := len(runes)
-	var refs []linkRef
-	i := 0
-	for i < n {
-		if runes[i] != '[' {
-			i++
-			continue
-		}
-		labelEnd, ok := matchBracket(runes, i, '[', ']')
-		if !ok {
-			i++
-			continue
-		}
-		if labelEnd+1 < n && runes[labelEnd+1] == '(' {
-			destEnd, ok := matchBracket(runes, labelEnd+1, '(', ')')
-			if ok {
-				dest := string(runes[labelEnd+2 : destEnd])
-				line := 1 + strings.Count(string(runes[:i]), "\n")
-				refs = append(refs, linkRef{dest: strings.TrimSpace(dest), line: line})
-				i = destEnd + 1
-				continue
-			}
-		}
-		i = labelEnd + 1
-	}
-	return refs
-}
-
-// matchBracket finds the index of the matching close of an open rune at open
-// index, honoring nesting. Returns the close index and whether one was found.
-func matchBracket(runes []rune, open int, o, c rune) (int, bool) {
-	depth := 0
-	for j := open; j < len(runes); j++ {
-		switch runes[j] {
-		case o:
-			depth++
-		case c:
-			depth--
-			if depth == 0 {
-				return j, true
-			}
-		}
-	}
-	return 0, false
-}
-
-// scrub removes fenced code blocks, HTML comments, and inline code spans from
-// the text, preserving newlines so reported line numbers stay accurate.
-func scrub(text string) string {
-	lines := strings.Split(text, "\n")
-	out := make([]string, len(lines))
-	copy(out, lines)
-	// Fences and HTML comments in one pass.
-	inFence := false
-	inComment := false
-	fenceMarker := ""
-	for i, line := range lines {
-		t := strings.TrimSpace(line)
-		if inFence {
-			if strings.HasPrefix(t, fenceMarker) {
-				inFence = false
-			}
-			out[i] = ""
-			continue
-		}
-		if strings.HasPrefix(t, "```") {
-			inFence = true
-			fenceMarker = "```"
-			out[i] = ""
-			continue
-		}
-		if strings.HasPrefix(t, "~~~") {
-			inFence = true
-			fenceMarker = "~~~"
-			out[i] = ""
-			continue
-		}
-		if strings.Contains(line, "<!--") && !inComment {
-			before := line[:strings.Index(line, "<!--")]
-			if afterIdx := strings.Index(line, "-->"); afterIdx >= 0 {
-				out[i] = before + line[afterIdx+3:]
-				continue
-			}
-			inComment = true
-			out[i] = before
-			continue
-		}
-		if inComment {
-			if strings.Contains(line, "-->") {
-				out[i] = line[strings.Index(line, "-->")+3:]
-				inComment = false
-			} else {
-				out[i] = ""
-			}
-			continue
-		}
-	}
-	return blankInlineCode(strings.Join(out, "\n"))
-}
-
-// blankInlineCode blanks the contents of inline code spans (backtick runs),
-// preserving newlines.
-func blankInlineCode(text string) string {
-	runes := []rune(text)
-	out := append([]rune(nil), runes...)
-	n := len(runes)
-	i := 0
-	for i < n {
-		if runes[i] != '`' {
-			i++
-			continue
-		}
-		runLen := 0
-		for i+runLen < n && runes[i+runLen] == '`' {
-			runLen++
-		}
-		closeAt := -1
-		j := i + runLen
-		for j < n {
-			if runes[j] == '`' {
-				k := 0
-				for j+k < n && runes[j+k] == '`' {
-					k++
-				}
-				if k == runLen {
-					closeAt = j
-					break
-				}
-				j += k
-				continue
-			}
-			j++
-		}
-		end := n
-		if closeAt >= 0 {
-			end = closeAt + runLen
-		}
-		for k := i; k < end; k++ {
-			if runes[k] != '\n' {
-				out[k] = ' '
-			}
-		}
-		if closeAt < 0 {
-			break
-		}
-		i = end
-	}
-	return string(out)
-}
-
-// headingIDs returns every anchor id a rendered .md page will carry: a
-// kramdown auto-id for each heading plus any literal <a id="..."> markers.
-func headingIDs(path string) map[string]bool {
-	// #nosec G304 -- path is built by the caller from docs/ walk results or
-	// resolved link targets, never request input.
-	body, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	ids := map[string]bool{}
-	counts := map[string]int{}
-	for _, line := range strings.Split(string(body), "\n") {
-		if m := mdHeadingRe.FindStringSubmatch(line); m != nil {
-			base := kramdownID(removeBackticks(m[2]))
-			if base == "" {
-				base = "section"
-			}
-			counts[base]++
-			if counts[base] == 1 {
-				ids[base] = true
-			} else {
-				ids[fmt.Sprintf("%s-%d", base, counts[base]-1)] = true
-			}
-		}
-		if am := anchorIDRe.FindAllStringSubmatch(line, -1); am != nil {
-			for _, m := range am {
-				ids[m[1]] = true
-			}
-		}
-	}
-	return ids
-}
-
-// removeBackticks strips the inline-code delimiters from a heading but keeps
-// the code's text — that is the text kramdown computes an auto-id from ("The
-// `/api/v1` promise" -> "the-apiv1-promise").
-func removeBackticks(s string) string {
-	return strings.ReplaceAll(s, "`", "")
-}
-
-// kramdownID reproduces kramdown's basic_generate_id: keep word characters
-// (letters, digits, underscore), hyphen and space; delete everything else;
-// spaces become hyphens. Empirically verified against ids this site's own
-// cross-links use (e.g. "Rolling back a bad release (N+1 → N)" ->
-// rolling-back-a-bad-release-n1--n).
-func kramdownID(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if isWordRune(r) || r == '-' || r == ' ' {
-			b.WriteRune(r)
-		}
-	}
-	return strings.ToLower(strings.ReplaceAll(b.String(), " ", "-"))
-}
-
-func isWordRune(r rune) bool {
-	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
-}
-
-// checkFileReferences verifies path-shaped references to tracked files.
-func checkFileReferences(root, docsDir, rel, text string) []string {
-	var findings []string
-	clean := stripFences(text)
-	// The leading boundary keeps "cmd/actionlint" inside a Go module path
-	// (github.com/rhysd/actionlint/cmd/actionlint) or "backend/" inside
-	// ".../patch/backend/..." from matching.
-	pathRe := mustCompile(`(?m)(?:^|[^A-Za-z0-9_./*-])((?:backend|frontend|android|docs|cmd|\.github|testdata)/[A-Za-z0-9_./{}\-*?]+)`)
-	seen := map[string]bool{}
-	for _, m := range pathRe.FindAllStringSubmatch(clean, -1) {
-		cand := strings.TrimRight(m[1], ".,;:])}")
-		if strings.ContainsAny(cand, "{}*?") || strings.Contains(cand, "...") {
-			continue // a glob, a template, or an intentionally-abbreviated path
-		}
-		cand = trimLineColSuffix(cand)
-		if seen[cand] {
-			continue
-		}
-		seen[cand] = true
-		resolved := cand
-		if strings.HasPrefix(cand, "cmd/") {
-			resolved = "backend/" + cand
-		}
-		if strings.HasPrefix(cand, "testdata/") {
-			continue // ambiguous: backend/testdata, internal/*/testdata, ...
-		}
-		if fileReferenceResolves(root, resolved) {
-			continue
-		}
-		// Only flag clearly file-like references. Area enumerations in prose
-		// ("backend/frontend/android") and a wrapped reference truncated at a
-		// line break have no file extension and would be noise.
-		if !strings.Contains(filepath.Base(cand), ".") {
-			continue
-		}
-		findings = append(findings, fmt.Sprintf("%s: file reference missing: %s", rel, cand))
-	}
-	return findings
-}
-
-// fileReferenceResolves reports whether the path exists, allowing a trailing
-// Go package-qualified symbol (backend/internal/fsguard.NetworkFilesystemWarning
-// resolves because backend/internal/fsguard is a package).
-func fileReferenceResolves(root, p string) bool {
-	if pathExists(root, p) {
-		return true
-	}
-	// Strip trailing dot-qualified segments one at a time.
-	for {
-		base := filepath.Base(p)
-		dot := strings.LastIndex(base, ".")
-		if dot <= 0 {
-			return false
-		}
-		p = p[:len(p)-len(base)+dot]
-		if pathExists(root, p) {
-			return true
-		}
-		if !strings.Contains(p, "/") {
-			return false
-		}
-	}
-}
-
-// trimLineColSuffix removes a trailing ":<line>" or ":<line>-<col>" that cites
-// code, keeping the file path.
-func trimLineColSuffix(s string) string {
-	idx := strings.LastIndex(s, ":")
-	if idx <= 0 {
-		return s
-	}
-	suffix := s[idx+1:]
-	if suffix == "" {
-		return s
-	}
-	for _, r := range suffix {
-		if (r < '0' || r > '9') && r != '-' {
-			return s
-		}
-	}
-	return s[:idx]
-}
-
-func stripFences(text string) string {
-	lines := strings.Split(text, "\n")
-	var out []string
-	inFence := false
-	for _, line := range lines {
-		t := strings.TrimSpace(line)
-		if inFence {
-			if strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
-				inFence = false
-			}
-			continue
-		}
-		if strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
-			inFence = true
-			continue
-		}
-		out = append(out, line)
-	}
-	return strings.Join(out, "\n")
 }
 
 // ---------------------------------------------------------------------------
