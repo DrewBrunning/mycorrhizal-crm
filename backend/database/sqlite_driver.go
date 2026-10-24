@@ -176,7 +176,7 @@ func (m *sqliteDriver) Drop() (err error) {
 			}
 		}
 		query := "VACUUM"
-		_, err = m.db.Query(query)
+		_, err = m.db.Exec(query)
 		if err != nil {
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
@@ -283,7 +283,9 @@ func (m *sqliteDriver) Version() (version int, dirty bool, err error) {
 	query := "SELECT version, dirty FROM " + m.config.MigrationsTable + " LIMIT 1"
 	err = m.db.QueryRow(query).Scan(&version, &dirty)
 	if err != nil {
-		return database.NilVersion, false, nil
+		// golang-migrate treats a missing version row (including a missing
+		// migrations table) as "no version yet", not as a driver failure.
+		return database.NilVersion, false, nil //nolint:nilerr // missing migrations table == NilVersion
 	}
 	return version, dirty, nil
 }

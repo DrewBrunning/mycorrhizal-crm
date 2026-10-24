@@ -363,7 +363,7 @@ func trackedJobs(cfg config.Config) []jobStaleDef {
 
 func jobStoppedCondition(ctx context.Context, db *gorm.DB, cfg config.Config) alertConditionResult {
 	r := alertConditionResult{key: alertConditionKeyJobStopped, title: "Background jobs"}
-	mult := time.Duration(cfg.AlertJobStaleMultiplier)
+	mult := int64(cfg.AlertJobStaleMultiplier)
 
 	var stale []string
 	for _, j := range trackedJobs(cfg) {
@@ -377,7 +377,7 @@ func jobStoppedCondition(ctx context.Context, db *gorm.DB, cfg config.Config) al
 		if len(rows) == 0 || rows[0].LastRunAt.IsZero() {
 			continue // never run yet — not stale
 		}
-		if age := Now().Sub(rows[0].LastRunAt); age > j.interval*mult {
+		if age := Now().Sub(rows[0].LastRunAt); age > time.Duration(int64(j.interval)*mult) {
 			stale = append(stale, fmt.Sprintf("%s (last completed %s ago)", j.name, age.Round(time.Minute)))
 		}
 	}

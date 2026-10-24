@@ -270,7 +270,6 @@ func openRestoredDB(t *testing.T, dbPath string) (*gorm.DB, uint) {
 func TestCrossVersionRestoreSameRelease(t *testing.T) {
 	require.NotEmpty(t, SupportedReleases)
 	for _, from := range SupportedReleases {
-		from := from
 		t.Run(from.Tag, func(t *testing.T) {
 			f := Load(t, from)
 			pieces := seedFilePieces(t, f)
@@ -321,7 +320,6 @@ func TestCrossVersionRestoreOntoNewerRelease(t *testing.T) {
 	expectDir := committedMigrationsDir(t)
 
 	for _, from := range SupportedReleases {
-		from := from
 		t.Run(from.Tag+"->current", func(t *testing.T) {
 			f := Load(t, from)
 			seedMigrationScopeData(t, f) // audit history + the etag/e_tag sync-state trap
@@ -441,7 +439,6 @@ func TestCrossVersionRestoreUnderOlderBinaryRefused(t *testing.T) {
 	closeDB(t, liveDB)
 
 	for _, ahead := range []uint{latest + 1, latest + 7} {
-		ahead := ahead
 		t.Run(fmt.Sprintf("snapshot_at_v%d_binary_at_v%d", ahead, latest), func(t *testing.T) {
 			snap := backupOf(t, livePath)
 

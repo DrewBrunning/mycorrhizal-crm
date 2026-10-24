@@ -259,7 +259,6 @@ func sendRemindersAt(db *gorm.DB, config config.Config, now time.Time) (int, err
 
 		// Fire birthday.occurred for each birthday that falls today regardless of channel config
 		for _, bday := range todayBirthdays {
-			bday := bday
 			TriggerWebhooksAsync(ctx, db, config, userID, "birthday.occurred", bday)
 		}
 	}

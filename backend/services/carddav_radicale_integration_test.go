@@ -484,7 +484,6 @@ func TestCardDAVReferenceServer_RoundTrip(t *testing.T) {
 		registerByContact[d.name] = d
 	}
 	for _, entry := range entries {
-		entry := entry
 		t.Run(entry.name, func(t *testing.T) {
 			var link models.ContactSyncLink
 			require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, layout.cardHref(user, entry.uid)).First(&link).Error)

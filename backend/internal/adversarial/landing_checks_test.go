@@ -103,10 +103,10 @@ var preserveLandingChecks = map[string]func(t *testing.T, rec *contactmodel.Reco
 	},
 	"enc-rtl-override.vcf": func(t *testing.T, rec *contactmodel.Record) {
 		require.NotNil(t, rec.Card.Name)
-		assert.Equal(t, "‮gnpL‮Ada", rec.Card.Name.Full, "RTL override characters must be preserved, not stripped")
+		assert.Equal(t, "‮gnpL‮Ada", rec.Card.Name.Full, "RTL override characters must be preserved, not stripped") //nolint:bidichk // the assertion is about preserving the control characters
 		given, ok := nameComponentValue(rec.Card.Name.Components, "given")
 		require.True(t, ok)
-		assert.Equal(t, "Ada‮", given)
+		assert.Equal(t, "Ada‮", given) //nolint:bidichk // the assertion is about preserving the control characters
 	},
 	"enc-zero-width.vcf": func(t *testing.T, rec *contactmodel.Record) {
 		require.NotNil(t, rec.Card.Name)

@@ -219,6 +219,8 @@ func (v Verdict) String() string {
 	case KindDegradation:
 		return fmt.Sprintf("%s: tail median %.4g %s vs first-third median %.4g (allowed %.4g x + %.4g)",
 			v.Budget.Signal, v.Observed, v.Budget.Unit, v.Head, v.Budget.Ratio, v.Budget.Limit)
+	case KindGrowth:
+		fallthrough
 	default:
 		return fmt.Sprintf("%s: fitted growth %.4g %s over the %.0fs tail window (slope %.4g/s) vs budget %.4g",
 			v.Budget.Signal, v.Observed, v.Budget.Unit, v.Fit.Span, v.Fit.Slope, v.Budget.Limit)
@@ -255,6 +257,8 @@ func Evaluate(b Budget, s Series) Verdict {
 		v.Head = head.Median()
 		v.Observed = tail.Median()
 		v.Breached = v.Observed > v.Head*b.Ratio+b.Limit
+	case KindGrowth:
+		fallthrough
 	default:
 		v.Observed = v.Fit.Growth()
 		v.Breached = v.Observed > b.Limit

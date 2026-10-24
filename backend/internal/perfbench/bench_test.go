@@ -25,7 +25,6 @@ func BenchmarkCoreOperations(b *testing.B) {
 			// benchmark (TestProfileBenchmarksAtScale still measures it).
 			continue
 		}
-		op := op
 		b.Run(op.Name, func(b *testing.B) {
 			if op.Prepare != nil {
 				if err := op.Prepare(env); err != nil {
@@ -61,7 +60,6 @@ func BenchmarkDataMovement(b *testing.B) {
 			// skips it (TestDataMovementBenchmarks still measures it on a fork).
 			continue
 		}
-		op := op
 		b.Run(op.Name, func(b *testing.B) {
 			wd := b.TempDir()
 			if op.Prepare != nil {

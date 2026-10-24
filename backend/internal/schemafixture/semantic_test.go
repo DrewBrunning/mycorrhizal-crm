@@ -51,7 +51,6 @@ func TestMigrationsPreserveSemanticContent(t *testing.T) {
 	expectDir := committedMigrationsDir(t)
 
 	for _, from := range SupportedReleases {
-		from := from
 		t.Run(from.Tag, func(t *testing.T) {
 			f := Load(t, from)
 			seedMigrationScopeData(t, f)

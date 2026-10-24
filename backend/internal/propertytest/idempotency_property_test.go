@@ -162,7 +162,6 @@ var idempotentOps = []idempotentOp{
 func TestIdempotentMutation_RetryIsFixpoint(t *testing.T) {
 	t.Parallel()
 	for _, op := range idempotentOps {
-		op := op
 		t.Run(op.name, rapid.MakeCheck(func(t *rapid.T) {
 			db, _, err := contactgen.MigratedDB(t)
 			require.NoError(t, err)

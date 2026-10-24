@@ -48,7 +48,6 @@ func TestJSContactCalcardDifferential(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, entry := range corpus {
-		entry := entry
 		t.Run(entry.ID, func(t *testing.T) {
 			// ours -> reference: JSContact out, calcard re-emits it, we read it.
 			ourJS, _, err := (jscontact.Adapter{}).Export(entry.Record)

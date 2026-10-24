@@ -123,7 +123,6 @@ func TestHasWarn_MatchesConceptAndSeverity(t *testing.T) {
 func TestRoundTrip_UnknownVCardPropertySurvivesViaPassthrough(t *testing.T) {
 	t.Parallel()
 	for _, f := range []format{formats[0], formats[1]} {
-		f := f
 		t.Run(f.name, func(t *testing.T) {
 			raw := []byte("BEGIN:VCARD\nVERSION:" + vcardVersion(f.name) + "\nFN:Test\nUID:test-1\nX-CUSTOM;TYPE=CUSTOM:keep-me\nEND:VCARD\n")
 			rec, _, err := f.importer.Import(raw)

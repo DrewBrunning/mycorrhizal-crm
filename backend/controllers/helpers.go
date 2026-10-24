@@ -536,7 +536,7 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 				return params, apperrors.ErrInvalidInput("cursor", err.Error())
 			}
 			params.CreatedCursor = cur
-		default:
+		case cursorUpdatedAt:
 			cur, err := DecodeCursor(raw)
 			if err != nil {
 				return params, apperrors.ErrInvalidInput("cursor", err.Error())

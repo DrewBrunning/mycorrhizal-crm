@@ -45,7 +45,6 @@ func TestJCardPropToField_ValueDecoding(t *testing.T) {
 		{name: "malformed_json_fallback", rawValue: json.RawMessage(`not-json`), wantValue: "not-json"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			_, f := jCardPropToField(contactmodel.JCardProp{Name: "x", Value: tt.rawValue})

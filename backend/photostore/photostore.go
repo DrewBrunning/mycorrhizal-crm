@@ -63,7 +63,7 @@ const maxImagePixels = 100_000_000
 func CheckImageDimensions(r io.Reader) error {
 	cfg, _, err := image.DecodeConfig(r)
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // an unrecognized header is not this check's job; it only rejects oversized images
 	}
 	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
 		return fmt.Errorf("image dimensions too large: %dx%d exceeds the %d pixel limit", cfg.Width, cfg.Height, maxImagePixels)

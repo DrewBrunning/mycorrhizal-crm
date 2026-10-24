@@ -38,7 +38,6 @@ func TestRoundTrip_SerializedVarianceDoesNotFail(t *testing.T) {
 	}}
 
 	for _, f := range formats {
-		f := f
 		if f.name == "jscontact" {
 			continue // JSContact JSON has no line folding or parameter case to vary; covered by the driver test
 		}

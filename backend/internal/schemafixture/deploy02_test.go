@@ -92,7 +92,6 @@ func TestFullInstallUpgrade(t *testing.T) {
 	expectDir := committedMigrationsDir(t)
 
 	for _, rel := range SupportedReleases {
-		rel := rel
 		name := rel.Tag
 		if rel == SupportedReleases[0] {
 			name = rel.Tag + " (longest skip -> current)"

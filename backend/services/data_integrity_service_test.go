@@ -509,7 +509,7 @@ func TestDataIntegrity_CrossUserReferenceIsStillAViolation(t *testing.T) {
 	r := runDataChecks(t, db, cfg)
 	f, ok := findingFor(r, "relationship_edge.endpoint_missing", alice.ID)
 	require.True(t, ok, "a cross-user endpoint must be reported as missing for the owning user")
-	assert.Equal(t, uint(alice.ID), f.UserID)
+	assert.Equal(t, alice.ID, f.UserID)
 }
 
 // ---------------------------------------------------------------------------

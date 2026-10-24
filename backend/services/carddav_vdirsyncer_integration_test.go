@@ -236,7 +236,6 @@ func TestCardDAVVdirsyncer_ClientRoundTrip(t *testing.T) {
 	// every fixture contact that has one set, so it is filtered once here
 	// rather than pinned per contact.
 	for _, entry := range entries {
-		entry := entry
 		t.Run(entry.name, func(t *testing.T) {
 			local := vdirsyncerLocalCard(t, localDir, entry.uid)
 			pulled, diags, importErr := vcard4.Adapter{}.Import([]byte(local))

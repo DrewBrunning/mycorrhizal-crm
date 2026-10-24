@@ -136,7 +136,7 @@ func walkDirUsage(root string) DirectoryUsage {
 
 		info, err := d.Info()
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // a file that vanished mid-walk is skipped, not a fatal storage-usage error
 		}
 		usage.Bytes += info.Size()
 		usage.FileCount++

@@ -94,9 +94,7 @@ func TestRepeatedConversion_SameFormatStabilizes(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, f := range formats {
-		f := f
 		for _, entry := range m.Contacts {
-			entry := entry
 			t.Run(f.name+"/"+entry.Name, func(t *testing.T) {
 				rec := entry.Record()
 				if entry.RecreatesVCardUIDOf != "" {
@@ -185,14 +183,12 @@ func TestRepeatedConversion_CrossFormatChainsConverge(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, chain := range crossFormatChains {
-		chain := chain
 		steps := make([]format, len(chain.format))
 		for i, name := range chain.format {
 			steps[i] = formatByName(name)
 		}
 
 		for _, entry := range m.Contacts {
-			entry := entry
 			t.Run(chain.name+"/"+entry.Name, func(t *testing.T) {
 				rec := entry.Record()
 				if entry.RecreatesVCardUIDOf != "" {

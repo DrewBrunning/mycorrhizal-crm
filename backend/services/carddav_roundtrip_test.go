@@ -545,7 +545,6 @@ func TestCardDAVRoundTrip_FixtureThroughServer_SemanticEquality(t *testing.T) {
 	require.Equal(t, len(orig), stats.Created, "every live fixture contact must be pulled in")
 
 	for name, original := range orig {
-		original := original
 		t.Run(name, func(t *testing.T) {
 			uid := uidByEntry[name]
 

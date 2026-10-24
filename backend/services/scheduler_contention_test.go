@@ -116,7 +116,7 @@ func TestSchedulerContention_ManyUsersOneWriter(t *testing.T) {
 		go func(i int, uid uint) {
 			defer wg.Done()
 			for n := 0; n < 15; n++ {
-				n := n // closure capture (the loop variable is per-iteration since Go 1.22)
+				// closure capture (the loop variable is per-iteration since Go 1.22)
 				run(fmt.Sprintf("writer %d: contact create %d", i, n), func() error {
 					return db.Create(&models.Contact{
 						UserID:    uid,

@@ -53,6 +53,8 @@ func Build(runs []RunData, now time.Time, windowDays int) Ledger {
 				}
 				s.Runs++
 				switch o {
+				case Passed:
+					// Already counted in Runs; no separate tally.
 				case PassedOnRetry:
 					s.PassedOnRetry++
 				case Failed:
@@ -111,6 +113,8 @@ func Candidates(l Ledger, threshold int, closed map[string]time.Time) []Candidat
 				}
 			}
 			switch h.Outcome {
+			case Passed:
+				// A first-attempt pass is not a flake hit.
 			case PassedOnRetry:
 				c.PassedOnRetry++
 			case Failed:

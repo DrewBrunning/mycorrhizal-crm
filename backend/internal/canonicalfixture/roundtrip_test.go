@@ -90,7 +90,6 @@ func TestRoundTripReproducesEveryDeclaredField(t *testing.T) {
 	require.NotEmpty(t, m.Contacts)
 
 	for _, entry := range m.Contacts {
-		entry := entry
 		t.Run("contact_"+entry.Name, func(t *testing.T) {
 			c := reloadContact(t, db, ds.Contacts[entry.Name])
 			got := models.RecordForContact(&c, "", nil)

@@ -39,6 +39,8 @@ func (o Outcome) String() string {
 		return "passed"
 	case PassedOnRetry:
 		return "passed_on_retry"
+	case Failed:
+		fallthrough
 	default:
 		return "failed"
 	}

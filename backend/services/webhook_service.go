@@ -258,7 +258,6 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 		}
 
 		queued++
-		wh := wh
 		webhookGoroutines(func() {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
@@ -508,7 +507,6 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 			continue
 		}
 
-		d, wh := d, wh
 		// Tracked like the TriggerWebhooks fan-out so a leaked retry goroutine's
 		// DB access cannot race a test's t.TempDir teardown (issue #703), and
 		// WaitForWebhookGoroutines covers the retry path too.
