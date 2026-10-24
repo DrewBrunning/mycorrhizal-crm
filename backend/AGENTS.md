@@ -38,8 +38,10 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    not `error`, so errcheck cannot see a discarded result. `cd backend && go run ./cmd/gormerrcheck ./...`
    (`internal/lint/gormerr`) enforces it in CI and the pre-commit hook.
 
-5. <a id="trap-5"></a>**Ownership scoping is not optional.** Every handler scopes by `user_id` (or
-   `Contact.VCardUID` for graph entities). There are zero IDOR holes today — keep it that way.
+5. <a id="trap-5"></a>**Ownership is enforced at the data-access boundary.** Every user-scoped
+   handler must scope by `user_id` (or `Contact.VCardUID` for graph entities). Treat a missing or
+   inconsistent ownership check as a security defect, and add regression coverage for every new route
+   or access path.
 
 6. <a id="trap-6"></a>**Cascade deletes are manual.** Soft delete does not fire SQL `CASCADE`.
    `DeleteContact` and `DeleteUser` enumerate every dependent table explicitly — if you add an
@@ -83,6 +85,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
 
 ## Conventions
 
+- **The Go toolchain is pinned** (`backend/go.mod`; the Dockerfile `golang` stages). Don't float it.
+  Dependabot's toolchain bump does not update the Dockerfile `FROM` line, so `docker-build-check.yml`
+  enforces that the two agree.
 - Controllers: follow `circle_controller.go` / `life_event_controller.go` (the newer idiom) over
   older ones. `currentUserID(c)`, `middleware.GetValidated[T]`, `apperrors.AbortWithError`,
   `GetPaginationParams`.
@@ -113,7 +118,7 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
   The three exporters (`vcard3`, `vcard4`, `jscontact`) consume the same neutral `Card`, so filtering
   the `Record` before it reaches an exporter applies to all three at once.
 
-## Generated artifacts — regenerate, never hand-edit
+## Backend generated artifacts — regenerate, never hand-edit
 
 | Artifact | Regenerate with | Drift test |
 |---|---|---|

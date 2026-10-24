@@ -36,13 +36,11 @@ first — the runbook's capture step comes before any rotation or restore.
 
 ## Supported Versions
 
-This project is pre-1.0 (currently in beta) and does not yet maintain
-long-term-support branches. Only the **latest tagged release** receives
-security fixes; previous tags are not backported to. Users are expected to
-upgrade to the latest release to receive security fixes.
+Mycorrhizal CRM is on the `1.x` line and maintains a support window for
+released minors (in force since `1.0.0`, issue #956). Only supported tags
+receive security fixes; users should run a supported release to receive them.
 
-**The support window at 1.0** (the policy is defined now and enforced from the
-`1.0.0` tag, issue #956):
+**The support window:**
 
 - Every `1.x` release is supported for **12 months from the next minor
   release**; the supported set is therefore the newest minor plus the prior
@@ -55,9 +53,8 @@ upgrade to the latest release to receive security fixes.
   be cherry-picked cleanly is re-implemented on the older branch and called out
   in the advisory.
 - Which tags cross EOL is reviewed annually as part of the
-  [security stewardship cadence](docs/security/security-cadence.md); the
-  pre-1.0 statement above is reviewed on the same cadence so it cannot quietly
-  become stale.
+  [security stewardship cadence](docs/security/security-cadence.md); this
+  statement is reviewed on the same cadence so it cannot quietly become stale.
 
 ## Scope
 

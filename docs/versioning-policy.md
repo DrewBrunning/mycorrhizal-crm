@@ -38,17 +38,17 @@ anything that policy classifies as breaking is the
 [deprecation policy](deprecation-policy.md) (MAINT-01, issue #490). This page
 points at both rather than restating them.
 
-## The pre-1.0 rule, as it actually is
+## The 1.x compatibility rule
 
-**`0.x` makes no backward-compatibility promise.** Breaking API and contract
-changes still happen in `0.x`; this is pre-1.0 software and AGENTS.md says so
-plainly. The roughly-one-release-a-day cadence between `v0.2.0` (2026-08-04) and
-`v0.6.0` (2026-08-22) was legitimate under this rule, not sloppy.
+**`1.x` carries the backward-compatibility promise described above.** The
+pre-1.0 period, when breaking API and contract changes were allowed, ended at
+`1.0.0`; those releases are historical context for old release notes, not the
+rule today.
 
-Two things are *not* waived pre-1.0:
+Two rules were never waived and still apply:
 
-- **Data preservation.** Since `v0.2.0-alpha-candidate` there is real production
-  data. A migration that loses data is breaking regardless of version
+- **Data preservation.** Since `v0.2.0-alpha-candidate` there has been real
+  production data. A migration that loses data is breaking regardless of version
   (AGENTS.md: "breaking *data* is a different, higher bar"). This is independent
   of the SemVer component being bumped.
 - **The supported-upgrade floor.** In-place upgrade is supported from `v1.0.0`
@@ -57,8 +57,8 @@ Two things are *not* waived pre-1.0:
   from `v0.6.0` at the 1.0 major, issue #1170).
 
 The `/api/v1` compatibility promise — no removals, renames, or narrowing within
-a major line — begins at `1.0.0`. See the breaking-change policy for its exact
-wording.
+a major line — applies throughout `1.x`. See the breaking-change policy for its
+exact wording.
 
 ## Release-tag format
 
@@ -87,8 +87,8 @@ component.
 
 ### Release candidates
 
-`0.9.x` is a release-candidate series by design (the RC milestone). **RC tags
-are `vMAJOR.MINOR.PATCH-rc.N`**, numbered from `1`:
+The `0.9.x` milestone was the release-candidate series leading to `1.0.0`.
+**RC tags are `vMAJOR.MINOR.PATCH-rc.N`**, numbered from `1`:
 
 ```
 v1.0.0-rc.1
@@ -96,9 +96,9 @@ v1.0.0-rc.2
 ...
 ```
 
-The RC series leading to `1.0.0` is tagged `v1.0.0-rc.N`. The `v0.9.x` milestone
-is the planning bucket for that work; the tags it produces are the
-`v1.0.0-rc.N` series, not a `v0.9.x` release line.
+The RC series leading to `1.0.0` was tagged `v1.0.0-rc.N`. The `v0.9.x`
+milestone was the planning bucket for that work, and the tags it produced were
+the `v1.0.0-rc.N` series, not a `v0.9.x` release line.
 
 Why `v1.0.0-rc.N` and not `v0.9.0`, `v0.9.1`, …:
 
@@ -189,12 +189,12 @@ Two floors are expressed as versions and therefore depend on this policy:
 
 **The floors are not a support window.** They say which old versions can still
 upgrade or still connect; they do not say how long a released version receives
-fixes. That is a separate promise, defined at `1.0.0` (issue #956): each `1.x`
-release is supported for 12 months from the next minor release, and a release
-outside that window is end-of-life with no backports. The policy and the annual
-EOL review live in [the security stewardship
-cadence](security/security-cadence.md); until `1.0.0` only the latest tag is
-supported ([`SECURITY.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md)).
+fixes. That is a separate promise, in force since `1.0.0` (issue #956): each
+`1.x` release is supported for 12 months from the next minor release, and a
+release outside that window is end-of-life with no backports. The policy and the
+annual EOL review live in [the security stewardship
+cadence](security/security-cadence.md); the current supported set is in
+[`SECURITY.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md).
 
 ## Stray and unconstrained tags
 
