@@ -112,9 +112,9 @@ func Candidates(l Ledger, threshold int, closed map[string]time.Time) []Candidat
 					continue
 				}
 			}
-			switch h.Outcome {
-			case Passed:
-				// A first-attempt pass is not a flake hit.
+			// Hits is populated only from outcomes that are not Passed (see
+			// Build), so Passed is deliberately absent here.
+			switch h.Outcome { //nolint:exhaustive // Hits never contains Passed
 			case PassedOnRetry:
 				c.PassedOnRetry++
 			case Failed:

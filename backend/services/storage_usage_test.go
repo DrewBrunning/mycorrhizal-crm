@@ -1,6 +1,7 @@
 package services
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -76,6 +77,37 @@ func TestStorageUsage_DoesNotFollowSymlinks(t *testing.T) {
 	assert.EqualValues(t, 5, got[0].Bytes, "the walk must not count bytes reached through a symlink")
 	assert.Equal(t, 1, got[0].FileCount)
 	assert.False(t, got[0].Truncated)
+}
+
+// vanishedEntry is a directory entry whose file disappeared between the
+// directory read and the per-entry stat.
+type vanishedEntry struct{}
+
+func (vanishedEntry) Name() string      { return "vanished.bin" }
+func (vanishedEntry) IsDir() bool       { return false }
+func (vanishedEntry) Type() fs.FileMode { return 0 }
+func (vanishedEntry) Info() (fs.FileInfo, error) {
+	return nil, fs.ErrNotExist
+}
+
+// TestDirectoryUsage_AddFileSkipsVanishedEntry covers the walk's vanished-file
+// path: the stat fails, but the entry contributes nothing and the walk keeps
+// its existing totals (it must not abort or double-count).
+func TestDirectoryUsage_AddFileSkipsVanishedEntry(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "real.bin"), 7)
+	entries, err := os.ReadDir(root)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+
+	var usage DirectoryUsage
+	usage.addFile(entries[0])
+	assert.EqualValues(t, 7, usage.Bytes)
+	assert.Equal(t, 1, usage.FileCount)
+
+	usage.addFile(vanishedEntry{})
+	assert.EqualValues(t, 7, usage.Bytes, "a vanished entry must not add bytes")
+	assert.Equal(t, 1, usage.FileCount, "a vanished entry must not be counted")
 }
 
 func TestStorageUsage_TruncatesOnEntryCap(t *testing.T) {
