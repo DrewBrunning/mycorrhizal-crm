@@ -7,15 +7,16 @@ This root file is a router. Read the platform file for the area you touch before
 each carries the conventions and recurring bug classes that have shipped broken here.
 
 **Real production data exists.** Migrations must preserve it, and a soft-deleted row is a user's
-undo button, not a test fixture. Breaking *data* needs a reason and a heads-up; breaking a request
-shape is ordinary pre-1.0 practice. Upgrade floor and release mechanics: `backend/database/AGENTS.md`.
+undo button, not a test fixture. Breaking *data* needs a reason and a heads-up; breaking an API
+request or response shape is governed by `docs/breaking-change-policy.md` (MAINT-02: deprecation
+window, migration path, release note, explicit approval). Upgrade floor and release mechanics:
+`backend/database/AGENTS.md`.
 
 ## Project map
 
 | Where | What |
 |---|---|
 | **GitHub Issues** | The backlog — the live plan and source of truth for outstanding work. |
-| [AGENTS.md](AGENTS.md) | This router; root safety, workflow, and trap index. |
 | [docs/development/context-engineering.md](docs/development/context-engineering.md) | The AGENTS.md layout, alias contract, line budgets, and `contextcheck`. |
 | [backend/AGENTS.md](backend/AGENTS.md) | Go/Gin/GORM conventions, backend traps 1–10, generated artifacts. |
 | [frontend/AGENTS.md](frontend/AGENTS.md) | React/TS/MUI conventions, frontend traps 1–8, web budgets. |
@@ -27,17 +28,8 @@ shape is ordinary pre-1.0 practice. Upgrade floor and release mechanics: `backen
 | `docs/specs/` | Curated RFC excerpts — the external ground truth. |
 | `docs/golden-fixtures/` | Verbatim RFC example cards — the external test oracle. |
 
-## Best examples to copy
-
-| Concern | Canonical example |
-|---|---|
-| Backend controller/service | `backend/controllers/circle_controller.go`, `life_event_controller.go` |
-| Frontend full slice | `frontend/src/api/relationshipEdges.ts` + `src/hooks/useRelationshipEdges.ts` + `RelationshipEdgeDialog/List` |
-| Persistence test | any `dbtest.New(t)` consumer (real migrated schema) |
-| Docs page | `docs/development/testing.md`; decisions in `docs/adrs/` |
-
 Secrets: `.githooks/pre-commit` runs `gitleaks` with `.gitleaks.toml` and fails closed on a missing
-binary; setup and the manual check are in `README-developer.md`. Never commit a secret.
+binary; setup and the manual check are in `README-developer.md`.
 
 ## Commands
 
@@ -53,7 +45,8 @@ cd backend && go run ./cmd/contextcheck
 cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
-Run once per clone **and once per worktree**, before your first commit there (idempotent):
+Run once per clone **and once per worktree**, before your first commit there (idempotent; also
+repairs the `CLAUDE.md` symlink aliases):
 
 ```bash
 bash scripts/install-git-hooks.sh
@@ -66,59 +59,71 @@ actual port or CORS fails. Service-worker testing needs `frontend-prod` — see 
 ## Safety boundaries (non-negotiable)
 
 - **Migrations preserve data.** A rename/drop/retype needs a backfill or a deliberate, recorded call.
-- **Ownership scoping is not optional.** Every handler scopes by `user_id` (or `Contact.VCardUID`);
-  there are zero IDOR holes today — keep it that way.
+- **Ownership is enforced at the data-access boundary.** Every user-scoped handler must scope by
+  `user_id` (or `Contact.VCardUID` for graph entities). Treat missing or inconsistent ownership
+  checks as a security defect; every new route or access path needs regression coverage.
 - **Sensitivity** (`normal|private|secret`) is filtered **in the query** for anything that leaves the
   instance (sync, shares, neutral-`Card` exports), re-includable only via `?include_sensitive=true`.
   The CSV export, account bundle, and contact map are deliberate full-fidelity exceptions — policy,
   not leaks. Details: `backend/AGENTS.md`.
 - **Soft vs hard delete is a model property**, decided once per entity. Cascades are manual and
   registry-enforced — add a new entity there in the same change (`backend/AGENTS.md` traps 6–7).
-- **Generated artifacts are regenerated, never hand-edited** — see `backend/AGENTS.md`.
+- **Generated artifacts are regenerated, never hand-edited.** Each area's file names its artifacts
+  and drift test; the main backend inventory is `backend/AGENTS.md`.
 - **Security:** no secrets, no `os/exec` on any server or request path (build/test tooling is the
-  scoped exception in `docs/security/asvs-l2.md` P12), explicit update allowlists (no mass assignment),
-  parameterized SQL, and the SSRF/CSV guards stay.
+  scoped exception in `docs/security/asvs-l2.md` P12), templates from an embedded FS, explicit update
+  allowlists (no mass assignment), parameterized SQL, CSV formula-injection neutralization, SSRF
+  guards in the transport dialer, and the Go toolchain stays pinned.
 - **Never commit to `main` or merge without explicit approval.** Every commit needs a DCO
   `Signed-off-by:` (`git commit -s`). Never `--no-verify` without the user's explicit go-ahead.
 - **Report checks you could not run; never imply they passed.**
 - **Context files track code:** moving a cited command/path/test means updating the context file in
   the same PR.
-- **Test-first:** fail-first evidence, test-correctness review, TDD, self-review, local per-PR suite.
 
 ## Implementation workflow (non-negotiable)
 
 1. Read the issue and the platform `AGENTS.md`; choose the lowest test layer (`docs/development/testing.md`).
-2. Write failing tests first (a bug's regression test must reproduce it). Run them; save the output.
+2. If the change has testable behaviour, write failing tests first (a bug's regression test must
+   reproduce it). Run them; save the output. Otherwise use the matching verification in "When
+   test-first does not apply" below.
 3. Review the tests before implementing: right layer, fails for the intended reason, behaviour not
-   implementation, deterministic (injected clock, `dbtest`), specific assertions.
+   implementation, deterministic (injected clock, `dbtest`), specific assertions. A test that needs a
+   CI-only prerequisite uses `internal/citest.SkipOrRequire`, never skip-as-pass.
 4. Implement in small TDD loops. Never weaken or delete a failing test to make it pass. If a test is
    genuinely wrong, change it deliberately, re-verify fail-first, and say why in the PR.
 5. Self-review against `docs/development/implementation-workflow.md` (correctness, completeness,
-   coverage, safety, hygiene). Break the production code and confirm the test fails.
+   coverage, safety, hygiene). For a testable change, break the production code and confirm the test
+   fails.
 6. Run the pre-PR gate locally for the areas touched (`.github/filters.yaml`):
    build/lint/tests, then the area coverage ratchet and a flake-stress pass over
    new/changed tests. The pre-commit hook is a subset, not the full suite.
-   Raise the coverage baseline in the same PR when tests were added.
-   Report checks you could not run; never imply they passed. Open the PR and stop.
-7. Commit with `-s`, push the feature branch, open a PR with the evidence. Never commit to `main`,
-   never merge without explicit approval, never `--no-verify`, no force-push except the documented
-   `--force-with-lease` DCO rebase.
+   Raise the coverage baseline in the same PR when tests were added. Open the PR and stop.
+7. Commit with `-s`, push the feature branch, open a PR with the evidence. No force-push except the
+   documented `--force-with-lease` DCO rebase.
+
+### When test-first does not apply
+
+Test-first is mandatory for any functional or behavioural change, bug fix, new route, or new access
+path. Three categories replace it with their own verification — not with no verification:
+
+- **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
+  gates in `docs/AGENTS.md` (`docscheck`, `citecheck`, `depexceptions`, `deprecations`,
+  `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`).
+- **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
+  named drift test. Never hand-edit.
+- **Purely mechanical changes** (renames, moves, formatting, or tooling/dependency updates with no
+  behaviour change): run build/vet/lint and the relevant existing tests. Add a characterization test
+  if the change could alter behaviour.
+
+Any change that can be tested uses the test-first process.
 
 An "implement this issue" request authorizes a signed feature-branch commit and a PR once the gates
 pass. It does **not** authorize committing to `main` or merging; those still need explicit approval.
 
-## When working in X, read Y
+## Trap index
 
-| Area | Read |
-|---|---|
-| Backend controllers/services/models | `backend/AGENTS.md` |
-| Frontend components/api/hooks | `frontend/AGENTS.md` |
-| Android | `android/AGENTS.md` |
-| Documentation, security docs | `docs/AGENTS.md` |
-| CI, workflows, quality gates | `.github/AGENTS.md` |
-| Migrations, schema, backups | `backend/database/AGENTS.md` |
-
-**Trap index** (stable IDs; existing code comments cite these):
+**Stable IDs; existing code comments cite these** (`CLAUDE.md` aliases point at the colocated
+`AGENTS.md`):
 Backend [#1](backend/AGENTS.md#trap-1) [#2](backend/AGENTS.md#trap-2) [#3](backend/AGENTS.md#trap-3)
 [#4](backend/AGENTS.md#trap-4) [#5](backend/AGENTS.md#trap-5) [#6](backend/AGENTS.md#trap-6)
 [#7](backend/AGENTS.md#trap-7) [#8](backend/AGENTS.md#trap-8) [#9](backend/AGENTS.md#trap-9)
@@ -127,13 +132,10 @@ Frontend [#1](frontend/AGENTS.md#trap-1) [#2](frontend/AGENTS.md#trap-2) [#3](fr
 [#4](frontend/AGENTS.md#trap-4) [#5](frontend/AGENTS.md#trap-5) [#6](frontend/AGENTS.md#trap-6)
 [#7](frontend/AGENTS.md#trap-7) [#8](frontend/AGENTS.md#trap-8). Android shares the frontend IDs.
 
-Generated artifacts: one table in `backend/AGENTS.md` — regenerate, never hand-edit.
-
 ## PR and commit
 
-- One branch per concern (`feature/<thing>`); implement → verify → commit → push → PR.
+- One branch per concern, using the matching prefix (`feature/`, `fix/`, `docs/`, `ci/`, `chore/`);
+  implement → verify → commit → push → PR.
 - PR body says what changed and why, lists checks run and not run, and adds `## Upgrade notes`
   (or `no-changelog: <reason>`) when the change is operator-visible (`docs/changelog-policy.md`).
-- Hand-verify tests: break the code, watch the new test fail, restore.
-- Gates are not silently weakened — a baseline/allowlist/required-context change needs a recorded reason.
 - Close the corresponding issue when a ticket lands.

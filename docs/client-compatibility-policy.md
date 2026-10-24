@@ -207,12 +207,11 @@ parallel `/api/v2`. This page does not restate that promise — it is the thing
 (integration ownership) and MAINT-02 itself should cite this page for the
 client-facing consequences of that promise rather than re-deriving them.
 
-Pre-`1.0.0`, per AGENTS.md's standing position, breaking changes remain
-allowed and routine — but per "Moving the floor" above, raising the client
-floor is *still* the more deliberate action of the two, because the remedy
-cost (an operator or user having to act) does not go away just because the
-API is pre-1.0. The floor should move rarely even pre-1.0; it is the version
-number, not the floor-moving discipline, that pre-1.0 status relaxes.
+Within `1.x`, per AGENTS.md, breaking changes follow the MAINT-02 process rather
+than happening routinely. Raising the client floor remains the more deliberate
+action of the two, because the remedy cost (an operator or user having to act)
+does not go away. The floor should move rarely; the version number does not
+relax that discipline.
 
 ## Supported client/server matrix
 

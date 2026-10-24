@@ -110,11 +110,11 @@ instance at the same database, the in-memory rate limiters and job locks are
 per-process — that is a supported configuration only in the sense that each
 process is safe; it is not the documented deployment shape.
 
-**Multi-user-per-instance is supported from `1.0.0`** (issue #558). Until then
-the same isolation mechanism runs and is tested, but the *guarantee* — that a
-stranger accepting an account on your instance can rely on the boundary — is
-made from `1.0.0`. The isolation guarantee, in terms you can evaluate before
-accepting an account on someone else's instance:
+**Multi-user-per-instance has been supported since `1.0.0`** (issue #558). The
+isolation mechanism runs and is tested, and the *guarantee* — that a stranger
+accepting an account on your instance can rely on the boundary — is in force
+for `1.x`. The isolation guarantee, in terms you can evaluate before accepting
+an account on someone else's instance:
 
 - Every account's data is separated at the query layer: every table carries a
   `user_id`, every request is scoped to the authenticated user, and the graph

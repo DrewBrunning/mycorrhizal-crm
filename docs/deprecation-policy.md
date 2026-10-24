@@ -170,35 +170,22 @@ the same change.
 
 ## The data bar is higher than the shape bar
 
-Per AGENTS.md's production-data rule: a request shape can change
-with notice, but **removing a column that holds user data** needs a real
+Per AGENTS.md's production-data rule: a request shape can change through the
+MAINT-02 process, but **removing a column that holds user data** needs a real
 backfill or an explicit, stated decision that the data is safe to lose —
-regardless of version, and never justified by "pre-alpha". A deprecation window
-is about giving people time to migrate off an interface; it does not by itself
-make the underlying data safe to drop. A schema deprecation whose removal would
-lose data follows the data-retention lifecycle
+regardless of version, and never treated as ordinary interface churn. A
+deprecation window is about giving people time to migrate off an interface; it
+does not by itself make the underlying data safe to drop. A schema deprecation
+whose removal would lose data follows the data-retention lifecycle
 (`docs/security/data-retention-lifecycle.md`) so every copy is accounted for.
 
-## Interaction with the `0.x` present
+## The 1.0 boundary
 
 **The promise — nothing on a covered surface is removed without a completed
-window — takes effect at `1.0.0`.** Until then, breaking changes (removals
-included) remain allowed, exactly as AGENTS.md says: this is pre-alpha
-software, not a stability commitment.
-
-What this policy changes *before* `1.0.0`:
-
-- a removal in a covered surface is still **recorded** — a `deprecations.md` row
-  (going straight to `status: removed` if there was no prior notice) and a
-  release note;
-- the runtime signals and the register operate now, so the mechanism is
-  exercised and trusted before it is load-bearing;
-- a deprecation that *is* announced pre-`1.0` still gets a real window and a
-  real replacement — the policy is not "ignored until `1.0`", it is "the
-  no-removal-without-a-window guarantee starts at `1.0`".
-
-Stated plainly so the existence of this page is not read as a promise it does
-not yet make.
+window — took effect at `1.0.0`.** The project is on the `1.x` line, so it
+applies to every covered surface. The register and signals ran during `0.x`,
+and announced `0.x` deprecations still got a real window and replacement; that
+history does not relax the current rule.
 
 ## Retroactive audit
 

@@ -17,7 +17,7 @@ governance change. The three jobs that carry the load:
 - **`Backend (Go)`** — `unit-tests.yml`'s lint/analyzers and `go test ./...` (so any Go test is
   enforced: schema parity, the `AutoMigrate` ratchet, `omitemptyguard`, generated-artifact drift).
 - **`Frontend (Vitest)`** — `tsc --noEmit` (picks up `src/api/contractConformance.ts`), type-aware
-  `yarn lint`, and the per-file coverage ratchet.
+  `yarn lint`, `yarn knip` (unused files/exports/dependencies), and the per-file coverage ratchet.
 - **`Docs & security-doc citations`** — runs **unconditionally**, so a repo-wide analyzer or
   docs/citation gate goes here (`pragmacheck`, `nightlyalertcheck`, `codecovcheck`, `docscheck`, …).
 
@@ -39,16 +39,20 @@ and gate configs are routed to the maintainer by `.github/CODEOWNERS` (routing o
 ## Local pre-commit checks
 
 `.githooks/` are vendored hooks (no external pre-commit framework) that mirror CI's fast,
-deterministic gates. Install per clone **and per worktree** with `bash scripts/install-git-hooks.sh`
-(the script also sets a worktree-local `core.hooksPath` override when one shadows the shared setting).
+deterministic gates. Install per clone **and per worktree** as described in the root `AGENTS.md`
+(`bash scripts/install-git-hooks.sh` also sets a worktree-local `core.hooksPath` override when one
+shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 
 - **Always:** client-side `gitleaks` secret scan (fail-closed on a missing binary).
 - **Staged `backend/`:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned to the
   version `unit-tests.yml` uses), `gormerrcheck`, `rawtimecheck`, the contract-fixtures/DATA-01/
   INT-01/API-baseline/generated-TS drift tests, and the mutation-scope config drift test.
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
-  `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
-- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt lintDebug :app:lintObtainiumDebug` locally. Lint warnings are errors; `android/lint.xml` lists the reasoned exceptions.
+  `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
+  #1907).
+- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt lintDebug
+  :app:lintObtainiumDebug` locally. Lint warnings are errors; `android/lint.xml` lists the reasoned
+  exceptions.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
   `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
@@ -58,8 +62,7 @@ deterministic gates. Install per clone **and per worktree** with `bash scripts/i
   reminder to add an `## Upgrade notes` block (or `no-changelog:`) to the PR body.
 
 Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, and any full suite (`go test ./...`,
-`vitest run`, Playwright, `yarn build`). Never bypass with `git commit --no-verify` without the
-user's explicit go-ahead for that specific commit.
+`vitest run`, Playwright, `yarn build`).
 
 ## Scheduled workflows and alerting
 
