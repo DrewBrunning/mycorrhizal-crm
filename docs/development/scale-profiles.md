@@ -167,7 +167,7 @@ go run ./cmd/migratebench seed --profile large --db /tmp/large.db
 multi-user + graph shape) or `--contacts N` (the migration test's one-user,
 graph-free, exact-row-count artifact). Both populate through
 `canonicalfixture.Populate` → `models.ApplyRecordToContact`, i.e. a real
-migrated schema and the same code paths the REST API uses (CLAUDE.md backend
+migrated schema and the same code paths the REST API uses (backend/AGENTS.md
 traps #1/#2).
 
 In Go:

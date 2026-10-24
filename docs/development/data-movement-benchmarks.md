@@ -149,7 +149,7 @@ one #495 owns.
 
 ## Method
 
-- Real migrated schema (`database.InitDB` / `internal/dbtest` — CLAUDE.md backend trap #1).
+- Real migrated schema (`database.InitDB` / `internal/dbtest` — backend/AGENTS.md trap #1).
 - Each operation runs **once**. Mutating operations (import, FTS rebuild, delete
   cascade) run against a byte copy of the populated fixture so the shared one is
   reused; read-only ones (exports, backup, duplicate detection) share it.

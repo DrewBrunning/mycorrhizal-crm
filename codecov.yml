@@ -16,7 +16,7 @@
 #
 #   - backend (target 95%, threshold 5%): almost everything here is
 #     reasonably testable and tests demonstrably catch real regressions —
-#     dbtest.New(t) runs against the real migrated schema (CLAUDE.md's
+#     dbtest.New(t) runs against the real migrated schema (backend/AGENTS.md's
 #     "Backend traps" lists bugs a real-DB test caught), and INT-02 built
 #     faults.Hook seams specifically so failure branches that used to be
 #     untestable now are. The 5% buffer absorbs ordinary noise (partial-branch
@@ -143,7 +143,7 @@ ignore:
   # guards against a future embed.go/helper landing in the same directory).
   - "backend/database/migrations/**"
   # No codegen exists yet anywhere in the repo (checked when this file was
-  # written); this is a placeholder for whenever one shows up, per CLAUDE.md's
+  # written); this is a placeholder for whenever one shows up, per backend/AGENTS.md's
   # "frontend enum/registry lists are hardcoded mirrors" note — nothing here
   # is actually generated today.
   - "frontend/src/generated/**"

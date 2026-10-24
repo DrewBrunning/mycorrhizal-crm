@@ -70,7 +70,7 @@ confirms which contact(s) they were with, and submits — which is simply a norm
 
 Deliberately not added. `RelationshipEdge.Status` (`confirmed`/`suggested`) is the established
 propose-then-approve mechanism in this codebase, but adopting it here would mean a schema change to
-`Activity` — a content-authored, soft-delete entity (CLAUDE.md backend trap #7 family) — for
+`Activity` — a content-authored, soft-delete entity (backend/AGENTS.md trap #7 family) — for
 something that only needs to be an ephemeral API response. Propose-then-approve is satisfied without
 any schema change: nothing persists until the user's explicit confirmation calls the existing
 `POST /activities` endpoint.

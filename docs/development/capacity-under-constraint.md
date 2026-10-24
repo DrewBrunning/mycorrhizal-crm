@@ -113,7 +113,7 @@ GitHub runners. SQLite surfaces slow storage as longer-held write locks, i.e.
 more `SQLITE_BUSY` pressure, which **is** reproduced:
 
 - `backend/database/concurrent_write_test.go` — `_txlock=immediate` +
-  `busy_timeout` make concurrent writers queue, never error (CLAUDE.md
+  `busy_timeout` make concurrent writers queue, never error (backend/AGENTS.md
   backend trap #9).
 - Past the queue: a write still waiting when the 5 s `busy_timeout` expires
   gets `SQLITE_BUSY`, which the API answers as a retryable **503
@@ -181,7 +181,7 @@ No minimum — every operation stays **correct** under a 20% `CPUQuota`
 (`cpu-limited-correctness`), just slower. Migration/seed/FTS-rebuild wall-clock
 scales roughly inversely with the quota.
 
-## Hand-verification (per CLAUDE.md)
+## Hand-verification (per AGENTS.md)
 
 Each guard must prove it moves the outcome. Remove it, confirm the cell drops
 a category, restore.

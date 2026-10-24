@@ -7,7 +7,7 @@ name: SAST (mobsfscan + hadolint + semgrep)
 #   hadolint  — Dockerfile anti-pattern linting (unpinned base images/pkgs,
 #               shell-form CMD/ENTRYPOINT, missing pipefail).
 #   semgrep   — issue #370: custom rules (backend/.semgrep/mycorrhizal-traps.yaml)
-#               encoding the CLAUDE.md backend "traps" list — domain-specific
+#               encoding the backend/AGENTS.md "traps" list — domain-specific
 #               bug classes (RecordFromContact bypassing the T75 merge, direct
 #               Contact.CRM field mutation, unchecked Save/Updates errors,
 #               auth material read from the query string) that generic
@@ -169,7 +169,7 @@ jobs:
           dockerfile: ${{ matrix.dockerfile }}
 
   semgrep:
-    name: CLAUDE.md trap rules (semgrep)
+    name: AGENTS.md trap rules (semgrep)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -189,7 +189,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
 
-      # Issue #370: custom rules encoding the CLAUDE.md backend "traps" list
+      # Issue #370: custom rules encoding the backend/AGENTS.md "traps" list
       # (config + hand-verification fixtures: backend/.semgrep/). Pinned to
       # the same semgrep version mobsfscan already pulls in above, so the
       # toolchain has exactly one semgrep version across both jobs. Scoped to

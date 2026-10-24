@@ -118,7 +118,7 @@ candidates worth a closer look under `MYCORRHIZAL_LARGE_TESTS=1`.
 
 ## Method
 
-- Real migrated schema (`database.InitDB` / `internal/dbtest` — CLAUDE.md backend trap #1);
+- Real migrated schema (`database.InitDB` / `internal/dbtest` — backend/AGENTS.md trap #1);
   the FTS virtual tables, triggers and hand-written indexes all exist.
 - Each operation runs on a connection wrapped in `database.QueryCounter`; the
   fixture is populated on a separate connection so the tally is the operation's own.

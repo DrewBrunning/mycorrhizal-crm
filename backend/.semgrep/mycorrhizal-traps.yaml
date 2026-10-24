@@ -1,5 +1,5 @@
 # Custom Semgrep rules encoding the "hard-won traps" documented in
-# CLAUDE.md's Backend traps section — bug classes that have shipped broken
+# backend/AGENTS.md's Backend traps section — bug classes that have shipped broken
 # more than once in this repo and that generic scanners (CodeQL, gosec,
 # eslint-plugin-security) cannot see because they are domain-specific to
 # this codebase's conventions, not generic vulnerability patterns.
@@ -29,7 +29,7 @@
 # as each rule proves low-noise in CI.
 
 rules:
-  # CLAUDE.md backend trap #3: RecordForContact vs RecordFromContact.
+  # backend/AGENTS.md trap #3: RecordForContact vs RecordFromContact.
   # RecordFromContact rebuilds a Record from a Contact's flat legacy fields
   # only, which silently drops any data with no flat-field home (SpeakToAs,
   # PersonalInfo, and other projections — see contact_record.go's doc
@@ -52,7 +52,7 @@ rules:
       save path (plain db.Save via Contact.BeforeSave, which calls
       mergeRecordFromFlat in models/contact_card_merge.go) instead of
       wiring RecordFromContact's output straight onto the struct. See
-      CLAUDE.md backend trap #3.
+      backend/AGENTS.md trap #3.
     patterns:
       - pattern-either:
           - pattern: $C.Card = RecordFromContact(...).Card
@@ -77,7 +77,7 @@ rules:
       exclude:
         - "*_test.go"
 
-  # CLAUDE.md backend trap #2: Card/CRM must be set through
+  # backend/AGENTS.md trap #2: Card/CRM must be set through
   # ApplyRecordToContact (models/contact_record_reverse.go), never by
   # mutating a Contact's own CRM field directly — Contact.BeforeSave
   # re-derives Card/CRM/Passthrough from the flat fields on every save
@@ -96,13 +96,13 @@ rules:
       is silently discarded by Contact.BeforeSave on the next save unless
       routed through ApplyRecordToContact's cardSetDirectly guard. Build the
       change on a contactmodel.Record (e.g. record.Envelope.Kind = ...) and
-      call models.ApplyRecordToContact instead. See CLAUDE.md backend trap #2.
+      call models.ApplyRecordToContact instead. See backend/AGENTS.md trap #2.
     pattern: $C.CRM.$FIELD = $VALUE
     paths:
       exclude:
         - "*_test.go"
 
-  # CLAUDE.md backend trap #4: three sites silently swallowed a Save/Updates
+  # backend/AGENTS.md trap #4: three sites silently swallowed a Save/Updates
   # failure until audited. GORM returns a *gorm.DB from both, and the error
   # lives on .Error — a bare `db.Save(&x)` (or an assignment that's never
   # checked) discards it. Scoped to the `db`/`tx` receiver names this
@@ -118,7 +118,7 @@ rules:
     message: >-
       This GORM Save/Updates call's result (and its .Error) isn't checked,
       so a write failure is silently swallowed. Chain .Error and check it,
-      e.g. `if err := db.Save(&x).Error; err != nil { ... }`. See CLAUDE.md
+      e.g. `if err := db.Save(&x).Error; err != nil { ... }`. See backend/AGENTS.md
       backend trap #4.
     patterns:
       - pattern-either:
@@ -143,7 +143,7 @@ rules:
         - "*_test.go"
         - "internal/lint/gormerr/testdata/"
 
-  # Not a CLAUDE.md trap by name, but the same class of domain-specific
+  # Not a named backend/AGENTS.md trap by name, but the same class of domain-specific
   # footgun: reading auth material (an OIDC/OAuth code, an API token, a
   # signing/session key, a shared secret) from the query string logs it
   # verbatim into access logs, browser history, and Referer headers on any

@@ -56,7 +56,7 @@ and a **scope**: `per-user` (rows carry `user_id`, reachable only by the owner's
 ## 1. Per-user application data
 
 The contact graph and everything hung off it. All of this is content a user authored or imported;
-all of it is `user_id`-scoped in every query (CLAUDE.md backend trap #5) and served only to the
+all of it is `user_id`-scoped in every query (backend/AGENTS.md trap #5) and served only to the
 authenticated owner.
 
 | Store | Personal data | Subject | Necessity | Retention → lifecycle doc |
@@ -86,7 +86,7 @@ authenticated owner.
 **`sensitivity` classification.** `preferences`, `relationship_edges`, `field_definitions`, and
 `contacts`' nested fields carry a `normal`/`private`/`secret` marker. Anything above `normal` is
 excluded from external sync, contact shares, and the neutral-`Card` exports (vCard 3/4, JSContact)
-**in the query, not in the caller** (CLAUDE.md backend conventions). This is the mechanism that
+**in the query, not in the caller** (backend/AGENTS.md conventions). This is the mechanism that
 keeps the most sensitive third-party data from leaving the instance even when the user turns on
 CardDAV. It governs copies that leave the instance or reach another party — it is not an
 access-control tier against the owning user, so the flat CSV backup (`GET /export`) deliberately
@@ -255,7 +255,7 @@ what it actually provides:
 | Owed | Provided? |
 |---|---|
 | The operator can **find everything about one person** | Yes — FTS search (`contacts_fts` + `notes_fts` + `activities_fts`) covers names, note bodies, and activity text; the contact detail view aggregates every hung-off entity |
-| The operator can **remove everything about one person** | Yes for a person who is a `Contact` — `DeleteContact` cascades every dependent row in one transaction (`contact_controller.go`, the canonical checklist in CLAUDE.md trap #6), then the 30-day purge hard-deletes. **Partial** for a person mentioned only inside a free-text note or activity belonging to a *different* contact: they are findable by search but not individually deletable — the operator must edit the note. Stated as a known limit in `../privacy.md` |
+| The operator can **remove everything about one person** | Yes for a person who is a `Contact` — `DeleteContact` cascades every dependent row in one transaction (`contact_controller.go`, the canonical checklist in backend/AGENTS.md trap #6), then the 30-day purge hard-deletes. **Partial** for a person mentioned only inside a free-text note or activity belonging to a *different* contact: they are findable by search but not individually deletable — the operator must edit the note. Stated as a known limit in `../privacy.md` |
 | Data about them does not silently outlive a delete | Mostly — see [§8](#8-deletion-completeness). The deliberate exceptions (audit window, backups) are documented, not silent |
 | Data about them is not propagated further than they'd expect | `sensitivity` ≥ `private` is excluded from CardDAV/CalDAV, contact shares, and the vCard/JSContact exports **in the query**; `suggested` (unconfirmed) relationship edges are never projected to standards or graphed. Both classifications ride along uncensored in the user's own flat CSV backup (`GET /export`), labelled by column — that file stays on the data subject's own controller's device rather than propagating outward, so the boundary it crosses is custody, not disclosure (§11 of `data-retention-lifecycle.md`, issue [#861](https://github.com/DrewBrunning/mycorrhizal-crm/issues/861)) |
 

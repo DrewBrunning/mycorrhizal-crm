@@ -137,7 +137,7 @@ the acceptance criteria, TEST-06 owns the technique:
 
 ## Hand-verification
 
-Per CLAUDE.md, an injection test must prove it pins its recovery path: remove
+Per `AGENTS.md`, an injection test must prove it pins its recovery path: remove
 the refusal and confirm the test fails, then restore. Done for the migration
 seam: deleting the dirty refusal in `database/migrate.go`
 `checkMigrationPreflight` fails `TestInjectedMigrationFaultFailsClosedAndRecovers`

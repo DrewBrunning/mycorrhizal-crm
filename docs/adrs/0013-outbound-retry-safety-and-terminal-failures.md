@@ -137,7 +137,7 @@ terminal-now + one event + never re-picked-up; `Retry-After` honored; transient 
 `services/sync_failure_behavior_test.go` (401 → terminal + local data untouched + `sync_failed`;
 `SyncAllCalendars` skips a terminal subscription; recovery clears it; 503 is not terminal);
 `models/sync_health_test.go` (`AdvanceForRun` terminal lifecycle — set once, frozen, cleared on
-success). Hand-verified per CLAUDE.md: deleting the permanent-status early return in `deliverWebhook`
+success). Hand-verified per AGENTS.md: deleting the permanent-status early return in `deliverWebhook`
 fails the "401 does not retry" test; deleting the `terminal_failure_at IS NULL` filter in
 `SyncAllCalendars` fails the "scheduler skips a terminal subscription" test. Frontend:
 `ContactSyncSettings.test.tsx`, `CalendarSyncSettings.test.tsx`, `WebhooksSettings.test.tsx`,

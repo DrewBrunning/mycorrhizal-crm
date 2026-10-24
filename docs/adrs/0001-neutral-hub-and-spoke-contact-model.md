@@ -40,4 +40,4 @@ Adopt a **hub-and-spoke** architecture:
   the correspondence table (ADR 0002), not N format mappings.
 - The neutral model is the single source of truth for what is "a contact's standardized data"; the
   `models.Contact` flat columns remain for the list/detail projection only, and are derived from the
-  neutral `Card` via `ApplyRecordToContact` (see `/CLAUDE.md`, backend trap #2/#3).
+  neutral `Card` via `ApplyRecordToContact` (see `backend/AGENTS.md` traps #2/#3).

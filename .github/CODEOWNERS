@@ -14,7 +14,7 @@
 # not a security boundary. Add a path when you add a gate whose number or
 # allowlist is itself the enforcement.
 #
-# Rationale and the "adding a quality gate" procedure: CLAUDE.md.
+# Rationale and the "adding a quality gate" procedure: .github/AGENTS.md.
 
 # Per-file coverage ratchets (the "no silent coverage loss" floor).
 /backend/internal/coverageratchet/testdata/baseline.json  @DrewBrunning
@@ -41,5 +41,22 @@
 /testdata/contract-fixtures/                                      @DrewBrunning
 
 # The policy text these gates implement.
-/CLAUDE.md                     @DrewBrunning
-/docs/development/coverage.md  @DrewBrunning
+/AGENTS.md                       @DrewBrunning
+/backend/AGENTS.md               @DrewBrunning
+/frontend/AGENTS.md              @DrewBrunning
+/android/AGENTS.md               @DrewBrunning
+/docs/AGENTS.md                  @DrewBrunning
+/.github/AGENTS.md               @DrewBrunning
+/backend/database/AGENTS.md      @DrewBrunning
+# The CLAUDE.md aliases are symlinks to the colocated AGENTS.md.
+/CLAUDE.md                       @DrewBrunning
+/backend/CLAUDE.md               @DrewBrunning
+/frontend/CLAUDE.md              @DrewBrunning
+/android/CLAUDE.md               @DrewBrunning
+/docs/CLAUDE.md                  @DrewBrunning
+/.github/CLAUDE.md               @DrewBrunning
+/backend/database/CLAUDE.md      @DrewBrunning
+/docs/development/coverage.md    @DrewBrunning
+# Agent skills added by the later context stages.
+/.agents/skills/                 @DrewBrunning
+/.claude/skills/                 @DrewBrunning

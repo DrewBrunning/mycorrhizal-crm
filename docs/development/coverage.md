@@ -63,7 +63,7 @@ each area (2026-09-04 review, prompted by legitimate PRs failing the old flat
 
 - **Backend** stays closest to 100% because almost everything here really is
   testable and tests demonstrably catch real regressions — `dbtest.New(t)`
-  runs against the real migrated schema (see CLAUDE.md's "Backend traps" for
+  runs against the real migrated schema (see backend/AGENTS.md's "Backend traps" for
   bugs a real-DB test caught), and INT-02 built `faults.Hook` seams
   specifically so failure branches that used to be untestable now are. The 5%
   threshold absorbs ordinary noise, not a declared "some backend code is fine
@@ -342,7 +342,7 @@ tolerance, never on an existing low number by itself.
   (`coverage-cross.out`, see below), computes each file's statement-coverage
   percentage, and compares it against the committed
   `backend/internal/coverageratchet/testdata/baseline.json`. It honors the
-  `// # pragma: no cover` marker (CLAUDE.md's Override path) at the
+  `// # pragma: no cover` marker (this page's Override path) at the
   coverprofile's own block granularity — a marked line anywhere inside a
   block excludes that whole block — so a deliberately-excluded line doesn't
   masquerade as a real drop. Blocks that appear more than once in the profile

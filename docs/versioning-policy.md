@@ -41,7 +41,7 @@ points at both rather than restating them.
 ## The pre-1.0 rule, as it actually is
 
 **`0.x` makes no backward-compatibility promise.** Breaking API and contract
-changes still happen in `0.x`; this is pre-1.0 software and CLAUDE.md says so
+changes still happen in `0.x`; this is pre-1.0 software and AGENTS.md says so
 plainly. The roughly-one-release-a-day cadence between `v0.2.0` (2026-08-04) and
 `v0.6.0` (2026-08-22) was legitimate under this rule, not sloppy.
 
@@ -49,7 +49,7 @@ Two things are *not* waived pre-1.0:
 
 - **Data preservation.** Since `v0.2.0-alpha-candidate` there is real production
   data. A migration that loses data is breaking regardless of version
-  (CLAUDE.md: "breaking *data* is a different, higher bar"). This is independent
+  (AGENTS.md: "breaking *data* is a different, higher bar"). This is independent
   of the SemVer component being bumped.
 - **The supported-upgrade floor.** In-place upgrade is supported from `v1.0.0`
   and later, version-skipping included — see

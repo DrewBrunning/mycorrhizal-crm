@@ -145,7 +145,7 @@ file). Never blocks a merge.
 | `TestDataMovementAtScale/WithinBudgetsAtScale` | `MYCORRHIZAL_LARGE_TESTS=1` | absolute peak-heap ceilings at `typical` |
 | `TestBenchmarksAtScale/WallClockTrend`, `TestDataMovementAtScale/WallClockTrend` | `MYCORRHIZAL_LARGE_TESTS=1` | wall-clock trend advisory (`::warning::`, never fails) |
 
-### Hand-verify (per CLAUDE.md)
+### Hand-verify (per AGENTS.md)
 
 Add an N+1 to a benchmarked endpoint and confirm the query-count budget fails,
 then restore:

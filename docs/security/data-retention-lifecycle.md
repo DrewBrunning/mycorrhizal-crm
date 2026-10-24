@@ -17,7 +17,7 @@ it, **how long** it's retained, **how** deletion happens and whether it propagat
 
 ## The pattern this doc mostly confirms, not invents
 
-[CLAUDE.md](/CLAUDE.md)'s backend trap #7 already fixes the *policy* per model (soft-delete for
+[backend/AGENTS.md](../../backend/AGENTS.md#trap-7) trap #7 already fixes the *policy* per model (soft-delete for
 user-authored content, hard-delete for edge/join rows), and the T26 purge job
 (`backend/services/purge_service.go`) already hard-deletes soft-deleted rows past a retention window.
 What follows enumerates every *copy* of the data — not just the primary table row — and checks each one
@@ -33,7 +33,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `ImmichConfig`/`PaperlessConfig`/`GeoPulseConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
 `Attachment` (metadata row only — see [§5](#5-attachments--profile-photos-files-on-disk)).
 
-- **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (CLAUDE.md trap #5). Reachable
+- **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (backend/AGENTS.md trap #5). Reachable
   only via the authenticated owner's API session.
 - **Retention**: live until the user deletes it; soft-deleted (`deleted_at` set) for
   `DELETE_RETENTION_DAYS` (default 30, `config/config.go:82,243`) as an undo window (audit `Undo`,
@@ -133,7 +133,7 @@ hard-deleted per T26; ADR 0025), `FieldValue`, `activity_contacts`, `Notificatio
 `ContactSyncConflict`.
 
 - **Where / who**: same DB, same `user_id` scoping.
-- **Retention**: none — CLAUDE.md trap #7 hard-deletes these immediately (a natural-key unique index
+- **Retention**: none — backend/AGENTS.md trap #7 hard-deletes these immediately (a natural-key unique index
   would otherwise block re-creating the same edge after a soft-delete ghost).
 - **Deletion / propagation**: removed synchronously in the same transaction as the owning entity's delete
   (`services.DeleteContactAssociations`, `PurgeSoftDeletedRows`'s `cleanups` slice for anything that outlives a
@@ -933,7 +933,7 @@ design is ADR-0010 / CON-04, issue #479).
 - **Retention / deletion**: `STORAGE_SAMPLE_RETENTION_DAYS` (default 180, `config/config.go`) — the
   sampler deletes rows older than the window in the same scheduled run that writes, so the table is
   bounded by construction. `<= 0` is treated as "use the default", never "delete everything". Hard
-  delete (no `deleted_at`, CLAUDE.md backend trap #7). Not tied to any user, so account deletion
+  delete (no `deleted_at`, backend/AGENTS.md trap #7). Not tied to any user, so account deletion
   neither touches nor needs to touch it. Dropped wholesale by migration `000043`'s `down.sql`.
 - **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
   needs no special handling in the backup-confidentiality boundary (§10). Excluded from the
@@ -951,7 +951,7 @@ design is ADR-0010 / CON-04, issue #479).
   read back on the next run of the same import. Keyed by `(system, external_id, user_id)`, it is the
   idempotency ledger for source imports (CON-04, issue #459): a row already present means "already
   imported" and is skipped. `user_id` is the importing user; every read/write is owner-scoped
-  (CLAUDE.md trap #5). Distinct from §12 (the in-memory wizard staging that holds *uploaded rows*) and
+  (backend/AGENTS.md trap #5). Distinct from §12 (the in-memory wizard staging that holds *uploaded rows*) and
   §17 (`import_runs`, the durable *outcome summary* of file imports) — this is the per-entity *source
   identity* ledger that makes re-runs non-duplicating.
 - **What it contains**: the source system token (`system`), the source row's own identity namespaced
@@ -1091,7 +1091,7 @@ design is ADR-0010 / CON-04, issue #479).
 - **Where / who**: one row per browser Web Push subscription (`push_subscriptions`: the push-service
   `endpoint`, the `p256dh` / `auth` keys, a `device_label`) and per native device registration
   (`device_registrations`: the FCM/APNs `token`, the `client`, a `device_label`), both `user_id`-scoped
-  (CLAUDE.md trap #5) and both listed only to their owner (`GET /notifications/push-subscriptions`,
+  (backend/AGENTS.md trap #5) and both listed only to their owner (`GET /notifications/push-subscriptions`,
   `GET /notifications/devices`). They are the delivery addresses the reminder-push channel sends to;
   the endpoint and token identify a browser/app installation. Stored in plaintext. Neither is in any
   export, CardDAV/CalDAV projection or the Android offline mirror. Push is not registered at all in the

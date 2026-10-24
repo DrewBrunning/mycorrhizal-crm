@@ -553,7 +553,7 @@ from this document is a bug in this document; fix it here.
 | Corrupted backup | Truncate the newest backup `.db`; keep an older valid one | [A corrupted or incomplete backup](#scenario-a-corrupted-or-incomplete-backup) | The newest snapshot is rejected by `PRAGMA integrity_check`; the older one restores and verifies |
 | Lost secret | Unset `JWT_SECRET_KEY`; separately, on an instance with no `DATA_ENCRYPTION_KEY`, unset it and try to boot | [A lost secret](#scenario-a-lost-jwt_secret_key-or-other-secret) | A fresh `JWT_SECRET_KEY` boots and serves (users re-login); the no-`DATA_ENCRYPTION_KEY` case is confirmed to fail closed at boot, matching the table |
 
-Hand-verify per [CLAUDE.md](/CLAUDE.md): remove a step from one of the procedures
+Hand-verify per [AGENTS.md](/AGENTS.md): remove a step from one of the procedures
 above and confirm the drill for that scenario cannot be completed from the
 document alone. Restore the step.
 

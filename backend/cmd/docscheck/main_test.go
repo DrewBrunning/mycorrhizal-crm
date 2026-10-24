@@ -343,7 +343,7 @@ func TestCheckFileLinksVariantTargets(t *testing.T) {
 	root := fixtureTree(t)
 	// .html link mapping onto a real page plus a real anchor.
 	write(t, root, "docs/some/page.md", "# Page\n\n## A section\n")
-	write(t, root, "docs/from.md", "[here](some/page.html#a-section) and [abs](/CLAUDE.md) and [bad](some/missing.html)\n")
+	write(t, root, "docs/from.md", "[here](some/page.html#a-section) and [abs](/AGENTS.md) and [bad](some/missing.html)\n")
 	findings := collectFindings(root)
 	got := strings.Join(findings, "\n")
 	if strings.Contains(got, "some/page.html#a-section") {

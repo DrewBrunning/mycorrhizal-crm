@@ -59,7 +59,7 @@ jobs:
   # Dependabot bumps the gomod toolchain it does not touch the Dockerfile
   # FROM line, so the two can drift silently and ship a container built with
   # an older Go than CI tested. The Go toolchain here is pinned deliberately
-  # (see /CLAUDE.md); this enforces the pin in the one place it can still
+  # (see /backend/AGENTS.md); this enforces the pin in the one place it can still
   # drift out from under it. Pure text parsing, no Docker needed, so it runs
   # fast and independently of the two build jobs below.
   toolchain-consistency:

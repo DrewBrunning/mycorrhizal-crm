@@ -3,7 +3,7 @@
 Shared fixtures the web and Android contract suites parse against, generated
 from `backend/openapi.yaml` — the OpenAPI spec is the single source of truth,
 not hand-captured responses. Each pinned response's `example:` in the spec IS
-the fixture, pretty-printed verbatim. See `/CLAUDE.md` frontend trap #8 for the
+the fixture, pretty-printed verbatim. See `/frontend/AGENTS.md` trap #8 for the
 bug class (null-vs-absent, required-field crashes) this pins.
 
 - `contacts-list.json` — `GET /api/v1/contacts` (the `200` response example)

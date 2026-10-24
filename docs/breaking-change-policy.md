@@ -38,7 +38,7 @@ The policy applies to the surfaces a third party can depend on:
    and error bodies, as documented in `backend/openapi.yaml`.
 2. **The database schema** *insofar as data must survive* — migrations must
    preserve user data; a change that loses data is breaking regardless of
-   version (CLAUDE.md: "breaking *data* is a different, higher bar").
+   version (AGENTS.md: "breaking *data* is a different, higher bar").
 3. **Configuration variable names and semantics** — env var names, their
    meaning, and their defaults.
 4. **CLI commands and flags** — `cmd/migrate`, `make` targets that ship
@@ -105,7 +105,7 @@ A change is breaking if it does any of the following to a covered surface:
   support commitment. The chosen policy is a single supported major version:
   when `2.0.0` ships, `1.x` is retired per the deprecation policy (MAINT-01,
   issue #490), not maintained in parallel.
-- Pre-`1.0.0`, breaking changes remain **allowed** (CLAUDE.md's standing
+- Pre-`1.0.0`, breaking changes remain **allowed** (AGENTS.md's standing
   position: pre-alpha software). What this policy changes pre-`1.0.0` is that
   a break is *classified and recorded* — the OpenAPI baseline drift test flags
   it, the release notes must name it, and a data-lossing change still needs
@@ -129,7 +129,7 @@ A breaking change (post-`1.0.0`) requires **all** of:
 
 ## The data bar is higher than the shape bar
 
-Per CLAUDE.md, breaking a request shape is ordinary pre-`1.0` practice;
+Per AGENTS.md, breaking a request shape is ordinary pre-`1.0` practice;
 breaking **data** is a different, higher bar. A change that loses, corrupts,
 or silently reinterprets user data:
 

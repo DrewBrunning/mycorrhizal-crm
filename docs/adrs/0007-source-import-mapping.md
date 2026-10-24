@@ -89,7 +89,7 @@ reporting slightly differently — is the one that actually ships bugs.
 
 The engine's rules are non-negotiable and pinned by tests:
 
-- **Contacts land through `ApplyRecordToContact`** (CLAUDE.md backend trap #2): the mappers
+- **Contacts land through `ApplyRecordToContact`** (backend/AGENTS.md trap #2): the mappers
   produce neutral Records, the engine maps them, and only the CRM-local flags with no neutral home
   (`Archived`/`IsFavorite`) are set directly.
 - **Nothing is dropped silently.** Every loss/degradation is an `ImportIssue` naming the record,
@@ -104,7 +104,7 @@ The engine's rules are non-negotiable and pinned by tests:
   rejected as the ledger: its `EntityID` is a contact VCardUID, so it cannot track notes,
   reminders, edges, or households, and a uniform ledger for every entity kind is the property the
   milestone actually needs.
-- **Ownership scoping is not optional** (CLAUDE.md backend trap #5): every read and write is
+- **Ownership scoping is not optional** (backend/AGENTS.md trap #5): every read and write is
   scoped by the importing user id.
 
 The existing session-based wizard (`import_session.go`) stays the UI surface for CSV/VCF/JSContact

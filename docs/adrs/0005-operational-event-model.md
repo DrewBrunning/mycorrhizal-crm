@@ -76,7 +76,7 @@ the emitted events and log lines carry the correlation ID.
 - Adding a new operational producer means adding a `RecordSystemEvent` call at its state transitions
   and, if it is a new *kind* of event, a token in `models/system_event.go`, migration `000038`'s
   `CHECK` list, `frontend/src/api/systemEvents.ts`, and the Android `SystemEventTypes` mirror — the
-  same hand-sync discipline as the audit vocabulary (CLAUDE.md frontend trap #4).
+  same hand-sync discipline as the audit vocabulary (frontend/AGENTS.md trap #4).
 - Raw-log storage/search remains the operator's stdout log driver (self-hosted, single process). The
   timeline's "view related" is a pivot across `system_events` by correlation ID, not an in-app log
   browser; `docs/operations/observability.md` says so explicitly.

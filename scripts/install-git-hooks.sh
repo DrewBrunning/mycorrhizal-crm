@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent setup: point this checkout's git hooks at the vendored,
 # checked-in hooks in .githooks/, which mirror CI's linters and
-# governance/drift checks locally. See CLAUDE.md's "Local pre-commit checks"
+# governance/drift checks locally. See .github/AGENTS.md's "Local pre-commit checks"
 # section. Safe to re-run.
 #
 # core.hooksPath is a local git config setting (not committed). Run this once

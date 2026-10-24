@@ -911,7 +911,7 @@ trying, from the app host:
   (`pre-migration/…-pre-migration-<from>-to-<to>-….db`, issue #530) in place — it is in its own
   subdirectory precisely so a non-recursive sweep cannot reach it (see "Retention & deletion" above).
 
-Per CLAUDE.md's hand-verify rule: to prove the immutability check has teeth, grant the app host's
+Per AGENTS.md's hand-verify rule: to prove the immutability check has teeth, grant the app host's
 credentials delete permission on the backup target (add `DeleteObject` to the key, or give the app's
 SSH user write access to the backup host), re-run the deletion attempt above, confirm it now
 succeeds — then revoke it.

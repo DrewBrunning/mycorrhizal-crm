@@ -207,7 +207,7 @@ parallel `/api/v2`. This page does not restate that promise — it is the thing
 (integration ownership) and MAINT-02 itself should cite this page for the
 client-facing consequences of that promise rather than re-deriving them.
 
-Pre-`1.0.0`, per CLAUDE.md's standing position, breaking changes remain
+Pre-`1.0.0`, per AGENTS.md's standing position, breaking changes remain
 allowed and routine — but per "Moving the floor" above, raising the client
 floor is *still* the more deliberate action of the two, because the remedy
 cost (an operator or user having to act) does not go away just because the

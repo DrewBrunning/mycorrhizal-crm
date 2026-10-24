@@ -120,7 +120,7 @@ Four pinning rules exist today, and all four are enforced mechanically, not
 just by habit:
 
 - **The Go toolchain is pinned deliberately** (`backend/go.mod`'s `go` and
-  `toolchain` directives) per the security posture in `CLAUDE.md` — it is not
+  `toolchain` directives) per the security posture in `AGENTS.md` — it is not
   floated, and a bump is a deliberate edit to that one file, reviewable in
   the normal diff.
 - **Go CI tools are `tool` directives in `backend/tools.mod`** (`gotestsum`,
@@ -207,7 +207,7 @@ Dependabot's `gradle` ecosystem entry alone.
 
 Sometimes the target of the "Security fixes" tier's 5-business-day window
 cannot be hit — there is no upstream release yet, the fix is blocked by
-another pin (the `nanoid` case in `CLAUDE.md` is exactly this shape: pinned
+another pin (the `nanoid` case in `frontend/AGENTS.md` is exactly this shape: pinned
 at the last patched, CommonJS-capable release because nothing newer works
 with this build's postcss/vite), or a license question is still open. The
 answer is a **recorded, time-bounded exception**, never silence:

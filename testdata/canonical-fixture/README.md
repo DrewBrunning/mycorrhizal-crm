@@ -31,7 +31,7 @@ list:
     `PersonalInfo`, `SocialProfiles`, `OtherOnlineServices`, extra name
     components, `Keywords`, `Notes`, `Members`, `Localizations`) must survive
     `Record → Contact → Record` via the neutral Card. The
-    `RecordForContact` vs `RecordFromContact` bug class (CLAUDE.md trap #3) is
+    `RecordForContact` vs `RecordFromContact` bug class (backend/AGENTS.md trap #3) is
     exactly what drops these.
   - **Gender (#515)** — the documented canonical-field round-trip hole, now
     carried in the CRM envelope (`crm.gender`).
