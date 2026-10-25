@@ -61,6 +61,12 @@ Baseline: `main` at `4a447a252` (post-#1907), `frontend/yarn.lock`, GuardDog 3.2
 | `threat-*` findings | 89 |
 | Threat findings after per-package review | **all false positives** |
 
+A re-run on 2026-10-25 at `main` `cf135ce64` (the v1.5.1 branch after #1986's `undici`/`zod` bump)
+scanned **931 packages / 662 findings**, with **0 new findings, 0 install-time lifecycle scripts and no
+stale-entry warnings**: every finding still matched `frontend/guarddog.ignore`. The one-package/
+one-finding drop from the baseline is the dependency-tree change since `4a447a252`; no review line
+needed changing. Issue #1884 records this as the post-fix clean run.
+
 The 89 threat findings come from 24 well-known build/test packages. They were reviewed against their
 source and fall into four classes:
 
