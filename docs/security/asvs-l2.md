@@ -358,11 +358,13 @@ ships in, nor serves requests from, the server binary:
 
 - **`backend/internal/notices`** — imported only by `backend/cmd/gennotices`, a CI/release-time
   generator. `CollectGo` (`backend/internal/notices/collect.go#CollectGo`) runs
-  `go list -deps -json .`, and `CollectNPM` (`backend/internal/notices/collect.go#CollectNPM`) runs
-  the pinned repo-local `license-checker-rseidelsohn` binary. The command names and argument lists
-  are fixed in source; the only variable inputs are the repository directory and license files that
-  are *read* for text, never executed (`backend/internal/notices/collect.go#moduleLicenseText`). The
-  two `exec` sites carry `#nosec G204` annotations stating that reasoning.
+  `go list -deps -json .` and, to read the pinned toolchain's standard-library license,
+  `go env GOROOT`; `CollectNPM` (`backend/internal/notices/collect.go#CollectNPM`) runs the pinned
+  repo-local `license-checker-rseidelsohn` binary. The command names and argument lists are fixed in
+  source; the only variable inputs are the repository directory and license files that are *read* for
+  text, never executed (`backend/internal/notices/collect.go#moduleLicenseText`). The one variable
+  command path (the repo-local checker) carries a `#nosec G204` annotation stating that reasoning;
+  the `go` invocations use fixed names and arguments.
 - **`backend/differential`** — imported only by `*_test.go`. `NewPyRef`
   (`backend/differential/harness.go#NewPyRef`) probes and executes the system `python3` vobject
   reference; `NewCalcardRef` (`backend/differential/harness.go#NewCalcardRef`) executes a prebuilt
