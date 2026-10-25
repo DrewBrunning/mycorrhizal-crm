@@ -36,10 +36,12 @@ func main() { // # pragma: no cover — thin os.Exit wrapper over run
 func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agenteval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef string
+	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, mode, triggersPath string
 	var noControl bool
-	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required)")
+	fs.StringVar(&mode, "mode", "task", "task or select (trigger-selection pass)")
+	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required in task mode)")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
+	fs.StringVar(&triggersPath, "triggers", "testdata/agent-eval/triggers.yaml", "trigger prompt set, repo-relative (select mode)")
 	fs.StringVar(&rootFlag, "root", "", "repository root (default: walk up to .git and AGENTS.md)")
 	fs.StringVar(&outDir, "out", "agent-eval-results", "artifact directory, repo-relative or absolute")
 	fs.StringVar(&baseRef, "base-ref", "", "override the spec's pinned commit SHA (workflow passes the dispatch commit)")
@@ -50,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&noControl, "no-control", false, "skip the stripped-context control run (not recommended)")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: agenteval -task NAME [-agent-command CMD] [-out DIR] [-no-control]")
+		fmt.Fprintln(stderr, "       agenteval -mode select -agent-command CMD [-triggers PATH] [-base-ref REF]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -58,7 +61,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		return 2
 	}
-	if task == "" {
+	if mode != "task" && mode != "select" {
+		fmt.Fprintln(stderr, "agenteval: -mode must be task or select")
+		return 2
+	}
+	if mode == "task" && task == "" {
 		fmt.Fprintln(stderr, "agenteval: -task is required")
 		return 2
 	}
@@ -76,6 +83,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval:", err) // # pragma: no cover — Abs fails only if cwd was deleted
 		return 1                                // # pragma: no cover
 	}
+	if mode == "select" {
+		return runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, stdout, stderr)
+	}
+
 	if missing, err := agenteval.VerifyGeneratorTargets(abs, agenteval.GeneratedArtifacts); err != nil {
 		fmt.Fprintln(stderr, "agenteval:", err)
 		return 1
@@ -134,6 +145,75 @@ func run(args []string, stdout, stderr io.Writer) int {
 	default:
 		return 1
 	}
+}
+
+func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion string, stdout, stderr io.Writer) int {
+	if strings.TrimSpace(agentCommand) == "" {
+		fmt.Fprintln(stderr, "agenteval: -agent-command is required in select mode")
+		return 2
+	}
+	set, err := agenteval.LoadTriggerSet(abs, triggersPath)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval:", err)
+		return 1
+	}
+	sha, err := agenteval.ResolveCommit(abs, baseRef)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval: -base-ref:", err)
+		return 2
+	}
+	artifact, runErr := agenteval.RunSelection(context.Background(), agenteval.SelectionOptions{
+		Root:         abs,
+		BaseRef:      sha,
+		TriggersPath: triggersPath,
+		Set:          set,
+		AgentCommand: agentCommand,
+		AgentName:    agentName,
+		AgentModel:   agentModel,
+		AgentVersion: agentVersion,
+	})
+	jsonPath, mdPath, writeErr := writeSelectionArtifact(abs, outDir, artifact)
+	if writeErr != nil {
+		fmt.Fprintln(stderr, "agenteval: write artifact:", writeErr)
+	}
+	fmt.Fprint(stdout, agenteval.SelectionMarkdown(artifact))
+	if jsonPath != "" {
+		fmt.Fprintf(stdout, "\nArtifacts: %s, %s\n", jsonPath, mdPath)
+	}
+	if runErr != nil {
+		fmt.Fprintln(stderr, "agenteval:", runErr)
+		return 1
+	}
+	switch artifact.Status {
+	case "passed":
+		return 0
+	default:
+		return 1
+	}
+}
+
+func writeSelectionArtifact(root, outDir string, artifact agenteval.SelectionArtifact) (string, string, error) {
+	if !filepath.IsAbs(outDir) {
+		outDir = filepath.Join(root, filepath.FromSlash(outDir))
+	}
+	if err := os.MkdirAll(outDir, 0o750); err != nil {
+		return "", "", err
+	}
+	stamp := artifact.StartedAt.Format("20060102T150405Z")
+	base := "selection-" + stamp
+	jsonPath := filepath.Join(outDir, base+".json")
+	mdPath := filepath.Join(outDir, base+".md")
+	body, err := json.MarshalIndent(artifact, "", "  ")
+	if err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(jsonPath, append(body, '\n'), 0o644); err != nil { // #nosec G306 -- uploaded eval evidence, not secret
+		return "", "", err
+	}
+	if err := os.WriteFile(mdPath, []byte(agenteval.SelectionMarkdown(artifact)), 0o644); err != nil { // #nosec G306 -- uploaded eval evidence, not secret
+		return "", "", err
+	}
+	return jsonPath, mdPath, nil
 }
 
 func writeArtifact(root, outDir string, artifact agenteval.Artifact) (string, string, error) {

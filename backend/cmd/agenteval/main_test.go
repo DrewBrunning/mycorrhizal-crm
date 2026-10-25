@@ -45,6 +45,8 @@ func fixtureRepo(t *testing.T) (string, string) {
 	}
 	writeFile(t, root, "backend/Makefile", makefile.String())
 	writeFile(t, root, "AGENTS.md", "# Root\n\n## Project map\n\nx\n\n## Safety\n")
+	writeFile(t, root, ".agents/skills/demo/SKILL.md", "---\nname: demo\ndescription: demo\n---\n")
+	writeFile(t, root, "testdata/agent-eval/triggers.yaml", "version: 1\nprompts:\n  - prompt: do demo\n    expect: demo\n")
 	git(t, root, "add", ".")
 	git(t, root, "commit", "-q", "-m", "init")
 	sha := git(t, root, "rev-parse", "HEAD")
@@ -111,6 +113,52 @@ func TestRunWritesArtifactAndFails(t *testing.T) {
 	}
 	if !foundJSON || !foundMD {
 		t.Fatalf("missing artifact files: %v", entries)
+	}
+}
+
+func TestRunSelectMode(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out,
+		"-agent-command", `printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
+	if code != 0 {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "Selected correctly: 1/1") || !strings.Contains(stdout, "Artifacts:") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("artifacts = %v", entries)
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(out, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var art agenteval.SelectionArtifact
+		if err := json.Unmarshal(body, &art); err != nil {
+			t.Fatal(err)
+		}
+		if art.Status != "passed" || art.Passed != 1 || art.Total != 1 {
+			t.Fatalf("artifact = %+v", art)
+		}
+	}
+}
+
+func TestRunSelectFlagErrors(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root); code != 2 || !strings.Contains(stderr, "agent-command") {
+		t.Fatalf("missing agent command = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "bogus"); code != 2 || !strings.Contains(stderr, "task or select") {
+		t.Fatalf("bad mode = %d, stderr %q", code, stderr)
 	}
 }
 

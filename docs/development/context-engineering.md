@@ -177,7 +177,15 @@ This tests **selection**, not task completion. The prompts are deliberately
 independent of `testdata/agent-eval/*/task.md`; do not copy an eval task prompt
 into the trigger set.
 
-Procedure (manual; no pass/fail automation yet):
+`cmd/agenteval -mode select` runs the set automatically: each prompt gets a
+fixed footer asking the agent to record the skills and context files it opened,
+and the harness scores `expect`/`not`, unexpected skills, declared ambiguous
+pairs, and any repository change made during a selection run. It measures
+reported selection, not task completion, and the agent must be pinned for the
+result to be comparable. The manual procedure below remains the record for the
+ambiguous pairs and for *why* a neighbour did or did not win.
+
+Procedure (manual):
 
 1. Start a fresh agent session with only the repository context loaded (the
    `AGENTS.md` hierarchy and `.agents/skills/`). Do not paste the skill text or
@@ -193,7 +201,7 @@ Procedure (manual; no pass/fail automation yet):
 A completeness test (`TestTriggerPromptSetIsComplete` in
 `backend/internal/agentcontext`) is deterministic: it proves every skill has
 2–3 prompts, every named skill exists, and the ambiguous pairs are declared. It
-does **not** prove selection; that is the manual run.
+does **not** prove selection; `-mode select` and the manual run do.
 
 ## Milestone-gate audit
 

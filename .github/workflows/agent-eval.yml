@@ -1,8 +1,9 @@
 name: Agent evaluation (dispatch only)
 
 # Issue #1959: a dispatch-only harness that runs one representative task per
-# Tier 1 suite in a disposable worktree and scores it against the same Suite
-# commands the skills, CI and the eval harness share.
+# suite in a disposable worktree and scores it against the same Suite commands
+# the skills, CI and the eval harness share. The select mode runs the versioned
+# trigger prompts and scores which SKILL.md the agent opens (issue #2030).
 #
 # This workflow is deliberately NOT a merge gate, a release gate, or part of
 # the release battery. Never add a pull_request/pull_request_target trigger:
@@ -12,10 +13,18 @@ name: Agent evaluation (dispatch only)
 on:
   workflow_dispatch:
     inputs:
-      task:
-        description: Tier 1 eval task
+      mode:
+        description: task (produce a change) or select (score skill routing)
         type: choice
         required: true
+        default: task
+        options:
+          - task
+          - select
+      task:
+        description: Eval task name (task mode)
+        type: choice
+        required: false
         default: database-migration
         options:
           - database-migration
@@ -25,7 +34,7 @@ on:
           - security-sensitive-change
           - release-readiness
       agent_command:
-        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned.'
+        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned. Required in select mode.'
         type: string
         required: true
         default: "true"
@@ -93,6 +102,7 @@ jobs:
 
       - name: Run one eval task
         env:
+          MODE: ${{ inputs.mode }}
           TASK: ${{ inputs.task }}
           AGENT_COMMAND: ${{ inputs.agent_command }}
           AGENT_NAME: ${{ inputs.agent_name }}
@@ -104,7 +114,12 @@ jobs:
           AGENT_EVAL_MODEL_KEY: ${{ secrets.AGENT_EVAL_MODEL_KEY }}
         run: |
           set -euo pipefail
-          args=(-task "$TASK" -agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+          args=(-mode "$MODE" -agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+          if [ "$MODE" = "select" ]; then
+            args+=(-triggers testdata/agent-eval/triggers.yaml)
+          else
+            args+=(-task "$TASK")
+          fi
           if [ -n "$BASE_REF" ]; then
             args+=(-base-ref "$BASE_REF")
           fi
@@ -117,7 +132,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: agent-eval-${{ inputs.task }}
+          name: agent-eval-${{ inputs.mode }}-${{ inputs.task || 'selection' }}
           path: agent-eval-results/
           retention-days: 14
           if-no-files-found: warn
