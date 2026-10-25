@@ -466,6 +466,16 @@
       "mandatory": false,
       "release_gate": false,
       "criterion": "nightly + on-demand: builds all three Dockerfiles with caching disabled, so a pinned Alpine apk version that upstream has pruned fails here days before it fails a release image build (the #1062/#1131 recurrence guard). Advisory because it is a time-based upstream-drift signal, not a repository change."
+    },
+    {
+      "name": "npm supply-chain scan (GuardDog)",
+      "workflow": "npm-supply-chain.yml",
+      "check_context": "Scan npm dependencies (GuardDog)",
+      "check_kind": "check_run",
+      "tier": "advisory",
+      "mandatory": false,
+      "release_gate": false,
+      "criterion": "GuardDog 3.2.0 scans the exact tree installed from frontend/yarn.lock (--ignore-scripts) for malicious behaviour and inventories install-time lifecycle scripts; new (unignored) findings are uploaded as SARIF and fail this advisory job, accepted findings are recorded with justification in frontend/guarddog.ignore, path-gated to the npm manifests and the scan's own inputs."
     }
   ]
 }

@@ -1,0 +1,137 @@
+name: npm supply-chain scan (GuardDog)
+
+# Issue #1878: known-CVE scanners (govulncheck, Trivy, Grype, Dependabot,
+# Dependency Review) cannot see a malicious package. GuardDog runs Semgrep/YARA
+# behaviour rules over the exact tree frontend/yarn.lock installs, including
+# transitive packages, and this workflow additionally inventories install-time
+# lifecycle scripts (GuardDog's local scanner cannot see package.json).
+#
+# Self-hosted by design: no Socket.dev app, no repo access beyond this job's
+# read token, no source upload. Pinned GuardDog + Semgrep versions make the rule
+# set stable until the pin is bumped.
+#
+# Advisory tier (not in release-gates' mandatory set and not a required status
+# check): a new finding is visible in the Security tab and turns this job red,
+# but it does not block a merge or release. Promoting it is a separate
+# governance change (release-gates.json + main-protection ruleset + docs).
+#
+# Path-gated to the npm manifests plus the scan's own inputs: a source-only
+# frontend change cannot alter the installed dependency tree, and an unchanged
+# lockfile cannot acquire a new package. `workflows` is included so a change to
+# this workflow or its ignore/script re-runs it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Branch-scoped cancellation: a force-push to an open PR cancels this
+# workflow's own still-running superseded run instead of paying for the old
+# run. The group is event-partitioned so `schedule`/`push:main` runs never
+# share a group and are never cancelled by a PR; only pull_request events
+# cancel in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      npm-supply-chain: ${{ steps.filter.outputs['npm-supply-chain'] }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "npm-supply-chain=$NPM_SUPPLY_CHAIN_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean outputs only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as env vars so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          NPM_SUPPLY_CHAIN_CHANGED: ${{ steps.filter.outputs['npm-supply-chain'] }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  guarddog:
+    name: Scan npm dependencies (GuardDog)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # security-events: write — upload the new findings to the Security tab.
+      security-events: write
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs['npm-supply-chain'] == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      # --ignore-scripts is the point of the scan: the dependency tree is
+      # materialized from the lockfile only, so no install hook can execute
+      # before GuardDog has read the code. The scanner reports the scripts
+      # instead (frontend/scripts/guarddog-scan.mjs's lifecycle inventory).
+      - name: Install dependencies (no lifecycle scripts)
+        working-directory: frontend
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      # uvx is not preinstalled on runners. GuardDog and Semgrep are pinned
+      # versions, not `latest`, so a new upstream rule release cannot change
+      # the baseline between runs. Semgrep is pinned explicitly because GuardDog
+      # declares a range for it; the rule engine version is part of the gate.
+      - name: Install GuardDog (pinned)
+        run: |
+          uv tool install --force --python 3.12 \
+            --with 'semgrep==1.174.0' \
+            'guarddog==3.2.0'
+          uv tool dir --bin >> "$GITHUB_PATH"
+
+      - name: Scan npm dependencies (GuardDog)
+        run: node frontend/scripts/guarddog-scan.mjs --output guarddog.sarif --jobs 8
+
+      # New findings are the SARIF content (accepted findings are dropped by
+      # the script after matching frontend/guarddog.ignore); upload even when
+      # the scan step failed so a finding is visible instead of only a red X.
+      - name: Upload GuardDog findings to GitHub Security tab
+        # A fork PR's GITHUB_TOKEN cannot write security events, so skip the
+        # upload there rather than turn a clean scan into a red job; the scan
+        # step itself has already reported any finding.
+        if: always() && hashFiles('guarddog.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: guarddog.sarif
+          category: guarddog

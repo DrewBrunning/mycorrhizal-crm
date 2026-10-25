@@ -47,6 +47,17 @@ npm-manifests:
   - 'frontend/package.json'
   - 'frontend/yarn.lock'
 
+# Issue #1878: the npm supply-chain behaviour scan's inputs. Narrower than
+# `frontend` on purpose: source-only edits cannot change the installed tree, but
+# a change to the ignore list or the scanner has to re-run the gate that reads
+# them. `.github/**` changes are covered by the `workflows` filter.
+npm-supply-chain:
+  - 'frontend/package.json'
+  - 'frontend/yarn.lock'
+  - 'frontend/guarddog.ignore'
+  - 'frontend/scripts/guarddog-scan.mjs'
+  - 'frontend/scripts/guarddog-scan.test.mjs'
+
 gradle-manifests:
   - 'android/**/build.gradle.kts'
   - 'android/**/gradle.lockfile'
