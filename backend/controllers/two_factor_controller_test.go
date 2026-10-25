@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -153,9 +154,14 @@ func enableTwoFactor(t *testing.T, db *gorm.DB, router *gin.Engine, cfg *config.
 	// single use (issue #873, RFC 6238 §5.2); spending step S-1 here leaves the
 	// current step free for whatever TOTP operation the caller does next. Real
 	// users are 30s apart between codes; these tests are milliseconds apart.
+	// Freeze the clock across mint and confirm: the S-1 code minted here falls
+	// outside the validator's ±1 window if the wall clock rolls over a step
+	// between the two (same class as #1673).
+	restore := services.SetClock(clock.NewFake(services.Now()))
 	req = sessionRequest("POST", "/users/2fa/confirm",
-		map[string]string{"code": totpCodeAt(t, setup.Secret, time.Now().Add(-30*time.Second))}, token)
+		map[string]string{"code": totpCodeAt(t, setup.Secret, services.Now().Add(-30*time.Second))}, token)
 	w, cookies := doRequest(router, req)
+	restore()
 	require.Equal(t, http.StatusOK, w.Code, "confirm: %s", w.Body.String())
 	var confirm struct {
 		RecoveryCodes []string `json:"recovery_codes"`

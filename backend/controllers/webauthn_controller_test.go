@@ -229,7 +229,14 @@ func (e *waEnv) enableTOTP(token string) (secret string, session string) {
 		Secret string `json:"secret"`
 	}
 	require.NoError(e.t, json.Unmarshal(w.Body.Bytes(), &setup))
+	// Enrollment burns the PREVIOUS step (S-1) so the current step stays free
+	// for the caller's next TOTP operation. Freeze the clock across the mint
+	// and the confirm request: a wall-clock step rollover between them pushes
+	// that S-1 code outside the validator's ±1 window and fails the confirm
+	// (same class as #1673).
+	restore := services.SetClock(clock.NewFake(services.Now()))
 	w, cookies := e.do("POST", "/users/2fa/confirm", map[string]string{"code": totpCodeAt(e.t, setup.Secret, services.Now().Add(-30*time.Second))}, token)
+	restore()
 	require.Equal(e.t, http.StatusOK, w.Code, w.Body.String())
 	var confirmed struct {
 		RecoveryCodes []string `json:"recovery_codes"`

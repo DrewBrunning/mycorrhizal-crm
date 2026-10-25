@@ -62,6 +62,12 @@ genuinely does not apply to a milestone, say so here rather than dropping it.
       closes the gate — they know what the milestone contained — rather than a scheduled
       audit, which fires on a calendar and lands on someone without that context.)
 
+- [ ] **Context truth audit done at this gate** — read every `AGENTS.md`, `SKILL.md`, and
+      reference against the code since the last gate and update or delete what is stale; run
+      every `Suites` DoD command once from a clean checkout; re-run the trigger prompts in
+      `testdata/agent-eval/triggers.yaml` if any skill description changed. Record the result
+      in this issue. (Standing criterion, issue #1960.)
+
 - [ ] **The ASVS/MASVS re-verification changelog row is added as part of closing *this*
       gate, not deferred to release-dispatch time** — a new dated row in
       `docs/security/asvs-l2-verification-report.md`'s §10, following the §8 procedure. This
