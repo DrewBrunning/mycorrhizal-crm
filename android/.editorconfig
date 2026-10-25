@@ -1,0 +1,22 @@
+# Issue #1901: Kotlin formatting conventions for the Android tree.
+#
+# Style choice: android_studio (recorded in v1.5.1). The same code style and
+# indentation style are mirrored in config/detekt/detekt.yml under `ktlint:`
+# because detekt's ktlint wrapper reads its ruleset config, not this file; this
+# file is what IDE and standalone editorconfig-aware tooling use, and it keeps
+# them aligned.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+ktlint_code_style = android_studio
+max_line_length = 120
+# Compose screens/composables are PascalCase by convention.
+ktlint_function_naming_ignore_when_annotated_with = Composable

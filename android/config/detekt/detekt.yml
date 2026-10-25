@@ -2,12 +2,18 @@
 # buildUponDefaultConfig is set in the convention plugin, so this file layers
 # only this repo's deviations on top of detekt's curated default rule set.
 #
-# This repo has no ktlint/detekt style enforcement today, so the style-shaped
-# rules below are turned off rather than baselined: wiring detekt in as a
-# security/correctness gate should not require (or silently permit via a
-# baseline) a ~1000-issue style refactor. What stays active is the high-signal
-# set — dead code, over-broad exception handling, file/declaration mismatches,
-# trailing newlines — which is the actual complement to CodeQL/mobsfscan/Android
+# KOTLIN FORMATTING (issue #1901): detekt's `ktlint` wrapper rule set is enabled
+# and enforced by the same `./gradlew detekt` task. The code style is
+# android_studio (recorded in v1.5.1) and is mirrored in android/.editorconfig
+# for IDE/editorconfig-aware tooling; the wrapper reads the `ktlint:` block
+# below, not the .editorconfig. Because formatting is now a gate, every rule
+# that is disabled carries a reason and there is deliberately no detekt
+# baseline file — a finding must be fixed, not grandfathered.
+#
+# The remaining style-shaped rules turned off below are detekt's *own* style
+# rules (a different rule set from ktlint's), and stay off so this gate remains
+# high-signal: dead code, over-broad exception handling, file/declaration
+# mismatches, and formatting, the actual complement to CodeQL/mobsfscan/Android
 # Lint.
 
 naming:
@@ -55,4 +61,31 @@ style:
   MayBeConstant:
     active: false
   LoopWithTooManyJumpStatements:
+    active: false
+
+# Issue #1901: ktlint formatting rules via detekt's wrapper. Code style is
+# android_studio (the recorded v1.5.1 choice); indentStyle stays explicit so
+# the wrapper's per-rule editorconfig emulation matches android/.editorconfig.
+ktlint:
+  code_style: android_studio
+  indentStyle: space
+  FunctionName:
+    # Compose composables are PascalCase (@Composable fun ContactRow) while the
+    # rule expects camelCase. detekt 2.0.0-alpha.6's wrapper hardcodes ktlint's
+    # ignore-when-annotated-with list to empty, so @Composable cannot be
+    # exempted through config; keeping the rule on would flag every composable.
+    active: false
+  FunctionLiteral:
+    # detekt 2.0.0-alpha.6's wrapper cannot reach a fixed point for a multiline
+    # trailing lambda with a parameter under android_studio: autocorrect writes
+    # "newline expected before parameter", then the next run reports "no newline
+    # expected". One occurrence in RuntimePermissionApplicabilityTest.kt oscillates
+    # forever, so the rule is off rather than leaving an unstable gate.
+    active: false
+  MaximumLineLength:
+    # Not auto-correctable, and the tree is not wrapped at a fixed width
+    # (~1,150 lines exceed 120 columns). Adopting it would turn this mechanical
+    # reformat into a large hand rewrite, so it stays off and `max_line_length`
+    # in android/.editorconfig remains IDE guidance only. Revisit as a separate
+    # wrapping change if line length becomes a priority.
     active: false

@@ -102,6 +102,10 @@ detekt = { id = "dev.detekt", version.ref = "detekt" }
 about-libraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
 
 [libraries]
+# Issue #1901: detekt's ktlint wrapper supplies the formatting rule set through
+# the existing detekt task, so there is no second analyzer/config/CI step.
+detekt-rules-ktlint-wrapper = { group = "dev.detekt", name = "detekt-rules-ktlint-wrapper", version.ref = "detekt" }
+
 # Compose BOM
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
