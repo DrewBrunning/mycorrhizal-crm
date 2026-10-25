@@ -43,8 +43,11 @@ fi
 local_command() {
 	local job="$1"
 	case "$job" in
-	Backend* | Frontend* | Android* | "Run E2E"* | "Docs & security-doc citations" | "Changelog note"*)
+	Backend* | Frontend* | Android* | "Docs & security-doc citations" | "Changelog note"*)
 		echo "scripts/pre-pr.sh --focused"
+		;;
+	"Run E2E"*)
+		echo "no local equivalent; E2E is CI-only (run the failing Playwright spec directly against the test stack)"
 		;;
 	"Container Hardening"* | "SAST"* | "Reproducible builds" | "GitHub Actions Security"*)
 		echo "no local equivalent; this check is CI-only (see .github/AGENTS.md)"

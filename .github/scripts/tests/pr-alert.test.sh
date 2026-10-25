@@ -138,6 +138,18 @@ seed
 printf '{"jobs":[]}\n' > "$work/jobs.json"
 scenario "no failed job still posts an explanation" 0 "" mutate -- DRY_RUN=0 CONCLUSION=startup_failure
 
+# E2E is CI-only: do not tell the contributor that the pre-PR gate can run it.
+seed
+printf '{"jobs":[{"name":"Run E2E Tests","conclusion":"failure","html_url":"https://example.test/job/9"}]}\n' > "$work/jobs.json"
+scenario "E2E failure names the CI-only boundary" 0 "" mutate -- DRY_RUN=0
+if grep -qF 'no local equivalent; E2E is CI-only' "$work/gh.log"; then
+  pass=$((pass + 1))
+  echo "PASS: E2E failure does not claim a pre-PR repro"
+else
+  fail=$((fail + 1))
+  echo "FAIL: E2E failure did not name the CI-only boundary"
+fi
+
 echo
 echo "pr-alert: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
