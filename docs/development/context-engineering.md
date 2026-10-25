@@ -195,6 +195,19 @@ A completeness test (`TestTriggerPromptSetIsComplete` in
 2–3 prompts, every named skill exists, and the ambiguous pairs are declared. It
 does **not** prove selection; that is the manual run.
 
+## Context-change evidence
+
+A semantic change to a skill description or name, an `AGENTS.md` rule, or the
+trigger/eval set is a hypothesis about agent behaviour. The PR records the
+before and after: the prompt-set version, the pinned agent/model/CLI version,
+the base and head refs, the prompt-to-skill result (or the affected task's
+result and control delta), and the artifact link. Link-only and typo-only edits
+are exempt; the PR says so explicitly.
+
+A missing before/after is an unproven change, not a documentation nicety. The
+harness is advisory and never a merge gate, so the evidence is for the reviewer
+and for the next person who wonders whether the wording still earns its place.
+
 ## Milestone-gate audit
 
 At every milestone gate, do the context truth audit and record it in the gate

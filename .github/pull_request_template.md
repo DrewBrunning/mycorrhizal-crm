@@ -20,15 +20,23 @@ See docs/development/context-engineering.md.
 -->
 
 - [ ] `contextcheck` and the context-tooling tests pass.
-- [ ] If a skill `description` or name changed, the trigger test was run and its result is below.
+- [ ] A semantic change to a skill `description`/name, an `AGENTS.md` rule, or `testdata/agent-eval/**` has before/after evidence below. Link/typo-only edits are exempt; write `not applicable` and why.
 - [ ] Every added/changed `references/` file is linked from its `SKILL.md` and names only still-valid paths/commands.
 - [ ] If a CLI/make/yarn target moved, the context references were updated (or a follow-up is filed).
 - [ ] No secrets or real tokens in context files.
 - [ ] Context files are ≤200 lines. 100 is a target, not a gate: no load-bearing content was cut to hit it.
 - [ ] For a new nested `AGENTS.md`, `contextcheck -explain` was checked for double-load/override surprises.
 
-Trigger-test result (prompt → skill that loaded; `not applicable` if no description/name changed):
+### Context-change evidence
 
+A semantic context edit is a hypothesis; record the before/after, not just the final text. Use `go run ./cmd/agenteval -mode select` when the change affects skill routing. Otherwise run the affected task with a pinned agent and link the artifact.
+
+- Trigger-set version:
+- Agent / model / CLI version (all pinned):
+- Before (base ref + prompt → skill result):
+- After (head ref + prompt → skill result):
+- Control delta (`n/a` for selection-only runs):
+- Artifact link or run output:
 
 
 ## Implementation-workflow evidence
