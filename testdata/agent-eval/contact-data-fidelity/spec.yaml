@@ -1,0 +1,25 @@
+name: contact-data-fidelity
+base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
+suite: contact-data-fidelity
+timeout: 20m
+requires: [go, node]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - backend/models/**
+  - backend/vcard3/**
+  - backend/vcard4/**
+  - backend/jscontact/**
+  - backend/correspondence/**
+  - backend/internal/rfctest/**
+  - backend/openapi.yaml
+  - backend/controllers/**
+  - backend/testdata/contract-fixtures/**
+  - frontend/src/**
+  - docs/data-01-field-compatibility-matrix.md
+  - docs/golden-fixtures/**
+forbid_paths:
+  - backend/database/migrations/**
+  - .github/**

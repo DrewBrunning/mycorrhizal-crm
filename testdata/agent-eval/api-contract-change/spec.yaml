@@ -1,0 +1,22 @@
+name: api-contract-change
+base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
+suite: api-contract-change
+timeout: 25m
+requires: [go, node]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - backend/openapi.yaml
+  - backend/openapi*_test.go
+  - backend/controllers/**
+  - backend/routes/**
+  - backend/testdata/contract-fixtures/**
+  - backend/internal/apibaseline/**
+  - frontend/src/**
+  - android/core/**
+  - docs/**
+forbid_paths:
+  - backend/database/migrations/**
+  - .github/**

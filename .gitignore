@@ -159,3 +159,7 @@ backend/differential/reference/vobject/__pycache__/
 # canonical skills tree (.agents/**) and .claude/skills alias are tracked;
 # .claude/launch.json is tracked too (see docs/development/context-engineering.md).
 **/.claude/settings.local.json
+
+# Issue #1959: local agent-evaluation artifacts (the dispatch workflow uploads
+# them; they are evidence, never source).
+agent-eval-results/

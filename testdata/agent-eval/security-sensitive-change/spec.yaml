@@ -1,0 +1,21 @@
+name: security-sensitive-change
+base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
+suite: security-sensitive-change
+timeout: 20m
+requires: [go]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - backend/controllers/**
+  - backend/services/**
+  - backend/routes/**
+  - backend/middleware/**
+  - backend/internal/**
+  - docs/security/**
+forbid_paths:
+  - frontend/**
+  - android/**
+  - backend/database/migrations/**
+  - .github/**
