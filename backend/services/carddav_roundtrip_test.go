@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"mycorrhizal/config"
@@ -34,7 +33,7 @@ import (
 // real HTTP plumbing — initial pull, incremental pull via sync-token/ETag,
 // remote create/update/delete reconciliation, the deliberate local-edit-discard
 // policy surfacing as conflicts, reconnection after an offline window, and the
-// missing/malformed ETag/token degradation semantics — against the real
+// missing ETag / malformed token degradation semantics — against the real
 // migrated schema (dbtest.New, so the `etag` column name is the real one).
 //
 // Fidelity, not hostility: the hostile-input half of the live CardDAV/CalDAV
@@ -278,40 +277,60 @@ func TestCardDAVLifecycle_MissingETagStillProcesses(t *testing.T) {
 	assert.Empty(t, link.ETag, "no ETag on the wire means an empty stored etag — the defined degradation, not a resync")
 }
 
-// TestCardDAVLifecycle_MalformedETagFailsLoudly pins that a server emitting an
-// unparseable (unquoted) ETag produces a LOUD, actionable sync failure — never
-// a silent full resync and never a silent no-op. The library cannot decode the
-// value, so the run fails with the ETag named in the error; the subscription's
-// last-sync status records the failure.
-func TestCardDAVLifecycle_MalformedETagFailsLoudly(t *testing.T) {
+// TestCardDAVLifecycle_UnquotedAndWeakETagsAccepted is issue #2003's
+// acceptance test: a real address book whose server emits unquoted and weak
+// ETags (Mailbox.org is the reported one) must sync normally instead of
+// failing the whole run in go-webdav's strconv.Unquote. The ETag is a stored
+// transport token here — change detection is the content hash — so normalizing
+// it must not cause a re-import: an unchanged second run reconciles nothing.
+func TestCardDAVLifecycle_UnquotedAndWeakETagsAccepted(t *testing.T) {
 	db, cfg, user := setupCardDAVLifecycle(t)
 	fake := newFakeCardDAVServer(t, "/addressbooks/test/contacts/")
 	defer fake.Close()
 
 	const aliceHref = "/addressbooks/test/contacts/alice.vcf"
+	fake.mu.Lock()
+	fake.etagForm = fakeETagUnquoted
+	fake.mu.Unlock()
 	fake.seedCard(aliceHref, lifecycleCard(t, "alice-uid", "Alice", "Wonderland", "alice@example.com"))
 	sub := newFakeSubscription(t, db, cfg, user.ID, fake.bookURL())
-	syncFake(t, db, cfg, sub)
+
+	stats := syncFake(t, db, cfg, sub)
+	assert.Equal(t, ContactSyncStats{Created: 1}, stats, "an unquoted ETag must not fail the sync")
 
 	fake.mu.Lock()
-	fake.malformedETags = true
+	wantETag := fake.cards[aliceHref].etag
 	fake.mu.Unlock()
-	fake.seedCard(aliceHref, lifecycleCard(t, "alice-uid", "Alice", "Wonderland", "alice.malformed-etag@example.com"))
+	var link models.ContactSyncLink
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, aliceHref).First(&link).Error)
+	assert.Equal(t, wantETag, link.ETag, "the normalized ETag keeps the server's opaque value")
+	assert.Equal(t, models.ContactSyncStatusSuccess, sub.LastSyncStatus)
 
-	service := NewContactSyncService(false)
-	_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrContactSyncUnreachable, "a malformed ETag must surface as a classified sync failure")
-	assert.Contains(t, strings.ToLower(err.Error()), "etag", "the failure must name the offending property (actionable, not 'sync failed')")
+	// The server switches to weak ETags and the card changes; the update must
+	// land and the stored token must accept the weak form.
+	fake.mu.Lock()
+	fake.etagForm = fakeETagWeak
+	fake.mu.Unlock()
+	fake.seedCard(aliceHref, lifecycleCard(t, "alice-uid", "Alice", "Wonderland", "alice.weak-etag@example.com"))
 
-	require.NoError(t, db.First(sub, sub.ID).Error)
-	assert.Equal(t, models.ContactSyncStatusError, sub.LastSyncStatus)
-	assert.NotEmpty(t, sub.LastSyncError)
+	stats = syncFake(t, db, cfg, sub)
+	assert.Equal(t, ContactSyncStats{Updated: 1}, stats, "a weak ETag must not fail the sync")
 
-	// Nothing was half-applied: the pre-change content is intact.
+	fake.mu.Lock()
+	wantETag = fake.cards[aliceHref].etag
+	fake.mu.Unlock()
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, aliceHref).First(&link).Error)
+	assert.Equal(t, wantETag, link.ETag, "the weak marker is dropped; the opaque value is kept")
+
 	var contact models.Contact
 	require.NoError(t, db.Where("user_id = ? AND vcard_uid = ?", user.ID, "alice-uid").First(&contact).Error)
-	assert.Equal(t, "alice@example.com", contact.Email, "a failed sync must not partially apply the remote change")
+	assert.Equal(t, "alice.weak-etag@example.com", contact.Email)
+
+	// Unchanged content under a new ETag is still a no-op: ETags do not drive
+	// change detection, the content hash does.
+	fake.seedCard(aliceHref, lifecycleCard(t, "alice-uid", "Alice", "Wonderland", "alice.weak-etag@example.com"))
+	stats = syncFake(t, db, cfg, sub)
+	assert.Equal(t, ContactSyncStats{Skipped: 1}, stats, "a second run with unchanged content must change nothing")
 }
 
 // TestCardDAVLifecycle_MissingSyncTokenDegradesToFullRefetchKeepsToken pins

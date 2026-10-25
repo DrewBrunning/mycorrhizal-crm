@@ -32,6 +32,7 @@ unleash:
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
         - ^error_aggregation\.go$
+        - ^etag_normalize\.go$
         - ^feed_atom\.go$
         - ^feed_service\.go$
         - ^geocoder\.go$

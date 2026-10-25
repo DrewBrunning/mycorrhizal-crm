@@ -139,7 +139,18 @@ func (t *contactRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		resp.Body.Close()
 		return nil, ErrContactSyncNotFound
 	}
-	resp.Body = &contactLimitedBody{inner: resp.Body, remaining: maxContactResponseBytes}
+	// Issue #2003: go-webdav v0.7.0 only accepts strong quoted ETags. Normalize
+	// unquoted/weak values here, before the library sees them. A buffered XML
+	// body has already had the size limit enforced; everything else keeps the
+	// streaming limit.
+	buffered, err := normalizeETagResponse(req, resp, maxContactResponseBytes, ErrContactSyncTooLarge)
+	if err != nil {
+		resp.Body.Close()
+		return nil, err
+	}
+	if !buffered {
+		resp.Body = &contactLimitedBody{inner: resp.Body, remaining: maxContactResponseBytes}
+	}
 	return resp, nil
 }
 

@@ -62,9 +62,10 @@ func newMockCalendarServer(event, etag string) *mockCalendarServer {
 			w.WriteHeader(status)
 			return
 		}
-		// REPORT (calendar-query). The getetag must be quoted — go-webdav's
-		// client unquotes it, and an unquoted value fails to parse. An empty
-		// event means an empty collection (the remote event vanished).
+		// REPORT (calendar-query). getetag is emitted in the strong quoted
+		// form here; the sync transport normalizes unquoted/weak server forms
+		// before go-webdav unquotes them (issue #2003). An empty event means
+		// an empty collection (the remote event vanished).
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.WriteHeader(http.StatusMultiStatus)
 		if m.event == "" {
