@@ -383,7 +383,8 @@ jobs:
   # Swaps in the earliest Compose V2 release as a standalone client binary
   # against the runner's own current dockerd, validating "compose file
   # syntax and behavior changes across versions" with the real
-  # docker-compose.yml. Does NOT run an actual Engine 23.0 daemon: pinning
+  # docker-compose.yml plus the source-build override. Does NOT run an actual
+  # Engine 23.0 daemon: pinning
   # the daemon on a shared runner is separate, higher-risk work outside
   # this ticket's scope.
   docker-compose-minimum:
@@ -422,7 +423,7 @@ jobs:
           sed -i "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=${secret}|" .env
 
       - name: Bring up the stack with the pinned Compose client
-        run: /tmp/docker-compose -f docker-compose.yml up -d --build --wait --wait-timeout 240
+        run: /tmp/docker-compose -f docker-compose.yml -f docker-compose.build.yml up -d --build --wait --wait-timeout 240
 
       - name: Run the end-to-end workflow against the stack
         working-directory: backend
@@ -432,8 +433,8 @@ jobs:
 
       - name: Show container logs on failure
         if: failure()
-        run: /tmp/docker-compose -f docker-compose.yml logs --no-color mycorrhizal
+        run: /tmp/docker-compose -f docker-compose.yml -f docker-compose.build.yml logs --no-color mycorrhizal
 
       - name: Tear down
         if: always()
-        run: /tmp/docker-compose -f docker-compose.yml down -v
+        run: /tmp/docker-compose -f docker-compose.yml -f docker-compose.build.yml down -v

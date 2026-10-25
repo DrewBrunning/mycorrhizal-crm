@@ -2,8 +2,9 @@
 #
 # docker-publish.yml's verify-release-assets job proves the published image
 # RESOLVES in the registry (`docker buildx imagetools inspect` -- presence,
-# not behavior); docker-compose.yml's own smoke test (deploy-smoke.yml) proves
-# a FROM-SOURCE build of the release commit boots and serves a real workflow.
+# not behavior); deploy-smoke.yml's source-build path (docker-compose.yml +
+# docker-compose.build.yml) proves a FROM-SOURCE build of the release commit
+# boots and serves a real workflow.
 # Neither pulls the actual artifact CI just pushed and boots IT -- a
 # release-path-only defect (a broken entrypoint, a bad baked-in env default, a
 # migration that only fails inside the real Dockerfile's build context) could

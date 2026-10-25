@@ -45,9 +45,9 @@ func fixtureTree(t *testing.T) string {
 	}
 	write(t, root, "docs/integration-ownership.md", ownership)
 
-	write(t, root, "docs/getting-started.md", "# Getting Started\n\n```sh\ndocker compose up -d --build\n```\n")
+	write(t, root, "docs/getting-started.md", "# Getting Started\n\nTo build from source:\n\n```sh\ndocker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build\n```\n")
 	write(t, root, "docs/deployment.md", "# Deployment\n\n## Upgrades\n\n```sh\ndocker compose pull\ndocker compose up -d\n```\n")
-	write(t, root, ".github/workflows/deploy-smoke.yml", "name: smoke\njobs:\n  smoke:\n    runs-on: ubuntu-latest\n    steps:\n      - run: docker compose up -d --build\n")
+	write(t, root, ".github/workflows/deploy-smoke.yml", "name: smoke\njobs:\n  smoke:\n    runs-on: ubuntu-latest\n    env:\n      COMPOSE_FILE: docker-compose.yml:docker-compose.build.yml\n    steps:\n      - run: docker compose up -d --build\n")
 	return root
 }
 
@@ -138,9 +138,9 @@ func TestRunAtDetectsFindings(t *testing.T) {
 			func(t *testing.T, root string) {
 				p := filepath.Join(root, ".github/workflows/deploy-smoke.yml")
 				b, _ := os.ReadFile(p)
-				os.WriteFile(p, []byte(strings.ReplaceAll(string(b), "docker compose up -d --build", "docker compose up")), 0o644)
+				os.WriteFile(p, []byte(strings.ReplaceAll(string(b), "up -d --build", "up -d")), 0o644)
 			},
-			"no longer runs the bring-up command",
+			"no longer runs the source-build bring-up command",
 		},
 	}
 	for _, c := range cases {
@@ -389,7 +389,7 @@ func TestCheckCICommandBindingDrift(t *testing.T) {
 	root2 := fixtureTree(t)
 	p2 := filepath.Join(root2, "docs", "getting-started.md")
 	b2, _ := os.ReadFile(p2)
-	os.WriteFile(p2, []byte(strings.ReplaceAll(string(b2), "docker compose up -d --build", "docker compose up")), 0o644)
+	os.WriteFile(p2, []byte(strings.ReplaceAll(string(b2), "docker-compose.build.yml", "docker-compose.yml")), 0o644)
 	got2 := strings.Join(collectFindings(root2), "\n")
 	if !strings.Contains(got2, "getting-started.md no longer contains") {
 		t.Errorf("expected a getting-started finding, got: %s", got2)
